@@ -1384,11 +1384,36 @@
         </div>
 
         <div class="modal-body-acesso" style="display: flex; flex-direction: column; height: 100%;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed var(--border);">
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    <label style="font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted);">De</label>
+                    <input type="date" id="auditoria-data-inicio" style="background:var(--dark-bg); border:1px solid var(--border); color:var(--text-light); border-radius:6px; padding:6px 8px; font-size:.78rem;">
+                </div>
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    <label style="font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted);">Até</label>
+                    <input type="date" id="auditoria-data-fim" style="background:var(--dark-bg); border:1px solid var(--border); color:var(--text-light); border-radius:6px; padding:6px 8px; font-size:.78rem;">
+                </div>
+                <button class="btn-submit-modal" style="padding:6px 12px; font-size:11px; width:auto;" onclick="filtrarSessoesAuditoria()">
+                    <i class="fas fa-filter me-1"></i> Filtrar
+                </button>
+                <button class="btn-submit-modal" style="padding:6px 12px; font-size:11px; width:auto; background:transparent; color:var(--text-muted);" onclick="limparFiltroSessoesAuditoria()">
+                    <i class="fas fa-eraser me-1"></i> Limpar
+                </button>
+            </div>
             <div id="listaSessoesAuditoria" style="flex: 1; overflow-y: auto;">
                 <div class="text-center py-5">
                     <i class="fas fa-spinner fa-spin" style="font-size: 48px; color: #a371f7; opacity: 0.3;"></i>
                     <p class="mt-3 text-muted">Carregando sessões...</p>
                 </div>
+            </div>
+            <div id="paginacaoSessoesAuditoria" style="display:none; justify-content:center; align-items:center; gap:10px; padding-top:12px; border-top:1px dashed var(--border);">
+                <button class="btn-submit-modal" style="padding:6px 12px; font-size:11px; width:auto;" id="btnAuditoriaPaginaAnterior" onclick="mudarPaginaSessoesAuditoria(-1)">
+                    <i class="fas fa-chevron-left"></i> Anterior
+                </button>
+                <span id="auditoriaPaginaInfo" style="font-size:.75rem; color:var(--text-muted);"></span>
+                <button class="btn-submit-modal" style="padding:6px 12px; font-size:11px; width:auto;" id="btnAuditoriaPaginaProxima" onclick="mudarPaginaSessoesAuditoria(1)">
+                    Próxima <i class="fas fa-chevron-right"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -2057,12 +2082,16 @@ async function deletarComentarioAcesso(comentarioId) {
 // ============================================
 
 let acessoAtualAuditoria = null;
+let paginaAtualAuditoria = 1;
 
 function abrirModalAuditoriaAcesso(acessoId, nomeEquipamento) {
     console.log('🛡️ Abrindo modal de auditoria para acesso ID:', acessoId);
 
     acessoAtualAuditoria = acessoId;
+    paginaAtualAuditoria = 1;
     document.getElementById('nome_equipamento_auditoria').textContent = nomeEquipamento;
+    document.getElementById('auditoria-data-inicio').value = '';
+    document.getElementById('auditoria-data-fim').value = '';
     document.getElementById('modalAuditoriaAcesso').style.display = 'flex';
     document.body.style.overflow = 'hidden';
 
@@ -2075,6 +2104,24 @@ function fecharModalAuditoriaAcesso() {
     acessoAtualAuditoria = null;
 }
 
+function filtrarSessoesAuditoria() {
+    if (!acessoAtualAuditoria) return;
+    paginaAtualAuditoria = 1;
+    carregarSessoesAuditoria(acessoAtualAuditoria);
+}
+
+function limparFiltroSessoesAuditoria() {
+    document.getElementById('auditoria-data-inicio').value = '';
+    document.getElementById('auditoria-data-fim').value = '';
+    filtrarSessoesAuditoria();
+}
+
+function mudarPaginaSessoesAuditoria(delta) {
+    if (!acessoAtualAuditoria) return;
+    paginaAtualAuditoria = Math.max(1, paginaAtualAuditoria + delta);
+    carregarSessoesAuditoria(acessoAtualAuditoria);
+}
+
 function formatarDuracaoAuditoria(segundos) {
     if (segundos < 60) return `${segundos}s`;
     const h = Math.floor(segundos / 3600);
@@ -2085,6 +2132,7 @@ function formatarDuracaoAuditoria(segundos) {
 
 function carregarSessoesAuditoria(acessoId) {
     const container = document.getElementById('listaSessoesAuditoria');
+    const paginacao = document.getElementById('paginacaoSessoesAuditoria');
 
     container.innerHTML = `
         <div class="text-center py-5">
@@ -2092,17 +2140,30 @@ function carregarSessoesAuditoria(acessoId) {
             <p class="mt-3 text-muted">Carregando sessões...</p>
         </div>
     `;
+    paginacao.style.display = 'none';
 
-    fetch(`/clientes/acessos/${acessoId}/auditoria/`)
+    const dataInicio = document.getElementById('auditoria-data-inicio').value;
+    const dataFim = document.getElementById('auditoria-data-fim').value;
+    const params = new URLSearchParams({ pagina: paginaAtualAuditoria });
+    if (dataInicio) params.set('data_inicio', dataInicio);
+    if (dataFim) params.set('data_fim', dataFim);
+
+    fetch(`/clientes/acessos/${acessoId}/auditoria/?${params.toString()}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 renderizarSessoesAuditoria(data.sessoes);
+                if (data.total_paginas > 1) {
+                    paginacao.style.display = 'flex';
+                    document.getElementById('auditoriaPaginaInfo').textContent = `Página ${data.pagina} de ${data.total_paginas}`;
+                    document.getElementById('btnAuditoriaPaginaAnterior').disabled = !data.tem_anterior;
+                    document.getElementById('btnAuditoriaPaginaProxima').disabled = !data.tem_proxima;
+                }
             } else {
                 container.innerHTML = `
                     <div class="text-center py-5">
                         <i class="fas fa-exclamation-circle" style="font-size: 48px; color: var(--error-red); opacity: 0.3;"></i>
-                        <p class="mt-3 text-muted">Erro ao carregar sessões</p>
+                        <p class="mt-3 text-muted">${escapeHtml(data.error || 'Erro ao carregar sessões')}</p>
                     </div>
                 `;
             }

@@ -101,6 +101,10 @@ urlpatterns = [
     path('auditoria/sessao/<int:sessao_id>/comandos/', views.listar_comandos_sessao, name='listar_comandos_sessao'),
     path('auditoria/sessao/<int:sessao_id>/transcript/', views.ver_transcript_sessao, name='ver_transcript_sessao'),
 
+    # Auditoria de Acessos — visão consolidada por cliente (todos os hosts)
+    path('<int:cliente_id>/auditoria/', views.auditoria_cliente_view, name='auditoria_cliente_view'),
+    path('<int:cliente_id>/auditoria/hosts/', views.auditoria_cliente_hosts, name='auditoria_cliente_hosts'),
+
     # Interfaces sugeridas a partir do backup (editor de Topologia)
     path('acessos/<int:acesso_id>/interfaces-backup/', views.interfaces_backup_acesso, name='interfaces_backup_acesso'),
 
@@ -138,6 +142,8 @@ urlpatterns = [
     path('ipam/prefixos/<int:prefixo_id>/deletar/',      ipam.ipam_prefixo_deletar,    name='ipam_prefixo_deletar'),
     path('ipam/prefixos/<int:prefixo_id>/breakdown/',    ipam.ipam_prefixo_breakdown,  name='ipam_prefixo_breakdown'),
     path('ipam/prefixos/<int:prefixo_id>/dividir/',        ipam.ipam_prefixo_dividir,       name='ipam_prefixo_dividir'),
+    path('ipam/prefixos/<int:prefixo_id>/subdivisoes/',    ipam.ipam_prefixo_subdivisoes,   name='ipam_prefixo_subdivisoes'),
+    path('ipam/prefixos/<int:prefixo_id>/disponiveis/',    ipam.ipam_prefixo_disponiveis,   name='ipam_prefixo_disponiveis'),
     path('ipam/prefixos/<int:prefixo_id>/marcar-em-uso/', ipam.ipam_prefixo_marcar_em_uso,  name='ipam_prefixo_marcar_em_uso'),
     path('ipam/prefixos/<int:prefixo_id>/pool-cheia/',   ipam.ipam_prefixo_pool_cheia,      name='ipam_prefixo_pool_cheia'),
     path('ipam/subredes/<int:subrede_id>/dividir/',        ipam.ipam_subrede_dividir,        name='ipam_subrede_dividir'),

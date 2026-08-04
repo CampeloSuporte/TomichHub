@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Auditoria de Acessos — {{ cliente.nome_empresa }}{% endblock %}
+{% block content %}
+
+<style>
+.audc-voltar {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--text-muted); font-size: .78rem; text-decoration: none;
+    margin-bottom: 10px; transition: color .15s;
+}
+.audc-voltar:hover { color: var(--accent-cyan); }
+.audc-titulo { display: flex; align-items: center; gap: 10px; margin: 0; }
+.audc-subtitulo { color: var(--text-muted); font-size: .82rem; margin-top: 4px; }
+
+.audc-filtros {
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; margin: 18px 0; display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end;
+}
+.audc-campo { display: flex; flex-direction: column; gap: 4px; }
+.audc-campo label {
+    font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted);
+}
+.audc-campo input, .audc-campo select {
+    background: var(--dark-bg); border: 1px solid var(--border); color: var(--text-light);
+    border-radius: 6px; padding: 7px 10px; font-size: .82rem; min-width: 150px;
+}
+.audc-campo input:focus, .audc-campo select:focus { outline: none; border-color: var(--accent-cyan); }
+.audc-campo.audc-busca { flex: 1; min-width: 220px; }
+.audc-campo.audc-busca input { width: 100%; }
+.audc-btn {
+    background: transparent; border: 1px solid var(--border); color: var(--text-light);
+    border-radius: 6px; padding: 8px 14px; font-size: .8rem; cursor: pointer; transition: all .15s;
+}
+.audc-btn:hover { border-color: var(--accent-cyan); color: var(--accent-cyan); }
+.audc-btn.audc-btn-primary { border-color: var(--primary-green); color: var(--primary-green); }
+.audc-btn.audc-btn-primary:hover { background: rgba(63,185,80,.1); }
+
+.audc-stats { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.audc-chip {
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 16px; font-size: .78rem; color: var(--text-muted);
+}
+.audc-chip strong { color: var(--text-light); font-size: 1rem; margin-right: 6px; }
+
+.audc-tabela-wrap {
+    background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+}
+table.audc-tabela { width: 100%; border-collapse: collapse; font-size: .82rem; }
+table.audc-tabela th {
+    text-align: left; padding: 10px 16px; color: var(--text-muted); font-weight: 600;
+    font-size: .7rem; text-transform: uppercase; letter-spacing: .04em;
+    border-bottom: 1px solid var(--border);
+}
+table.audc-tabela td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+table.audc-tabela tr:last-child td { border-bottom: none; }
+table.audc-tabela tr:hover td { background: rgba(255,255,255,.02); }
+.audc-host-nome { color: var(--text-light); font-weight: 600; font-family: 'Courier New', monospace; }
+.audc-host-tipo { color: var(--text-muted); font-size: .74rem; }
+.audc-badge-ativa {
+    display: inline-flex; align-items: center; gap: 4px; color: var(--primary-green);
+    font-size: .7rem; margin-left: 8px;
+}
+.audc-badge-ativa::before { content: '●'; }
+.audc-estado-vazio, .audc-carregando {
+    text-align: center; padding: 60px 20px; color: var(--text-muted);
+}
+.audc-estado-vazio i, .audc-carregando i { font-size: 42px; opacity: .3; margin-bottom: 12px; display: block; }
+
+/* Painel de sessões — reutiliza classes globais .modal-overlay / .modal-acesso */
+.audc-paginacao { display: flex; justify-content: center; align-items: center; gap: 10px; padding: 12px; }
+.audc-paginacao span { font-size: .75rem; color: var(--text-muted); }
+</style>
+
+<a href="{% url 'listar_clientes' %}?id={{ cliente.id }}" class="audc-voltar">
+    <i class="fas fa-arrow-left"></i> Voltar para {{ cliente.nome_empresa }}
+</a>
+
+<h4 class="audc-titulo">
+    <i class="fas fa-shield-halved" style="color:#a371f7;"></i>
+    Auditoria de Acessos
+</h4>
+<div class="audc-subtitulo">
+    Sessões de acesso (SSH / Telnet / WinBox) registradas nos equipamentos de <strong>{{ cliente.nome_empresa }}</strong>
+</div>
+
+<div class="audc-filtros">
+    <div class="audc-campo">
+        <label>De</label>
+        <input type="date" id="audc-data-inicio">
+    </div>
+    <div class="audc-campo">
+        <label>Até</label>
+        <input type="date" id="audc-data-fim">
+    </div>
+    <div class="audc-campo">
+        <label>Usuário</label>
+        <select id="audc-usuario">
+            <option value="">Todos</option>
+            {% for u in usuarios_com_acesso %}
+            <option value="{{ u.id }}">{{ u.get_full_name|default:u.username }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="audc-campo audc-busca">
+        <label>Buscar host ou função</label>
+        <input type="text" id="audc-busca" placeholder="Ex: sw-core-01, CGNAT..." autocomplete="off">
+    </div>
+    <button class="audc-btn audc-btn-primary" onclick="audcCarregarHosts()">
+        <i class="fas fa-filter me-1"></i> Filtrar
+    </button>
+    <button class="audc-btn" onclick="audcLimparFiltros()">
+        <i class="fas fa-eraser me-1"></i> Limpar
+    </button>
+</div>
+
+<div class="audc-stats" id="audc-stats" style="display:none;">
+    <div class="audc-chip"><strong id="audc-stat-hosts">0</strong> host(s) com auditoria</div>
+    <div class="audc-chip"><strong id="audc-stat-sessoes">0</strong> sessão(ões) no período</div>
+</div>
+
+<div id="audc-conteudo">
+    <div class="audc-carregando">
+        <i class="fas fa-spinner fa-spin"></i>
+        Carregando auditoria...
+    </div>
+</div>
+
+<!-- PAINEL DE SESSÕES DE UM HOST -->
+<div id="audc-modal-sessoes" class="modal-overlay" style="display: none;">
+    <div class="modal-acesso" style="max-width: 800px; max-height: 85vh;">
+        <div class="modal-header-acesso">
+            <h2 class="modal-title">
+                <span class="terminal-prefix">&gt;</span> Sessões — <span id="audc-host-nome-modal"></span>
+            </h2>
+            <button class="btn-close-modal" onclick="audcFecharSessoes()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body-acesso" style="display: flex; flex-direction: column; height: 100%;">
+            <div id="audc-lista-sessoes" style="flex: 1; overflow-y: auto;"></div>
+            <div class="audc-paginacao" id="audc-paginacao" style="display:none;">
+                <button class="audc-btn" id="audc-btn-anterior" onclick="audcMudarPagina(-1)">
+                    <i class="fas fa-chevron-left"></i> Anterior
+                </button>
+                <span id="audc-pagina-info"></span>
+                <button class="audc-btn" id="audc-btn-proxima" onclick="audcMudarPagina(1)">
+                    Próxima <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const AUDC_CLIENTE_ID = {{ cliente.id }};
+
+function audcEscapeHtml(unsafe) {
+    return String(unsafe)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function audcFiltrosAtuais() {
+    return {
+        data_inicio: document.getElementById('audc-data-inicio').value,
+        data_fim: document.getElementById('audc-data-fim').value,
+        usuario_id: document.getElementById('audc-usuario').value,
+        busca: document.getElementById('audc-busca').value.trim(),
+    };
+}
+
+function audcLimparFiltros() {
+    document.getElementById('audc-data-inicio').value = '';
+    document.getElementById('audc-data-fim').value = '';
+    document.getElementById('audc-usuario').value = '';
+    document.getElementById('audc-busca').value = '';
+    audcCarregarHosts();
+}
+
+function audcCarregarHosts() {
+    const f = audcFiltrosAtuais();
+    const params = new URLSearchParams();
+    if (f.data_inicio) params.set('data_inicio', f.data_inicio);
+    if (f.data_fim) params.set('data_fim', f.data_fim);
+    if (f.usuario_id) params.set('usuario_id', f.usuario_id);
+    if (f.busca) params.set('busca', f.busca);
+
+    const conteudo = document.getElementById('audc-conteudo');
+    conteudo.innerHTML = `<div class="audc-carregando"><i class="fas fa-spinner fa-spin"></i>Carregando auditoria...</div>`;
+    document.getElementById('audc-stats').style.display = 'none';
+
+    fetch(`/clientes/${AUDC_CLIENTE_ID}/auditoria/hosts/?${params.toString()}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                conteudo.innerHTML = `<div class="audc-estado-vazio"><i class="fas fa-exclamation-circle"></i>${audcEscapeHtml(data.error || 'Erro ao carregar auditoria.')}</div>`;
+                return;
+            }
+            document.getElementById('audc-stat-hosts').textContent = data.total_hosts;
+            document.getElementById('audc-stat-sessoes').textContent = data.total_sessoes;
+            document.getElementById('audc-stats').style.display = 'flex';
+            audcRenderizarHosts(data.hosts);
+        })
+        .catch(() => {
+            conteudo.innerHTML = `<div class="audc-estado-vazio"><i class="fas fa-exclamation-circle"></i>Erro na conexão.</div>`;
+        });
+}
+
+function audcRenderizarHosts(hosts) {
+    const conteudo = document.getElementById('audc-conteudo');
+
+    if (hosts.length === 0) {
+        conteudo.innerHTML = `
+            <div class="audc-estado-vazio">
+                <i class="fas fa-shield-halved"></i>
+                Nenhuma sessão de acesso encontrada para os filtros atuais.
+            </div>`;
+        return;
+    }
+
+    let html = `
+        <div class="audc-tabela-wrap">
+        <table class="audc-tabela">
+            <thead>
+                <tr>
+                    <th>Host</th>
+                    <th>Função</th>
+                    <th>Sessões</th>
+                    <th>Última atividade</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    hosts.forEach(h => {
+        html += `
+            <tr>
+                <td>
+                    <div class="audc-host-nome">${audcEscapeHtml(h.host)}</div>
+                    <div class="audc-host-tipo">${audcEscapeHtml(h.tipo)}${h.sessao_ativa ? '<span class="audc-badge-ativa">sessão ativa</span>' : ''}</div>
+                </td>
+                <td>${audcEscapeHtml(h.funcao)}</td>
+                <td>${h.total_sessoes}</td>
+                <td>
+                    ${h.ultima_sessao_em ? audcEscapeHtml(h.ultima_sessao_em) : '—'}
+                    ${h.ultima_sessao_em ? `<div class="audc-host-tipo">por ${audcEscapeHtml(h.ultima_sessao_usuario)}</div>` : ''}
+                </td>
+                <td>
+                    <button class="audc-btn" onclick="audcAbrirSessoes(${h.acesso_id}, '${h.host.replace(/'/g, "\\'")}')">
+                        <i class="fas fa-list me-1"></i> Ver sessões
+                    </button>
+                </td>
+            </tr>`;
+    });
+
+    html += `</tbody></table></div>`;
+    conteudo.innerHTML = html;
+}
+
+// ─── Painel de sessões de um host (reaproveita o endpoint de auditoria por acesso) ───
+let audcAcessoAtual = null;
+let audcPaginaAtual = 1;
+
+function audcAbrirSessoes(acessoId, hostNome) {
+    audcAcessoAtual = acessoId;
+    audcPaginaAtual = 1;
+    document.getElementById('audc-host-nome-modal').textContent = hostNome;
+    document.getElementById('audc-modal-sessoes').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    audcCarregarSessoesHost();
+}
+
+function audcFecharSessoes() {
+    document.getElementById('audc-modal-sessoes').style.display = 'none';
+    document.body.style.overflow = 'auto';
+    audcAcessoAtual = null;
+}
+
+function audcMudarPagina(delta) {
+    audcPaginaAtual = Math.max(1, audcPaginaAtual + delta);
+    audcCarregarSessoesHost();
+}
+
+function audcFormatarDuracao(segundos) {
+    if (segundos < 60) return `${segundos}s`;
+    const h = Math.floor(segundos / 3600);
+    const m = Math.floor((segundos % 3600) / 60);
+    const s = segundos % 60;
+    return h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+}
+
+function audcCarregarSessoesHost() {
+    const lista = document.getElementById('audc-lista-sessoes');
+    lista.innerHTML = `<div class="audc-carregando"><i class="fas fa-spinner fa-spin"></i>Carregando sessões...</div>`;
+    document.getElementById('audc-paginacao').style.display = 'none';
+
+    const f = audcFiltrosAtuais();
+    const params = new URLSearchParams({ pagina: audcPaginaAtual });
+    if (f.data_inicio) params.set('data_inicio', f.data_inicio);
+    if (f.data_fim) params.set('data_fim', f.data_fim);
+    if (f.usuario_id) params.set('usuario_id', f.usuario_id);
+
+    fetch(`/clientes/acessos/${audcAcessoAtual}/auditoria/?${params.toString()}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                lista.innerHTML = `<div class="audc-estado-vazio"><i class="fas fa-exclamation-circle"></i>${audcEscapeHtml(data.error || 'Erro ao carregar sessões.')}</div>`;
+                return;
+            }
+            audcRenderizarSessoesHost(data.sessoes);
+            if (data.total_paginas > 1) {
+                document.getElementById('audc-paginacao').style.display = 'flex';
+                document.getElementById('audc-pagina-info').textContent = `Página ${data.pagina} de ${data.total_paginas}`;
+                document.getElementById('audc-btn-anterior').disabled = !data.tem_anterior;
+                document.getElementById('audc-btn-proxima').disabled = !data.tem_proxima;
+            }
+        })
+        .catch(() => {
+            lista.innerHTML = `<div class="audc-estado-vazio"><i class="fas fa-exclamation-circle"></i>Erro na conexão.</div>`;
+        });
+}
+
+function audcRenderizarSessoesHost(sessoes) {
+    const lista = document.getElementById('audc-lista-sessoes');
+
+    if (sessoes.length === 0) {
+        lista.innerHTML = `<div class="audc-estado-vazio"><i class="fas fa-shield-halved"></i>Nenhuma sessão neste período.</div>`;
+        return;
+    }
+
+    const temComandos = { ssh: true, telnet: true };
+    let html = `<div style="display: flex; flex-direction: column; gap: 12px;">`;
+
+    sessoes.forEach(s => {
+        const statusCor = s.status === 'ativa' ? 'var(--primary-green)' : 'var(--text-muted)';
+        html += `
+            <div style="padding: 12px; background: rgba(163, 113, 247, 0.06); border-left: 3px solid #a371f7; border-radius: 4px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <span style="color: var(--primary-green); font-weight: 700; font-family: 'Courier New', monospace; font-size: 12px;">
+                            👤 ${audcEscapeHtml(s.usuario)}
+                        </span>
+                        <span style="color: #a371f7; font-size: 11px; margin-left: 8px; text-transform: uppercase;">${audcEscapeHtml(s.tipo_display)}</span>
+                        <span style="color: ${statusCor}; font-size: 10px; margin-left: 8px;">● ${s.status === 'ativa' ? 'em andamento' : 'encerrada'}</span>
+                        <br>
+                        <span style="color: var(--text-muted); font-size: 11px; font-family: 'Courier New', monospace;">
+                            📅 ${s.iniciada_em}${s.encerrada_em ? ' → ' + s.encerrada_em : ''} · ⏱ ${audcFormatarDuracao(s.duracao_segundos)}
+                            ${s.ip_origem ? ' · 🌐 ' + audcEscapeHtml(s.ip_origem) : ''}
+                        </span>
+                    </div>
+                    <div style="display:flex; gap:6px; flex-wrap: wrap;">
+                        ${s.video_url ? `
+                            <button class="audc-btn" onclick="window.open('${s.video_url}', '_blank')">
+                                <i class="fas fa-video me-1"></i> Gravação
+                            </button>` : ''}
+                        ${temComandos[s.tipo] ? `
+                            <button class="audc-btn" onclick="audcToggleComandos(${s.id}, this)">
+                                <i class="fas fa-terminal me-1"></i> Comandos (${s.total_comandos})
+                            </button>` : ''}
+                        ${s.tem_transcript ? `
+                            <button class="audc-btn" onclick="audcToggleTranscript(${s.id}, this)">
+                                <i class="fas fa-file-lines me-1"></i> Transcript
+                            </button>` : ''}
+                    </div>
+                </div>
+                <div id="audc-comandos-${s.id}" style="display:none; margin-top:10px; padding-top:10px; border-top: 1px dashed var(--border);"></div>
+                <div id="audc-transcript-${s.id}" style="display:none; margin-top:10px; padding-top:10px; border-top: 1px dashed var(--border);"></div>
+            </div>`;
+    });
+
+    html += `</div>`;
+    lista.innerHTML = html;
+}
+
+function audcToggleComandos(sessaoId, botao) {
+    const painel = document.getElementById(`audc-comandos-${sessaoId}`);
+    if (!painel) return;
+    if (painel.style.display === 'block') { painel.style.display = 'none'; return; }
+    painel.style.display = 'block';
+    if (painel.dataset.carregado === '1') return;
+
+    painel.innerHTML = `<p style="font-size:12px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin me-1"></i>Carregando comandos...</p>`;
+    fetch(`/clientes/auditoria/sessao/${sessaoId}/comandos/`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success || data.comandos.length === 0) {
+                painel.innerHTML = `<p style="font-size:12px;color:var(--text-muted);">Nenhum comando registrado nesta sessão.</p>`;
+                return;
+            }
+            let html = `<div style="font-family:'Courier New',monospace; font-size:12px; background:#0d1829; border-radius:4px; padding:10px; max-height:260px; overflow-y:auto;">`;
+            data.comandos.forEach(c => {
+                html += `<div style="padding:2px 0; color: var(--text-muted);">
+                    <span style="color:#58a6ff;">${audcEscapeHtml(c.executado_em)}</span>
+                    <span style="color:#c9d1d9;"> $ ${audcEscapeHtml(c.comando)}</span>
+                </div>`;
+            });
+            html += `</div>`;
+            painel.innerHTML = html;
+            painel.dataset.carregado = '1';
+        })
+        .catch(() => { painel.innerHTML = `<p style="font-size:12px;color:var(--text-muted);">Erro ao carregar comandos.</p>`; });
+}
+
+function audcToggleTranscript(sessaoId, botao) {
+    const painel = document.getElementById(`audc-transcript-${sessaoId}`);
+    if (!painel) return;
+    if (painel.style.display === 'block') { painel.style.display = 'none'; return; }
+    painel.style.display = 'block';
+    if (painel.dataset.carregado === '1') return;
+
+    painel.innerHTML = `<p style="font-size:12px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin me-1"></i>Carregando transcript...</p>`;
+    fetch(`/clientes/auditoria/sessao/${sessaoId}/transcript/`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success || !data.transcript) {
+                painel.innerHTML = `<p style="font-size:12px;color:var(--text-muted);">Transcript vazio.</p>`;
+                return;
+            }
+            painel.innerHTML = `<pre style="font-family:'Courier New',monospace; font-size:12px; color:#c9d1d9; background:#0d1829; border-radius:4px; padding:10px; max-height:400px; overflow:auto; white-space:pre-wrap; word-break:break-word; margin:0;">${audcEscapeHtml(data.transcript)}</pre>`;
+            painel.dataset.carregado = '1';
+        })
+        .catch(() => { painel.innerHTML = `<p style="font-size:12px;color:var(--text-muted);">Erro ao carregar transcript.</p>`; });
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('audc-modal-sessoes');
+        if (modal && modal.style.display === 'flex') audcFecharSessoes();
+    }
+});
+document.addEventListener('click', function(e) {
+    const modal = document.getElementById('audc-modal-sessoes');
+    if (e.target === modal) audcFecharSessoes();
+});
+
+audcCarregarHosts();
+</script>
+
+{% endblock %}

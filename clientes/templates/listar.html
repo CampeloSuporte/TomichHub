@@ -218,6 +218,11 @@
                     <button class="btn btn-sm btn-outline-secondary" onclick="abrirModalImportarCRT()" title="Importar hosts de backup SecureCRT (.xml)">
                         <i class="fas fa-file-import me-1"></i> Importar Host
                     </button>
+                    <a class="btn btn-sm btn-outline-secondary" href="{% url 'auditoria_cliente_view' cliente.id %}"
+                       title="Ver todas as sessões de acesso gravadas nos hosts deste cliente"
+                       style="color: #a371f7; border-color: rgba(163,113,247,.4);">
+                        <i class="fas fa-shield-halved me-1"></i> Auditoria do Cliente
+                    </a>
                 </div>
 
                 <!-- Container flat de resultados de busca -->
@@ -2513,8 +2518,7 @@ Você acabou de se conectar ao nosso Wi-Fi Grátis e foi selecionado para ganhar
 
         <!-- Sub-tabs IPAM -->
         <ul class="nav server-tabs mb-3" id="ipamSubTabs">
-            <li class="nav-item"><a class="nav-link active" href="#" onclick="ipamAba(event,'prefixos')"><i class="fas fa-th-large me-1"></i>Prefixos</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'subredes')"><i class="fas fa-project-diagram me-1"></i>Sub-redes</a></li>
+            <li class="nav-item"><a class="nav-link active" href="#" onclick="ipamAba(event,'prefixos')"><i class="fas fa-folder-tree me-1"></i>Prefixos &amp; Sub-redes</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'ips')"><i class="fas fa-map-marker-alt me-1"></i>Endereços IP</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'vlans')"><i class="fas fa-layer-group me-1"></i>VLANs</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'vpns')"><i class="fas fa-shield-alt me-1"></i>VPNs</a></li>
@@ -2522,12 +2526,15 @@ Você acabou de se conectar ao nosso Wi-Fi Grátis e foi selecionado para ganhar
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'historico')"><i class="fas fa-history me-1"></i>Histórico</a></li>
         </ul>
 
-        <!-- ─── PREFIXOS ─── -->
+        <!-- ─── PREFIXOS & SUB-REDES (árvore única) ─── -->
         <div id="ipam-sub-prefixos" class="ipam-sub">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span style="color:var(--text-muted);font-size:.85rem;">Blocos CIDR de alto nível (supernets / containers)</span>
+                <span style="color:var(--text-muted);font-size:.85rem;">Prefixos (pastas) — clique no <i class="fas fa-sitemap"></i> pra ver as sub-redes de cada um</span>
                 {% if not is_cliente %}
-                <button class="btn btn-sm btn-primary" onclick="ipamAbrirModal('prefixo')"><i class="fas fa-plus me-1"></i>Novo Prefixo</button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick="ipamAbrirModal('subrede')"><i class="fas fa-plus me-1"></i>Nova Sub-rede</button>
+                    <button class="btn btn-sm btn-primary" onclick="ipamAbrirModal('prefixo')"><i class="fas fa-plus me-1"></i>Novo Prefixo</button>
+                </div>
                 {% endif %}
             </div>
             <div class="table-responsive">
@@ -2538,32 +2545,6 @@ Você acabou de se conectar ao nosso Wi-Fi Grátis e foi selecionado para ganhar
                         {% if not is_cliente %}<th style="width:80px"></th>{% endif %}
                     </tr></thead>
                     <tbody id="ipam-prefixos-tbody"><tr><td colspan="7" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- ─── SUB-REDES ─── -->
-        <div id="ipam-sub-subredes" class="ipam-sub" style="display:none;">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <div class="d-flex align-items-center gap-2">
-                    <select id="ipam-sr-filtro-prefixo" class="form-select form-select-sm" style="max-width:220px;background:var(--surface);color:var(--text-light);border-color:var(--border);" onchange="ipamCarregarSubRedes()">
-                        <option value="">Todos os prefixos</option>
-                    </select>
-                    <span style="color:var(--text-muted);font-size:.85rem;" id="ipam-sr-count"></span>
-                </div>
-                {% if not is_cliente %}
-                <button class="btn btn-sm btn-primary" onclick="ipamAbrirModal('subrede')"><i class="fas fa-plus me-1"></i>Nova Sub-rede</button>
-                {% endif %}
-            </div>
-            <div class="table-responsive">
-                <table class="table table-dark table-hover table-sm mb-0" style="font-size:.85rem;">
-                    <thead><tr>
-                        <th>Rede</th><th>Gateway</th><th>VLAN</th><th>Prefixo</th>
-                        <th style="min-width:130px">Utilização</th>
-                        <th>Status</th><th>Descrição</th><th>Equipamentos</th>
-                        {% if not is_cliente %}<th style="width:100px"></th>{% endif %}
-                    </tr></thead>
-                    <tbody id="ipam-subredes-tbody"><tr><td colspan="9" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody>
                 </table>
             </div>
         </div>
@@ -2844,8 +2825,7 @@ window.ipamAba = function(e, nome) {
     if(el) el.style.display = '';
     // Carregar dados
     if(nome === 'prefixos')  ipamCarregarPrefixos();
-    if(nome === 'subredes')  ipamCarregarSubRedes();
-    if(nome === 'ips')       ipamCarregarIPs();
+    if(nome === 'ips')       { ipamCarregarIPs(); if(!IPAM.subredes.length) ipamCarregarSubRedes(); }
     if(nome === 'vlans')     ipamCarregarVlans();
     if(nome === 'vpns')      ipamCarregarVpns();
     if(nome === 'historico') ipamCarregarHistorico();
@@ -2896,6 +2876,75 @@ function _ordenarArvorePrefixos(prefixos){
 
 IPAM._pfxCollapsed = {};
 
+/* Agrupa IPAM.subredes (cache já carregado) por Prefixo dono — FK direto,
+   com fallback por containment de CIDR (ver _srFolderPrefixo). Preserva a
+   sub-árvore de sub-redes (sub-rede dentro de sub-rede) contígua, na ordem
+   de _buildSrFlatTree, pra renderizar tudo aninhado sob o prefixo certo. */
+function _srAgruparPorPrefixo(){
+    const flat = _buildSrFlatTree(IPAM.subredes || []);
+    const grupos = {};
+    let curPfxId = null;
+    flat.forEach(s => {
+        if(s._depth === 0){
+            const pfx = _srFolderPrefixo(s);
+            curPfxId = pfx ? pfx.id : null;
+        }
+        if(curPfxId != null){ (grupos[curPfxId] = grupos[curPfxId] || []).push(s); }
+    });
+    return grupos;
+}
+
+/* Linha de uma sub-rede aninhada dentro da pasta do prefixo — mesma tabela
+   (7 colunas) da árvore de Prefixos, só que como item de sub-pasta (leaf). */
+function _renderSrLeafRow(s, baseNivel, oculta){
+    const pfxLen  = parseInt((s.rede||'').split('/')[1]||'24', 10);
+    const version = (s.rede||'').includes(':') ? 6 : 4;
+    const maxPL   = version === 6 ? 128 : 32;
+    const podeDividir = pfxLen < maxPL - 1;
+    const nivel   = baseNivel + s._depth;
+    const isChild = s._parentId !== null;
+    const escondida = oculta || isChild;
+    const hasChildren = s._childCount > 0;
+
+    const expandBtn = hasChildren
+        ? `<button id="sr-expand-${s.id}" data-open="0" data-sr-id="${s.id}"
+            onclick="ipamToggleSrChildren(${s.id})"
+            style="padding:1px 5px;font-size:.6rem;background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.2);color:var(--accent-cyan);border-radius:3px;cursor:pointer;vertical-align:middle;margin-right:3px;">
+            <i class="fas fa-chevron-right"></i></button>`
+        : `<span style="display:inline-block;width:18px;"></span>`;
+
+    const utilCell = s.pool_cheia
+        ? `<span style="color:#ff8080;font-size:.72rem;white-space:nowrap;"><i class="fas fa-ban me-1"></i>Cheia</span>`
+        : `<span style="color:var(--text-muted);font-size:.75rem;white-space:nowrap;">${s.utilizacao_pct}% (${s.usados}/${s.total_hosts})</span>`;
+
+    return `
+    <tr class="ipam-row-subrede" id="sr-row-${s.id}" data-sr-id="${s.id}" data-sr-parent="${s._parentId||''}"${escondida ? ' style="display:none;"' : ''}>
+        <td style="white-space:nowrap;padding-left:${nivel*18+8}px;">
+            ${expandBtn}<button class="btn btn-xs me-1" id="ipam-grade-btn-${s.id}"
+                style="padding:1px 6px;font-size:.66rem;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.25);color:var(--primary-green);border-radius:3px;"
+                onclick="ipamToggleGradeSubrede(${s.id})" title="Ver grade de IPs"><i class="fas fa-th"></i></button>
+            <i class="fas fa-minus" style="color:#555;font-size:.6rem;margin:0 4px;"></i>
+            <span style="font-family:'Courier New',monospace;color:var(--text-light);">${s.rede}</span>
+            ${s.gateway ? `<small style="color:var(--text-muted);margin-left:6px;">gw ${s.gateway}</small>` : ''}
+        </td>
+        <td>${s.vlan ? `<span style="color:#ffaa00;font-size:.78rem;">${s.vlan}</span>` : '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td>${badge(s.status)}</td>
+        <td>${utilCell}</td>
+        <td style="color:var(--text-muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem;" title="${s.descricao||''}">${s.descricao||''}</td>
+        <td style="color:var(--text-muted);font-size:.8rem;">${s.local||''}</td>
+        <td style="white-space:nowrap;">
+            ${podeDividir ? `<button class="btn btn-xs me-1" title="Dividir sub-rede"
+                style="padding:1px 6px;font-size:.7rem;background:rgba(0,217,255,.08);border:1px solid rgba(0,217,255,.2);color:var(--accent-cyan);border-radius:3px;"
+                onclick="ipamAbrirDividir('subrede',${s.id},'${s.rede}',${pfxLen},${version})"><i class="fas fa-cut"></i></button>` : ''}
+            <button class="btn btn-xs me-1" title="${s.pool_cheia ? 'Desmarcar pool cheia' : 'Marcar pool cheia'}"
+                style="padding:1px 7px;font-size:.7rem;background:${s.pool_cheia ? 'rgba(255,80,80,.2)' : 'rgba(255,170,0,.08)'};border:1px solid ${s.pool_cheia ? 'rgba(255,80,80,.4)' : 'rgba(255,170,0,.25)'};color:${s.pool_cheia ? '#ff8080' : '#ffaa00'};border-radius:3px;"
+                onclick="ipamToggleSubredePoolCheia(${s.id})"><i class="fas ${s.pool_cheia ? 'fa-times-circle' : 'fa-ban'}"></i></button>
+            ${acoes('ipamDeletarSubRede','ipamEditarSubRede',s.id)}
+        </td>
+    </tr>
+    <tr id="sr-grade-${s.id}" data-sr-parent="${s._parentId||''}" style="display:none;"><td colspan="7" style="padding:0;border:none;"></td></tr>`;
+}
+
 window.ipamCarregarPrefixos = async function(){
     const tb = document.getElementById('ipam-prefixos-tbody');
     tb.innerHTML = tbEmpty(7,'<i class="fas fa-spinner fa-spin"></i>');
@@ -2910,8 +2959,12 @@ window.ipamCarregarPrefixos = async function(){
     IPAM.prefixos = d.prefixos || [];
     if(!IPAM.prefixos.length){ tb.innerHTML = tbEmpty(7,'Nenhum prefixo cadastrado.'); return; }
 
+    // Sub-redes ficam aninhadas dentro da pasta do prefixo — garante cache pronto
+    if(!IPAM.subredes || !IPAM.subredes.length){ await ipamCarregarSubRedes(); }
+
     const ordenados = _ordenarArvorePrefixos(IPAM.prefixos);
-    const temFilhos = new Set(IPAM.prefixos.filter(p => p.pai_id).map(p => p.pai_id));
+    const temFilhos  = new Set(IPAM.prefixos.filter(p => p.pai_id).map(p => p.pai_id));
+    const gruposSub  = _srAgruparPorPrefixo();
 
     tb.innerHTML = ordenados.map(p => {
         const pfxLen  = parseInt((p.prefixo||'').split('/')[1]||'32', 10);
@@ -2920,6 +2973,8 @@ window.ipamCarregarPrefixos = async function(){
         const podeDividir = pfxLen < maxPL - 1;
         const nivel   = p.nivel || 0;
         const ehGalho = temFilhos.has(p.id);
+        const grupo   = gruposSub[p.id] || [];
+        const qtdSub  = grupo.filter(s => s._depth === 0).length;
         // Escondida se algum ancestral estiver colapsado
         let ancestral = p.pai_id, escondida = false;
         while(ancestral){
@@ -2929,28 +2984,42 @@ window.ipamCarregarPrefixos = async function(){
         }
         const toggleArvore = ehGalho
             ? `<i class="fas ${IPAM._pfxCollapsed[p.id] ? 'fa-caret-right' : 'fa-caret-down'}" style="width:14px;cursor:pointer;color:var(--text-muted);"
-                 onclick="ipamToggleArvorePrefixo(${p.id})" title="Expandir/colapsar filhos"></i>`
+                 onclick="ipamToggleArvorePrefixo(${p.id})" title="Expandir/colapsar prefixos filhos"></i>`
             : `<span style="display:inline-block;width:14px;"></span>`;
-        return `
+        const subredesAbertas = !!IPAM._bdOpen[p.id];
+        const folderBtn = qtdSub > 0
+            ? `<button class="btn btn-xs ipam-bd-btn me-1" id="ipam-bd-btn-${p.id}"
+                style="padding:2px 7px;font-size:.72rem;background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.3);color:#ffaa00;border-radius:4px;"
+                onclick="ipamToggleBreakdown(${p.id})" title="Abrir/fechar pasta de sub-redes">
+                <i id="ipam-bd-icon-${p.id}" class="fas ${subredesAbertas ? 'fa-folder-open' : 'fa-folder'}"></i>
+               </button>`
+            : `<span style="display:inline-block;width:26px;"></span>`;
+        const addSubBtn = `<button class="btn btn-xs me-1" title="Adicionar sub-rede nesta pasta"
+                style="padding:2px 6px;font-size:.7rem;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.2);color:var(--primary-green);border-radius:4px;"
+                onclick="ipamCriarSubRedeNoEspaco(null,0,${p.id})"><i class="fas fa-plus"></i></button>`;
+
+        const linhaPrefixo = `
     <tr id="pfx-row-${p.id}" class="ipam-row-prefixo" data-pai="${p.pai_id||''}" style="${escondida ? 'display:none;' : ''}">
         <td style="white-space:nowrap;">
-            <span style="display:inline-block;width:${nivel*18}px;"></span>${toggleArvore}
-            <button class="btn btn-xs ipam-bd-btn me-1" id="ipam-bd-btn-${p.id}"
-                style="padding:2px 7px;font-size:.72rem;background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.25);color:var(--accent-cyan);border-radius:4px;"
-                onclick="ipamToggleBreakdown(${p.id})" title="Ver breakdown / sub-redes">
-                <i class="fas fa-sitemap"></i>
-            </button>
+            <span style="display:inline-block;width:${nivel*18}px;"></span>${toggleArvore}${folderBtn}${addSubBtn}
             <strong class="ipam-pfx-addr" style="color:var(--accent-cyan);font-family:'Courier New',monospace;font-size:.9rem;">${p.prefixo}</strong>
             ${p.pool_cheia ? `<span style="margin-left:6px;padding:1px 6px;background:rgba(255,80,80,.15);border:1px solid rgba(255,80,80,.35);border-radius:4px;font-size:.7rem;color:#ff8080;vertical-align:middle;"><i class="fas fa-ban me-1"></i>Pool Cheia</span>` : ''}
         </td>
         <td>${tipoBadge(p.tipo)}</td>
         <td>${badge(p.status)}</td>
         <td>
-            <a href="#" style="color:var(--primary-green);font-weight:600;" onclick="ipamFiltrarSubredes(${p.id});return false;">${p.subredes}</a>
+            ${qtdSub > 0
+                ? `<a href="#" style="color:var(--primary-green);font-weight:600;" onclick="ipamFiltrarSubredes(${p.id});return false;">${qtdSub}</a>`
+                : `<span style="color:var(--text-muted);">0</span>`}
         </td>
         <td style="color:var(--text-muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${p.descricao||''}">${p.descricao||''}</td>
         <td style="color:var(--text-muted)">${p.local||''}</td>
         <td style="white-space:nowrap;">
+            ${podeDividir ? `<button class="btn btn-xs me-1" title="Ver todos os blocos possíveis (escolher qual usar)"
+                style="padding:2px 7px;font-size:.75rem;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.2);color:var(--primary-green);border-radius:4px;"
+                onclick="ipamAbrirSubdivisoes(${p.id},'${p.prefixo}',${pfxLen},${ver})">
+                <i class="fas fa-th"></i>
+            </button>` : ''}
             ${podeDividir ? `<button class="btn btn-xs me-1" title="Dividir prefixo"
                 style="padding:2px 7px;font-size:.75rem;background:rgba(0,217,255,.08);border:1px solid rgba(0,217,255,.2);color:var(--accent-cyan);border-radius:4px;"
                 onclick="ipamAbrirDividir('prefixo',${p.id},'${p.prefixo}',${pfxLen},${ver})">
@@ -2963,8 +3032,13 @@ window.ipamCarregarPrefixos = async function(){
             </button>
             ${acoes('ipamDeletarPrefixo','ipamEditarPrefixo',p.id)}
         </td>
-    </tr>
-    <tr id="pfx-bd-${p.id}" style="display:none;"><td colspan="7" style="padding:0;border:none;"></td></tr>`;
+    </tr>`;
+
+        const linhasSub = qtdSub > 0
+            ? grupo.map(s => _renderSrLeafRow(s, nivel + 1, escondida || !subredesAbertas)).join('')
+            : '';
+
+        return linhaPrefixo + linhasSub;
     }).join('');
 };
 
@@ -2976,184 +3050,13 @@ window.ipamToggleArvorePrefixo = function(pid){
 /* ─── Breakdown inline ─── */
 IPAM._bdOpen = {};
 
+/* Abre/fecha a pasta de sub-redes de um prefixo — as linhas já vêm do cache
+   (IPAM.subredes, agrupado por _srAgruparPorPrefixo), sem round-trip extra;
+   só re-renderiza a árvore de prefixos com o novo estado. */
 window.ipamToggleBreakdown = async function(pid){
-    const row = document.getElementById(`pfx-bd-${pid}`);
-    const btn = document.getElementById(`ipam-bd-btn-${pid}`);
-    if(!row) return;
-
-    if(IPAM._bdOpen[pid]){
-        row.style.display = 'none';
-        IPAM._bdOpen[pid] = false;
-        if(btn) btn.classList.remove('active');
-        return;
-    }
-
-    IPAM._bdOpen[pid] = true;
-    if(btn) btn.classList.add('active');
-    row.style.display = '';
-    row.children[0].innerHTML = `<div style="padding:14px 18px;color:var(--text-muted);"><i class="fas fa-spinner fa-spin me-2"></i>Carregando breakdown…</div>`;
-
-    const resp = await fetch(`/clientes/ipam/prefixos/${pid}/breakdown/`);
-    const bd   = await resp.json();
-    if(!bd.ok){ row.children[0].innerHTML = `<div style="padding:12px 16px;color:#e06060;"><i class="fas fa-exclamation-triangle me-2"></i>${bd.erro}</div>`; return; }
-
-    row.children[0].innerHTML = _renderBreakdown(bd, pid);
+    IPAM._bdOpen[pid] = !IPAM._bdOpen[pid];
+    await ipamCarregarPrefixos();
 };
-
-function _renderBreakdown(bd, pid){
-    const isV6   = (bd.version === 6);
-    const pfxLen = bd.prefixlen;
-
-    /* ── Calcular proporção relativa ao prefixo pai ── */
-    function _pct(rede){
-        const childPL = parseInt(rede.split('/')[1], 10);
-        const diff = childPL - pfxLen;
-        if(diff <= 0)  return 100;
-        if(diff >= 52) return 0.05;
-        return 100 / Math.pow(2, diff);
-    }
-
-    /* ── Ordenação BigInt (funciona para v4 e v6) ── */
-    function _sortKey(rede){ return _ipSortBigInt(rede.split('/')[0]); }
-
-    /* ── Barra visual ── */
-    const statusColors = {ativo:'#3fb950', reservado:'#ffaa00', deprecado:'#e06060'};
-    const allItems = [
-        ...bd.alocadas.map(a => ({tipo:'alocada', rede:a.rede, status:a.status, pct:a.pct, _k:_sortKey(a.rede)})),
-        ...bd.livres.map(l   => ({tipo:'livre',   rede:l.rede,                             _k:_sortKey(l.rede)})),
-    ].sort((a,b) => a._k < b._k ? -1 : a._k > b._k ? 1 : 0);
-
-    let barHtml = '';
-    allItems.forEach(item => {
-        const wPct = Math.max(0.2, _pct(item.rede));
-        if(item.tipo === 'alocada'){
-            const c = statusColors[item.status] || '#3fb950';
-            barHtml += `<div title="${item.rede} · ${item.pct}%" style="display:inline-block;width:${wPct}%;min-width:3px;height:100%;background:${c};opacity:.75;vertical-align:top;border-right:1px solid rgba(0,0,0,.3);"></div>`;
-        } else {
-            barHtml += `<div title="${item.rede} (livre)" style="display:inline-block;width:${wPct}%;min-width:3px;height:100%;background:rgba(255,255,255,.07);border-right:1px solid rgba(255,255,255,.06);vertical-align:top;"></div>`;
-        }
-    });
-
-    /* ── Linhas da tabela ── */
-    const merged = [
-        ...bd.alocadas.map(a => ({...a, _tipo:'alocada', _k:_sortKey(a.rede)})),
-        ...bd.livres.map(l   => ({...l, _tipo:'livre',   _k:_sortKey(l.rede)})),
-    ].sort((a,b) => a._k < b._k ? -1 : a._k > b._k ? 1 : 0);
-
-    let rows = '';
-    merged.forEach(item => {
-        if(item._tipo === 'alocada'){
-            const barW = Math.min(100, item.pct);
-            const barC = item.pct >= 90 ? '#e06060' : item.pct >= 70 ? '#ffaa00' : '#3fb950';
-            const hostsLabel = isV6
-                ? `<span style="font-size:.7rem;">${_fmtIPv6Size(item.total_hosts)}</span>`
-                : `${item.pct}% · ${item.usados}/${item.total_hosts}`;
-            rows += `
-            <tr style="background:rgba(63,185,80,.03);">
-                <td style="padding:6px 12px;white-space:nowrap;">
-                    <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${statusColors[item.status]||'#3fb950'};margin-right:7px;vertical-align:middle;flex-shrink:0;"></span>
-                    <strong style="font-family:'Courier New',monospace;color:var(--text-light);">${item.rede}</strong>
-                </td>
-                <td style="padding:6px 8px;color:var(--text-muted);font-size:.8rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.descricao||''}">${item.descricao||''}</td>
-                <td style="padding:6px 8px;color:#ffaa00;font-size:.8rem;white-space:nowrap;">${item.vlan||'—'}</td>
-                <td style="padding:6px 8px;font-size:.8rem;">${badge(item.status)}</td>
-                <td style="padding:6px 8px;min-width:130px;">
-                    <div class="ipam-util-bar"><div class="ipam-util-fill" style="width:${barW}%;background:${barC};"></div></div>
-                    <small style="color:var(--text-muted);font-size:.71rem;">${hostsLabel}</small>
-                </td>
-                <td style="padding:6px 8px;white-space:nowrap;">
-                    <button class="btn btn-xs btn-outline-primary me-1" onclick="ipamEditarSubRede(${item.id})" style="padding:1px 7px;font-size:.72rem;" title="Editar"><i class="fas fa-pencil-alt"></i></button>
-                    <button class="btn btn-xs btn-outline-danger" onclick="ipamDeletarSubRede(${item.id})" style="padding:1px 7px;font-size:.72rem;" title="Remover"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>`;
-        } else {
-            const sugsHtml = item.sugestoes.map(s =>
-                `<button class="btn btn-xs me-1 mb-1" style="padding:2px 8px;font-size:.72rem;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.2);color:var(--primary-green);"
-                    onclick="ipamCriarSubRedeNoEspaco('${item.rede}',${s.prefixlen},${pid})">${s.label}</button>`
-            ).join('');
-            rows += `
-            <tr style="background:rgba(255,255,255,.015);">
-                <td style="padding:6px 12px;white-space:nowrap;">
-                    <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(255,255,255,.12);border:1px dashed #444;margin-right:7px;vertical-align:middle;"></span>
-                    <span style="font-family:'Courier New',monospace;color:#666;">${item.rede}</span>
-                    <span class="ipam-badge" style="margin-left:8px;background:rgba(255,255,255,.04);color:#555;border:1px solid #333;font-size:.68rem;">livre</span>
-                </td>
-                <td colspan="4" style="padding:6px 8px;">
-                    <span style="font-size:.75rem;color:#555;margin-right:6px;">Alocar:</span>
-                    ${sugsHtml}
-                </td>
-                <td style="padding:6px 8px;">
-                    <button class="btn btn-xs" onclick="ipamCriarSubRedeNoEspaco('${item.rede}',0,${pid})"
-                        style="padding:2px 8px;font-size:.72rem;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.25);color:var(--primary-green);white-space:nowrap;">
-                        <i class="fas fa-plus me-1"></i>Personalizado
-                    </button>
-                </td>
-            </tr>`;
-        }
-    });
-
-    if(!merged.length){
-        rows = `<tr><td colspan="6" class="text-center" style="color:var(--text-muted);padding:16px;"><i class="fas fa-check-circle me-2" style="color:rgba(63,185,80,.4)"></i>Prefixo completamente livre.</td></tr>`;
-    }
-
-    /* ── Stats ── */
-    let statTotal, statAloc, statLivre;
-    if(isV6){
-        statTotal = `/${pfxLen}`;
-        try {
-            const tn = BigInt(bd.total_ips);
-            const an = BigInt(bd.total_alocado);
-            statAloc  = `<span style="font-size:.78rem;">${_fmtIPv6Size(bd.total_alocado)}</span>`;
-            statLivre = `<span style="font-size:.78rem;">${_fmtIPv6Size(String(tn - an))}</span>`;
-        } catch(e){ statAloc = statLivre = '—'; }
-    } else {
-        statTotal = Number(bd.total_ips).toLocaleString('pt-BR');
-        statAloc  = Number(bd.total_alocado).toLocaleString('pt-BR');
-        statLivre = (Number(bd.total_ips) - Number(bd.total_alocado)).toLocaleString('pt-BR');
-    }
-
-    const statsHtml = `
-    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.06);">
-        <div><div style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Total</div><strong style="color:var(--text-light)">${statTotal}</strong></div>
-        <div><div style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Alocado</div><strong style="color:var(--primary-green)">${statAloc}</strong></div>
-        <div><div style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Livre</div><strong style="color:#ffaa00">${statLivre}</strong></div>
-        <div><div style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Utilização</div><strong style="color:var(--accent-cyan)">${bd.pct_alocado}%</strong></div>
-        <div><div style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Sub-redes</div><strong style="color:var(--text-light)">${bd.alocadas.length}</strong></div>
-        <div><div style="color:var(--text-muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;">Blocos livres</div><strong style="color:#666">${bd.livres.length}</strong></div>
-        ${isV6 ? '<div style="align-self:center;"><span class="ipam-badge" style="background:rgba(128,0,255,.12);color:#a080ff;border:1px solid rgba(128,0,255,.2);"><i class="fas fa-globe me-1"></i>IPv6</span></div>' : ''}
-    </div>`;
-
-    return `
-    <div class="ipam-bd-panel" style="padding:14px 18px 18px;background:rgba(0,0,0,.3);border-top:1px solid rgba(0,217,255,.12);">
-        ${statsHtml}
-        <div style="height:20px;border-radius:5px;overflow:hidden;border:1px solid rgba(255,255,255,.08);margin-bottom:14px;font-size:0;white-space:nowrap;background:rgba(255,255,255,.03);">
-            ${barHtml || '<div style="width:100%;height:100%;background:rgba(63,185,80,.06);display:inline-block;"></div>'}
-        </div>
-        <div class="table-responsive">
-        <table class="table table-dark table-sm mb-0" style="font-size:.82rem;">
-            <thead><tr style="border-bottom:1px solid rgba(0,217,255,.15);">
-                <th style="padding:5px 12px;color:rgba(180,210,240,.6);font-size:.71rem;text-transform:uppercase;letter-spacing:.05em;font-weight:500;">Sub-rede</th>
-                <th style="padding:5px 8px;color:rgba(180,210,240,.6);font-size:.71rem;text-transform:uppercase;letter-spacing:.05em;font-weight:500;">Descrição</th>
-                <th style="padding:5px 8px;color:rgba(180,210,240,.6);font-size:.71rem;text-transform:uppercase;letter-spacing:.05em;font-weight:500;">VLAN</th>
-                <th style="padding:5px 8px;color:rgba(180,210,240,.6);font-size:.71rem;text-transform:uppercase;letter-spacing:.05em;font-weight:500;">Status</th>
-                <th style="padding:5px 8px;color:rgba(180,210,240,.6);font-size:.71rem;text-transform:uppercase;letter-spacing:.05em;font-weight:500;min-width:130px;">Utilização</th>
-                <th style="padding:5px 8px;width:80px;"></th>
-            </tr></thead>
-            <tbody>${rows}</tbody>
-        </table>
-        </div>
-        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-            <button class="btn btn-sm" onclick="ipamCriarSubRedeNoEspaco(null,0,${pid})"
-                style="font-size:.8rem;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.2);color:var(--primary-green);">
-                <i class="fas fa-plus me-1"></i>Adicionar sub-rede
-            </button>
-            <button class="btn btn-sm" onclick="ipamAbrirDividir('prefixo', ${pid}, '${bd.prefixo}', ${bd.prefixlen}, ${bd.version})"
-                style="font-size:.8rem;background:rgba(0,217,255,.08);border:1px solid rgba(0,217,255,.2);color:var(--accent-cyan);">
-                <i class="fas fa-cut me-1"></i>Dividir prefixo
-            </button>
-        </div>
-    </div>`;
-}
 
 /* Converte IPv4 ou IPv6 → BigInt para ordenação */
 function _ipSortBigInt(addr){
@@ -3295,13 +3198,110 @@ window.ipamConfirmarDividir = async function(tipo, id){
         if(!d.ok){ uiAlert('Erro: ' + d.erro); return; }
         document.getElementById('ipam-dividir-overlay').remove();
         // Atualizar dados
-        ipamCarregarSubRedes();
-        ipamCarregarPrefixos();
+        await ipamCarregarSubRedes();
         if(tipo === 'prefixo'){
-            IPAM._bdOpen[id] = false;
-            await ipamToggleBreakdown(id);
+            IPAM._bdOpen[id] = true; // abre a pasta pra mostrar os blocos recém-criados
+            await ipamCarregarPrefixos();
+        } else {
+            await ipamCarregarPrefixos();
         }
     } catch(e){ uiAlert('Erro: ' + e.message); }
+};
+
+/* ─────────────────────────────────────────────────
+   VER TODOS OS BLOCOS POSSÍVEIS (estilo phpIPAM "split network")
+   Ex: pega um /24 e lista todos os /25../30 possíveis, marcando
+   livre/em uso/cheia/parcial, pra escolher exatamente qual usar.
+───────────────────────────────────────────────── */
+window.ipamAbrirSubdivisoes = function(id, cidr, pfxLen, version){
+    const maxPL = version === 6 ? 128 : 32;
+    let optsHtml = '';
+    for(let pl = pfxLen + 1; pl <= Math.min(maxPL, pfxLen + 10); pl++){
+        const n = Math.pow(2, pl - pfxLen);
+        if(n > 4096) break;
+        const ipsLabel = (version === 4) ? ` · ${Math.pow(2, maxPL - pl).toLocaleString('pt-BR')} IPs cada` : '';
+        optsHtml += `<option value="${pl}">/${pl} — ${n.toLocaleString('pt-BR')} bloco(s)${ipsLabel}</option>`;
+    }
+    const html = `<div id="ipam-subdiv-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:9999;display:flex;align-items:center;justify-content:center;">
+        <div style="background:#0d1117;border:1px solid rgba(0,217,255,.25);border-radius:10px;padding:26px 28px;width:660px;max-width:96vw;max-height:88vh;display:flex;flex-direction:column;">
+            <h6 style="color:var(--accent-cyan);margin-bottom:4px;"><i class="fas fa-th me-2"></i>Blocos possíveis</h6>
+            <p style="color:#8b949e;font-size:.82rem;margin-bottom:14px;">
+                Prefixo: <strong style="font-family:'Courier New',monospace;color:var(--text-light);">${cidr}</strong>
+                — escolha o tamanho e clique num bloco livre pra usá-lo.
+            </p>
+            <div style="margin-bottom:12px;">
+                <label style="color:#8b949e;font-size:.82rem;display:block;margin-bottom:6px;">Tamanho do bloco</label>
+                <select id="ipam-subdiv-pl" class="form-select form-select-sm"
+                    style="background:#161b22;border-color:rgba(0,217,255,.2);color:var(--text-light);"
+                    onchange="ipamCarregarSubdivisoes(${id})">
+                    ${optsHtml}
+                </select>
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:.7rem;color:var(--text-muted);margin-bottom:10px;">
+                <span><span style="display:inline-block;width:10px;height:10px;background:rgba(63,185,80,.18);border:1px solid rgba(63,185,80,.4);border-radius:2px;vertical-align:middle;"></span> livre</span>
+                <span><span style="display:inline-block;width:10px;height:10px;background:rgba(255,170,0,.18);border:1px solid rgba(255,170,0,.4);border-radius:2px;vertical-align:middle;"></span> em uso</span>
+                <span><span style="display:inline-block;width:10px;height:10px;background:rgba(255,80,80,.18);border:1px solid rgba(255,80,80,.4);border-radius:2px;vertical-align:middle;"></span> cheia</span>
+                <span><span style="display:inline-block;width:10px;height:10px;background:rgba(88,166,255,.14);border:1px solid rgba(88,166,255,.35);border-radius:2px;vertical-align:middle;"></span> parcial (subdividido)</span>
+            </div>
+            <div id="ipam-subdiv-grid" style="overflow-y:auto;flex:1;display:flex;flex-wrap:wrap;gap:5px;align-content:flex-start;min-height:140px;"></div>
+            <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+                <button onclick="document.getElementById('ipam-subdiv-overlay').remove()"
+                    style="background:transparent;border:1px solid #30363d;color:#8b949e;padding:5px 14px;border-radius:5px;cursor:pointer;font-size:.82rem;">Fechar</button>
+            </div>
+        </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    ipamCarregarSubdivisoes(id);
+};
+
+window.ipamCarregarSubdivisoes = async function(id){
+    const sel  = document.getElementById('ipam-subdiv-pl');
+    const grid = document.getElementById('ipam-subdiv-grid');
+    if(!sel || !grid) return;
+    grid.innerHTML = `<div style="color:var(--text-muted);padding:10px;"><i class="fas fa-spinner fa-spin me-2"></i>Carregando…</div>`;
+    try {
+        const qs = sel.value ? `?prefixlen=${sel.value}` : '';
+        const r = await fetch(`/clientes/ipam/prefixos/${id}/subdivisoes/${qs}`);
+        const d = await r.json();
+        if(!d.ok){ grid.innerHTML = `<div style="color:#e06060;padding:10px;">${d.erro}</div>`; return; }
+        if(String(sel.value) !== String(d.prefixlen)) sel.value = d.prefixlen;
+        const cores = {
+            livre:   {bg:'rgba(63,185,80,.08)', bd:'rgba(63,185,80,.3)',  fg:'#3fb950'},
+            em_uso:  {bg:'rgba(255,170,0,.1)',  bd:'rgba(255,170,0,.3)',  fg:'#ffaa00'},
+            cheia:   {bg:'rgba(255,80,80,.12)', bd:'rgba(255,80,80,.35)', fg:'#ff8080'},
+            parcial: {bg:'rgba(88,166,255,.1)', bd:'rgba(88,166,255,.3)', fg:'#79c0ff'},
+        };
+        grid.innerHTML = d.blocos.map(b => {
+            const c = cores[b.status] || cores.livre;
+            const click = b.status === 'livre'
+                ? `ipamSubdivUsar('${b.rede}', ${id})`
+                : (b.subrede_id ? `ipamSubdivVerOcupante(${b.subrede_id}, ${id})` : '');
+            const titulo = (b.status === 'livre' ? `${b.rede} — livre, clique pra usar` :
+                `${b.rede} — ${b.status}${b.descricao ? ' · ' + b.descricao : ''}${b.ocupado_por ? ' · dentro de ' + b.ocupado_por : ''}`)
+                .replace(/"/g, '&quot;');
+            return `<div title="${titulo}" ${click ? `onclick="${click}"` : ''}
+                style="width:110px;padding:6px 8px;border-radius:5px;background:${c.bg};border:1px solid ${c.bd};color:${c.fg};
+                       font-family:'Courier New',monospace;font-size:.74rem;${click ? 'cursor:pointer;' : 'cursor:default;'}">
+                ${b.rede}
+            </div>`;
+        }).join('') || `<div style="color:var(--text-muted);padding:10px;">Nenhum bloco.</div>`;
+    } catch(e){
+        grid.innerHTML = `<div style="color:#e06060;padding:10px;">Erro: ${e.message}</div>`;
+    }
+};
+
+window.ipamSubdivUsar = function(rede, prefixoId){
+    document.getElementById('ipam-subdiv-overlay')?.remove();
+    ipamAbrirModal('subrede', {prefixo_id: prefixoId, rede});
+};
+
+window.ipamSubdivVerOcupante = async function(subredeId, prefixoId){
+    document.getElementById('ipam-subdiv-overlay')?.remove();
+    await ipamCarregarSubRedes();          // garante IPAM.subredes atualizado pra edição
+    IPAM._bdOpen[prefixoId] = false;
+    await ipamToggleBreakdown(prefixoId);  // abre a sub-pasta do prefixo
+    document.getElementById(`pfx-row-${prefixoId}`)?.scrollIntoView({behavior:'smooth', block:'center'});
+    ipamEditarSubRede(subredeId);
 };
 
 /* ─────────────────────────────────────────────────
@@ -3327,23 +3327,18 @@ async function _ipamMarcarEmUsoExec(pid, prefixo, breakdownPid){
         });
         const d = await r.json();
         if(!d.ok){ uiAlert('Erro: ' + d.erro); return; }
-        ipamCarregarPrefixos();
-        ipamCarregarSubRedes();
-        if(breakdownPid != null){
-            IPAM._bdOpen[breakdownPid] = false;
-            await ipamToggleBreakdown(breakdownPid);
-        }
+        await ipamCarregarSubRedes();
+        if(breakdownPid != null) IPAM._bdOpen[breakdownPid] = true;
+        await ipamCarregarPrefixos();
     } catch(e){ uiAlert('Erro: ' + e.message); }
 }
 
-window.ipamFiltrarSubredes = function(prefixo_id){
-    document.querySelectorAll('#ipamSubTabs .nav-link').forEach((a,i) => a.classList.toggle('active', i===1));
-    document.querySelectorAll('.ipam-sub').forEach(d => d.style.display='none');
-    document.getElementById('ipam-sub-subredes').style.display='';
-    IPAM.aba = 'subredes';
-    const sel = document.getElementById('ipam-sr-filtro-prefixo');
-    if(sel) sel.value = prefixo_id;
-    ipamCarregarSubRedes();
+/* Clique no nº de sub-redes da linha do Prefixo — abre a sub-pasta (breakdown) dele */
+window.ipamFiltrarSubredes = async function(prefixo_id){
+    if(!prefixo_id) return;
+    IPAM._bdOpen[prefixo_id] = false;
+    await ipamToggleBreakdown(prefixo_id);
+    document.getElementById(`pfx-row-${prefixo_id}`)?.scrollIntoView({behavior:'smooth', block:'center'});
 };
 
 /* ─────────────────────────────────────────────────
@@ -3401,6 +3396,27 @@ function _buildSrFlatTree(subredes){
     // DFS order
     function flatten(n){ return [n, ...n._children.flatMap(c=>flatten(c))]; }
     return nodes.filter(n=>n._parentId===null).flatMap(n=>flatten(n));
+}
+
+/* ── "Pastas" (estilo phpIPAM): agrupa sub-redes pelo Prefixo que as contém ──
+   Prioriza o FK real (prefixo_id) quando presente; se a sub-rede nunca teve
+   o FK setado (import CSV / análise de backup — caso comum, ver relato em
+   ipam_views.py), cai pra containment de CIDR contra IPAM.prefixos. */
+function _srAcharPrefixoContainer(subCidr){
+    let melhor = null, melhorPL = -1;
+    for(const p of (IPAM.prefixos || [])){
+        if(!p.prefixo) continue;
+        const pPL = parseInt((p.prefixo.split('/')[1])||'0', 10);
+        if(pPL > melhorPL && _srContains(p.prefixo, subCidr)){ melhor = p; melhorPL = pPL; }
+    }
+    return melhor;
+}
+function _srFolderPrefixo(s){
+    if(s.prefixo_id){
+        const p = (IPAM.prefixos || []).find(x => x.id === s.prefixo_id);
+        if(p) return p;
+    }
+    return _srAcharPrefixoContainer(s.rede);
 }
 
 /* Toggle expand/collapse da árvore de sub-redes */
@@ -3559,100 +3575,16 @@ window.ipamToggleScanAutomatico = async function(sid, checked){
     }
 };
 
-window.ipamCarregarSubRedes = async function(){
-    const tb  = document.getElementById('ipam-subredes-tbody');
-    const sel = document.getElementById('ipam-sr-filtro-prefixo');
-    const filtro = sel ? sel.value : '';
-    // Salva quais linhas estão expandidas antes de re-renderizar
-    const expandidas = new Set(
-        [...document.querySelectorAll('[id^="sr-expand-"][data-open="1"]')]
-            .map(b => b.getAttribute('data-sr-id'))
-    );
-    tb.innerHTML = tbEmpty(9,'<i class="fas fa-spinner fa-spin"></i>');
+window.ipamCarregarSubRedes = async function(filtro){
+    // A aba "Sub-redes" foi fundida na aba Prefixos (sub-redes aparecem
+    // aninhadas dentro da pasta de cada prefixo) — esta função hoje só
+    // busca os dados e mantém IPAM.subredes + o dropdown da aba IPs em dia.
+    if(!IPAM.prefixos || !IPAM.prefixos.length){ await ipamCarregarPrefixos(); }
     const url = `/clientes/${CID}/ipam/subredes/` + (filtro ? `?prefixo_id=${filtro}` : '');
     const r = await fetch(url);
     const d = await r.json();
     IPAM.subredes = d.subredes || [];
-    // Preencher select de filtro de prefixos
-    if(IPAM.prefixos.length && sel){
-        const cur = sel.value;
-        sel.innerHTML = '<option value="">Todos os prefixos</option>' +
-            IPAM.prefixos.map(p=>`<option value="${p.id}" ${p.id==cur?'selected':''}>${p.prefixo}</option>`).join('');
-    }
-    const cnt = document.getElementById('ipam-sr-count');
-    if(cnt) cnt.textContent = `${IPAM.subredes.length} sub-rede${IPAM.subredes.length!==1?'s':''}`;
-    if(!IPAM.subredes.length){ tb.innerHTML = tbEmpty(9,'Nenhuma sub-rede cadastrada.'); return; }
 
-    const flat = _buildSrFlatTree(IPAM.subredes);
-    tb.innerHTML = flat.map(s => {
-        const pfxLen  = parseInt((s.rede||'').split('/')[1]||'24', 10);
-        const version = (s.rede||'').includes(':') ? 6 : 4;
-        const maxPL   = version === 6 ? 128 : 32;
-        const podeDividir  = pfxLen < maxPL - 1;
-        const depth        = s._depth;
-        const hasChildren  = s._childCount > 0;
-        const isChild      = s._parentId !== null;
-
-        const expandBtn = hasChildren
-            ? `<button id="sr-expand-${s.id}" data-open="0" data-sr-id="${s.id}"
-                onclick="ipamToggleSrChildren(${s.id})"
-                style="padding:1px 5px;font-size:.65rem;background:rgba(0,217,255,.1);border:1px solid rgba(0,217,255,.2);color:var(--accent-cyan);border-radius:3px;cursor:pointer;vertical-align:middle;margin-right:4px;line-height:1.4;">
-                <i class="fas fa-chevron-right"></i></button>`
-            : `<span style="display:inline-block;width:${depth > 0 ? 0 : 22}px;"></span>`;
-        const indent = depth > 0
-            ? `<span style="display:inline-block;width:${depth * 18}px;"></span>`
-            : '';
-
-        return `
-    <tr class="ipam-row-subrede" id="sr-row-${s.id}" data-sr-id="${s.id}" data-sr-parent="${s._parentId||''}"${isChild ? ' style="display:none;"' : ''}>
-        <td style="white-space:nowrap;">
-            ${indent}${expandBtn}<button class="btn btn-xs ipam-bd-btn me-1" id="ipam-grade-btn-${s.id}"
-                style="padding:2px 7px;font-size:.72rem;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.25);color:var(--primary-green);border-radius:4px;"
-                onclick="ipamToggleGradeSubrede(${s.id})" title="Ver grade de IPs">
-                <i class="fas fa-th"></i>
-            </button><strong style="font-family:'Courier New',monospace;color:var(--text-light);">${s.rede}</strong>
-        </td>
-        <td style="font-family:'Courier New',monospace;color:var(--text-muted)">${s.gateway||'—'}</td>
-        <td>${s.vlan ? `<span style="color:#ffaa00;">${s.vlan}</span>` : '<span style="color:var(--text-muted)">—</span>'}</td>
-        <td style="color:var(--accent-cyan);font-size:.8rem">${s.prefixo||'—'}</td>
-        <td>${s.pool_cheia
-            ? `<div class="ipam-util-bar"><div class="ipam-util-fill danger" style="width:100%"></div></div><small style="color:#ff8080;font-size:.72rem;"><i class="fas fa-ban me-1"></i>Pool Cheia</small>`
-            : `${utilBar(s.utilizacao_pct)} <small style="color:var(--text-muted);font-size:.72rem;">${s.usados}/${s.total_hosts}</small>`
-        }</td>
-        <td>${badge(s.status)}</td>
-        <td style="color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${s.descricao||''}">${s.descricao||''}</td>
-        <td style="max-width:180px;">
-            ${(s.hostnames||[]).length
-                ? (s.hostnames).map(h=>`<span style="display:inline-block;font-size:.72rem;color:var(--accent-cyan);background:rgba(0,217,255,.08);border:1px solid rgba(0,217,255,.2);border-radius:3px;padding:1px 5px;margin:1px 2px 1px 0;white-space:nowrap;" title="${h}">${h}</span>`).join('')
-                : '<span style="color:var(--text-muted);font-size:.8rem">—</span>'}
-        </td>
-        <td style="white-space:nowrap;">
-            ${podeDividir ? `<button class="btn btn-xs me-1" title="Dividir sub-rede"
-                style="padding:2px 6px;font-size:.72rem;background:rgba(0,217,255,.08);border:1px solid rgba(0,217,255,.2);color:var(--accent-cyan);border-radius:3px;"
-                onclick="ipamAbrirDividir('subrede',${s.id},'${s.rede}',${pfxLen},${version})">
-                <i class="fas fa-cut"></i></button>` : ''}
-            <button class="btn btn-xs me-1" title="${s.pool_cheia ? 'Desmarcar pool cheia' : 'Marcar pool cheia'}"
-                style="padding:2px 7px;font-size:.75rem;background:${s.pool_cheia ? 'rgba(255,80,80,.2)' : 'rgba(255,170,0,.08)'};border:1px solid ${s.pool_cheia ? 'rgba(255,80,80,.4)' : 'rgba(255,170,0,.25)'};color:${s.pool_cheia ? '#ff8080' : '#ffaa00'};border-radius:4px;"
-                onclick="ipamToggleSubredePoolCheia(${s.id})">
-                <i class="fas ${s.pool_cheia ? 'fa-times-circle' : 'fa-ban'}"></i>
-            </button>
-            ${acoes('ipamDeletarSubRede','ipamEditarSubRede',s.id)}
-        </td>
-    </tr>
-    <tr id="sr-grade-${s.id}" data-sr-parent="${s._parentId||''}" style="display:none;"><td colspan="9" style="padding:0;border:none;"></td></tr>`;
-    }).join('');
-
-    // Restaurar linhas expandidas antes do re-render
-    if(expandidas.size) {
-        expandidas.forEach(id => {
-            const btn = document.getElementById('sr-expand-' + id);
-            if(btn && btn.getAttribute('data-open') === '0') {
-                ipamToggleSrChildren(parseInt(id));
-            }
-        });
-    }
-
-    // Atualizar select de sub-redes na aba IPs
     const selIp = document.getElementById('ipam-ip-filtro-subrede');
     if(selIp){
         const cur = selIp.value;
@@ -3803,10 +3735,17 @@ const MODAL_FORMS = {
         const vlOpts = IPAM.vlans.map(v=>`<option value="${v.id}" ${d.vlan_id==v.id?'selected':''}>VLAN ${v.numero} — ${v.nome}</option>`).join('');
         return `
         <div class="row g-2">
-        <div class="col-md-6">
+        <div class="col-md-6" style="position:relative;">
             <label class="form-label text-muted" style="font-size:.82rem">Rede CIDR *</label>
-            <input id="mf-rede" class="form-control form-control-sm" value="${d.rede||''}" placeholder="ex: 192.168.1.0/24"
-                   style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+            <div style="display:flex;gap:4px;">
+                <input id="mf-rede" class="form-control form-control-sm" value="${d.rede||''}" placeholder="ex: 192.168.1.0/24"
+                       style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+                <button type="button" onclick="ipamToggleDisponiveis()" title="Ver blocos livres do prefixo pai"
+                    style="background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--primary-green);border-radius:4px;padding:0 10px;white-space:nowrap;font-size:.78rem;">
+                    <i class="fas fa-list-ul me-1"></i>Livres
+                </button>
+            </div>
+            <div id="mf-rede-disponiveis" style="display:none;position:absolute;z-index:20;top:100%;left:0;right:0;background:#161b22;border:1px solid rgba(63,185,80,.3);border-radius:6px;margin-top:2px;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.4);"></div>
         </div>
         <div class="col-md-3">
             <label class="form-label text-muted" style="font-size:.82rem">Gateway</label>
@@ -3821,7 +3760,7 @@ const MODAL_FORMS = {
         </div>
         <div class="col-md-4">
             <label class="form-label text-muted" style="font-size:.82rem">Prefixo pai</label>
-            <select id="mf-prefixo_id" class="form-select form-select-sm" style="background:var(--surface);color:var(--text-light);border-color:var(--border);">
+            <select id="mf-prefixo_id" class="form-select form-select-sm" onchange="ipamToggleDisponiveis(true)" style="background:var(--surface);color:var(--text-light);border-color:var(--border);">
                 <option value="">— nenhum —</option>${pfOpts}
             </select>
         </div>
@@ -4005,8 +3944,52 @@ function ipamAbrirModal(tipo, dados){
     document.getElementById('modalIpamTitle').textContent = titulo;
     document.getElementById('modalIpamBody').innerHTML = MODAL_FORMS[tipo](dados||{});
     ovl.style.display = 'flex';
+    // Já veio com um prefixo pai pré-selecionado (ex: botão "+" da pasta) —
+    // mostra de cara os blocos livres, sem precisar clicar em "Livres".
+    if(tipo === 'subrede' && dados && dados.prefixo_id && !dados.rede){
+        ipamToggleDisponiveis(true);
+    }
 }
 window.ipamAbrirModal = ipamAbrirModal;
+
+/* ─── Blocos livres do prefixo pai, agrupados por tamanho (estilo phpIPAM) ─── */
+window.ipamToggleDisponiveis = async function(forcarAberto){
+    const panel = document.getElementById('mf-rede-disponiveis');
+    const pfxId = document.getElementById('mf-prefixo_id')?.value;
+    if(!panel) return;
+    if(!pfxId){
+        panel.style.display = 'none';
+        if(!forcarAberto) uiAlert('Selecione um Prefixo pai primeiro pra ver os blocos livres.');
+        return;
+    }
+    if(!forcarAberto && panel.style.display !== 'none'){ panel.style.display = 'none'; return; }
+
+    panel.style.display = '';
+    panel.innerHTML = `<div style="padding:10px;color:var(--text-muted);font-size:.8rem;"><i class="fas fa-spinner fa-spin me-2"></i>Carregando blocos livres…</div>`;
+    try {
+        const r = await fetch(`/clientes/ipam/prefixos/${pfxId}/disponiveis/`);
+        const d = await r.json();
+        if(!d.ok){ panel.innerHTML = `<div style="padding:10px;color:#e06060;font-size:.8rem;">${d.erro}</div>`; return; }
+        if(!d.grupos.length){ panel.innerHTML = `<div style="padding:10px;color:var(--text-muted);font-size:.8rem;">Nenhum bloco livre neste prefixo.</div>`; return; }
+        panel.innerHTML = d.grupos.map(g => `
+            <div style="padding:5px 12px;background:rgba(255,255,255,.03);color:var(--text-muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;">${g.label}</div>
+            ${g.blocos.map(b => `<div onclick="ipamSelecionarRedeDisponivel('${b}')"
+                onmouseover="this.style.background='rgba(63,185,80,.12)'" onmouseout="this.style.background='transparent'"
+                style="padding:5px 16px;cursor:pointer;font-family:'Courier New',monospace;color:var(--text-light);font-size:.82rem;">
+                ${b}
+            </div>`).join('')}
+        `).join('');
+    } catch(e){
+        panel.innerHTML = `<div style="padding:10px;color:#e06060;font-size:.8rem;">Erro: ${e.message}</div>`;
+    }
+};
+
+window.ipamSelecionarRedeDisponivel = function(cidr){
+    const input = document.getElementById('mf-rede');
+    if(input) input.value = cidr;
+    const panel = document.getElementById('mf-rede-disponiveis');
+    if(panel) panel.style.display = 'none';
+};
 
 function mfVal(id){ const el = document.getElementById(id); return el ? el.value : undefined; }
 
@@ -4042,13 +4025,12 @@ window.ipamSalvar = async function(){
     // Recarregar aba atual
     if(tipo==='prefixo') ipamCarregarPrefixos();
     if(tipo==='subrede'){
-        ipamCarregarSubRedes();
-        // Se criou/editou via breakdown, recarregar o breakdown do prefixo pai
+        await ipamCarregarSubRedes();
+        // Abre a pasta do prefixo dono pra já mostrar a sub-rede recém criada/editada
         const pfxId = body.prefixo_id;
-        if(pfxId && IPAM._bdOpen[pfxId]){
-            IPAM._bdOpen[pfxId] = false;
-            await ipamToggleBreakdown(parseInt(pfxId));
-        }
+        if(pfxId) IPAM._bdOpen[parseInt(pfxId)] = true;
+        // pool_cheia do prefixo pai pode ter sido recalculado no backend
+        ipamCarregarPrefixos();
     }
     if(tipo==='ip')   ipamCarregarIPs();
     if(tipo==='vlan') { ipamCarregarVlans(); IPAM.vlans = []; }
@@ -4087,7 +4069,11 @@ window.ipamTogglePoolCheia = async function(id){
 window.ipamToggleSubredePoolCheia = async function(id){
     const r = await fetch(`/clientes/ipam/subredes/${id}/pool-cheia/`,{method:'POST',headers:{'X-CSRFToken':getCsrfToken()}});
     const d = await r.json();
-    if(d.ok){ ipamCarregarSubRedes(); }
+    if(d.ok){
+        await ipamCarregarSubRedes();
+        // O toggle pode propagar automaticamente pro pool_cheia do prefixo pai
+        await ipamCarregarPrefixos();
+    }
     else uiAlert('Erro: ' + d.erro);
 };
 window.ipamDeletarPrefixo = async function(id){
@@ -4100,21 +4086,12 @@ window.ipamDeletarPrefixo = async function(id){
 window.ipamDeletarSubRede = async function(id){
     if(!await uiConfirm({titulo:'Excluir Sub-rede', msg:'Confirmar exclusão da sub-rede?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'})) return;
     // Descobrir prefixo pai (se estiver numa linha de breakdown)
-    const sr = IPAM.subredes.find(s => s.id === id);
     const r = await fetch(`/clientes/ipam/subredes/${id}/deletar/`,{method:'POST',headers:{'X-CSRFToken':getCsrfToken()}});
     const d = await r.json();
     if(d.ok){
-        ipamCarregarSubRedes();
-        // Recarregar breakdown do prefixo pai se estiver aberto
-        if(sr && sr.prefixo_id && IPAM._bdOpen[sr.prefixo_id]){
-            IPAM._bdOpen[sr.prefixo_id] = false;
-            await ipamToggleBreakdown(parseInt(sr.prefixo_id));
-        } else {
-            // Varrer todos os breakdowns abertos e recarregar
-            for(const pid of Object.keys(IPAM._bdOpen)){
-                if(IPAM._bdOpen[pid]){ IPAM._bdOpen[pid]=false; ipamToggleBreakdown(parseInt(pid)); break; }
-            }
-        }
+        // As pastas abertas (IPAM._bdOpen) se re-renderizam sozinhas com o cache atualizado
+        await ipamCarregarSubRedes();
+        await ipamCarregarPrefixos();
     } else uiAlert('Erro: ' + d.erro);
 };
 window.ipamDeletarIP      = id => ipamDeletar(`/clientes/ipam/ips/${id}/deletar/`,      ipamCarregarIPs);

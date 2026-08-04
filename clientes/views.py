@@ -1,5 +1,6 @@
 from django.utils import timezone
-from django.db.models import Q, Count
+from django.db.models import Q, Count, OuterRef, Subquery
+from django.core.paginator import Paginator
 from django.shortcuts import render,redirect, get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
@@ -1977,13 +1978,14 @@ def realizar_backup(acesso, usuario=None):
             _partes_deteccao.append(acesso.tipo)
         modelo_nome = ' '.join(_partes_deteccao).lower()
 
-        is_huawei = 'huawei' in modelo_nome
-        is_a10    = 'a10'    in modelo_nome
-        is_cisco  = 'cisco'  in modelo_nome
-        is_zte    = 'zte'    in modelo_nome
-        is_parks  = 'parks'  in modelo_nome
+        is_huawei   = 'huawei' in modelo_nome
+        is_a10      = 'a10'    in modelo_nome
+        is_cisco    = 'cisco'  in modelo_nome
+        is_zte      = 'zte'    in modelo_nome
+        is_parks    = 'parks'  in modelo_nome
+        is_mikrotik = any(k in modelo_nome for k in ('mikrotik', 'routeros', 'routerboard'))
 
-        print(f"🏭 Huawei: {is_huawei} | A10: {is_a10} | Cisco: {is_cisco} | ZTE: {is_zte} | Parks: {is_parks}")
+        print(f"🏭 Huawei: {is_huawei} | A10: {is_a10} | Cisco: {is_cisco} | ZTE: {is_zte} | Parks: {is_parks} | MikroTik: {is_mikrotik}")
 
         # ✅ Criar túnel se IP privado
         if eh_privado:
@@ -2079,14 +2081,28 @@ def realizar_backup(acesso, usuario=None):
             print(f"📋 EXECUTANDO COMANDOS")
             print(f"{'='*80}")
 
+            # Templates com comando "cd <dir>" (ex: OLTs FiberHome/WOS que navegam
+            # entre diretórios da CLI antes do show) exigem sessão com estado
+            # persistente — client.exec_command() abre um canal novo e sem
+            # memória a cada chamada, então "cd service" de um comando não
+            # afeta o "show" de outro. Pior: alguns desses equipamentos (ex.
+            # confirmado em teste real numa OLT VSOL/WOS) derrubam a sessão
+            # SSH inteira depois do primeiro exec_command, quebrando todos os
+            # comandos seguintes do template.
+            precisa_shell_persistente = any(c.strip().lower().startswith('cd ') for c in comandos)
+
             if is_huawei:
                 output = _executar_comandos_huawei(client, comandos)
             elif is_a10:
                 output = _executar_comandos_a10(client, comandos, acesso.senha_adm)
             elif is_cisco or is_zte:
                 output = _executar_comandos_cisco(client, comandos, acesso.usuario, acesso.senha)
+            elif is_mikrotik:
+                output = _executar_comandos_mikrotik(client, comandos)
+            elif precisa_shell_persistente:
+                output = _executar_comandos_shell_generico(client, comandos)
             else:
-                # MikroTik, Datacom, Juniper, etc.
+                # Datacom, Juniper, etc.
                 output = _executar_comandos_sem_pty(client, comandos)
 
             client.close()
@@ -2136,22 +2152,33 @@ def realizar_backup(acesso, usuario=None):
         # não existe(m) e o open() abaixo falha com FileNotFoundError. Qualquer
         # caractere fora de letras/números/"-"/"_" vira "_".
         tipo_seguro = re.sub(r'[^A-Za-z0-9_-]+', '_', acesso.tipo).strip('_') or 'backup'
-        nome_arquivo = f"{tipo_seguro}_{timestamp}.txt"
+        # MikroTik: .rsc é o formato nativo de script RouterOS (o /export
+        # show-sensitive do template já grava as senhas em texto puro, ao
+        # contrário do /system backup binário) — cabeçalho abaixo vira
+        # comentário "#" para o arquivo continuar sendo um script válido,
+        # importável de volta via /import file=....
+        extensao = 'rsc' if is_mikrotik else 'txt'
+        marcador = '#' if is_mikrotik else ''
+        nome_arquivo = f"{tipo_seguro}_{timestamp}.{extensao}"
         arquivo_path = os.path.join(backup_dir, nome_arquivo)
 
         with open(arquivo_path, 'w', encoding='utf-8') as f:
-            f.write(f"{'='*80}\n")
-            f.write(f"BACKUP DE CONFIGURAÇÃO\n")
-            f.write(f"{'='*80}\n")
-            f.write(f"Cliente: {acesso.cliente.nome_empresa}\n")
-            f.write(f"Equipamento: {acesso.tipo}\n")
-            f.write(f"Host: {acesso.host}:{acesso.porta}\n")
-            f.write(f"Acesso: {'VIA PROXY SSH' if eh_privado else 'DIRETO'}\n")
-            f.write(f"Modelo: {acesso.modelo}\n")
-            f.write(f"Template: {acesso.backup_template.nome}\n")
-            f.write(f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n")
-            f.write(f"Executado por: {usuario.username if usuario else 'Sistema'}\n")
-            f.write(f"{'='*80}\n\n")
+            def _linha(texto=''):
+                prefixo = f"{marcador} " if marcador else ''
+                f.write(f"{prefixo}{texto}\n")
+
+            f.write(f"{marcador}{'='*80}\n")
+            _linha(f"BACKUP DE CONFIGURAÇÃO")
+            f.write(f"{marcador}{'='*80}\n")
+            _linha(f"Cliente: {acesso.cliente.nome_empresa}")
+            _linha(f"Equipamento: {acesso.tipo}")
+            _linha(f"Host: {acesso.host}:{acesso.porta}")
+            _linha(f"Acesso: {'VIA PROXY SSH' if eh_privado else 'DIRETO'}")
+            _linha(f"Modelo: {acesso.modelo}")
+            _linha(f"Template: {acesso.backup_template.nome}")
+            _linha(f"Data: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+            _linha(f"Executado por: {usuario.username if usuario else 'Sistema'}")
+            f.write(f"{marcador}{'='*80}\n\n")
             f.write(output)
 
         tamanho = os.path.getsize(arquivo_path)
@@ -2251,6 +2278,13 @@ def _executar_comandos_a10(client, comandos, senha_enable):
 
     # ✅ Executar comandos do template
     for i, comando in enumerate(comandos, 1):
+        # 'enable' já foi tratado acima (com a senha_adm) — reenviar aqui
+        # forçaria um segundo prompt de senha e o próximo comando do
+        # template seria interpretado como a senha, quebrando a sessão.
+        if comando.strip().lower() == 'enable':
+            print(f"  [{i}/{len(comandos)}] {comando} (já enviado — ignorando)")
+            continue
+
         print(f"  [{i}/{len(comandos)}] {comando}")
         output += f"\n{'='*60}\nComando: {comando}\n{'='*60}\n"
 
@@ -2307,6 +2341,59 @@ def _executar_comandos_sem_pty(client, comandos):
                 output += resultado + "\n"
                 print(f"    ✅ {len(resultado)} bytes")
         except Exception as e:
+            print(f"    ❌ {e}")
+            output += f"ERRO: {str(e)}\n"
+    return output
+
+
+def _erro_sintaxe_routeros(saida):
+    """
+    Detecta se a saída de um comando RouterOS é, na verdade, um erro de
+    sintaxe do CLI (ex: parâmetro não existente nessa versão do RouterOS),
+    e não o resultado esperado do comando.
+    """
+    s = (saida or '').lower()
+    return any(marcador in s for marcador in (
+        'expected end of command',
+        'no such command',
+        'bad command name',
+        'unknown parameter',
+        "no such argument",
+    ))
+
+
+def _executar_comandos_mikrotik(client, comandos):
+    """
+    MikroTik via exec_command sem PTY. Saída vira um script RouterOS válido
+    (separadores de comando como comentário "#") para o backup poder ser
+    salvo como .rsc e reimportado via /import se necessário.
+
+    Comandos "/export ... show-sensitive ..." caem automaticamente para a
+    mesma linha sem "show-sensitive" quando o RouterOS é antigo demais e não
+    reconhece o parâmetro (introduzido no 6.43) — sem esse fallback o backup
+    fica vazio/com erro de sintaxe nesses equipamentos mais antigos.
+    """
+    output = ""
+    for i, comando in enumerate(comandos, 1):
+        print(f"  [{i}/{len(comandos)}] {comando}")
+        cmd_efetivo = comando
+        try:
+            stdin, stdout, stderr = client.exec_command(comando, timeout=120, get_pty=False)
+            resultado = stdout.read().decode('utf-8', errors='replace')
+
+            if 'show-sensitive' in comando and _erro_sintaxe_routeros(resultado):
+                cmd_efetivo = re.sub(r'\s*show-sensitive\s*', ' ', comando).strip()
+                print(f"    ⚠️ 'show-sensitive' não suportado neste RouterOS — repetindo como: {cmd_efetivo}")
+                stdin, stdout, stderr = client.exec_command(cmd_efetivo, timeout=120, get_pty=False)
+                resultado = stdout.read().decode('utf-8', errors='replace')
+
+            output += f"\n# {'='*60}\n# Comando: {cmd_efetivo}\n# {'='*60}\n"
+            if resultado:
+                resultado = limpar_ansi(resultado)
+                output += resultado + "\n"
+                print(f"    ✅ {len(resultado)} bytes")
+        except Exception as e:
+            output += f"\n# {'='*60}\n# Comando: {cmd_efetivo}\n# {'='*60}\n"
             print(f"    ❌ {e}")
             output += f"ERRO: {str(e)}\n"
     return output
@@ -2492,6 +2579,59 @@ def _executar_comandos_huawei(client, comandos):
         time.sleep(0.5)
         channel.close()
     except:
+        pass
+
+    return output
+
+
+def _executar_comandos_shell_generico(client, comandos):
+    """
+    Shell interativo genérico (invoke_shell) para equipamentos cujo template
+    depende de estado entre comandos — ex: "cd service" seguido de "terminal
+    length 0" e "show startup-config" (comum em OLTs FiberHome/firmware WOS
+    compartilhada com outras marcas, ex: VSOL).
+
+    client.exec_command() não serve aqui: cada chamada abre um canal novo e
+    sem memória do anterior (o "cd" não vale para o próximo comando) e, em
+    alguns desses equipamentos, o servidor SSH derruba a sessão inteira
+    depois do primeiro exec_command — testado ao vivo numa OLT VSOL/WOS.
+    """
+    output = ""
+
+    channel = client.invoke_shell(term='vt100', width=200, height=50)
+    channel.settimeout(120)
+
+    time.sleep(3)
+    _ler_ate_silencio(channel, silencio=2.0)
+
+    for i, comando in enumerate(comandos, 1):
+        print(f"  [{i}/{len(comandos)}] {comando}")
+        output += f"\n{'='*60}\nComando: {comando}\n{'='*60}\n"
+
+        try:
+            channel.send(comando + '\n')
+            resultado = _ler_ate_silencio(channel, silencio=3.0, max_wait=120)
+
+            if resultado:
+                resultado = limpar_ansi(resultado)
+                linhas = resultado.split('\n')
+                if linhas and comando.strip() in linhas[0]:
+                    linhas = linhas[1:]
+                resultado = '\n'.join(linhas)
+                output += resultado + "\n"
+                print(f"    ✅ {len(resultado)} bytes")
+            else:
+                print(f"    ⚠️ Output vazio")
+
+        except Exception as e:
+            print(f"    ❌ {e}")
+            output += f"ERRO: {str(e)}\n"
+
+    try:
+        channel.send('exit\n')
+        time.sleep(0.5)
+        channel.close()
+    except Exception:
         pass
 
     return output
@@ -5011,11 +5151,18 @@ def adicionar_comentario_acesso(request, acesso_id):
     })
 
 
+AUDITORIA_SESSOES_POR_PAGINA = 20
+
+
 @login_required(login_url='login')
 @require_http_methods(["GET"])
 @modulo_habilitado_required('acessos')
 def listar_sessoes_auditoria(request, acesso_id):
-    """Lista sessões de acesso (SSH/Telnet/WinBox) de um Acesso, mais recentes primeiro."""
+    """Lista sessões de acesso (SSH/Telnet/WinBox) de um Acesso, mais recentes
+    primeiro. Aceita filtro opcional por período (?data_inicio=&data_fim=,
+    AAAA-MM-DD) e paginação opcional (?pagina=, 20/página) — sem esses
+    parâmetros mantém o comportamento antigo (todas as sessões de uma vez),
+    usado pelo modal de auditoria por equipamento."""
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
     if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
@@ -5023,10 +5170,40 @@ def listar_sessoes_auditoria(request, acesso_id):
 
     sessoes = acesso.sessoes_auditoria.select_related('usuario').annotate(
         total_comandos=Count('comandos')
-    )
+    ).order_by('-iniciada_em')
+
+    data_inicio_str = (request.GET.get('data_inicio') or '').strip()
+    data_fim_str = (request.GET.get('data_fim') or '').strip()
+    try:
+        if data_inicio_str:
+            sessoes = sessoes.filter(iniciada_em__date__gte=datetime.strptime(data_inicio_str, '%Y-%m-%d').date())
+        if data_fim_str:
+            sessoes = sessoes.filter(iniciada_em__date__lte=datetime.strptime(data_fim_str, '%Y-%m-%d').date())
+    except ValueError:
+        return JsonResponse({'error': 'Data inválida.'}, status=400)
+
+    resposta = {'success': True}
+
+    pagina_str = request.GET.get('pagina')
+    if pagina_str is not None:
+        try:
+            pagina = max(1, int(pagina_str))
+        except (TypeError, ValueError):
+            pagina = 1
+        paginator = Paginator(sessoes, AUDITORIA_SESSOES_POR_PAGINA)
+        page_obj = paginator.get_page(pagina)
+        sessoes_pagina = page_obj.object_list
+        resposta.update({
+            'pagina': page_obj.number,
+            'total_paginas': paginator.num_pages,
+            'tem_anterior': page_obj.has_previous(),
+            'tem_proxima': page_obj.has_next(),
+        })
+    else:
+        sessoes_pagina = sessoes
 
     dados = []
-    for s in sessoes:
+    for s in sessoes_pagina:
         dados.append({
             'id': s.id,
             'tipo': s.tipo,
@@ -5042,7 +5219,8 @@ def listar_sessoes_auditoria(request, acesso_id):
             'tem_transcript': bool(s.transcript),
         })
 
-    return JsonResponse({'success': True, 'sessoes': dados, 'total': len(dados)})
+    resposta.update({'sessoes': dados, 'total': sessoes.count()})
+    return JsonResponse(resposta)
 
 
 @login_required(login_url='login')
@@ -5078,6 +5256,106 @@ def ver_transcript_sessao(request, sessao_id):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     return JsonResponse({'success': True, 'transcript': sessao.transcript})
+
+
+@login_required(login_url='login')
+@modulo_habilitado_required('acessos')
+def auditoria_cliente_view(request, cliente_id):
+    """Tela de auditoria do cliente: visão consolidada de todos os hosts
+    (Acesso) que já tiveram alguma sessão de acesso gravada, com filtro
+    por período/host/usuário. Complementa o modal de auditoria por
+    equipamento (aba Acessos), que fica restrito a um host por vez."""
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        messages.error(request, 'Você não possui permissão para visualizar este cliente.')
+        return redirect('quadro_geral')
+
+    usuarios_com_acesso = User.objects.filter(
+        sessoes_acesso__acesso__cliente=cliente
+    ).distinct().order_by('first_name', 'username')
+
+    return render(request, 'auditoria_cliente.html', {
+        'cliente': cliente,
+        'usuarios_com_acesso': usuarios_com_acesso,
+    })
+
+
+@login_required(login_url='login')
+@require_http_methods(["GET"])
+@modulo_habilitado_required('acessos')
+def auditoria_cliente_hosts(request, cliente_id):
+    """Resumo por host das sessões de auditoria de um cliente: um item por
+    Acesso que tem ao menos 1 sessão no período filtrado, com totais e
+    dados da última sessão. Aceita ?data_inicio=&data_fim= (AAAA-MM-DD),
+    ?busca= (host/função) e ?usuario_id=."""
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    data_inicio_str = (request.GET.get('data_inicio') or '').strip()
+    data_fim_str = (request.GET.get('data_fim') or '').strip()
+    busca = (request.GET.get('busca') or '').strip()
+    usuario_id = (request.GET.get('usuario_id') or '').strip()
+
+    try:
+        data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d').date() if data_inicio_str else None
+        data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d').date() if data_fim_str else None
+    except ValueError:
+        return JsonResponse({'error': 'Data inválida.'}, status=400)
+
+    # Filtro aplicado tanto na contagem (via relação reversa sessoes_auditoria)
+    # quanto na subquery da última sessão (direto no model AcessoSessao) —
+    # precisa das duas formas porque uma atravessa o related_name e a outra não.
+    filtro_periodo = Q()
+    filtro_periodo_sessao = Q()
+    if data_inicio:
+        filtro_periodo &= Q(sessoes_auditoria__iniciada_em__date__gte=data_inicio)
+        filtro_periodo_sessao &= Q(iniciada_em__date__gte=data_inicio)
+    if data_fim:
+        filtro_periodo &= Q(sessoes_auditoria__iniciada_em__date__lte=data_fim)
+        filtro_periodo_sessao &= Q(iniciada_em__date__lte=data_fim)
+    if usuario_id:
+        filtro_periodo &= Q(sessoes_auditoria__usuario_id=usuario_id)
+        filtro_periodo_sessao &= Q(usuario_id=usuario_id)
+
+    ultima_sessao_qs = AcessoSessao.objects.filter(
+        filtro_periodo_sessao, acesso=OuterRef('pk')
+    ).order_by('-iniciada_em')
+
+    acessos = Acesso.objects.filter(cliente=cliente).annotate(
+        total_sessoes=Count('sessoes_auditoria', filter=filtro_periodo, distinct=True),
+        ultima_sessao_em=Subquery(ultima_sessao_qs.values('iniciada_em')[:1]),
+        ultima_sessao_usuario=Subquery(ultima_sessao_qs.values('usuario__username')[:1]),
+        ultima_sessao_usuario_nome=Subquery(ultima_sessao_qs.values('usuario__first_name')[:1]),
+        ultima_sessao_status=Subquery(ultima_sessao_qs.values('status')[:1]),
+    ).filter(total_sessoes__gt=0).select_related('funcao')
+
+    if busca:
+        acessos = acessos.filter(Q(host__icontains=busca) | Q(tipo__icontains=busca) | Q(funcao__descricao__icontains=busca))
+
+    acessos = acessos.order_by('-ultima_sessao_em')
+
+    hosts = []
+    for a in acessos:
+        hosts.append({
+            'acesso_id': a.id,
+            'host': a.host,
+            'tipo': a.tipo,
+            'funcao': a.funcao.descricao if a.funcao else '—',
+            'total_sessoes': a.total_sessoes,
+            'ultima_sessao_em': a.ultima_sessao_em.strftime('%d/%m/%Y %H:%M:%S') if a.ultima_sessao_em else None,
+            'ultima_sessao_usuario': (a.ultima_sessao_usuario_nome or a.ultima_sessao_usuario) or '—',
+            'sessao_ativa': a.ultima_sessao_status == 'ativa',
+        })
+
+    return JsonResponse({
+        'success': True,
+        'hosts': hosts,
+        'total_hosts': len(hosts),
+        'total_sessoes': sum(h['total_sessoes'] for h in hosts),
+    })
 
 
 @login_required(login_url="login")
