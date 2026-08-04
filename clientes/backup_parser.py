@@ -281,65 +281,14 @@ def parse_mikrotik(conteudo, nome_equip=''):
 
 # ─── Cisco / IOS (Parks, Intelbras, genérico) ────────────────────────────────
 
-def parse_cisco(conteudo, nome_equip=''):
-    ips, bgp, vlans = [], [], []
-    modelo, as_local = '', ''
-
-    # hostname
-    m = re.search(r'^hostname\s+(\S+)', conteudo, re.MULTILINE)
-    if m:
-        hostname_cfg = m.group(1)
-    else:
-        hostname_cfg = nome_equip
-
-    # IPs: ip address X.X.X.X M.M.M.M (dentro de bloco interface)
-    iface_atual = ''
-    for linha in conteudo.splitlines():
-        m_iface = re.match(r'^interface\s+(.+)', linha)
-        if m_iface:
-            iface_atual = m_iface.group(1).strip()
-            continue
-        m_ip = re.match(r'\s+ip address ([\d.]+) ([\d.]+)', linha)
-        if m_ip and iface_atual:
-            ip  = m_ip.group(1)
-            msk = m_ip.group(2)
-            pfx = _mascara_para_prefix(msk)
-            ips.append({
-                'ip': f'{ip}/{pfx}' if pfx else ip,
-                'interface': iface_atual,
-                'equipamento': nome_equip,
-            })
-
-    # BGP neighbors: neighbor X.X.X.X remote-as Y [description ...]
-    bgp_as_m = re.search(r'^router bgp (\d+)', conteudo, re.MULTILINE)
-    as_local  = bgp_as_m.group(1) if bgp_as_m else ''
-
-    prefix_lists, policies, networks = {}, {}, []
-    desc_map = {}
-    for m in re.finditer(r'neighbor ([\d.:a-fA-F]+) description (.+)', conteudo):
-        desc_map[m.group(1)] = m.group(2).strip()
-
-    # `neighbor X shutdown` (nível de topo do `router bgp`) desativa a
-    # sessão inteira — mesmo mecanismo já visto ativo em produção.
-    desabilitados = set(re.findall(r'neighbor ([\d.:a-fA-F]+) shutdown\b', conteudo))
-
-    policy_in_map, policy_out_map = {}, {}
-    for m in re.finditer(r'neighbor ([\d.:a-fA-F]+) route-map (\S+) in\b', conteudo):
-        policy_in_map[m.group(1)] = m.group(2)
-    for m in re.finditer(r'neighbor ([\d.:a-fA-F]+) route-map (\S+) out\b', conteudo):
-        policy_out_map[m.group(1)] = m.group(2)
-
-    for m in re.finditer(r'neighbor ([\d.:a-fA-F]+) remote-as (\d+)', conteudo):
-        peer_ip = m.group(1)
-        bgp.append({
-            'peer_ip': peer_ip, 'peer_as': m.group(2),
-            'as_local': as_local, 'equipamento': nome_equip,
-            'descricao': desc_map.get(peer_ip, ''),
-            'nome': peer_ip,   # Cisco/Datacom não têm identificador próprio — comando usa o IP
-            'habilitada': peer_ip not in desabilitados,
-            'policy_in': policy_in_map.get(peer_ip, ''),
-            'policy_out': policy_out_map.get(peer_ip, ''),
-        })
+def _extrair_prefix_lists_e_policies_cisco(conteudo):
+    """Extrai prefix-lists e route-maps de um texto de configuração
+    Cisco/Datacom — funciona tanto pra texto de BACKUP completo (chamado
+    por `parse_cisco`) quanto pra saída de `show running-config | section
+    prefix-list`/`section route-map` lida AO VIVO (ver
+    clientes/bgp_actions.py::buscar_prefix_lists_ao_vivo) — a sintaxe é a
+    mesma nos dois casos, então uma função só evita duplicar regex."""
+    prefix_lists, policies = {}, {}
 
     # ── Prefix-lists: ip prefix-list NOME seq N permit|deny X.X.X.X/Y ───────
     for m in re.finditer(
@@ -396,6 +345,71 @@ def parse_cisco(conteudo, nome_equip=''):
         policies[nome_rm] = [t for t in policies[nome_rm] if not t['extra'].get('nao_suportado')]
         if not policies[nome_rm]:
             del policies[nome_rm]
+
+    return prefix_lists, policies
+
+
+def parse_cisco(conteudo, nome_equip=''):
+    ips, bgp, vlans = [], [], []
+    modelo, as_local = '', ''
+
+    # hostname
+    m = re.search(r'^hostname\s+(\S+)', conteudo, re.MULTILINE)
+    if m:
+        hostname_cfg = m.group(1)
+    else:
+        hostname_cfg = nome_equip
+
+    # IPs: ip address X.X.X.X M.M.M.M (dentro de bloco interface)
+    iface_atual = ''
+    for linha in conteudo.splitlines():
+        m_iface = re.match(r'^interface\s+(.+)', linha)
+        if m_iface:
+            iface_atual = m_iface.group(1).strip()
+            continue
+        m_ip = re.match(r'\s+ip address ([\d.]+) ([\d.]+)', linha)
+        if m_ip and iface_atual:
+            ip  = m_ip.group(1)
+            msk = m_ip.group(2)
+            pfx = _mascara_para_prefix(msk)
+            ips.append({
+                'ip': f'{ip}/{pfx}' if pfx else ip,
+                'interface': iface_atual,
+                'equipamento': nome_equip,
+            })
+
+    # BGP neighbors: neighbor X.X.X.X remote-as Y [description ...]
+    bgp_as_m = re.search(r'^router bgp (\d+)', conteudo, re.MULTILINE)
+    as_local  = bgp_as_m.group(1) if bgp_as_m else ''
+
+    networks = []
+    desc_map = {}
+    for m in re.finditer(r'neighbor ([\d.:a-fA-F]+) description (.+)', conteudo):
+        desc_map[m.group(1)] = m.group(2).strip()
+
+    # `neighbor X shutdown` (nível de topo do `router bgp`) desativa a
+    # sessão inteira — mesmo mecanismo já visto ativo em produção.
+    desabilitados = set(re.findall(r'neighbor ([\d.:a-fA-F]+) shutdown\b', conteudo))
+
+    policy_in_map, policy_out_map = {}, {}
+    for m in re.finditer(r'neighbor ([\d.:a-fA-F]+) route-map (\S+) in\b', conteudo):
+        policy_in_map[m.group(1)] = m.group(2)
+    for m in re.finditer(r'neighbor ([\d.:a-fA-F]+) route-map (\S+) out\b', conteudo):
+        policy_out_map[m.group(1)] = m.group(2)
+
+    for m in re.finditer(r'neighbor ([\d.:a-fA-F]+) remote-as (\d+)', conteudo):
+        peer_ip = m.group(1)
+        bgp.append({
+            'peer_ip': peer_ip, 'peer_as': m.group(2),
+            'as_local': as_local, 'equipamento': nome_equip,
+            'descricao': desc_map.get(peer_ip, ''),
+            'nome': peer_ip,   # Cisco/Datacom não têm identificador próprio — comando usa o IP
+            'habilitada': peer_ip not in desabilitados,
+            'policy_in': policy_in_map.get(peer_ip, ''),
+            'policy_out': policy_out_map.get(peer_ip, ''),
+        })
+
+    prefix_lists, policies = _extrair_prefix_lists_e_policies_cisco(conteudo)
 
     # ── Networks anunciados: network X mask Y | network X/Y (dentro de AF) ──
     for m in re.finditer(r'^\s+network\s+([\d.:a-fA-F]+)(?:\s+mask\s+([\d.]+))?', conteudo, re.MULTILINE):
