@@ -877,4 +877,57 @@ esperado.
 
 ---
 
-**Última atualização:** 03/08/2026
+## Configurar nova sessão — Cisco (adicionado em 2026-08-04)
+
+Botão **"＋ Configurar nova sessão"** no cabeçalho da tela (fora dos cards de sessão), restrito a
+Cisco/Datacom por enquanto. Monta a config completa de uma sessão BGP nova — `neighbor`+`remote-as`+
+`description`, ativação por address-family (IPv4 e/ou IPv6 do mesmo peer no mesmo clique) e route-map
+IN/OUT, reaproveitando uma prefix-list já existente ou criando uma nova exclusiva da sessão (mesmo
+princípio de nunca editar um objeto compartilhado já usado no resto da automação BGP).
+
+### Convenção de nomenclatura
+
+Descrição sempre `UPSTREAM-{sufixo}-V4`/`V6` ou `DOWNSTREAM-{sufixo}-V4`/`V6`; route-map
+`RM-PEER-{sufixo}-{V4|V6}-{IN|OUT}`; prefix-list nova `PL-ORIGIN-{cidr}` (prefixo nosso, direção OUT
+em qualquer tipo de peer), `PL-UPSTREAM-{sufixo}-{cidr}` (algo aceito de um upstream específico, IN),
+ou `PL-CLIENTE-{sufixo}-{cidr}` (prefixo próprio de um cliente downstream, IN).
+
+### Fonte de prefix-lists existentes: snapshot ou leitura ao vivo
+
+O modal busca candidatas no snapshot por padrão (mesmo dado usado por "Anunciar prefixo novo"); um
+botão "🔄 Existente (ao vivo)" força uma leitura SSH real (`show running-config | section prefix-list`
++ `section route-map`) via `clientes/bgp_actions.py::buscar_prefix_lists_ao_vivo`, reaproveitando a
+MESMA regex do parser de backup (`clientes/backup_parser.py::_extrair_prefix_lists_e_policies_cisco`,
+extraída de `parse_cisco` pra esse fim) — o texto de `show running-config` usa a mesma sintaxe de um
+backup, então nenhum parser novo foi necessário.
+
+### Geração de comandos (`clientes/bgp_actions.py::comandos_criar_sessao`)
+
+Ordem: 1) `router bgp`+`neighbor`s, 2) prefix-lists/route-maps NOVOS, 3) blocos `address-family`
+(ativação + anexação) — prefix-lists/route-maps são definidos ANTES de serem referenciados na
+ativação, evitando a sessão subir momentaneamente sem filtro. `send-community both` é sempre incluído
+em toda address-family nova. Recusa (`AcaoBgpNaoSuportada`) peer IP/route-map/prefix-list colidente
+com o que já existe (snapshot ou leitura ao vivo, conforme o operador escolheu na busca).
+
+Um route-map novo (`RM-PEER-*-IN`/`OUT`) é **sempre** criado pra uma sessão nova, mesmo quando a
+prefix-list que ele referencia é reaproveitada — só a prefix-list em si é condicional a "criar nova"
+(bug pego no code review deste próprio task antes de ir pra produção: a primeira versão só gerava o
+`route-map .../match ...` dentro do branch de prefix-list nova, deixando a direção "reaproveitar
+existente" sem route-map nenhum).
+
+### Auditoria e atualização otimista
+
+`AcaoBgp.tipo = 'criar_sessao'`. `aplicar_efeito_localmente` insere a(s) sessão(ões) nova(s) +
+prefix-lists/policies novas direto em `BgpSnapshot.dados` (mesmo princípio de toda outra ação) — a
+sessão aparece no painel no mesmo request da confirmação, sem esperar o próximo backup.
+
+### Frontend
+
+Reaproveita o modal de preview/confirmação genérico já usado por toda ação desta tela
+(`pedirAcao`/`confirmarAcao`) — o único fluxo novo é o formulário de coleta (toggle upstream/
+downstream, checkboxes IPv4/IPv6, e um "picker" de prefix-list por direção/AF que busca candidatas via
+`escanear-prefixo` com um novo parâmetro opcional `ao_vivo`).
+
+---
+
+**Última atualização:** 04/08/2026
