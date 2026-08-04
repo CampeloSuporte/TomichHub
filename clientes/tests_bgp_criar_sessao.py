@@ -288,3 +288,115 @@ class AplicarEfeitoLocalmenteCriarSessaoTest(SimpleTestCase):
             aplicar_efeito_localmente('cisco', dados, 'criar_sessao', '', '1.2.3.4', {'afs': []})
         except Exception as e:
             self.fail(f'aplicar_efeito_localmente não deveria levantar exceção, levantou: {e}')
+
+
+import json
+
+from django.contrib.auth.models import User
+from django.test import TestCase, Client
+
+from clientes.models import Acesso, BgpSnapshot, Cliente
+
+
+def _criar_cliente():
+    return Cliente.objects.create(
+        nome_empresa='Cliente Teste', cnpj='00.000.000/0001-00',
+        endereco='Rua Teste, 1', email='cliente-teste-bgp@example.com',
+    )
+
+
+def _criar_acesso_cisco(cliente):
+    return Acesso.objects.create(
+        cliente=cliente, tipo='Router Borda', host='198.51.100.1',
+        protocolo=Acesso.ProtocoloChoices.SSH, usuario='admin', senha='segredo',
+    )
+
+
+def _criar_staff():
+    from usuario.models import TOTPDevice
+    user = User.objects.create_user('staff-bgp-teste', password='x', is_staff=True, is_superuser=True)
+    # Forcar2FAMiddleware redireciona qualquer usuário autenticado sem
+    # TOTPDevice confirmado pra tela de configuração de 2FA, em toda
+    # requisição — sem isso o client de teste nunca chega nas views BGP.
+    TOTPDevice.objects.create(usuario=user, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+    return user
+
+
+class BgpCriarSessaoViewTest(TestCase):
+    def setUp(self):
+        self.cliente = _criar_cliente()
+        self.acesso = _criar_acesso_cisco(self.cliente)
+        self.snapshot = BgpSnapshot.objects.create(
+            acesso=self.acesso, vendor='cisco', dados=DADOS_SNAPSHOT_BASE,
+        )
+        self.user = _criar_staff()
+        self.client = Client()
+        self.client.force_login(self.user)
+
+    def test_preview_criar_sessao_devolve_comandos(self):
+        params = {
+            'tipo_peer': 'upstream', 'sufixo': 'CONECT',
+            'afs': [{
+                'af': 'ipv4', 'peer_ip': '172.16.8.1', 'remote_as': '262725',
+                'pl_in': {'modo': 'existente', 'nome': 'PL-DEFAULT-ROUTE'},
+                'pl_out': {'modo': 'nova', 'cidr': '45.169.6.0/24'},
+            }],
+        }
+        r = self.client.post(
+            f'/clientes/bgp/{self.acesso.id}/acao/',
+            data=json.dumps({'tipo': 'criar_sessao', 'alvo': '172.16.8.1', 'params': params, 'preview': True}),
+            content_type='application/json',
+        )
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertIn('router bgp 268080', data['comandos'])
+        self.assertIn('neighbor 172.16.8.1 remote-as 262725', data['comandos'])
+
+    def test_escanear_prefixo_com_sessao_inexistente_nao_da_404(self):
+        r = self.client.post(
+            f'/clientes/bgp/{self.acesso.id}/escanear-prefixo/',
+            data=json.dumps({'sessao': '__nova_sessao__'}),
+            content_type='application/json',
+        )
+        self.assertEqual(r.status_code, 200)
+        nomes = [c['nome'] for c in r.json()['candidatas']]
+        self.assertIn('PL-DEFAULT-ROUTE', nomes)
+        # sessão não existe -> nada pode estar marcado como já anunciando
+        self.assertTrue(all(not c['ja_anunciando'] for c in r.json()['candidatas']))
+
+    def test_escanear_prefixo_ao_vivo_usa_leitura_ssh(self):
+        with mock.patch('clientes.bgp_views.buscar_prefix_lists_ao_vivo') as mock_buscar:
+            mock_buscar.return_value = {
+                'prefix_lists': {'PL-AO-VIVO': [{'acao': 'permit', 'prefixo': '203.0.113.0/24', 'len_min': 24, 'len_max': 24, 'seq': 5}]},
+                'policies': {},
+            }
+            r = self.client.post(
+                f'/clientes/bgp/{self.acesso.id}/escanear-prefixo/',
+                data=json.dumps({'sessao': '__nova_sessao__', 'ao_vivo': True}),
+                content_type='application/json',
+            )
+        self.assertEqual(r.status_code, 200)
+        nomes = [c['nome'] for c in r.json()['candidatas']]
+        self.assertEqual(nomes, ['PL-AO-VIVO'])
+        mock_buscar.assert_called_once_with(self.acesso)
+
+    def test_escanear_prefixo_ao_vivo_com_erro_de_conexao_devolve_422(self):
+        with mock.patch('clientes.bgp_views.buscar_prefix_lists_ao_vivo', side_effect=Exception('timeout')):
+            r = self.client.post(
+                f'/clientes/bgp/{self.acesso.id}/escanear-prefixo/',
+                data=json.dumps({'sessao': '__nova_sessao__', 'ao_vivo': True}),
+                content_type='application/json',
+            )
+        self.assertEqual(r.status_code, 422)
+
+    def test_escanear_prefixo_com_sessao_real_continua_funcionando(self):
+        """Regressão: o fluxo existente de 'Anunciar prefixo novo' (sessão
+        real, sem ao_vivo) não pode quebrar."""
+        r = self.client.post(
+            f'/clientes/bgp/{self.acesso.id}/escanear-prefixo/',
+            data=json.dumps({'sessao': '10.0.0.1'}),
+            content_type='application/json',
+        )
+        self.assertEqual(r.status_code, 200)
+        candidatas = {c['nome']: c for c in r.json()['candidatas']}
+        self.assertTrue(candidatas['PL-DEFAULT-ROUTE']['ja_anunciando'])

@@ -17,7 +17,9 @@ from django.views.decorators.http import require_http_methods
 from .bgp_actions import (
     AcaoBgpNaoSuportada,
     aplicar_efeito_localmente,
+    buscar_prefix_lists_ao_vivo,
     comandos_aplicar_community,
+    comandos_criar_sessao,
     comandos_novo_anuncio,
     comandos_parar_anuncio,
     comandos_prepend,
@@ -139,6 +141,8 @@ def _montar_comandos(tipo, vendor, dados, alvo, params):
         lista = params.get('lista') or None
         prefixo_novo = params.get('prefixo') or None
         return comandos_novo_anuncio(vendor, dados, nome_sessao, lista_escolhida=lista, prefixo_novo=prefixo_novo)
+    if tipo == 'criar_sessao':
+        return comandos_criar_sessao(vendor, dados, params)
     raise AcaoBgpNaoSuportada(f'Tipo de ação "{tipo}" desconhecido.')
 
 
@@ -146,13 +150,22 @@ def _montar_comandos(tipo, vendor, dados, alvo, params):
 @require_http_methods(["POST"])
 def bgp_escanear_prefixo(request, acesso_id):
     """
-    POST /clientes/bgp/<acesso_id>/escanear-prefixo/ — body {sessao}.
-    Leitura pura sobre o snapshot já em memória (não toca em nada): lista
-    TODAS as prefix-lists nomeadas conhecidas no equipamento (não só as já
-    usadas por essa sessão), marcando quais essa sessão já anuncia — pra
-    UI oferecer escolher uma pra anexar via um node/termo novo na export
-    policy da sessão (`comandos_novo_anuncio`), sem editar a prefix-list
-    em si.
+    POST /clientes/bgp/<acesso_id>/escanear-prefixo/ — body {sessao, ao_vivo}.
+    Lista TODAS as prefix-lists nomeadas conhecidas no equipamento (não só
+    as já usadas por essa sessão), marcando quais a sessão informada já
+    anuncia — pra UI oferecer escolher uma pra anexar via um node/termo
+    novo (`comandos_novo_anuncio`) ou pra escolher/criar prefix-list no
+    formulário de "Configurar nova sessão" (`comandos_criar_sessao`).
+
+    `sessao` pode ser o nome de uma sessão que AINDA NÃO EXISTE no
+    snapshot (ex: "__nova_sessao__") — nesse caso não marca nenhuma
+    candidata como `ja_anunciando` em vez de devolver 404.
+
+    `ao_vivo=true` (Cisco/Datacom apenas) troca a fonte de `prefix_lists`/
+    `policies`: em vez do snapshot (backup em disco, pode estar
+    desatualizado), conecta AGORA no equipamento (`buscar_prefix_lists_
+    ao_vivo`) e usa o resultado fresco só pra esta consulta — não grava
+    nada no snapshot.
     """
     erro = _checar_staff(request)
     if erro:
@@ -167,6 +180,7 @@ def bgp_escanear_prefixo(request, acesso_id):
         return JsonResponse({'error': 'JSON inválido'}, status=400)
 
     sessao_nome = (body.get('sessao') or '').strip()
+    ao_vivo = bool(body.get('ao_vivo', False))
     if not sessao_nome:
         return JsonResponse({'error': 'Informe a sessão.'}, status=400)
 
@@ -175,16 +189,26 @@ def bgp_escanear_prefixo(request, acesso_id):
     except BgpSnapshot.DoesNotExist:
         return JsonResponse({'error': 'Sem snapshot BGP para este host.'}, status=404)
 
-    sessao = next((s for s in snap.dados.get('sessoes', []) if s.get('nome') == sessao_nome), None)
-    if not sessao:
-        return JsonResponse({'error': f'Sessão "{sessao_nome}" não encontrada no snapshot.'}, status=404)
-    policy_out = sessao.get('policy_out')
-    if not policy_out:
-        return JsonResponse({'error': 'Esta sessão não tem export policy identificada.'}, status=422)
+    if ao_vivo:
+        if snap.vendor not in ('cisco', 'datacom'):
+            return JsonResponse({'error': f'Leitura ao vivo ainda não suportada para "{snap.vendor}".'}, status=422)
+        try:
+            fonte = buscar_prefix_lists_ao_vivo(acesso)
+        except Exception as e:
+            return JsonResponse({'error': f'Falha ao conectar no equipamento: {e}'}, status=422)
+    else:
+        fonte = {'prefix_lists': snap.dados.get('prefix_lists', {}), 'policies': snap.dados.get('policies', {})}
 
-    resultado = listar_prefix_lists(
-        snap.dados.get('prefix_lists', {}), snap.dados.get('policies', {}), policy_out
-    )
+    # `sessao_nome` pode ser de uma sessão que AINDA NÃO EXISTE no
+    # snapshot (ex: "__nova_sessao__", usado pelo modal de "Configurar
+    # nova sessão") — nesse caso não há `policy_out` pra comparar, então
+    # nenhuma candidata é marcada como `ja_anunciando` (em vez de 404).
+    sessao = next((s for s in snap.dados.get('sessoes', []) if s.get('nome') == sessao_nome), None)
+    if sessao and not sessao.get('policy_out'):
+        return JsonResponse({'error': 'Esta sessão não tem export policy identificada.'}, status=422)
+    policy_out = sessao.get('policy_out') if sessao else ''
+
+    resultado = listar_prefix_lists(fonte['prefix_lists'], fonte['policies'], policy_out)
     resultado['vendor'] = snap.vendor
     return JsonResponse(resultado)
 
