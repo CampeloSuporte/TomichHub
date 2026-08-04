@@ -732,6 +732,130 @@ function fecharNovoAnuncio() {
     naSessaoAtual = null;
 }
 
+// ── Configurar nova sessão (Cisco) — monta uma sessão BGP nova do zero
+// (neighbor + address-family + route-map IN/OUT, reaproveitando prefix-
+// list existente ou criando uma nova) e reaproveita o modal de preview/
+// confirmação genérico (pedirAcao/confirmarAcao) já usado por toda ação
+// desta tela — nenhum fluxo de execução novo, só a coleta dos dados. ──
+let csEscolhas = {};          // slot ("v4in","v4out","v6in","v6out") -> {modo:'existente',nome} | {modo:'nova',cidr}
+let csCandidatasCache = {};   // slot -> [{nome,amostra,ja_anunciando}], cache pro filtro client-side
+
+function abrirCriarSessao() {
+    document.getElementById('csSufixo').value = '';
+    document.querySelector('input[name=csTipo][value=upstream]').checked = true;
+    document.getElementById('csAtivaV4').checked = true;
+    document.getElementById('csAtivaV6').checked = false;
+    csEscolhas = {};
+    csCandidatasCache = {};
+    ['v4in', 'v4out', 'v6in', 'v6out'].forEach(csLimparSlot);
+    csAtualizarAFs();
+    document.getElementById('csErro').textContent = '';
+    document.getElementById('criarSessaoOverlay').classList.add('aberto');
+}
+
+function fecharCriarSessao() {
+    document.getElementById('criarSessaoOverlay').classList.remove('aberto');
+}
+
+function csAtualizarAFs() {
+    document.getElementById('csBlocoV4').style.display = document.getElementById('csAtivaV4').checked ? 'block' : 'none';
+    document.getElementById('csBlocoV6').style.display = document.getElementById('csAtivaV6').checked ? 'block' : 'none';
+}
+
+function csLimparSlot(slot) {
+    csEscolhas[slot] = null;
+    const resumo = document.getElementById(`cs-${slot}-resumo`);
+    if (resumo) resumo.textContent = 'Nenhuma prefix-list escolhida.';
+    const painel = document.getElementById(`cs-${slot}-painel`);
+    if (painel) painel.style.display = 'none';
+    const cidrInput = document.getElementById(`cs-${slot}-cidr`);
+    if (cidrInput) cidrInput.value = '';
+}
+
+async function csAbrirBusca(slot, aoVivo) {
+    const painel = document.getElementById(`cs-${slot}-painel`);
+    const lista = document.getElementById(`cs-${slot}-lista`);
+    painel.style.display = 'block';
+    lista.innerHTML = `<div class="vazio">${aoVivo ? 'Conectando no equipamento…' : 'Carregando…'}</div>`;
+    try {
+        const r = await fetch(`/clientes/bgp/${ACESSO_ID}/escanear-prefixo/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken') },
+            body: JSON.stringify({ sessao: '__nova_sessao__', ao_vivo: !!aoVivo }),
+        });
+        const data = await r.json();
+        if (!r.ok) { lista.innerHTML = `<div class="vazio">⚠ ${escapeHtml(data.error || 'erro desconhecido')}</div>`; return; }
+        csCandidatasCache[slot] = data.candidatas || [];
+        csRenderizarCandidatas(slot, csCandidatasCache[slot]);
+    } catch (e) {
+        lista.innerHTML = `<div class="vazio">Erro: ${e}</div>`;
+    }
+}
+
+function csRenderizarCandidatas(slot, candidatas) {
+    const lista = document.getElementById(`cs-${slot}-lista`);
+    if (!candidatas.length) { lista.innerHTML = '<div class="vazio">Nenhuma prefix-list encontrada.</div>'; return; }
+    lista.innerHTML = candidatas.map(c => `
+        <button type="button" class="candidata-btn" onclick="csEscolherExistente('${slot}','${escapeHtml(c.nome)}')">
+            ${escapeHtml(c.nome)} <span class="amostra">${c.amostra && c.amostra.length ? '(ex: ' + c.amostra.map(escapeHtml).join(', ') + ')' : '(vazia)'}</span>
+        </button>
+    `).join('');
+}
+
+function csFiltrarCandidatas(slot) {
+    const termo = document.getElementById(`cs-${slot}-busca`).value.trim().toLowerCase();
+    const todas = csCandidatasCache[slot] || [];
+    if (!termo) { csRenderizarCandidatas(slot, todas); return; }
+    csRenderizarCandidatas(slot, todas.filter(c =>
+        c.nome.toLowerCase().includes(termo) || (c.amostra || []).some(p => p.toLowerCase().includes(termo))
+    ));
+}
+
+function csEscolherExistente(slot, nome) {
+    csEscolhas[slot] = { modo: 'existente', nome };
+    document.getElementById(`cs-${slot}-resumo`).textContent = `Reaproveitando: ${nome}`;
+    document.getElementById(`cs-${slot}-painel`).style.display = 'none';
+}
+
+function csEscolherNova(slot) {
+    const cidr = document.getElementById(`cs-${slot}-cidr`).value.trim();
+    if (!cidr) { alert('Informe o CIDR.'); return; }
+    csEscolhas[slot] = { modo: 'nova', cidr };
+    document.getElementById(`cs-${slot}-resumo`).textContent = `Nova prefix-list: ${cidr}`;
+}
+
+function csVisualizarComandos() {
+    const erroEl = document.getElementById('csErro');
+    erroEl.textContent = '';
+    const tipoPeer = document.querySelector('input[name=csTipo]:checked').value;
+    const sufixo = document.getElementById('csSufixo').value.trim().toUpperCase();
+    if (!sufixo) { erroEl.textContent = 'Informe o sufixo da descrição.'; return; }
+
+    const afs = [];
+    const alvos = [];
+    if (document.getElementById('csAtivaV4').checked) {
+        const peerIp = document.getElementById('csV4PeerIp').value.trim();
+        const remoteAs = document.getElementById('csV4RemoteAs').value.trim();
+        if (!peerIp || !remoteAs) { erroEl.textContent = 'Preencha peer IP e AS remoto do IPv4.'; return; }
+        if (!csEscolhas.v4in || !csEscolhas.v4out) { erroEl.textContent = 'Escolha a prefix-list de entrada e saída do IPv4 (existente ou nova).'; return; }
+        afs.push({ af: 'ipv4', peer_ip: peerIp, remote_as: remoteAs, pl_in: csEscolhas.v4in, pl_out: csEscolhas.v4out });
+        alvos.push(peerIp);
+    }
+    if (document.getElementById('csAtivaV6').checked) {
+        const peerIp = document.getElementById('csV6PeerIp').value.trim();
+        const remoteAs = document.getElementById('csV6RemoteAs').value.trim();
+        if (!peerIp || !remoteAs) { erroEl.textContent = 'Preencha peer IP e AS remoto do IPv6.'; return; }
+        if (!csEscolhas.v6in || !csEscolhas.v6out) { erroEl.textContent = 'Escolha a prefix-list de entrada e saída do IPv6 (existente ou nova).'; return; }
+        afs.push({ af: 'ipv6', peer_ip: peerIp, remote_as: remoteAs, pl_in: csEscolhas.v6in, pl_out: csEscolhas.v6out });
+        alvos.push(peerIp);
+    }
+    if (!afs.length) { erroEl.textContent = 'Marque IPv4 e/ou IPv6.'; return; }
+
+    const params = { tipo_peer: tipoPeer, sufixo, afs };
+    fecharCriarSessao();
+    pedirAcao('criar_sessao', alvos.join(', '), params, `Configurar nova sessão — ${tipoPeer.toUpperCase()}-${sufixo}`);
+}
+
 // Lista TODAS as prefix-lists nomeadas do equipamento de cara — nada de
 // digitar um prefixo pra "descobrir" quais existem.
 async function carregarCandidatasNovoAnuncio() {
