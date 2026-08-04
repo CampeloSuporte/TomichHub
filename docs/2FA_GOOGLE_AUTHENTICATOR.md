@@ -4,11 +4,11 @@
 - `usuario/models.py` — `TOTPDevice`, `TOTPBackupCode`
 - `usuario/totp.py` — geração/verificação TOTP, QR code, códigos de backup
 - `usuario/views.py` — `login`, `verificar_2fa`, `configurar_2fa`, `resetar_2fa_admin`
-- `usuario/middleware.py` — `Forcar2FAMiddleware`
+- `usuario/middleware.py` — `Forcar2FAMiddleware`, `ProtegerAdminMiddleware`
 - `usuario/urls.py` — `/auth/2fa/`, `/auth/2fa/verificar/`, `/auth/2fa/resetar/`
 - `usuario/templates/configurar_2fa.html`, `templates/verificar_2fa.html`
 
-**Atualizado em:** 02/08/2026
+**Atualizado em:** 03/08/2026
 
 ---
 
@@ -100,6 +100,40 @@ Conexões WebSocket (Channels) não passam por esse middleware — o `AuthMiddle
 independente do `MIDDLEWARE` do Django (ver `crm/asgi.py`), então terminal SSH/monitoramento em
 tempo real não são afetados por esse gate (a página que os embute já teria sido bloqueada antes,
 pelo HTTP normal).
+
+## Django admin — bypass do 2FA e `ProtegerAdminMiddleware`
+
+O `/admin/` nativo do Django tem form de login próprio (`AdminAuthenticationForm`) que chama
+`auth_login()` direto, sem passar pela view `usuario.views.login` nem por `verificar_2fa` — ou seja,
+até 03/08/2026, um usuário anônimo digitando `crm.tomich.com.br/admin/` conseguia logar por ali e
+**pular o 2FA obrigatório** por completo, mesmo com `Forcar2FAMiddleware` ativo (que só age depois
+que a sessão já está autenticada).
+
+Corrigido com `ProtegerAdminMiddleware` (`usuario/middleware.py`), registrado em `MIDDLEWARE` logo
+depois de `AuthenticationMiddleware` (antes de `Forcar2FAMiddleware`):
+
+```python
+class ProtegerAdminMiddleware:
+    def __call__(self, request):
+        if request.path.startswith('/admin/'):
+            if not request.user.is_authenticated:
+                return redirect(f"{settings.LOGIN_URL}?next={request.path}")
+            if not perms.is_admin(request.user):
+                return HttpResponseForbidden(...)
+        return self.get_response(request)
+```
+
+- **Anônimo** tentando qualquer rota `/admin/*` (inclusive `/admin/login/`) → redirecionado pro login
+  do próprio CRM (`/auth/login/`). Só chega em `/admin/` depois de já ter passado pelo fluxo normal
+  (senha + `verificar_2fa`, quando aplicável) — o form nativo do Django nunca é exibido a quem não
+  está logado.
+- **Autenticado mas não Administrador** (`perms.is_admin` — cobre `PerfilUsuario.role == 'admin'` e o
+  legado `is_staff=True` sem perfil) → `403 Forbidden`. Consultor e Operador não acessam, mesmo
+  logados.
+- Botão de acesso em `templates/base.html`, dropdown "Sistema" → "Django Admin", visível só quando
+  `is_admin_bo` (mesma flag do context processor `usuario.context_processors.perfil_context`) — não
+  existe mais link direto pra quem não é admin, e a rota continua bloqueada mesmo se alguém adivinhar
+  a URL.
 
 ## Reset por Administrador/Consultor — `/auth/2fa/resetar/`
 
