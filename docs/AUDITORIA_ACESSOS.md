@@ -1,8 +1,10 @@
 # Auditoria de Acessos — Documentação Técnica
 
-**Data de Implementação:** 2026-07-20
+**Data de Implementação:** 2026-07-20 (tela consolidada por cliente adicionada em 2026-08-04)
 **Arquivos principais:** `clientes/models.py`, `clientes/consumers.py`, `clientes/browser_vnc.py`,
-`clientes/winbox_vnc.py`, `clientes/views.py`, `clientes/admin.py`, `templates/modal_acessos.html`
+`clientes/winbox_vnc.py`, `clientes/views.py`, `clientes/admin.py`, `clientes/urls.py`,
+`templates/modal_acessos.html`, `clientes/templates/auditoria_cliente.html`,
+`clientes/templates/listar.html`
 **Status:** ✅ Produção
 
 ---
@@ -197,6 +199,8 @@ nível do consumer, já que é ele quem cria o registro.
 | `GET /clientes/acessos/<acesso_id>/auditoria/` | `listar_sessoes_auditoria` | Lista sessões do acesso, mais recentes primeiro, com `total_comandos` anotado (`Count`) |
 | `GET /clientes/auditoria/sessao/<sessao_id>/comandos/` | `listar_comandos_sessao` | Lista comandos digitados numa sessão |
 | `GET /clientes/auditoria/sessao/<sessao_id>/transcript/` | `ver_transcript_sessao` | Retorna o transcript completo da sessão |
+| `GET /clientes/<cliente_id>/auditoria/` | `auditoria_cliente_view` | Página consolidada — todos os hosts do cliente com auditoria (ver seção abaixo) |
+| `GET /clientes/<cliente_id>/auditoria/hosts/` | `auditoria_cliente_hosts` | JSON: resumo por host (total de sessões, última atividade) no período filtrado |
 
 **Permissão:** staff/superuser vêem tudo; usuário comum só vê sessões de acessos do **próprio**
 cliente vinculado (`Cliente.objects.get_by_usuario_vinculado(request.user)`), mesmo padrão usado
@@ -206,6 +210,69 @@ nos outros endpoints de `Acesso` (comentários, etc.) — `403` caso contrário.
 datas formatadas `dd/mm/aaaa HH:MM:SS`, `duracao_segundos`, `video_url` (`MEDIA_URL + arquivo_video`
 ou `null`), `total_comandos` e `tem_transcript` (booleano — evita o frontend precisar buscar o
 transcript só para saber se existe).
+
+**Filtro de período e paginação (adicionado em 04/08/2026):** `listar_sessoes_auditoria` aceita
+`?data_inicio=&data_fim=` (formato `AAAA-MM-DD`, filtram por `iniciada_em__date`) e `?pagina=`
+opcionais. Sem `pagina`, mantém o comportamento antigo (retorna todas as sessões do acesso de uma
+vez) — usado assim pelo modal por equipamento antes desta mudança. Com `pagina` presente, aplica
+`Paginator` (`AUDITORIA_SESSOES_POR_PAGINA = 20`) e a resposta ganha `pagina`, `total_paginas`,
+`tem_anterior`, `tem_proxima`. Data inválida retorna `400`. A queryset base agora tem
+`order_by('-iniciada_em')` explícito — antes dependia só do `Meta.ordering` do model, o que o
+`Paginator` não considera garantido (`UnorderedObjectListWarning`) ao paginar sobre uma queryset
+anotada.
+
+---
+
+## Tela Consolidada de Auditoria do Cliente (adicionado em 04/08/2026)
+
+**Arquivos:** `clientes/views.py` (`auditoria_cliente_view`, `auditoria_cliente_hosts`),
+`clientes/urls.py`, `clientes/templates/auditoria_cliente.html`.
+
+O modal por equipamento (`#modalAuditoriaAcesso`) exige saber de antemão qual host olhar. Para
+responder "quais hosts deste cliente foram acessados e quando", sem precisar abrir host por host,
+existe agora uma página própria: **`/clientes/<cliente_id>/auditoria/`**, acessível pelo botão
+**"Auditoria do Cliente"** no topo da aba Acessos (`clientes/templates/listar.html`), ao lado de
+"Adicionar"/"Importar Host".
+
+### Endpoint de resumo — `auditoria_cliente_hosts`
+
+Agrega `AcessoSessao` por `Acesso` (host) do cliente e retorna só hosts com pelo menos 1 sessão no
+período filtrado — host, tipo, função, `total_sessoes`, dados da última sessão (data/hora, usuário,
+se está `ativa` agora). Implementado com anotação condicional (`Count(..., filter=Q(...))`) e
+`Subquery`/`OuterRef` para a última sessão — uma única query, sem N+1 por host.
+
+Filtros aceitos via querystring, todos opcionais:
+
+- `data_inicio` / `data_fim` (`AAAA-MM-DD`) — `iniciada_em__date` das sessões consideradas
+- `usuario_id` — restringe a sessões de um usuário do CRM específico
+- `busca` — texto livre, casa contra `host`, `tipo` ou `funcao__descricao`
+
+### Drill-down por host
+
+Clicar em "Ver sessões" de um host abre um painel (reaproveita as classes globais
+`.modal-overlay`/`.modal-acesso` de `style.css`, mesmo visual do modal por equipamento) que chama o
+**mesmo** endpoint `listar_sessoes_auditoria` do host, passando adiante o período e usuário já
+selecionados na tela — não há um filtro de data separado dentro do painel, ele herda o da tela.
+Suporta paginação (Anterior/Próxima) e os mesmos recursos do modal original: expandir comandos
+digitados, expandir transcript, abrir gravação de vídeo quando houver.
+
+### Por que não reaproveitar o modal existente diretamente
+
+O modal (`templates/modal_acessos.html`) é incluído hoje só dentro de `listar.html`, que estende
+`base.html`; ele depende de outros contextos daquele template (ex: `funcao_equipamentos`,
+`modelos` para os modais de cadastro/edição de acesso que também moram no mesmo arquivo). Incluir o
+arquivo inteiro numa página nova e enxuta traria ~2500 linhas de markup/JS não relacionados à
+auditoria. A tela de auditoria do cliente também estende `base.html` (herda as mesmas variáveis CSS
+globais — `--card-bg`, `--border`, `--primary-green`, etc. — definidas em `static/css/style.css`),
+mas define seu próprio painel de sessões, self-contained, reaproveitando apenas os **endpoints**
+(`listar_sessoes_auditoria`, `listar_comandos_sessao`, `ver_transcript_sessao`), não o HTML/JS do
+modal.
+
+### Modal por equipamento — filtro de data adicionado
+
+O modal original (`abrirModalAuditoriaAcesso`, em `modal_acessos.html`) ganhou os mesmos campos De/
+Até e paginação Anterior/Próxima, chamando `listar_sessoes_auditoria` com `pagina=` sempre presente
+— antes carregava todas as sessões do host de uma vez, sem filtro nem limite.
 
 ---
 
@@ -217,6 +284,11 @@ transcript só para saber se existe).
 ---
 
 ## Frontend
+
+Existem dois pontos de entrada: o modal por equipamento (dentro da aba Acessos, olha 1 host por
+vez) e a tela consolidada por cliente (`/clientes/<cliente_id>/auditoria/`, todos os hosts — ver
+seção ["Tela Consolidada de Auditoria do Cliente"](#tela-consolidada-de-auditoria-do-cliente-adicionado-em-04082026)
+acima).
 
 ### Botão de acesso (`clientes/templates/listar.html`)
 
@@ -250,5 +322,5 @@ para o DOM.
 
 ---
 
-**Última atualização:** 20/07/2026
+**Última atualização:** 04/08/2026
 **Autor:** CampeloSuporte
