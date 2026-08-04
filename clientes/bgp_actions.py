@@ -689,6 +689,56 @@ def buscar_prefix_lists_ao_vivo(acesso):
     return {'prefix_lists': prefix_lists, 'policies': policies}
 
 
+def _aplicar_criar_sessao_localmente(dados, params):
+    """Insere a(s) sessão(ões) nova(s) — e as prefix-lists/route-maps
+    novas criadas junto — direto em `dados` (o MESMO dict salvo em
+    BgpSnapshot.dados), pro painel refletir a ação sem esperar o próximo
+    backup. Reconstrói o MESMO cálculo de nomes de `comandos_criar_
+    sessao` (`_nome_prefix_list_nova`) — se os dois divergirem um dia, o
+    painel mostraria um nome diferente do que foi realmente configurado
+    no equipamento; mantenha as duas funções em sincronia."""
+    from .bgp_matcher import simular_anuncios
+
+    tipo_peer = params.get('tipo_peer', 'upstream')
+    sufixo = (params.get('sufixo') or '').strip().upper().replace(' ', '-')
+    as_local = next((s.get('as_local') for s in dados.get('sessoes', []) if s.get('as_local')), None)
+
+    for entrada_af in params.get('afs', []):
+        af = entrada_af.get('af')
+        af_tag = 'V6' if af == 'ipv6' else 'V4'
+        peer_ip = entrada_af.get('peer_ip')
+        remote_as = entrada_af.get('remote_as')
+        descricao = f'{tipo_peer.upper()}-{sufixo}-{af_tag}'
+        rm_in = f'RM-PEER-{sufixo}-{af_tag}-IN'
+        rm_out = f'RM-PEER-{sufixo}-{af_tag}-OUT'
+
+        dados.setdefault('sessoes', []).append({
+            'peer_ip': peer_ip, 'peer_as': remote_as, 'as_local': as_local,
+            'nome': peer_ip, 'descricao': descricao, 'habilitada': True,
+            'policy_in': rm_in, 'policy_out': rm_out,
+        })
+
+        for direcao, rm_nome, escolha in (('in', rm_in, entrada_af.get('pl_in')), ('out', rm_out, entrada_af.get('pl_out'))):
+            if not escolha:
+                continue
+            if escolha.get('modo') == 'nova':
+                cidr = escolha.get('cidr')
+                nome_pl = _nome_prefix_list_nova(tipo_peer, direcao, sufixo, cidr)
+                dados.setdefault('prefix_lists', {})[nome_pl] = [
+                    {'acao': 'permit', 'prefixo': cidr, 'len_min': None, 'len_max': None, 'seq': 10}
+                ]
+            else:
+                nome_pl = escolha.get('nome')
+            dados.setdefault('policies', {}).setdefault(rm_nome, []).append({
+                'ordem': 10, 'prefix_lists': [nome_pl], 'acao': 'accept',
+                'prepend': 0, 'extra': {'route_map': rm_nome, 'seq': 10, 'nao_suportado': False},
+            })
+
+        dados.setdefault('anuncios', {})[peer_ip] = simular_anuncios(
+            dados.get('prefix_lists', {}), dados.get('policies', {}), rm_out
+        )
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # Atualização otimista do snapshot local (depois de uma ação real bem-
 # sucedida no equipamento)
@@ -711,6 +761,14 @@ def aplicar_efeito_localmente(vendor, dados, tipo, nome_sessao, alvo, params):
 
     Nunca levanta exceção — falha em aplicar localmente não deve impedir
     a ação real (já executada) de ser reportada como sucesso ao usuário."""
+    if tipo == 'criar_sessao':
+        # Sessão nova por definição não existe em `dados` ainda —
+        # `_sessao_por_nome` abaixo nunca acharia — trata à parte.
+        try:
+            _aplicar_criar_sessao_localmente(dados, params)
+        except Exception as e:
+            logger.warning(f'aplicar_efeito_localmente (criar_sessao) falhou (não crítico): {e}')
+        return
     try:
         sessao = _sessao_por_nome(dados, nome_sessao)
     except AcaoBgpNaoSuportada:

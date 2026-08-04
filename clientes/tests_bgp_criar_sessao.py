@@ -246,3 +246,45 @@ class BuscarPrefixListsAoVivoTest(SimpleTestCase):
         with self.assertRaises(Exception):
             buscar_prefix_lists_ao_vivo(mock.Mock())
         conn_falsa.disconnect.assert_called_once()
+
+
+import copy
+
+from clientes.bgp_actions import aplicar_efeito_localmente
+
+
+class AplicarEfeitoLocalmenteCriarSessaoTest(SimpleTestCase):
+    def test_insere_sessao_nova_e_prefix_lists_novas_em_dados(self):
+        dados = copy.deepcopy(DADOS_SNAPSHOT_BASE)
+        params = {
+            'tipo_peer': 'upstream',
+            'sufixo': 'CONECT',
+            'afs': [{
+                'af': 'ipv4', 'peer_ip': '172.16.8.1', 'remote_as': '262725',
+                'pl_in': {'modo': 'existente', 'nome': 'PL-DEFAULT-ROUTE'},
+                'pl_out': {'modo': 'nova', 'cidr': '45.169.6.0/24'},
+            }],
+        }
+        aplicar_efeito_localmente('cisco', dados, 'criar_sessao', '', '172.16.8.1', params)
+
+        nova_sessao = next(s for s in dados['sessoes'] if s['peer_ip'] == '172.16.8.1')
+        self.assertEqual(nova_sessao['descricao'], 'UPSTREAM-CONECT-V4')
+        self.assertTrue(nova_sessao['habilitada'])
+        self.assertEqual(nova_sessao['policy_out'], 'RM-PEER-CONECT-V4-OUT')
+        self.assertEqual(nova_sessao['policy_in'], 'RM-PEER-CONECT-V4-IN')
+
+        self.assertIn('PL-ORIGIN-45.169.6.0_24', dados['prefix_lists'])
+        self.assertEqual(dados['policies']['RM-PEER-CONECT-V4-OUT'][0]['prefix_lists'], ['PL-ORIGIN-45.169.6.0_24'])
+        self.assertEqual(dados['policies']['RM-PEER-CONECT-V4-IN'][0]['prefix_lists'], ['PL-DEFAULT-ROUTE'])
+
+        # simular_anuncios já deve ter rodado pra essa sessão nova
+        self.assertIn('172.16.8.1', dados['anuncios'])
+        anunciados = [a for a in dados['anuncios']['172.16.8.1'] if a['permitido']]
+        self.assertTrue(any(a['prefixo'] == '45.169.6.0/24' for a in anunciados))
+
+    def test_nunca_levanta_excecao(self):
+        dados = {}   # dados vazio/malformado de propósito
+        try:
+            aplicar_efeito_localmente('cisco', dados, 'criar_sessao', '', '1.2.3.4', {'afs': []})
+        except Exception as e:
+            self.fail(f'aplicar_efeito_localmente não deveria levantar exceção, levantou: {e}')
