@@ -1370,6 +1370,7 @@ class AcaoBgp(models.Model):
         ('parar_anuncio',    'Parar de anunciar'),
         ('community',        'Aplicar community'),
         ('novo_anuncio',     'Anunciar prefixo novo'),
+        ('criar_sessao',     'Criar sessão nova'),
     ]
     STATUS = [
         ('sucesso', 'Sucesso'),
