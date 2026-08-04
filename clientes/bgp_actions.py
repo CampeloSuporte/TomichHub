@@ -499,6 +499,165 @@ def comandos_novo_anuncio(vendor, dados, nome_sessao, lista_escolhida=None, pref
 
 
 # ═══════════════════════════════════════════════════════════════════════
+# Configurar nova sessão (Cisco/Datacom apenas por enquanto — ver
+# docs/superpowers/specs/2026-08-04-bgp-nova-sessao-design.md)
+# ═══════════════════════════════════════════════════════════════════════
+
+def _cidr_para_nome(cidr):
+    return cidr.replace('/', '_')
+
+
+def _nome_prefix_list_nova(tipo_peer, direcao, sufixo, cidr):
+    """Convenção observada no exemplo real fornecido: uma prefix-list
+    nova sempre reflete O QUE ELA CONTÉM — `PL-ORIGIN-*` é sempre um
+    prefixo NOSSO (anunciado a um upstream OU entregue a um downstream),
+    independente de quem é o peer. `PL-UPSTREAM-*`/`PL-CLIENTE-*` levam
+    o sufixo da sessão porque representam algo que só faz sentido no
+    contexto DAQUELE peer especificamente (uma rota aceita de um
+    upstream específico / o prefixo próprio de um cliente específico)."""
+    cidr_nome = _cidr_para_nome(cidr)
+    if direcao == 'out':
+        return f'PL-ORIGIN-{cidr_nome}'
+    if tipo_peer == 'upstream':
+        return f'PL-UPSTREAM-{sufixo}-{cidr_nome}'
+    return f'PL-CLIENTE-{sufixo}-{cidr_nome}'
+
+
+def _validar_cidr(cidr, af):
+    try:
+        rede = ipaddress.ip_network(cidr, strict=True)
+    except ValueError as e:
+        raise AcaoBgpNaoSuportada(f'CIDR inválido "{cidr}": {e}')
+    esperado = 6 if af == 'ipv6' else 4
+    if rede.version != esperado:
+        raise AcaoBgpNaoSuportada(
+            f'CIDR "{cidr}" não é {"IPv6" if af == "ipv6" else "IPv4"} (address-family escolhida: {af}).'
+        )
+    return cidr
+
+
+def _nomes_em_uso(dados):
+    """Peers/route-maps/prefix-lists já conhecidos em `dados` (snapshot
+    ou leitura ao vivo — o chamador decide qual passar) — usado pra
+    recusar colisão de nome ANTES de gerar qualquer comando."""
+    peers = {s.get('peer_ip') for s in dados.get('sessoes', [])}
+    route_maps = set(dados.get('policies', {}).keys())
+    prefix_lists = set(dados.get('prefix_lists', {}).keys())
+    return peers, route_maps, prefix_lists
+
+
+def comandos_criar_sessao(vendor, dados, params):
+    """`params`: {"tipo_peer": "upstream"|"downstream", "sufixo": str,
+    "afs": [{"af": "ipv4"|"ipv6", "peer_ip": str, "remote_as": str,
+              "pl_in":  {"modo": "existente", "nome": str} | {"modo": "nova", "cidr": str},
+              "pl_out": mesmo formato}, ...]}.
+
+    Gera a config completa de UMA sessão nova, cobrindo IPv4 e/ou IPv6 do
+    MESMO peer no mesmo bloco — igual a como um `router bgp` real
+    costuma ser editado numa tacada só. Nunca edita uma prefix-list já
+    existente (mesmo princípio de `comandos_novo_anuncio`/`comandos_
+    parar_anuncio`: objeto compartilhável, editar vazaria efeito pra
+    fora desta sessão); quando `pl_in`/`pl_out` escolhe "nova", cria uma
+    prefix-list EXCLUSIVA dessa sessão com 1 entrada, seq 10.
+
+    Ordem dos comandos gerados: 1) `router bgp`+`neighbor`s (definição
+    do(s) peer(s)), 2) prefix-lists/route-maps NOVOS (só os que o
+    operador escolheu criar), 3) blocos `address-family` (ativação +
+    anexação dos route-maps). Prefix-lists/route-maps são definidos
+    ANTES de serem referenciados na ativação — o exemplo original (só
+    ilustrativo da estrutura, não um roteiro literal de comandos) mistura
+    a ordem, mas definir-antes-de-referenciar evita a sessão subir
+    momentaneamente sem filtro (ou bloqueada, dependendo da versão do
+    IOS) enquanto o route-map ainda não existe."""
+    if vendor not in ('cisco', 'datacom'):
+        raise AcaoBgpNaoSuportada(f'Configurar nova sessão ainda não é suportado para "{vendor}".')
+
+    tipo_peer = params.get('tipo_peer')
+    if tipo_peer not in ('upstream', 'downstream'):
+        raise AcaoBgpNaoSuportada('Informe se a sessão é upstream ou downstream.')
+    sufixo = (params.get('sufixo') or '').strip().upper().replace(' ', '-')
+    if not sufixo:
+        raise AcaoBgpNaoSuportada('Informe o sufixo da descrição.')
+    afs = params.get('afs') or []
+    if not afs:
+        raise AcaoBgpNaoSuportada('Marque pelo menos IPv4 ou IPv6.')
+
+    as_local = next((s.get('as_local') for s in dados.get('sessoes', []) if s.get('as_local')), None)
+    if not as_local:
+        raise AcaoBgpNaoSuportada('AS local não identificado no snapshot — não dá pra montar "router bgp".')
+
+    peers_em_uso, route_maps_em_uso, prefix_lists_em_uso = _nomes_em_uso(dados)
+
+    comandos_peers = [f'router bgp {as_local}']
+    comandos_pl_rm = []
+    comandos_af = []
+
+    for entrada_af in afs:
+        af = entrada_af.get('af')
+        if af not in ('ipv4', 'ipv6'):
+            raise AcaoBgpNaoSuportada(f'Address-family inválida: "{af}".')
+        peer_ip = (entrada_af.get('peer_ip') or '').strip()
+        remote_as = (entrada_af.get('remote_as') or '').strip()
+        if not peer_ip or not remote_as:
+            raise AcaoBgpNaoSuportada(f'Peer IP e AS remoto são obrigatórios ({af}).')
+        try:
+            ip_parseado = ipaddress.ip_address(peer_ip)
+        except ValueError:
+            raise AcaoBgpNaoSuportada(f'Peer IP inválido: "{peer_ip}".')
+        esperado = 6 if af == 'ipv6' else 4
+        if ip_parseado.version != esperado:
+            raise AcaoBgpNaoSuportada(f'Peer IP "{peer_ip}" não é {"IPv6" if af == "ipv6" else "IPv4"}.')
+        if peer_ip in peers_em_uso:
+            raise AcaoBgpNaoSuportada(f'Já existe uma sessão com peer "{peer_ip}" no snapshot.')
+
+        af_tag = 'V6' if af == 'ipv6' else 'V4'
+        descricao = f'{tipo_peer.upper()}-{sufixo}-{af_tag}'
+        rm_in = f'RM-PEER-{sufixo}-{af_tag}-IN'
+        rm_out = f'RM-PEER-{sufixo}-{af_tag}-OUT'
+        for rm in (rm_in, rm_out):
+            if rm in route_maps_em_uso:
+                raise AcaoBgpNaoSuportada(f'Já existe um route-map chamado "{rm}" — escolha outro sufixo.')
+
+        comandos_peers.append(f'neighbor {peer_ip} remote-as {remote_as}')
+        comandos_peers.append(f'neighbor {peer_ip} description {descricao}')
+
+        cmd_pl = 'ipv6 prefix-list' if af == 'ipv6' else 'ip prefix-list'
+        cmd_match = 'match ipv6 address prefix-list' if af == 'ipv6' else 'match ip address prefix-list'
+
+        for direcao, rm_nome, escolha in (('in', rm_in, entrada_af.get('pl_in')), ('out', rm_out, entrada_af.get('pl_out'))):
+            if not escolha or escolha.get('modo') not in ('existente', 'nova'):
+                raise AcaoBgpNaoSuportada(f'Escolha uma prefix-list (existente ou nova) pro {direcao.upper()} de {af}.')
+            if escolha['modo'] == 'existente':
+                nome_pl = (escolha.get('nome') or '').strip()
+                if not nome_pl or nome_pl not in dados.get('prefix_lists', {}):
+                    raise AcaoBgpNaoSuportada(
+                        f'Prefix-list "{nome_pl}" não encontrada — atualize a busca antes de confirmar.'
+                    )
+            else:
+                cidr = _validar_cidr((escolha.get('cidr') or '').strip(), af)
+                nome_pl = _nome_prefix_list_nova(tipo_peer, direcao, sufixo, cidr)
+                if nome_pl in prefix_lists_em_uso:
+                    raise AcaoBgpNaoSuportada(f'Já existe uma prefix-list chamada "{nome_pl}".')
+                prefix_lists_em_uso.add(nome_pl)
+                comandos_pl_rm.append(f'{cmd_pl} {nome_pl} seq 10 permit {cidr}')
+            comandos_pl_rm.append(f'route-map {rm_nome} permit 10')
+            comandos_pl_rm.append(f' {cmd_match} {nome_pl}')
+
+        route_maps_em_uso.add(rm_in)
+        route_maps_em_uso.add(rm_out)
+        peers_em_uso.add(peer_ip)
+
+        comandos_af.append(f'address-family {af}')
+        comandos_af.append(f' neighbor {peer_ip} activate')
+        comandos_af.append(f' neighbor {peer_ip} send-community both')
+        comandos_af.append(f' neighbor {peer_ip} route-map {rm_in} in')
+        comandos_af.append(f' neighbor {peer_ip} route-map {rm_out} out')
+        comandos_af.append('exit-address-family')
+
+    return comandos_peers + comandos_pl_rm + comandos_af
+
+
+# ═══════════════════════════════════════════════════════════════════════
 # Atualização otimista do snapshot local (depois de uma ação real bem-
 # sucedida no equipamento)
 # ═══════════════════════════════════════════════════════════════════════
