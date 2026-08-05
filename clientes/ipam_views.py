@@ -175,6 +175,31 @@ def _rede_contida_em(rede_str, alvo_net):
     return net.version == alvo_net.version and net.subnet_of(alvo_net)
 
 
+def _sync_prefixo_pool_cheia(prefixo_id):
+    """
+    Recalcula automaticamente o pool_cheia de um IPAMPrefixo tipo 'pool' a
+    partir das sub-redes vinculadas a ele (FK IPAMSubRede.prefixo).
+    Um prefixo pool fica "cheio" quando tem ao menos uma sub-rede vinculada
+    e TODAS elas estão marcadas como pool_cheia. Sem sub-redes vinculadas,
+    o flag não é mexido (fica sob controle manual do toggle na aba Prefixos).
+    Chamado após criar/editar/excluir uma sub-rede ou alternar seu pool_cheia,
+    pra que a badge "Pool Cheia" do prefixo pai fique sempre coerente.
+    """
+    if not prefixo_id:
+        return
+    try:
+        pobj = IPAMPrefixo.objects.get(id=prefixo_id)
+    except IPAMPrefixo.DoesNotExist:
+        return
+    if pobj.tipo != 'pool':
+        return
+    flags = list(IPAMSubRede.objects.filter(prefixo_id=prefixo_id).values_list('pool_cheia', flat=True))
+    novo = bool(flags) and all(flags)
+    if novo != pobj.pool_cheia:
+        pobj.pool_cheia = novo
+        pobj.save(update_fields=['pool_cheia'])
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Log de auditoria — quem mudou o quê
 # ─────────────────────────────────────────────────────────────────────────────
@@ -417,10 +442,142 @@ def ipam_prefixo_dividir(request, prefixo_id):
             )
             criados.append(rede_str)
 
+        _sync_prefixo_pool_cheia(pobj.id)
         return JsonResponse({'ok': True, 'criados': len(criados), 'pulados': len(pulados), 'subredes': criados})
     except Exception as e:
         logger.error(f'ipam_prefixo_dividir: {e}')
         return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+
+SUBDIVISOES_LIMITE = 4096
+
+
+@login_required
+@ferramenta_instancia_required('ipam')
+def ipam_prefixo_subdivisoes(request, prefixo_id):
+    """
+    Lista TODOS os blocos possíveis de um determinado prefixlen dentro do
+    prefixo (ex: um /24 dividido em todos os /28 possíveis), marcando cada
+    bloco como livre, em uso, cheio ou parcialmente ocupado — pra o usuário
+    escolher visualmente qual bloco específico usar (estilo "split network"
+    do phpIPAM), em vez de só dividir tudo de uma vez.
+    """
+    pobj = get_object_or_404(IPAMPrefixo, id=prefixo_id)
+    _checar_obj_cliente(request, pobj)
+    try:
+        prefixo_net = ipaddress.ip_network(pobj.prefixo, strict=False)
+    except ValueError as e:
+        return JsonResponse({'ok': False, 'erro': f'Prefixo inválido: {e}'}, status=400)
+
+    max_pl = 32 if prefixo_net.version == 4 else 128
+    opcoes = [pl for pl in range(prefixo_net.prefixlen + 1, min(max_pl, prefixo_net.prefixlen + 9) + 1)]
+
+    try:
+        target_pl = int(request.GET.get('prefixlen') or (opcoes[0] if opcoes else max_pl))
+    except (TypeError, ValueError):
+        return JsonResponse({'ok': False, 'erro': 'prefixlen inválido'}, status=400)
+
+    if target_pl <= prefixo_net.prefixlen or target_pl > max_pl:
+        return JsonResponse({'ok': False, 'erro': f'prefixlen deve ser entre /{prefixo_net.prefixlen+1} e /{max_pl}'}, status=400)
+
+    total_blocos = 2 ** (target_pl - prefixo_net.prefixlen)
+    if total_blocos > SUBDIVISOES_LIMITE:
+        return JsonResponse({'ok': False, 'erro': f'/{target_pl} geraria {total_blocos:,} blocos — escolha um prefixo menor (limite {SUBDIVISOES_LIMITE:,}).'}, status=400)
+
+    # Sub-redes já cadastradas do cliente que caem dentro deste prefixo
+    alocadas = []
+    for s in IPAMSubRede.objects.filter(cliente=pobj.cliente):
+        try:
+            snet = ipaddress.ip_network(s.rede, strict=False)
+        except ValueError:
+            continue
+        if snet.version == prefixo_net.version and snet.subnet_of(prefixo_net):
+            alocadas.append((snet, s))
+
+    blocos = []
+    for subnet in prefixo_net.subnets(new_prefix=target_pl):
+        exato = next((s for snet, s in alocadas if snet == subnet), None)
+        ocupante_parcial = None if exato else next(
+            (s for snet, s in alocadas if snet.subnet_of(subnet) or subnet.subnet_of(snet)), None)
+
+        if exato:
+            status = 'cheia' if exato.pool_cheia else 'em_uso'
+        elif ocupante_parcial:
+            status = 'parcial'
+        else:
+            status = 'livre'
+
+        blocos.append({
+            'rede':        str(subnet),
+            'status':      status,
+            'subrede_id':  exato.id if exato else (ocupante_parcial.id if ocupante_parcial else None),
+            'descricao':   exato.descricao if exato else (ocupante_parcial.descricao if ocupante_parcial else ''),
+            'ocupado_por': ocupante_parcial.rede if ocupante_parcial else None,
+        })
+
+    return JsonResponse({
+        'ok':            True,
+        'prefixo':       str(prefixo_net),
+        'prefixlen_pai': prefixo_net.prefixlen,
+        'prefixlen':     target_pl,
+        'total':         total_blocos,
+        'blocos':        blocos,
+        'opcoes':        [{'prefixlen': pl, 'label': _prefixlen_label(pl, prefixo_net.version),
+                            'total': 2 ** (pl - prefixo_net.prefixlen)} for pl in opcoes],
+    })
+
+
+DISPONIVEIS_TAMANHOS_MAX  = 6   # quantos tamanhos (máscaras) distintos sugerir
+DISPONIVEIS_LIMITE_POR_PL = 40  # quantos blocos livres listar por tamanho
+
+
+@login_required
+@ferramenta_instancia_required('ipam')
+def ipam_prefixo_disponiveis(request, prefixo_id):
+    """
+    Lista sub-redes LIVRES dentro do prefixo, agrupadas por tamanho
+    (prefixlen) — estilo phpIPAM "Add subnet": ao criar uma sub-rede dentro
+    de um prefixo, mostra os blocos já disponíveis pra usar em vez do
+    usuário ter que calcular/digitar o CIDR manualmente.
+    """
+    pobj = get_object_or_404(IPAMPrefixo, id=prefixo_id)
+    _checar_obj_cliente(request, pobj)
+    try:
+        prefixo_net = ipaddress.ip_network(pobj.prefixo, strict=False)
+    except ValueError as e:
+        return JsonResponse({'ok': False, 'erro': f'Prefixo inválido: {e}'}, status=400)
+
+    version = prefixo_net.version
+    max_pl  = 32 if version == 4 else 128
+
+    alocadas_nets = []
+    for s in IPAMSubRede.objects.filter(cliente=pobj.cliente):
+        try:
+            snet = ipaddress.ip_network(s.rede, strict=False)
+        except ValueError:
+            continue
+        if snet.version == version and snet.subnet_of(prefixo_net):
+            alocadas_nets.append(snet)
+
+    gaps = _gaps_livres(prefixo_net, alocadas_nets)
+
+    primeiro_pl = prefixo_net.prefixlen + 1
+    grupos = []
+    for pl in range(primeiro_pl, min(max_pl, primeiro_pl + DISPONIVEIS_TAMANHOS_MAX - 1) + 1):
+        blocos = []
+        for gap in gaps:
+            if gap.prefixlen > pl:
+                continue
+            for sub in gap.subnets(new_prefix=pl):
+                blocos.append(str(sub))
+                if len(blocos) >= DISPONIVEIS_LIMITE_POR_PL:
+                    break
+            if len(blocos) >= DISPONIVEIS_LIMITE_POR_PL:
+                break
+        if blocos:
+            grupos.append({'prefixlen': pl, 'label': _prefixlen_label(pl, version), 'blocos': blocos})
+
+    return JsonResponse({'ok': True, 'prefixo': str(prefixo_net), 'grupos': grupos})
 
 
 @login_required
@@ -462,6 +619,7 @@ def ipam_subrede_dividir(request, subrede_id):
             )
             criados.append(rede_str)
 
+        _sync_prefixo_pool_cheia(sobj.prefixo_id)
         return JsonResponse({'ok': True, 'criados': len(criados), 'pulados': len(pulados), 'subredes': criados})
     except Exception as e:
         logger.error(f'ipam_subrede_dividir: {e}')
@@ -487,6 +645,7 @@ def ipam_prefixo_marcar_em_uso(request, prefixo_id):
             status='ativo',
             descricao=descricao,
         )
+        _sync_prefixo_pool_cheia(pobj.id)
         return JsonResponse({'ok': True, 'subrede_id': sr.id})
     except Exception as e:
         return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
@@ -544,6 +703,7 @@ def ipam_prefixo_breakdown(request, prefixo_id):
                     'total_hosts': total,
                     'usados':   used,
                     'pct':      pct,
+                    'pool_cheia': s.pool_cheia,
                     '_net':     snet,   # usado internamente — removido antes de serializar
                 })
         except Exception:
@@ -592,21 +752,22 @@ def ipam_prefixo_breakdown(request, prefixo_id):
     })
 
 
-def _calcular_livres(prefixo_net, alocadas_nets, version):
+def _gaps_livres(prefixo_net, alocadas_nets):
     """
-    Encontra os gaps (espaço não alocado) dentro de prefixo_net.
-    Retorna lista de dicts com rede CIDR, tamanho e sugestões de subdivisão.
+    Encontra os gaps (espaço não alocado) dentro de prefixo_net, como uma
+    lista de ip_network já otimizada (maiores blocos possíveis alinhados).
+    Usado tanto por _calcular_livres (breakdown) quanto por
+    ipam_prefixo_disponiveis (lista de blocos livres agrupados por tamanho).
     """
     p_start = int(prefixo_net.network_address)
     p_end   = int(prefixo_net.broadcast_address)
 
-    # Colapsar sobreposições nas alocadas
     try:
         collapsed = list(ipaddress.collapse_addresses(alocadas_nets))
     except Exception:
         collapsed = sorted(alocadas_nets, key=lambda n: n.network_address)
 
-    livres = []
+    gaps = []
     cursor = p_start
 
     for net in sorted(collapsed, key=lambda n: int(n.network_address)):
@@ -614,30 +775,32 @@ def _calcular_livres(prefixo_net, alocadas_nets, version):
         net_end   = int(net.broadcast_address)
 
         if net_start > cursor:
-            # Há um gap entre cursor e net_start-1
             gap_start = ipaddress.ip_address(cursor)
             gap_end   = ipaddress.ip_address(net_start - 1)
             try:
-                cidrs = list(ipaddress.summarize_address_range(gap_start, gap_end))
-                for c in cidrs:
-                    livres.append(_livre_dict(c))
+                gaps.extend(ipaddress.summarize_address_range(gap_start, gap_end))
             except Exception:
                 pass
 
         cursor = max(cursor, net_end + 1)
 
-    # Gap final
     if cursor <= p_end:
         gap_start = ipaddress.ip_address(cursor)
         gap_end   = ipaddress.ip_address(p_end)
         try:
-            cidrs = list(ipaddress.summarize_address_range(gap_start, gap_end))
-            for c in cidrs:
-                livres.append(_livre_dict(c))
+            gaps.extend(ipaddress.summarize_address_range(gap_start, gap_end))
         except Exception:
             pass
 
-    return livres
+    return gaps
+
+
+def _calcular_livres(prefixo_net, alocadas_nets, version):
+    """
+    Encontra os gaps (espaço não alocado) dentro de prefixo_net.
+    Retorna lista de dicts com rede CIDR, tamanho e sugestões de subdivisão.
+    """
+    return [_livre_dict(g) for g in _gaps_livres(prefixo_net, alocadas_nets)]
 
 
 def _livre_dict(net):
@@ -763,8 +926,14 @@ def ipam_subrede_salvar(request, cliente_id):
         obj.prefixo = IPAMPrefixo.objects.filter(id=pid, cliente=c).first() if pid else None
         vid = body.get('vlan_id')
         obj.vlan = IPAMVlan.objects.filter(id=vid, cliente=c).first() if vid else None
+        # prefixo anterior (se estava editando) — precisa ressincronizar também
+        # caso a sub-rede tenha sido desvinculada/movida para outro prefixo
+        prefixo_id_antes = antes.get('prefixo_id') if antes else None
         obj.save()
         _ipam_log(request, c, 'subrede', obj, 'updated' if sid else 'created', antes)
+        _sync_prefixo_pool_cheia(obj.prefixo_id)
+        if prefixo_id_antes and prefixo_id_antes != obj.prefixo_id:
+            _sync_prefixo_pool_cheia(prefixo_id_antes)
         return JsonResponse({'ok': True, 'id': obj.id})
     except Exception as e:
         return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
@@ -776,8 +945,10 @@ def ipam_subrede_salvar(request, cliente_id):
 def ipam_subrede_deletar(request, subrede_id):
     obj = get_object_or_404(IPAMSubRede, id=subrede_id)
     _checar_obj_cliente(request, obj)
+    prefixo_id = obj.prefixo_id
     _ipam_log(request, obj.cliente, 'subrede', obj, 'deleted')
     obj.delete()
+    _sync_prefixo_pool_cheia(prefixo_id)
     return JsonResponse({'ok': True})
 
 
@@ -785,11 +956,12 @@ def ipam_subrede_deletar(request, subrede_id):
 @require_http_methods(['POST'])
 @ferramenta_instancia_required('ipam')
 def ipam_subrede_pool_cheia(request, subrede_id):
-    """Alterna o flag pool_cheia da sub-rede."""
+    """Alterna o flag pool_cheia da sub-rede e sincroniza o prefixo pai."""
     obj = get_object_or_404(IPAMSubRede, id=subrede_id)
     _checar_obj_cliente(request, obj)
     obj.pool_cheia = not obj.pool_cheia
     obj.save(update_fields=['pool_cheia'])
+    _sync_prefixo_pool_cheia(obj.prefixo_id)
     return JsonResponse({'ok': True, 'pool_cheia': obj.pool_cheia})
 
 
