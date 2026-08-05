@@ -8,6 +8,9 @@
 
 **Atualizado em:** 2026-07-27
 
+**Ver também:** [IRR_ATUALIZACAO_TC.md](IRR_ATUALIZACAO_TC.md) — envio/atualização de objetos IRR
+pro TC via API (fluxo diferente deste: aqui é só validação/checagem periódica).
+
 ---
 
 ## Visão Geral
