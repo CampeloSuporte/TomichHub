@@ -1016,8 +1016,10 @@ body {
 .status-menu-item .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 
 /* Abas de conversa: nunca deixa cortar — rola em vez de vazar.
-   Vale em qualquer largura, não só mobile (já cortava em desktop estreito). */
-.conv-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+   Vale em qualquer largura, não só mobile (já cortava em desktop estreito).
+   Barra de rolagem fica invisível (scroll ainda funciona por touch/wheel). */
+.conv-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.conv-tabs::-webkit-scrollbar { display: none; }
 .conv-tab { flex-shrink: 0; }
 
 .mobile-drawer-backdrop { display: none; }
@@ -1137,6 +1139,13 @@ body {
                 <i class="fas fa-inbox nav-item-icon"></i>
                 <span style="flex:1;">Caixa de Entrada</span>
                 {% if open_count %}<span class="nav-badge">{{ open_count }}</span>{% endif %}
+                <i class="fas fa-chevron-right nav-item-arrow"></i>
+            </a>
+
+            <a href="{% url 'atendimento:inbox' %}?tab=task" class="nav-item {% if request.resolver_match.url_name == 'inbox' and request.GET.tab == 'task' %}active{% endif %}">
+                <i class="fas fa-tasks nav-item-icon" style="color:#a78bfa"></i>
+                <span style="flex:1;">Conversas em Tarefa</span>
+                {% if task_conv_count %}<span class="nav-badge" style="background:rgba(124,58,237,.18);border-color:rgba(124,58,237,.4);color:#a78bfa">{{ task_conv_count }}</span>{% endif %}
                 <i class="fas fa-chevron-right nav-item-arrow"></i>
             </a>
 

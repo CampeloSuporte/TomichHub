@@ -83,6 +83,7 @@ def _base_ctx(request):
         'open_count': open_q.count(),
         'mine_count': active.filter(assigned_to=request.user).count(),
         'ongoing_count': active.count(),
+        'task_conv_count': active.filter(is_task_conv=True).count(),
         'ice_servers_json': json.dumps(build_ice_servers()),
     }
 
