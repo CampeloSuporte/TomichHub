@@ -384,6 +384,24 @@ def _proximo_indice_antes_do_catchall(termos, campo, incremento):
     return novo
 
 
+def _comandos_criar_prefix_list(vendor, nome, cidr, eh_v6):
+    """Comando(s) que criam uma prefix-list NOVA com 1 entrada (seq/index
+    10, permit exato) contendo `cidr` — mesma convenção usada em
+    `comandos_criar_sessao` pra prefix-list nova, fatorada aqui pra ser
+    reaproveitada por `comandos_novo_anuncio` (ambos os fluxos nunca
+    editam prefix-list já existente, só criam uma nova exclusiva quando o
+    operador não quer reaproveitar uma já cadastrada)."""
+    if vendor in ('cisco', 'datacom'):
+        cmd_pl = 'ipv6 prefix-list' if eh_v6 else 'ip prefix-list'
+        return [f'{cmd_pl} {nome} seq 10 permit {cidr}']
+    if vendor == 'huawei':
+        ip, tam = cidr.split('/')
+        return [f'ip ip-prefix {nome} index 10 permit {ip} {tam}']
+    if vendor == 'juniper':
+        return [f'set policy-options prefix-list {nome} {cidr}']
+    raise AcaoBgpNaoSuportada(f'Criar prefix-list nova não é suportado para "{vendor}".')
+
+
 def comandos_novo_anuncio(vendor, dados, nome_sessao, lista_escolhida=None, prefixo_novo=None):
     """`lista_escolhida` é o nome de uma das `candidatas` devolvidas por
     `bgp_matcher.py::listar_prefix_lists` — uma prefix-list JÁ EXISTENTE no
@@ -392,9 +410,18 @@ def comandos_novo_anuncio(vendor, dados, nome_sessao, lista_escolhida=None, pref
     essa prefix-list (mesmo cuidado do "parar de anunciar": é um objeto
     compartilhável) — em vez disso cria um NODE/termo/entrada de route-map
     NOVO, exclusivo da export policy DESSA sessão, que só faz `if-match`/
-    `match` nela. `prefixo_novo` é usado só pelo Mikrotik, que não tem
-    prefix-list nomeada separada (ver abaixo) — os outros fabricantes
-    ignoram esse parâmetro."""
+    `match` nela.
+
+    `prefixo_novo` tem dois papéis, mutuamente exclusivos com
+    `lista_escolhida`:
+    - Mikrotik: não tem prefix-list nomeada separada — o prefixo entra
+      direto como regra nova na chain de export (ver abaixo).
+    - Demais fabricantes: quando o operador não quer reaproveitar nenhuma
+      prefix-list existente, `prefixo_novo` é o CIDR de uma prefix-list
+      NOVA e exclusiva (nome calculado por `_nome_prefix_list_nova`, mesma
+      convenção `PL-ORIGIN-*` usada em `comandos_criar_sessao` pra
+      prefixo próprio anunciado), criada com 1 entrada e então anexada à
+      export policy exatamente como uma prefix-list já existente seria."""
     sessao = _sessao_por_nome(dados, nome_sessao)
     policy_nome = sessao.get('policy_out')
     if not policy_nome:
@@ -420,16 +447,42 @@ def comandos_novo_anuncio(vendor, dados, nome_sessao, lista_escolhida=None, pref
             f'place-before=[find chain="{policy_nome}" action=discard]'
         ]
 
-    if not lista_escolhida:
-        raise AcaoBgpNaoSuportada('Escolha uma prefix-list já existente no equipamento pra anunciar.')
-    if lista_escolhida not in dados.get('prefix_lists', {}):
-        raise AcaoBgpNaoSuportada(f'Prefix-list "{lista_escolhida}" não encontrada no snapshot.')
-    if '#' in lista_escolhida or lista_escolhida.startswith('__'):
+    if not lista_escolhida and not prefixo_novo:
         raise AcaoBgpNaoSuportada(
-            f'"{lista_escolhida}" é sintética/interna (route-filter embutido ou união de `network` '
-            'statements pra simulação) — não é um objeto nomeado real que dê pra referenciar aqui.'
+            'Escolha uma prefix-list já existente no equipamento ou informe o CIDR de uma prefix-list nova.'
         )
     termos = dados.get('policies', {}).get(policy_nome, [])
+    comandos_criacao = []
+
+    if lista_escolhida:
+        if lista_escolhida not in dados.get('prefix_lists', {}):
+            raise AcaoBgpNaoSuportada(f'Prefix-list "{lista_escolhida}" não encontrada no snapshot.')
+        if '#' in lista_escolhida or lista_escolhida.startswith('__'):
+            raise AcaoBgpNaoSuportada(
+                f'"{lista_escolhida}" é sintética/interna (route-filter embutido ou união de `network` '
+                'statements pra simulação) — não é um objeto nomeado real que dê pra referenciar aqui.'
+            )
+        nome_lista = lista_escolhida
+        entradas = dados['prefix_lists'][lista_escolhida]
+        eh_v6 = bool(entradas) and ':' in entradas[0]['prefixo']
+    else:
+        try:
+            rede = ipaddress.ip_network(prefixo_novo, strict=True)
+        except ValueError as e:
+            raise AcaoBgpNaoSuportada(f'CIDR inválido "{prefixo_novo}": {e}')
+        eh_v6 = rede.version == 6
+        if vendor == 'huawei' and eh_v6:
+            raise AcaoBgpNaoSuportada(
+                'Anunciar prefixo IPv6 novo não é suportado para Huawei nesta automação — o anexo à '
+                'policy só sabe gerar `if-match ip-prefix` (IPv4).'
+            )
+        nome_lista = _nome_prefix_list_nova(None, 'out', None, prefixo_novo)
+        if nome_lista in dados.get('prefix_lists', {}):
+            raise AcaoBgpNaoSuportada(
+                f'Já existe uma prefix-list chamada "{nome_lista}" pra este CIDR — escolha "existente" '
+                'na lista em vez de criar de novo.'
+            )
+        comandos_criacao = _comandos_criar_prefix_list(vendor, nome_lista, prefixo_novo, eh_v6)
 
     if vendor == 'huawei':
         novo_node = _proximo_indice_antes_do_catchall(termos, 'node', 10)
@@ -438,9 +491,9 @@ def comandos_novo_anuncio(vendor, dados, nome_sessao, lista_escolhida=None, pref
                 f'Não sobrou node livre antes do bloqueio final da policy "{policy_nome}" — '
                 'renumere manualmente antes de tentar esta ação.'
             )
-        return [
+        return comandos_criacao + [
             f'route-policy {policy_nome} permit node {novo_node}',
-            f'if-match ip-prefix {lista_escolhida}',
+            f'if-match ip-prefix {nome_lista}',
             'commit',
         ]
 
@@ -451,12 +504,10 @@ def comandos_novo_anuncio(vendor, dados, nome_sessao, lista_escolhida=None, pref
                 f'Não sobrou seq livre antes do bloqueio final do route-map "{policy_nome}" — '
                 'renumere manualmente antes de tentar esta ação.'
             )
-        entradas = dados['prefix_lists'][lista_escolhida]
-        eh_v6 = bool(entradas) and ':' in entradas[0]['prefixo']
         cmd_match = 'match ipv6 address prefix-list' if eh_v6 else 'match ip address prefix-list'
-        return [
+        return comandos_criacao + [
             f'route-map {policy_nome} permit {novo_seq}',
-            f'{cmd_match} {lista_escolhida}',
+            f'{cmd_match} {nome_lista}',
         ]
 
     if vendor == 'juniper':
@@ -484,8 +535,8 @@ def comandos_novo_anuncio(vendor, dados, nome_sessao, lista_escolhida=None, pref
             (t['extra']['term'] for t in termos if not t.get('prefix_lists') and t.get('acao') == 'reject'),
             None,
         )
-        cmds = [
-            f'set policy-options policy-statement {policy_nome} term {novo_term} from prefix-list {lista_escolhida}',
+        cmds = comandos_criacao + [
+            f'set policy-options policy-statement {policy_nome} term {novo_term} from prefix-list {nome_lista}',
             f'set policy-options policy-statement {policy_nome} term {novo_term} then accept',
         ]
         if termo_catchall:

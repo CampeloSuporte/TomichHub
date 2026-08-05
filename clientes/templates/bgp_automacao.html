@@ -223,6 +223,10 @@
                class="input-modal" style="width:100%; margin-bottom:12px; display:none; position:sticky; top:0; z-index:1;"
                oninput="filtrarCandidatasNovoAnuncio()">
         <div id="naResultado"></div>
+        <div class="cs-pl-nova" id="naNovaWrap" style="display:none; margin-top:10px;">
+            <input type="text" id="naNovoCidr" class="input-modal" placeholder="Ou CIDR novo, ex: 45.169.6.0/24">
+            <button type="button" class="btn pequeno" onclick="confirmarNovoAnuncioNovaLista()">Criar nova</button>
+        </div>
         <div class="modal-acoes">
             <button class="btn" onclick="fecharNovoAnuncio()">Fechar</button>
         </div>
@@ -741,6 +745,8 @@ function abrirNovoAnuncio(nomeSessao, tituloSessao) {
     document.getElementById('naBusca').style.display = 'none';
     document.getElementById('naBusca').value = '';
     document.getElementById('naResultado').innerHTML = '<div class="vazio">Carregando prefix-lists…</div>';
+    document.getElementById('naNovaWrap').style.display = 'none';
+    document.getElementById('naNovoCidr').value = '';
     document.getElementById('novoAnuncioOverlay').classList.add('aberto');
     carregarCandidatasNovoAnuncio();
 }
@@ -901,6 +907,8 @@ async function carregarCandidatasNovoAnuncio() {
             return;
         }
 
+        document.getElementById('naNovaWrap').style.display = 'flex';
+
         naCandidatas = data.candidatas || [];
         if (!naCandidatas.length) {
             resultadoEl.innerHTML = '<div class="vazio">Nenhuma prefix-list encontrada neste equipamento.</div>';
@@ -951,6 +959,17 @@ function pedirAcaoNovoAnuncio(lista) {
     const sessao = naSessaoAtual;
     fecharNovoAnuncio();
     pedirAcao('novo_anuncio', lista, { sessao, lista }, `Anunciar via prefix-list "${lista}"`);
+}
+
+// Cria uma prefix-list NOVA e exclusiva (nome calculado no backend, convenção
+// PL-ORIGIN-<cidr>) em vez de reaproveitar uma já existente — mesmo padrão
+// "🔍 Existente" / "Criar nova" já usado no modal de Configurar nova sessão.
+function confirmarNovoAnuncioNovaLista() {
+    const cidr = document.getElementById('naNovoCidr').value.trim();
+    if (!cidr) { alert('Informe o CIDR.'); return; }
+    const sessao = naSessaoAtual;
+    fecharNovoAnuncio();
+    pedirAcao('novo_anuncio', cidr, { sessao, prefixo: cidr }, `Anunciar prefix-list nova (${cidr})`);
 }
 
 function confirmarAcao(trial) {
