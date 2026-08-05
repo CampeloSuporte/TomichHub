@@ -1357,7 +1357,10 @@ def _detectar_vendor(acesso):
     try:
         import glob as _glob
         backup_dir = os.path.join(settings.MEDIA_ROOT, 'backups', str(acesso.cliente_id), str(acesso.id))
-        arquivos = sorted(_glob.glob(os.path.join(backup_dir, '*.txt')), key=os.path.getmtime, reverse=True)
+        arquivos = sorted(
+            _glob.glob(os.path.join(backup_dir, '*.txt')) + _glob.glob(os.path.join(backup_dir, '*.rsc')),
+            key=os.path.getmtime, reverse=True,
+        )
         if arquivos:
             with open(arquivos[0], 'r', errors='replace') as f:
                 conteudo = f.read(4000).lower()
