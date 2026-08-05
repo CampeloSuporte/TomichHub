@@ -57,7 +57,7 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
     <h3 style="font-size:14px;color:var(--text);margin:0 0 4px;">
         <i class="fas fa-users" style="color:var(--active);margin-right:6px;"></i>
         Grupos com Auto Atendimento Ativo
-        <span style="color:var(--muted);font-weight:400;font-size:12px;">({{ groups_ativos|length }})</span>
+        <span style="color:var(--muted);font-weight:400;font-size:12px;" id="groupsAtivosCount">({{ groups_ativos|length }})</span>
     </h3>
     {% if has_universal_flow %}
     <div class="form-hint" style="margin-bottom:10px;">
@@ -66,27 +66,25 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
     {% endif %}
     <div class="group-toggle-list" id="groupsAtivosList">
         {% for g in groups_ativos %}
-        <div class="group-toggle-item" id="auto-group-{{ g.id }}">
+        <div class="group-toggle-item" id="auto-group-{{ g.id }}" data-name="{{ g.name }}" data-conn="{{ g.connection.name }}">
             <span class="group-toggle-name">{{ g.name }}</span>
             <span class="group-toggle-conn">{{ g.connection.name }}</span>
             <button class="btn-cyber" style="padding:5px 10px;font-size:11px;border-color:#ef4444;color:#ef4444;" onclick="removeGroupAuto('{{ g.id }}')" title="Remover este grupo do auto atendimento">
                 <i class="fas fa-user-slash"></i> Remover
             </button>
         </div>
-        {% empty %}
-        <div style="color:var(--muted);font-size:12px;padding:8px 0;">Nenhum grupo recebendo auto atendimento no momento.</div>
         {% endfor %}
     </div>
+    <div id="groupsAtivosEmpty" style="color:var(--muted);font-size:12px;padding:8px 0;{% if groups_ativos %}display:none;{% endif %}">Nenhum grupo recebendo auto atendimento no momento.</div>
 
-    {% if groups_removidos %}
     <div style="margin-top:18px;">
         <h3 style="font-size:13px;color:var(--muted);margin:0 0 8px;">
             <i class="fas fa-ban"></i> Grupos removidos do Auto Atendimento
-            <span style="font-weight:400;">({{ groups_removidos|length }})</span>
+            <span style="font-weight:400;" id="groupsRemovidosCount">({{ groups_removidos|length }})</span>
         </h3>
         <div class="group-toggle-list" id="groupsRemovidosList">
             {% for g in groups_removidos %}
-            <div class="group-toggle-item" id="auto-group-{{ g.id }}">
+            <div class="group-toggle-item" id="auto-group-{{ g.id }}" data-name="{{ g.name }}" data-conn="{{ g.connection.name }}">
                 <span class="group-toggle-name">{{ g.name }}</span>
                 <span class="group-toggle-conn">{{ g.connection.name }}</span>
                 <button class="btn-cyber secondary" style="padding:5px 10px;font-size:11px;" onclick="removeGroupAuto('{{ g.id }}')" title="Readicionar este grupo ao auto atendimento">
@@ -95,8 +93,8 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
             </div>
             {% endfor %}
         </div>
+        <div id="groupsRemovidosEmpty" style="color:var(--muted);font-size:12px;padding:8px 0;{% if groups_removidos %}display:none;{% endif %}">Nenhum grupo removido do auto atendimento.</div>
     </div>
-    {% endif %}
 </div>
 
 <div class="atendimento-content">
@@ -303,15 +301,88 @@ async function deleteFlow(id) {
     if (r.ok) { document.getElementById('flow-' + id)?.remove(); }
 }
 
-async function removeGroupAuto(groupId) {
-    const r = await fetch(`/atendimento/api/groups/${groupId}/toggle-auto-atendimento/`, {
-        method: 'POST', headers: {'X-CSRFToken': CSRF}
-    });
-    if (r.ok) {
-        location.reload();
+function buildGroupItem(groupId, name, conn, excluded) {
+    const div = document.createElement('div');
+    div.className = 'group-toggle-item';
+    div.id = 'auto-group-' + groupId;
+    div.dataset.name = name;
+    div.dataset.conn = conn;
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'group-toggle-name';
+    nameSpan.textContent = name;
+
+    const connSpan = document.createElement('span');
+    connSpan.className = 'group-toggle-conn';
+    connSpan.textContent = conn;
+
+    const btn = document.createElement('button');
+    btn.onclick = function() { removeGroupAuto(groupId); };
+    if (excluded) {
+        btn.className = 'btn-cyber secondary';
+        btn.style.cssText = 'padding:5px 10px;font-size:11px;';
+        btn.title = 'Readicionar este grupo ao auto atendimento';
+        btn.innerHTML = '<i class="fas fa-undo"></i> Readicionar';
     } else {
-        alert('Erro ao atualizar o grupo');
+        btn.className = 'btn-cyber';
+        btn.style.cssText = 'padding:5px 10px;font-size:11px;border-color:#ef4444;color:#ef4444;';
+        btn.title = 'Remover este grupo do auto atendimento';
+        btn.innerHTML = '<i class="fas fa-user-slash"></i> Remover';
     }
+
+    div.appendChild(nameSpan);
+    div.appendChild(connSpan);
+    div.appendChild(btn);
+    return div;
+}
+
+function flashItem(el) {
+    el.style.transition = 'background 0.6s ease';
+    el.style.background = 'rgba(0,168,132,0.18)';
+    setTimeout(function() { el.style.background = ''; }, 900);
+}
+
+function updateGroupCounts() {
+    const ativosCount = document.getElementById('groupsAtivosList').children.length;
+    const removidosCount = document.getElementById('groupsRemovidosList').children.length;
+    document.getElementById('groupsAtivosCount').textContent = `(${ativosCount})`;
+    document.getElementById('groupsRemovidosCount').textContent = `(${removidosCount})`;
+    document.getElementById('groupsAtivosEmpty').style.display = ativosCount ? 'none' : '';
+    document.getElementById('groupsRemovidosEmpty').style.display = removidosCount ? 'none' : '';
+}
+
+async function removeGroupAuto(groupId) {
+    const item = document.getElementById('auto-group-' + groupId);
+    const btn = item ? item.querySelector('button') : null;
+    if (btn) btn.disabled = true;
+
+    let r;
+    try {
+        r = await fetch(`/atendimento/api/groups/${groupId}/toggle-auto-atendimento/`, {
+            method: 'POST', headers: {'X-CSRFToken': CSRF}
+        });
+    } catch (e) {
+        if (btn) btn.disabled = false;
+        alert('Erro de conexão ao atualizar o grupo');
+        return;
+    }
+    if (!r.ok) {
+        if (btn) btn.disabled = false;
+        alert('Erro ao atualizar o grupo');
+        return;
+    }
+    const d = await r.json();
+    if (!item) return;
+
+    const name = item.dataset.name;
+    const conn = item.dataset.conn;
+    item.remove();
+
+    const newItem = buildGroupItem(groupId, name, conn, d.auto_atendimento_excluido);
+    const targetList = document.getElementById(d.auto_atendimento_excluido ? 'groupsRemovidosList' : 'groupsAtivosList');
+    targetList.prepend(newItem);
+    flashItem(newItem);
+    updateGroupCounts();
 }
 </script>
 {% endblock %}
