@@ -5319,6 +5319,26 @@ function getCsrfToken(){
         } catch(e) { irrMsg('Erro: ' + e.message, 'erro'); }
     };
 
+    // ─── Escapa texto vindo da API (external, não confiável) ─────────────
+    function irrEsc(s) {
+        return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // ─── Explicação amigável para erros conhecidos da API do TC ──────────
+    function irrExplicarErro(msg) {
+        const low = msg.toLowerCase();
+        if (low.includes('rpki') && low.includes('roa')) {
+            return `<div style="margin-top:4px;padding:6px 8px;background:rgba(180,100,255,.08);
+                        border:1px solid #b464ff;border-radius:4px;color:#b464ff;font-size:.72rem;line-height:1.4">
+                    <i class="fas fa-shield-alt me-1"></i><strong>Conflito de ROA RPKI</strong> — já existe uma ROA
+                    registrada para esse prefixo que não autoriza este anúncio (origem ou max-length diferente
+                    do que está sendo enviado). Verifique/ajuste a ROA no gerenciador RPKI (ex: LACNIC) antes de
+                    tentar de novo — não é um erro do CRM, é uma inconsistência entre a ROA existente e o objeto route.
+                </div>`;
+        }
+        return '';
+    }
+
     // ─── Exibe o resultado (síncrono) devolvido pela API do TC ───────────
     function irrMostrarResultado(d) {
         const modal = document.getElementById('modalIrrResposta');
@@ -5347,21 +5367,21 @@ function getCsrfToken(){
                 html += `<div class="col-md-4">
                     <div style="background:rgba(63,185,80,.07);border:1px solid #30363d;border-radius:6px;padding:10px;font-size:.8rem">
                     <div style="color:#3fb950;font-weight:600;margin-bottom:6px"><i class="fas fa-check me-1"></i>Aceitos (${d.aceitos.length})</div>
-                    ${d.aceitos.map(a => `<div style="color:#e6edf3;padding:2px 0">${a}</div>`).join('')}
+                    ${d.aceitos.map(a => `<div style="color:#e6edf3;padding:2px 0">${irrEsc(a)}</div>`).join('')}
                     </div></div>`;
             }
             if (d.rejeitados.length) {
                 html += `<div class="col-md-4">
                     <div style="background:rgba(224,96,96,.07);border:1px solid #e06060;border-radius:6px;padding:10px;font-size:.8rem">
                     <div style="color:#e06060;font-weight:600;margin-bottom:6px"><i class="fas fa-times me-1"></i>Rejeitados (${d.rejeitados.length})</div>
-                    ${d.rejeitados.map(a => `<div style="color:#e6edf3;padding:2px 0">${a}</div>`).join('')}
+                    ${d.rejeitados.map(a => `<div style="color:#e6edf3;padding:2px 0">${irrEsc(a)}</div>`).join('')}
                     </div></div>`;
             }
             if (d.erros.length) {
                 html += `<div class="col-md-4">
                     <div style="background:rgba(255,170,0,.07);border:1px solid #ffaa00;border-radius:6px;padding:10px;font-size:.8rem">
                     <div style="color:#ffaa00;font-weight:600;margin-bottom:6px"><i class="fas fa-exclamation-triangle me-1"></i>Erros (${d.erros.length})</div>
-                    ${d.erros.map(a => `<div style="color:#e6edf3;padding:2px 0">${a}</div>`).join('')}
+                    ${d.erros.map(a => `<div style="color:#e6edf3;padding:2px 0">${irrEsc(a)}</div>${irrExplicarErro(a)}`).join('')}
                     </div></div>`;
             }
             resumoEl.innerHTML = html;
