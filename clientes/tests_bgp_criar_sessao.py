@@ -174,11 +174,19 @@ class ComandosCriarSessaoTest(SimpleTestCase):
         with self.assertRaises(AcaoBgpNaoSuportada):
             comandos_criar_sessao('cisco', DADOS_SNAPSHOT_BASE, params)
 
-    def test_recusa_nome_route_map_colidente(self):
-        dados = {**DADOS_SNAPSHOT_BASE, 'policies': {
-            **DADOS_SNAPSHOT_BASE['policies'],
-            'RM-PEER-CONECT-V4-IN': [],
-        }}
+    def test_recusa_nome_route_map_colidente_com_sessao_ativa(self):
+        """Route-map já existe E está em uso por uma sessão ainda ativa —
+        reaproveitar corromperia a policy dessa outra sessão, tem que
+        recusar."""
+        dados = {
+            **DADOS_SNAPSHOT_BASE,
+            'sessoes': DADOS_SNAPSHOT_BASE['sessoes'] + [
+                {'peer_ip': '198.51.100.9', 'peer_as': '65099', 'as_local': '268080',
+                 'nome': '198.51.100.9', 'descricao': 'OUTRA-SESSAO-V4', 'habilitada': True,
+                 'policy_in': 'RM-PEER-CONECT-V4-IN', 'policy_out': 'RM-OUTRO-OUT'},
+            ],
+            'policies': {**DADOS_SNAPSHOT_BASE['policies'], 'RM-PEER-CONECT-V4-IN': []},
+        }
         params = {
             'tipo_peer': 'upstream', 'sufixo': 'CONECT',
             'afs': [{
@@ -189,6 +197,38 @@ class ComandosCriarSessaoTest(SimpleTestCase):
         }
         with self.assertRaises(AcaoBgpNaoSuportada):
             comandos_criar_sessao('cisco', dados, params)
+
+    def test_reaproveita_route_map_orfao(self):
+        """Route-map com o nome calculado já existe (sobrou de uma sessão
+        criada por esta automação e removida manualmente no equipamento,
+        sem tirar o route-map/prefix-list junto), mas NENHUMA sessão
+        conhecida o referencia — é órfão, reaproveita sem erro e sem
+        gerar `route-map .../match ...` novo pra essa direção."""
+        dados = {
+            **DADOS_SNAPSHOT_BASE,
+            'policies': {
+                **DADOS_SNAPSHOT_BASE['policies'],
+                'RM-PEER-CONECT-V4-IN': [
+                    {'ordem': 10, 'prefix_lists': ['PL-DEFAULT-ROUTE'], 'acao': 'accept', 'prepend': 0, 'extra': {}},
+                ],
+            },
+        }
+        params = {
+            'tipo_peer': 'upstream', 'sufixo': 'CONECT',
+            'afs': [{
+                'af': 'ipv4', 'peer_ip': '172.16.8.1', 'remote_as': '262725',
+                'pl_in': {'modo': 'existente', 'nome': 'PL-DEFAULT-ROUTE'},
+                'pl_out': {'modo': 'nova', 'cidr': '45.169.6.0/24'},
+            }],
+        }
+        comandos = comandos_criar_sessao('cisco', dados, params)
+
+        # IN reaproveitado: nenhum "route-map RM-PEER-CONECT-V4-IN" novo gerado
+        self.assertFalse(any(c.startswith('route-map RM-PEER-CONECT-V4-IN ') for c in comandos))
+        # OUT continua sendo criado normalmente (não colidia com nada)
+        self.assertIn('route-map RM-PEER-CONECT-V4-OUT permit 10', comandos)
+        # a sessão nova ainda anexa o route-map IN reaproveitado normalmente
+        self.assertIn(' neighbor 172.16.8.1 route-map RM-PEER-CONECT-V4-IN in', comandos)
 
     def test_recusa_cidr_de_familia_errada(self):
         params = {
@@ -288,6 +328,27 @@ class AplicarEfeitoLocalmenteCriarSessaoTest(SimpleTestCase):
         self.assertIn('172.16.8.1', dados['anuncios'])
         anunciados = [a for a in dados['anuncios']['172.16.8.1'] if a['permitido']]
         self.assertTrue(any(a['prefixo'] == '45.169.6.0/24' for a in anunciados))
+
+    def test_route_map_orfao_reaproveitado_nao_duplica_termo(self):
+        dados = copy.deepcopy(DADOS_SNAPSHOT_BASE)
+        dados['policies']['RM-PEER-CONECT-V4-IN'] = [
+            {'ordem': 10, 'prefix_lists': ['PL-DEFAULT-ROUTE'], 'acao': 'accept', 'prepend': 0, 'extra': {}},
+        ]
+        params = {
+            'tipo_peer': 'upstream',
+            'sufixo': 'CONECT',
+            'afs': [{
+                'af': 'ipv4', 'peer_ip': '172.16.8.1', 'remote_as': '262725',
+                'pl_in': {'modo': 'existente', 'nome': 'PL-DEFAULT-ROUTE'},
+                'pl_out': {'modo': 'nova', 'cidr': '45.169.6.0/24'},
+            }],
+        }
+        aplicar_efeito_localmente('cisco', dados, 'criar_sessao', '', '172.16.8.1', params)
+
+        # route-map IN reaproveitado (órfão) continua com só o termo original — nada duplicado
+        self.assertEqual(len(dados['policies']['RM-PEER-CONECT-V4-IN']), 1)
+        # OUT é novo de verdade, ganhou seu termo normalmente
+        self.assertEqual(len(dados['policies']['RM-PEER-CONECT-V4-OUT']), 1)
 
     def test_nunca_levanta_excecao(self):
         dados = {}   # dados vazio/malformado de propósito

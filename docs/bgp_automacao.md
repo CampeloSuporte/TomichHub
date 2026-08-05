@@ -924,6 +924,19 @@ de verdade, usando o botão "Ativar" que já existe pra qualquer sessão (`coman
 `aplicar_efeito_localmente` grava `habilitada: False` na sessão nova, então o painel já mostra o
 status correto (desativada) assim que a ação é confirmada.
 
+**Reaproveita route-map órfão (adicionado em 2026-08-04):** caso real em produção — uma sessão criada
+por esta automação foi removida manualmente no equipamento (só o `neighbor`; o route-map/prefix-list
+associados não somem sozinhos, Cisco não limpa objeto referenciado automaticamente), e tentar recriar
+com o mesmo sufixo esbarrava sempre em "já existe um route-map chamado ... — escolha outro sufixo".
+Corrigido: quando o nome do route-map calculado já existe no equipamento, `_route_map_em_uso_por_
+sessao_ativa(dados, nome)` confere se alguma sessão CONHECIDA ainda usa esse nome como `policy_in`/
+`policy_out`. Se nenhuma usa, é órfão — reaproveitado como está (não gera `route-map .../match ...`
+novo pra essa direção, só a anexação `neighbor X route-map NOME in|out`; a escolha de prefix-list do
+operador pra essa direção é ignorada, já que o route-map já tem seu próprio match). Se alguma sessão
+ativa ainda usa esse nome, continua recusando (`AcaoBgpNaoSuportada`) — reaproveitar corromperia a
+policy dessa outra sessão. `_aplicar_criar_sessao_localmente` espelha a mesma checagem (`rm_nome in
+dados['policies']`) pra não duplicar o termo local quando o route-map foi reaproveitado.
+
 ### Auditoria e atualização otimista
 
 `AcaoBgp.tipo = 'criar_sessao'`. `aplicar_efeito_localmente` insere a(s) sessão(ões) nova(s) +

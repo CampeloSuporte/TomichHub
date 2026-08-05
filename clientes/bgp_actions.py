@@ -546,6 +546,22 @@ def _nomes_em_uso(dados):
     return peers, route_maps, prefix_lists
 
 
+def _route_map_em_uso_por_sessao_ativa(dados, nome_rm):
+    """True se alguma sessão CONHECIDA (peer já existente) usa `nome_rm`
+    como policy_in/policy_out — nesse caso o route-map é um objeto
+    compartilhado de verdade e não pode ser reaproveitado (mesmo cuidado
+    de nunca editar objeto em uso por outra sessão, já aplicado em
+    `comandos_parar_anuncio`/`comandos_novo_anuncio`). Um route-map que
+    existe no equipamento mas não está em `policy_in`/`policy_out` de
+    NENHUMA sessão é órfão — sobrou de uma sessão removida manualmente
+    fora da automação (neighbor apagado, route-map/prefix-list não) — e
+    pode ser reaproveitado sem risco."""
+    return any(
+        s.get('policy_in') == nome_rm or s.get('policy_out') == nome_rm
+        for s in dados.get('sessoes', [])
+    )
+
+
 def comandos_criar_sessao(vendor, dados, params):
     """`params`: {"tipo_peer": "upstream"|"downstream", "sufixo": str,
     "afs": [{"af": "ipv4"|"ipv6", "peer_ip": str, "remote_as": str,
@@ -559,6 +575,16 @@ def comandos_criar_sessao(vendor, dados, params):
     parar_anuncio`: objeto compartilhável, editar vazaria efeito pra
     fora desta sessão); quando `pl_in`/`pl_out` escolhe "nova", cria uma
     prefix-list EXCLUSIVA dessa sessão com 1 entrada, seq 10.
+
+    Route-map com o nome calculado (`RM-PEER-{sufixo}-{AF}-{IN|OUT}`) já
+    existindo no equipamento (`_route_map_em_uso_por_sessao_ativa`): se
+    NENHUMA sessão conhecida o usa, é órfão — sobrou de uma sessão criada
+    por esta automação e removida manualmente fora dela (o operador apaga
+    o `neighbor`, mas route-map/prefix-list não somem sozinhos) — e é
+    REAPROVEITADO como está (nenhum `route-map`/`match` novo é gerado
+    pra essa direção, só a anexação em `address-family`). Se alguma
+    sessão ativa usa esse nome, recusa (`AcaoBgpNaoSuportada`) — reusar
+    editaria/anexaria um objeto que ainda pertence a outra sessão.
 
     Ordem dos comandos gerados (pedida pelo usuário — sempre definir o
     que vai ser referenciado antes de referenciar): 1) prefix-list NOVA
@@ -625,8 +651,11 @@ def comandos_criar_sessao(vendor, dados, params):
         rm_in = f'RM-PEER-{sufixo}-{af_tag}-IN'
         rm_out = f'RM-PEER-{sufixo}-{af_tag}-OUT'
         for rm in (rm_in, rm_out):
-            if rm in route_maps_em_uso:
-                raise AcaoBgpNaoSuportada(f'Já existe um route-map chamado "{rm}" — escolha outro sufixo.')
+            if rm in route_maps_em_uso and _route_map_em_uso_por_sessao_ativa(dados, rm):
+                raise AcaoBgpNaoSuportada(
+                    f'O route-map "{rm}" já existe e está em uso por outra sessão ativa — '
+                    'reaproveitar afetaria essa outra sessão. Escolha outro sufixo.'
+                )
 
         comandos_peers.append(f'neighbor {peer_ip} remote-as {remote_as}')
         comandos_peers.append(f'neighbor {peer_ip} description {descricao}')
@@ -636,6 +665,12 @@ def comandos_criar_sessao(vendor, dados, params):
         cmd_match = 'match ipv6 address prefix-list' if af == 'ipv6' else 'match ip address prefix-list'
 
         for direcao, rm_nome, escolha in (('in', rm_in, entrada_af.get('pl_in')), ('out', rm_out, entrada_af.get('pl_out'))):
+            if rm_nome in route_maps_em_uso:
+                # Órfão reaproveitado (já validado acima que nenhuma
+                # sessão ativa o usa) — não mexe nele, a escolha de
+                # prefix-list do operador pra essa direção é ignorada
+                # porque o route-map já tem seu próprio match configurado.
+                continue
             if not escolha or escolha.get('modo') not in ('existente', 'nova'):
                 raise AcaoBgpNaoSuportada(f'Escolha uma prefix-list (existente ou nova) pro {direcao.upper()} de {af}.')
             if escolha['modo'] == 'existente':
@@ -736,6 +771,10 @@ def _aplicar_criar_sessao_localmente(dados, params):
         })
 
         for direcao, rm_nome, escolha in (('in', rm_in, entrada_af.get('pl_in')), ('out', rm_out, entrada_af.get('pl_out'))):
+            if rm_nome in dados.get('policies', {}):
+                # Route-map órfão reaproveitado (ver comandos_criar_sessao)
+                # — já tinha seu termo/match de antes, não duplica.
+                continue
             if not escolha:
                 continue
             if escolha.get('modo') == 'nova':
