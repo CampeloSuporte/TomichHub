@@ -33,6 +33,10 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
 .cat-chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; min-height:0; }
 .cat-chip { display:inline-flex; align-items:center; background:rgba(233,30,140,.12); color:var(--active); padding:3px 10px; border-radius:4px; font-size:12px; font-weight:600; }
 .group-search { margin-bottom:8px; }
+.group-toggle-list { display:flex; flex-direction:column; gap:6px; }
+.group-toggle-item { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:7px; padding:8px 12px; display:flex; align-items:center; gap:10px; }
+.group-toggle-name { font-size:13px; font-weight:600; color:var(--text); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.group-toggle-conn { font-size:11px; color:var(--muted); flex-shrink:0; }
 {% endblock %}
 
 {% block main_content %}
@@ -47,6 +51,52 @@ input:checked + .toggle-slider:before { transform:translateX(18px); }
     <div class="header-actions">
         <button class="btn-cyber" onclick="openFlowModal()"><i class="fas fa-plus"></i> Novo Fluxo</button>
     </div>
+</div>
+
+<div class="atendimento-content" style="margin-bottom:24px;">
+    <h3 style="font-size:14px;color:var(--text);margin:0 0 4px;">
+        <i class="fas fa-users" style="color:var(--active);margin-right:6px;"></i>
+        Grupos com Auto Atendimento Ativo
+        <span style="color:var(--muted);font-weight:400;font-size:12px;">({{ groups_ativos|length }})</span>
+    </h3>
+    {% if has_universal_flow %}
+    <div class="form-hint" style="margin-bottom:10px;">
+        <i class="fas fa-info-circle"></i> Existe um fluxo universal ativo (sem grupos específicos vinculados) — por padrão, <strong>todos</strong> os grupos recebem auto atendimento. Use "Remover" pra excluir um grupo específico, mesmo com o fluxo universal ligado.
+    </div>
+    {% endif %}
+    <div class="group-toggle-list" id="groupsAtivosList">
+        {% for g in groups_ativos %}
+        <div class="group-toggle-item" id="auto-group-{{ g.id }}">
+            <span class="group-toggle-name">{{ g.name }}</span>
+            <span class="group-toggle-conn">{{ g.connection.name }}</span>
+            <button class="btn-cyber" style="padding:5px 10px;font-size:11px;border-color:#ef4444;color:#ef4444;" onclick="removeGroupAuto('{{ g.id }}')" title="Remover este grupo do auto atendimento">
+                <i class="fas fa-user-slash"></i> Remover
+            </button>
+        </div>
+        {% empty %}
+        <div style="color:var(--muted);font-size:12px;padding:8px 0;">Nenhum grupo recebendo auto atendimento no momento.</div>
+        {% endfor %}
+    </div>
+
+    {% if groups_removidos %}
+    <div style="margin-top:18px;">
+        <h3 style="font-size:13px;color:var(--muted);margin:0 0 8px;">
+            <i class="fas fa-ban"></i> Grupos removidos do Auto Atendimento
+            <span style="font-weight:400;">({{ groups_removidos|length }})</span>
+        </h3>
+        <div class="group-toggle-list" id="groupsRemovidosList">
+            {% for g in groups_removidos %}
+            <div class="group-toggle-item" id="auto-group-{{ g.id }}">
+                <span class="group-toggle-name">{{ g.name }}</span>
+                <span class="group-toggle-conn">{{ g.connection.name }}</span>
+                <button class="btn-cyber secondary" style="padding:5px 10px;font-size:11px;" onclick="removeGroupAuto('{{ g.id }}')" title="Readicionar este grupo ao auto atendimento">
+                    <i class="fas fa-undo"></i> Readicionar
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <div class="atendimento-content">
@@ -251,6 +301,17 @@ async function deleteFlow(id) {
     if (!confirm('Remover este fluxo?')) return;
     const r = await fetch(`/atendimento/api/chat-flows/${id}/`, { method: 'DELETE', headers: {'X-CSRFToken': CSRF} });
     if (r.ok) { document.getElementById('flow-' + id)?.remove(); }
+}
+
+async function removeGroupAuto(groupId) {
+    const r = await fetch(`/atendimento/api/groups/${groupId}/toggle-auto-atendimento/`, {
+        method: 'POST', headers: {'X-CSRFToken': CSRF}
+    });
+    if (r.ok) {
+        location.reload();
+    } else {
+        alert('Erro ao atualizar o grupo');
+    }
 }
 </script>
 {% endblock %}

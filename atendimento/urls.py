@@ -73,6 +73,7 @@ urlpatterns = [
 
     # APIs novas — Grupos
     path('api/groups/<int:group_id>/toggle-ai/', views.api_group_toggle_ai, name='api_group_toggle_ai'),
+    path('api/groups/<int:group_id>/toggle-auto-atendimento/', views.api_group_toggle_auto_atendimento, name='api_group_toggle_auto_atendimento'),
     path('api/groups/<int:group_id>/set-company/', views.api_group_set_company, name='api_group_set_company'),
 
     # API Clientes (empresas) → grupos
