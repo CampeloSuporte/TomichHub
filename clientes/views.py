@@ -7284,13 +7284,13 @@ def _irr_gerar_objetos(cfg):
     )
 
     # ── AS-set CUSTOMERS ──────────────────────────────────────────────────────
+    # `members` é opcional no as-set (RFC 2622) — sem clientes, a linha é
+    # simplesmente omitida em vez de usar um valor inválido como placeholder.
     cust_members = ''
     for c in (cfg.customer_asns or []):
         if c.get('asn'):
             nome_comment = f'  # {c["nome"]}' if c.get('nome') else ''
             cust_members += f'members: {c["asn"]}{nome_comment}\n'
-    if not cust_members:
-        cust_members = 'members: #\n'
     partes.append(
         f'as-set: {as_full}:AS-CUSTOMERS\n'
         f'descr:  as-set containing {as_full} and its downstream customers\n'
