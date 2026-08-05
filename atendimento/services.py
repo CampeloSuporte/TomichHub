@@ -908,7 +908,13 @@ class ConversationService:
         grupos cadastrados nunca foram, então o cliente mandava mensagem e
         só um humano acabava respondendo, bem mais tarde.
         Flow com group_ids preenchido continua tendo prioridade (permite um
-        fluxo dedicado pra um cliente específico no futuro)."""
+        fluxo dedicado pra um cliente específico no futuro).
+
+        `auto_atendimento_excluido` é um opt-out explícito por grupo — sem ele,
+        não havia como tirar um grupo específico do auto atendimento quando
+        existe um fluxo universal ativo (ele pegaria todo mundo de novo)."""
+        if group.auto_atendimento_excluido:
+            return None
         gid = str(group.id)
         flows = list(ChatFlow.objects.filter(active=True))
         for f in flows:

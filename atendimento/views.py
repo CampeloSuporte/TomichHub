@@ -1314,10 +1314,33 @@ def api_kanban_move_card(request, card_id):
 def auto_atendimento(request):
     flows = ChatFlow.objects.all()
     groups = ContactGroup.objects.select_related('connection').order_by('name')
+
+    # Quais grupos recebem auto atendimento de fato hoje (mesma lógica de
+    # ConversationService._flow_do_grupo): um fluxo ativo com group_ids vazio
+    # vale como universal e pega todo mundo que não estiver excluído.
+    active_flows = [f for f in flows if f.active]
+    explicit_group_ids = set()
+    has_universal_flow = False
+    for f in active_flows:
+        if f.group_ids:
+            explicit_group_ids.update(str(x) for x in f.group_ids)
+        else:
+            has_universal_flow = True
+
+    groups_ativos, groups_removidos = [], []
+    for g in groups:
+        if g.auto_atendimento_excluido:
+            groups_removidos.append(g)
+        elif has_universal_flow or str(g.id) in explicit_group_ids:
+            groups_ativos.append(g)
+
     context = {
         **_base_ctx(request),
         'flows': flows,
         'groups': groups,
+        'groups_ativos': groups_ativos,
+        'groups_removidos': groups_removidos,
+        'has_universal_flow': has_universal_flow,
     }
     return render(request, 'atendimento/auto_atendimento.html', context)
 
@@ -1839,6 +1862,20 @@ def api_group_toggle_ai(request, group_id):
         group.ai_enabled = not group.ai_enabled
         group.save()
         return JsonResponse({'success': True, 'ai_enabled': group.ai_enabled})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_group_toggle_auto_atendimento(request, group_id):
+    """Remove/readiciona um grupo do auto atendimento — opt-out explícito que
+    vale inclusive contra um fluxo universal (group_ids vazio) ativo."""
+    group = get_object_or_404(ContactGroup, id=group_id)
+    try:
+        group.auto_atendimento_excluido = not group.auto_atendimento_excluido
+        group.save(update_fields=['auto_atendimento_excluido'])
+        return JsonResponse({'success': True, 'auto_atendimento_excluido': group.auto_atendimento_excluido})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 

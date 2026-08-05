@@ -79,6 +79,11 @@ class ContactGroup(models.Model):
     company = models.ForeignKey(Company, on_delete=models.SET_NULL, null=True, blank=True, related_name='groups')
     ai_enabled = models.BooleanField(default=False)
     blocked = models.BooleanField(default=False)
+    auto_atendimento_excluido = models.BooleanField(
+        default=False,
+        help_text='Se marcado, este grupo nunca recebe auto atendimento — nem por um '
+                   'fluxo específico, nem pelo fluxo universal (group_ids vazio).'
+    )
     status = models.CharField(
         max_length=20,
         choices=[
