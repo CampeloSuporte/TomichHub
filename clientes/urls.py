@@ -184,7 +184,6 @@ urlpatterns = [
     path('<int:cliente_id>/irr/preview/',      views.irr_preview,          name='irr_preview'),
     path('<int:cliente_id>/irr/enviar/',       views.irr_enviar,           name='irr_enviar'),
     path('<int:cliente_id>/irr/consultar/',    views.irr_consultar_whois,   name='irr_consultar_whois'),
-    path('<int:cliente_id>/irr/verificar/',    views.irr_verificar_resposta, name='irr_verificar_resposta'),
 
     # ── Firmware / Gerenciador de Arquivos ───────────────────────────────
     path('firmware/',                                       fw.firmware_index,            name='firmware_index'),

@@ -975,7 +975,7 @@ class ConfiguracaoSistema(models.Model):
 # ── IRR Config ────────────────────────────────────────────────────────────────
 
 class IRRConfig(models.Model):
-    """Configuração IRR por cliente — usada para gerar e enviar atualização ao TC via e-mail."""
+    """Configuração IRR por cliente — usada para gerar e enviar atualização de objetos ao TC via API (bgp.net.br/v1/submit)."""
     cliente = models.OneToOneField(Cliente, on_delete=models.CASCADE, related_name='irr_config')
 
     # Identificadores principais
@@ -985,8 +985,9 @@ class IRRConfig(models.Model):
 
     # Maintainer
     nic_hdl        = models.CharField(max_length=80, help_text='Handle NIC. Ex: JOLJE19-NICBR')
-    irr_password   = models.CharField(max_length=200, help_text='Senha plaintext enviada no e-mail IRR')
+    irr_password   = models.CharField(max_length=200, help_text='Senha do mntner — usada tanto no objeto RPSL quanto na autenticação da API (campo passwords)')
     auth_bcrypt    = models.CharField(max_length=400, blank=True, help_text='Hash BCRYPT-PW do mntner')
+    api_key        = models.CharField(max_length=200, blank=True, help_text='API key do mntner migrado (opcional) — gerada na interface web do TC, usada como alternativa/complemento à senha na API')
 
     # Contato
     email_contato  = models.EmailField(help_text='E-mail do responsável técnico (changed, upd-to, notify)')

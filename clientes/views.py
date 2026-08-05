@@ -7159,11 +7159,19 @@ def openvpn_usuario_deletar(request, usuario_id):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# IRR Config — Atualização de objetos IRR via e-mail (TC)
+# IRR Config — Atualização de objetos IRR no TC (bgp.net.br) via API HTTP
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def _irr_gerar_corpo(cfg):
-    """Gera o corpo completo do e-mail de atualização IRR a partir de um IRRConfig."""
+IRR_TC_API_URL = 'https://bgp.net.br/v1/submit/'
+
+
+def _irr_gerar_objetos(cfg):
+    """Gera a lista de objetos RPSL (um item por objeto) a partir de um IRRConfig.
+
+    Cada item é o texto completo de um objeto (person, mntner, route-set, route,
+    route6, as-set, aut-num) — sem a pseudo-linha `password:`, já que na API essa
+    credencial vai à parte, no campo raiz `passwords`.
+    """
     from datetime import date
     hoje = date.today().strftime('%Y%m%d')
     asn     = cfg.asn
@@ -7173,9 +7181,6 @@ def _irr_gerar_corpo(cfg):
     email   = cfg.email_contato
 
     partes = []
-
-    # ── Autenticação ──────────────────────────────────────────────────────────
-    partes.append(f'password: {cfg.irr_password}\n')
 
     # ── Person ───────────────────────────────────────────────────────────────
     partes.append(
@@ -7354,7 +7359,14 @@ def _irr_gerar_corpo(cfg):
         f'source:         TC\n'
     )
 
-    return '\n\n'.join(partes)
+    return partes
+
+
+def _irr_gerar_corpo(cfg):
+    """Gera o corpo textual completo (password: + objetos RPSL) — usado apenas
+    no preview e como referência para envio manual por e-mail, se necessário."""
+    objetos = _irr_gerar_objetos(cfg)
+    return f'password: {cfg.irr_password}\n\n' + '\n\n'.join(objetos)
 
 
 @login_required
@@ -7374,6 +7386,7 @@ def irr_config_get(request, cliente_id):
             'nic_hdl': cfg.nic_hdl,
             'irr_password': cfg.irr_password,
             'auth_bcrypt': cfg.auth_bcrypt,
+            'api_key': cfg.api_key,
             'email_contato': cfg.email_contato,
             'email_abuse': cfg.email_abuse,
             'website': cfg.website,
@@ -7423,7 +7436,7 @@ def irr_config_salvar(request, cliente_id):
     cfg, _ = IRRConfig.objects.get_or_create(cliente=cliente)
 
     campos_simples = [
-        'asn','as_name','empresa_descr','nic_hdl','irr_password','auth_bcrypt',
+        'asn','as_name','empresa_descr','nic_hdl','irr_password','auth_bcrypt','api_key',
         'email_contato','email_abuse','website','person_name','address','phone',
         'geo_pais','geo_pais_alpha3','geo_pais_num','geo_estado','geo_cidade',
     ]
@@ -7451,16 +7464,25 @@ def irr_preview(request, cliente_id):
     except IRRConfig.DoesNotExist:
         return JsonResponse({'ok': False, 'erro': 'Configuração IRR não encontrada. Salve os dados primeiro.'}, status=404)
     corpo = _irr_gerar_corpo(cfg)
-    return JsonResponse({'ok': True, 'corpo': corpo, 'assunto': 'IRR Route Update', 'destino': 'auto-dbm@bgp.net.br'})
+    return JsonResponse({
+        'ok': True, 'corpo': corpo,
+        'assunto': 'IRR Route Update',
+        'destino': 'auto-dbm@bgp.net.br',
+        'api_endpoint': IRR_TC_API_URL,
+    })
 
 
 @login_required
 @require_http_methods(['POST'])
 @modulo_habilitado_required('rpki_irr')
 def irr_enviar(request, cliente_id):
-    """Gera e envia o e-mail de atualização IRR ao servidor TC."""
-    import smtplib
-    from email.mime.text import MIMEText
+    """Envia a atualização de objetos IRR ao TC via API HTTP (bgp.net.br/v1/submit).
+
+    Substitui o antigo envio por e-mail para auto-dbm@bgp.net.br: a API aceita o
+    mesmo texto RPSL por objeto e a mesma senha do mntner (campo `passwords`),
+    mas responde de forma síncrona com o resultado por objeto — não é mais
+    necessário verificar uma caixa de e-mail depois.
+    """
     from .models import IRRConfig
 
     cliente = get_object_or_404(Cliente, id=cliente_id)
@@ -7469,38 +7491,63 @@ def irr_enviar(request, cliente_id):
     except IRRConfig.DoesNotExist:
         return JsonResponse({'ok': False, 'erro': 'Configuração IRR não encontrada.'}, status=404)
 
-    corpo   = _irr_gerar_corpo(cfg)
-    assunto = 'IRR Route Update'
-    destino = 'auto-dbm@bgp.net.br'
+    if not cfg.irr_password and not cfg.api_key:
+        return JsonResponse({'ok': False, 'erro': 'Informe a senha do mntner (ou API key) antes de enviar.'}, status=400)
 
-    # Configuração SMTP global
-    from .models import ConfiguracaoSistema
-    smtp_cfg  = ConfiguracaoSistema.get()
-    smtp_host = smtp_cfg.smtp_host or getattr(settings, 'EMAIL_HOST', '')
-    smtp_port = smtp_cfg.smtp_port or getattr(settings, 'EMAIL_PORT', 587)
-    smtp_user = smtp_cfg.smtp_user or getattr(settings, 'EMAIL_HOST_USER', '')
-    smtp_pass = smtp_cfg.smtp_pass or getattr(settings, 'EMAIL_HOST_PASSWORD', '')
-    remetente = smtp_cfg.smtp_from or cfg.email_contato
-
-    if not smtp_host or not smtp_user:
-        return JsonResponse({'ok': False, 'erro': 'SMTP não configurado. Acesse Sistema → Configurações para preencher as credenciais SMTP.'}, status=400)
+    objetos = _irr_gerar_objetos(cfg)
+    payload = {'objects': [{'object_text': obj} for obj in objetos]}
+    if cfg.irr_password:
+        payload['passwords'] = [cfg.irr_password]
+    if cfg.api_key:
+        payload['api_keys'] = [cfg.api_key]
 
     try:
-        msg = MIMEText(corpo, 'plain', 'utf-8')
-        msg['Subject'] = assunto
-        msg['From']    = remetente
-        msg['To']      = destino
+        resp = requests.post(IRR_TC_API_URL, json=payload, timeout=30)
+    except requests.RequestException as e:
+        return JsonResponse({'ok': False, 'erro': f'Falha ao conectar à API do TC: {e}'}, status=502)
 
-        with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as server:
-            server.ehlo()
-            if smtp_cfg.smtp_use_tls:
-                server.starttls()
-            server.login(smtp_user, smtp_pass)
-            server.sendmail(remetente, [destino], msg.as_string())
+    if resp.status_code == 400:
+        return JsonResponse({'ok': False, 'erro': f'JSON rejeitado pela API do TC: {resp.text[:500]}'}, status=400)
 
-        return JsonResponse({'ok': True, 'mensagem': f'E-mail enviado com sucesso para {destino}'})
-    except Exception as e:
-        return JsonResponse({'ok': False, 'erro': f'Falha ao enviar e-mail: {str(e)}'}, status=500)
+    try:
+        resultado = resp.json()
+    except ValueError:
+        return JsonResponse({
+            'ok': False,
+            'erro': f'Resposta inesperada da API do TC (HTTP {resp.status_code}): {resp.text[:500]}',
+        }, status=502)
+
+    resumo   = resultado.get('summary', {}) or {}
+    objs_out = resultado.get('objects', []) or []
+
+    aceitos, rejeitados, erros = [], [], []
+    for o in objs_out:
+        rotulo = f"{o.get('object_class', '?')}: {o.get('rpsl_pk', '')}"
+        if o.get('successful'):
+            aceitos.append(rotulo)
+        else:
+            rejeitados.append(rotulo)
+            for msg_erro in (o.get('error_messages') or []):
+                erros.append(f'{rotulo} — {msg_erro}')
+
+    total_falhas = resumo.get('failed', len(rejeitados))
+    if total_falhas == 0:
+        status_geral = 'sucesso'
+    elif aceitos:
+        status_geral = 'parcial'
+    else:
+        status_geral = 'erro'
+
+    return JsonResponse({
+        'ok':           True,
+        'status_geral': status_geral,
+        'resumo':       resumo,
+        'aceitos':      aceitos,
+        'rejeitados':   rejeitados,
+        'erros':        erros,
+        'objetos':      objs_out,
+        'mensagem':     f"{resumo.get('successful', len(aceitos))} objeto(s) aceito(s), {total_falhas} falha(s).",
+    })
 
 
 @login_required
@@ -7626,197 +7673,6 @@ def irr_consultar_whois(request, cliente_id):
     }
 
     return JsonResponse(dados)
-
-
-@login_required
-@modulo_habilitado_required('rpki_irr')
-def irr_verificar_resposta(request, cliente_id):
-    """
-    Conecta via IMAP à caixa do remetente e busca a resposta do TC
-    referente à atualização IRR mais recente enviada para este cliente.
-
-    O match é feito pelo ASN do cliente (ex: "AS65001" / "MAINT-AS65001")
-    presente no corpo da resposta, garantindo que e-mails de outros clientes
-    não sejam retornados erroneamente.
-    """
-    import imaplib
-    import email as email_lib
-    from email.header import decode_header
-    from datetime import date, timedelta
-    from .models import ConfiguracaoSistema, IRRConfig
-
-    cliente = get_object_or_404(Cliente, id=cliente_id)
-
-    smtp_cfg = ConfiguracaoSistema.get()
-    if not smtp_cfg.imap_host or not smtp_cfg.smtp_user:
-        return JsonResponse({
-            'ok': False,
-            'erro': 'IMAP não configurado. Acesse Sistema → Configurações e preencha Host IMAP.'
-        }, status=400)
-
-    try:
-        cfg = cliente.irr_config
-    except IRRConfig.DoesNotExist:
-        return JsonResponse({'ok': False, 'erro': 'Configuração IRR não encontrada.'}, status=404)
-
-    if not cfg.asn:
-        return JsonResponse({'ok': False, 'erro': 'ASN não configurado no IRR do cliente.'}, status=400)
-
-    # Termos que identificam univocamente este AS na resposta do TC
-    asn_str   = str(cfg.asn).strip().lstrip('AS').lstrip('as')
-    as_full   = f'AS{asn_str}'          # ex: AS65001
-    mntner    = f'MAINT-AS{asn_str}'    # ex: MAINT-AS65001
-
-    def _extrair_corpo(msg):
-        """Extrai texto simples de uma mensagem email."""
-        corpo = ''
-        if msg.is_multipart():
-            for part in msg.walk():
-                if part.get_content_type() == 'text/plain':
-                    payload = part.get_payload(decode=True)
-                    if payload:
-                        corpo = payload.decode(part.get_content_charset() or 'utf-8', errors='replace')
-                        break
-        else:
-            payload = msg.get_payload(decode=True)
-            if payload:
-                corpo = payload.decode(msg.get_content_charset() or 'utf-8', errors='replace')
-        return corpo
-
-    def _decode_subject(raw):
-        subject = ''
-        for part, enc in decode_header(raw):
-            if isinstance(part, bytes):
-                subject += part.decode(enc or 'utf-8', errors='replace')
-            else:
-                subject += str(part)
-        return subject
-
-    try:
-        # ── Conecta IMAP ─────────────────────────────────────────────────────
-        if smtp_cfg.imap_use_ssl:
-            mail = imaplib.IMAP4_SSL(smtp_cfg.imap_host, smtp_cfg.imap_port)
-        else:
-            mail = imaplib.IMAP4(smtp_cfg.imap_host, smtp_cfg.imap_port)
-
-        mail.login(smtp_cfg.smtp_user, smtp_cfg.smtp_pass)
-        mail.select('INBOX')
-
-        # ── Busca candidatos nos últimos 30 dias ─────────────────────────────
-        data_limite = (date.today() - timedelta(days=30)).strftime('%d-%b-%Y')
-
-        # Tenta primeiro: FROM nic.br com subject IRR
-        _, msgs = mail.search(None, f'(SINCE {data_limite} FROM "nic.br" SUBJECT "IRR")')
-        ids = msgs[0].split() if msgs[0] else []
-
-        if not ids:
-            # Fallback 1: apenas FROM nic.br
-            _, msgs = mail.search(None, f'(SINCE {data_limite} FROM "nic.br")')
-            ids = msgs[0].split() if msgs[0] else []
-
-        if not ids:
-            # Fallback 2: apenas SUBJECT IRR
-            _, msgs = mail.search(None, f'(SINCE {data_limite} SUBJECT "IRR")')
-            ids = msgs[0].split() if msgs[0] else []
-
-        if not ids:
-            mail.logout()
-            return JsonResponse({
-                'ok': True,
-                'encontrado': False,
-                'mensagem': (
-                    'Nenhuma resposta do TC encontrada nos últimos 30 dias. '
-                    'O e-mail pode ainda não ter sido processado — aguarde alguns minutos e tente novamente.'
-                )
-            })
-
-        # ── Itera do mais recente para o mais antigo buscando match do ASN ──
-        msg_encontrada = None
-        for uid in reversed(ids):
-            _, data = mail.fetch(uid, '(BODY.PEEK[TEXT])')
-            if not data or not data[0]:
-                continue
-            raw_text = data[0][1] if isinstance(data[0], tuple) else b''
-            texto = raw_text.decode('utf-8', errors='replace') if isinstance(raw_text, bytes) else str(raw_text)
-
-            if as_full in texto or mntner in texto:
-                # Busca o e-mail completo apenas quando há match
-                _, full_data = mail.fetch(uid, '(RFC822)')
-                if full_data and full_data[0]:
-                    msg_encontrada = email_lib.message_from_bytes(full_data[0][1])
-                break
-
-        mail.logout()
-
-        if msg_encontrada is None:
-            return JsonResponse({
-                'ok': True,
-                'encontrado': False,
-                'mensagem': (
-                    f'Nenhuma resposta do TC encontrada para {as_full} nos últimos 30 dias. '
-                    'Verifique se o envio foi realizado e aguarde alguns minutos.'
-                )
-            })
-
-        # ── Extrai metadados e corpo ─────────────────────────────────────────
-        subject   = _decode_subject(msg_encontrada.get('Subject', ''))
-        remetente = msg_encontrada.get('From', '')
-        data_msg  = msg_encontrada.get('Date', '')
-        corpo     = _extrair_corpo(msg_encontrada)
-
-        # ── Parseia resultado: ACCEPTED / REJECTED por objeto RPSL ──────────
-        aceitos      = []
-        rejeitados   = []
-        erros        = []
-        objeto_atual = ''
-
-        for i, linha in enumerate(corpo.splitlines()):
-            l = linha.strip()
-            for tipo in ('route:', 'route6:', 'aut-num:', 'mntner:', 'person:',
-                         'route-set:', 'as-set:'):
-                if l.lower().startswith(tipo):
-                    objeto_atual = l
-                    break
-            lu = l.upper()
-            if lu == 'ACCEPTED' or lu.startswith('OBJECT ACCEPTED'):
-                aceitos.append(objeto_atual or f'objeto #{i}')
-                objeto_atual = ''
-            elif lu in ('REJECTED', 'FAILED') or lu.startswith('OBJECT REJECTED'):
-                rejeitados.append(objeto_atual or f'objeto #{i}')
-                objeto_atual = ''
-            elif '***Error***' in linha or ('ERROR' in lu and ':' in l):
-                erros.append(l)
-
-        subj_up = subject.upper()
-        if 'SUCCESS' in subj_up:
-            status_geral = 'sucesso'
-        elif 'FAIL' in subj_up or 'ERROR' in subj_up:
-            status_geral = 'erro'
-        elif rejeitados or erros:
-            status_geral = 'parcial'
-        elif aceitos:
-            status_geral = 'sucesso'
-        else:
-            status_geral = 'desconhecido'
-
-        return JsonResponse({
-            'ok':           True,
-            'encontrado':   True,
-            'as_consultado': as_full,
-            'subject':      subject,
-            'remetente':    remetente,
-            'data_msg':     data_msg,
-            'status_geral': status_geral,
-            'aceitos':      aceitos,
-            'rejeitados':   rejeitados,
-            'erros':        erros,
-            'corpo':        corpo[:6000],
-        })
-
-    except imaplib.IMAP4.error as e:
-        return JsonResponse({'ok': False, 'erro': f'Falha IMAP: {str(e)}'}, status=500)
-    except Exception as e:
-        return JsonResponse({'ok': False, 'erro': f'Erro ao verificar resposta: {str(e)}'}, status=500)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
