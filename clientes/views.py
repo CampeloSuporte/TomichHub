@@ -7502,7 +7502,11 @@ def irr_enviar(request, cliente_id):
         payload['api_keys'] = [cfg.api_key]
 
     try:
-        resp = requests.post(IRR_TC_API_URL, json=payload, timeout=30)
+        # Submissões válidas (objetos reais, senha correta) podem levar bem mais
+        # tempo que payloads inválidos — o TC responde rejeições quase na hora,
+        # mas criações/alterações reais parecem ficar perto do teto de 120s do
+        # worker gunicorn. 100s dá folga suficiente sem estourar esse teto.
+        resp = requests.post(IRR_TC_API_URL, json=payload, timeout=100)
     except requests.RequestException as e:
         return JsonResponse({'ok': False, 'erro': f'Falha ao conectar à API do TC: {e}'}, status=502)
 
