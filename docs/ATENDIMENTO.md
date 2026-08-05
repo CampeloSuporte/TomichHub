@@ -4,7 +4,7 @@
 
 Plataforma de atendimento ao cliente integrada ao CRM, similar ao Chatwoot. Centraliza o gerenciamento de tickets de suporte via WhatsApp (Evolution API v2), com tarefas, alertas automáticos, lembretes pessoais e relatórios completos.
 
-**Última atualização:** 03/06/2026  
+**Última atualização:** 05/08/2026  
 **Status:** ✅ FUNCIONAL  
 **Stack:** Django, PostgreSQL, Celery, WebSocket (Django Channels), JavaScript vanilla
 
@@ -15,8 +15,8 @@ Plataforma de atendimento ao cliente integrada ao CRM, similar ao Chatwoot. Cent
 | Recurso | Descrição |
 |---------|-----------|
 | Dashboard | Estatísticas em tempo real de chamados abertos, resolvidos, agentes online |
-| Inbox | 4 abas: Assumidos / Abertos / Em Andamento / **Em Tarefa** |
-| Chat | Interface WhatsApp com envio de mídia, tags, transferência, terminal de hosts |
+| Inbox | 3 abas: Assumidos / Abertos / Em Andamento — **indicador de mensagem não lida** em tempo real |
+| Chat | Visual estilo **WhatsApp Dark** — bolhas com rabicho, ✓✓ de enviado, campo em pílula; envio de mídia, tags, transferência, terminal de hosts |
 | **Tarefas** | Board em 4 colunas com vinculação de conversas e lembretes automáticos |
 | Auto Atendimento | Fluxo de boas-vindas que coleta assunto e categoria automaticamente |
 | Relatórios | Tabela + PDF com assunto, categoria, agente, duração por empresa/período |
@@ -63,6 +63,11 @@ id (UUID), conversation (FK), sender_type (customer/agent/ai/system/internal),
 sender (FK User), message_type (text/image/document/audio/video/location/system),
 content, external_id (unique), attachment_url, is_internal, is_read
 ```
+
+`is_read` já existia mas não era usado pra exibir nada — desde 05/08/2026 é a fonte de
+verdade do **indicador de mensagem não lida** (ver seção própria abaixo). É marcado
+`True` para mensagens `sender_type='customer'` sempre que a conversa é aberta
+(`conversation_detail` ou o mini-chat flutuante das bolhas).
 
 ### `Task` *(novo — migration 0005)*
 Tarefa da equipe de atendimento.
@@ -131,10 +136,15 @@ Quando uma conversa é vinculada a uma tarefa:
 - No webhook (`services.py`), `get_or_create_conversation()` detecta `is_task_conv=True` e cria uma **nova conversa** em vez de adicionar à existente
 - Ao desvincular todas as tarefas, `is_task_conv` volta para `False`
 
-### Aba "Tarefas" no Inbox
-- Quarta aba com badge roxo
-- Lista todas as conversas com `is_task_conv=True` e status ativo
-- Faixa informativa no topo da lista
+### Conversas em Tarefa — item no menu principal *(movido em 05/08/2026)*
+- Antes era a 4ª aba do Inbox (Assumidos/Abertos/Em Andamento/**Tarefas**); com 4 abas o
+  painel ficava mais largo que o espaço disponível e sempre mostrava uma barra de
+  rolagem horizontal. Removida a aba e criado o item **"Conversas em Tarefa"** no menu
+  principal (ícone roxo, abaixo de "Caixa de Entrada"), apontando para
+  `/atendimento/inbox/?tab=task` — o conteúdo (lista de conversas com
+  `is_task_conv=True` e status ativo, com a faixa informativa no topo) continua o
+  mesmo, só a forma de chegar até ele mudou.
+- Badge de contagem (`task_conv_count`) calculado em `_base_ctx()` (`views.py`).
 
 ---
 
@@ -389,6 +399,10 @@ systemctl restart gunicorn daphne celery
 | 04/08/2026 | **Correção de flicker** ao resolver/encerrar chamado — card sumia e reaparecia intercalando as abas Aberto/Andamento/Aguardando |
 | 04/08/2026 | **Correção de fluidez** — WebSocket duplicado do Inbox, polling redundante do chat, remoção de card sem transição |
 | 04/08/2026 | **Correção alerta NOC** — falha real de envio ao WhatsApp era marcada como sucesso silenciosamente (bug de tupla) |
+| 05/08/2026 | **Indicador de mensagem não lida** em conversas assumidas — badge + destaque em tempo real (reaproveita `Message.is_read`) |
+| 05/08/2026 | **Correção transferência/atribuição** — troca de atendente não avisava ninguém em tempo real (WS `conversation_reassigned`) |
+| 05/08/2026 | **Visual estilo WhatsApp Dark** no chat e na lista de conversas |
+| 05/08/2026 | **Correção UI**: barra de rolagem visível nas abas do Inbox; aba "Tarefas" movida pro menu principal |
 
 ---
 
@@ -553,6 +567,122 @@ de referência para esta correção.
 **Correção:** desempacotar a tupla explicitamente (`ok, _msg_id = ....send_text(...)`)
 nos dois pontos, para que o guard de "enviado" só marque `True` quando o envio de fato
 teve sucesso.
+
+---
+
+## Indicador de mensagem não lida em conversas assumidas (2026-08-05)
+
+**Pedido:** quando um atendente está com uma conversa assumida e o cliente manda uma
+mensagem nova, nada indicava visualmente que havia mensagem não lida.
+
+**Fonte de verdade:** o campo `Message.is_read` já existia no modelo (desde a migration
+inicial) mas nunca era exibido em lugar nenhum da UI — só era zerado (marcado `True`
+para *todas* as mensagens, não só as do cliente) ao abrir a tela de conversa completa.
+O que existia antes disso era puramente client-side e efêmero: uma classe CSS `unread`
+adicionada via WebSocket que sumia ao recarregar a página, e um contador heurístico
+("mensagens do cliente nas últimas 48h", não "não lidas de verdade") no widget de
+bolhas flutuantes.
+
+**Implementação:**
+- **Backend** (`atendimento/views.py`): as querysets do Inbox (`inbox`), do sidebar
+  (`conversation_detail`, `_base_ctx`) e do widget de bolhas (`api_my_conversations`)
+  passaram a anotar `unread_count = Count('messages', filter=Q(sender_type='customer',
+  is_read=False))`. `api_my_conversations` trocou a heurística de janela de 48h por
+  essa contagem real.
+- Abrir a conversa completa (`conversation_detail`) ou o mini-chat flutuante
+  (`api_conversation_messages`) marca `is_read=True` **só** para mensagens do cliente
+  (antes marcava indiscriminadamente todas, incluindo as do próprio agente).
+- Um novo evento WebSocket `messages_read` (`type: 'messages_read', conversation_id`)
+  é disparado ao marcar como lida, pra sumir o indicador em outras abas/dispositivos
+  do mesmo atendente sem precisar de F5.
+- **Frontend**: `_inbox_conv_item.html`/`_conv_item.html` ganham badge com a contagem
+  e destaque (borda azul + negrito) quando `unread_count > 0` — antes esse destaque
+  era baseado em `status == 'new'`, que não tinha nada a ver com leitura de fato.
+  `base.html` ganhou `window.markConvUnread`/`window.markConvRead`, chamados pelos
+  handlers de WebSocket (`new_message` de cliente → marca; `messages_read` → some).
+
+**Limitação conhecida:** `is_read` é um campo único por mensagem (não por
+atendente/usuário) — se dois atendentes olham a mesma conversa, o primeiro que abrir
+marca como lida pra todo mundo. Suficiente pro caso de uso real (uma conversa
+normalmente tem um atendente responsável por vez), mas não é "lida por mim
+especificamente" no sentido de um sistema multi-usuário genérico.
+
+---
+
+## Correção — Transferência/atribuição não avisava outros atendentes em tempo real (2026-08-05)
+
+**Sintoma:** transferir um chamado para outro atendente não fazia o chamado aparecer
+na aba "Assumidos" dele — só depois de recarregar a página manualmente. O dado no
+banco estava sempre correto (`assigned_to` mudava certinho); o problema era
+exclusivamente de notificação em tempo real.
+
+**Causa:** quatro pontos do código trocavam `Conversation.assigned_to` sem avisar
+ninguém via WebSocket:
+1. Transferência manual (botão "Transferir") — `api_update_conversation`
+2. "Assumir" um chamado em aberto — `conversation_detail`
+3. Auto-atribuição ao responder um chamado sem atendente — `api_send_message`
+4. Reatribuição automática por estouro de SLA (task Celery) — `tasks.py:escalar_chamados_sla`
+   — este era o mais grave, pois não há navegador nenhum aberto pra se auto-atualizar.
+
+**Correção:** `services.notify_reassignment(conversation, old_assigned_to_id)` —
+dispara um evento WS `conversation_reassigned` (`conversation_id`,
+`old_assigned_to_id`, `assigned_to_id`, `group_name`) sempre que o atendente muda,
+chamado nos 4 pontos acima. Em `base.html`, quem ganha ou perde o chamado tem o
+sidebar recarregado automaticamente — reaproveitando a técnica de refetch que já
+existia localmente pra quem transfere/assume (`_onNewlyAssigned`/`_afterTransfer` em
+`_chat_content.html`, agora extraída pra uma função global `window.__refreshConvPanel`
+usada nos três lugares). Quem **recebe** o chamado ganha som + toast "🔄 Chamado
+transferido para você".
+
+**De brinde:** corrigido o fallback de nome vazio (`get_full_name()` retorna string
+vazia pra usuários sem nome cadastrado — trocado por `get_full_name() or username`) e
+a perda da query string (`?tab=mine`) no refresh do sidebar, que fazia o atendente
+voltar pra aba errada depois de assumir/ser transferido.
+
+---
+
+## Visual do Chat e da Lista de Conversas — estilo WhatsApp Dark (2026-08-05)
+
+Redesign visual da tela de chat e da lista de conversas (Inbox/sidebar) pra ficar
+parecido com o WhatsApp Web no modo escuro. Escopo: só chat + lista — nav-sidebar,
+cores de status do chamado (aberto/pendente/resolvido) e botões utilitários
+(Transferir/Mesclar/Hosts/Tarefas) **não foram alterados**, mantêm a semântica de cor
+já existente do CRM.
+
+**Paleta nova** (`atendimento/templates/atendimento/base.html`, variáveis `--wa-*` no
+`:root`): fundo do chat `#0b141a`, painéis/cabeçalho `#202c33`/`#111b21`, bolha do
+cliente `#202c33`, bolha do atendente (verde-escuro) `#005c4b`, acento
+`#00a884`/`#008069`/`#06cf9c`.
+
+**Detalhes implementados:**
+- Bolhas de mensagem com cantos arredondados e "rabicho" apontando pro remetente
+  (via `::before`/`::after` com `mask: radial-gradient(...)`, sem imagem externa).
+- Marca **✓✓** nas mensagens do atendente — só um toque visual (cinza, não azul):
+  **não há confirmação real de entrega/leitura do WhatsApp** nesse sistema, então usar
+  a cor azul do WhatsApp real (que significa "lida pelo cliente") seria enganoso.
+- Campo de digitar em formato pílula + botão de enviar circular verde.
+- Lista de conversas: painel escuro, aba ativa/badge de não lida/busca em foco na
+  cor verde de acento.
+
+---
+
+## Correção — barra de rolagem nas abas do Inbox + menu "Tarefas" (2026-08-05)
+
+**Sintoma:** as 4 abas do Inbox (Assumidos/Abertos/Em Andamento/Tarefas) ficavam mais
+largas que o painel de conversas, forçando uma barra de rolagem horizontal sempre
+visível.
+
+**Correção:**
+- A aba **"Tarefas"** foi removida da barra de abas do painel de conversas
+  (`atendimento/templates/atendimento/inbox.html`) — o conteúdo (lista de conversas
+  com `is_task_conv=True`) continua existindo, agora acessível por um item próprio
+  **"Conversas em Tarefa"** no menu principal (`base.html`, logo abaixo de "Caixa de
+  Entrada"), apontando pra `/atendimento/inbox/?tab=task`. Contador
+  `task_conv_count` calculado em `_base_ctx()`.
+- A barra de rolagem das abas restantes ficou invisível
+  (`scrollbar-width: none` + `::-webkit-scrollbar{display:none}` em `.conv-tabs`) —
+  o scroll continua funcionando por toque/roda do mouse em telas muito estreitas,
+  só não aparece mais a barra visualmente.
 
 ---
 

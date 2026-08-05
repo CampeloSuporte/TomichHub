@@ -1184,6 +1184,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 05/08/2026 | Atendimento: indicador de mensagem não lida em conversas assumidas; fix transferência/atribuição não avisava outros atendentes em tempo real; visual do chat/lista estilo WhatsApp Dark; fix scrollbar das abas do Inbox + "Tarefas" movida pro menu principal | ATENDIMENTO.md |
 | 04/08/2026 | Auditoria de Acessos: tela consolidada por cliente (`/clientes/<id>/auditoria/`) — lista todos os hosts com sessão gravada, filtro por período/usuário/busca; endpoint de sessões por host ganhou filtro de data + paginação (usado também no modal existente) | AUDITORIA_ACESSOS.md |
 | 02/08/2026 | 2FA via Google Authenticator (TOTP): auto-atendimento, segunda etapa no login, códigos de backup, reset por admin e obrigatoriedade (`Forcar2FAMiddleware`) pra todos os perfis | 2FA_GOOGLE_AUTHENTICATOR.md |
 | 29/07/2026 | Exportação de Senhas: novo formato TXT (além do PDF); fix PDF cortando nas laterais no modo "Sem Senha Root" (tabela mais larga que a página) | frontend_acessos.md |

@@ -5,6 +5,45 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-05 (Atendimento: indicador de não lida, fix transferência, visual WhatsApp)
+
+### Adicionado
+
+- **Indicador de mensagem não lida em conversas assumidas** — quando um atendente está
+  com uma conversa assumida e o cliente manda mensagem nova, o item da conversa ganha
+  badge com a contagem e destaque visual (borda + negrito), atualizado em tempo real
+  via WebSocket. Reaproveita o campo `Message.is_read` (já existia, não era usado pra
+  exibir nada) como fonte de verdade — inclusive corrigindo `api_my_conversations`, que
+  usava uma heurística de janela de 48h em vez de leitura real. Detalhes em
+  [ATENDIMENTO.md](docs/ATENDIMENTO.md#indicador-de-mensagem-não-lida-em-conversas-assumidas-2026-08-05).
+- **Item "Conversas em Tarefa" no menu principal**, substituindo a antiga 4ª aba
+  "Tarefas" do Inbox (que deixava a barra de abas mais larga que o painel, forçando
+  scroll horizontal permanente).
+
+### Corrigido
+
+- **Transferir/atribuir um chamado não avisava o atendente que ganhou o chamado em
+  tempo real** — só aparecia em "Assumidos" depois de um F5 manual. Afetava os 4
+  pontos que trocam `assigned_to`: transferência manual, "Assumir", auto-atribuição ao
+  responder e reatribuição automática por SLA (Celery — o mais grave, sem navegador
+  algum aberto pra se auto-atualizar). Corrigido com um evento WS
+  `conversation_reassigned` centralizado em `services.notify_reassignment()`. Detalhes
+  em [ATENDIMENTO.md](docs/ATENDIMENTO.md#correção--transferênciaatribuição-não-avisava-outros-atendentes-em-tempo-real-2026-08-05).
+- **Barra de rolagem horizontal sempre visível** nas abas do Inbox (Assumidos/Abertos/
+  Em Andamento/Tarefas) — corrigida junto com a remoção da aba Tarefas do painel.
+
+### Alterado
+
+- **Visual do chat e da lista de conversas** agora no estilo **WhatsApp Dark**: bolhas
+  de mensagem com rabicho e cantos arredondados, ✓✓ cinza (não azul — não há
+  confirmação real de entrega/leitura do WhatsApp nesse sistema) nas mensagens do
+  atendente, campo de digitar em pílula com botão de enviar circular verde, e acentos
+  verdes na lista de conversas. Escopo limitado a chat + lista — cores de status do
+  chamado e botões utilitários do CRM não mudaram. Detalhes em
+  [ATENDIMENTO.md](docs/ATENDIMENTO.md#visual-do-chat-e-da-lista-de-conversas--estilo-whatsapp-dark-2026-08-05).
+
+---
+
 ## [Não publicado] — 2026-08-04 (Fix: Atendimento — card "piscando" ao resolver chamado + alerta NOC)
 
 ### Corrigido
