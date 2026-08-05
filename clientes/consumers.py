@@ -1394,6 +1394,15 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                                                 default_window_size=2**23,
                                                 default_max_packet_size=2**15)
             dest_transport.use_compression(False)
+            # Mesmo ajuste de _connect_ssh_paramiko_direct e do FirmwareDownloadConsumer
+            # (ver _ZTE_PREFERRED_KEX acima): sem isso, o Transport tenta os grupos
+            # pesados primeiro (group16/group-exchange) e em equipamentos embarcados
+            # lentos a negociação passa dos 10s do start_client() abaixo — que, se
+            # ainda estiver ativo (thread não morreu, só lento), retorna sem erro
+            # e só explode depois no auth_password() com "No existing session"
+            # (visto ao vivo num switch Huawei S5735, 10.40.40.38, banner sem client
+            # version = stack SSH embarcado mínimo).
+            dest_transport._preferred_kex = _ZTE_PREFERRED_KEX
             dest_transport.start_client(timeout=10)
             self._paramiko_dest_transport = dest_transport
 

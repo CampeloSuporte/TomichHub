@@ -2048,9 +2048,7 @@ def realizar_backup(acesso, usuario=None):
             print(f"🔐 CONECTANDO VIA PARAMIKO")
             print(f"{'='*80}")
 
-            client = paramiko.SSHClient()
-            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            client.connect(
+            _connect_kwargs = dict(
                 hostname=host_conexao,
                 port=porta_conexao,
                 username=acesso.usuario,
@@ -2074,6 +2072,25 @@ def realizar_backup(acesso, usuario=None):
                     'diffie-hellman-group18-sha512',
                 ]} if is_zte else None,
             )
+            # Handshake via túnel (proxy → forwarding local por threads) falha
+            # de forma intermitente em algumas OLTs Huawei com "No existing
+            # session" / "Authentication failed: transport shut down or saw
+            # EOF" — visto 3 madrugadas seguidas na OLT-HU-LEAL enquanto o
+            # Terminal (canal direto, sem o relay por thread) conectava sem
+            # problema nos mesmos horários. Um retry único já resolve, pois a
+            # falha é do handshake naquele instante, não das credenciais.
+            _erros_transitorios = ('transport shut down or saw EOF', 'No existing session')
+            for _tentativa in (1, 2):
+                client = paramiko.SSHClient()
+                client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                try:
+                    client.connect(**_connect_kwargs)
+                    break
+                except paramiko.SSHException as _e:
+                    if _tentativa == 2 or not any(t in str(_e) for t in _erros_transitorios):
+                        raise
+                    print(f"⚠️ Handshake SSH falhou ({_e}) — tentando novamente em 3s...")
+                    time.sleep(3)
             client.get_transport().set_keepalive(10)
             print(f"✅ Conectado!")
 
