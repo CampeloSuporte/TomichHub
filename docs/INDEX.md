@@ -2,6 +2,34 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 36 — 05/08/2026: Atualização IRR — TC passa a usar API (bgp.net.br/v1/submit) em vez de e-mail
+
+**O que foi implementado e corrigido?**
+- ✅ **Envio de objetos IRR (`route`, `route6`, `as-set`, `aut-num`, `mntner`, `person`) pro TC
+  passa a usar a API HTTP** (`POST bgp.net.br/v1/submit/`, IRRd 4.2+) em vez de SMTP puro pra
+  `auto-dbm@bgp.net.br`. A API responde de forma síncrona, aceito/rejeitado por objeto — dispensou
+  a tela de "Verificar Resposta" via IMAP (removida, ficou obsoleta).
+- ✅ Campo opcional `IRRConfig.api_key`, pra mntners migrados que usam API key em vez de senha.
+- 🐛 **Fix real:** `as-set AS-CUSTOMERS` vazio emitia `members: #` (placeholder inválido em RPSL —
+  `#` é comentário) quando o cliente não tinha ASN de downstream cadastrado; causava timeout na
+  API do TC. `members` é opcional no as-set (RFC 2622) — a linha agora é só omitida.
+- 🐛 **Fix real:** mesmo depois do fix acima, o mesmo cliente (AS272418) ainda travava em 30s —
+  submissões reais/válidas legitimamente demoram mais que payloads inválidos (que falham quase na
+  hora). Timeout subiu de 30s pra 100s (dentro do teto de 120s do worker gunicorn).
+- ✅ **Conflito de ROA RPKI explicado na UI**: quando a API rejeita um `route`/`route6` por já
+  existir uma ROA que não autoriza aquele anúncio (origem ou max-length diferente), o modal de
+  resultado mostra uma explicação em português — não é bug do CRM, é a ROA existente que precisa
+  ser ajustada no gerenciador RPKI (ex: LACNIC). Aproveitado pra escapar texto vindo da API externa
+  antes de injetar via `innerHTML`.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[IRR_ATUALIZACAO_TC.md](IRR_ATUALIZACAO_TC.md)** | Novo — arquitetura completa do envio via API, payload, os 3 fixes, fluxo de uso |
+
+---
+
 ### Sessão 35 — 04/08/2026: Fix — Proxy Web: loop de login (Mimosa) + WinBox Web para clientes só-VPN
 
 **O que foi diagnosticado e corrigido?**
