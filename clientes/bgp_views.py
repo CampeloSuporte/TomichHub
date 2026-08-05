@@ -120,6 +120,22 @@ def bgp_atualizar_snapshot(request, acesso_id):
 
 
 def _montar_comandos(tipo, vendor, dados, alvo, params):
+    comandos = _gerar_comandos_por_tipo(tipo, vendor, dados, alvo, params)
+    if vendor in ('cisco', 'datacom'):
+        # Cisco/Datacom aplica direto no running-config (sem candidate-
+        # config/commit como Huawei/Juniper) — sem salvar, a mudança se
+        # perde no próximo reload do equipamento. `end` garante que
+        # `write` rode em modo EXEC privilegiado mesmo quando os comandos
+        # gerados terminam aninhados (ex: dentro de `address-family`).
+        # Aparece no preview igual a qualquer outro comando — o operador
+        # pode remover as duas linhas no textarea antes de confirmar se
+        # não quiser salvar (mesma flexibilidade de "editar antes de
+        # confirmar" já usada pelo resto da automação).
+        comandos = comandos + ['end', 'write']
+    return comandos
+
+
+def _gerar_comandos_por_tipo(tipo, vendor, dados, alvo, params):
     if tipo == 'ativar_sessao':
         return comandos_toggle_sessao(vendor, dados, alvo, ativar=True)
     if tipo == 'desativar_sessao':

@@ -468,3 +468,45 @@ class BgpCriarSessaoViewTest(TestCase):
         self.assertEqual(r.status_code, 200)
         candidatas = {c['nome']: c for c in r.json()['candidatas']}
         self.assertTrue(candidatas['PL-DEFAULT-ROUTE']['ja_anunciando'])
+
+
+from clientes.bgp_views import _montar_comandos
+
+
+class MontarComandosSalvaConfigCiscoTest(SimpleTestCase):
+    """`_montar_comandos` sempre acrescenta 'end'+'write' pro final de
+    QUALQUER ação Cisco/Datacom (não só criar_sessao) — sem isso, uma
+    mudança real feita por esta automação fica só no running-config e se
+    perde no próximo reload do equipamento. Pedido explícito do usuário:
+    aplica a TODAS as ações Cisco, não só a de criar sessão nova."""
+
+    def test_ativar_sessao_cisco_ganha_end_e_write_no_final(self):
+        comandos = _montar_comandos('ativar_sessao', 'cisco', DADOS_SNAPSHOT_BASE, '10.0.0.1', {})
+        self.assertEqual(comandos[-2:], ['end', 'write'])
+
+    def test_datacom_tambem_ganha_end_e_write(self):
+        comandos = _montar_comandos('ativar_sessao', 'datacom', DADOS_SNAPSHOT_BASE, '10.0.0.1', {})
+        self.assertEqual(comandos[-2:], ['end', 'write'])
+
+    def test_criar_sessao_cisco_ganha_end_e_write_no_final(self):
+        params = {
+            'tipo_peer': 'upstream', 'sufixo': 'CONECT',
+            'afs': [{
+                'af': 'ipv4', 'peer_ip': '172.16.8.1', 'remote_as': '262725',
+                'pl_in': {'modo': 'existente', 'nome': 'PL-DEFAULT-ROUTE'},
+                'pl_out': {'modo': 'existente', 'nome': 'PL-DEFAULT-ROUTE'},
+            }],
+        }
+        comandos = _montar_comandos('criar_sessao', 'cisco', DADOS_SNAPSHOT_BASE, '172.16.8.1', params)
+        self.assertEqual(comandos[-2:], ['end', 'write'])
+        # ainda termina em exit-address-family ANTES do end/write, não no meio
+        self.assertEqual(comandos[-3], 'exit-address-family')
+
+    def test_outros_fabricantes_nao_ganham_end_write(self):
+        dados_huawei = {
+            'sessoes': [{'peer_ip': '10.0.0.1', 'nome': '10.0.0.1', 'as_local': '65000',
+                         'habilitada': False, 'policy_in': '', 'policy_out': ''}],
+        }
+        comandos = _montar_comandos('ativar_sessao', 'huawei', dados_huawei, '10.0.0.1', {})
+        self.assertNotIn('end', comandos)
+        self.assertNotIn('write', comandos)

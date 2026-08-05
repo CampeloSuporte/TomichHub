@@ -279,6 +279,20 @@ adicionar `'juniper': 'juniper_junos'` em `DEVICE_TYPES`. Por fabricante:
 Toda `AcaoBgpNaoSuportada` (fabricante/situação sem comando seguro conhecido) é capturada na view e
 devolvida como erro 422 — a UI mostra o motivo em vez de tentar um comando arriscado.
 
+### Cisco/Datacom sempre salva na NVRAM — `end`+`write` (adicionado em 2026-08-04)
+
+`clientes/bgp_views.py::_montar_comandos` acrescenta `'end'` e `'write'` no final de QUALQUER ação
+Cisco/Datacom (ativar/desativar, prepend, parar de anunciar, community, anunciar prefixo novo, criar
+sessão — todas, pedido explícito do usuário) antes de devolver os comandos, tanto no preview quanto na
+execução real. Motivo: Cisco/Datacom aplica direto no running-config (sem candidate-config/commit como
+Huawei/Juniper) — sem salvar, a mudança se perde no próximo reload do equipamento. `end` garante que
+`write` rode em modo EXEC privilegiado mesmo quando os comandos gerados terminam aninhados (ex: dentro
+de `address-family`, como em `criar_sessao`). As duas linhas aparecem no textarea editável do modal de
+confirmação como qualquer outro comando — o operador pode apagá-las antes de confirmar se não quiser
+salvar dessa vez (mesma flexibilidade de "editar antes de confirmar" já usada pelo resto da
+automação). Huawei/Juniper (que já salvam via `commit()`) e Mikrotik (sem "modo configuração") não são
+afetados.
+
 ### Modo trial — commit temporário com rollback automático (adicionado em 2026-08-02)
 
 Todo modal de confirmação ganhou **dois botões de execução** em vez de um: "▶ Executar em modo
