@@ -43,7 +43,12 @@ _ZTE_PREFERRED_KEX = (
     'diffie-hellman-group14-sha256',
     'diffie-hellman-group14-sha1',
     'diffie-hellman-group1-sha1',
-    'curve25519-sha256',
+    # Só "@libssh.org" existe no _kex_info do paramiko 4.0.0 — "curve25519-sha256"
+    # sem sufixo (nome moderno que switches/servidores recentes anunciam) não é
+    # uma chave válida ali. Se o servidor oferece esse nome e ele fica na lista de
+    # preferência, o paramiko negocia esse algoritmo (nome bate) e só quebra depois
+    # tentando instanciar o Kex: KeyError('curve25519-sha256'). Removido — o
+    # "@libssh.org" abaixo já cobre curve25519 nos servidores que o suportam.
     'curve25519-sha256@libssh.org',
     'ecdh-sha2-nistp256',
     'ecdh-sha2-nistp384',
