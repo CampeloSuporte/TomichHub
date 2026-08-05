@@ -502,14 +502,14 @@
                 </div>
 
                 <!-- ═══════════════════════════════════════════════════════
-                     IRR — Atualização de objetos (TC via e-mail)
+                     IRR — Atualização de objetos (TC via API)
                 ════════════════════════════════════════════════════════ -->
                 <div class="card mt-4" id="irr-update-card">
                     <div class="card-body">
                         <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
                             <div>
                                 <h5 class="mb-0"><i class="fas fa-route me-2" style="color:#3fb950"></i>Atualização IRR — TC</h5>
-                                <small style="color:rgba(88,166,255,.4)">Gera e envia os objetos RPSL para <code style="color:#58a6ff">auto-dbm@bgp.net.br</code> via e-mail</small>
+                                <small style="color:rgba(88,166,255,.4)">Gera e envia os objetos RPSL via API <code style="color:#58a6ff">bgp.net.br/v1/submit</code> — resultado retorna na hora, por objeto</small>
                             </div>
                             <div class="d-flex gap-2 flex-wrap">
                                 <button class="btn btn-sm" onclick="irrConsultarWhois()"
@@ -518,15 +518,11 @@
                                 </button>
                                 <button class="btn btn-sm" onclick="irrMostrarPreview()"
                                     style="background:rgba(255,170,0,.1);border:1px solid #ffaa00;color:#ffaa00;font-size:.8rem">
-                                    <i class="fas fa-eye me-1"></i> Preview E-mail
+                                    <i class="fas fa-eye me-1"></i> Preview dos Objetos
                                 </button>
                                 <button class="btn btn-sm" onclick="irrEnviar()"
                                     style="background:rgba(63,185,80,.15);border:1px solid #30363d;color:#3fb950;font-size:.8rem">
-                                    <i class="fas fa-paper-plane me-1"></i> Enviar Atualização
-                                </button>
-                                <button class="btn btn-sm" onclick="irrVerificarResposta()"
-                                    style="background:rgba(180,100,255,.12);border:1px solid #b464ff;color:#b464ff;font-size:.8rem">
-                                    <i class="fas fa-inbox me-1"></i> Verificar Resposta
+                                    <i class="fas fa-paper-plane me-1"></i> Enviar Atualização (API)
                                 </button>
                             </div>
                         </div>
@@ -560,8 +556,12 @@
                                     <input id="irr-nic-hdl" type="text" class="form-control form-control-sm irr-input" placeholder="JOAOS1-NICBR">
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">Senha IRR (plaintext) *</label>
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">Senha do Mntner *</label>
                                     <input id="irr-password" type="text" class="form-control form-control-sm irr-input" placeholder="vJ_pOsPJl...">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">API Key (opcional)</label>
+                                    <input id="irr-api-key" type="text" class="form-control form-control-sm irr-input" placeholder="Gerada na interface web do TC — só para mntners migrados">
                                 </div>
 
                                 <div class="col-md-6">
@@ -1651,10 +1651,9 @@
             <div class="modal-content" style="background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-light);">
                 <div class="modal-header" style="border-bottom:1px solid var(--border);">
                     <div>
-                        <h5 class="modal-title mb-0"><i class="fas fa-envelope me-2" style="color:#3fb950"></i>Preview — E-mail IRR</h5>
+                        <h5 class="modal-title mb-0"><i class="fas fa-route me-2" style="color:#3fb950"></i>Preview — Objetos RPSL (IRR)</h5>
                         <small style="color:rgba(88,166,255,.4)">
-                            Para: <code id="irr-preview-destino" style="color:#58a6ff"></code> &nbsp;·&nbsp;
-                            Assunto: <code id="irr-preview-assunto" style="color:#ffaa00"></code>
+                            API: <code id="irr-preview-destino" style="color:#58a6ff"></code>
                         </small>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -1710,7 +1709,7 @@
                 <div class="modal-header" style="border-bottom:1px solid var(--border);">
                     <div>
                         <h5 class="modal-title mb-0">
-                            <i class="fas fa-inbox me-2" style="color:#b464ff"></i>Resposta do TC — IRR
+                            <i class="fas fa-route me-2" style="color:#b464ff"></i>Resultado do Envio — API TC
                         </h5>
                         <small id="irr-resp-meta" style="color:rgba(88,166,255,.4)"></small>
                     </div>
@@ -1723,8 +1722,8 @@
                     <!-- Resumo aceitos/rejeitados -->
                     <div id="irr-resp-resumo" class="row g-2 mb-3" style="display:none!important"></div>
 
-                    <!-- Corpo completo do e-mail -->
-                    <div style="font-size:.78rem;color:rgba(88,166,255,.4);margin-bottom:6px">Corpo do e-mail de resposta:</div>
+                    <!-- Resposta bruta da API (JSON) -->
+                    <div style="font-size:.78rem;color:rgba(88,166,255,.4);margin-bottom:6px">Resposta da API (por objeto):</div>
                     <pre id="irr-resp-corpo"
                         style="margin:0;padding:14px;background:#0d1117;color:#e6edf3;font-size:.75rem;
                                max-height:460px;overflow-y:auto;border-radius:6px;white-space:pre-wrap;border:1px solid var(--border)"></pre>
@@ -5057,6 +5056,7 @@ function getCsrfToken(){
         set('irr-empresa-descr', d.empresa_descr);
         set('irr-nic-hdl',       d.nic_hdl);
         set('irr-password',      d.irr_password);
+        set('irr-api-key',       d.api_key);
         set('irr-email-contato', d.email_contato || 'abuso@tomich.com.br');
         set('irr-email-abuse',   d.email_abuse);
         set('irr-website',       d.website);
@@ -5097,6 +5097,7 @@ function getCsrfToken(){
             empresa_descr:  get('irr-empresa-descr'),
             nic_hdl:        get('irr-nic-hdl'),
             irr_password:   get('irr-password'),
+            api_key:        get('irr-api-key'),
             email_contato:  get('irr-email-contato'),
             email_abuse:    get('irr-email-abuse'),
             website:        get('irr-website'),
@@ -5264,7 +5265,7 @@ function getCsrfToken(){
         } catch(e) { irrMsg('Erro na consulta WHOIS: ' + e.message, 'erro'); }
     };
 
-    // ─── Preview do e-mail ────────────────────────────────────────────────
+    // ─── Preview dos objetos RPSL ─────────────────────────────────────────
     window.irrMostrarPreview = async function() {
         // Salva primeiro para gerar preview com dados atuais
         const dados = irrColetarForm();
@@ -5281,8 +5282,7 @@ function getCsrfToken(){
             if (!d.ok) throw new Error(d.erro);
 
             const modal = document.getElementById('modalIrrPreview');
-            document.getElementById('irr-preview-destino').textContent = d.destino;
-            document.getElementById('irr-preview-assunto').textContent = d.assunto;
+            document.getElementById('irr-preview-destino').textContent = d.api_endpoint;
             document.getElementById('irr-preview-corpo').textContent   = d.corpo;
             if (modal.parentElement !== document.body) document.body.appendChild(modal);
             bootstrap.Modal.getOrCreateInstance(modal).show();
@@ -5295,10 +5295,10 @@ function getCsrfToken(){
         navigator.clipboard.writeText(texto).then(() => irrMsg('Corpo copiado para a área de transferência!', 'ok'));
     };
 
-    // ─── Enviar e-mail ────────────────────────────────────────────────────
+    // ─── Enviar atualização via API do TC ────────────────────────────────
     window.irrEnviar = async function() {
-        if (!await uiConfirm({titulo:'Enviar IRR', msg:'Enviar atualização IRR para auto-dbm@bgp.net.br agora?', icone:'fas fa-paper-plane', iconeCor:'#58a6ff', btnLabel:'Enviar'})) return;
-        irrMsg('Enviando e-mail…', 'aviso');
+        if (!await uiConfirm({titulo:'Enviar IRR', msg:'Enviar atualização IRR via API (bgp.net.br/v1/submit) agora?', icone:'fas fa-paper-plane', iconeCor:'#58a6ff', btnLabel:'Enviar'})) return;
+        irrMsg('Enviando via API do TC…', 'aviso');
         try {
             const dados = irrColetarForm();
             // Salva antes de enviar
@@ -5313,91 +5313,65 @@ function getCsrfToken(){
             });
             const d = await r.json();
             if (!d.ok) throw new Error(d.erro);
-            irrMsg(d.mensagem, 'ok');
+
+            irrMostrarResultado(d);
+            irrMsg(d.mensagem, d.status_geral === 'sucesso' ? 'ok' : 'aviso');
         } catch(e) { irrMsg('Erro: ' + e.message, 'erro'); }
     };
 
-    // ─── Verificar resposta do TC (IMAP) ─────────────────────────────────
-    window.irrVerificarResposta = async function() {
-        irrMsg('Conectando ao servidor de e-mail para buscar resposta do TC…', 'aviso');
-        try {
-            const r = await fetch(`/clientes/${IRR_CID}/irr/verificar/`);
-            const d = await r.json();
-            if (!d.ok) throw new Error(d.erro);
+    // ─── Exibe o resultado (síncrono) devolvido pela API do TC ───────────
+    function irrMostrarResultado(d) {
+        const modal = document.getElementById('modalIrrResposta');
+        if (modal.parentElement !== document.body) document.body.appendChild(modal);
 
-            const modal = document.getElementById('modalIrrResposta');
-            if (modal.parentElement !== document.body) document.body.appendChild(modal);
+        document.getElementById('irr-resp-meta').textContent =
+            `${(d.resumo && d.resumo.objects_found) || (d.aceitos.length + d.rejeitados.length)} objeto(s) enviados agora`;
 
-            if (!d.encontrado) {
-                document.getElementById('irr-resp-meta').textContent = '';
-                document.getElementById('irr-resp-status').innerHTML =
-                    `<div style="padding:10px 14px;border-radius:6px;background:rgba(255,170,0,.1);
-                        border:1px solid #ffaa00;color:#ffaa00;font-size:.85rem;">
-                        <i class="fas fa-clock me-2"></i>${d.mensagem}
-                    </div>`;
-                document.getElementById('irr-resp-resumo').style.display = 'none';
-                document.getElementById('irr-resp-corpo').textContent = '';
-                bootstrap.Modal.getOrCreateInstance(modal).show();
-                irrMsg('Nenhuma resposta encontrada ainda.', 'aviso');
-                return;
+        const cores = {
+            sucesso: { bg: 'rgba(63,185,80,.12)', brd: '#3fb950', cor: '#3fb950', ic: 'check-circle',         txt: 'ACEITO COM SUCESSO' },
+            erro:    { bg: 'rgba(224,96,96,.12)', brd: '#e06060', cor: '#e06060', ic: 'times-circle',         txt: 'REJEITADO' },
+            parcial: { bg: 'rgba(255,170,0,.1)',  brd: '#ffaa00', cor: '#ffaa00', ic: 'exclamation-triangle', txt: 'PARCIALMENTE ACEITO' },
+        };
+        const c = cores[d.status_geral] || cores.parcial;
+        document.getElementById('irr-resp-status').innerHTML =
+            `<div style="padding:10px 14px;border-radius:6px;background:${c.bg};border:1px solid ${c.brd};color:${c.cor};font-size:.88rem;font-weight:600">
+                <i class="fas fa-${c.ic} me-2"></i>${c.txt}
+                <span style="font-weight:400;font-size:.8rem;margin-left:8px;opacity:.8">${d.mensagem}</span>
+            </div>`;
+
+        const resumoEl = document.getElementById('irr-resp-resumo');
+        if (d.aceitos.length || d.rejeitados.length || d.erros.length) {
+            resumoEl.style.cssText = '';
+            let html = '';
+            if (d.aceitos.length) {
+                html += `<div class="col-md-4">
+                    <div style="background:rgba(63,185,80,.07);border:1px solid #30363d;border-radius:6px;padding:10px;font-size:.8rem">
+                    <div style="color:#3fb950;font-weight:600;margin-bottom:6px"><i class="fas fa-check me-1"></i>Aceitos (${d.aceitos.length})</div>
+                    ${d.aceitos.map(a => `<div style="color:#e6edf3;padding:2px 0">${a}</div>`).join('')}
+                    </div></div>`;
             }
-
-            // Meta (remetente / data)
-            document.getElementById('irr-resp-meta').textContent =
-                `De: ${d.remetente}  ·  ${d.data_msg}`;
-
-            // Badge status geral
-            const cores = {
-                sucesso:     { bg: 'rgba(63,185,80,.12)', brd: '#3fb950', cor: '#3fb950', ic: 'check-circle',   txt: 'ACEITO COM SUCESSO' },
-                erro:        { bg: 'rgba(224,96,96,.12)',  brd: '#e06060', cor: '#e06060', ic: 'times-circle',   txt: 'REJEITADO / ERRO' },
-                parcial:     { bg: 'rgba(255,170,0,.1)',   brd: '#ffaa00', cor: '#ffaa00', ic: 'exclamation-triangle', txt: 'PARCIALMENTE ACEITO' },
-                desconhecido:{ bg: 'rgba(180,100,255,.1)', brd: '#b464ff', cor: '#b464ff', ic: 'question-circle', txt: 'STATUS DESCONHECIDO' },
-            };
-            const c = cores[d.status_geral] || cores.desconhecido;
-            document.getElementById('irr-resp-status').innerHTML =
-                `<div style="padding:10px 14px;border-radius:6px;background:${c.bg};border:1px solid ${c.brd};color:${c.cor};font-size:.88rem;font-weight:600">
-                    <i class="fas fa-${c.ic} me-2"></i>${c.txt}
-                    <span style="font-weight:400;font-size:.8rem;margin-left:8px;opacity:.8">${d.subject}</span>
-                </div>`;
-
-            // Resumo aceitos / rejeitados
-            const resumoEl = document.getElementById('irr-resp-resumo');
-            if (d.aceitos.length || d.rejeitados.length || d.erros.length) {
-                resumoEl.style.cssText = '';
-                let html = '';
-                if (d.aceitos.length) {
-                    html += `<div class="col-md-4">
-                        <div style="background:rgba(63,185,80,.07);border:1px solid #30363d;border-radius:6px;padding:10px;font-size:.8rem">
-                        <div style="color:#3fb950;font-weight:600;margin-bottom:6px"><i class="fas fa-check me-1"></i>Aceitos (${d.aceitos.length})</div>
-                        ${d.aceitos.map(a => `<div style="color:#e6edf3;padding:2px 0">${a}</div>`).join('')}
-                        </div></div>`;
-                }
-                if (d.rejeitados.length) {
-                    html += `<div class="col-md-4">
-                        <div style="background:rgba(224,96,96,.07);border:1px solid #e06060;border-radius:6px;padding:10px;font-size:.8rem">
-                        <div style="color:#e06060;font-weight:600;margin-bottom:6px"><i class="fas fa-times me-1"></i>Rejeitados (${d.rejeitados.length})</div>
-                        ${d.rejeitados.map(a => `<div style="color:#e6edf3;padding:2px 0">${a}</div>`).join('')}
-                        </div></div>`;
-                }
-                if (d.erros.length) {
-                    html += `<div class="col-md-4">
-                        <div style="background:rgba(255,170,0,.07);border:1px solid #ffaa00;border-radius:6px;padding:10px;font-size:.8rem">
-                        <div style="color:#ffaa00;font-weight:600;margin-bottom:6px"><i class="fas fa-exclamation-triangle me-1"></i>Erros (${d.erros.length})</div>
-                        ${d.erros.map(a => `<div style="color:#e6edf3;padding:2px 0">${a}</div>`).join('')}
-                        </div></div>`;
-                }
-                resumoEl.innerHTML = html;
-            } else {
-                resumoEl.style.display = 'none';
+            if (d.rejeitados.length) {
+                html += `<div class="col-md-4">
+                    <div style="background:rgba(224,96,96,.07);border:1px solid #e06060;border-radius:6px;padding:10px;font-size:.8rem">
+                    <div style="color:#e06060;font-weight:600;margin-bottom:6px"><i class="fas fa-times me-1"></i>Rejeitados (${d.rejeitados.length})</div>
+                    ${d.rejeitados.map(a => `<div style="color:#e6edf3;padding:2px 0">${a}</div>`).join('')}
+                    </div></div>`;
             }
+            if (d.erros.length) {
+                html += `<div class="col-md-4">
+                    <div style="background:rgba(255,170,0,.07);border:1px solid #ffaa00;border-radius:6px;padding:10px;font-size:.8rem">
+                    <div style="color:#ffaa00;font-weight:600;margin-bottom:6px"><i class="fas fa-exclamation-triangle me-1"></i>Erros (${d.erros.length})</div>
+                    ${d.erros.map(a => `<div style="color:#e6edf3;padding:2px 0">${a}</div>`).join('')}
+                    </div></div>`;
+            }
+            resumoEl.innerHTML = html;
+        } else {
+            resumoEl.style.display = 'none';
+        }
 
-            // Corpo completo
-            document.getElementById('irr-resp-corpo').textContent = d.corpo || '(corpo vazio)';
-
-            bootstrap.Modal.getOrCreateInstance(modal).show();
-            irrMsg(`Resposta do TC recebida — ${c.txt.toLowerCase()}.`, d.status_geral === 'sucesso' ? 'ok' : 'aviso');
-        } catch(e) { irrMsg('Erro ao verificar: ' + e.message, 'erro'); }
-    };
+        document.getElementById('irr-resp-corpo').textContent = JSON.stringify(d.objetos || [], null, 2);
+        bootstrap.Modal.getOrCreateInstance(modal).show();
+    }
 
     // ─── Carrega config ao abrir aba RPKI/IRR ────────────────────────────
     let _irrConfigCarregado = false;
