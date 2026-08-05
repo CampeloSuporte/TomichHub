@@ -243,6 +243,22 @@ def _ws_send_inbox(data: dict):
         logger.warning(f"WebSocket send falhou (inbox): {e}")
 
 
+def notify_reassignment(conversation: Conversation, old_assigned_to_id):
+    """Avisa a caixa de entrada (WS) que um chamado mudou de atendente —
+    seja por "Assumir", auto-atribuição ao responder, transferência manual
+    ou reatribuição automática por SLA. Sem isso, o novo/antigo responsável
+    só via a mudança em "Assumidos" depois de recarregar a página."""
+    if old_assigned_to_id == conversation.assigned_to_id:
+        return
+    _ws_send_inbox({
+        "type": "conversation_reassigned",
+        "conversation_id": str(conversation.id),
+        "group_name": conversation.group.name if conversation.group else "",
+        "old_assigned_to_id": old_assigned_to_id,
+        "assigned_to_id": conversation.assigned_to_id,
+    })
+
+
 def _numero_nao_existe(response) -> bool:
     """Detecta o 400 específico da Evolution API que indica número inexistente
     no WhatsApp: {"response": {"message": [{"exists": false, ...}]}}."""

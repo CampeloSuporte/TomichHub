@@ -165,6 +165,7 @@ def conversation_detail(request, conversation_id):
     # Atribui conversa ao agente se não estiver atribuída
     if not conversation.assigned_to and request.method == 'POST':
         if request.POST.get('action') == 'assign':
+            old_assigned_to_id = conversation.assigned_to_id
             conversation.assigned_to = request.user
             conversation.status = 'open'
             conversation.save()
@@ -172,8 +173,10 @@ def conversation_detail(request, conversation_id):
                 conversation=conversation,
                 actor=request.user,
                 action='assigned',
-                new_value=request.user.get_full_name()
+                new_value=request.user.get_full_name() or request.user.username
             )
+            from .services import notify_reassignment
+            notify_reassignment(conversation, old_assigned_to_id)
 
     # Mensagens
     messages = conversation.messages.select_related('sender').order_by('created_at')
@@ -402,6 +405,7 @@ def api_send_message(request, conversation_id):
         # Auto-atribuição: se a conversa não tem atendente, atribui ao agente que respondeu
         newly_assigned = False
         if not conversation.assigned_to:
+            old_assigned_to_id = conversation.assigned_to_id
             conversation.assigned_to = request.user
             conversation.save(update_fields=['assigned_to'])
             ConversationActivity.objects.create(
@@ -410,6 +414,8 @@ def api_send_message(request, conversation_id):
                 action='assigned',
                 new_value=request.user.get_full_name() or request.user.username,
             )
+            from .services import notify_reassignment
+            notify_reassignment(conversation, old_assigned_to_id)
             newly_assigned = True
 
         # Envia mensagem
@@ -611,6 +617,7 @@ def api_update_conversation(request, conversation_id):
         # Atualiza atribuição
         if 'assigned_to' in data:
             from django.contrib.auth.models import User
+            old_assigned_to_id = conversation.assigned_to_id
             agent = User.objects.get(id=data['assigned_to']) if data['assigned_to'] else None
             conversation.assigned_to = agent
             conversation.save()
@@ -619,8 +626,11 @@ def api_update_conversation(request, conversation_id):
                 conversation=conversation,
                 actor=request.user,
                 action='assigned',
-                new_value=agent.get_full_name() if agent else 'Desatribuído'
+                new_value=(agent.get_full_name() or agent.username) if agent else 'Desatribuído'
             )
+
+            from .services import notify_reassignment
+            notify_reassignment(conversation, old_assigned_to_id)
 
         # Atualiza priority
         if 'priority' in data:

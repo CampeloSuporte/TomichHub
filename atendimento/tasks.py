@@ -150,6 +150,7 @@ def escalar_chamados_sla():
     reassigned = 0
     for conv in candidatos:
         if fallback_user and not conv.assigned_to:
+            old_assigned_to_id = conv.assigned_to_id
             conv.assigned_to = fallback_user
             conv.save(update_fields=['assigned_to'])
             from .models import ConversationActivity
@@ -158,6 +159,8 @@ def escalar_chamados_sla():
                 description='Reatribuído automaticamente por estouro de SLA',
                 new_value=fallback_user.get_full_name() or fallback_user.username,
             )
+            from .services import notify_reassignment
+            notify_reassignment(conv, old_assigned_to_id)
             reassigned += 1
 
     # Alerta consolidado ao grupo de escalação (reaproveita o grupo de

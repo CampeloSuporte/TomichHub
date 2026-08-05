@@ -1383,32 +1383,9 @@
         var assumirForm = document.querySelector('form [name="action"][value="assign"]');
         if (assumirForm) assumirForm.closest('form').style.display = 'none';
 
-        /* Recarrega apenas o conv-panel com aba Assumidos ativa
-           Faz fetch da conversa atual como AJAX → Django retorna base_partial
-           com sidebar_active_tab='mine' (pois agora está atribuído ao usuário) */
-        var convPanel = document.querySelector('.conv-panel');
-        if (!convPanel) return;
-
-        fetch(location.pathname, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin'
-        })
-        .then(function(r){ return r.ok ? r.text() : null; })
-        .then(function(html) {
-            if (!html) return;
-            var doc = (new DOMParser()).parseFromString(html, 'text/html');
-            var newCP = doc.querySelector('[data-target="conv-panel"]');
-            if (!newCP || !newCP.innerHTML.trim()) return;
-            convPanel.innerHTML = newCP.innerHTML;
-            /* Re-executa scripts do conv-panel (search, WS) */
-            newCP.querySelectorAll('script').forEach(function(s) {
-                var ns = document.createElement('script');
-                ns.textContent = s.textContent;
-                document.body.appendChild(ns);
-                document.body.removeChild(ns);
-            });
-        })
-        .catch(function(){});
+        /* Recarrega o conv-panel — sidebar_active_tab passa a 'mine'
+           (pois agora está atribuído ao usuário) */
+        if (typeof window.__refreshConvPanel === 'function') window.__refreshConvPanel();
     }
 
     /* ── Status dropdown ── */
@@ -1772,27 +1749,7 @@
         });
 
         /* Recarrega conv-panel — conversa sai do "Assumidos" do usuário atual */
-        var convPanel = document.querySelector('.conv-panel');
-        if (!convPanel) return;
-        fetch(location.pathname, {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin'
-        })
-        .then(function(r){ return r.ok ? r.text() : null; })
-        .then(function(html) {
-            if (!html) return;
-            var doc = (new DOMParser()).parseFromString(html, 'text/html');
-            var newCP = doc.querySelector('[data-target="conv-panel"]');
-            if (!newCP || !newCP.innerHTML.trim()) return;
-            convPanel.innerHTML = newCP.innerHTML;
-            newCP.querySelectorAll('script').forEach(function(s) {
-                var ns = document.createElement('script');
-                ns.textContent = s.textContent;
-                document.body.appendChild(ns);
-                document.body.removeChild(ns);
-            });
-        })
-        .catch(function(){});
+        if (typeof window.__refreshConvPanel === 'function') window.__refreshConvPanel();
     }
 
     document.addEventListener('keydown', function(e) {

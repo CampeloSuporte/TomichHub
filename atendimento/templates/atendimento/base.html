@@ -1491,6 +1491,36 @@ document.addEventListener('click', function() {
         });
     };
 
+    /* Refaz o conv-panel (sidebar/inbox) com HTML fresco do servidor —
+       mesma técnica usada ao assumir/transferir um chamado na própria aba,
+       reaproveitada aqui para refletir mudanças feitas por OUTRO atendente
+       (ex.: alguém me transferiu um chamado) sem exigir F5 manual. */
+    window.__refreshConvPanel = function(cb) {
+        var convPanel = document.querySelector('.conv-panel');
+        if (!convPanel) { if (cb) cb(false); return; }
+        fetch(location.pathname + location.search, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin'
+        })
+        .then(function(r) { return r.ok ? r.text() : null; })
+        .then(function(html) {
+            if (!html) { if (cb) cb(false); return; }
+            var doc = (new DOMParser()).parseFromString(html, 'text/html');
+            var newCP = doc.querySelector('[data-target="conv-panel"]');
+            if (!newCP || !newCP.innerHTML.trim()) { if (cb) cb(false); return; }
+            convPanel.innerHTML = newCP.innerHTML;
+            /* Re-executa scripts do conv-panel (busca, WS da lista) */
+            newCP.querySelectorAll('script').forEach(function(s) {
+                var ns = document.createElement('script');
+                ns.textContent = s.textContent;
+                document.body.appendChild(ns);
+                document.body.removeChild(ns);
+            });
+            if (cb) cb(true);
+        })
+        .catch(function() { if (cb) cb(false); });
+    };
+
     function pulseConvItem(convId) {
         /* Encontra o item da conversa no sidebar pelo href */
         var selector = 'a.conv-item[href*="' + convId + '"]';
@@ -1524,6 +1554,23 @@ document.addEventListener('click', function() {
                         showBrowserNotif('⏰ SLA estourado', (p.group_name || 'Chamado') + ' está sem resposta há mais tempo que o permitido.');
                         showToast(p.group_name || 'Chamado', 'SLA de 1ª resposta estourado', p.conversation_id, (p.group_name || '??').substring(0, 2).toUpperCase(), true);
                         pulseConvItem(p.conversation_id);
+                        return;
+                    }
+
+                    /* Chamado foi transferido (assumido/mesclado/via botão Transferir) —
+                       atualiza o sidebar de quem ganhou ou perdeu o chamado em tempo real. */
+                    if (p.type === 'conversation_reassigned' && p.conversation_id) {
+                        if (typeof window.__spaClearPrefetchCache === 'function') window.__spaClearPrefetchCache();
+                        var iAmNewAssignee = p.assigned_to_id === currentUserId;
+                        var iWasOldAssignee = p.old_assigned_to_id === currentUserId;
+                        if (iAmNewAssignee || iWasOldAssignee) {
+                            window.__refreshConvPanel();
+                        }
+                        if (iAmNewAssignee) {
+                            if (typeof playSoundTicket === 'function') playSoundTicket();
+                            showBrowserNotif('🔄 Chamado transferido para você', p.group_name || 'Um chamado foi transferido para você.');
+                            showToast(p.group_name || 'Chamado', 'Transferido para você', p.conversation_id, (p.group_name || '??').substring(0, 2).toUpperCase(), true);
+                        }
                         return;
                     }
 
