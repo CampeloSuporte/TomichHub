@@ -937,6 +937,27 @@ Reaproveita o modal de preview/confirmação genérico já usado por toda ação
 downstream, checkboxes IPv4/IPv6, e um "picker" de prefix-list por direção/AF que busca candidatas via
 `escanear-prefixo` com um novo parâmetro opcional `ao_vivo`).
 
+### Aviso visível quando "Atualizar agora" não muda nada (adicionado em 2026-08-04)
+
+Bug real em produção: uma sessão criada por "Configurar nova sessão" foi removida manualmente no
+equipamento (fora da automação, via SSH direto); "Atualizar agora" parecia não fazer nada e a
+automação continuava recusando recriar a sessão com "já existe peer/route-map". Causa: `Atualizar
+agora` só relê o **último backup já salvo em disco** (nunca conecta ao vivo — ver "Atualizar snapshot
+sob demanda" acima) e a proteção `patch_local_pendente`/`'sem_novidade'` recusa reprocessar enquanto
+não existir um backup NOVO — o único aviso disso era um tooltip discreto no badge, fácil de não notar.
+Corrigido: `atualizarAgora()` (`bgp_automacao.html`) agora também colore o badge de âmbar
+(`.aviso-sem-novidade`) e mostra um `alert()` explicando a causa e a ação certa (tirar um backup
+manual do host fora desta tela, depois clicar em "Atualizar agora" de novo). Não muda a lógica do
+backend — só torna o estado existente visível de verdade.
+
+**Nota operacional:** se uma sessão criada por esta automação for removida manualmente no
+equipamento, o route-map/prefix-list associados **não são removidos junto** (Cisco não limpa objetos
+referenciados automaticamente) — tentar recriar com o mesmo sufixo esbarra na mesma checagem de
+colisão de nome que protege contra sobrescrever objetos compartilhados (ver "Geração de comandos"
+acima). Prefix-lists com prefixo próprio (`PL-ORIGIN-*`) costumam ser reaproveitadas por VÁRIOS
+route-maps/upstreams ao mesmo tempo — nunca remova uma sem antes conferir (`bgp_matcher.
+listar_prefix_lists`/a tela de escanear-prefixo) se outra sessão ainda a referencia.
+
 ---
 
 **Última atualização:** 04/08/2026

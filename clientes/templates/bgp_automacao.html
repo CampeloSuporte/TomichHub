@@ -22,6 +22,7 @@
     }
     .badge.vendor { border-color: #58a6ff; color: #58a6ff; }
     .badge.erro { border-color: #ff5555; color: #ff5555; }
+    .badge.aviso-sem-novidade { border-color: #d29922; color: #d29922; }
     #btnVoltar, #btnAtualizar, #btnConfigurarSessao {
         background: transparent; border: 1px solid #30363d; color: #7d8590;
         padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;
@@ -458,7 +459,7 @@ async function carregar() {
             (data.vendor === 'cisco' || data.vendor === 'datacom') ? 'inline-block' : 'none';
         const badgeGerado = document.getElementById('badgeGerado');
         badgeGerado.textContent = 'snapshot de ' + data.gerado_em;
-        badgeGerado.classList.remove('erro');
+        badgeGerado.classList.remove('erro', 'aviso-sem-novidade');
         badgeGerado.title = '';
         if (data.erro) {
             badgeGerado.classList.add('erro');
@@ -485,8 +486,24 @@ async function atualizarAgora() {
         } else {
             await carregar();
             if (data.status === 'sem_novidade') {
+                // Antes era só um tooltip discreto no badge — fácil de não
+                // notar, e o usuário ficava sem entender por que "Atualizar
+                // agora" parecia não fazer nada (reportado em produção:
+                // sessão removida manualmente no equipamento continuava
+                // aparecendo, porque nenhum backup NOVO tinha sido tirado
+                // desde a última ação — "Atualizar agora" só relê o backup
+                // já salvo em disco, nunca conecta ao vivo).
                 const badge = document.getElementById('badgeGerado');
-                badge.title = data.mensagem || 'Nenhum backup novo — mostrando o último estado conhecido (já inclui ações recentes).';
+                const msg = data.mensagem || 'Nenhum backup novo desde a última ação.';
+                badge.title = msg;
+                badge.classList.add('aviso-sem-novidade');
+                alert(
+                    '⚠ Nada foi atualizado.\n\n' + msg + '\n\n' +
+                    'O "Atualizar agora" só relê o último backup já salvo em disco — ele NÃO conecta ao vivo ' +
+                    'no equipamento. Se algo mudou direto no equipamento (por SSH, outro operador, etc.) e você ' +
+                    'quer que apareça aqui, tire um backup manual deste host (fora desta tela) e clique em ' +
+                    '"Atualizar agora" de novo.'
+                );
             }
         }
     } catch (e) {
