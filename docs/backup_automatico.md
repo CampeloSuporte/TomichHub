@@ -246,6 +246,42 @@ KEX do paramiko.
 
 ---
 
+## Retry em falha transitória de handshake SSH — 2026-08-05
+
+**Sintoma:** backup da OLT-HU-LEAL (Huawei MA5800, IP privado via proxy) falhou 3 madrugadas
+seguidas — `No existing session` (03/08 e 04/08) e `Authentication failed: transport shut down or
+saw EOF` (05/08) — enquanto o terminal interativo acessava o mesmo host normalmente no mesmo
+período, com as mesmas credenciais.
+
+**Causa:** o backup abre o `paramiko.SSHClient().connect()` sobre um túnel próprio
+(`criar_ssh_tunnel`, relay TCP por threads separado do canal usado pelo terminal — ver
+[terminal_ssh.md](terminal_ssh.md)), mais sensível a variação de latência do que o canal direto do
+terminal. Nessa OLT o handshake ocasionalmente não completa a tempo; a falha é do timing daquele
+instante, não das credenciais nem de KEX incompatível (que já tem proteção própria, ver seção
+acima).
+
+**Correção** (`clientes/views.py::realizar_backup`): o `client.connect()` agora tenta novamente
+uma vez, com 3s de espera, mas **só** quando a exceção é uma dessas duas mensagens conhecidas como
+transitórias (`No existing session` / `transport shut down or saw EOF`) — qualquer outro erro
+(senha errada, host inacessível, etc.) continua propagando na primeira tentativa, sem retry
+mascarando um problema real.
+
+```python
+_erros_transitorios = ('transport shut down or saw EOF', 'No existing session')
+for _tentativa in (1, 2):
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        client.connect(**_connect_kwargs)
+        break
+    except paramiko.SSHException as _e:
+        if _tentativa == 2 or not any(t in str(_e) for t in _erros_transitorios):
+            raise
+        time.sleep(3)
+```
+
+---
+
 ## Bug corrigido — `FileNotFoundError` ao salvar backup de acesso com "/" no tipo (2026-07-20)
 
 **Sintoma:**

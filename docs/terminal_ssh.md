@@ -2,7 +2,7 @@
 
 **Arquivo:** `clientes/consumers.py`  
 **Classe principal:** `SSHConsumer` (Django Channels WebSocket Consumer)  
-**Atualizado em:** 2026-07-31
+**Atualizado em:** 2026-08-05
 
 ---
 
@@ -99,6 +99,27 @@ o fix — conexões de proxy para equipamentos ZTE podiam sofrer o mesmo timeout
 cobertas. `clientes/views.py::realizar_backup` também ganhou uma proteção equivalente via
 `disabled_algorithms={'kex': [...]}` no `SSHClient.connect()` do backup manual/automático (ver
 [backup_automatico.md](backup_automatico.md)).
+
+### Gap encontrado em `connect_ssh_via_proxy` — corrigido em 2026-08-05
+
+**Sintoma:** terminal via proxy falhava intermitentemente com `No existing session` alguns
+segundos após abrir o canal — visto ao vivo num switch Huawei S5735 (banner SSH sem "client
+version", indicando stack SSH embarcada mínima). O log mostrava o canal aberto e o banner
+recebido normalmente, mas a autenticação nunca acontecia.
+
+**Causa:** `connect_ssh_via_proxy()` (o caminho usado pela maioria dos acessos a IP privado sem
+VPN dedicada) criava o `paramiko.Transport` do canal `direct-tcpip` **sem** aplicar
+`_ZTE_PREFERRED_KEX` — diferente de `_connect_ssh_paramiko_direct` e do `FirmwareDownloadConsumer`,
+que já tinham o ajuste. Sem ele, o paramiko tenta os grupos pesados primeiro; em equipamentos
+lentos a negociação passa dos 10s de `start_client(timeout=10)`. E aqui há uma armadilha do
+próprio paramiko: se a thread de negociação ainda estiver viva (só lenta, não morta),
+`start_client()` **não levanta exceção** ao estourar o timeout — só devolve o controle sem KEX
+completo. O código seguia para `auth_password()`, que aí sim falha com `SSHException("No existing
+session")`, porque `initial_kex_done` ainda era `False`.
+
+**Correção:** adicionado `dest_transport._preferred_kex = _ZTE_PREFERRED_KEX` logo após criar o
+`Transport`, mesma linha já usada nos outros dois pontos — fecha o último caminho de conexão via
+proxy que ainda usava a ordem padrão do paramiko.
 
 ---
 
