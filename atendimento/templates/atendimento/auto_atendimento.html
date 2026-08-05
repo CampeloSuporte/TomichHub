@@ -289,16 +289,25 @@ async function saveFlow() {
 }
 
 async function toggleFlow(id, active) {
-    await fetch(`/atendimento/api/chat-flows/${id}/`, {
+    const r = await fetch(`/atendimento/api/chat-flows/${id}/`, {
         method: 'PUT', headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
         body: JSON.stringify({active})
     });
+    // Recarrega — ativar/desativar um fluxo muda quais grupos aparecem em
+    // "Grupos com Auto Atendimento Ativo/Removidos" logo acima (principalmente
+    // quando o fluxo é o universal, sem grupos específicos), então não dá pra
+    // só deixar o toggle marcado sem atualizar o resto da página.
+    if (r.ok) location.reload();
+    else alert('Erro ao atualizar o fluxo');
 }
 
 async function deleteFlow(id) {
     if (!confirm('Remover este fluxo?')) return;
     const r = await fetch(`/atendimento/api/chat-flows/${id}/`, { method: 'DELETE', headers: {'X-CSRFToken': CSRF} });
-    if (r.ok) { document.getElementById('flow-' + id)?.remove(); }
+    // Mesmo motivo do toggleFlow: excluir um fluxo pode mudar quais grupos
+    // aparecem como "ativos" no auto atendimento.
+    if (r.ok) location.reload();
+    else alert('Erro ao remover o fluxo');
 }
 
 function buildGroupItem(groupId, name, conn, excluded) {

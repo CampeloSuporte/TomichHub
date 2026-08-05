@@ -939,6 +939,7 @@ body {
             mask: radial-gradient(circle at top left, transparent 10px, #000 10.5px);
 }
 .msg.internal .msg-bubble { background:rgba(245,196,0,0.06); border:1px dashed rgba(245,196,0,0.3); border-radius:8px; color:#fbbf24; font-style:italic; font-size:12px; box-shadow:none; }
+.msg.internal .msg-bubble::before { display:none; }
 .msg-time { font-size:10px; color:var(--wa-text-muted); padding:0 4px; }
 /* Tick duplo só como toque visual de "mensagem enviada" — não temos
    confirmação real de entrega/leitura do WhatsApp, por isso cinza (não
@@ -1135,7 +1136,7 @@ body {
                 <i class="fas fa-chevron-right nav-item-arrow"></i>
             </a>
 
-            <a href="{% url 'atendimento:inbox' %}" class="nav-item {% if request.resolver_match.url_name == 'inbox' or request.resolver_match.url_name == 'conversation_detail' %}active{% endif %}">
+            <a href="{% url 'atendimento:inbox' %}" class="nav-item {% if request.GET.tab != 'task' and request.resolver_match.url_name == 'inbox' or request.GET.tab != 'task' and request.resolver_match.url_name == 'conversation_detail' %}active{% endif %}">
                 <i class="fas fa-inbox nav-item-icon"></i>
                 <span style="flex:1;">Caixa de Entrada</span>
                 {% if open_count %}<span class="nav-badge">{{ open_count }}</span>{% endif %}
