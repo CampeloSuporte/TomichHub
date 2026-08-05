@@ -1,5 +1,5 @@
 <a href="{% url 'atendimento:conversation_detail' conv.id %}"
-   class="conv-item {% if conv.status == 'new' %}unread{% endif %}"
+   class="conv-item {% if conv.unread_count %}unread{% endif %}"
    data-conv-id="{{ conv.id }}"
    data-conv-name="{{ conv.group.name|lower }}"
    data-conv-client="{{ conv.cliente.nome_empresa|lower|default:'' }}">
@@ -12,7 +12,12 @@
     <div class="conv-meta">
         <div class="conv-meta-top">
             <span class="conv-name">{{ conv.group.name|default:conv.conversation_id }}</span>
-            <span class="conv-time">{{ conv.last_message_at|date:"H:i" }}</span>
+            <span class="conv-time-wrap" style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                <span class="conv-time">{{ conv.last_message_at|date:"H:i" }}</span>
+                {% if conv.unread_count %}
+                <span class="conv-unread-badge" title="{{ conv.unread_count }} mensage{{ conv.unread_count|pluralize:'m,ns' }} não lida{{ conv.unread_count|pluralize }}">{{ conv.unread_count }}</span>
+                {% endif %}
+            </span>
         </div>
         <div class="conv-preview">
             {% if conv.is_task_conv %}<span style="color:#a78bfa;font-size:10px;margin-right:4px"><i class="fas fa-tasks"></i> T-{{ conv.conversation_id }}</span>{% endif %}{{ conv.cliente.nome_empresa|default:"Sem cliente" }}

@@ -47,11 +47,30 @@ from clientes.models import Cliente
 logger = logging.getLogger(__name__)
 
 
+def _marcar_mensagens_lidas(conversation):
+    """Marca as mensagens do cliente como lidas e avisa outras abas/dispositivos
+    via WebSocket para sumir o indicador de não lida em tempo real."""
+    had_unread = Message.objects.filter(
+        conversation=conversation, sender_type='customer', is_read=False
+    ).update(is_read=True)
+    if had_unread:
+        from .services import _ws_send_inbox
+        try:
+            _ws_send_inbox({
+                'type': 'messages_read',
+                'conversation_id': str(conversation.id),
+            })
+        except Exception as _e:
+            logger.warning(f"Falha ao notificar inbox (messages_read): {_e}")
+
+
 def _base_ctx(request):
     """Contexto comum a todas as views do atendimento (sidebar + badges)."""
     active = Conversation.objects.filter(
         status__in=['new', 'open', 'pending']
-    ).select_related('group', 'cliente', 'assigned_to').prefetch_related('tags')
+    ).select_related('group', 'cliente', 'assigned_to').prefetch_related('tags').annotate(
+        unread_count=Count('messages', filter=Q(messages__sender_type='customer', messages__is_read=False))
+    )
 
     open_q = active.filter(assigned_to__isnull=True, status__in=['new', 'open'])
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -107,7 +126,9 @@ def inbox(request):
     active_tab = request.GET.get('tab', 'open')
     search = request.GET.get('search', '')
 
-    base_qs = Conversation.objects.select_related('group', 'cliente', 'assigned_to').prefetch_related('tags')
+    base_qs = Conversation.objects.select_related('group', 'cliente', 'assigned_to').prefetch_related('tags').annotate(
+        unread_count=Count('messages', filter=Q(messages__sender_type='customer', messages__is_read=False))
+    )
 
     if search:
         base_qs = base_qs.filter(
@@ -157,8 +178,8 @@ def conversation_detail(request, conversation_id):
     # Mensagens
     messages = conversation.messages.select_related('sender').order_by('created_at')
 
-    # Atualiza status de leitura
-    Message.objects.filter(conversation=conversation, is_read=False).update(is_read=True)
+    # Atualiza status de leitura das mensagens do cliente e avisa outras abas/dispositivos
+    _marcar_mensagens_lidas(conversation)
 
     # Determina em qual aba do sidebar esta conversa aparece
     if conversation.assigned_to == request.user:
@@ -169,7 +190,9 @@ def conversation_detail(request, conversation_id):
         sidebar_active_tab = 'ongoing'
 
     # Filtra as conversas do sidebar de acordo com a aba ativa
-    _qs = Conversation.objects.select_related('group', 'cliente', 'assigned_to').prefetch_related('tags').filter(
+    _qs = Conversation.objects.select_related('group', 'cliente', 'assigned_to').prefetch_related('tags').annotate(
+        unread_count=Count('messages', filter=Q(messages__sender_type='customer', messages__is_read=False))
+    ).filter(
         status__in=['new', 'open', 'pending']
     )
     if sidebar_active_tab == 'mine':
@@ -1864,6 +1887,10 @@ def api_conversation_messages(request, conversation_id):
             'message_type': m.message_type,
             'attachment_url': m.attachment_url or '',
         })
+
+    # Usuário está vendo a conversa (mini-chat flutuante) → marca como lida
+    _marcar_mensagens_lidas(conversation)
+
     return JsonResponse({'messages': data})
 
 
@@ -2586,21 +2613,16 @@ def api_attendant_contact_test(request, user_id):
 @require_http_methods(["GET"])
 def api_my_conversations(request):
     """Retorna conversas ativas atribuídas ao usuário logado."""
-    from datetime import timedelta as _td
-    cutoff = timezone.now() - _td(hours=48)
     convs = Conversation.objects.filter(
         assigned_to=request.user,
         status__in=['new', 'open', 'pending'],
-    ).select_related('group', 'cliente').order_by('-last_message_at')[:30]
+    ).select_related('group', 'cliente').annotate(
+        unread_count=Count('messages', filter=Q(messages__sender_type='customer', messages__is_read=False))
+    ).order_by('-last_message_at')[:30]
 
     data = []
     for c in convs:
-        # Mensagens de clientes recebidas nas últimas 24h como indicador de atividade
-        unread = Message.objects.filter(
-            conversation=c,
-            sender_type='customer',
-            created_at__gte=cutoff,
-        ).count()
+        unread = c.unread_count
         last_msg = Message.objects.filter(conversation=c).order_by('-created_at').first()
         last_customer_msg = Message.objects.filter(
             conversation=c, sender_type='customer',

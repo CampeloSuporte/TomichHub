@@ -556,6 +556,17 @@ body {
     box-shadow: 2px 0 10px -4px rgba(56,139,253,0.4);
     padding-left: 13px;
 }
+.conv-item.unread .conv-name { color: var(--text); font-weight: 700; }
+.conv-item.unread .conv-preview { color: var(--text); }
+
+.conv-unread-badge {
+    background: var(--brand-600);
+    color: #fff;
+    font-size: 10px; font-weight: 700;
+    min-width: 16px; height: 16px; border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center; padding: 0 4px;
+    flex-shrink: 0;
+}
 
 .conv-avatar {
     width: 40px; height: 40px; border-radius: 50%;
@@ -1455,6 +1466,31 @@ document.addEventListener('click', function() {
         setTimeout(function(){ if (toast.parentNode) toast.parentNode.removeChild(toast); }, 320);
     };
 
+    window.markConvUnread = function(convId) {
+        document.querySelectorAll('.conv-item[data-conv-id="' + convId + '"]').forEach(function(el) {
+            el.classList.add('unread');
+            var wrap = el.querySelector('.conv-time-wrap');
+            if (!wrap) return;
+            var badge = wrap.querySelector('.conv-unread-badge');
+            if (badge) {
+                badge.textContent = (parseInt(badge.textContent, 10) || 0) + 1;
+            } else {
+                badge = document.createElement('span');
+                badge.className = 'conv-unread-badge';
+                badge.textContent = '1';
+                wrap.appendChild(badge);
+            }
+        });
+    };
+
+    window.markConvRead = function(convId) {
+        document.querySelectorAll('.conv-item[data-conv-id="' + convId + '"]').forEach(function(el) {
+            el.classList.remove('unread');
+            var badge = el.querySelector('.conv-unread-badge');
+            if (badge) badge.remove();
+        });
+    };
+
     function pulseConvItem(convId) {
         /* Encontra o item da conversa no sidebar pelo href */
         var selector = 'a.conv-item[href*="' + convId + '"]';
@@ -1491,12 +1527,23 @@ document.addEventListener('click', function() {
                         return;
                     }
 
+                    /* Chamado foi aberto/lido (em outra aba/dispositivo) → some o indicador de não lida */
+                    if (p.type === 'messages_read' && p.conversation_id) {
+                        if (typeof window.markConvRead === 'function') window.markConvRead(p.conversation_id);
+                        return;
+                    }
+
                     if (p.type !== 'new_message' || !p.message || !p.conversation) return;
 
                     var conv = p.conversation;
                     var msg  = p.message;
 
                     if (msg.sender_type === 'agent') return;
+
+                    /* Mensagem do cliente → marca indicador persistente de não lida */
+                    if (msg.sender_type === 'customer' && typeof window.markConvUnread === 'function') {
+                        window.markConvUnread(conv.id);
+                    }
 
                     var groupName  = conv.group_name || 'Grupo';
                     var msgContent = msg.content || '';
@@ -2095,6 +2142,8 @@ document.addEventListener('keydown', function(e) {
             document.querySelectorAll('.conv-item').forEach(function(el) { el.classList.remove('active'); });
             convLink.classList.add('active');
             convLink.classList.remove('unread', 'conv-pulsing');
+            var convId = convLink.dataset.convId;
+            if (convId && typeof window.markConvRead === 'function') window.markConvRead(convId);
         }
 
         barStart();

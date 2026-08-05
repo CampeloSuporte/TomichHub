@@ -147,9 +147,16 @@ document.getElementById('convSearch').addEventListener('input', function() {
                     if (typeof window.__spaClearPrefetchCache === 'function') window.__spaClearPrefetchCache();
                     return;
                 }
+                /* Chamado foi lido (nesta ou em outra aba/dispositivo) → some o indicador */
+                if (payload.type === 'messages_read' && payload.conversation_id) {
+                    if (typeof window.markConvRead === 'function') window.markConvRead(payload.conversation_id);
+                    return;
+                }
+
                 if (payload.type !== 'new_message' || !payload.conversation) return;
                 var conv   = payload.conversation;
                 var convId = conv.id;
+                var isCustomerMsg = payload.message && payload.message.sender_type === 'customer';
 
                 /* Atualiza em TODAS as listas */
                 document.querySelectorAll('[href*="' + convId + '"]').forEach(function(el) {
@@ -160,8 +167,11 @@ document.getElementById('convSearch').addEventListener('input', function() {
                     /* Move para o topo na lista onde está */
                     var parent = el.parentNode;
                     if (parent) parent.insertBefore(el, parent.firstChild);
-                    el.classList.add('unread');
                 });
+                /* Indicador persistente de não lida — só para mensagens do cliente */
+                if (isCustomerMsg && typeof window.markConvUnread === 'function') {
+                    window.markConvUnread(convId);
+                }
             } catch(err) {}
         };
 
