@@ -16,7 +16,7 @@
         {% if t.prazo %}{{ t.prazo|date:"d/m H:i" }}{% else %}—{% endif %}
     </td>
     {% if not ocultar_responsavel %}
-    <td>{{ t.assigned_to.get_full_name|default:t.assigned_to.username|default:"—" }}</td>
+    <td>{% if t.assigned_to %}{{ t.assigned_to.get_full_name|default:t.assigned_to.username }}{% else %}—{% endif %}</td>
     {% endif %}
     <td>
         <div class="tarefa-acoes">
