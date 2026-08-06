@@ -4,7 +4,7 @@
 
 To-do do back-office, opcionalmente vinculado a um Cliente. Qualquer atendente (Administrador/Consultor/Operador) pode criar, assumir e reatribuir tarefas dentro do próprio escopo de instância; o Administrador da plataforma vê e age em todas.
 
-**Última atualização:** 03/08/2026
+**Última atualização:** 06/08/2026
 **Status:** ✅ FUNCIONAL
 **Stack:** Django, painel embutido no dashboard (`quadro_geral` / `quadro_instancia`)
 
@@ -59,3 +59,31 @@ Todas as views (exceto `usuarios/`, que é GET) fazem `redirect` de volta pra `n
 - Notificação (WhatsApp/e-mail) de tarefa atrasada — hoje é só destaque visual no painel.
 - Aba "Tarefas" na tela do cliente.
 - Kanban ou relatórios de tarefas.
+
+## 🐛 Correção — `VariableDoesNotExist` em `/homegeral` com tarefa sem responsável (2026-08-06)
+
+Uma tarefa sem `assigned_to` (não assumida) derrubava o dashboard inteiro com
+`VariableDoesNotExist: Failed lookup for key [username] in None`, em
+`tarefas/_linha.html`:
+
+```django
+{{ t.assigned_to.get_full_name|default:t.assigned_to.username|default:"—" }}
+```
+
+**Causa:** `t.assigned_to.username` é o *argumento* do filtro `default`, não a
+variável principal da tag `{{ }}`. Django só suprime `VariableDoesNotExist` (caindo
+pra `string_if_invalid`) na resolução da variável principal — a resolução do
+argumento de um filtro não passa por esse tratamento e propaga a exceção crua. Com
+`assigned_to=None`, o lookup de `.username` em `None` explode e derruba a página
+inteira em vez de simplesmente cair no `default:"—"` esperado.
+
+**Correção:** guard explícito antes de acessar os atributos:
+
+```django
+{% if t.assigned_to %}{{ t.assigned_to.get_full_name|default:t.assigned_to.username }}{% else %}—{% endif %}
+```
+
+**Lição:** nunca usar uma variável encadeada (`a.b.c`) como argumento de `|default:`
+sem garantir antes que `a.b` não é `None` — o filtro não protege contra isso. Mesmo
+padrão latente corrigido em `wiki/visualizar_artigo.html` (ver
+[WIKI_ARTIGOS.md](WIKI_ARTIGOS.md#correção--mesmo-crash-latente-em-criado_por-2026-08-06)).

@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-06 (Fix: `/homegeral` quebrava com tarefa/artigo sem responsável)
+
+### Corrigido
+
+- **`VariableDoesNotExist` em `/homegeral`** — o painel de tarefas do dashboard
+  (`home.views.quadro_geral`) derrubava a página inteira quando existia uma tarefa sem
+  responsável (`assigned_to=None`). A causa é uma armadilha do template do Django:
+  `{{ t.assigned_to.get_full_name|default:t.assigned_to.username }}` avalia
+  `t.assigned_to.username` como *argumento* do filtro `default`, e — diferente da
+  variável principal — Django não silencia falha de lookup em argumento de filtro,
+  então `None.username` sobe como exceção fatal em vez de cair no fallback. Corrigido
+  em [`tarefas/_linha.html`](tarefas/templates/tarefas/_linha.html) com um guard
+  `{% if t.assigned_to %}` explícito. Detalhes em
+  [TAREFAS.md](docs/TAREFAS.md#correção--variabledoesnotexist-em-homegeral-com-tarefa-sem-responsável-2026-08-06).
+- **Mesmo padrão latente em `wiki/visualizar_artigo.html`** — `artigo.criado_por` é
+  `SET_NULL`/nullable, então um artigo com autor apagado quebraria a página do mesmo
+  jeito. Corrigido preventivamente com o mesmo guard. Detalhes em
+  [WIKI_ARTIGOS.md](docs/WIKI_ARTIGOS.md#correção--mesmo-crash-latente-em-criado_por-2026-08-06).
+
+---
+
 ## [Não publicado] — 2026-08-05 (Atendimento: indicador de não lida, fix transferência, visual WhatsApp)
 
 ### Adicionado

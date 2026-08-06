@@ -89,5 +89,25 @@ Antes vazio (`# Register your models here.`). Agora registra `CategoriaWiki`, `T
 
 ---
 
-**Última atualização:** 20/07/2026
+## Correção — mesmo crash latente em `criado_por` (2026-08-06)
+
+`ArtigoWiki.criado_por` é `ForeignKey(User, on_delete=models.SET_NULL, null=True)`, então um
+artigo cujo autor foi excluído tem `criado_por=None`. `visualizar_artigo.html` fazia:
+
+```django
+Criado por {{ artigo.criado_por.get_full_name|default:artigo.criado_por.username }}
+```
+
+que quebra com `VariableDoesNotExist` quando `criado_por` é `None` — mesma armadilha do Django
+encontrada e corrigida em [TAREFAS.md](TAREFAS.md#correção--variabledoesnotexist-em-homegeral-com-tarefa-sem-responsável-2026-08-06)
+(`t.assigned_to.username` como argumento de `|default:` não tem o lookup falho suprimido, só a
+variável principal tem). Corrigido com guard:
+
+```django
+{% if artigo.criado_por %}{{ artigo.criado_por.get_full_name|default:artigo.criado_por.username }}{% else %}—{% endif %}
+```
+
+---
+
+**Última atualização:** 06/08/2026
 **Autor:** CampeloSuporte
