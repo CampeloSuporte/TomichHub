@@ -7182,6 +7182,28 @@ def openvpn_usuario_deletar(request, usuario_id):
 IRR_TC_API_URL = 'https://bgp.net.br/v1/submit/'
 
 
+def _irr_fmt_asn(asn):
+    """Normaliza um ASN para o formato RPSL exigido (prefixo 'AS'), já que o
+    formulário aceita tanto '16735' quanto 'AS16735' mas o IRR só aceita a
+    segunda forma em `members:`/`import:`/`export:`."""
+    s = str(asn or '').strip().upper()
+    if s and not s.startswith('AS'):
+        s = f'AS{s}'
+    return s
+
+
+def _irr_slug_as_name(name):
+    """Deriva um identificador RPSL válido (letras/dígitos/hífen, sem espaços
+    ou acentos) a partir de um nome livre (ex: razão social), já que campos
+    como `as-name:` e o nome do as-set principal (AS-<nome>) rejeitam
+    qualquer caractere fora desse conjunto."""
+    import re
+    import unicodedata
+    ascii_only = unicodedata.normalize('NFKD', str(name or '')).encode('ascii', 'ignore').decode('ascii')
+    slug = re.sub(r'[^A-Za-z0-9]+', '-', ascii_only).strip('-').upper()
+    return slug
+
+
 def _irr_gerar_objetos(cfg):
     """Gera a lista de objetos RPSL (um item por objeto) a partir de um IRRConfig.
 
@@ -7287,7 +7309,7 @@ def _irr_gerar_objetos(cfg):
     up_members = ''
     for u in (cfg.upstream_asns or []):
         nome_comment = f'  # {u["nome"]}' if u.get('nome') else ''
-        up_members += f'members: {u["asn"]}{nome_comment}\n'
+        up_members += f'members: {_irr_fmt_asn(u["asn"])}{nome_comment}\n'
     partes.append(
         f'as-set: {as_full}:AS-UPSTREAMS\n'
         f'descr:  as-set containing {as_full} upstream providers\n'
@@ -7307,7 +7329,7 @@ def _irr_gerar_objetos(cfg):
     for c in (cfg.customer_asns or []):
         if c.get('asn'):
             nome_comment = f'  # {c["nome"]}' if c.get('nome') else ''
-            cust_members += f'members: {c["asn"]}{nome_comment}\n'
+            cust_members += f'members: {_irr_fmt_asn(c["asn"])}{nome_comment}\n'
     partes.append(
         f'as-set: {as_full}:AS-CUSTOMERS\n'
         f'descr:  as-set containing {as_full} and its downstream customers\n'
@@ -7321,8 +7343,9 @@ def _irr_gerar_objetos(cfg):
     )
 
     # ── AS-set principal ──────────────────────────────────────────────────────
+    as_name_slug = _irr_slug_as_name(cfg.as_name)
     partes.append(
-        f'as-set: {as_full}:AS-{cfg.as_name}\n'
+        f'as-set: {as_full}:AS-{as_name_slug}\n'
         f'descr:  {cfg.empresa_descr} - ANNOUNCEMENTS\n'
         f'members: {as_full}\n'
         f'members: {as_full}:AS-CUSTOMERS\n'
@@ -7338,9 +7361,9 @@ def _irr_gerar_objetos(cfg):
     import_lines = ''
     export_lines = ''
     for u in (cfg.upstream_asns or []):
-        import_lines += f'import:   from {u["asn"]}  accept ANY\n'
+        import_lines += f'import:   from {_irr_fmt_asn(u["asn"])}  accept ANY\n'
     for u in (cfg.upstream_asns or []):
-        export_lines += f'export:   to {u["asn"]}  announce {as_full}:AS-{cfg.as_name}\n'
+        export_lines += f'export:   to {_irr_fmt_asn(u["asn"])}  announce {as_full}:AS-{as_name_slug}\n'
 
     ix_lines = ''
     if cfg.ix_members:
@@ -7357,7 +7380,7 @@ def _irr_gerar_objetos(cfg):
 
     partes.append(
         f'aut-num:        {as_full}\n'
-        f'as-name:        {cfg.as_name}\n'
+        f'as-name:        {as_name_slug}\n'
         f'descr:          {cfg.empresa_descr}\n'
         + ix_lines +
         f'remarks:        ==========================================================\n'
