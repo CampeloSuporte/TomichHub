@@ -158,7 +158,7 @@
                 <div class="msg-bubble">
                     {% if message.message_type == 'image' and message.attachment_url %}
                         <img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">
-                        {% if message.content %}<div class="msg-media-caption">{{ message.content }}</div>{% endif %}
+                        {% if message.content %}<div class="msg-media-caption">{{ message.content|linebreaksbr }}</div>{% endif %}
                     {% elif message.message_type == 'audio' and message.attachment_url %}
                         <audio controls class="msg-audio-player" preload="none">
                             <source src="{{ message.attachment_url }}">
@@ -167,13 +167,13 @@
                         <video controls class="msg-video-player" preload="none">
                             <source src="{{ message.attachment_url }}">
                         </video>
-                        {% if message.content %}<div class="msg-media-caption">{{ message.content }}</div>{% endif %}
+                        {% if message.content %}<div class="msg-media-caption">{{ message.content|linebreaksbr }}</div>{% endif %}
                     {% elif message.message_type == 'document' and message.attachment_url %}
                         <a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link">
                             <i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}
                         </a>
                     {% else %}
-                        {{ message.content }}
+                        {{ message.content|linebreaksbr }}
                     {% endif %}
                 </div>
                 <div class="msg-time">{{ message.created_at|date:"H:i" }}</div>

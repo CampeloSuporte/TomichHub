@@ -923,7 +923,7 @@ body {
 /* Bolha estilo WhatsApp: cantos arredondados com "rabicho" apontando
    pro remetente — cinza-escuro pra cliente (esquerda), verde-escuro
    pra atendente (direita), igual ao WhatsApp Web no modo escuro. */
-.msg-bubble { position:relative; background:var(--wa-bubble-in); border:none; border-radius:7.5px 7.5px 7.5px 2px; padding:6px 9px 8px; font-size:13.5px; line-height:1.4; word-break:break-word; color:var(--wa-text); box-shadow:0 1px 1px rgba(0,0,0,0.3); }
+.msg-bubble { position:relative; background:var(--wa-bubble-in); border:none; border-radius:7.5px 7.5px 7.5px 2px; padding:6px 9px 8px; font-size:13.5px; line-height:1.4; word-break:break-word; white-space:pre-wrap; color:var(--wa-text); box-shadow:0 1px 1px rgba(0,0,0,0.3); }
 .msg-bubble::before {
     content:''; position:absolute; bottom:0; left:-7px; width:12px; height:13px;
     background:var(--wa-bubble-in);
