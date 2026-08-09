@@ -148,6 +148,16 @@
                                                 <button class="btn-action btn-delete" onclick="confirmarDelete({{cliente.id}})" title="Excluir">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
+                                                {% if cliente.usuario_tem_2fa %}
+                                                <form method="post" action="{% url 'resetar_2fa_admin' %}" style="display:inline" onsubmit="return confirm('Resetar o 2FA do login de {{ cliente.nome_empresa|escapejs }}? O usuário vai precisar configurar de novo.');">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="id" value="{{ cliente.usuario_id }}">
+                                                    <input type="hidden" name="next" value="cliente">
+                                                    <button type="submit" class="btn-action" style="color:#ffaa00" title="Resetar 2FA do login do cliente">
+                                                        <i class="fas fa-mobile-alt"></i>
+                                                    </button>
+                                                </form>
+                                                {% endif %}
                                             </div>
                                         </td>
                                     </tr>

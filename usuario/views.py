@@ -465,17 +465,22 @@ def configurar_2fa(request):
 @login_required(login_url='login')
 @perms.pode_gerenciar_usuarios_required
 def resetar_2fa_admin(request):
-    """Apaga o 2FA de outro usuário gerenciável — cobre perda de celular +
-    códigos de backup, quando só um Administrador/Consultor destrava a conta."""
+    """Apaga o 2FA de outro usuário — cobre perda de celular + códigos de
+    backup, quando só um Administrador/Consultor destrava a conta. Cobre
+    tanto usuários internos gerenciáveis (Operadores) quanto os logins do
+    portal do Cliente final vinculados à própria instância do Consultor
+    (`perms.pode_resetar_2fa`), já que o Consultor tem domínio total sobre
+    os clientes que ele mesmo atende."""
+    destino = 'cadastrar_cliente' if request.POST.get('next') == 'cliente' else 'cadastrar_usuario'
     if request.method != 'POST':
-        return redirect('cadastrar_usuario')
+        return redirect(destino)
 
     usuario_id = request.POST.get('id')
-    usuario = perms.usuarios_gerenciaveis_por(request.user).filter(id=usuario_id).first()
-    if not usuario:
+    usuario = get_object_or_404(User, id=usuario_id)
+    if not perms.pode_resetar_2fa(request.user, usuario):
         messages.error(request, 'Você não possui permissão para resetar o 2FA deste usuário.')
-        return redirect('cadastrar_usuario')
+        return redirect(destino)
 
     TOTPDevice.objects.filter(usuario=usuario).delete()
     messages.success(request, f"2FA de '{usuario.username}' foi resetado.")
-    return redirect('cadastrar_usuario')
+    return redirect(destino)

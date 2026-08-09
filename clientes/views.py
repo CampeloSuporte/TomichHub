@@ -201,7 +201,9 @@ def cadastrar_cliente(request):
     from usuario.perms import is_admin, get_instancia, usuarios_gerenciaveis_por
 
     if request.method == 'GET':
-        clientes = Cliente.objects.visiveis_para(request.user).prefetch_related('usuarios_adicionais')
+        clientes = Cliente.objects.visiveis_para(request.user).select_related('usuario__totp_device').prefetch_related('usuarios_adicionais')
+        for c in clientes:
+            c.usuario_tem_2fa = bool(c.usuario_id and getattr(c.usuario, 'totp_device', None) and c.usuario.totp_device.confirmado)
         if is_admin(request.user):
             usuario = User.objects.all()
         else:
@@ -7657,6 +7659,18 @@ def irr_consultar_whois(request, cliente_id):
                     prefixos.append(p)
         return prefixos
 
+    def parse_remarks_email(texto, label_prefix):
+        """Extrai e-mail de linhas remarks no formato 'remarks: Label: email@dominio'."""
+        for linha in texto.splitlines():
+            l = linha.strip()
+            if l.lower().startswith('remarks:'):
+                resto = l.split(':', 1)[1].strip()
+                if resto.lower().startswith(label_prefix.lower()):
+                    m = re.search(r'[\w.+-]+@[\w.-]+\.\w+', resto)
+                    if m:
+                        return m.group(0)
+        return ''
+
     dados = {
         'ok':      True,
         'servidor': srv_final,
@@ -7668,18 +7682,31 @@ def irr_consultar_whois(request, cliente_id):
         dados['as_name']       = parse_field(autnum_raw, 'as-name')
         dados['descr']         = parse_field(autnum_raw, 'descr')
         changed_parts = parse_field(autnum_raw, 'changed').split()
-        dados['email_contato'] = parse_field(autnum_raw, 'e-mail') or (changed_parts[0] if changed_parts else '')
+        dados['email_abuse']   = parse_remarks_email(autnum_raw, 'abuse')
+        dados['email_contato'] = (
+            parse_field(autnum_raw, 'e-mail')
+            or (changed_parts[0] if changed_parts else '')
+            or parse_remarks_email(autnum_raw, 'network')
+            or dados['email_abuse']
+        )
         dados['nic_hdl']       = parse_field(autnum_raw, 'admin-c')
         dados['mntner']        = parse_field(autnum_raw, 'mnt-by')
 
-        # imports/exports → upstream ASNs
-        imports = parse_all_field(autnum_raw, 'import')
+        # AS-SETs/grupos de anúncio (member-of) — ex: AS271699:AS-ANNOUNCEMENTS, AS-PTTMetro-SP
+        dados['ix_members'] = parse_all_field(autnum_raw, 'member-of')
+
+        # import/mp-import → upstream ASNs (registros modernos usam mp-import para dual-stack)
+        imports = parse_all_field(autnum_raw, 'import') + parse_all_field(autnum_raw, 'mp-import')
         upstream = []
+        vistos = set()
         for imp in imports:
-            # "from AS52554 accept ANY" → AS52554
+            # "from AS52554 accept ANY" / "from AS269595 action pref = 100; accept ANY" → AS52554
             parts = imp.split()
             if len(parts) >= 2 and parts[0].lower() == 'from':
-                upstream.append({'asn': parts[1], 'nome': ''})
+                asn_up = parts[1].rstrip(';,')
+                if asn_up not in vistos:
+                    vistos.add(asn_up)
+                    upstream.append({'asn': asn_up, 'nome': ''})
         dados['upstream_asns'] = upstream
 
     # Rotas IPv4

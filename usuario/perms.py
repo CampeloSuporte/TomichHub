@@ -97,6 +97,27 @@ def usuarios_gerenciaveis_por(user):
     return User.objects.none()
 
 
+def pode_resetar_2fa(user, alvo):
+    """Quem pode apagar o 2FA de `alvo`. Mesmo escopo de
+    `usuarios_gerenciaveis_por` (Administrador vê todos; Consultor vê os
+    Operadores da própria instância) — mais os logins do portal do Cliente
+    final vinculados à própria instância, que ficam de fora daquela lista
+    por não terem `PerfilUsuario` (não são "usuário gerenciável" pra edição
+    de dados/role, mas o Consultor ainda é quem destrava o 2FA deles)."""
+    if usuarios_gerenciaveis_por(user).filter(id=alvo.id).exists():
+        return True
+    if is_consultor(user):
+        instancia = get_instancia(user)
+        if not instancia:
+            return False
+        from django.db.models import Q
+        from clientes.models import Cliente
+        return Cliente.objects.filter(instancia=instancia).filter(
+            Q(usuario=alvo) | Q(usuarios_adicionais=alvo)
+        ).exists()
+    return False
+
+
 def ferramentas_habilitadas_dict_para(user):
     """Dict {ferramenta_key: bool} pronto pra uso em template (nav) —
     Administrador vê tudo habilitado; Consultor/Operador conforme a
