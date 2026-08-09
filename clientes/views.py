@@ -817,33 +817,15 @@ def cadastrar_acesso(request):
 
 
 @login_required(login_url='login')
-@admin_required  # ← ADICIONAR ESTA LINHA
-def editar_cliente(request):
-    if request.method == 'POST':
-        cliente = get_object_or_404(Cliente, id=request.POST.get('id'))
-
-        cliente.nome_empresa = request.POST.get('nome_empresa')
-        cliente.cnpj = request.POST.get('cnpj')
-        cliente.cep = request.POST.get('cep')
-        cliente.endereco = request.POST.get('endereco')
-        cliente.estado = request.POST.get('estado')
-        cliente.cidade = request.POST.get('cidade')
-        cliente.telefone = request.POST.get('telefone')
-        cliente.email = request.POST.get('email')
-
-        cliente.save()
-        messages.success(request, "Cliente atualizado com sucesso!")
-        return redirect('listar_clientes')
-
-    messages.error(request, "Erro ao atualizar cliente.")
-    return redirect('listar_clientes')
-
-
-@login_required(login_url='login')
+@backoffice_required
 def editar_cliente(request):
     if request.method == 'POST':
         cliente_id = request.POST.get('id')
         cliente = get_object_or_404(Cliente, id=cliente_id)
+
+        if not _perms.pode_acessar_cliente(request.user, cliente):
+            messages.error(request, 'Você não possui permissão para editar este cliente.')
+            return redirect('cadastrar_cliente')
 
         email = request.POST.get('email')
         telefone = request.POST.get('telefone')
@@ -895,11 +877,15 @@ def editar_cliente(request):
 
 
 @login_required(login_url='login')
-@admin_required  # ← ADICIONAR ESTA LINHA
+@backoffice_required
 def deletar_cliente(request):
     if request.method == 'POST':
         cliente_id = request.POST.get('id')
         cliente = get_object_or_404(Cliente, id=cliente_id)
+
+        if not _perms.pode_acessar_cliente(request.user, cliente):
+            messages.error(request, 'Você não possui permissão para excluir este cliente.')
+            return redirect('cadastrar_cliente')
 
         nome_empresa = cliente.nome_empresa
 

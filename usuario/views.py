@@ -177,9 +177,22 @@ def editar_usuario(request):
         nova_senha = request.POST.get('password')
         role = request.POST.get('role') or 'cliente'
 
-        if not _validar_role_permitida(request, role):
-            messages.error(request, 'Você não possui permissão para definir esse tipo de usuário.')
-            return redirect('cadastrar_usuario')
+        perfil_atual = getattr(usuario, 'perfil', None)
+        role_atual = perfil_atual.role if perfil_atual else 'cliente'
+        role_mudou = role != role_atual
+
+        # Reenviar o próprio role (sem alterá-lo) não conta como "definir
+        # role" — senão todo usuário fica bloqueado de editar os próprios
+        # dados (email/senha) por reenviar o role atual no form. Só valida
+        # quando o role está de fato mudando; e ninguém pode alterar o
+        # próprio role, nem mesmo o Administrador.
+        if role_mudou:
+            if str(usuario.id) == str(request.user.id):
+                messages.error(request, 'Você não pode alterar seu próprio tipo de usuário.')
+                return redirect('cadastrar_usuario')
+            if not _validar_role_permitida(request, role):
+                messages.error(request, 'Você não possui permissão para definir esse tipo de usuário.')
+                return redirect('cadastrar_usuario')
 
         # Verifica se username já existe em outro usuário
         if User.objects.filter(username=username).exclude(id=usuario_id).exists():
