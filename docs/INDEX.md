@@ -2,6 +2,41 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 38 — 10/08/2026: Fix — Gaps de Permissão do Consultor (SSH, Backups, Vínculo de Usuário) + Autofill do Chrome
+
+**O que foi diagnosticado e corrigido?**
+- 🐛 **Terminal SSH recusava conexão mesmo com o host visível na lista**: `SSHConsumer._usuario_pode_acessar`
+  (`clientes/consumers.py`) ainda checava só `is_staff`/`is_superuser`, desalinhado da checagem
+  nova (`usuario.perms.pode_acessar_cliente`) já usada na listagem de hosts. Consultor via o host,
+  mas era barrado ao conectar.
+- 🐛 **`deletar_backup` exigia `is_staff`**: bloqueava tanto o Consultor quanto o cliente final do
+  portal (nenhum dos dois tem `is_staff=True`) ao excluir um backup do próprio cliente, mesmo já
+  podendo baixá-lo sem problema — mesma checagem `pode_acessar_cliente` de `download_backup` faltava.
+- 🐛 **Usuário de portal cadastrado pelo Consultor sumia da própria listagem e do vínculo em
+  Cliente**: `usuarios_gerenciaveis_por` fazia INNER JOIN em `PerfilUsuario`, que usuários de
+  portal (`role='cliente'`) nunca têm. Novo modelo `PortalUsuarioInstancia` rastreia a instância
+  dona desse tipo de login enquanto ele não está vinculado a um Cliente.
+- 🐛 **Autofill do Chrome voltou a preencher o campo de busca de Acessos sozinho**, sem clique —
+  o fix de 30/07 (`autocomplete="off"`) não é suficiente quando o Chrome já tem uma credencial
+  salva pro domínio. Corrigido com o padrão `readonly` + `onfocus="this.removeAttribute('readonly')"`,
+  que impede autopreenchimento passivo independente do que o Chrome já tem salvo.
+- ✅ `deletar_cliente` (bloqueado por `@admin_required`) já tinha sido corrigido um dia antes
+  (09/08, commit `0370002cd`) — mesmo padrão de bug, registrado aqui pelo histórico completo.
+
+**Pendente (achado mas fora do escopo, mesmo padrão de bug):** `script_views.py`
+(`gerenciar_scripts`/`salvar_script`/`deletar_script`) e `atendimento/views.py`
+(`staff_required`) ainda checam `is_staff` cru e podem bloquear o Consultor da mesma forma.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[PERMISSOES_CONSULTOR.md](PERMISSOES_CONSULTOR.md)** | Novo — os 3 gaps de permissão, causa raiz e correção de cada um, pendências registradas |
+| **[frontend_acessos.md](frontend_acessos.md)** | Seção "Follow-up — Corrigido em 2026-08-10" do autofill do Chrome |
+| **[terminal_ssh.md](terminal_ssh.md)** | Referência cruzada — consumer corrigido |
+
+---
+
 ### Sessão 37 — 10/08/2026: Varredura de Amplificação DDoS (AmpScan) nos blocos RPKI/IRR
 
 **O que foi implementado?**

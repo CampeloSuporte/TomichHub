@@ -1,7 +1,7 @@
 # Frontend — Aba de Acessos
 
 **Arquivos:** `clientes/templates/listar.html`, `templates/modal_acessos.html`, `clientes/views.py`  
-**Atualizado em:** 2026-07-30
+**Atualizado em:** 2026-08-10
 
 ---
 
@@ -51,6 +51,41 @@ Essas mudanças impedem o Chrome de **voltar a salvar** essas credenciais como l
 **não removem** um login já salvo indevidamente em sessões anteriores — o dropdown de autofill
 vai continuar aparecendo em qualquer PC que já tenha essa credencial salva até que o usuário a
 apague manualmente em `chrome://settings/passwords` (buscar pelo domínio do CRM → excluir).
+
+### Follow-up — Corrigido em 2026-08-10: `autocomplete="off"` não é suficiente sozinho
+
+Mesmo depois da correção de 30/07, o bug voltou a ser relatado em `filtro-acessos-input` (aba
+Acessos): o campo aparecia **já preenchido com um login salvo real** (usuário/senha de
+`mmarinho`), sem o usuário sequer clicar no campo. Isso confirma a limitação documentada acima —
+o Chrome tinha uma credencial de login já salva para o domínio do CRM (provavelmente o próprio
+login salvo do usuário no `/auth/login`, ou um resíduo de antes do fix de 30/07) e estava
+autopreenchendo proativamente o primeiro campo de texto vazio que parecia um campo de usuário,
+**ignorando `autocomplete="off"`** (o Chrome ignora esse atributo para fins de
+username/senha desde a v34).
+
+**Correção adicional, mais robusta que só `autocomplete`/`name`:**
+- `filtro-acessos-input` (`clientes/templates/listar.html`) trocado de `type="text"` para
+  `type="search"` (retira o campo da lista de estilos padrão e reduz a superfície de heurística).
+- Adicionado o padrão **`readonly` até o primeiro foco**:
+  ```html
+  <input type="search" ... readonly onfocus="this.removeAttribute('readonly')">
+  ```
+  O autofill do Chrome (tanto a sugestão em dropdown quanto o preenchimento automático no
+  carregamento da página) não escreve em campos `readonly`. Como o atributo só é removido no
+  evento `focus` (disparado pela própria interação do usuário), o campo fica imune ao
+  autopreenchimento passivo e volta a ser editável normalmente assim que o usuário clica nele —
+  sem nenhuma mudança perceptível de comportamento pra quem usa o campo normalmente.
+
+Esse padrão (`readonly` + `onfocus`) é mais confiável que `autocomplete="off"` isolado porque não
+depende do Chrome "respeitar" um atributo que ele intencionalmente ignora para campos que já tem
+credencial salva — e deve ser o padrão usado em qualquer novo campo de busca/filtro adicionado
+perto de formulários de login (Acessos, Backups, VPN, Túnel Proxy, etc.), não só neste caso
+pontual.
+
+**Ainda pendente (fora do escopo desta correção):** a limitação da correção de 30/07 continua
+valendo — nenhuma dessas mudanças remove a credencial já salva no navegador do usuário. Se o
+autopreenchimento voltar a incomodar em outro campo, o mesmo padrão `readonly`/`onfocus` resolve
+sem precisar caçar de onde veio o login salvo.
 
 ---
 
