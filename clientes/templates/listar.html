@@ -909,7 +909,9 @@
                                         Usa os blocos de IP cadastrados na aba RPKI/IRR como alvo — testa cada host dos blocos IPv4 (até /16)
                                         e IPv6 (até /112) em busca de serviços mal configurados que podem ser explorados por terceiros
                                         para amplificar ataques de DDoS contra outros alvos. Blocos maiores que esse limite (ex: um /48
-                                        IPv6 inteiro) são ignorados na varredura. Executa automaticamente todo dia às 05:00.
+                                        IPv6 inteiro) são ignorados na varredura. Executa automaticamente a cada 2 dias, em grupos
+                                        rotativos de clientes (cobertura completa a cada 6 dias) — ou a qualquer momento pelo
+                                        botão "Escanear Agora".
                                     </small>
                                 </div>
                             </div>

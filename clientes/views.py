@@ -4534,8 +4534,8 @@ def listar_ampscan_resultados(request):
             'status_display': r.get_status_display(),
             'tempo_resposta_ms': r.tempo_resposta_ms,
             'bloco': r.bloco_ip.bloco if r.bloco_ip else None,
-            'primeira_deteccao': r.primeira_deteccao.strftime('%d/%m/%Y %H:%M'),
-            'ultima_deteccao': r.ultima_deteccao.strftime('%d/%m/%Y %H:%M'),
+            'primeira_deteccao': timezone.localtime(r.primeira_deteccao).strftime('%d/%m/%Y %H:%M'),
+            'ultima_deteccao': timezone.localtime(r.ultima_deteccao).strftime('%d/%m/%Y %H:%M'),
         } for r in resultados]
     })
 
@@ -4561,8 +4561,8 @@ def listar_ampscan_execucoes(request):
     return JsonResponse({
         'execucoes': [{
             'id': e.id,
-            'iniciado_em': e.iniciado_em.strftime('%d/%m/%Y %H:%M:%S'),
-            'finalizado_em': e.finalizado_em.strftime('%d/%m/%Y %H:%M:%S') if e.finalizado_em else None,
+            'iniciado_em': timezone.localtime(e.iniciado_em).strftime('%d/%m/%Y %H:%M:%S'),
+            'finalizado_em': timezone.localtime(e.finalizado_em).strftime('%d/%m/%Y %H:%M:%S') if e.finalizado_em else None,
             'em_andamento': e.finalizado_em is None,
             'total_ips': e.total_ips,
             'total_probes': e.total_probes,
