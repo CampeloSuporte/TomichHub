@@ -7192,6 +7192,18 @@ def _irr_slug_as_name(name):
     return slug
 
 
+def _irr_normalizar_rota(item):
+    """Aceita tanto o formato legado (string = apenas o prefixo) quanto o
+    formato atual (dict com prefix/descr/member_of) e devolve sempre um dict."""
+    if isinstance(item, dict):
+        return {
+            'prefix':    (item.get('prefix') or '').strip(),
+            'descr':     (item.get('descr') or '').strip(),
+            'member_of': (item.get('member_of') or '').strip(),
+        }
+    return {'prefix': str(item).strip(), 'descr': '', 'member_of': ''}
+
+
 def _irr_gerar_objetos(cfg):
     """Gera a lista de objetos RPSL (um item por objeto) a partir de um IRRConfig.
 
@@ -7266,12 +7278,17 @@ def _irr_gerar_objetos(cfg):
         return linhas
 
     # ── route objects ─────────────────────────────────────────────────────────
-    for prefix in (cfg.ipv4_rotas or []):
+    # descr/member-of são por rota, com fallback para o padrão global
+    # (empresa_descr / AS{asn}:RS-ROUTES) quando o item não define os seus.
+    for item in (cfg.ipv4_rotas or []):
+        r = _irr_normalizar_rota(item)
+        if not r['prefix']:
+            continue
         partes.append(
-            f'route:  {prefix}\n'
-            f'descr:  {cfg.empresa_descr}\n'
+            f'route:  {r["prefix"]}\n'
+            f'descr:  {r["descr"] or cfg.empresa_descr}\n'
             f'origin: {as_full}\n'
-            f'member-of: {rs}\n'
+            f'member-of: {r["member_of"] or rs}\n'
             f'notify: {email}\n'
             + geo_lines() +
             f'mnt-by: {mntner}\n'
@@ -7280,12 +7297,15 @@ def _irr_gerar_objetos(cfg):
         )
 
     # ── route6 objects ────────────────────────────────────────────────────────
-    for prefix in (cfg.ipv6_rotas or []):
+    for item in (cfg.ipv6_rotas or []):
+        r = _irr_normalizar_rota(item)
+        if not r['prefix']:
+            continue
         partes.append(
-            f'route6: {prefix}\n'
-            f'descr:  {cfg.empresa_descr}\n'
+            f'route6: {r["prefix"]}\n'
+            f'descr:  {r["descr"] or cfg.empresa_descr}\n'
             f'origin: {as_full}\n'
-            f'member-of: {rs}\n'
+            f'member-of: {r["member_of"] or rs}\n'
             f'notify: {email}\n'
             + geo_lines() +
             f'mnt-by: {mntner}\n'
@@ -7649,15 +7669,31 @@ def irr_consultar_whois(request, cliente_id):
                     valores.append(v)
         return valores
 
-    def parse_prefixes_from_response(texto, tipo='route'):
-        """Extrai todos os prefixos de objetos route ou route6."""
-        prefixos = []
+    def parse_route_objects(texto, tipo='route'):
+        """Extrai objetos route/route6 completos (prefix + descr + member-of).
+        No retorno do whois cada objeto RPSL é separado por linha em branco,
+        então uma nova linha `route:`/`route6:` sempre abre um bloco novo."""
+        objetos = []
+        atual = None
         for linha in texto.splitlines():
-            if linha.lower().startswith(tipo + ':'):
-                p = linha.split(':', 1)[1].strip()
-                if p:
-                    prefixos.append(p)
-        return prefixos
+            if not linha.strip():
+                continue
+            if ':' not in linha:
+                continue
+            campo, valor = linha.split(':', 1)
+            campo = campo.strip().lower()
+            valor = valor.strip()
+            if campo == tipo:
+                if atual and atual.get('prefix'):
+                    objetos.append(atual)
+                atual = {'prefix': valor, 'descr': '', 'member_of': ''}
+            elif atual is not None and campo == 'descr' and not atual['descr']:
+                atual['descr'] = valor
+            elif atual is not None and campo == 'member-of' and not atual['member_of']:
+                atual['member_of'] = valor
+        if atual and atual.get('prefix'):
+            objetos.append(atual)
+        return objetos
 
     def parse_remarks_email(texto, label_prefix):
         """Extrai e-mail de linhas remarks no formato 'remarks: Label: email@dominio'."""
@@ -7709,11 +7745,11 @@ def irr_consultar_whois(request, cliente_id):
                     upstream.append({'asn': asn_up, 'nome': ''})
         dados['upstream_asns'] = upstream
 
-    # Rotas IPv4
-    dados['ipv4_rotas'] = parse_prefixes_from_response(resp_routes, 'route')
+    # Rotas IPv4 — cada item traz prefix/descr/member_of já preenchidos, se existirem no IRR
+    dados['ipv4_rotas'] = parse_route_objects(resp_routes, 'route')
 
     # Rotas IPv6
-    dados['ipv6_rotas'] = parse_prefixes_from_response(resp_routes6, 'route6')
+    dados['ipv6_rotas'] = parse_route_objects(resp_routes6, 'route6')
 
     # Auth hash do mntner
     if resp_mntner and 'BCRYPT-PW' in resp_mntner:

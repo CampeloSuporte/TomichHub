@@ -999,9 +999,12 @@ class IRRConfig(models.Model):
     address        = models.TextField()
     phone          = models.CharField(max_length=50)
 
-    # Prefixos e rotas (listas JSON)
-    ipv4_rotas           = models.JSONField(default=list, blank=True, help_text='Lista de prefixos IPv4. Ex: ["186.65.76.0/22"]')
-    ipv6_rotas           = models.JSONField(default=list, blank=True, help_text='Lista de prefixos IPv6. Ex: ["2804:80E0::/32"]')
+    # Prefixos e rotas (listas JSON). Cada item é um dict {"prefix","descr","member_of"} —
+    # descr/member_of por rota são opcionais e, se vazios, caem no padrão global
+    # (empresa_descr / AS{asn}:RS-ROUTES) na geração do objeto RPSL. Itens no
+    # formato legado (string = apenas o prefixo) também são aceitos.
+    ipv4_rotas           = models.JSONField(default=list, blank=True, help_text='Lista de rotas IPv4. Ex: [{"prefix":"186.65.76.0/22","descr":"ANTONIO CLAUDIO","member_of":"AS271699:RS-GOODNET-NORTE"}]')
+    ipv6_rotas           = models.JSONField(default=list, blank=True, help_text='Lista de rotas IPv6. Ex: [{"prefix":"2804:80E0::/32","descr":"ANTONIO CLAUDIO","member_of":"AS271699:RS-GOODNET-NORTE"}]')
     route_set_members    = models.JSONField(default=list, blank=True, help_text='mp-members do route-set com range. Ex: ["201.7.168.0/21^21-24"]')
 
     # AS-sets

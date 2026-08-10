@@ -623,20 +623,30 @@
                         <div id="irr-sub-rotas" class="irr-sub" style="display:none">
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">
-                                        Prefixos IPv4 <small style="color:#555">(um por linha — objetos route)</small>
-                                    </label>
-                                    <textarea id="irr-ipv4-rotas" rows="6" class="form-control form-control-sm irr-input"
-                                        style="font-family:'Inter', sans-serif;font-size:.8rem"
-                                        placeholder="186.65.76.0/22&#10;186.65.76.0/23&#10;186.65.78.0/23"></textarea>
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <label class="form-label mb-0" style="font-size:.8rem;color:rgba(88,166,255,.4)">
+                                            Prefixos IPv4 <small style="color:#555">(objetos route)</small>
+                                        </label>
+                                        <button class="btn btn-sm" onclick="irrAddRota('v4')"
+                                            style="padding:2px 8px;font-size:.75rem;background:rgba(88,166,255,.1);border:1px solid #58a6ff;color:#58a6ff">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                    <div style="font-size:.72rem;color:#555;margin-bottom:6px">Prefixo · descr (opcional, senão usa a Descrição da Empresa) · member-of (opcional, senão usa a route-set padrão AS&lt;ASN&gt;:RS-ROUTES)</div>
+                                    <div id="irr-rotas-v4-list" style="display:flex;flex-direction:column;gap:6px"></div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">
-                                        Prefixos IPv6 <small style="color:#555">(um por linha — objetos route6)</small>
-                                    </label>
-                                    <textarea id="irr-ipv6-rotas" rows="6" class="form-control form-control-sm irr-input"
-                                        style="font-family:'Inter', sans-serif;font-size:.8rem"
-                                        placeholder="2804:80E0::/32&#10;2804:80E0::/33&#10;2804:80E0:8000::/33"></textarea>
+                                    <div class="d-flex align-items-center justify-content-between mb-2">
+                                        <label class="form-label mb-0" style="font-size:.8rem;color:rgba(88,166,255,.4)">
+                                            Prefixos IPv6 <small style="color:#555">(objetos route6)</small>
+                                        </label>
+                                        <button class="btn btn-sm" onclick="irrAddRota('v6')"
+                                            style="padding:2px 8px;font-size:.75rem;background:rgba(88,166,255,.1);border:1px solid #58a6ff;color:#58a6ff">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                    <div style="font-size:.72rem;color:#555;margin-bottom:6px">Prefixo · descr (opcional) · member-of (opcional)</div>
+                                    <div id="irr-rotas-v6-list" style="display:flex;flex-direction:column;gap:6px"></div>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label" style="font-size:.8rem;color:rgba(88,166,255,.4)">
@@ -5069,11 +5079,9 @@ function getCsrfToken(){
         set('irr-geo-estado',    d.geo_estado);
         set('irr-geo-cidade',    d.geo_cidade);
 
-        // Rotas — textarea, uma por linha
-        const elv4 = document.getElementById('irr-ipv4-rotas');
-        if (elv4) elv4.value = (d.ipv4_rotas || []).join('\n');
-        const elv6 = document.getElementById('irr-ipv6-rotas');
-        if (elv6) elv6.value = (d.ipv6_rotas || []).join('\n');
+        // Rotas — linhas dinâmicas com prefix/descr/member-of
+        irrRenderRotas('v4', d.ipv4_rotas || []);
+        irrRenderRotas('v6', d.ipv6_rotas || []);
         const elrs = document.getElementById('irr-route-set-members');
         if (elrs) elrs.value = (d.route_set_members || []).join('\n');
 
@@ -5109,8 +5117,8 @@ function getCsrfToken(){
             geo_pais_num:   get('irr-geo-num')     || '076',
             geo_estado:     get('irr-geo-estado'),
             geo_cidade:     get('irr-geo-cidade'),
-            ipv4_rotas:          linhas('irr-ipv4-rotas'),
-            ipv6_rotas:          linhas('irr-ipv6-rotas'),
+            ipv4_rotas:          irrGetRotas('v4'),
+            ipv6_rotas:          irrGetRotas('v6'),
             route_set_members:   linhas('irr-route-set-members'),
             upstream_asns:       irrGetUpstreams(),
             customer_asns:       irrGetCustomers(),
@@ -5196,6 +5204,48 @@ function getCsrfToken(){
         return div;
     }
 
+    // ─── Rotas (route/route6) dinâmicas — prefix + descr + member-of ─────
+    function _irrEsc(s) {
+        return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function _irrRotaRow(tipo, prefix, descr, memberOf) {
+        const div = document.createElement('div');
+        div.className = 'irr-rota-row d-flex gap-2 align-items-center';
+        div.dataset.tipo = tipo;
+        const placeholderPrefix = tipo === 'v4' ? '186.65.76.0/22' : '2804:80E0::/32';
+        div.innerHTML = `
+            <input class="form-control form-control-sm irr-rota-prefix" value="${_irrEsc(prefix)}" placeholder="${placeholderPrefix}"
+                style="max-width:160px;background:var(--surface);color:var(--text-light);border-color:var(--border);font-size:.8rem">
+            <input class="form-control form-control-sm irr-rota-descr" value="${_irrEsc(descr)}" placeholder="descr (opcional)"
+                style="background:var(--surface);color:var(--text-light);border-color:var(--border);font-size:.8rem">
+            <input class="form-control form-control-sm irr-rota-member" value="${_irrEsc(memberOf)}" placeholder="member-of (opcional)"
+                style="max-width:170px;background:var(--surface);color:var(--text-light);border-color:var(--border);font-size:.8rem">
+            <button type="button" onclick="this.closest('.irr-rota-row').remove()"
+                style="border:none;background:none;color:#e06060;cursor:pointer;padding:0 4px;font-size:.9rem">
+                <i class="fas fa-times"></i></button>`;
+        return div;
+    }
+    function irrRenderRotas(tipo, lista) {
+        const cont = document.getElementById(`irr-rotas-${tipo}-list`);
+        if (!cont) return;
+        cont.innerHTML = '';
+        (lista || []).forEach(item => {
+            const r = (typeof item === 'string') ? { prefix: item, descr: '', member_of: '' } : (item || {});
+            cont.appendChild(_irrRotaRow(tipo, r.prefix, r.descr, r.member_of));
+        });
+    }
+    window.irrAddRota = function(tipo) {
+        const cont = document.getElementById(`irr-rotas-${tipo}-list`);
+        if (cont) cont.appendChild(_irrRotaRow(tipo, '', '', ''));
+    };
+    function irrGetRotas(tipo) {
+        return Array.from(document.querySelectorAll(`.irr-rota-row[data-tipo="${tipo}"]`)).map(row => ({
+            prefix:    row.querySelector('.irr-rota-prefix').value.trim(),
+            descr:     row.querySelector('.irr-rota-descr').value.trim(),
+            member_of: row.querySelector('.irr-rota-member').value.trim(),
+        })).filter(r => r.prefix);
+    }
+
     // ─── Salvar configuração ──────────────────────────────────────────────
     window.irrSalvar = async function() {
         const dados = irrColetarForm();
@@ -5234,11 +5284,11 @@ function getCsrfToken(){
             preencheSeVazio('irr-nic-hdl',        d.nic_hdl);
             preencheSeVazio('irr-email-contato',  d.email_contato);
 
-            // Rotas — adiciona apenas se textarea estiver vazia
-            const elv4 = document.getElementById('irr-ipv4-rotas');
-            if (elv4 && !elv4.value.trim() && d.ipv4_rotas?.length) elv4.value = d.ipv4_rotas.join('\n');
-            const elv6 = document.getElementById('irr-ipv6-rotas');
-            if (elv6 && !elv6.value.trim() && d.ipv6_rotas?.length) elv6.value = d.ipv6_rotas.join('\n');
+            // Rotas — preenche prefix/descr/member-of, só se a lista ainda estiver vazia
+            const v4Cont = document.getElementById('irr-rotas-v4-list');
+            if (v4Cont && !v4Cont.children.length && d.ipv4_rotas?.length) irrRenderRotas('v4', d.ipv4_rotas);
+            const v6Cont = document.getElementById('irr-rotas-v6-list');
+            if (v6Cont && !v6Cont.children.length && d.ipv6_rotas?.length) irrRenderRotas('v6', d.ipv6_rotas);
 
             // Upstreams — adiciona se lista estiver vazia
             const upCont = document.getElementById('irr-upstream-list');
