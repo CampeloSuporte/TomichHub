@@ -3,14 +3,17 @@
 **Arquivos principais:**
 - `clientes/models.py` — `IRRConfig` (config por cliente), `ConfiguracaoSistema` (não usado mais
   neste fluxo — ver histórico abaixo)
-- `clientes/views.py` — `_irr_gerar_objetos`, `_irr_gerar_corpo`, `irr_config_get`,
-  `irr_config_salvar`, `irr_preview`, `irr_enviar`, `irr_consultar_whois`
+- `clientes/views.py` — `_irr_normalizar_rota`, `_irr_gerar_objetos`, `_irr_gerar_corpo`,
+  `irr_config_get`, `irr_config_salvar`, `irr_preview`, `irr_enviar`, `irr_consultar_whois`
 - `clientes/urls.py` — rotas `<cliente_id>/irr/*`
 - `clientes/templates/listar.html` — aba RPKI/IRR, card "Atualização IRR — TC" (HTML ~linha 504,
-  JS ~linha 5026)
+  JS ~linha 5026); linhas dinâmicas de rota (`_irrRotaRow`, `irrRenderRotas`, `irrMergeRotas`,
+  `irrGetRotas`) ~linha 5200
 - `clientes/migrations/0102_irrconfig_add_api_key.py`
+- `clientes/migrations/0103_irr_rotas_com_descr_member_of.py` — migra `ipv4_rotas`/`ipv6_rotas` de
+  lista de strings pra lista de dicts
 
-**Atualizado em:** 05/08/2026
+**Atualizado em:** 10/08/2026
 
 **Ver também:** [RPKI_IRR.md](RPKI_IRR.md) — validação periódica (diferente deste fluxo, que é de
 **envio/atualização** de objetos, não de checagem).
@@ -139,6 +142,52 @@ não devem ser tratadas como HTML confiável.
 
 ---
 
+## Campos `descr` e `member-of` por rota (10/08/2026)
+
+**Motivação:** cada objeto `route`/`route6` no IRR pode ter sua própria `descr:` e seu próprio
+`member-of:` (route-set) — em clientes com prefixos de origens/route-sets diferentes (ex: um AS
+que anuncia blocos de operadoras distintas agregadas sob route-sets separados, como
+`RS-GOODNET-NORTE`, `RS-CALLFRAN-NORTE`, `RS-GSSNET-NORTE`), um único valor global não é
+suficiente. Antes desta mudança, `descr`/`member-of` eram sempre globais (`IRRConfig.empresa_descr`
+e uma route-set fixa `AS<asn>:RS-ROUTES`, hardcoded).
+
+**Modelo:** `IRRConfig.ipv4_rotas`/`ipv6_rotas` deixam de ser `list[str]` (só o prefixo) e passam a
+ser `list[dict]`: `{"prefix": "...", "descr": "...", "member_of": "..."}`. `descr`/`member_of` são
+opcionais — quando vazios, `_irr_gerar_objetos` (`clientes/views.py`) cai no padrão global
+(`empresa_descr` / `AS<asn>:RS-ROUTES`), então configs antigas continuam funcionando sem edição.
+`_irr_normalizar_rota` aceita tanto o formato novo (dict) quanto o legado (string = só prefixo), por
+segurança — mas a migração `0103_irr_rotas_com_descr_member_of` já converte todos os registros
+existentes pra dict na aplicação.
+
+**UI (`clientes/templates/listar.html`, aba Rotas):** os antigos `<textarea>` de "um prefixo por
+linha" viraram listas de linhas dinâmicas (mesmo padrão visual dos upstreams/customers de AS-Sets),
+com 3 campos por rota: prefixo, descr (opcional) e member-of (opcional).
+
+**Consulta WHOIS (`irr_consultar_whois`) também traz `descr`/`member-of` por rota:**
+`parse_route_objects` deixou de extrair só o prefixo — agora segmenta o retorno do whois por objeto
+RPSL completo (cada bloco `route:`/`route6:` até a linha em branco seguinte) e captura
+`descr`/`member-of`/`source` de cada um.
+
+**🐛 Fix real (mesmo dia): duplicata de objeto route por prefixo confundia o preenchimento.** Um
+mesmo prefixo pode aparecer em *mais de um* objeto no whois — o registro real (`source: TC`, o
+mesmo que este sistema gerencia), uma versão auto-gerada a partir do RPKI (`source: RPKI`,
+`descr: "RPKI ROA for ..."`) e, às vezes, um terceiro registrado por outro mantenedor via RADB (ex:
+`descr: "Customer AS271699"`, sem `member-of`). A primeira versão do parser devolvia todos esses
+objetos soltos, e a lógica de front-end pegava o primeiro que aparecesse — que nem sempre era o
+correto (reproduzido com o cliente CALLFRAN/AS271699: um dos 4 prefixos vinha com a `descr`
+genérica do objeto RADB em vez de `"ANTONIO CLAUDIO"`). Corrigido deduplicando por prefixo dentro de
+`parse_route_objects`, sempre priorizando o objeto com `source: TC` quando existir.
+
+**🐛 Fix real (mesmo dia): preenchimento da consulta não substituía rota já salva sem
+descr/member-of.** `irrConsultarWhois` só preenchia as rotas quando a lista na tela estava
+*totalmente vazia* — clientes com config já salva (rotas migradas do formato antigo, sem
+descr/member-of) nunca recebiam esses campos, mesmo clicando em "Consultar IRR" de novo. Substituído
+por `irrMergeRotas`, que casa cada rota do whois com a linha existente **pelo prefixo** e completa
+só os campos vazios (sem sobrescrever edição manual já feita na tela); prefixo novo que ainda não
+tem linha é adicionado ao final.
+
+---
+
 ## Fluxo de uso (UI)
 
 1. Aba **RPKI/IRR** → card **"Atualização IRR — TC"** → sub-abas **Dados Gerais / Rotas / AS-Sets**.
@@ -161,4 +210,4 @@ não devem ser tratadas como HTML confiável.
 
 ---
 
-**Última atualização:** 05/08/2026
+**Última atualização:** 10/08/2026

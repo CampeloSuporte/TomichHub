@@ -5,6 +5,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-10 (IRR: `descr`/`member-of` por rota + fixes na consulta WHOIS)
+
+### Adicionado
+
+- **Campos `descr` e `member-of` editáveis por rota** na Atualização IRR — TC (antes eram sempre
+  globais: `empresa_descr` e uma route-set fixa `AS<asn>:RS-ROUTES`). `IRRConfig.ipv4_rotas`/
+  `ipv6_rotas` passam de lista de strings pra lista de dicts `{prefix, descr, member_of}`, com
+  fallback pro padrão global quando um item não define os seus (migração
+  `0103_irr_rotas_com_descr_member_of` converte os registros existentes automaticamente). Os
+  antigos `<textarea>` de prefixo viraram linhas dinâmicas com os 3 campos, no card **Atualização
+  IRR — TC → aba Rotas**. Detalhes em
+  [IRR_ATUALIZACAO_TC.md](docs/IRR_ATUALIZACAO_TC.md#campos-descr-e-member-of-por-rota-10082026).
+- **Consulta IRR (WHOIS) agora traz `descr`/`member-of` preenchidos por rota**, quando existirem no
+  registro — antes só trazia a lista de prefixos.
+
+### Corrigido
+
+- **Duplicata de objeto `route` por prefixo confundia o preenchimento da consulta** — o whois pode
+  devolver mais de um objeto pro mesmo prefixo (o registro real com `source: TC`, uma versão
+  auto-gerada do RPKI, e às vezes um terceiro via RADB), e o parser trazia todos misturados sem
+  critério de prioridade. Corrigido deduplicando por prefixo, sempre priorizando o objeto
+  `source: TC`. Reproduzido e confirmado com o cliente CALLFRAN (AS271699).
+- **Consulta IRR não preenchia rotas já salvas sem `descr`/`member-of`** — o preenchimento só
+  disparava se a lista de rotas na tela estivesse totalmente vazia, então clientes com config já
+  existente (rotas migradas do formato antigo) nunca recebiam os campos novos, mesmo clicando em
+  "Consultar IRR". Corrigido casando cada rota do whois com a linha existente pelo prefixo e
+  completando só os campos vazios.
+
+---
+
 ## [Não publicado] — 2026-08-06 (Fix: `/homegeral` quebrava com tarefa/artigo sem responsável)
 
 ### Corrigido

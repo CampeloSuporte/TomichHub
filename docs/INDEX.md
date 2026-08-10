@@ -2,6 +2,34 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 37 — 10/08/2026: IRR — campos `descr`/`member-of` por rota + fixes na consulta WHOIS
+
+**O que foi implementado e corrigido?**
+- ✅ **`descr` e `member-of` editáveis por rota** na Atualização IRR — TC (aba Rotas) — antes eram
+  sempre globais (`empresa_descr` / route-set fixa `AS<asn>:RS-ROUTES`), o que não atendia clientes
+  com prefixos de route-sets diferentes (ex: CALLFRAN/AS271699, com blocos em
+  `RS-GOODNET-NORTE`, `RS-CALLFRAN-NORTE` e `RS-GSSNET-NORTE`). `IRRConfig.ipv4_rotas`/`ipv6_rotas`
+  viraram lista de dicts `{prefix, descr, member_of}`, com fallback pro padrão global quando um
+  item não define os seus — migração `0103_irr_rotas_com_descr_member_of` converte os registros
+  existentes automaticamente.
+- ✅ **Consulta IRR (WHOIS) já traz `descr`/`member-of` preenchidos por rota**, quando existirem no
+  registro.
+- 🐛 **Fix real:** o whois pode devolver mais de um objeto `route` pro mesmo prefixo (registro real
+  `source: TC`, versão auto-gerada do RPKI, e às vezes um terceiro via RADB) — o parser antigo
+  misturava todos sem prioridade, trazendo às vezes a `descr` errada. Corrigido deduplicando por
+  prefixo, sempre priorizando o objeto `source: TC`.
+- 🐛 **Fix real:** a consulta só preenchia rotas se a lista na tela estivesse totalmente vazia —
+  clientes com config já salva (rotas migradas do formato antigo) nunca recebiam `descr`/`member-of`
+  mesmo consultando de novo. Corrigido casando por prefixo e completando só os campos vazios.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[IRR_ATUALIZACAO_TC.md](IRR_ATUALIZACAO_TC.md#campos-descr-e-member-of-por-rota-10082026)** | Seção nova — modelo, migração, UI e os 2 fixes |
+
+---
+
 ### Sessão 36 — 05/08/2026: Atualização IRR — TC passa a usar API (bgp.net.br/v1/submit) em vez de e-mail
 
 **O que foi implementado e corrigido?**
