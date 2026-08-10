@@ -913,6 +913,39 @@
                                         rotativos de clientes (cobertura completa a cada 6 dias) — ou a qualquer momento pelo
                                         botão "Escanear Agora".
                                     </small>
+                                    <details style="margin-top:10px;">
+                                        <summary style="cursor:pointer;font-size:.78rem;color:var(--accent-cyan);">Ver as 21 portas testadas</summary>
+                                        <div class="table-responsive mt-2">
+                                            <table class="table table-sm" style="font-size:.76rem;">
+                                                <thead>
+                                                    <tr><th>Porta</th><th>Proto</th><th>Serviço</th><th>Risco de amplificação</th></tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr><td>17</td><td>UDP</td><td>QOTD</td><td>legado — responde a qualquer pacote</td></tr>
+                                                    <tr><td>19</td><td>UDP</td><td>CHARGEN</td><td>legado — gera stream de caracteres</td></tr>
+                                                    <tr><td>53</td><td>UDP</td><td>DNS</td><td>resolver aberto — até 54x</td></tr>
+                                                    <tr><td>69</td><td>UDP</td><td>TFTP</td><td>extração de arquivo + amplificação</td></tr>
+                                                    <tr><td>111</td><td>UDP</td><td>RPC (Portmapper)</td><td>enumeração de serviço</td></tr>
+                                                    <tr><td>123</td><td>UDP</td><td>NTP</td><td>monlist/readvar — até 556x</td></tr>
+                                                    <tr><td>137</td><td>UDP</td><td>NetBIOS</td><td>informação de rede exposta</td></tr>
+                                                    <tr><td>161</td><td>UDP</td><td>SNMP</td><td>community "public" — até 6.3x</td></tr>
+                                                    <tr><td>389</td><td>UDP</td><td>CLDAP</td><td>até 70x</td></tr>
+                                                    <tr><td>427</td><td>UDP</td><td>SLP</td><td>até 2200x</td></tr>
+                                                    <tr><td>520</td><td>UDP</td><td>RIPv1</td><td>legado — até 30x</td></tr>
+                                                    <tr><td>1900</td><td>UDP</td><td>SSDP (UPnP)</td><td>até 30x</td></tr>
+                                                    <tr><td>3283</td><td>UDP</td><td>ARMS</td><td>Apple Remote Management exposto</td></tr>
+                                                    <tr><td>3702</td><td>UDP</td><td>WS-Discovery</td><td>até 153x</td></tr>
+                                                    <tr><td>5353</td><td>UDP</td><td>mDNS</td><td>resolver aberto — até 4.7x</td></tr>
+                                                    <tr><td>5683</td><td>UDP</td><td>CoAP</td><td>IoT — até 34x</td></tr>
+                                                    <tr><td>10001</td><td>UDP</td><td>UBNT Discovery</td><td>dispositivo Ubiquiti exposto</td></tr>
+                                                    <tr><td>11211</td><td>UDP</td><td>Memcached</td><td>até 51000x — a mais perigosa</td></tr>
+                                                    <tr><td>37810</td><td>UDP</td><td>DVR-DHCPDiscover</td><td>DVR/câmera exposto</td></tr>
+                                                    <tr><td>4145</td><td>TCP</td><td>MikroTik SOCKS</td><td>proxy aberto — não é amplificação, indício de comprometimento</td></tr>
+                                                    <tr><td>5678</td><td>TCP</td><td>MikroTik Meris</td><td>indício de botnet Meris — não é amplificação</td></tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </details>
                                 </div>
                             </div>
                         </div>
