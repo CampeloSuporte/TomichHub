@@ -166,6 +166,11 @@
                 <li class="nav-item">
                     <a class="nav-link" href="#" onclick="trocarAba(event, 'rpki-irr')">RPKI/IRR</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" onclick="trocarAba(event, 'vulnerabilidades')">
+                        <i class="fas fa-bug me-1"></i>Vulnerabilidades
+                    </a>
+                </li>
                 {% endif %}
                 {% if is_admin_puro or modulos_habilitados.monitoramento %}
                 <li class="nav-item">
@@ -877,7 +882,50 @@
                         </div>
                     </div>
                 </div>
-            </div>      
+            </div>
+
+    <!-- ABA VULNERABILIDADES (AmpScan) -->
+            <div id="tab-vulnerabilidades" class="tab-content-main" style="display: none;">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                            <h5 class="mb-0"><i class="fas fa-bug me-2" style="color:#f85149"></i>Varredura de Amplificação DDoS</h5>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="ampscanCarregar()">
+                                    <i class="fas fa-sync-alt me-1"></i> Atualizar
+                                </button>
+                                <button class="btn btn-sm btn-primary" id="ampscanBtnEscanear" onclick="ampscanEscanearAgora()">
+                                    <i class="fas fa-radar me-1"></i> Escanear Agora
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="alert" style="background: rgba(0, 217, 255, 0.1); border-left: 3px solid var(--accent-cyan); color: var(--text-light); margin-bottom: 20px;">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-info-circle me-3" style="font-size: 20px; margin-top: 2px;"></i>
+                                <div>
+                                    <strong>Varredura de portas de amplificação (DNS, NTP, SNMP, Memcached, SSDP, CLDAP e outras)</strong><br>
+                                    <small>
+                                        Usa os blocos de IP cadastrados na aba RPKI/IRR como alvo — testa cada host dos blocos IPv4 (até /16)
+                                        e IPv6 (até /112) em busca de serviços mal configurados que podem ser explorados por terceiros
+                                        para amplificar ataques de DDoS contra outros alvos. Blocos maiores que esse limite (ex: um /48
+                                        IPv6 inteiro) são ignorados na varredura. Executa automaticamente todo dia às 05:00.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="ampscanUltimaExecucao" style="font-size:.82rem;color:var(--text-muted);margin-bottom:14px;"></div>
+
+                        <div id="listaAmpScanResultados">
+                            <div class="text-center py-5">
+                                <i class="fas fa-spinner fa-spin" style="font-size: 64px; color: var(--accent-cyan); opacity: 0.3;"></i>
+                                <p class="mt-3 text-muted">Carregando...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
     <!-- ABA BACKUPS -->
         <div id="tab-backups" class="tab-content-main" style="display: none;">
@@ -5031,6 +5079,158 @@ function getCsrfToken(){
         }
     });
 
+    // ============================================
+    // FUNÇÕES AMPSCAN — VARREDURA DE AMPLIFICAÇÃO
+    // ============================================
+
+    let ampscanPollTimer = null;
+
+    function ampscanCarregar() {
+        ampscanCarregarExecucoes();
+        ampscanCarregarResultados();
+    }
+
+    function ampscanCarregarResultados() {
+        const clienteId = '{{ cliente.id }}';
+        const container = document.getElementById('listaAmpScanResultados');
+
+        fetch(`/clientes/ampscan/resultados/?id=${clienteId}`)
+            .then(response => response.json())
+            .then(data => ampscanRenderizarResultados(data.resultados))
+            .catch(error => {
+                console.error('Erro:', error);
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-exclamation-circle" style="font-size: 64px; color: var(--error-red); opacity: 0.3;"></i>
+                        <p class="mt-3 text-muted">Erro ao carregar resultados</p>
+                    </div>
+                `;
+            });
+    }
+
+    function ampscanRenderizarResultados(resultados) {
+        const container = document.getElementById('listaAmpScanResultados');
+
+        if (!resultados || resultados.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-shield-alt" style="font-size: 64px; color: #3fb950; opacity: 0.4;"></i>
+                    <p class="mt-3 text-muted">Nenhuma vulnerabilidade de amplificação encontrada nos blocos deste cliente.</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = `
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>IP</th><th>Porta/Proto</th><th>Serviço</th><th>Status</th>
+                            <th>Tempo Resp.</th><th>Bloco</th><th>Detectado em</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        resultados.forEach(r => {
+            const corStatus = r.status === 'vulneravel' ? '#f85149' : '#d29922';
+            const iconeStatus = r.status === 'vulneravel' ? 'fa-radiation' : 'fa-shield-halved';
+            html += `
+                <tr>
+                    <td><code>${r.ip}</code></td>
+                    <td>${r.porta}/${r.protocolo}</td>
+                    <td>${r.servico}</td>
+                    <td>
+                        <span class="badge" style="background:${corStatus}22;color:${corStatus};border:1px solid ${corStatus}66;"
+                              title="${(r.descricao_risco || '').replace(/"/g, '&quot;')}">
+                            <i class="fas ${iconeStatus} me-1"></i>${r.status_display}
+                        </span>
+                    </td>
+                    <td style="font-size:12px;">${r.tempo_resposta_ms != null ? r.tempo_resposta_ms + ' ms' : '-'}</td>
+                    <td style="font-size:12px;"><code>${r.bloco || '-'}</code></td>
+                    <td style="font-size:12px;">${r.ultima_deteccao}</td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
+    }
+
+    function ampscanCarregarExecucoes() {
+        const clienteId = '{{ cliente.id }}';
+        const info = document.getElementById('ampscanUltimaExecucao');
+
+        fetch(`/clientes/ampscan/execucoes/?id=${clienteId}`)
+            .then(response => response.json())
+            .then(data => {
+                const execucoes = data.execucoes || [];
+                const btn = document.getElementById('ampscanBtnEscanear');
+
+                if (execucoes.length === 0) {
+                    info.innerHTML = '<i class="fas fa-clock me-1"></i>Nenhuma varredura executada ainda.';
+                    return;
+                }
+
+                const ultima = execucoes[0];
+
+                if (ultima.em_andamento) {
+                    info.innerHTML = `<i class="fas fa-spinner fa-spin me-1"></i>Varredura em andamento (iniciada às ${ultima.iniciado_em})...`;
+                    if (btn) btn.disabled = true;
+                    if (!ampscanPollTimer) {
+                        ampscanPollTimer = setInterval(() => ampscanCarregarExecucoes(), 4000);
+                    }
+                    return;
+                }
+
+                if (ampscanPollTimer) {
+                    clearInterval(ampscanPollTimer);
+                    ampscanPollTimer = null;
+                    ampscanCarregarResultados();
+                }
+                if (btn) btn.disabled = false;
+
+                if (!ultima.sucesso) {
+                    info.innerHTML = `<i class="fas fa-exclamation-triangle me-1" style="color:#f85149"></i>Última varredura (${ultima.finalizado_em}) falhou: ${ultima.erro_mensagem || 'erro desconhecido'}`;
+                    return;
+                }
+
+                let extra = ultima.blocos_ignorados > 0
+                    ? ` — ${ultima.blocos_ignorados} bloco(s) ignorado(s) por tamanho (acima de /16 IPv4 ou /112 IPv6)`
+                    : '';
+                info.innerHTML = `<i class="fas fa-check-circle me-1" style="color:#3fb950"></i>Última varredura em ${ultima.finalizado_em} — ${ultima.total_ips} IPs testados, ${ultima.total_vulneraveis} vulnerável(is), ${ultima.total_protegidos} protegido(s)${extra}.`;
+            })
+            .catch(error => console.error('Erro ao carregar execuções AmpScan:', error));
+    }
+
+    function ampscanEscanearAgora() {
+        const clienteId = '{{ cliente.id }}';
+        const btn = document.getElementById('ampscanBtnEscanear');
+        if (btn) btn.disabled = true;
+
+        fetch('/clientes/ampscan/escanear/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCsrfToken()},
+            body: `id=${clienteId}`,
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError('ERRO', data.error, 5000);
+                    if (btn) btn.disabled = false;
+                    return;
+                }
+                showInfo('VARREDURA INICIADA', 'A varredura de amplificação foi disparada em segundo plano — acompanhe o status acima.', 4000);
+                ampscanCarregarExecucoes();
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showError('ERRO', 'Não foi possível iniciar a varredura.', 5000);
+                if (btn) btn.disabled = false;
+            });
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     // IRR — Atualização de objetos TC via e-mail
     // ═══════════════════════════════════════════════════════════════════════
@@ -5923,6 +6123,7 @@ function getCsrfToken(){
     const TAB_TO_MODULO = {
         'acessos': 'acessos', 'backups': 'backups', 'vpn': 'vpn', 'topologia': 'topologia',
         'tuneis': 'tuneis', 'documentos': 'documentos', 'rpki-irr': 'rpki_irr',
+        'vulnerabilidades': 'rpki_irr',
         'monitoramento': 'monitoramento', 'documentacao': 'documentacao',
         'hotspot': 'hotspot', 'testes-rede': 'testes_rede',
     };
@@ -5968,6 +6169,9 @@ function getCsrfToken(){
         }
         if (nomeAba === 'hotspot') {
             if (typeof hsCarregarLista === 'function') hsCarregarLista();
+        }
+        if (nomeAba === 'vulnerabilidades') {
+            if (typeof ampscanCarregar === 'function') ampscanCarregar();
         }
     }
 

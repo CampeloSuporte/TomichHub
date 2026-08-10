@@ -4502,6 +4502,102 @@ def listar_blocos_cliente(request):
 
 
 # ============================================
+# AMPSCAN — VARREDURA DE AMPLIFICAÇÃO DDoS
+# ============================================
+
+@login_required(login_url='login')
+@modulo_habilitado_required('rpki_irr')
+def listar_ampscan_resultados(request):
+    """Lista os achados atuais (não resolvidos) da varredura de amplificação
+    de um cliente (AJAX)."""
+    from .models import AmpScanResultado
+
+    cliente_id = request.GET.get('id')
+    if not cliente_id:
+        return JsonResponse({'error': 'Cliente não especificado'}, status=400)
+
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    resultados = AmpScanResultado.objects.filter(cliente=cliente, resolvido=False).select_related('bloco_ip').order_by('status', '-ultima_deteccao')
+
+    return JsonResponse({
+        'resultados': [{
+            'id': r.id,
+            'ip': r.ip,
+            'porta': r.porta,
+            'protocolo': r.protocolo,
+            'servico': r.servico,
+            'descricao_risco': r.descricao_risco,
+            'status': r.status,
+            'status_display': r.get_status_display(),
+            'tempo_resposta_ms': r.tempo_resposta_ms,
+            'bloco': r.bloco_ip.bloco if r.bloco_ip else None,
+            'primeira_deteccao': r.primeira_deteccao.strftime('%d/%m/%Y %H:%M'),
+            'ultima_deteccao': r.ultima_deteccao.strftime('%d/%m/%Y %H:%M'),
+        } for r in resultados]
+    })
+
+
+@login_required(login_url='login')
+@modulo_habilitado_required('rpki_irr')
+def listar_ampscan_execucoes(request):
+    """Últimas execuções da varredura de amplificação de um cliente (AJAX) —
+    usado tanto para mostrar 'última varredura' quanto para o front-end
+    fazer polling enquanto uma varredura sob demanda está rodando."""
+    from .models import AmpScanExecucaoLog
+
+    cliente_id = request.GET.get('id')
+    if not cliente_id:
+        return JsonResponse({'error': 'Cliente não especificado'}, status=400)
+
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    execucoes = AmpScanExecucaoLog.objects.filter(cliente=cliente).order_by('-iniciado_em')[:5]
+
+    return JsonResponse({
+        'execucoes': [{
+            'id': e.id,
+            'iniciado_em': e.iniciado_em.strftime('%d/%m/%Y %H:%M:%S'),
+            'finalizado_em': e.finalizado_em.strftime('%d/%m/%Y %H:%M:%S') if e.finalizado_em else None,
+            'em_andamento': e.finalizado_em is None,
+            'total_ips': e.total_ips,
+            'total_probes': e.total_probes,
+            'total_vulneraveis': e.total_vulneraveis,
+            'total_protegidos': e.total_protegidos,
+            'blocos_ignorados': e.blocos_ignorados,
+            'sucesso': e.sucesso,
+            'erro_mensagem': e.erro_mensagem,
+        } for e in execucoes]
+    })
+
+
+@login_required(login_url='login')
+@modulo_habilitado_required('rpki_irr')
+@require_http_methods(['POST'])
+def ampscan_escanear_agora(request):
+    """Dispara a varredura de amplificação sob demanda para um cliente
+    (assíncrona via Celery — a varredura de um /24 inteiro pode levar dezenas
+    de segundos, não dá pra rodar no ciclo de vida da request)."""
+    from .models import BlocoIP
+    from .tasks import ampscan_escanear_cliente
+
+    cliente_id = request.POST.get('id')
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    if not BlocoIP.objects.filter(cliente=cliente).exists():
+        return JsonResponse({'error': 'Cliente não tem blocos de IP cadastrados (RPKI/IRR).'}, status=400)
+
+    ampscan_escanear_cliente.delay(cliente.id)
+    return JsonResponse({'success': True})
+
+
+# ============================================
 # FUNÇÕES DE VALIDAÇÃO RPKI/IRR
 # ============================================
 

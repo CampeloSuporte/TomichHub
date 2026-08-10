@@ -1,0 +1,19 @@
+[package]
+name = "crm_ampscan_runner"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "crm_ampscan_runner"
+path = "src/main.rs"
+
+[dependencies]
+# Pinned to a specific commit of https://github.com/gondimcodes/ampscan —
+# usamos só ampscan::scanner (engine de probes) e ampscan::db::models
+# (structs Port/Prefix, sem tocar no módulo db::* que usa SQLCipher).
+ampscan = { git = "https://github.com/gondimcodes/ampscan.git", rev = "be7f63e91ba577fb7dd6d1233cdbb0cb513ffc0f" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"

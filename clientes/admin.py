@@ -10,6 +10,7 @@ from .models import (
 from .models import BackupTemplate, BackupLog
 from .models import AcessoSessao, AcessoComando, TerminalLinkExterno
 from .models import BgpSnapshot, AcaoBgp, BgpCommunity
+from .models import AmpScanResultado, AmpScanExecucaoLog
 
 @admin.register(BackupTemplate)
 class BackupTemplateAdmin(admin.ModelAdmin):
@@ -139,3 +140,17 @@ class IPAMAuditLogAdmin(admin.ModelAdmin):
     list_filter = ['modelo', 'acao']
     search_fields = ['objeto_repr', 'cliente__nome_empresa']
     readonly_fields = ['criado_em']
+
+@admin.register(AmpScanResultado)
+class AmpScanResultadoAdmin(admin.ModelAdmin):
+    list_display = ['ip', 'porta', 'protocolo', 'servico', 'status', 'resolvido', 'ultima_deteccao', 'cliente']
+    list_filter = ['status', 'resolvido', 'protocolo']
+    search_fields = ['ip', 'servico', 'cliente__nome_empresa']
+    readonly_fields = ['primeira_deteccao', 'ultima_deteccao']
+
+@admin.register(AmpScanExecucaoLog)
+class AmpScanExecucaoLogAdmin(admin.ModelAdmin):
+    list_display = ['cliente', 'iniciado_em', 'finalizado_em', 'total_vulneraveis', 'total_protegidos', 'sucesso']
+    list_filter = ['sucesso']
+    search_fields = ['cliente__nome_empresa']
+    readonly_fields = ['iniciado_em']

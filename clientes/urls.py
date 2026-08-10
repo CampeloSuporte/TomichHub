@@ -90,6 +90,11 @@ urlpatterns = [
     path('blocos/validar/<int:bloco_id>/', views.validar_bloco_rpki_irr, name='validar_bloco_rpki_irr'),
     path('blocos/listar/', views.listar_blocos_cliente, name='listar_blocos_cliente'),
 
+    # AmpScan — Varredura de amplificação DDoS
+    path('ampscan/resultados/', views.listar_ampscan_resultados, name='listar_ampscan_resultados'),
+    path('ampscan/execucoes/', views.listar_ampscan_execucoes, name='listar_ampscan_execucoes'),
+    path('ampscan/escanear/', views.ampscan_escanear_agora, name='ampscan_escanear_agora'),
+
     # Comentários de Acesso
     path('acessos/<int:acesso_id>/comentarios/listar/', views.listar_comentarios_acesso, name='listar_comentarios_acesso'),
     path('acessos/<int:acesso_id>/comentarios/adicionar/', views.adicionar_comentario_acesso, name='adicionar_comentario_acesso'),

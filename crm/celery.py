@@ -31,6 +31,10 @@ app.conf.beat_schedule = {
         'task': 'clientes.tasks.validar_blocos_rpki_irr_agendado',
         'schedule': crontab(hour=4, minute=0),
     },
+    'ampscan-varrer-clientes-agendado': {
+        'task': 'clientes.tasks.ampscan_varrer_clientes_agendado',
+        'schedule': crontab(hour=5, minute=0),  # após validação RPKI/IRR (04h)
+    },
     'analisar-backups-ipam': {
         'task': 'clientes.tasks.analisar_backups_ipam',
         'schedule': timedelta(days=3),

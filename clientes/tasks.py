@@ -2306,4 +2306,241 @@ def enviar_disparo_hotspot_lead(self, lead_id):
     if tem_falha_transitoria:
         raise self.retry(exc=Exception(str(resultados)))
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AmpScan — varredura de portas de amplificação DDoS nos blocos de IP
+# cadastrados no RPKI/IRR de cada cliente (BlocoIP). Chama o runner Rust em
+# tools/ampscan_runner/ (lib https://github.com/gondimcodes/ampscan) via
+# subprocess, trocando JSON por stdin/stdout — sem precisar do banco
+# SQLCipher nem da autenticação de usuário do CLI original.
+# ─────────────────────────────────────────────────────────────────────────────
+
+import ipaddress
+import json as _json
+import subprocess
+
+AMPSCAN_RUNNER_BIN = os.path.join(
+    settings.BASE_DIR, 'tools', 'ampscan_runner', 'target', 'release', 'crm_ampscan_runner'
+)
+
+# Mesmos limites que o binário ampscan aplica (rejeitaria o prefixo se
+# excedidos) — filtramos antes de chamar, pra não perder a execução inteira
+# por causa de 1 bloco grande demais, e pra poder registrar quantos blocos
+# foram ignorados.
+_AMPSCAN_MAX_PREFIXLEN_V4 = 16   # até /16 (65536 hosts)
+_AMPSCAN_MAX_PREFIXLEN_V6 = 112  # até /112 (65536 hosts)
+
+
+def _ampscan_prefixos_elegiveis(cliente):
+    """Monta a lista de prefixos escaneáveis a partir dos BlocoIP do cliente.
+
+    Retorna (prefixos_para_runner, blocos_por_id, total_ignorados) — blocos
+    maiores que o limite do ampscan (ex: um /48 IPv6 inteiro, impossível de
+    varrer host a host) são ignorados, não travam a execução dos demais.
+    """
+    from .models import BlocoIP
+
+    prefixos = []
+    blocos_por_id = {}
+    ignorados = 0
+
+    for bloco in BlocoIP.objects.filter(cliente=cliente):
+        try:
+            net = ipaddress.ip_network(bloco.bloco, strict=False)
+        except ValueError:
+            ignorados += 1
+            continue
+
+        limite = _AMPSCAN_MAX_PREFIXLEN_V4 if net.version == 4 else _AMPSCAN_MAX_PREFIXLEN_V6
+        if net.prefixlen < limite:
+            ignorados += 1
+            continue
+
+        prefixos.append({
+            'id': bloco.id,
+            'prefix': str(net),
+            'description': f'{cliente.nome_empresa} - {bloco.bloco}',
+        })
+        blocos_por_id[bloco.id] = (bloco, net)
+
+    return prefixos, blocos_por_id, ignorados
+
+
+def _ampscan_localizar_bloco(ip_str, blocos_por_id):
+    """Descobre de qual BlocoIP um IP resultado do scan veio, por contenção
+    de CIDR (o runner não devolve isso — o ScanReport upstream só guarda os
+    prefixos como strings, não por IP)."""
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return None
+    for bloco, net in blocos_por_id.values():
+        if ip in net:
+            return bloco
+    return None
+
+
+def _ampscan_executar_para_cliente(cliente, concurrency=200, timeout=2, retries=1, subprocess_timeout=900):
+    """Roda a varredura de amplificação para um cliente e persiste o
+    resultado. Isolado em try/except pelo chamador — uma falha aqui (runner
+    ausente, timeout, JSON inválido) não deve derrubar a varredura dos
+    demais clientes."""
+    from .models import AmpScanExecucaoLog, AmpScanResultado
+
+    execucao = AmpScanExecucaoLog.objects.create(cliente=cliente)
+
+    prefixos, blocos_por_id, ignorados = _ampscan_prefixos_elegiveis(cliente)
+    execucao.blocos_ignorados = ignorados
+
+    if not prefixos:
+        execucao.finalizado_em = timezone.now()
+        execucao.save()
+        return execucao
+
+    if not os.path.isfile(AMPSCAN_RUNNER_BIN):
+        execucao.sucesso = False
+        execucao.erro_mensagem = f'Runner não encontrado em {AMPSCAN_RUNNER_BIN} (rode cargo build --release).'
+        execucao.finalizado_em = timezone.now()
+        execucao.save()
+        return execucao
+
+    entrada = _json.dumps({
+        'prefixes': prefixos,
+        'concurrency': concurrency,
+        'timeout': timeout,
+        'retries': retries,
+    })
+
+    try:
+        proc = subprocess.run(
+            [AMPSCAN_RUNNER_BIN],
+            input=entrada,
+            capture_output=True,
+            text=True,
+            timeout=subprocess_timeout,
+        )
+    except subprocess.TimeoutExpired:
+        execucao.sucesso = False
+        execucao.erro_mensagem = f'Runner excedeu o timeout de {subprocess_timeout}s.'
+        execucao.finalizado_em = timezone.now()
+        execucao.save()
+        return execucao
+
+    if proc.returncode != 0:
+        execucao.sucesso = False
+        execucao.erro_mensagem = (proc.stderr or 'runner retornou código != 0')[-2000:]
+        execucao.finalizado_em = timezone.now()
+        execucao.save()
+        return execucao
+
+    try:
+        report = _json.loads(proc.stdout)
+    except _json.JSONDecodeError as e:
+        execucao.sucesso = False
+        execucao.erro_mensagem = f'Saída do runner não é JSON válido: {e}'
+        execucao.finalizado_em = timezone.now()
+        execucao.save()
+        return execucao
+
+    chaves_vistas = set()
+    total_vulneraveis = 0
+    total_protegidos = 0
+
+    for r in report.get('results', []):
+        status_raw = r.get('status')
+        if status_raw == 'Open':
+            status = 'vulneravel'
+            total_vulneraveis += 1
+        elif status_raw == 'OpenProtected':
+            status = 'protegido'
+            total_protegidos += 1
+        else:
+            continue  # Closed / Inconclusive / Error — não interessa persistir
+
+        ip = r['ip']
+        porta = r['port']
+        protocolo = r['protocol']
+        chaves_vistas.add((ip, porta, protocolo))
+        bloco = _ampscan_localizar_bloco(ip, blocos_por_id)
+
+        AmpScanResultado.objects.update_or_create(
+            cliente=cliente, ip=ip, porta=porta, protocolo=protocolo,
+            defaults={
+                'bloco_ip': bloco,
+                'servico': r.get('service_name', ''),
+                'descricao_risco': r.get('description', ''),
+                'status': status,
+                'tempo_resposta_ms': r.get('response_time_ms'),
+                'resolvido': False,
+                'resolvido_em': None,
+            },
+        )
+
+    # Achados anteriores nos blocos escaneados desta vez que não apareceram
+    # de novo (porta fechou, host saiu do ar) — marca como resolvido em vez
+    # de apagar, mantendo o histórico de quando o risco existiu.
+    abertos_anteriores = AmpScanResultado.objects.filter(
+        cliente=cliente, bloco_ip_id__in=blocos_por_id.keys(), resolvido=False,
+    )
+    for resultado in abertos_anteriores:
+        if (resultado.ip, resultado.porta, resultado.protocolo) not in chaves_vistas:
+            resultado.resolvido = True
+            resultado.resolvido_em = timezone.now()
+            resultado.save(update_fields=['resolvido', 'resolvido_em'])
+
+    execucao.total_ips = report.get('total_ips', 0)
+    execucao.total_probes = report.get('total_probes', 0)
+    execucao.total_vulneraveis = total_vulneraveis
+    execucao.total_protegidos = total_protegidos
+    execucao.finalizado_em = timezone.now()
+    execucao.save()
+    return execucao
+
+
+@shared_task
+def ampscan_escanear_cliente(cliente_id):
+    """Varredura de amplificação sob demanda (botão 'Escanear Agora' na aba
+    Vulnerabilidades) para um único cliente."""
+    from .models import Cliente
+
+    try:
+        cliente = Cliente.objects.get(id=cliente_id)
+    except Cliente.DoesNotExist:
+        return {'status': 'ignorado', 'motivo': 'Cliente não encontrado'}
+
+    execucao = _ampscan_executar_para_cliente(cliente)
+    return {
+        'status': 'ok' if execucao.sucesso else 'erro',
+        'execucao_id': execucao.id,
+        'total_vulneraveis': execucao.total_vulneraveis,
+    }
+
+
+@shared_task
+def ampscan_varrer_clientes_agendado():
+    """Varredura de amplificação diária (Celery Beat) — todo cliente com ao
+    menos um BlocoIP cadastrado, isolado em try/except por cliente (mesmo
+    padrão de ipam_scan_subredes_automaticas: 1 cliente com problema não
+    derruba a varredura dos demais)."""
+    from .models import Cliente
+
+    clientes = Cliente.objects.filter(blocos_ip__isnull=False).distinct()
+    total, ok, falhas = 0, 0, 0
+
+    for cliente in clientes:
+        total += 1
+        try:
+            execucao = _ampscan_executar_para_cliente(cliente)
+            if execucao.sucesso:
+                ok += 1
+            else:
+                falhas += 1
+                logger.warning(f'ampscan_varrer_clientes_agendado: cliente {cliente.id} falhou: {execucao.erro_mensagem}')
+        except Exception as e:
+            falhas += 1
+            logger.warning(f'ampscan_varrer_clientes_agendado: cliente {cliente.id} exceção: {e}')
+
+    logger.info(f'ampscan_varrer_clientes_agendado: {ok}/{total} clientes escaneados, {falhas} falhas.')
+    return {'total': total, 'ok': ok, 'falhas': falhas}
+
     return {'status': 'concluido', 'resultados': resultados}

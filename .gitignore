@@ -44,3 +44,6 @@ celerybeat.pid
 # Backups manuais e ambientes locais (nao versionar)
 *.bak
 wine-prefix/
+
+# Runner Rust do ampscan (varredura de amplificação DDoS) — binário compilado
+tools/ampscan_runner/target/

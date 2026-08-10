@@ -691,6 +691,78 @@ class ValidacaoRPKI_IRR_Log(models.Model):
 
 
 # =============================================================================
+# AmpScan — Varredura de portas de amplificação DDoS nos blocos de IP dos
+# clientes (RPKI/IRR). Usa o crm_ampscan_runner (tools/ampscan_runner/),
+# runner Rust fino sobre a lib https://github.com/gondimcodes/ampscan.
+# =============================================================================
+
+class AmpScanResultado(models.Model):
+    """Estado atual de um achado de amplificação — uma linha por (cliente, ip,
+    porta, protocolo). Atualizado por upsert a cada varredura; quando uma
+    varredura seguinte não vê mais aquele IP:porta aberto, ele é marcado como
+    resolvido em vez de apagado (histórico de quando o risco existiu)."""
+    STATUS_CHOICES = [
+        ('vulneravel', 'Vulnerável'),
+        ('protegido', 'Protegido (aberto, mitigado)'),
+    ]
+
+    cliente    = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='ampscan_resultados')
+    bloco_ip   = models.ForeignKey('BlocoIP', on_delete=models.SET_NULL, null=True, blank=True, related_name='ampscan_resultados')
+
+    ip         = models.CharField(max_length=45, db_index=True)
+    porta      = models.PositiveIntegerField()
+    protocolo  = models.CharField(max_length=4, help_text="udp ou tcp")
+    servico    = models.CharField(max_length=50, help_text="Ex: DNS, NTP, SNMP, MEMCACHED")
+    descricao_risco = models.TextField(blank=True)
+
+    status     = models.CharField(max_length=12, choices=STATUS_CHOICES, default='vulneravel')
+    tempo_resposta_ms = models.PositiveIntegerField(null=True, blank=True)
+
+    primeira_deteccao = models.DateTimeField(auto_now_add=True)
+    ultima_deteccao    = models.DateTimeField(auto_now=True)
+
+    resolvido    = models.BooleanField(default=False)
+    resolvido_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Resultado AmpScan'
+        verbose_name_plural = 'Resultados AmpScan'
+        unique_together = ('cliente', 'ip', 'porta', 'protocolo')
+        ordering = ['-ultima_deteccao']
+
+    def __str__(self):
+        return f"{self.ip}:{self.porta}/{self.protocolo} ({self.servico}) - {self.cliente.nome_empresa}"
+
+
+class AmpScanExecucaoLog(models.Model):
+    """Histórico de execuções da varredura de amplificação por cliente —
+    inclui execuções sem nenhum achado, pra distinguir 'nunca rodou' de
+    'rodou e está limpo'."""
+    cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='ampscan_execucoes')
+
+    iniciado_em   = models.DateTimeField(auto_now_add=True)
+    finalizado_em = models.DateTimeField(null=True, blank=True)
+
+    total_ips        = models.PositiveIntegerField(default=0)
+    total_probes      = models.PositiveIntegerField(default=0)
+    total_vulneraveis = models.PositiveIntegerField(default=0)
+    total_protegidos  = models.PositiveIntegerField(default=0)
+    blocos_ignorados  = models.PositiveIntegerField(default=0, help_text='Blocos fora do limite de tamanho suportado (IPv4 < /16 ou IPv6 < /112)')
+
+    sucesso        = models.BooleanField(default=True)
+    erro_mensagem  = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Execução AmpScan'
+        verbose_name_plural = 'Execuções AmpScan'
+        ordering = ['-iniciado_em']
+
+    def __str__(self):
+        status = 'OK' if self.sucesso else 'ERRO'
+        return f"AmpScan {self.cliente.nome_empresa} - {self.iniciado_em.strftime('%d/%m/%Y %H:%M')} [{status}]"
+
+
+# =============================================================================
 # IPAM — Documentação Nativa de IPs, VLANs, Sub-redes e VPNs
 # =============================================================================
 
