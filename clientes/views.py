@@ -7672,7 +7672,13 @@ def irr_consultar_whois(request, cliente_id):
     def parse_route_objects(texto, tipo='route'):
         """Extrai objetos route/route6 completos (prefix + descr + member-of).
         No retorno do whois cada objeto RPSL é separado por linha em branco,
-        então uma nova linha `route:`/`route6:` sempre abre um bloco novo."""
+        então uma nova linha `route:`/`route6:` sempre abre um bloco novo.
+
+        Um mesmo prefixo pode aparecer em mais de um objeto — o registro real
+        (source: TC, o mesmo que este sistema gerencia), uma versão
+        auto-gerada a partir do RPKI (source: RPKI) e às vezes um terceiro via
+        RADB/outro mnt-by. Por isso o resultado é deduplicado por prefixo,
+        priorizando sempre o objeto com source TC quando existir."""
         objetos = []
         atual = None
         for linha in texto.splitlines():
@@ -7682,18 +7688,33 @@ def irr_consultar_whois(request, cliente_id):
                 continue
             campo, valor = linha.split(':', 1)
             campo = campo.strip().lower()
-            valor = valor.strip()
+            valor = valor.split('#', 1)[0].strip()  # descarta comentário inline (comum em source/changed)
             if campo == tipo:
                 if atual and atual.get('prefix'):
                     objetos.append(atual)
-                atual = {'prefix': valor, 'descr': '', 'member_of': ''}
+                atual = {'prefix': valor, 'descr': '', 'member_of': '', 'source': ''}
             elif atual is not None and campo == 'descr' and not atual['descr']:
                 atual['descr'] = valor
             elif atual is not None and campo == 'member-of' and not atual['member_of']:
                 atual['member_of'] = valor
+            elif atual is not None and campo == 'source' and not atual['source']:
+                atual['source'] = valor
         if atual and atual.get('prefix'):
             objetos.append(atual)
-        return objetos
+
+        por_prefixo = {}
+        ordem = []
+        for obj in objetos:
+            p = obj['prefix']
+            if p not in por_prefixo:
+                por_prefixo[p] = obj
+                ordem.append(p)
+            elif obj['source'].upper() == 'TC' and por_prefixo[p]['source'].upper() != 'TC':
+                por_prefixo[p] = obj
+        return [
+            {'prefix': p, 'descr': por_prefixo[p]['descr'], 'member_of': por_prefixo[p]['member_of']}
+            for p in ordem
+        ]
 
     def parse_remarks_email(texto, label_prefix):
         """Extrai e-mail de linhas remarks no formato 'remarks: Label: email@dominio'."""
