@@ -2306,6 +2306,8 @@ def enviar_disparo_hotspot_lead(self, lead_id):
     if tem_falha_transitoria:
         raise self.retry(exc=Exception(str(resultados)))
 
+    return {'status': 'concluido', 'resultados': resultados}
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # AmpScan — varredura de portas de amplificação DDoS nos blocos de IP
@@ -2516,16 +2518,38 @@ def ampscan_escanear_cliente(cliente_id):
     }
 
 
+# Quantos grupos rotativos de clientes existem. A cada execução (a cada 2
+# dias, ver crm/celery.py) só 1 grupo é escaneado — cobertura completa de
+# todos os clientes leva AMPSCAN_TOTAL_GRUPOS * 2 dias. O grupo do dia é
+# calculado a partir da data corrente (não de um contador salvo em algum
+# lugar), então é determinístico e sobrevive a reinício do Celery sem
+# repetir/pular grupo por causa de drift do agendador.
+AMPSCAN_TOTAL_GRUPOS = 3
+_AMPSCAN_EPOCH = datetime(2026, 1, 1).date()
+
+
+def _ampscan_grupo_do_dia(total_grupos=AMPSCAN_TOTAL_GRUPOS):
+    dias_desde_epoch = (timezone.localdate() - _AMPSCAN_EPOCH).days
+    ciclo = dias_desde_epoch // 2  # cada ciclo (1 grupo) dura 2 dias
+    return ciclo % total_grupos
+
+
 @shared_task
 def ampscan_varrer_clientes_agendado():
-    """Varredura de amplificação diária (Celery Beat) — todo cliente com ao
-    menos um BlocoIP cadastrado, isolado em try/except por cliente (mesmo
+    """Varredura de amplificação a cada 2 dias (Celery Beat) — só escaneia
+    1/AMPSCAN_TOTAL_GRUPOS dos clientes por execução (dividido por
+    `cliente.id % AMPSCAN_TOTAL_GRUPOS`), pra não disparar sondas contra
+    todos os clientes no mesmo dia. Isolado em try/except por cliente (mesmo
     padrão de ipam_scan_subredes_automaticas: 1 cliente com problema não
     derruba a varredura dos demais)."""
     from .models import Cliente
 
-    clientes = Cliente.objects.filter(blocos_ip__isnull=False).distinct()
+    grupo_hoje = _ampscan_grupo_do_dia()
+    clientes = Cliente.objects.filter(blocos_ip__isnull=False).distinct().order_by('id')
+    clientes = [c for c in clientes if c.id % AMPSCAN_TOTAL_GRUPOS == grupo_hoje]
     total, ok, falhas = 0, 0, 0
+
+    logger.info(f'ampscan_varrer_clientes_agendado: grupo {grupo_hoje}/{AMPSCAN_TOTAL_GRUPOS - 1} — {len(clientes)} cliente(s) nesta execução.')
 
     for cliente in clientes:
         total += 1
@@ -2541,6 +2565,4 @@ def ampscan_varrer_clientes_agendado():
             logger.warning(f'ampscan_varrer_clientes_agendado: cliente {cliente.id} exceção: {e}')
 
     logger.info(f'ampscan_varrer_clientes_agendado: {ok}/{total} clientes escaneados, {falhas} falhas.')
-    return {'total': total, 'ok': ok, 'falhas': falhas}
-
-    return {'status': 'concluido', 'resultados': resultados}
+    return {'total': total, 'ok': ok, 'falhas': falhas, 'grupo': grupo_hoje, 'total_grupos': AMPSCAN_TOTAL_GRUPOS}

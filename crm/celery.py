@@ -32,8 +32,13 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=4, minute=0),
     },
     'ampscan-varrer-clientes-agendado': {
+        # Dispara a cada 2 dias — e a própria task só escaneia 1 dos
+        # AMPSCAN_TOTAL_GRUPOS grupos de clientes por execução (grupo
+        # calculado pela data em clientes/tasks.py._ampscan_grupo_do_dia),
+        # então nenhum grupo repete de uma execução pra outra e não dispara
+        # sondas contra todo mundo no mesmo dia.
         'task': 'clientes.tasks.ampscan_varrer_clientes_agendado',
-        'schedule': crontab(hour=5, minute=0),  # após validação RPKI/IRR (04h)
+        'schedule': timedelta(days=2),
     },
     'analisar-backups-ipam': {
         'task': 'clientes.tasks.analisar_backups_ipam',
