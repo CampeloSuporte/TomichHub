@@ -3729,13 +3729,17 @@ def download_backup(request, backup_id):
         return redirect('listar_clientes')
 
 @login_required(login_url='login')
-@admin_required
 @modulo_habilitado_required('backups')
 def deletar_backup(request, backup_id):
     """Deleta backup"""
     if request.method == 'POST':
         try:
             backup = get_object_or_404(BackupLog, id=backup_id)
+
+            if not _perms.pode_acessar_cliente(request.user, backup.cliente):
+                messages.error(request, 'Sem permissão')
+                return redirect('listar_clientes')
+
             cliente_id = backup.cliente.id
 
             # Deletar arquivo

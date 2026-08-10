@@ -87,13 +87,20 @@ def pode_acessar_cliente(user, cliente):
 
 def usuarios_gerenciaveis_por(user):
     from django.contrib.auth.models import User
+    from django.db.models import Q
     if is_admin(user):
         return User.objects.all()
     if is_consultor(user):
         instancia = get_instancia(user)
         if not instancia:
             return User.objects.none()
-        return User.objects.filter(perfil__instancia=instancia)
+        # perfil__instancia cobre Operadores da instância;
+        # portal_instancia__instancia cobre usuários de portal
+        # (role='cliente', sem PerfilUsuario) criados por essa instância —
+        # ver PortalUsuarioInstancia.
+        return User.objects.filter(
+            Q(perfil__instancia=instancia) | Q(portal_instancia__instancia=instancia)
+        ).distinct()
     return User.objects.none()
 
 

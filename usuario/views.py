@@ -11,7 +11,7 @@ from clientes.decorators import admin_required  # ← ADICIONAR ESTA LINHA
 from django.contrib.auth import logout as auth_logout
 from django.contrib.auth import update_session_auth_hash
 from clientes.models import Cliente
-from .models import UsuarioModulo, modulos_habilitados_dict, Instancia, PerfilUsuario, InstanciaFerramenta, ferramentas_habilitadas_dict, TOTPDevice
+from .models import UsuarioModulo, modulos_habilitados_dict, Instancia, PerfilUsuario, InstanciaFerramenta, ferramentas_habilitadas_dict, TOTPDevice, PortalUsuarioInstancia
 from . import perms
 from . import totp as totp_lib
 
@@ -151,7 +151,15 @@ def cadastrar_usuario(request):
                 PerfilUsuario.objects.create(usuario=user, role=PerfilUsuario.ROLE_OPERADOR, instancia=instancia, criado_por=request.user)
             elif role == PerfilUsuario.ROLE_ADMIN:
                 PerfilUsuario.objects.create(usuario=user, role=PerfilUsuario.ROLE_ADMIN, criado_por=request.user)
-            # role == 'cliente': sem PerfilUsuario, igual ao comportamento de antes.
+            else:
+                # role == 'cliente': sem PerfilUsuario, igual ao comportamento
+                # de antes. Se quem criou é Consultor, registra a instância
+                # dona pra esse login continuar visível/selecionável por ele
+                # (listagem de usuários e dropdown de vínculo em Cliente)
+                # enquanto ainda não estiver associado a nenhum Cliente.
+                instancia_criador = perms.get_instancia(request.user)
+                if instancia_criador:
+                    PortalUsuarioInstancia.objects.create(usuario=user, instancia=instancia_criador, criado_por=request.user)
 
             _sincronizar_modulos_usuario(request, user)
 

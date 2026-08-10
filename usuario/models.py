@@ -97,6 +97,28 @@ class PerfilUsuario(models.Model):
         return f"{self.usuario.username} ({self.get_role_display()})"
 
 
+class PortalUsuarioInstancia(models.Model):
+    """Rastreia a Instancia (Consultor) responsável por um usuário do
+    portal do cliente final (role='cliente', sem PerfilUsuario) enquanto
+    ele ainda não está vinculado a nenhum Cliente. Sem isso,
+    `usuarios_gerenciaveis_por` (usuario/perms.py) não tinha como saber que
+    um Consultor podia gerenciar/selecionar um login de portal recém
+    criado por ele mesmo — o usuário sumia da própria listagem e do
+    dropdown de vínculo em Cliente."""
+
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, related_name='portal_instancia')
+    instancia = models.ForeignKey(Instancia, on_delete=models.CASCADE, related_name='usuarios_portal')
+    criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='usuarios_portal_criados')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Instância do Usuário de Portal'
+        verbose_name_plural = 'Instâncias de Usuários de Portal'
+
+    def __str__(self):
+        return f"{self.usuario.username} → {self.instancia.nome}"
+
+
 class InstanciaFerramenta(models.Model):
     """Controla, por Instancia (não por login), se uma ferramenta do
     núcleo do sistema está liberada para o Consultor e seus Operadores.

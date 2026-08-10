@@ -22,6 +22,7 @@ from django.core.exceptions import ValidationError
 from django.db import close_old_connections
 from django.utils import timezone
 from .models import Acesso, Cliente, ProxyServer, AcessoSessao, AcessoComando, TerminalLinkExterno
+from usuario import perms as _perms
 
 logger = logging.getLogger(__name__)
 
@@ -668,17 +669,17 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
     # Terminal compartilhado (opt-in)
     # =========================================================
     def _usuario_pode_acessar(self, acesso):
-        """Mesma regra de `listar_acessos_terminal` (views.py): staff/superuser
-        vê tudo; usuário comum só acessa Acessos do(s) Cliente(s) a que está
-        vinculado. Antes desta checagem, conectar_acesso() confiava cegamente
-        no acesso_id vindo do frontend — qualquer autenticado podia abrir o
-        terminal de qualquer host cadastrado, de qualquer cliente."""
+        """Mesma regra de `listar_acessos_terminal` (views.py): usa
+        usuario.perms.pode_acessar_cliente, que cobre admin (vê tudo),
+        Consultor/Operador (clientes da própria Instancia) e portal do
+        cliente final (vínculo direto). Antes desta checagem, conectar_acesso()
+        confiava cegamente no acesso_id vindo do frontend — qualquer
+        autenticado podia abrir o terminal de qualquer host cadastrado, de
+        qualquer cliente."""
         user = getattr(self, '_crm_user', None)
         if not user:
             return False
-        if user.is_staff or user.is_superuser:
-            return True
-        return Cliente.objects.filter_by_usuario_vinculado(user).filter(id=acesso.cliente_id).exists()
+        return _perms.pode_acessar_cliente(user, acesso.cliente)
 
     def _label_usuario(self):
         user = getattr(self, '_crm_user', None)
