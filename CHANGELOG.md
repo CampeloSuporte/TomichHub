@@ -5,6 +5,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-10 (Nova aba Vulnerabilidades: varredura de amplificação DDoS nos blocos RPKI/IRR)
+
+### Adicionado
+
+- **Aba "Vulnerabilidades" por cliente**, ao lado de RPKI/IRR — varre os blocos de IP já cadastrados
+  (`BlocoIP`) em busca de 21 portas de amplificação DDoS mal configuradas (DNS, NTP, SNMP,
+  Memcached, SSDP, CLDAP e outras), com botão "Escanear Agora" e tabela expansível das portas
+  testadas. Varredura automática a cada 2 dias, em 3 grupos rotativos de clientes (cobertura
+  completa em 6 dias, evita disparar sondas contra todos os clientes no mesmo dia). Baseado em
+  [`tools/ampscan_runner/`](tools/ampscan_runner/), binário Rust fino sobre a lib
+  [ampscan](https://github.com/gondimcodes/ampscan) (dependência git pinada por commit), trocando
+  JSON por stdin/stdout com o Celery. Novos modelos `AmpScanResultado`/`AmpScanExecucaoLog`.
+  Detalhes em
+  [AMPSCAN_VARREDURA_AMPLIFICACAO.md](docs/AMPSCAN_VARREDURA_AMPLIFICACAO.md).
+
+### Corrigido
+
+- **Regressão introduzida no mesmo dia**: a inserção do bloco AmpScan no fim de `clientes/tasks.py`
+  cortou o `return` final de `enviar_disparo_hotspot_lead` (função pré-existente), que passou a
+  retornar `None` no caminho sem retry. Detalhes em
+  [AMPSCAN_VARREDURA_AMPLIFICACAO.md](docs/AMPSCAN_VARREDURA_AMPLIFICACAO.md#correção--regressão-em-enviar_disparo_hotspot_lead-2026-08-10).
+- **Horário da última varredura exibido em UTC, não no fuso local** — `listar_ampscan_resultados`/
+  `execucoes` formatavam os datetimes sem `timezone.localtime()`, mostrando a última execução ~3h
+  "no futuro". Detalhes em
+  [AMPSCAN_VARREDURA_AMPLIFICACAO.md](docs/AMPSCAN_VARREDURA_AMPLIFICACAO.md#correção--horário-exibido-em-utc-não-no-fuso-local-2026-08-10).
+
+---
+
 ## [Não publicado] — 2026-08-06 (Fix: `/homegeral` quebrava com tarefa/artigo sem responsável)
 
 ### Corrigido

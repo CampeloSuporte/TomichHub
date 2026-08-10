@@ -2,6 +2,42 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 37 — 10/08/2026: Varredura de Amplificação DDoS (AmpScan) nos blocos RPKI/IRR
+
+**O que foi implementado?**
+- ✅ **Nova aba "Vulnerabilidades"** por cliente (ao lado de RPKI/IRR): varre os blocos de IP já
+  cadastrados na aba RPKI/IRR (`BlocoIP`) em busca de portas de amplificação DDoS mal configuradas
+  (DNS, NTP, SNMP, Memcached, SSDP, CLDAP e mais 16 outras) — reaproveita o cadastro existente, não
+  pede nada novo. Botão "Escanear Agora" por cliente + tabela expansível com as 21 portas testadas.
+- ✅ **`tools/ampscan_runner/`**: binário Rust fino sobre a lib
+  [github.com/gondimcodes/ampscan](https://github.com/gondimcodes/ampscan) (dependência git pinada
+  por commit) — troca JSON por stdin/stdout com o Celery, sem usar o banco SQLCipher nem a
+  autenticação de usuário do CLI original.
+- ✅ **Varredura agendada a cada 2 dias, em 3 grupos rotativos de clientes** (`clientes.tasks`,
+  grupo calculado pela data — determinístico, sobrevive a reinício do Celery) — cobertura completa
+  em 6 dias, sem disparar sondas contra todos os clientes no mesmo dia.
+- ✅ Novos modelos `AmpScanResultado` (estado atual, upsert por IP:porta) e `AmpScanExecucaoLog`
+  (histórico de execuções).
+- 🐛 **Bug confirmado na lib upstream** (não usado por nós): `scanner::scan_single_ip` monta um
+  `Prefix` sem `/CIDR`, que falha ao ser reparseado — afeta `ampscan scan single <ip>` do CLI
+  original.
+- 🐛 **Regressão própria corrigida no mesmo dia**: a inserção do bloco AmpScan no fim de
+  `clientes/tasks.py` cortou acidentalmente o `return` final de `enviar_disparo_hotspot_lead`
+  (função pré-existente), que ficou órfão como código morto dentro da task nova.
+- 🐛 **Horário exibido em UTC, não no fuso local**: `listar_ampscan_resultados`/`execucoes`
+  formatavam os datetimes sem `timezone.localtime()` — última varredura aparecia ~3h "no futuro".
+- ✅ Validado em produção com um cliente real (CONECTONLINE, bloco `/24`): achado real de SNMP
+  público em 78 de 256 IPs, payload validado (não é falso positivo).
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[AMPSCAN_VARREDURA_AMPLIFICACAO.md](AMPSCAN_VARREDURA_AMPLIFICACAO.md)** | Novo — arquitetura completa (runner Rust, limites de prefixo, rotação de grupos, os 3 bugs corrigidos, lista de portas) |
+| **[RPKI_IRR.md](RPKI_IRR.md)** | Referência cruzada — `BlocoIP` é a mesma fonte de cadastro |
+
+---
+
 ### Sessão 36 — 05/08/2026: Atualização IRR — TC passa a usar API (bgp.net.br/v1/submit) em vez de e-mail
 
 **O que foi implementado e corrigido?**
