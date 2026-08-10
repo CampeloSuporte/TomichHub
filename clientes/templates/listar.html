@@ -5238,6 +5238,31 @@ function getCsrfToken(){
         const cont = document.getElementById(`irr-rotas-${tipo}-list`);
         if (cont) cont.appendChild(_irrRotaRow(tipo, '', '', ''));
     };
+    // Casa os itens vindos do WHOIS com as linhas já existentes pelo prefixo:
+    // completa descr/member-of só se estiverem vazios (não sobrescreve edição manual)
+    // e adiciona uma linha nova para prefixo que ainda não existe na tela.
+    function irrMergeRotas(tipo, whoisLista) {
+        const cont = document.getElementById(`irr-rotas-${tipo}-list`);
+        if (!cont || !whoisLista || !whoisLista.length) return;
+        const porPrefixo = new Map();
+        cont.querySelectorAll('.irr-rota-row').forEach(row => {
+            const p = row.querySelector('.irr-rota-prefix').value.trim();
+            if (p) porPrefixo.set(p, row);
+        });
+        whoisLista.forEach(item => {
+            const r = (typeof item === 'string') ? { prefix: item, descr: '', member_of: '' } : (item || {});
+            if (!r.prefix) return;
+            const linha = porPrefixo.get(r.prefix);
+            if (linha) {
+                const descrEl  = linha.querySelector('.irr-rota-descr');
+                const memberEl = linha.querySelector('.irr-rota-member');
+                if (descrEl && !descrEl.value.trim() && r.descr) descrEl.value = r.descr;
+                if (memberEl && !memberEl.value.trim() && r.member_of) memberEl.value = r.member_of;
+            } else {
+                cont.appendChild(_irrRotaRow(tipo, r.prefix, r.descr, r.member_of));
+            }
+        });
+    }
     function irrGetRotas(tipo) {
         return Array.from(document.querySelectorAll(`.irr-rota-row[data-tipo="${tipo}"]`)).map(row => ({
             prefix:    row.querySelector('.irr-rota-prefix').value.trim(),
@@ -5285,11 +5310,10 @@ function getCsrfToken(){
             preencheSeVazio('irr-email-contato',  d.email_contato);
             preencheSeVazio('irr-email-abuse',    d.email_abuse);
 
-            // Rotas — preenche prefix/descr/member-of, só se a lista ainda estiver vazia
-            const v4Cont = document.getElementById('irr-rotas-v4-list');
-            if (v4Cont && !v4Cont.children.length && d.ipv4_rotas?.length) irrRenderRotas('v4', d.ipv4_rotas);
-            const v6Cont = document.getElementById('irr-rotas-v6-list');
-            if (v6Cont && !v6Cont.children.length && d.ipv6_rotas?.length) irrRenderRotas('v6', d.ipv6_rotas);
+            // Rotas — casa por prefixo com as linhas já existentes e completa descr/member-of
+            // vazios; prefixos novos (que ainda não têm linha) são adicionados ao final.
+            irrMergeRotas('v4', d.ipv4_rotas);
+            irrMergeRotas('v6', d.ipv6_rotas);
 
             // Upstreams — adiciona se lista estiver vazia
             const upCont = document.getElementById('irr-upstream-list');
