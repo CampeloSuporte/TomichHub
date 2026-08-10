@@ -209,9 +209,10 @@
                         <span class="input-group-text" style="background:var(--surface);border-color:var(--border);color:var(--text-muted);">
                             <i class="fas fa-search"></i>
                         </span>
-                        <input type="text" id="filtro-acessos-input" class="form-control form-control-sm"
+                        <input type="search" id="filtro-acessos-input" class="form-control form-control-sm"
                                placeholder="Nome ou IP..." autocomplete="off" name="filtro-acessos-nao-preencher"
-                               style="background:var(--surface);color:var(--text-light);border-color:var(--border);"
+                               readonly onfocus="this.removeAttribute('readonly')"
+                               style="background:var(--surface);color:var(--text-light);border-color:var(--border);-webkit-appearance:none;appearance:none;"
                                oninput="filtrarAcessos(this.value)">
                         <button class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('filtro-acessos-input').value='';filtrarAcessos('');" title="Limpar">
                             <i class="fas fa-times"></i>
