@@ -5283,6 +5283,7 @@ function getCsrfToken(){
             preencheSeVazio('irr-empresa-descr',  d.descr);
             preencheSeVazio('irr-nic-hdl',        d.nic_hdl);
             preencheSeVazio('irr-email-contato',  d.email_contato);
+            preencheSeVazio('irr-email-abuse',    d.email_abuse);
 
             // Rotas — preenche prefix/descr/member-of, só se a lista ainda estiver vazia
             const v4Cont = document.getElementById('irr-rotas-v4-list');
@@ -5294,6 +5295,12 @@ function getCsrfToken(){
             const upCont = document.getElementById('irr-upstream-list');
             if (upCont && !upCont.children.length && d.upstream_asns?.length) {
                 irrRenderUpstreams(d.upstream_asns);
+            }
+
+            // AS-SETs / member-of (grupos de anúncio, ex: AS271699:AS-ANNOUNCEMENTS) — adiciona se lista estiver vazia
+            const ixCont = document.getElementById('irr-ix-list');
+            if (ixCont && !ixCont.children.length && d.ix_members?.length) {
+                irrRenderIX(d.ix_members);
             }
 
             // Exibe o raw WHOIS num modal separado
