@@ -249,11 +249,31 @@ class RotaloopExecutarParaClienteTest(TestCase):
         self.assertFalse(RotaLoopResultado.objects.get(bloco_ip=self.bloco).resolvido)
 
         mock_mtr.return_value = [{'hop': 1, 'ip': '10.0.0.1'}, {'hop': 2, 'ip': '200.1.1.1'}]
-        _rotaloop_executar_para_cliente(self.cliente)
+        execucao = _rotaloop_executar_para_cliente(self.cliente)
 
         resultado = RotaLoopResultado.objects.get(bloco_ip=self.bloco)
         self.assertTrue(resultado.resolvido)
         self.assertIsNotNone(resultado.resolvido_em)
+        self.assertTrue(execucao.sucesso)
+
+    @mock.patch('clientes.tasks._rotaloop_mtr_json')
+    def test_falha_transitoria_do_mtr_nao_marca_loop_como_resolvido(self, mock_mtr):
+        """Regressão: um loop detectado numa execução anterior NÃO pode ser
+        marcado como resolvido só porque o mtr falhou (timeout, indisponível
+        etc.) na execução seguinte — isso seria um falso "tudo certo" sobre
+        um problema de rede real e nunca reverificado."""
+        mock_mtr.return_value = [{'hop': 1, 'ip': '10.0.0.1'}, {'hop': 2, 'ip': '10.0.0.1'}]
+        _rotaloop_executar_para_cliente(self.cliente)
+        self.assertFalse(RotaLoopResultado.objects.get(bloco_ip=self.bloco).resolvido)
+
+        mock_mtr.side_effect = RuntimeError('mtr excedeu o timeout')
+        execucao = _rotaloop_executar_para_cliente(self.cliente)
+
+        resultado = RotaLoopResultado.objects.get(bloco_ip=self.bloco)
+        self.assertFalse(resultado.resolvido)
+        self.assertIsNone(resultado.resolvido_em)
+        self.assertFalse(execucao.sucesso)
+        self.assertIn('não puderam ser testados', execucao.erro_mensagem)
 
     @mock.patch('clientes.tasks._rotaloop_mtr_json')
     def test_sem_loop_nao_persiste_linha(self, mock_mtr):

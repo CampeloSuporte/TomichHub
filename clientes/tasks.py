@@ -2678,21 +2678,34 @@ def _rotaloop_executar_para_bloco(bloco):
 def _rotaloop_executar_para_cliente(cliente):
     """Roda o teste de loop pra todos os BlocoIP de um cliente e persiste o
     resultado. Isolado em try/except por bloco — uma falha num bloco não
-    derruba o teste dos demais, mesmo padrão do AmpScan."""
-    from .models import BlocoIP, RotaLoopExecucaoLog, RotaLoopResultado
+    derruba o teste dos demais, mesmo padrão do AmpScan. Blocos que não
+    puderam ser testados nesta execução (inconclusivo ou exceção) NÃO
+    contam como "retestados com sucesso" — um loop detectado anteriormente
+    só é marcado como resolvido quando o bloco foi de fato retestado e
+    voltou limpo, nunca por causa de uma falha transitória do mtr."""
+    from .models import RotaLoopExecucaoLog, RotaLoopResultado
 
     execucao = RotaLoopExecucaoLog.objects.create(cliente=cliente)
 
     blocos = list(BlocoIP.objects.filter(cliente=cliente))
     total_loops = 0
+    blocos_com_erro = 0
     blocos_com_loop_ids = set()
+    blocos_testados_com_sucesso_ids = set()
 
     for bloco in blocos:
         try:
             resultado = _rotaloop_executar_para_bloco(bloco)
         except Exception:
+            blocos_com_erro += 1
             logger.exception(f'rotaloop: falha inesperada no bloco {bloco.bloco} (cliente {cliente.id})')
             continue
+
+        if resultado['status'] == 'inconclusivo':
+            blocos_com_erro += 1
+            continue
+
+        blocos_testados_com_sucesso_ids.add(bloco.id)
 
         if resultado['status'] != 'loop_detectado':
             continue
@@ -2713,9 +2726,13 @@ def _rotaloop_executar_para_cliente(cliente):
             },
         )
 
-    # Loops anteriores em blocos deste cliente que não apareceram de novo —
-    # marca como resolvido em vez de apagar (mesmo padrão do AmpScan).
-    anteriores = RotaLoopResultado.objects.filter(cliente=cliente, resolvido=False).exclude(bloco_ip_id__in=blocos_com_loop_ids)
+    # Loops anteriores em blocos deste cliente que foram retestados com
+    # sucesso e não apareceram de novo — marca como resolvido em vez de
+    # apagar (mesmo padrão do AmpScan). Blocos que falharam o teste nesta
+    # execução ficam de fora: não sabemos se o loop ainda existe.
+    anteriores = RotaLoopResultado.objects.filter(
+        cliente=cliente, resolvido=False, bloco_ip_id__in=blocos_testados_com_sucesso_ids,
+    ).exclude(bloco_ip_id__in=blocos_com_loop_ids)
     for resultado in anteriores:
         resultado.resolvido = True
         resultado.resolvido_em = timezone.now()
@@ -2723,6 +2740,13 @@ def _rotaloop_executar_para_cliente(cliente):
 
     execucao.total_blocos_testados = len(blocos)
     execucao.total_loops_detectados = total_loops
+    execucao.sucesso = (blocos_com_erro == 0)
+    if blocos_com_erro:
+        execucao.erro_mensagem = (
+            f'{blocos_com_erro} de {len(blocos)} bloco(s) não puderam ser testados '
+            '(mtr indisponível/timeout/erro) — resultados anteriores desses blocos '
+            'não foram reavaliados.'
+        )
     execucao.finalizado_em = timezone.now()
     execucao.save()
     return execucao
