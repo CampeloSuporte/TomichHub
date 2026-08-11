@@ -2382,6 +2382,26 @@ def _ampscan_localizar_bloco(ip_str, blocos_por_id):
     return None
 
 
+# Portas de gestão remota — abertas não são "vulnerabilidade" no mesmo sentido
+# que amplificação DDoS/proxy comprometido (muito cliente expõe de propósito
+# pra administração), mas merecem visibilidade separada na aba.
+_AMPSCAN_PORTAS_EXPOSICAO = {(22, 'tcp'), (3389, 'tcp')}
+
+
+def _ampscan_status_para_porta(status_raw, porta, protocolo):
+    """Traduz o status bruto do runner ('Open'/'OpenProtected'/outro) pro
+    status persistido em AmpScanResultado, separando portas de gestão remota
+    (SSH/RDP) da categoria 'vulneravel'. Retorna None para status que não
+    deve ser persistido (Closed/Inconclusive/Error)."""
+    if status_raw == 'Open':
+        if (porta, protocolo) in _AMPSCAN_PORTAS_EXPOSICAO:
+            return 'exposto'
+        return 'vulneravel'
+    if status_raw == 'OpenProtected':
+        return 'protegido'
+    return None
+
+
 def _ampscan_executar_para_cliente(cliente, concurrency=200, timeout=2, retries=1, subprocess_timeout=900):
     """Roda a varredura de amplificação para um cliente e persiste o
     resultado. Isolado em try/except pelo chamador — uma falha aqui (runner
@@ -2447,21 +2467,23 @@ def _ampscan_executar_para_cliente(cliente, concurrency=200, timeout=2, retries=
     chaves_vistas = set()
     total_vulneraveis = 0
     total_protegidos = 0
+    total_expostos = 0
 
     for r in report.get('results', []):
         status_raw = r.get('status')
-        if status_raw == 'Open':
-            status = 'vulneravel'
-            total_vulneraveis += 1
-        elif status_raw == 'OpenProtected':
-            status = 'protegido'
-            total_protegidos += 1
-        else:
-            continue  # Closed / Inconclusive / Error — não interessa persistir
-
-        ip = r['ip']
         porta = r['port']
         protocolo = r['protocol']
+        status = _ampscan_status_para_porta(status_raw, porta, protocolo)
+        if status is None:
+            continue  # Closed / Inconclusive / Error — não interessa persistir
+        if status == 'vulneravel':
+            total_vulneraveis += 1
+        elif status == 'protegido':
+            total_protegidos += 1
+        elif status == 'exposto':
+            total_expostos += 1
+
+        ip = r['ip']
         chaves_vistas.add((ip, porta, protocolo))
         bloco = _ampscan_localizar_bloco(ip, blocos_por_id)
 
@@ -2494,6 +2516,7 @@ def _ampscan_executar_para_cliente(cliente, concurrency=200, timeout=2, retries=
     execucao.total_probes = report.get('total_probes', 0)
     execucao.total_vulneraveis = total_vulneraveis
     execucao.total_protegidos = total_protegidos
+    execucao.total_expostos = total_expostos
     execucao.finalizado_em = timezone.now()
     execucao.save()
     return execucao
