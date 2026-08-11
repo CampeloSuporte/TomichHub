@@ -95,6 +95,11 @@ urlpatterns = [
     path('ampscan/execucoes/', views.listar_ampscan_execucoes, name='listar_ampscan_execucoes'),
     path('ampscan/escanear/', views.ampscan_escanear_agora, name='ampscan_escanear_agora'),
 
+    # RotaLoop — Detecção de loop de roteamento
+    path('rotaloop/resultados/', views.listar_rotaloop_resultados, name='listar_rotaloop_resultados'),
+    path('rotaloop/execucoes/', views.listar_rotaloop_execucoes, name='listar_rotaloop_execucoes'),
+    path('rotaloop/testar/', views.rotaloop_testar_agora, name='rotaloop_testar_agora'),
+
     # Comentários de Acesso
     path('acessos/<int:acesso_id>/comentarios/listar/', views.listar_comentarios_acesso, name='listar_comentarios_acesso'),
     path('acessos/<int:acesso_id>/comentarios/adicionar/', views.adicionar_comentario_acesso, name='adicionar_comentario_acesso'),

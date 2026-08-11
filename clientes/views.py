@@ -4603,6 +4603,91 @@ def ampscan_escanear_agora(request):
 
 
 # ============================================
+# ROTALOOP — DETECÇÃO DE LOOP DE ROTEAMENTO
+# ============================================
+
+@login_required(login_url='login')
+@modulo_habilitado_required('rpki_irr')
+def listar_rotaloop_resultados(request):
+    """Lista os loops de roteamento atuais (não resolvidos) de um cliente (AJAX)."""
+    from .models import RotaLoopResultado
+
+    cliente_id = request.GET.get('id')
+    if not cliente_id:
+        return JsonResponse({'error': 'Cliente não especificado'}, status=400)
+
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    resultados = RotaLoopResultado.objects.filter(cliente=cliente, resolvido=False).select_related('bloco_ip').order_by('-ultima_deteccao')
+
+    return JsonResponse({
+        'resultados': [{
+            'id': r.id,
+            'bloco': r.bloco_ip.bloco,
+            'ip_alvo': r.ip_alvo,
+            'ip_em_loop': r.ip_em_loop,
+            'ferramenta': r.ferramenta,
+            'hops': r.hops,
+            'primeira_deteccao': timezone.localtime(r.primeira_deteccao).strftime('%d/%m/%Y %H:%M'),
+            'ultima_deteccao': timezone.localtime(r.ultima_deteccao).strftime('%d/%m/%Y %H:%M'),
+        } for r in resultados]
+    })
+
+
+@login_required(login_url='login')
+@modulo_habilitado_required('rpki_irr')
+def listar_rotaloop_execucoes(request):
+    """Últimas execuções do teste de loop de roteamento de um cliente (AJAX)."""
+    from .models import RotaLoopExecucaoLog
+
+    cliente_id = request.GET.get('id')
+    if not cliente_id:
+        return JsonResponse({'error': 'Cliente não especificado'}, status=400)
+
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    execucoes = RotaLoopExecucaoLog.objects.filter(cliente=cliente).order_by('-iniciado_em')[:5]
+
+    return JsonResponse({
+        'execucoes': [{
+            'id': e.id,
+            'iniciado_em': timezone.localtime(e.iniciado_em).strftime('%d/%m/%Y %H:%M:%S'),
+            'finalizado_em': timezone.localtime(e.finalizado_em).strftime('%d/%m/%Y %H:%M:%S') if e.finalizado_em else None,
+            'em_andamento': e.finalizado_em is None,
+            'total_blocos_testados': e.total_blocos_testados,
+            'total_loops_detectados': e.total_loops_detectados,
+            'sucesso': e.sucesso,
+            'erro_mensagem': e.erro_mensagem,
+        } for e in execucoes]
+    })
+
+
+@login_required(login_url='login')
+@modulo_habilitado_required('rpki_irr')
+@require_http_methods(['POST'])
+def rotaloop_testar_agora(request):
+    """Dispara o teste de loop de roteamento sob demanda para um cliente
+    (assíncrono via Celery)."""
+    from .models import BlocoIP
+    from .tasks import rotaloop_testar_cliente
+
+    cliente_id = request.POST.get('id')
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    if not BlocoIP.objects.filter(cliente=cliente).exists():
+        return JsonResponse({'error': 'Cliente não tem blocos de IP cadastrados (RPKI/IRR).'}, status=400)
+
+    rotaloop_testar_cliente.delay(cliente.id)
+    return JsonResponse({'success': True})
+
+
+# ============================================
 # FUNÇÕES DE VALIDAÇÃO RPKI/IRR
 # ============================================
 
