@@ -2654,3 +2654,75 @@ def _rotaloop_mtr_json(host, count=3, timeout=30):
         raise RuntimeError(f'Saída do mtr em formato inesperado para {host}: {e}. stderr: {stderr}')
 
     return hops
+
+
+def _rotaloop_executar_para_bloco(bloco):
+    """Roda o teste de loop pra um único BlocoIP e devolve um dict com o
+    resultado (não grava no banco — quem chama decide o que persistir)."""
+    try:
+        net = ipaddress.ip_network(bloco.bloco, strict=False)
+    except ValueError as e:
+        return {'status': 'inconclusivo', 'erro': f'Bloco IP inválido: {e}', 'ip_alvo': None, 'ip_em_loop': None, 'hops': [], 'ferramenta': 'mtr'}
+
+    ip_alvo = _rotaloop_ip_alvo(net)
+
+    try:
+        hops = _rotaloop_mtr_json(ip_alvo)
+    except RuntimeError as e:
+        return {'status': 'inconclusivo', 'erro': str(e), 'ip_alvo': ip_alvo, 'ip_em_loop': None, 'hops': [], 'ferramenta': 'mtr'}
+
+    status, ip_em_loop = _rotaloop_detectar_loop(hops)
+    return {'status': status, 'erro': None, 'ip_alvo': ip_alvo, 'ip_em_loop': ip_em_loop, 'hops': hops, 'ferramenta': 'mtr'}
+
+
+def _rotaloop_executar_para_cliente(cliente):
+    """Roda o teste de loop pra todos os BlocoIP de um cliente e persiste o
+    resultado. Isolado em try/except por bloco — uma falha num bloco não
+    derruba o teste dos demais, mesmo padrão do AmpScan."""
+    from .models import BlocoIP, RotaLoopExecucaoLog, RotaLoopResultado
+
+    execucao = RotaLoopExecucaoLog.objects.create(cliente=cliente)
+
+    blocos = list(BlocoIP.objects.filter(cliente=cliente))
+    total_loops = 0
+    blocos_com_loop_ids = set()
+
+    for bloco in blocos:
+        try:
+            resultado = _rotaloop_executar_para_bloco(bloco)
+        except Exception:
+            logger.exception(f'rotaloop: falha inesperada no bloco {bloco.bloco} (cliente {cliente.id})')
+            continue
+
+        if resultado['status'] != 'loop_detectado':
+            continue
+
+        total_loops += 1
+        blocos_com_loop_ids.add(bloco.id)
+        RotaLoopResultado.objects.update_or_create(
+            bloco_ip=bloco,
+            defaults={
+                'cliente': cliente,
+                'ip_alvo': resultado['ip_alvo'],
+                'status': 'loop_detectado',
+                'ip_em_loop': resultado['ip_em_loop'],
+                'hops': resultado['hops'],
+                'ferramenta': resultado['ferramenta'],
+                'resolvido': False,
+                'resolvido_em': None,
+            },
+        )
+
+    # Loops anteriores em blocos deste cliente que não apareceram de novo —
+    # marca como resolvido em vez de apagar (mesmo padrão do AmpScan).
+    anteriores = RotaLoopResultado.objects.filter(cliente=cliente, resolvido=False).exclude(bloco_ip_id__in=blocos_com_loop_ids)
+    for resultado in anteriores:
+        resultado.resolvido = True
+        resultado.resolvido_em = timezone.now()
+        resultado.save(update_fields=['resolvido', 'resolvido_em'])
+
+    execucao.total_blocos_testados = len(blocos)
+    execucao.total_loops_detectados = total_loops
+    execucao.finalizado_em = timezone.now()
+    execucao.save()
+    return execucao
