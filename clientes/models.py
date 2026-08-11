@@ -704,6 +704,7 @@ class AmpScanResultado(models.Model):
     STATUS_CHOICES = [
         ('vulneravel', 'Vulnerável'),
         ('protegido', 'Protegido (aberto, mitigado)'),
+        ('exposto', 'Exposto (gestão remota)'),
     ]
 
     cliente    = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='ampscan_resultados')
@@ -747,6 +748,7 @@ class AmpScanExecucaoLog(models.Model):
     total_probes      = models.PositiveIntegerField(default=0)
     total_vulneraveis = models.PositiveIntegerField(default=0)
     total_protegidos  = models.PositiveIntegerField(default=0)
+    total_expostos    = models.PositiveIntegerField(default=0, help_text='Portas de gestão remota (SSH/RDP) abertas — não conta como vulnerabilidade')
     blocos_ignorados  = models.PositiveIntegerField(default=0, help_text='Blocos fora do limite de tamanho suportado (IPv4 < /16 ou IPv6 < /112)')
 
     sucesso        = models.BooleanField(default=True)
