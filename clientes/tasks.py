@@ -15,6 +15,7 @@ from datetime import datetime
 import traceback
 import os
 import re
+import shutil
 from django.utils import timezone
 from datetime import timedelta
 from django.conf import settings
@@ -2621,3 +2622,32 @@ def _rotaloop_detectar_loop(hops):
             return 'loop_detectado', ip
         vistos.add(ip)
     return 'normal', None
+
+
+def _rotaloop_mtr_json(host, count=3, timeout=30):
+    """Roda `mtr --report --json --no-dns -c <count> <host>` e devolve a
+    lista de hops [{'hop': int, 'ip': str|None}, ...] ordenada. Levanta
+    RuntimeError (não deixa exceção de subprocess/parsing vazar) se mtr não
+    estiver instalado, o comando expirar, ou a saída não vier no formato
+    esperado — quem chama trata isso como status='inconclusivo'."""
+    if not shutil.which('mtr'):
+        raise RuntimeError('mtr não está instalado no servidor.')
+
+    cmd = ['mtr', '--report', '--json', '--no-dns', '-c', str(count), host]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f'mtr excedeu o timeout de {timeout}s para {host}.')
+
+    try:
+        dados = _json.loads(proc.stdout)
+        hubs = dados['report']['hubs']
+    except (_json.JSONDecodeError, KeyError, TypeError) as e:
+        raise RuntimeError(f'Saída do mtr em formato inesperado para {host}: {e}')
+
+    hops = []
+    for hub in hubs:
+        host_str = hub.get('host')
+        ip = None if not host_str or host_str == '???' else host_str
+        hops.append({'hop': hub.get('count'), 'ip': ip})
+    return hops
