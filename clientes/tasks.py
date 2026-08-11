@@ -2589,3 +2589,18 @@ def ampscan_varrer_clientes_agendado():
 
     logger.info(f'ampscan_varrer_clientes_agendado: {ok}/{total} clientes escaneados, {falhas} falhas.')
     return {'total': total, 'ok': ok, 'falhas': falhas, 'grupo': grupo_hoje, 'total_grupos': AMPSCAN_TOTAL_GRUPOS}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROTALOOP — DETECÇÃO DE LOOP DE ROTEAMENTO POR BLOCO IP
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _rotaloop_ip_alvo(net):
+    """IP usado como alvo do teste de loop pra um bloco: o primeiro IP útil
+    (network_address + 1). Blocos minúsculos (/31, /32 IPv4; /127, /128 IPv6)
+    não têm um '+1' distinto do endereço de rede, então usam o próprio
+    network_address."""
+    if net.num_addresses <= 2:
+        return str(net.network_address)
+    return str(net.network_address + 1)

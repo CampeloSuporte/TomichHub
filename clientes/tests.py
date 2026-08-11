@@ -1,6 +1,8 @@
+import ipaddress
+
 from django.test import SimpleTestCase
 
-from clientes.tasks import _ampscan_status_para_porta
+from clientes.tasks import _ampscan_status_para_porta, _rotaloop_ip_alvo
 
 
 class AmpscanStatusParaPortaTest(SimpleTestCase):
@@ -23,3 +25,25 @@ class AmpscanStatusParaPortaTest(SimpleTestCase):
     def test_status_desconhecido_retorna_none(self):
         self.assertIsNone(_ampscan_status_para_porta('Closed', 22, 'tcp'))
         self.assertIsNone(_ampscan_status_para_porta('Inconclusive', 22, 'tcp'))
+
+
+class RotaloopIpAlvoTest(SimpleTestCase):
+    def test_bloco_ipv4_normal_usa_primeiro_ip_util(self):
+        net = ipaddress.ip_network('200.100.50.0/24')
+        self.assertEqual(_rotaloop_ip_alvo(net), '200.100.50.1')
+
+    def test_bloco_ipv4_barra_31_usa_network_address(self):
+        net = ipaddress.ip_network('200.100.50.0/31')
+        self.assertEqual(_rotaloop_ip_alvo(net), '200.100.50.0')
+
+    def test_bloco_ipv4_barra_32_usa_network_address(self):
+        net = ipaddress.ip_network('200.100.50.5/32')
+        self.assertEqual(_rotaloop_ip_alvo(net), '200.100.50.5')
+
+    def test_bloco_ipv6_normal_usa_primeiro_ip_util(self):
+        net = ipaddress.ip_network('2801:80:1234::/48')
+        self.assertEqual(_rotaloop_ip_alvo(net), '2801:80:1234::1')
+
+    def test_bloco_ipv6_barra_127_usa_network_address(self):
+        net = ipaddress.ip_network('2801:80:1234::/127')
+        self.assertEqual(_rotaloop_ip_alvo(net), '2801:80:1234::')
