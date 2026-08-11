@@ -165,3 +165,14 @@ class RotaloopMtrJsonTest(SimpleTestCase):
             {'hop': 1, 'ip': None},
             {'hop': 2, 'ip': '200.1.1.1'},
         ])
+
+    @mock.patch('clientes.tasks.shutil.which', return_value='/usr/bin/mtr')
+    @mock.patch('clientes.tasks.subprocess.run')
+    def test_hubs_null_levanta_runtimeerror_e_nao_typeerror_cru(self, mock_run, mock_which):
+        saida = json.dumps({"report": {"hubs": None}})
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=['mtr'], returncode=1, stdout=saida, stderr='mtr: unable to get raw sockets',
+        )
+        with self.assertRaises(RuntimeError) as ctx:
+            _rotaloop_mtr_json('200.1.1.1')
+        self.assertIn('unable to get raw sockets', str(ctx.exception))

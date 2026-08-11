@@ -2642,12 +2642,15 @@ def _rotaloop_mtr_json(host, count=3, timeout=30):
     try:
         dados = _json.loads(proc.stdout)
         hubs = dados['report']['hubs']
-    except (_json.JSONDecodeError, KeyError, TypeError) as e:
-        raise RuntimeError(f'Saída do mtr em formato inesperado para {host}: {e}')
+        if not isinstance(hubs, list):
+            raise TypeError(f"'hubs' não é uma lista: {type(hubs)!r}")
+        hops = []
+        for hub in hubs:
+            host_str = hub.get('host')
+            ip = None if not host_str or host_str == '???' else host_str
+            hops.append({'hop': hub.get('count'), 'ip': ip})
+    except (_json.JSONDecodeError, KeyError, TypeError, AttributeError) as e:
+        stderr = proc.stderr[:500] if proc.stderr else ''
+        raise RuntimeError(f'Saída do mtr em formato inesperado para {host}: {e}. stderr: {stderr}')
 
-    hops = []
-    for hub in hubs:
-        host_str = hub.get('host')
-        ip = None if not host_str or host_str == '???' else host_str
-        hops.append({'hop': hub.get('count'), 'ip': ip})
     return hops
