@@ -148,7 +148,7 @@ positivo de "recebeu qualquer pacote": o probe do ampscan valida o conteúdo rea
 provisionamento em massa de CPE com SNMP público habilitado por padrão. Ficou registrado como
 alerta real na aba, não foi apagado.
 
-## As 21 portas testadas
+## As 23 portas testadas
 
 Réplica exata de `ampscan::db::port_repo::seed_default_ports` (hoje fixa no `main.rs` do runner,
 não configurável pela UI):
@@ -176,6 +176,20 @@ não configurável pela UI):
 | 37810 | UDP | DVR-DHCPDiscover | DVR/câmera exposto |
 | 4145 | TCP | MikroTik SOCKS | proxy aberto — indício de comprometimento (não é amplificação) |
 | 5678 | TCP | MikroTik Meris | indício de botnet Meris (não é amplificação) |
+| 22 | TCP | SSH | exposição de gestão remota — alvo de brute-force (status separado: `exposto`) |
+| 3389 | TCP | RDP | exposição de gestão remota — vetor comum de ransomware (status separado: `exposto`) |
+
+---
+
+## Status `exposto` — SSH/RDP não é tratado como vulnerabilidade
+
+Diferente das outras 21 portas (amplificação DDoS ou indício de comprometimento), SSH (22) e RDP
+(3389) abertos são um padrão legítimo em muitos clientes (gestão remota de equipamentos/servidores).
+Por isso essas duas portas usam um terceiro status, `exposto` (`AmpScanResultado.STATUS_CHOICES`),
+separado de `vulneravel` — não entra em `total_vulneraveis`, tem contador próprio
+(`total_expostos`) e badge de cor neutra na UI. Ainda assim fica registrado, porque exposição de
+SSH/RDP à internet é informação relevante de superfície de ataque, só não é tratada com a mesma
+severidade de um resolver DNS aberto ou um Memcached exposto.
 
 ---
 
