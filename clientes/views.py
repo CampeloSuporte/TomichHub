@@ -4572,6 +4572,7 @@ def listar_ampscan_execucoes(request):
             'total_probes': e.total_probes,
             'total_vulneraveis': e.total_vulneraveis,
             'total_protegidos': e.total_protegidos,
+            'total_expostos': e.total_expostos,
             'blocos_ignorados': e.blocos_ignorados,
             'sucesso': e.sucesso,
             'erro_mensagem': e.erro_mensagem,
