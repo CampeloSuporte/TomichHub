@@ -47,8 +47,9 @@ fn default_retries() -> usize {
     1
 }
 
-/// Réplica exata da lista semeada por `ampscan::db::port_repo::seed_default_ports`
-/// (mesmos 21 pares porta/protocolo/probe da versão pinada no Cargo.toml).
+/// Réplica exata da lista semeada por `ampscan::db::port_repo::seed_default_ports`,
+/// mais 2 portas próprias (22/SSH, 3389/RDP) fora do escopo de amplificação —
+/// ver `_AMPSCAN_PORTAS_EXPOSICAO` em `clientes/tasks.py` (23 portas no total).
 fn default_ports() -> Vec<Port> {
     let defaults: Vec<(u16, &str, &str, &str, &str, Vec<u8>)> = vec![
         (17, "udp", "QOTD", "Quote of the Day - legacy service that responds to any packet, used for DDoS amplification", "udp_payload", vec![]),
@@ -81,6 +82,8 @@ fn default_ports() -> Vec<Port> {
         (37810, "udp", "DVR-DHCPDiscover", "DVR DHCP Discovery - exposed cameras and DVRs responding to discovery", "udp_payload", vec![0xFF]),
         (4145, "tcp", "MT4145", "MikroTik open SOCKS proxy - may indicate a compromised MikroTik device", "tcp_connect", vec![]),
         (5678, "tcp", "MT5678", "MikroTik Meris botnet - indicates possible Meris botnet infection (DDoS)", "tcp_connect", vec![]),
+        (22, "tcp", "SSH", "SSH exposed to the internet - common target for brute-force/credential stuffing attacks", "tcp_connect", vec![]),
+        (3389, "tcp", "RDP", "RDP exposed to the internet - common ransomware attack vector (weak credentials, exploits like BlueKeep)", "tcp_connect", vec![]),
     ];
 
     let now = String::new();
