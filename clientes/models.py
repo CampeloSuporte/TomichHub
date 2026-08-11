@@ -764,6 +764,63 @@ class AmpScanExecucaoLog(models.Model):
         return f"AmpScan {self.cliente.nome_empresa} - {self.iniciado_em.strftime('%d/%m/%Y %H:%M')} [{status}]"
 
 
+class RotaLoopResultado(models.Model):
+    """Estado atual do teste de loop de roteamento por bloco — 1 linha por
+    BlocoIP, upsert a cada teste. Só é gravado quando há loop detectado
+    (mesmo padrão do AmpScanResultado: 'normal' não persiste linha); se um
+    loop deixa de aparecer numa execução seguinte, marca resolvido em vez de
+    apagar (histórico de quando o problema existiu)."""
+    STATUS_CHOICES = [
+        ('loop_detectado', 'Loop detectado'),
+    ]
+
+    cliente  = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='rotaloop_resultados')
+    bloco_ip = models.OneToOneField('BlocoIP', on_delete=models.CASCADE, related_name='rotaloop_resultado')
+
+    ip_alvo    = models.CharField(max_length=45)
+    status     = models.CharField(max_length=15, choices=STATUS_CHOICES, default='loop_detectado')
+    ip_em_loop = models.CharField(max_length=45)
+    hops       = models.JSONField(default=list, blank=True, help_text='Lista [{"hop": int, "ip": str|None}, ...]')
+    ferramenta = models.CharField(max_length=10, default='mtr')
+
+    primeira_deteccao = models.DateTimeField(auto_now_add=True)
+    ultima_deteccao    = models.DateTimeField(auto_now=True)
+
+    resolvido    = models.BooleanField(default=False)
+    resolvido_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Resultado de Loop de Roteamento'
+        verbose_name_plural = 'Resultados de Loop de Roteamento'
+        ordering = ['-ultima_deteccao']
+
+    def __str__(self):
+        return f"Loop em {self.bloco_ip.bloco} via {self.ip_alvo} ({self.cliente.nome_empresa})"
+
+
+class RotaLoopExecucaoLog(models.Model):
+    """Histórico de execuções do teste de loop de roteamento por cliente."""
+    cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='rotaloop_execucoes')
+
+    iniciado_em   = models.DateTimeField(auto_now_add=True)
+    finalizado_em = models.DateTimeField(null=True, blank=True)
+
+    total_blocos_testados  = models.PositiveIntegerField(default=0)
+    total_loops_detectados = models.PositiveIntegerField(default=0)
+
+    sucesso        = models.BooleanField(default=True)
+    erro_mensagem  = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'Execução de Teste de Loop de Roteamento'
+        verbose_name_plural = 'Execuções de Teste de Loop de Roteamento'
+        ordering = ['-iniciado_em']
+
+    def __str__(self):
+        status = 'OK' if self.sucesso else 'ERRO'
+        return f"RotaLoop {self.cliente.nome_empresa} - {self.iniciado_em.strftime('%d/%m/%Y %H:%M')} [{status}]"
+
+
 # =============================================================================
 # IPAM — Documentação Nativa de IPs, VLANs, Sub-redes e VPNs
 # =============================================================================
