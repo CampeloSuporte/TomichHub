@@ -915,7 +915,7 @@
                                         botão "Escanear Agora".
                                     </small>
                                     <details style="margin-top:10px;">
-                                        <summary style="cursor:pointer;font-size:.78rem;color:var(--accent-cyan);">Ver as 21 portas testadas</summary>
+                                        <summary style="cursor:pointer;font-size:.78rem;color:var(--accent-cyan);">Ver as 23 portas testadas</summary>
                                         <div class="table-responsive mt-2">
                                             <table class="table table-sm" style="font-size:.76rem;">
                                                 <thead>
@@ -943,6 +943,8 @@
                                                     <tr><td>37810</td><td>UDP</td><td>DVR-DHCPDiscover</td><td>DVR/câmera exposto</td></tr>
                                                     <tr><td>4145</td><td>TCP</td><td>MikroTik SOCKS</td><td>proxy aberto — não é amplificação, indício de comprometimento</td></tr>
                                                     <tr><td>5678</td><td>TCP</td><td>MikroTik Meris</td><td>indício de botnet Meris — não é amplificação</td></tr>
+                                                    <tr><td>22</td><td>TCP</td><td>SSH</td><td>gestão remota exposta — alvo de brute-force (categoria separada: "Exposto", não "Vulnerável")</td></tr>
+                                                    <tr><td>3389</td><td>TCP</td><td>RDP</td><td>gestão remota exposta — vetor comum de ransomware (categoria separada: "Exposto", não "Vulnerável")</td></tr>
                                                 </tbody>
                                             </table>
                                         </div>
@@ -5170,8 +5172,10 @@ function getCsrfToken(){
         `;
 
         resultados.forEach(r => {
-            const corStatus = r.status === 'vulneravel' ? '#f85149' : '#d29922';
-            const iconeStatus = r.status === 'vulneravel' ? 'fa-radiation' : 'fa-shield-halved';
+            const CORES_STATUS = {vulneravel: '#f85149', protegido: '#d29922', exposto: '#58a6ff'};
+            const ICONES_STATUS = {vulneravel: 'fa-radiation', protegido: 'fa-shield-halved', exposto: 'fa-door-open'};
+            const corStatus = CORES_STATUS[r.status] || '#8b949e';
+            const iconeStatus = ICONES_STATUS[r.status] || 'fa-question-circle';
             html += `
                 <tr>
                     <td><code>${r.ip}</code></td>
@@ -5235,7 +5239,7 @@ function getCsrfToken(){
                 let extra = ultima.blocos_ignorados > 0
                     ? ` — ${ultima.blocos_ignorados} bloco(s) ignorado(s) por tamanho (acima de /16 IPv4 ou /112 IPv6)`
                     : '';
-                info.innerHTML = `<i class="fas fa-check-circle me-1" style="color:#3fb950"></i>Última varredura em ${ultima.finalizado_em} — ${ultima.total_ips} IPs testados, ${ultima.total_vulneraveis} vulnerável(is), ${ultima.total_protegidos} protegido(s)${extra}.`;
+                info.innerHTML = `<i class="fas fa-check-circle me-1" style="color:#3fb950"></i>Última varredura em ${ultima.finalizado_em} — ${ultima.total_ips} IPs testados, ${ultima.total_vulneraveis} vulnerável(is), ${ultima.total_protegidos} protegido(s), ${ultima.total_expostos} exposto(s)${extra}.`;
             })
             .catch(error => console.error('Erro ao carregar execuções AmpScan:', error));
     }
