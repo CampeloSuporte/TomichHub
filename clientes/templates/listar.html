@@ -963,6 +963,47 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                            <h5 class="mb-0"><i class="fas fa-diagram-project me-2" style="color:#f85149"></i>Loop de Roteamento</h5>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="rotaloopCarregar()">
+                                    <i class="fas fa-sync-alt me-1"></i> Atualizar
+                                </button>
+                                <button class="btn btn-sm btn-primary" id="rotaloopBtnTestar" onclick="rotaloopTestarAgora()">
+                                    <i class="fas fa-route me-1"></i> Testar Agora
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="alert" style="background: rgba(0, 217, 255, 0.1); border-left: 3px solid var(--accent-cyan); color: var(--text-light); margin-bottom: 20px;">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-info-circle me-3" style="font-size: 20px; margin-top: 2px;"></i>
+                                <div>
+                                    <strong>Teste de loop de roteamento (traceroute) por bloco de IP</strong><br>
+                                    <small>
+                                        Roda <code>mtr</code> a partir deste servidor até o primeiro IP útil de cada bloco
+                                        cadastrado na aba RPKI/IRR, e verifica se o mesmo IP aparece mais de uma vez no
+                                        caminho — sinal clássico de loop de roteamento. Executa automaticamente a cada
+                                        2 dias, para todos os clientes com blocos cadastrados — ou a qualquer momento
+                                        pelo botão "Testar Agora".
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="rotaloopUltimaExecucao" style="font-size:.82rem;color:var(--text-muted);margin-bottom:14px;"></div>
+
+                        <div id="listaRotaLoopResultados">
+                            <div class="text-center py-5">
+                                <i class="fas fa-spinner fa-spin" style="font-size: 64px; color: var(--accent-cyan); opacity: 0.3;"></i>
+                                <p class="mt-3 text-muted">Carregando...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
     <!-- ABA BACKUPS -->
@@ -5272,6 +5313,149 @@ function getCsrfToken(){
     }
 
     // ═══════════════════════════════════════════════════════════════════════
+    // RotaLoop — Detecção de loop de roteamento (traceroute/mtr) por bloco
+    // ═══════════════════════════════════════════════════════════════════════
+
+    let rotaloopPollTimer = null;
+
+    function rotaloopCarregar() {
+        rotaloopCarregarExecucoes();
+        rotaloopCarregarResultados();
+    }
+
+    function rotaloopCarregarResultados() {
+        const clienteId = '{{ cliente.id }}';
+        const container = document.getElementById('listaRotaLoopResultados');
+
+        fetch(`/clientes/rotaloop/resultados/?id=${clienteId}`)
+            .then(response => response.json())
+            .then(data => rotaloopRenderizarResultados(data.resultados))
+            .catch(error => {
+                console.error('Erro:', error);
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-exclamation-circle" style="font-size: 64px; color: var(--error-red); opacity: 0.3;"></i>
+                        <p class="mt-3 text-muted">Erro ao carregar resultados</p>
+                    </div>
+                `;
+            });
+    }
+
+    function rotaloopRenderizarResultados(resultados) {
+        const container = document.getElementById('listaRotaLoopResultados');
+
+        if (!resultados || resultados.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-shield-alt" style="font-size: 64px; color: #3fb950; opacity: 0.4;"></i>
+                    <p class="mt-3 text-muted">Nenhum loop de roteamento detectado nos blocos deste cliente.</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = `
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Bloco</th><th>IP alvo</th><th>IP em loop</th><th>Ferramenta</th><th>Detectado em</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        resultados.forEach(r => {
+            html += `
+                <tr>
+                    <td><code>${r.bloco}</code></td>
+                    <td><code>${r.ip_alvo}</code></td>
+                    <td>
+                        <span class="badge" style="background:#f8514922;color:#f85149;border:1px solid #f8514966;">
+                            <i class="fas fa-rotate me-1"></i>${r.ip_em_loop}
+                        </span>
+                    </td>
+                    <td style="font-size:12px;">${r.ferramenta}</td>
+                    <td style="font-size:12px;">${r.ultima_deteccao}</td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
+    }
+
+    function rotaloopCarregarExecucoes() {
+        const clienteId = '{{ cliente.id }}';
+        const info = document.getElementById('rotaloopUltimaExecucao');
+
+        fetch(`/clientes/rotaloop/execucoes/?id=${clienteId}`)
+            .then(response => response.json())
+            .then(data => {
+                const execucoes = data.execucoes || [];
+                const btn = document.getElementById('rotaloopBtnTestar');
+
+                if (execucoes.length === 0) {
+                    info.innerHTML = '<i class="fas fa-clock me-1"></i>Nenhum teste executado ainda.';
+                    return;
+                }
+
+                const ultima = execucoes[0];
+
+                if (ultima.em_andamento) {
+                    info.innerHTML = `<i class="fas fa-spinner fa-spin me-1"></i>Teste em andamento (iniciado às ${ultima.iniciado_em})...`;
+                    if (btn) btn.disabled = true;
+                    if (!rotaloopPollTimer) {
+                        rotaloopPollTimer = setInterval(() => rotaloopCarregarExecucoes(), 4000);
+                    }
+                    return;
+                }
+
+                if (rotaloopPollTimer) {
+                    clearInterval(rotaloopPollTimer);
+                    rotaloopPollTimer = null;
+                    rotaloopCarregarResultados();
+                }
+                if (btn) btn.disabled = false;
+
+                if (!ultima.sucesso) {
+                    info.innerHTML = `<i class="fas fa-exclamation-triangle me-1" style="color:#f85149"></i>Último teste (${ultima.finalizado_em}) falhou: ${ultima.erro_mensagem || 'erro desconhecido'}`;
+                    return;
+                }
+
+                info.innerHTML = `<i class="fas fa-check-circle me-1" style="color:#3fb950"></i>Último teste em ${ultima.finalizado_em} — ${ultima.total_blocos_testados} bloco(s) testado(s), ${ultima.total_loops_detectados} loop(s) detectado(s).`;
+            })
+            .catch(error => console.error('Erro ao carregar execuções RotaLoop:', error));
+    }
+
+    function rotaloopTestarAgora() {
+        const clienteId = '{{ cliente.id }}';
+        const btn = document.getElementById('rotaloopBtnTestar');
+        if (btn) btn.disabled = true;
+
+        fetch('/clientes/rotaloop/testar/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCsrfToken()},
+            body: `id=${clienteId}`,
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showError('ERRO', data.error, 5000);
+                    if (btn) btn.disabled = false;
+                    return;
+                }
+                showInfo('TESTE INICIADO', 'O teste de loop de roteamento foi disparado em segundo plano — acompanhe o status acima.', 4000);
+                rotaloopCarregarExecucoes();
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                showError('ERRO', 'Não foi possível iniciar o teste.', 5000);
+                if (btn) btn.disabled = false;
+            });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
     // IRR — Atualização de objetos TC via e-mail
     // ═══════════════════════════════════════════════════════════════════════
 
@@ -6212,6 +6396,7 @@ function getCsrfToken(){
         }
         if (nomeAba === 'vulnerabilidades') {
             if (typeof ampscanCarregar === 'function') ampscanCarregar();
+            if (typeof rotaloopCarregar === 'function') rotaloopCarregar();
         }
     }
 
