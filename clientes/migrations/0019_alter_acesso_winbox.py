@@ -10,9 +10,29 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterField(
-            model_name='acesso',
-            name='winbox',
-            field=models.IntegerField(blank=True, null=True),
+        # O AlterField original gerava "ALTER COLUMN winbox TYPE integer
+        # USING winbox::integer", que o Postgres rejeita (não existe cast
+        # implícito de inet pra integer) — quebra qualquer aplicação da
+        # migração do zero (banco de teste, ambiente novo, disaster
+        # recovery), mesmo sem nenhuma linha na tabela. Em produção isso foi
+        # corrigido manualmente na época (coluna ajustada fora de banda e
+        # migração marcada como aplicada), então nunca apareceu ali. Aqui
+        # replicamos o mesmo resultado (zera o valor em vez de tentar
+        # reinterpretar o IP como número) de forma que funcione também numa
+        # aplicação do zero.
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AlterField(
+                    model_name='acesso',
+                    name='winbox',
+                    field=models.IntegerField(blank=True, null=True),
+                ),
+            ],
+            database_operations=[
+                migrations.RunSQL(
+                    sql='ALTER TABLE clientes_acesso ALTER COLUMN winbox TYPE integer USING NULL;',
+                    reverse_sql='ALTER TABLE clientes_acesso ALTER COLUMN winbox TYPE inet USING NULL;',
+                ),
+            ],
         ),
     ]

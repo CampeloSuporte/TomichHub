@@ -189,7 +189,7 @@ class AmpscanStatusParaPortaTest(SimpleTestCase):
 
 - [ ] **Step 2: Rodar o teste e confirmar que falha**
 
-Run: `cd /opt/crm && venv/bin/python manage.py test clientes.tests.AmpscanStatusParaPortaTest -v 2`
+Run: `cd /opt/crm && venv/bin/python manage.py test clientes.tests.AmpscanStatusParaPortaTest -v 2 --keepdb`
 Expected: `ImportError: cannot import name '_ampscan_status_para_porta'` (a função ainda não existe).
 
 - [ ] **Step 3: Implementar `_ampscan_status_para_porta` e usá-la no loop**
@@ -285,12 +285,12 @@ E popule no `execucao` junto dos outros contadores (linha 2493-2496 originais):
 
 - [ ] **Step 4: Rodar o teste e confirmar que passa**
 
-Run: `venv/bin/python manage.py test clientes.tests.AmpscanStatusParaPortaTest -v 2`
+Run: `venv/bin/python manage.py test clientes.tests.AmpscanStatusParaPortaTest -v 2 --keepdb`
 Expected: `OK` (6 testes passando).
 
 - [ ] **Step 5: Rodar a suíte completa de `clientes` pra checar regressão**
 
-Run: `venv/bin/python manage.py test clientes -v 1`
+Run: `venv/bin/python manage.py test clientes -v 1 --keepdb`
 Expected: `OK`, nenhum teste pré-existente quebrado (em especial os de BGP em
 `clientes/tests_bgp_criar_sessao.py`/`tests_bgp_novo_anuncio.py`, que não têm relação com essa
 mudança mas compartilham o mesmo test runner).
@@ -589,7 +589,7 @@ class RotaloopIpAlvoTest(SimpleTestCase):
 
 - [ ] **Step 2: Rodar e confirmar que falha**
 
-Run: `venv/bin/python manage.py test clientes.tests.RotaloopIpAlvoTest -v 2`
+Run: `venv/bin/python manage.py test clientes.tests.RotaloopIpAlvoTest -v 2 --keepdb`
 Expected: `ImportError: cannot import name '_rotaloop_ip_alvo'`.
 
 - [ ] **Step 3: Implementar**
@@ -617,7 +617,7 @@ def _rotaloop_ip_alvo(net):
 
 - [ ] **Step 4: Rodar e confirmar que passa**
 
-Run: `venv/bin/python manage.py test clientes.tests.RotaloopIpAlvoTest -v 2`
+Run: `venv/bin/python manage.py test clientes.tests.RotaloopIpAlvoTest -v 2 --keepdb`
 Expected: `OK` (5 testes).
 
 - [ ] **Step 5: Commit**
@@ -694,7 +694,7 @@ class RotaloopDetectarLoopTest(SimpleTestCase):
 
 - [ ] **Step 2: Rodar e confirmar que falha**
 
-Run: `venv/bin/python manage.py test clientes.tests.RotaloopDetectarLoopTest -v 2`
+Run: `venv/bin/python manage.py test clientes.tests.RotaloopDetectarLoopTest -v 2 --keepdb`
 Expected: `ImportError: cannot import name '_rotaloop_detectar_loop'`.
 
 - [ ] **Step 3: Implementar**
@@ -721,7 +721,7 @@ def _rotaloop_detectar_loop(hops):
 
 - [ ] **Step 4: Rodar e confirmar que passa**
 
-Run: `venv/bin/python manage.py test clientes.tests.RotaloopDetectarLoopTest -v 2`
+Run: `venv/bin/python manage.py test clientes.tests.RotaloopDetectarLoopTest -v 2 --keepdb`
 Expected: `OK` (5 testes).
 
 - [ ] **Step 5: Commit**
@@ -814,7 +814,7 @@ class RotaloopMtrJsonTest(SimpleTestCase):
 
 - [ ] **Step 2: Rodar e confirmar que falha**
 
-Run: `venv/bin/python manage.py test clientes.tests.RotaloopMtrJsonTest -v 2`
+Run: `venv/bin/python manage.py test clientes.tests.RotaloopMtrJsonTest -v 2 --keepdb`
 Expected: `ImportError: cannot import name '_rotaloop_mtr_json'`.
 
 - [ ] **Step 3: Implementar**
@@ -855,7 +855,7 @@ def _rotaloop_mtr_json(host, count=3, timeout=30):
 
 - [ ] **Step 4: Rodar e confirmar que passa**
 
-Run: `venv/bin/python manage.py test clientes.tests.RotaloopMtrJsonTest -v 2`
+Run: `venv/bin/python manage.py test clientes.tests.RotaloopMtrJsonTest -v 2 --keepdb`
 Expected: `OK` (5 testes).
 
 - [ ] **Step 5: Rodar contra um alvo real pra validar o comando de verdade**
@@ -926,7 +926,7 @@ class RotaloopExecutarParaBlocoTest(SimpleTestCase):
 
 - [ ] **Step 2: Rodar e confirmar que falha**
 
-Run: `venv/bin/python manage.py test clientes.tests.RotaloopExecutarParaBlocoTest -v 2`
+Run: `venv/bin/python manage.py test clientes.tests.RotaloopExecutarParaBlocoTest -v 2 --keepdb`
 Expected: `ImportError: cannot import name '_rotaloop_executar_para_bloco'`.
 
 - [ ] **Step 3: Implementar `_rotaloop_executar_para_bloco`**
@@ -955,7 +955,7 @@ def _rotaloop_executar_para_bloco(bloco):
 
 - [ ] **Step 4: Rodar e confirmar que passa**
 
-Run: `venv/bin/python manage.py test clientes.tests.RotaloopExecutarParaBlocoTest -v 2`
+Run: `venv/bin/python manage.py test clientes.tests.RotaloopExecutarParaBlocoTest -v 2 --keepdb`
 Expected: `OK` (4 testes).
 
 - [ ] **Step 5: Escrever teste de `_rotaloop_executar_para_cliente` (integração com banco)**
@@ -1026,7 +1026,7 @@ se houver outros campos `blank=False`/`null=False` sem default, adicione-os na c
 
 - [ ] **Step 6: Rodar e confirmar que falha**
 
-Run: `venv/bin/python manage.py test clientes.tests.RotaloopExecutarParaClienteTest -v 2`
+Run: `venv/bin/python manage.py test clientes.tests.RotaloopExecutarParaClienteTest -v 2 --keepdb`
 Expected: `ImportError: cannot import name '_rotaloop_executar_para_cliente'`.
 
 - [ ] **Step 7: Implementar `_rotaloop_executar_para_cliente`**
@@ -1089,12 +1089,12 @@ def _rotaloop_executar_para_cliente(cliente):
 
 - [ ] **Step 8: Rodar e confirmar que passa**
 
-Run: `venv/bin/python manage.py test clientes.tests.RotaloopExecutarParaClienteTest -v 2`
+Run: `venv/bin/python manage.py test clientes.tests.RotaloopExecutarParaClienteTest -v 2 --keepdb`
 Expected: `OK` (4 testes).
 
 - [ ] **Step 9: Rodar a suíte completa de novo**
 
-Run: `venv/bin/python manage.py test clientes -v 1`
+Run: `venv/bin/python manage.py test clientes -v 1 --keepdb`
 Expected: `OK`.
 
 - [ ] **Step 10: Commit**
@@ -1676,7 +1676,7 @@ git commit -m "docs: documenta a feature de detecção de loop de roteamento (Ro
 
 - [ ] **Step 1: Rodar a suíte de testes completa do app `clientes` uma última vez**
 
-Run: `cd /opt/crm && venv/bin/python manage.py test clientes -v 1`
+Run: `cd /opt/crm && venv/bin/python manage.py test clientes -v 1 --keepdb`
 Expected: `OK`, sem falhas.
 
 - [ ] **Step 2: Confirmar que todas as migrações estão aplicadas**
