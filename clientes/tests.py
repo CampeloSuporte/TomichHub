@@ -2,7 +2,11 @@ import ipaddress
 
 from django.test import SimpleTestCase
 
-from clientes.tasks import _ampscan_status_para_porta, _rotaloop_ip_alvo
+from clientes.tasks import (
+    _ampscan_status_para_porta,
+    _rotaloop_detectar_loop,
+    _rotaloop_ip_alvo,
+)
 
 
 class AmpscanStatusParaPortaTest(SimpleTestCase):
@@ -47,3 +51,52 @@ class RotaloopIpAlvoTest(SimpleTestCase):
     def test_bloco_ipv6_barra_127_usa_network_address(self):
         net = ipaddress.ip_network('2801:80:1234::/127')
         self.assertEqual(_rotaloop_ip_alvo(net), '2801:80:1234::')
+
+
+class RotaloopDetectarLoopTest(SimpleTestCase):
+    def test_sem_repeticao_e_normal(self):
+        hops = [
+            {'hop': 1, 'ip': '10.0.0.1'},
+            {'hop': 2, 'ip': '200.1.1.1'},
+            {'hop': 3, 'ip': '200.1.1.2'},
+        ]
+        status, ip_em_loop = _rotaloop_detectar_loop(hops)
+        self.assertEqual(status, 'normal')
+        self.assertIsNone(ip_em_loop)
+
+    def test_ip_repetido_consecutivo_e_loop(self):
+        hops = [
+            {'hop': 1, 'ip': '10.0.0.1'},
+            {'hop': 2, 'ip': '200.1.1.1'},
+            {'hop': 3, 'ip': '200.1.1.1'},
+        ]
+        status, ip_em_loop = _rotaloop_detectar_loop(hops)
+        self.assertEqual(status, 'loop_detectado')
+        self.assertEqual(ip_em_loop, '200.1.1.1')
+
+    def test_ip_repetido_nao_consecutivo_tambem_e_loop(self):
+        hops = [
+            {'hop': 1, 'ip': '10.0.0.1'},
+            {'hop': 2, 'ip': '200.1.1.1'},
+            {'hop': 3, 'ip': '200.1.1.2'},
+            {'hop': 4, 'ip': '200.1.1.1'},
+        ]
+        status, ip_em_loop = _rotaloop_detectar_loop(hops)
+        self.assertEqual(status, 'loop_detectado')
+        self.assertEqual(ip_em_loop, '200.1.1.1')
+
+    def test_hops_sem_resposta_nao_contam_como_repeticao(self):
+        hops = [
+            {'hop': 1, 'ip': '10.0.0.1'},
+            {'hop': 2, 'ip': None},
+            {'hop': 3, 'ip': None},
+            {'hop': 4, 'ip': '200.1.1.2'},
+        ]
+        status, ip_em_loop = _rotaloop_detectar_loop(hops)
+        self.assertEqual(status, 'normal')
+        self.assertIsNone(ip_em_loop)
+
+    def test_lista_vazia_e_normal(self):
+        status, ip_em_loop = _rotaloop_detectar_loop([])
+        self.assertEqual(status, 'normal')
+        self.assertIsNone(ip_em_loop)

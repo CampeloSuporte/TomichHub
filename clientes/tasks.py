@@ -2604,3 +2604,20 @@ def _rotaloop_ip_alvo(net):
     if net.num_addresses <= 2:
         return str(net.network_address)
     return str(net.network_address + 1)
+
+
+def _rotaloop_detectar_loop(hops):
+    """Recebe a lista de hops [{'hop': int, 'ip': str|None}, ...] (ordenada
+    por hop) e detecta loop de roteamento: o mesmo IP aparecendo em 2+
+    posições, em qualquer lugar do caminho (não precisa ser consecutivo).
+    Hops sem resposta (ip=None) são ignorados na contagem. Retorna
+    (status, ip_em_loop) — status é 'normal' ou 'loop_detectado'."""
+    vistos = set()
+    for h in hops:
+        ip = h.get('ip')
+        if ip is None:
+            continue
+        if ip in vistos:
+            return 'loop_detectado', ip
+        vistos.add(ip)
+    return 'normal', None
