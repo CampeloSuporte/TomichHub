@@ -2750,3 +2750,52 @@ def _rotaloop_executar_para_cliente(cliente):
     execucao.finalizado_em = timezone.now()
     execucao.save()
     return execucao
+
+
+@shared_task
+def rotaloop_testar_cliente(cliente_id):
+    """Teste de loop de roteamento sob demanda (botão 'Testar Agora' na aba
+    Vulnerabilidades) para um único cliente."""
+    from .models import Cliente
+
+    try:
+        cliente = Cliente.objects.get(id=cliente_id)
+    except Cliente.DoesNotExist:
+        return {'status': 'ignorado', 'motivo': 'Cliente não encontrado'}
+
+    execucao = _rotaloop_executar_para_cliente(cliente)
+    return {
+        'status': 'ok' if execucao.sucesso else 'erro',
+        'execucao_id': execucao.id,
+        'total_loops_detectados': execucao.total_loops_detectados,
+    }
+
+
+@shared_task
+def rotaloop_verificar_clientes_agendado():
+    """Teste de loop de roteamento a cada 2 dias (Celery Beat) — testa TODOS
+    os clientes com blocos IP a cada execução (sem revezamento de grupo,
+    diferente do AmpScan: aqui é 1 mtr por bloco, não milhares de probes por
+    bloco, então o custo por execução é baixo o suficiente pra não precisar
+    fatiar). Isolado em try/except por cliente."""
+    from .models import Cliente
+
+    clientes = Cliente.objects.filter(blocos_ip__isnull=False).distinct().order_by('id')
+    total, ok, falhas = 0, 0, 0
+
+    logger.info(f'rotaloop_verificar_clientes_agendado: {len(clientes)} cliente(s) nesta execução.')
+
+    for cliente in clientes:
+        total += 1
+        try:
+            execucao = _rotaloop_executar_para_cliente(cliente)
+            if execucao.sucesso:
+                ok += 1
+            else:
+                falhas += 1
+        except Exception:
+            falhas += 1
+            logger.exception(f'rotaloop_verificar_clientes_agendado: falha no cliente {cliente.id}')
+
+    logger.info(f'rotaloop_verificar_clientes_agendado: concluído — {ok}/{total} OK, {falhas} falha(s).')
+    return {'total': total, 'ok': ok, 'falhas': falhas}

@@ -92,6 +92,14 @@ app.conf.beat_schedule = {
         'task': 'financeiro.tasks.enviar_alertas_whatsapp',
         'schedule': crontab(hour=8, minute=30, day_of_week='1-5'),
     },
+    'rotaloop-verificar-clientes-agendado': {
+        # Testa loop de roteamento em todos os clientes com blocos IP a
+        # cada 2 dias. Sem revezamento de grupo (diferente do AmpScan) —
+        # ver docstring de rotaloop_verificar_clientes_agendado em
+        # clientes/tasks.py pra justificativa.
+        'task': 'clientes.tasks.rotaloop_verificar_clientes_agendado',
+        'schedule': timedelta(days=2),
+    },
 }
 
 app.conf.timezone = 'America/Sao_Paulo'
