@@ -88,3 +88,34 @@ class SendMediaServiceTest(TestCase):
         self.assertTrue(ok)
         msg = Message.objects.get(id=result)
         self.assertEqual(msg.message_type, 'audio')
+
+
+class ApiSendMediaTest(TestCase):
+    def setUp(self):
+        from usuario.models import TOTPDevice
+        self.conversation = _criar_conversa()
+        self.agent = User.objects.create_user(username='ana', password='x', is_staff=True, is_active=True)
+        # Forcar2FAMiddleware redireciona qualquer staff sem TOTPDevice confirmado
+        # pra tela de configuração de 2FA; sem isso o POST cai em 302 antes da view.
+        TOTPDevice.objects.create(usuario=self.agent, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+        self.client.force_login(self.agent)
+
+    @mock.patch('atendimento.services._save_media_file', return_value='/media/atendimento/media/fake.jpg')
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_envia_midia_com_legenda(self, mock_client_cls, mock_save):
+        mock_client_cls.return_value.send_media.return_value = True
+        url = reverse('atendimento:api_send_media', args=[self.conversation.id])
+        resp = self.client.post(url, data=json.dumps({
+            'mediaBase64': 'ZmFrZQ==', 'mediaType': 'image',
+            'fileName': 'foto.jpg', 'caption': 'Segue a foto',
+        }), content_type='application/json')
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['content'], 'Segue a foto')
+
+    def test_sem_base64_retorna_400(self):
+        url = reverse('atendimento:api_send_media', args=[self.conversation.id])
+        resp = self.client.post(url, data=json.dumps({'mediaBase64': ''}), content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
