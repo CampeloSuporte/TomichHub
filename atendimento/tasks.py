@@ -496,3 +496,50 @@ def _run_alerta_diario_agora():
         return {'success': True, 'abertos': abertos.count(), 'assumidos': assumidos.count(), 'lembretes': n}
     except Exception as e:
         return {'success': False, 'error': str(e)}
+
+
+@shared_task
+def enviar_mensagens_agendadas():
+    """A cada 1 min: envia ScheduledMessage pendentes cujo scheduled_for já
+    passou. Segue merged_into se a conversa foi mesclada; reabre se estava
+    Resolvida/Encerrada. Cada falha soma em `attempts`; depois de
+    ScheduledMessage.MAX_ATTEMPTS tentativas (uma por ciclo, ~1/min) marca
+    `failed` e para de tentar — fica sinalizado no painel de agendadas."""
+    from .models import ScheduledMessage
+    from .services import ConversationService
+
+    due = ScheduledMessage.objects.select_related('conversation').filter(
+        status='pending', scheduled_for__lte=timezone.now()
+    )
+    for sm in due:
+        conversation = sm.conversation
+        while conversation.merged_into_id:
+            conversation = conversation.merged_into
+
+        if conversation.status in ('resolved', 'closed'):
+            conversation.status = 'open'
+            conversation.save(update_fields=['status'])
+
+        try:
+            if sm.message_type == 'text':
+                ok, result = ConversationService.send_message(conversation, sm.content, sm.created_by)
+            else:
+                from .services import _read_attachment_as_base64
+                b64 = _read_attachment_as_base64(sm.attachment_url)
+                ok, result = ConversationService.send_media(
+                    conversation, b64, sm.message_type, sm.file_name or 'arquivo',
+                    sm.content, sm.created_by
+                )
+            if not ok:
+                raise Exception(result)
+
+            sm.status = 'sent'
+            sm.sent_at = timezone.now()
+            sm.save(update_fields=['status', 'sent_at'])
+        except Exception as e:
+            sm.attempts += 1
+            sm.last_error = str(e)[:500]
+            if sm.attempts >= ScheduledMessage.MAX_ATTEMPTS:
+                sm.status = 'failed'
+            sm.save(update_fields=['attempts', 'last_error', 'status'])
+            logger.error(f"Falha ao enviar mensagem agendada {sm.id}: {e}")

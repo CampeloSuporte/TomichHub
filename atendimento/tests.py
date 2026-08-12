@@ -2,6 +2,7 @@ from unittest import mock
 import base64
 import json
 import os
+import uuid
 from datetime import timedelta
 
 from django.conf import settings
@@ -18,8 +19,12 @@ from atendimento.tasks import enviar_mensagens_agendadas
 
 
 def _criar_conversa():
+    # Sufixo único: WhatsAppConnection.name é unique=True e alguns testes
+    # (ex.: mesclagem de conversas) chamam este helper mais de uma vez no
+    # mesmo teste, então um nome fixo colidiria (UniqueViolation).
+    suffix = uuid.uuid4().hex[:8]
     connection = WhatsAppConnection.objects.create(
-        name='Conexao Teste', evolution_url='https://evolution.example.com',
+        name=f'Conexao Teste {suffix}', evolution_url='https://evolution.example.com',
         api_key='fake-key', instance_name='teste',
     )
     group = ContactGroup.objects.create(
@@ -133,3 +138,115 @@ class ReadAttachmentAsBase64Test(TestCase):
         finally:
             relative = saved_url.replace(settings.MEDIA_URL, '', 1)
             os.remove(os.path.join(settings.MEDIA_ROOT, relative))
+
+
+class EnviarMensagensAgendadasTest(TestCase):
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.conversation.status = 'open'
+        self.conversation.save(update_fields=['status'])
+        self.agent = User.objects.create_user(username='ana', first_name='Ana')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_envia_mensagem_de_texto_vencida(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, 'wamid123')
+        sm = ScheduledMessage.objects.create(
+            conversation=self.conversation, created_by=self.agent,
+            message_type='text', content='Oi, tudo certo?',
+            scheduled_for=timezone.now() - timedelta(minutes=1),
+        )
+
+        enviar_mensagens_agendadas()
+
+        sm.refresh_from_db()
+        self.assertEqual(sm.status, 'sent')
+        self.assertIsNotNone(sm.sent_at)
+        self.assertTrue(Message.objects.filter(conversation=self.conversation, content='Oi, tudo certo?').exists())
+
+    def test_ignora_mensagem_ainda_nao_vencida(self):
+        sm = ScheduledMessage.objects.create(
+            conversation=self.conversation, created_by=self.agent,
+            message_type='text', content='Ainda não',
+            scheduled_for=timezone.now() + timedelta(hours=1),
+        )
+
+        enviar_mensagens_agendadas()
+
+        sm.refresh_from_db()
+        self.assertEqual(sm.status, 'pending')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_conversa_mesclada_envia_no_destino(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, 'wamid123')
+        destino = _criar_conversa()
+        destino.status = 'open'
+        destino.save(update_fields=['status'])
+        self.conversation.merged_into = destino
+        self.conversation.save(update_fields=['merged_into'])
+
+        sm = ScheduledMessage.objects.create(
+            conversation=self.conversation, created_by=self.agent,
+            message_type='text', content='Mensagem pos-mesclagem',
+            scheduled_for=timezone.now() - timedelta(minutes=1),
+        )
+
+        enviar_mensagens_agendadas()
+
+        sm.refresh_from_db()
+        self.assertEqual(sm.status, 'sent')
+        self.assertTrue(Message.objects.filter(conversation=destino, content='Mensagem pos-mesclagem').exists())
+        self.assertFalse(Message.objects.filter(conversation=self.conversation, content='Mensagem pos-mesclagem').exists())
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_reabre_conversa_fechada_antes_de_enviar(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, 'wamid123')
+        self.conversation.status = 'closed'
+        self.conversation.save(update_fields=['status'])
+
+        sm = ScheduledMessage.objects.create(
+            conversation=self.conversation, created_by=self.agent,
+            message_type='text', content='Reabrindo',
+            scheduled_for=timezone.now() - timedelta(minutes=1),
+        )
+
+        enviar_mensagens_agendadas()
+
+        self.conversation.refresh_from_db()
+        sm.refresh_from_db()
+        self.assertEqual(self.conversation.status, 'open')
+        self.assertEqual(sm.status, 'sent')
+
+    @mock.patch('atendimento.services.ConversationService.send_message')
+    def test_falha_incrementa_tentativas_e_marca_failed_apos_limite(self, mock_send):
+        mock_send.return_value = (False, 'erro simulado de rede')
+        sm = ScheduledMessage.objects.create(
+            conversation=self.conversation, created_by=self.agent,
+            message_type='text', content='Vai falhar',
+            scheduled_for=timezone.now() - timedelta(minutes=1),
+        )
+
+        for _ in range(ScheduledMessage.MAX_ATTEMPTS):
+            enviar_mensagens_agendadas()
+
+        sm.refresh_from_db()
+        self.assertEqual(sm.attempts, ScheduledMessage.MAX_ATTEMPTS)
+        self.assertEqual(sm.status, 'failed')
+        self.assertIn('erro simulado', sm.last_error)
+
+    @mock.patch('atendimento.services._read_attachment_as_base64', return_value='ZmFrZQ==')
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_envia_mensagem_de_midia_vencida(self, mock_client_cls, mock_read_b64):
+        mock_client_cls.return_value.send_media.return_value = True
+        sm = ScheduledMessage.objects.create(
+            conversation=self.conversation, created_by=self.agent,
+            message_type='image', content='Legenda da foto',
+            attachment_url='/media/atendimento/media/fake.jpg', file_name='foto.jpg',
+            scheduled_for=timezone.now() - timedelta(minutes=1),
+        )
+
+        enviar_mensagens_agendadas()
+
+        sm.refresh_from_db()
+        self.assertEqual(sm.status, 'sent')
+        msg = Message.objects.get(conversation=self.conversation, message_type='image')
+        self.assertEqual(msg.content, 'Legenda da foto')
