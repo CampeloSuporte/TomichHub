@@ -4,7 +4,7 @@
 
 Plataforma de atendimento ao cliente integrada ao CRM, similar ao Chatwoot. Centraliza o gerenciamento de tickets de suporte via WhatsApp (Evolution API v2), com tarefas, alertas automáticos, lembretes pessoais e relatórios completos.
 
-**Última atualização:** 05/08/2026  
+**Última atualização:** 12/08/2026  
 **Status:** ✅ FUNCIONAL  
 **Stack:** Django, PostgreSQL, Celery, WebSocket (Django Channels), JavaScript vanilla
 
@@ -19,6 +19,7 @@ Plataforma de atendimento ao cliente integrada ao CRM, similar ao Chatwoot. Cent
 | Chat | Visual estilo **WhatsApp Dark** — bolhas com rabicho, ✓✓ de enviado, campo em pílula; envio de mídia, tags, transferência, terminal de hosts |
 | **Tarefas** | Board em 4 colunas com vinculação de conversas e lembretes automáticos |
 | Auto Atendimento | Fluxo de boas-vindas que coleta assunto e categoria automaticamente |
+| **Mensagens Agendadas** | Programa envio de mensagem/mídia para data e hora futuras, com painel para cancelar |
 | Relatórios | Tabela + PDF com assunto, categoria, agente, duração por empresa/período |
 | Alertas Celery | Resumo diário no grupo + lembretes pessoais manhã e meio-dia por WhatsApp |
 | Configurações | IA, tags, categorias, permissões, alertas, contatos de atendentes |
@@ -236,6 +237,13 @@ Gerado via ReportLab. Colunas:
 | `/atendimento/api/attendant-contacts/<user_id>/` | DELETE | Remover contato |
 | `/atendimento/api/attendant-contacts/<user_id>/test/` | POST | Enviar mensagem de teste |
 
+### Mensagens Agendadas
+| URL | Método | Descrição |
+|-----|--------|-----------|
+| `/atendimento/api/conversation/<id>/schedule-message/` | GET | Listar agendadas pendentes da conversa |
+| `/atendimento/api/conversation/<id>/schedule-message/` | POST | Agendar mensagem (texto ou mídia) |
+| `/atendimento/api/scheduled-message/<id>/cancel/` | POST | Cancelar agendamento pendente |
+
 ### Demais APIs existentes
 | URL | Descrição |
 |-----|-----------|
@@ -253,10 +261,15 @@ Gerado via ReportLab. Colunas:
 ## ⚙️ Schedule Celery (`crm/celery.py`)
 
 ```python
-'notificar-chamados-abertos':     timedelta(minutes=10)
-'alerta-diario-atendimento':      timedelta(minutes=5)   # verifica horário internamente
-'lembretes-pessoais-atendentes':  timedelta(minutes=5)   # verifica horário internamente
+'notificar-chamados-abertos':              timedelta(minutes=10)
+'alerta-diario-atendimento':               timedelta(minutes=5)   # verifica horário internamente
+'lembretes-pessoais-atendentes':           timedelta(minutes=5)   # verifica horário internamente
+'atendimento-enviar-mensagens-agendadas':  timedelta(minutes=1)   # agendador de mensagens
 ```
+
+> O beat roda **embutido no worker** (`celery -A crm worker --beat --concurrency=1`),
+> não como serviço separado — só existe `celery.service`. Mudança em `beat_schedule`
+> só vale após `systemctl restart celery`.
 
 ---
 
@@ -683,6 +696,62 @@ visível.
   (`scrollbar-width: none` + `::-webkit-scrollbar{display:none}` em `.conv-tabs`) —
   o scroll continua funcionando por toque/roda do mouse em telas muito estreitas,
   só não aparece mais a barra visualmente.
+
+
+## Agendador de Mensagens (2026-08-12)
+
+Permite ao atendente escrever a mensagem (ou anexar mídia) e programar o envio
+para uma data/hora futura, em vez de mandar na hora.
+
+### Como usar
+
+Botão **Agendar** ao lado das abas WhatsApp / Comentário Interno: digita a
+mensagem, clica, escolhe data e hora. O botão **Agendadas** no cabeçalho da
+conversa abre um painel lateral com as pendentes e permite cancelar.
+
+Agendamento vale só para mensagem ao cliente — o botão fica desabilitado no
+modo Comentário Interno.
+
+### Como funciona
+
+`ScheduledMessage` (`atendimento/models.py`) guarda o conteúdo e o horário.
+A task `enviar_mensagens_agendadas` roda **a cada 1 minuto** e envia as
+pendentes vencidas, reaproveitando o mesmo caminho do envio imediato
+(`ConversationService.send_message` / `.send_media`).
+
+Mídia: o arquivo é gravado em disco **no momento do agendamento** e só a URL
+fica no banco; na hora do envio é lido de volta por `_read_attachment_as_base64`.
+Se salvar falhar, o agendamento é recusado na hora (400) em vez de criar um
+registro fadado a falhar horas depois.
+
+### Decisões de comportamento
+
+| Situação na hora do envio | O que acontece |
+|---|---|
+| Conversa resolvida/encerrada | Reabre (`open`) e envia |
+| Conversa mesclada em outra | Segue `merged_into` e envia no destino |
+| Falha no envio | Tenta de novo no próximo ciclo; após `MAX_ATTEMPTS` (5) marca `failed` |
+| Cancelada antes da hora | Não envia (cancelamento vence a corrida com o worker) |
+
+**Legenda de mídia:** o agendamento guarda a legenda **crua** (pode ser vazia).
+O rótulo padrão (`"Imagem"`, `"Vídeo"`…) só é calculado na hora do envio — se
+fosse gravado no agendamento, a mídia sairia com esse texto colado como legenda.
+
+**Ciclo de mesclagem:** a busca por `merged_into` é limitada. Como worker e beat
+dividem o mesmo processo com `--concurrency=1`, um ciclo A→B→A travaria *todo* o
+processamento em background do CRM, não só o agendador.
+
+### Arquivos
+
+| Arquivo | Papel |
+|---|---|
+| `atendimento/models.py` | `ScheduledMessage` |
+| `atendimento/tasks.py` | `enviar_mensagens_agendadas` |
+| `atendimento/services.py` | `ConversationService.send_media`, `_read_attachment_as_base64` |
+| `atendimento/views.py` | `api_schedule_message`, `api_cancel_scheduled_message` |
+| `atendimento/templates/atendimento/_chat_content.html` | UI + módulo JS `scheduledMsgs` |
+
+Testes: `atendimento/tests.py` (25, incluindo `AgendadorFluxoCompletoTest` ponta a ponta).
 
 ---
 
