@@ -2131,6 +2131,19 @@
         startRecording:startRecording, stopRecording:stopRecording, cancelRecording:cancelRecording,
         toggleStatusMenu:toggleStatusMenu, updateStatus:updateStatus,
         closeResolucao:closeResolucao, confirmarResolucao:confirmarResolucao,
+        /* Expõe o que está digitado/anexado no composer — o agendador precisa
+           ler isso de fora da IIFE. A legenda vem do #mediaCaption (campo
+           separado) quando há mídia, igual ao que sendMedia() já faz. */
+        getComposerState: function() {
+            var captionEl = document.getElementById('mediaCaption');
+            return {
+                text: msgInput.value.trim(),
+                mediaBase64: mediaBase64,
+                mediaType: mediaType,
+                mediaFileName: mediaFileName,
+                mediaCaption: captionEl ? captionEl.value.trim() : ''
+            };
+        },
         destroy: function() {
             if(ws){ws.onclose=null;ws.close();ws=null;}
             _pollDestroyed = true;
@@ -2486,6 +2499,146 @@ document.addEventListener('click', function(e){
         res.style.display = 'none';
     }
 });
+})();
+
+// ══════════════════════════════════════════════════════════
+// AGENDADOR DE MENSAGENS
+// ══════════════════════════════════════════════════════════
+(function(){
+var CSRF    = '{{ csrf_token }}';
+var CONV_ID = '{{ conversation.id }}';
+var URL_SCHEDULE = '/atendimento/api/conversation/' + CONV_ID + '/schedule-message/';
+var URL_CANCEL = function(id){ return '/atendimento/api/scheduled-message/' + id + '/cancel/'; };
+
+function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* Valor pro input datetime-local: precisa ser hora LOCAL sem timezone.
+   toISOString() devolve UTC, por isso o desconto do offset antes. */
+function _nowLocalISO() {
+    var d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0,16);
+}
+
+window.scheduledMsgs = {
+    openModal: function() {
+        if (document.getElementById('tabInt').classList.contains('active')) return;
+        var state = window.chatApp.getComposerState();
+        if (!state.text && !state.mediaBase64) {
+            alert('Digite uma mensagem ou anexe uma mídia antes de agendar.');
+            return;
+        }
+        var dt = document.getElementById('scheduleDateTime');
+        dt.min = _nowLocalISO();
+        dt.value = '';
+        document.getElementById('scheduleModal').style.display = 'flex';
+    },
+    closeModal: function() {
+        document.getElementById('scheduleModal').style.display = 'none';
+    },
+    confirm: function() {
+        var scheduledFor = document.getElementById('scheduleDateTime').value;
+        if (!scheduledFor) { alert('Escolha data e hora.'); return; }
+
+        var state = window.chatApp.getComposerState();
+        var body = { scheduled_for: scheduledFor };
+        if (state.mediaBase64) {
+            body.mediaBase64 = state.mediaBase64;
+            body.mediaType = state.mediaType;
+            body.fileName = state.mediaFileName;
+            body.caption = state.mediaCaption;
+        } else {
+            if (!state.text) { alert('Digite uma mensagem.'); return; }
+            body.message = state.text;
+        }
+
+        fetch(URL_SCHEDULE, {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRFToken':CSRF},
+            body: JSON.stringify(body)
+        }).then(function(r){ return r.json(); }).then(function(d){
+            if (d.success) {
+                scheduledMsgs.closeModal();
+                var msgInput = document.getElementById('msgInput');
+                msgInput.value = '';
+                msgInput.style.height = 'auto';
+                window.chatApp.clearMedia();
+                scheduledMsgs._refreshBadge();
+            } else {
+                alert('Erro: ' + (d.error || 'Falha ao agendar'));
+            }
+        }).catch(function(){ alert('Erro de conexão'); });
+    },
+    togglePanel: function() {
+        var el = document.getElementById('schedulePanelEl');
+        var opening = !el.classList.contains('open');
+        el.classList.toggle('open');
+        if (opening) scheduledMsgs.loadList();
+    },
+    loadList: function() {
+        fetch(URL_SCHEDULE, {headers:{'X-CSRFToken':CSRF}})
+            .then(function(r){ return r.json(); })
+            .then(function(d){ scheduledMsgs._render(d.scheduled || []); });
+    },
+    _render: function(items) {
+        var body = document.getElementById('schedulePanelList');
+        if (!items.length) {
+            body.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px"><i class="fas fa-clock" style="font-size:24px;opacity:.2;display:block;margin-bottom:8px"></i>Nenhuma mensagem agendada</div>';
+            return;
+        }
+        body.innerHTML = items.map(function(it){
+            var preview = it.file_name ? ('📎 ' + _esc(it.file_name)) : _esc((it.content||'').slice(0,80));
+            return '<div class="sp-item" id="sp-item-'+it.id+'">'
+                + '<div style="flex:1;min-width:0">'
+                + '<div style="font-size:12px;color:var(--text);margin-bottom:3px">'+preview+'</div>'
+                + '<div style="font-size:11px;color:var(--muted)"><i class="fas fa-clock"></i> '+_esc(it.scheduled_for_display)+'</div>'
+                + '</div>'
+                + '<button class="sp-cancel-btn" onclick="scheduledMsgs.cancel(\''+it.id+'\')" title="Cancelar"><i class="fas fa-times"></i></button>'
+                + '</div>';
+        }).join('');
+    },
+    cancel: function(id) {
+        if (!confirm('Cancelar esta mensagem agendada?')) return;
+        fetch(URL_CANCEL(id), {method:'POST', headers:{'X-CSRFToken':CSRF}})
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                if (d.success) {
+                    var el = document.getElementById('sp-item-'+id);
+                    if (el) el.remove();
+                    scheduledMsgs._refreshBadge();
+                } else {
+                    alert('Erro: ' + (d.error || 'Falha ao cancelar'));
+                }
+            });
+    },
+    /* Relê a lista pra atualizar o badge do cabeçalho (e o painel, se aberto).
+       O badge não existe no DOM quando a contagem é zero — daí ser criado
+       e removido aqui em vez de só ter o textContent trocado. */
+    _refreshBadge: function() {
+        fetch(URL_SCHEDULE, {headers:{'X-CSRFToken':CSRF}})
+            .then(function(r){ return r.json(); })
+            .then(function(d){
+                var btn = document.getElementById('btnSchedulePanel');
+                if (!btn) return;
+                var count = (d.scheduled || []).length;
+                var badge = document.getElementById('scheduleCountBadge');
+                if (count > 0) {
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        badge.id = 'scheduleCountBadge';
+                        badge.style.cssText = 'background:rgba(6,207,156,.2);color:#06cf9c;border-radius:10px;padding:1px 5px;font-size:9px;margin-left:2px';
+                        btn.insertBefore(badge, btn.lastChild);
+                    }
+                    badge.textContent = count;
+                } else if (badge) {
+                    badge.remove();
+                }
+                if (document.getElementById('schedulePanelEl').classList.contains('open')) {
+                    scheduledMsgs._render(d.scheduled || []);
+                }
+            });
+    },
+};
 })();
 
 </script>
