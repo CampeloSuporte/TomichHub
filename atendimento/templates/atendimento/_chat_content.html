@@ -308,6 +308,9 @@
             <button class="chat-mode-tab" id="tabInt" onclick="chatApp.setMode('internal')">
                 <i class="fas fa-lock"></i> Comentário Interno
             </button>
+            <button class="chat-mode-tab schedule-btn" id="tabSchedule" onclick="scheduledMsgs.openModal()" title="Agendar envio desta mensagem">
+                <i class="fas fa-clock"></i> Agendar
+            </button>
         </div>
 
         <!-- Linha de input -->
@@ -1143,6 +1146,7 @@
         isInternal = (mode === 'internal');
         document.getElementById('tabWa').classList.toggle('active', !isInternal);
         document.getElementById('tabInt').classList.toggle('active', isInternal);
+        document.getElementById('tabSchedule').classList.toggle('disabled', isInternal);
         msgInput.placeholder = isInternal ? 'Nota interna (não enviada ao cliente)...' : 'Mensagem...';
         var area = document.querySelector('.chat-input-area');
         if (area) area.classList.toggle('mode-internal', isInternal);

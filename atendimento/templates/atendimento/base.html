@@ -956,6 +956,8 @@ body {
 .chat-mode-tab { display:flex; align-items:center; gap:5px; padding:5px 14px; border-radius:20px; border:1px solid rgba(255,255,255,0.1); background:transparent; color:var(--wa-text-muted); font-size:11px; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; transition:all 0.15s; }
 .chat-mode-tab:hover { border-color:rgba(255,255,255,0.2); color:var(--wa-text); }
 .chat-mode-tab.active { background:rgba(0,168,132,0.16); color:var(--wa-green-light); border-color:rgba(0,168,132,0.4); }
+.chat-mode-tab.schedule-btn { border-style: dashed; margin-left: auto; }
+.chat-mode-tab.schedule-btn.disabled { opacity: 0.35; pointer-events: none; }
 .chat-mode-tabs + .chat-input-area.mode-internal .chat-mode-tab#tabInt { background:rgba(245,196,0,0.1); border-color:rgba(245,196,0,0.3); color:#d29922; }
 
 /* Linha de input — campo em formato pílula, igual ao WhatsApp */
