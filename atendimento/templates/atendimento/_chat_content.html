@@ -541,6 +541,21 @@
         </div>
     </div>
 
+    <!-- ══ Painel de Mensagens Agendadas ══ -->
+    <div class="schedule-panel" id="schedulePanelEl">
+        <div class="schedule-panel-header">
+            <i class="fas fa-clock" style="color:#06cf9c;font-size:12px"></i>
+            <span style="flex:1;font-size:13px;font-weight:700;color:var(--text)">Mensagens Agendadas</span>
+            <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px" onclick="scheduledMsgs.togglePanel()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="schedule-panel-body" id="schedulePanelList">
+            <div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">
+                <i class="fas fa-clock" style="font-size:24px;opacity:.2;display:block;margin-bottom:8px"></i>
+                Nenhuma mensagem agendada
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <style>
@@ -900,6 +915,50 @@
     border-color: rgba(124,58,237,.5);
     color: #a78bfa;
 }
+/* ── Painel de Agendadas ── */
+.schedule-panel {
+    width: 0;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--dark-900);
+    border-left: 0px solid rgba(6,207,156,0.2);
+    overflow: hidden;
+    transition: width 0.22s ease, border-left-width 0.22s ease;
+    min-height: 0;
+}
+.schedule-panel.open {
+    width: 340px;
+    border-left-width: 1px;
+}
+.schedule-panel-header {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    background: var(--dark-800);
+}
+.schedule-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px;
+}
+.sp-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border);
+}
+.sp-item:hover { background: rgba(255,255,255,.02); }
+.sp-cancel-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); padding: 3px 5px; border-radius: 4px;
+    flex-shrink: 0; transition: color .15s;
+}
+.sp-cancel-btn:hover { color: #ef4444; }
 /* ── Painel de Terminal ── */
 .chat-terminal-panel {
     width: 0;
