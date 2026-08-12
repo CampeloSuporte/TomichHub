@@ -213,6 +213,7 @@ def conversation_detail(request, conversation_id):
         task_conversations__conversation=conversation
     ).select_related('assigned_to').order_by('-created_at'))
     agents_list = AuthUser.objects.filter(is_active=True, is_staff=True).order_by('first_name', 'username')
+    scheduled_count = conversation.scheduled_messages.filter(status='pending').count()
 
     context = {
         **_base_ctx(request),
@@ -226,6 +227,7 @@ def conversation_detail(request, conversation_id):
         'sidebar_conversations': _sidebar_convs,
         'conv_tasks': conv_tasks,
         'agents_list': agents_list,
+        'scheduled_count': scheduled_count,
     }
 
     return render(request, 'atendimento/conversation_detail.html', context)
