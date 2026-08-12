@@ -4933,33 +4933,92 @@ function getCsrfToken(){
     // FUNÇÕES RPKI/IRR
     // ============================================
 
+    // Quando a sessão cai, o @login_required responde ao AJAX com 302 para
+    // /auth/login/. O fetch segue o redirect, o response.json() estoura no HTML
+    // da tela de login e o painel só mostrava "Erro ao carregar" — com um
+    // "Tentar Novamente" que nunca resolvia, porque o problema era o login.
+    function rpkiSessaoExpirou(response) {
+        return response.redirected && new URL(response.url).pathname.startsWith('/auth/login/');
+    }
+
+    // Converte a resposta em JSON, sinalizando sessão expirada e erros HTTP
+    // (403/500 devolvem {'error': ...}) em vez de deixar o painel mentir que
+    // não há nada cadastrado.
+    function rpkiJson(response) {
+        if (rpkiSessaoExpirou(response)) {
+            const erro = new Error('Sessão expirada');
+            erro.sessaoExpirada = true;
+            throw erro;
+        }
+        return response.json().then(data => {
+            if (!response.ok || data.error) {
+                throw new Error(data.error || `Erro ${response.status}`);
+            }
+            return data;
+        });
+    }
+
+    function rpkiPainelErro(error, textoPadrao, funcaoRecarregar) {
+        if (error.sessaoExpirada) {
+            return `
+                <div class="text-center py-5">
+                    <i class="fas fa-user-lock" style="font-size: 64px; color: var(--error-red); opacity: 0.3;"></i>
+                    <p class="mt-3 text-muted">Sua sessão expirou. Faça login novamente para continuar.</p>
+                    <button class="btn btn-primary mt-3" onclick="window.location.reload()">
+                        <i class="fas fa-sign-in-alt me-2"></i> Fazer Login
+                    </button>
+                </div>
+            `;
+        }
+        return `
+            <div class="text-center py-5">
+                <i class="fas fa-exclamation-circle" style="font-size: 64px; color: var(--error-red); opacity: 0.3;"></i>
+                <p class="mt-3 text-muted">${textoPadrao}</p>
+                <p class="text-muted" style="font-size: 12px;">${_irrEsc(error.message || '')}</p>
+                <button class="btn btn-primary mt-3" onclick="${funcaoRecarregar}()">
+                    <i class="fas fa-sync-alt me-2"></i> Tentar Novamente
+                </button>
+            </div>
+        `;
+    }
+
+    // As telas de IRR têm contrato próprio ({ok, erro}), então aqui só traduzimos
+    // o redirect de login — o resto do tratamento continua com elas.
+    function irrChecarSessao(response) {
+        if (rpkiSessaoExpirou(response)) {
+            throw new Error('sua sessão expirou. Faça login novamente para continuar.');
+        }
+        return response;
+    }
+
+    // Mesma ideia do painel, para as ações que respondem via toast.
+    function rpkiToastErro(error, textoPadrao) {
+        if (error.sessaoExpirada) {
+            showError('SESSÃO EXPIRADA', 'Faça login novamente para continuar.', 5000);
+            return;
+        }
+        showError('ERRO', error.message || textoPadrao, 5000);
+    }
+
     function carregarBlocosIP() {
         const clienteId = '{{ cliente.id }}';
         const container = document.getElementById('listaBlocosIP');
-        
+
         container.innerHTML = `
             <div class="text-center py-5">
                 <i class="fas fa-spinner fa-spin" style="font-size: 64px; color: var(--accent-cyan); opacity: 0.3;"></i>
                 <p class="mt-3 text-muted">Carregando blocos IP...</p>
             </div>
         `;
-        
+
         fetch(`/clientes/blocos/listar/?id=${clienteId}`)
-            .then(response => response.json())
+            .then(rpkiJson)
             .then(data => {
                 renderizarBlocosIP(data.blocos);
             })
             .catch(error => {
                 console.error('Erro:', error);
-                container.innerHTML = `
-                    <div class="text-center py-5">
-                        <i class="fas fa-exclamation-circle" style="font-size: 64px; color: var(--error-red); opacity: 0.3;"></i>
-                        <p class="mt-3 text-muted">Erro ao carregar blocos IP</p>
-                        <button class="btn btn-primary mt-3" onclick="carregarBlocosIP()">
-                            <i class="fas fa-sync-alt me-2"></i> Tentar Novamente
-                        </button>
-                    </div>
-                `;
+                container.innerHTML = rpkiPainelErro(error, 'Erro ao carregar blocos IP', 'carregarBlocosIP');
             });
     }
 
@@ -5078,7 +5137,7 @@ function getCsrfToken(){
 
     function abrirModalEditarBloco(blocoId) {
         fetch(`/clientes/blocos/buscar/${blocoId}/`)
-            .then(response => response.json())
+            .then(rpkiJson)
             .then(data => {
                 document.getElementById('edit_tipo').value = data.tipo;
                 document.getElementById('edit_bloco').value = data.bloco;
@@ -5091,7 +5150,7 @@ function getCsrfToken(){
             })
             .catch(error => {
                 console.error('Erro:', error);
-                showError('ERRO', 'Não foi possível carregar os dados do bloco.', 5000);
+                rpkiToastErro(error, 'Não foi possível carregar os dados do bloco.');
             });
     }
 
@@ -5104,7 +5163,7 @@ function getCsrfToken(){
         showInfo('VALIDANDO', `Validando ${blocoTexto}...`, 3000);
         
         fetch(`/clientes/blocos/validar/${blocoId}/`)
-            .then(response => response.json())
+            .then(rpkiJson)
             .then(data => {
                 if (data.success) {
                     const rpkiStatus = data.rpki_valido ? '✅' : '❌';
@@ -5120,12 +5179,12 @@ function getCsrfToken(){
                     
                     carregarBlocosIP();
                 } else {
-                    showError('ERRO', data.error, 5000);
+                    showError('ERRO', data.error || 'Erro ao validar bloco', 5000);
                 }
             })
             .catch(error => {
                 console.error('Erro:', error);
-                showError('ERRO', 'Erro ao validar bloco', 5000);
+                rpkiToastErro(error, 'Erro ao validar bloco');
             });
     }
 
@@ -5174,16 +5233,11 @@ function getCsrfToken(){
         const container = document.getElementById('listaAmpScanResultados');
 
         fetch(`/clientes/ampscan/resultados/?id=${clienteId}`)
-            .then(response => response.json())
+            .then(rpkiJson)
             .then(data => ampscanRenderizarResultados(data.resultados))
             .catch(error => {
                 console.error('Erro:', error);
-                container.innerHTML = `
-                    <div class="text-center py-5">
-                        <i class="fas fa-exclamation-circle" style="font-size: 64px; color: var(--error-red); opacity: 0.3;"></i>
-                        <p class="mt-3 text-muted">Erro ao carregar resultados</p>
-                    </div>
-                `;
+                container.innerHTML = rpkiPainelErro(error, 'Erro ao carregar resultados', 'ampscanCarregarResultados');
             });
     }
 
@@ -5244,7 +5298,7 @@ function getCsrfToken(){
         const info = document.getElementById('ampscanUltimaExecucao');
 
         fetch(`/clientes/ampscan/execucoes/?id=${clienteId}`)
-            .then(response => response.json())
+            .then(rpkiJson)
             .then(data => {
                 const execucoes = data.execucoes || [];
                 const btn = document.getElementById('ampscanBtnEscanear');
@@ -5282,7 +5336,17 @@ function getCsrfToken(){
                     : '';
                 info.innerHTML = `<i class="fas fa-check-circle me-1" style="color:#3fb950"></i>Última varredura em ${ultima.finalizado_em} — ${ultima.total_ips} IPs testados, ${ultima.total_vulneraveis} vulnerável(is), ${ultima.total_protegidos} protegido(s), ${ultima.total_expostos} exposto(s)${extra}.`;
             })
-            .catch(error => console.error('Erro ao carregar execuções AmpScan:', error));
+            .catch(error => {
+                console.error('Erro ao carregar execuções AmpScan:', error);
+                if (error.sessaoExpirada) {
+                    // Sem isso o poll de 4s ficaria batendo na tela de login para sempre.
+                    if (ampscanPollTimer) {
+                        clearInterval(ampscanPollTimer);
+                        ampscanPollTimer = null;
+                    }
+                    info.innerHTML = '<i class="fas fa-user-lock me-1" style="color:#f85149"></i>Sessão expirada — faça login novamente para acompanhar a varredura.';
+                }
+            });
     }
 
     function ampscanEscanearAgora() {
@@ -5295,19 +5359,14 @@ function getCsrfToken(){
             headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCsrfToken()},
             body: `id=${clienteId}`,
         })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    showError('ERRO', data.error, 5000);
-                    if (btn) btn.disabled = false;
-                    return;
-                }
+            .then(rpkiJson)
+            .then(() => {
                 showInfo('VARREDURA INICIADA', 'A varredura de amplificação foi disparada em segundo plano — acompanhe o status acima.', 4000);
                 ampscanCarregarExecucoes();
             })
             .catch(error => {
                 console.error('Erro:', error);
-                showError('ERRO', 'Não foi possível iniciar a varredura.', 5000);
+                rpkiToastErro(error, 'Não foi possível iniciar a varredura.');
                 if (btn) btn.disabled = false;
             });
     }
@@ -5328,16 +5387,11 @@ function getCsrfToken(){
         const container = document.getElementById('listaRotaLoopResultados');
 
         fetch(`/clientes/rotaloop/resultados/?id=${clienteId}`)
-            .then(response => response.json())
+            .then(rpkiJson)
             .then(data => rotaloopRenderizarResultados(data.resultados))
             .catch(error => {
                 console.error('Erro:', error);
-                container.innerHTML = `
-                    <div class="text-center py-5">
-                        <i class="fas fa-exclamation-circle" style="font-size: 64px; color: var(--error-red); opacity: 0.3;"></i>
-                        <p class="mt-3 text-muted">Erro ao carregar resultados</p>
-                    </div>
-                `;
+                container.innerHTML = rpkiPainelErro(error, 'Erro ao carregar resultados', 'rotaloopCarregarResultados');
             });
     }
 
@@ -5390,7 +5444,7 @@ function getCsrfToken(){
         const info = document.getElementById('rotaloopUltimaExecucao');
 
         fetch(`/clientes/rotaloop/execucoes/?id=${clienteId}`)
-            .then(response => response.json())
+            .then(rpkiJson)
             .then(data => {
                 const execucoes = data.execucoes || [];
                 const btn = document.getElementById('rotaloopBtnTestar');
@@ -5425,7 +5479,17 @@ function getCsrfToken(){
 
                 info.innerHTML = `<i class="fas fa-check-circle me-1" style="color:#3fb950"></i>Último teste em ${ultima.finalizado_em} — ${ultima.total_blocos_testados} bloco(s) testado(s), ${ultima.total_loops_detectados} loop(s) detectado(s).`;
             })
-            .catch(error => console.error('Erro ao carregar execuções RotaLoop:', error));
+            .catch(error => {
+                console.error('Erro ao carregar execuções RotaLoop:', error);
+                if (error.sessaoExpirada) {
+                    // Sem isso o poll de 4s ficaria batendo na tela de login para sempre.
+                    if (rotaloopPollTimer) {
+                        clearInterval(rotaloopPollTimer);
+                        rotaloopPollTimer = null;
+                    }
+                    info.innerHTML = '<i class="fas fa-user-lock me-1" style="color:#f85149"></i>Sessão expirada — faça login novamente para acompanhar o teste.';
+                }
+            });
     }
 
     function rotaloopTestarAgora() {
@@ -5438,19 +5502,14 @@ function getCsrfToken(){
             headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': getCsrfToken()},
             body: `id=${clienteId}`,
         })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    showError('ERRO', data.error, 5000);
-                    if (btn) btn.disabled = false;
-                    return;
-                }
+            .then(rpkiJson)
+            .then(() => {
                 showInfo('TESTE INICIADO', 'O teste de loop de roteamento foi disparado em segundo plano — acompanhe o status acima.', 4000);
                 rotaloopCarregarExecucoes();
             })
             .catch(error => {
                 console.error('Erro:', error);
-                showError('ERRO', 'Não foi possível iniciar o teste.', 5000);
+                rpkiToastErro(error, 'Não foi possível iniciar o teste.');
                 if (btn) btn.disabled = false;
             });
     }
@@ -5707,7 +5766,7 @@ function getCsrfToken(){
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
                 body: JSON.stringify(dados),
             });
-            const d = await r.json();
+            const d = await irrChecarSessao(r).json();
             if (!d.ok) throw new Error(d.erro);
             irrMsg('Configuração salva com sucesso!', 'ok');
         } catch(e) { irrMsg('Erro ao salvar: ' + e.message, 'erro'); }
@@ -5720,7 +5779,7 @@ function getCsrfToken(){
         irrMsg(`Consultando WHOIS para AS${asn}…`, 'aviso');
         try {
             const r = await fetch(`/clientes/${IRR_CID}/irr/consultar/?asn=${asn}`);
-            const d = await r.json();
+            const d = await irrChecarSessao(r).json();
             if (!d.ok) throw new Error(d.erro);
 
             // Preenche apenas os campos que vierem preenchidos (sem sobrescrever o que já há)
@@ -5783,7 +5842,7 @@ function getCsrfToken(){
                 body: JSON.stringify(dados),
             });
             const r = await fetch(`/clientes/${IRR_CID}/irr/preview/`);
-            const d = await r.json();
+            const d = await irrChecarSessao(r).json();
             if (!d.ok) throw new Error(d.erro);
 
             const modal = document.getElementById('modalIrrPreview');
@@ -5816,7 +5875,7 @@ function getCsrfToken(){
                 method:'POST',
                 headers:{'X-CSRFToken':getCsrfToken()},
             });
-            const d = await r.json();
+            const d = await irrChecarSessao(r).json();
             if (!d.ok) throw new Error(d.erro);
 
             irrMostrarResultado(d);
