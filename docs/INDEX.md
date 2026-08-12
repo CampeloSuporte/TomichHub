@@ -1283,6 +1283,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 12/08/2026 | Atendimento: agendador de mensagens — atendente programa envio de mensagem/mídia para data e hora futuras, com painel para ver e cancelar pendentes; task Celery a cada 1 min, reabre conversa fechada e segue mesclagem, retry até 5 tentativas | ATENDIMENTO.md |
 | 06/08/2026 | Fix `/homegeral`: `VariableDoesNotExist` quando tarefa sem responsável (variável usada como argumento de `\|default:` não tem lookup falho suprimido); mesmo padrão latente corrigido em `criado_por` da Wiki | TAREFAS.md, WIKI_ARTIGOS.md |
 | 05/08/2026 | Atendimento: indicador de mensagem não lida em conversas assumidas; fix transferência/atribuição não avisava outros atendentes em tempo real; visual do chat/lista estilo WhatsApp Dark; fix scrollbar das abas do Inbox + "Tarefas" movida pro menu principal | ATENDIMENTO.md |
 | 04/08/2026 | Auditoria de Acessos: tela consolidada por cliente (`/clientes/<id>/auditoria/`) — lista todos os hosts com sessão gravada, filtro por período/usuário/busca; endpoint de sessões por host ganhou filtro de data + paginação (usado também no modal existente) | AUDITORIA_ACESSOS.md |

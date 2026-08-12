@@ -737,9 +737,14 @@ registro fadado a falhar horas depois.
 O rótulo padrão (`"Imagem"`, `"Vídeo"`…) só é calculado na hora do envio — se
 fosse gravado no agendamento, a mídia sairia com esse texto colado como legenda.
 
-**Ciclo de mesclagem:** a busca por `merged_into` é limitada. Como worker e beat
+**Ciclo de mesclagem:** ao seguir `merged_into`, a task guarda as conversas já
+visitadas e para ao reencontrar uma (registrando no log). Como worker e beat
 dividem o mesmo processo com `--concurrency=1`, um ciclo A→B→A travaria *todo* o
 processamento em background do CRM, não só o agendador.
+
+**Corrida com o cancelamento:** antes de enviar, cada item é relido do banco para
+confirmar que ainda está `pending` — o atendente pode ter cancelado entre a
+consulta e o envio.
 
 ### Arquivos
 
