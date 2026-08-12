@@ -221,6 +221,16 @@ def _save_media_file(b64_data: str, mimetype: str) -> str:
     return f"{settings.MEDIA_URL}atendimento/media/{filename}"
 
 
+def _read_attachment_as_base64(attachment_url: str) -> str:
+    """Lê de volta um arquivo salvo por _save_media_file e devolve em
+    base64 — usado pra reenviar a mídia de uma mensagem agendada, que só
+    guarda a URL (não o base64) enquanto espera a hora de enviar."""
+    relative = attachment_url.replace(settings.MEDIA_URL, '', 1)
+    abs_path = os.path.join(settings.MEDIA_ROOT, relative)
+    with open(abs_path, 'rb') as f:
+        return base64.b64encode(f.read()).decode('ascii')
+
+
 def _ws_send_conversation(conversation_id: str, data: dict):
     """Envia evento para o grupo WebSocket da conversa (thread-safe)."""
     try:

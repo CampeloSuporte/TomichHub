@@ -119,3 +119,17 @@ class ApiSendMediaTest(TestCase):
         url = reverse('atendimento:api_send_media', args=[self.conversation.id])
         resp = self.client.post(url, data=json.dumps({'mediaBase64': ''}), content_type='application/json')
         self.assertEqual(resp.status_code, 400)
+
+
+class ReadAttachmentAsBase64Test(TestCase):
+    def test_le_arquivo_salvo_e_devolve_base64_original(self):
+        original_bytes = b'conteudo-fake-de-teste'
+        b64_original = base64.b64encode(original_bytes).decode()
+        saved_url = _save_media_file(b64_original, 'image/jpeg')
+
+        try:
+            result = _read_attachment_as_base64(saved_url)
+            self.assertEqual(base64.b64decode(result), original_bytes)
+        finally:
+            relative = saved_url.replace(settings.MEDIA_URL, '', 1)
+            os.remove(os.path.join(settings.MEDIA_ROOT, relative))
