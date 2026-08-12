@@ -875,5 +875,112 @@ acontecendo. Daphne não precisa: `consumers.py` não chama `send_message`.
 
 ---
 
+## Correção — reações do cliente viravam balão "[sem conteúdo]" (2026-08-12)
+
+**Sintoma:** quando o cliente respondia/reagia a uma mensagem enviada pelo
+atendente, aparecia um balão vazio com o texto literal `[sem conteúdo]` no meio
+da conversa. Havia **327 mensagens** nesse estado no banco.
+
+### Causa
+
+O webhook extraía texto testando `conversation`, `extendedTextMessage.text` e as
+legendas de mídia; o que não casasse com nenhum caía num fallback
+`"[sem conteúdo]"`. Levantando os tipos reais na Evolution API, os balões vazios
+eram três coisas que não são mensagem de texto:
+
+| `messageType` | O que é | Amostra (60) |
+|---|---|---|
+| `reactionMessage` | reação com emoji em texto puro | 36 |
+| `secretEncryptedMessage` | **reação criptografada** | 23 |
+| `albumMessage` | cabeçalho de álbum de fotos | 1 |
+
+O caso relatado é o `secretEncryptedMessage`: **100% deles têm
+`targetMessageKey.fromMe = true`**, ou seja, são reações a mensagens que *nós*
+enviamos. O WhatsApp criptografa a reação quando o alvo é uma mensagem sua — o
+emoji é cifrado com o `messageSecret` da mensagem original, que não guardamos.
+
+> **Não dá para descobrir qual emoji foi** nesse formato. Decifrar exigiria
+> reter o `messageSecret` de cada mensagem enviada e reimplementar o HKDF +
+> AES-GCM do WhatsApp. O que dá para saber — e é o que mostramos — é que houve
+> uma reação e a qual mensagem.
+
+### Correção
+
+Reação deixou de virar balão e passou a ser um detalhe da mensagem que a
+recebeu, como no WhatsApp. Novo modelo `MessageReaction` (migration
+`0013_messagereaction`) e `_extrair_reacao()` em `services.py`, que normaliza os
+dois formatos.
+
+- **`reactionMessage`** → salva o emoji.
+- **`secretEncryptedMessage`** → salva a reação com `emoji=''`; a tela mostra a
+  pílula "reagiu", com o motivo no `title`.
+- **Reação a mensagem que não temos** (anterior ao histórico) → ignorada, em vez
+  de criar um balão órfão no fim da conversa.
+
+O levantamento dos 327 casos revelou outros tipos que também caíam no fallback,
+corrigidos junto:
+
+| Tipo | Antes | Agora |
+|---|---|---|
+| `albumMessage` | balão vazio | ignorado — as fotos chegam depois, uma por evento |
+| `pinInChatMessage` | balão vazio | ignorado — é "fixou mensagem", não conteúdo |
+| `associatedChildMessage` | balão vazio | ignorado |
+| `contactMessage` / `contactsArrayMessage` | balão vazio | mostra `👤 Nome` do vCard |
+| `lottieStickerMessage` | balão vazio | tratado como figurinha (mídia) |
+
+> Esses eventos são testados por **presença da chave**, não pelo valor: chegam com
+> objeto vazio (`{}`) em alguns casos, que é *falsy* — com `.get()` escapariam do
+> filtro e voltariam a virar balão vazio.
+
+Cuidados de comportamento:
+
+- Reagir de novo **substitui** a reação anterior da mesma pessoa (busca por
+  `sender_jid`), em vez de acumular.
+- `reactionMessage` com **texto vazio** é o WhatsApp *removendo* a reação — é
+  diferente de "não sei qual emoji", e por isso `_extrair_reacao` devolve a flag
+  `cifrada` para separar os dois casos.
+- O WebSocket manda sempre a **lista completa** de reações da mensagem
+  (`type: "reactions"`), então a tela só troca o bloco inteiro — não precisa
+  somar, subtrair nem saber se foi inclusão, troca ou remoção.
+
+### Arquivos
+
+| Arquivo | Papel |
+|---|---|
+| `atendimento/models.py` | `MessageReaction` |
+| `atendimento/services.py` | `_extrair_reacao`, `_registrar_reacao`, `_broadcast_reacoes` |
+| `atendimento/views.py` | `prefetch_related('reactions')` na tela da conversa |
+| `atendimento/templates/atendimento/base.html` | CSS `.msg-reactions` / `.msg-reaction` |
+| `atendimento/templates/atendimento/_chat_content.html` | pílulas + `applyReactions()` no WS |
+
+Testes: `ReacaoWebhookTest` (7), com payloads reais capturados da Evolution API.
+
+### Limpeza do histórico (12/08/2026)
+
+Os 327 balões vazios que já estavam no banco foram reprocessados consultando a
+Evolution API por `external_id` (backup em
+`backups/msgs_sem_conteudo_20260812.json` antes de qualquer alteração):
+
+| Resultado | Qtd |
+|---|---|
+| virou `MessageReaction` na mensagem alvo | 300 |
+| álbum/pin/contato/outros — balão removido | 19 |
+| reação a mensagem fora do histórico — balão removido | 8 |
+
+Sobraram **298** reações, não 300: duas delas apontavam para balões que eram
+*eles próprios* reações vazias e foram removidos no mesmo lote, então o
+`ON DELETE CASCADE` levou as duas junto. É o comportamento correto — uma reação
+a um balão que deixou de existir não teria onde aparecer.
+
+Resultado final: **zero** mensagens com `[sem conteúdo]`; 214 reações com emoji
+e 84 criptografadas (mostradas como "reagiu").
+
+### Deploy
+
+Exige `migrate` e restart de **Gunicorn e Celery**.
+
+
+---
+
 **Mantido por:** CampeloSuporte  
 **Repositório:** /opt/crm
