@@ -31,6 +31,7 @@ urlpatterns = [
     path('api/conversation/<uuid:conversation_id>/messages/', views.api_conversation_messages, name='api_conversation_messages'),
     path('api/conversation/<uuid:conversation_id>/send-message/', views.api_send_message, name='api_send_message'),
     path('api/conversation/<uuid:conversation_id>/send-media/', views.api_send_media, name='api_send_media'),
+    path('api/conversation/<uuid:conversation_id>/schedule-message/', views.api_schedule_message, name='api_schedule_message'),
     path('api/conversation/<uuid:conversation_id>/update/', views.api_update_conversation, name='api_update_conversation'),
     path('api/conversation/<uuid:conversation_id>/merge/', views.api_merge_conversation, name='api_merge_conversation'),
     path('api/conversations/search/', views.api_search_conversations, name='api_search_conversations'),

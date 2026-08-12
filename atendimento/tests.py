@@ -33,6 +33,15 @@ def _criar_conversa():
     return Conversation.objects.create(group=group)
 
 
+def _criar_agente_staff(username='ana'):
+    # Forcar2FAMiddleware redireciona qualquer staff sem TOTPDevice confirmado
+    # pra tela de configuração de 2FA; sem isso o POST cai em 302 antes da view.
+    from usuario.models import TOTPDevice
+    agent = User.objects.create_user(username=username, password='x', is_staff=True, is_active=True)
+    TOTPDevice.objects.create(usuario=agent, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+    return agent
+
+
 class ScheduledMessageModelTest(TestCase):
     def setUp(self):
         self.conversation = _criar_conversa()
@@ -97,12 +106,8 @@ class SendMediaServiceTest(TestCase):
 
 class ApiSendMediaTest(TestCase):
     def setUp(self):
-        from usuario.models import TOTPDevice
         self.conversation = _criar_conversa()
-        self.agent = User.objects.create_user(username='ana', password='x', is_staff=True, is_active=True)
-        # Forcar2FAMiddleware redireciona qualquer staff sem TOTPDevice confirmado
-        # pra tela de configuração de 2FA; sem isso o POST cai em 302 antes da view.
-        TOTPDevice.objects.create(usuario=self.agent, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+        self.agent = _criar_agente_staff()
         self.client.force_login(self.agent)
 
     @mock.patch('atendimento.services._save_media_file', return_value='/media/atendimento/media/fake.jpg')
@@ -298,3 +303,63 @@ class EnviarMensagensAgendadasGuardTest(TestCase):
         sm.refresh_from_db()
         self.assertEqual(sm.status, 'cancelled')
         self.assertFalse(Message.objects.filter(content='Cancelada antes do envio').exists())
+
+
+class ApiScheduleMessageTest(TestCase):
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.agent = _criar_agente_staff()
+        self.client.force_login(self.agent)
+        self.url = reverse('atendimento:api_schedule_message', args=[self.conversation.id])
+
+    def test_post_com_data_no_passado_retorna_400(self):
+        passado = (timezone.now() - timedelta(hours=1)).isoformat()
+        resp = self.client.post(self.url, data=json.dumps({'message': 'Oi', 'scheduled_for': passado}),
+                                content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(ScheduledMessage.objects.exists())
+
+    def test_post_texto_valido_cria_pendente(self):
+        futuro = (timezone.now() + timedelta(hours=2)).isoformat()
+        resp = self.client.post(self.url, data=json.dumps({'message': 'Oi, tudo bem?', 'scheduled_for': futuro}),
+                                content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['success'])
+        sm = ScheduledMessage.objects.get()
+        self.assertEqual(sm.content, 'Oi, tudo bem?')
+        self.assertEqual(sm.status, 'pending')
+        self.assertEqual(sm.created_by, self.agent)
+
+    def test_post_sem_mensagem_nem_midia_retorna_400(self):
+        futuro = (timezone.now() + timedelta(hours=2)).isoformat()
+        resp = self.client.post(self.url, data=json.dumps({'message': '', 'scheduled_for': futuro}),
+                                content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+
+    @mock.patch('atendimento.services._save_media_file', return_value='/media/atendimento/media/fake.jpg')
+    def test_post_com_midia_guarda_legenda_crua_sem_rotulo_padrao(self, mock_save):
+        futuro = (timezone.now() + timedelta(hours=2)).isoformat()
+        resp = self.client.post(self.url, data=json.dumps({
+            'mediaBase64': 'ZmFrZQ==', 'mediaType': 'image', 'fileName': 'foto.jpg',
+            'caption': '', 'scheduled_for': futuro,
+        }), content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+        sm = ScheduledMessage.objects.get()
+        self.assertEqual(sm.content, '')  # legenda crua, não "Imagem"
+        self.assertEqual(sm.file_name, 'foto.jpg')
+        self.assertEqual(sm.attachment_url, '/media/atendimento/media/fake.jpg')
+
+    def test_get_lista_apenas_pendentes(self):
+        ScheduledMessage.objects.create(
+            conversation=self.conversation, created_by=self.agent, message_type='text',
+            content='Pendente', scheduled_for=timezone.now() + timedelta(hours=1), status='pending',
+        )
+        ScheduledMessage.objects.create(
+            conversation=self.conversation, created_by=self.agent, message_type='text',
+            content='Ja enviada', scheduled_for=timezone.now() - timedelta(hours=1), status='sent',
+        )
+        resp = self.client.get(self.url)
+        self.assertEqual(resp.status_code, 200)
+        items = resp.json()['scheduled']
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]['content'], 'Pendente')

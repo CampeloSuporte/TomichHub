@@ -39,7 +39,7 @@ def admin_required(view_func):
 from .models import (
     WhatsAppConnection, ContactGroup, Conversation, Message,
     ConversationActivity, AgentStatus, ChatbotConfig,
-    Task, TaskConversation, AttendantContact,
+    Task, TaskConversation, AttendantContact, ScheduledMessage,
 )
 from .services import EvolutionAPIClient, ConversationService
 from clientes.models import Cliente
@@ -474,6 +474,81 @@ def api_send_media(request, conversation_id):
             'success': False,
             'error': str(e)
         }, status=400)
+
+
+@staff_required
+@require_http_methods(["GET", "POST"])
+def api_schedule_message(request, conversation_id):
+    """Cria (POST) ou lista pendentes (GET) mensagens agendadas de uma conversa."""
+    conversation = get_object_or_404(Conversation, id=conversation_id)
+
+    if request.method == 'GET':
+        pending = conversation.scheduled_messages.filter(status='pending').order_by('scheduled_for')
+        return JsonResponse({'scheduled': [
+            {
+                'id': str(sm.id),
+                'content': sm.content,
+                'file_name': sm.file_name,
+                'message_type': sm.message_type,
+                'scheduled_for': sm.scheduled_for.isoformat(),
+                'scheduled_for_display': timezone.localtime(sm.scheduled_for).strftime('%d/%m %H:%M'),
+            }
+            for sm in pending
+        ]})
+
+    try:
+        data = json.loads(request.body)
+        scheduled_for_raw = data.get('scheduled_for')
+        if not scheduled_for_raw:
+            return JsonResponse({'success': False, 'error': 'Data/hora obrigatória'}, status=400)
+
+        from django.utils.dateparse import parse_datetime
+        scheduled_for = parse_datetime(scheduled_for_raw)
+        if not scheduled_for:
+            return JsonResponse({'success': False, 'error': 'Data/hora inválida'}, status=400)
+        if scheduled_for.tzinfo is None:
+            scheduled_for = timezone.make_aware(scheduled_for)
+        if scheduled_for <= timezone.now():
+            return JsonResponse({'success': False, 'error': 'A data/hora precisa ser no futuro'}, status=400)
+
+        media_base64 = data.get('mediaBase64', '').strip()
+
+        if media_base64:
+            media_type = data.get('mediaType', 'document')
+            file_name = data.get('fileName', 'arquivo')
+            caption = data.get('caption', '').strip()
+
+            import mimetypes as _mt
+            from .services import _save_media_file
+            detected_mime, _ = _mt.guess_type(file_name)
+            if not detected_mime:
+                detected_mime = {
+                    'image': 'image/jpeg', 'audio': 'audio/ogg',
+                    'video': 'video/mp4', 'document': 'application/octet-stream',
+                }.get(media_type, 'application/octet-stream')
+            attachment_url = _save_media_file(media_base64, detected_mime)
+
+            sm = ScheduledMessage.objects.create(
+                conversation=conversation, created_by=request.user,
+                message_type=media_type, content=caption,
+                attachment_url=attachment_url, file_name=file_name,
+                scheduled_for=scheduled_for,
+            )
+        else:
+            message_text = data.get('message', '').strip()
+            if not message_text:
+                return JsonResponse({'success': False, 'error': 'Mensagem vazia'}, status=400)
+            sm = ScheduledMessage.objects.create(
+                conversation=conversation, created_by=request.user,
+                message_type='text', content=message_text,
+                scheduled_for=scheduled_for,
+            )
+
+        return JsonResponse({'success': True, 'id': str(sm.id), 'scheduled_for': sm.scheduled_for.isoformat()})
+
+    except Exception as e:
+        logger.error(f"Erro ao agendar mensagem: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @staff_required
