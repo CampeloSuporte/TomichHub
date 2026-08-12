@@ -88,8 +88,10 @@ body {
     overflow: hidden;
     opacity: 0;
 }
-/* Garante que todos os filhos diretos do grid respeitam a altura */
-.app-layout > * { min-height: 0; overflow: hidden; }
+/* Garante que todos os filhos diretos do grid respeitam altura e largura
+   (sem min-width:0 o grid não encolhe abaixo do min-content dos filhos,
+   causando corte/overflow horizontal quando a janela fica estreita) */
+.app-layout > * { min-height: 0; min-width: 0; overflow: hidden; }
 
 /* ─── NAV SIDEBAR ───────────────────────────── */
 .nav-sidebar {
@@ -625,6 +627,16 @@ body {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
+/* Responsável pelo chamado, direto na lista. Verde quando é você — é assim
+   que se enxerga "assumido" sem precisar abrir a conversa. */
+.conv-assignee {
+    display: flex; align-items: center; gap: 4px; margin-top: 3px;
+    font-size: 10.5px; color: var(--wa-text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.conv-assignee i { font-size: 9px; flex-shrink: 0; }
+.conv-assignee.mine { color: var(--wa-green-light); font-weight: 600; }
+
 .conv-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 
 .conv-wa { color: var(--wa-green-light); font-size: 13px; }
@@ -644,7 +656,7 @@ body {
 .main-content {
     background: var(--dark-950);
     display: flex; flex-direction: column;
-    overflow: hidden; min-height: 0;
+    overflow: hidden; min-height: 0; min-width: 0;
     position: relative;
 }
 
@@ -884,20 +896,25 @@ body {
 .chat-main { display:grid; grid-template-rows:auto 1fr auto; min-height:0; overflow:hidden; background:var(--wa-bg); flex:1; }
 
 /* ── Header (estilo WhatsApp) ── */
-.chat-header { background:var(--wa-panel); border-bottom:1px solid var(--wa-border); padding:12px 18px; display:flex; align-items:center; gap:12px; flex-shrink:0; }
+.chat-header { background:var(--wa-panel); border-bottom:1px solid var(--wa-border); padding:12px 18px; display:flex; align-items:center; gap:12px; flex-shrink:0; flex-wrap:wrap; row-gap:8px; }
 .chat-header-avatar { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#00a884,#008069); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff; flex-shrink:0; }
-.chat-header-info { flex:1; min-width:0; }
+.chat-header-info { flex:1 1 200px; min-width:200px; }
 .chat-header-name { font-size:14px; font-weight:700; color:var(--wa-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
 .chat-header-sub { display:flex; align-items:center; gap:6px; margin-top:2px; flex-wrap:wrap; }
 .chat-header-jid { font-size:11px; color:var(--wa-text-muted); font-family:'Inter',sans-serif; }
 .chat-header-sep { color:var(--wa-text-muted); font-size:11px; }
 .chat-status-online { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--wa-green-light); }
+/* Responsável pelo chamado no cabeçalho — substitui o antigo "online",
+   que na prática só indicava que a conversa tinha dono. */
+.chat-header-assignee { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:var(--wa-text-muted); }
+.chat-header-assignee i { font-size:9px; }
+.chat-header-assignee.mine { color:var(--wa-green-light); font-weight:600; }
 .chat-status-dot { width:6px; height:6px; border-radius:50%; background:var(--wa-green-light); display:inline-block; }
-.chat-header-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+.chat-header-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; flex-wrap:wrap; }
 
 /* ── Mensagens (papel de parede escuro do WhatsApp) ── */
 .chat-messages {
-    overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:4px; min-height:0;
+    overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:4px; min-height:0; min-width:0;
     background-color: var(--wa-bg);
     background-image:
         radial-gradient(circle at 20% 15%, rgba(255,255,255,0.025) 1px, transparent 1px),
@@ -907,24 +924,34 @@ body {
 .day-divider { display:flex; align-items:center; gap:10px; margin:12px 0 8px; }
 .day-divider::before,.day-divider::after { content:''; flex:1; height:1px; background:var(--wa-border); }
 .day-divider span { font-size:10px; color:var(--wa-text-muted); white-space:nowrap; padding:4px 12px; background:var(--wa-panel); border:none; border-radius:8px; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 1px 2px rgba(0,0,0,0.3); }
-.msg { display:flex; animation:msgIn 0.2s ease; margin-bottom:4px; }
+.msg { display:flex; animation:msgIn 0.18s cubic-bezier(0.23,1,0.32,1); min-width:0; margin-top:10px; }
+/* Mensagens seguidas do mesmo remetente andam juntas, como no WhatsApp:
+   só a primeira do grupo mostra nome e rabicho. */
+.msg.grouped { margin-top:2px; }
 .msg.customer { justify-content:flex-start; }
 .msg.agent { justify-content:flex-end; }
 .msg.internal { justify-content:center; }
 .msg.system { justify-content:center; }
 @keyframes msgIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
-.msg-block { max-width:68%; display:flex; flex-direction:column; gap:3px; }
+.msg-block { max-width:min(68%, 560px); display:flex; flex-direction:column; gap:2px; min-width:0; }
 .msg.customer .msg-block { align-items:flex-start; }
 .msg.agent .msg-block { align-items:flex-end; }
 .msg.internal .msg-block { align-items:center; max-width:85%; }
 .internal-block { align-items:flex-start!important; }
-.msg-sender-name { font-size:11px; font-weight:700; color:var(--wa-green-light); padding:0 2px; }
+.msg-sender-name { font-size:11px; font-weight:700; color:var(--wa-green-light); padding:0 2px 1px; }
 .msg-sender-name.agent-name { color:var(--wa-green-light); text-align:right; }
 
 /* Bolha estilo WhatsApp: cantos arredondados com "rabicho" apontando
    pro remetente — cinza-escuro pra cliente (esquerda), verde-escuro
-   pra atendente (direita), igual ao WhatsApp Web no modo escuro. */
-.msg-bubble { position:relative; background:var(--wa-bubble-in); border:none; border-radius:7.5px 7.5px 7.5px 2px; padding:6px 9px 8px; font-size:13.5px; line-height:1.4; word-break:break-word; white-space:pre-wrap; color:var(--wa-text); box-shadow:0 1px 1px rgba(0,0,0,0.3); }
+   pra atendente (direita), igual ao WhatsApp Web no modo escuro.
+   IMPORTANTE: a bolha NÃO usa white-space:pre-wrap. Quando usava, a
+   própria indentação do template (quebras de linha e ~24 espaços entre
+   as tags) era renderizada dentro do balão, empurrando o texto pra baixo
+   e criando linhas em branco. Quem preserva as quebras do texto é o
+   .msg-text, que é emitido colado nas tags. */
+.msg-bubble { position:relative; background:var(--wa-bubble-in); border:none; border-radius:7.5px 7.5px 7.5px 2px; padding:6px 9px 7px; font-size:13.5px; line-height:1.45; color:var(--wa-text); box-shadow:0 1px 1px rgba(0,0,0,0.3); max-width:100%; min-width:0; }
+.msg-text { white-space:pre-wrap; overflow-wrap:anywhere; }
+.msg-text a { color:#53bdeb; text-decoration:underline; }
 .msg-bubble::before {
     content:''; position:absolute; bottom:0; left:-7px; width:12px; height:13px;
     background:var(--wa-bubble-in);
@@ -939,13 +966,25 @@ body {
     -webkit-mask: radial-gradient(circle at top left, transparent 10px, #000 10.5px);
             mask: radial-gradient(circle at top left, transparent 10px, #000 10.5px);
 }
+/* Dentro de um grupo o balão perde o rabicho e o nome repetido, e ganha o
+   canto arredondado de volta — é o que dá a sensação de "bloco" do WhatsApp. */
+.msg.grouped .msg-bubble { border-radius:7.5px; }
+.msg.grouped .msg-bubble::before, .msg.grouped .msg-bubble::after { display:none; }
+.msg.grouped .msg-sender-name { display:none; }
 .msg.internal .msg-bubble { background:rgba(245,196,0,0.06); border:1px dashed rgba(245,196,0,0.3); border-radius:8px; color:#fbbf24; font-style:italic; font-size:12px; box-shadow:none; }
 .msg.internal .msg-bubble::before { display:none; }
-.msg-time { font-size:10px; color:var(--wa-text-muted); padding:0 4px; }
+
+/* Hora + tick dentro do balão, no canto inferior direito (WhatsApp).
+   float:right faz a última linha do texto fluir em volta da hora; se não
+   couber, a hora desce sozinha — sem precisar medir nada em JS. */
+.msg-meta { float:right; display:inline-flex; align-items:center; gap:3px; margin:6px -2px 0 10px; font-size:10.5px; line-height:1; color:var(--wa-text-muted); user-select:none; }
+.msg-time { font-size:10.5px; color:inherit; }
 /* Tick duplo só como toque visual de "mensagem enviada" — não temos
    confirmação real de entrega/leitura do WhatsApp, por isso cinza (não
    azul, que no WhatsApp real significa "lida pelo cliente"). */
-.msg.agent .msg-time::after { content:' \2713\2713'; color:var(--wa-text-muted); font-size:11px; letter-spacing:-2px; }
+.msg-tick { font-size:11px; opacity:0.75; }
+.msg.agent .msg-meta { color:rgba(233,237,239,0.6); }
+.msg.internal .msg-meta { color:rgba(251,191,36,0.6); }
 .msg-system-text { font-size:11px; color:var(--wa-text-muted); background:var(--wa-panel); border-radius:20px; padding:3px 12px; }
 
 /* ── Área de input (estilo WhatsApp) ── */
@@ -969,8 +1008,11 @@ body {
 .chat-textarea { flex:1; background:var(--wa-input-bg); border:1px solid transparent; border-radius:20px; padding:9px 16px; color:var(--wa-text); font-size:13.5px; resize:none; max-height:140px; min-height:38px; font-family:'Inter',sans-serif; line-height:1.5; transition:border-color 0.15s; outline:none; }
 .chat-textarea:focus { border-color:rgba(0,168,132,0.4); }
 .chat-textarea::placeholder { color:var(--wa-text-muted); }
-.chat-send { width:38px; height:38px; flex-shrink:0; background:var(--wa-green); border:none; border-radius:50%; color:#04241d; cursor:pointer; font-size:15px; transition:all 0.15s; display:flex; align-items:center; justify-content:center; }
-.chat-send:hover { background:var(--wa-green-light); transform:scale(1.05); }
+.chat-send { width:38px; height:38px; flex-shrink:0; background:var(--wa-green); border:none; border-radius:50%; color:#04241d; cursor:pointer; font-size:15px; transition:background 0.15s ease, transform 0.14s cubic-bezier(0.23,1,0.32,1); display:flex; align-items:center; justify-content:center; }
+.chat-send:hover { background:var(--wa-green-light); }
+/* Resposta ao toque: o botão encolhe ao ser pressionado. */
+.chat-send:active { transform:scale(0.94); }
+.chat-icon-btn:active { transform:scale(0.92); }
 
 /* Status bar */
 .chat-status-bar { display:flex; justify-content:space-between; align-items:center; padding:4px 14px 8px; font-size:10px; color:var(--wa-text-muted); }
@@ -1073,11 +1115,6 @@ body {
         background: rgba(0,0,0,.55);
     }
 
-    /* Botões de ação do cabeçalho do chat (Assumir/Transferir/Mesclar/
-       Hosts/Tarefas): quebra em 2 linhas em vez de cortar da tela. */
-    .chat-header { flex-wrap: wrap; row-gap: 8px; }
-    .chat-header-actions { flex-wrap: wrap; }
-
     /* Painéis de tarefas/terminal: tela cheia em vez de espremer o chat
        (eram 340px/480px fixos, dominavam uma tela de celular). */
     .task-panel.open, .chat-terminal-panel.open, .schedule-panel.open {
@@ -1088,6 +1125,12 @@ body {
     /* Dropdowns com largura fixa (hosts, tags): não deixa vazar da tela. */
     .hosts-panel { width: min(360px, 90vw); }
     .tag-picker { max-width: 88vw; }
+
+    /* Balões ocupam mais da largura, como no WhatsApp no celular — 68%
+       numa tela de 360px deixa a bolha estreita e quebra palavra à toa. */
+    .msg-block { max-width: 85%; }
+    .chat-messages { padding: 12px 10px; }
+    .msg-bubble { font-size: 14px; }
 }
 
 </style>

@@ -22,6 +22,15 @@
         <div class="conv-preview">
             {% if conv.is_task_conv %}<span style="color:#a78bfa;font-size:10px;margin-right:4px"><i class="fas fa-tasks"></i> T-{{ conv.conversation_id }}</span>{% endif %}{{ conv.cliente.nome_empresa|default:"Sem cliente" }}
         </div>
+        {# Responsável direto na lista — ver [_conv_item.html] #}
+        <div class="conv-assignee{% if conv.assigned_to_id == request.user.id %} mine{% endif %}">
+            {% if conv.assigned_to %}
+            <i class="fas fa-user-check"></i>
+            {% if conv.assigned_to_id == request.user.id %}Você{% else %}{{ conv.assigned_to.first_name|default:conv.assigned_to.username }}{% endif %}
+            {% else %}
+            <i class="fas fa-inbox"></i> Sem responsável
+            {% endif %}
+        </div>
         {% with tags=conv.tags.all %}{% if tags %}
         <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
             {% for tag in tags %}

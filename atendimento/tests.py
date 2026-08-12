@@ -505,3 +505,190 @@ class AgendadorFluxoCompletoTest(TestCase):
                 caminho = os.path.join(settings.MEDIA_ROOT, url.replace(settings.MEDIA_URL, '', 1))
                 if os.path.exists(caminho):
                     os.remove(caminho)
+
+
+class AutoAtribuicaoAoResponderTest(TestCase):
+    """Quem responde, assume — em qualquer caminho de envio.
+
+    A regra vivia só na view de texto (api_send_message), então responder
+    por mídia ou por mensagem agendada deixava o chamado sem responsável e
+    ele nunca aparecia na aba "Assumidos" de quem respondeu.
+    """
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.agent = _criar_agente_staff('ana')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_send_message_atribui_conversa_sem_dono(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, 'remote-1')
+
+        ok, _ = ConversationService.send_message(self.conversation, 'olá', self.agent)
+
+        self.assertTrue(ok)
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.assigned_to, self.agent)
+        self.assertTrue(
+            self.conversation.activity.filter(action='assigned', actor=self.agent).exists()
+        )
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_send_message_nao_rouba_conversa_de_outro_atendente(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, 'remote-1')
+        dono = _criar_agente_staff('bruno')
+        self.conversation.assigned_to = dono
+        self.conversation.save(update_fields=['assigned_to'])
+
+        ConversationService.send_message(self.conversation, 'olá', self.agent)
+
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.assigned_to, dono)
+        self.assertFalse(self.conversation.activity.filter(action='assigned').exists())
+
+    @mock.patch('atendimento.services._save_media_file', return_value='/media/atendimento/media/fake.jpg')
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_send_media_tambem_atribui(self, mock_client_cls, _mock_save):
+        mock_client_cls.return_value.send_media.return_value = True
+
+        ok, _ = ConversationService.send_media(
+            self.conversation, base64.b64encode(b'x').decode(), 'image', 'foto.jpg', '', self.agent,
+        )
+
+        self.assertTrue(ok)
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.assigned_to, self.agent)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_mensagem_agendada_atribui_a_quem_agendou(self, mock_client_cls):
+        """Caso real que falhou em produção: a conversa TOMICH TEC - NOC
+        continuou com assigned_to=None depois de uma mensagem agendada."""
+        mock_client_cls.return_value.send_text.return_value = (True, 'remote-1')
+        ScheduledMessage.objects.create(
+            conversation=self.conversation, created_by=self.agent,
+            content='teste de agendamento',
+            scheduled_for=timezone.now() - timedelta(minutes=1),
+        )
+
+        enviar_mensagens_agendadas()
+
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.assigned_to, self.agent)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_api_send_message_devolve_newly_assigned(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, 'remote-1')
+        self.client.force_login(self.agent)
+
+        url = reverse('atendimento:api_send_message', args=[self.conversation.id])
+        resp = self.client.post(url, json.dumps({'message': 'olá'}), content_type='application/json')
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['newly_assigned'])
+
+        # segundo envio: já é dono, não é "recém-atribuído"
+        resp2 = self.client.post(url, json.dumps({'message': 'de novo'}), content_type='application/json')
+        self.assertFalse(resp2.json()['newly_assigned'])
+
+
+class ChatRenderTest(TestCase):
+    """Renderização dos balões na tela de conversa."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.agent = _criar_agente_staff('ana')
+        self.client.force_login(self.agent)
+
+    def _html(self):
+        url = reverse('atendimento:conversation_detail', args=[self.conversation.id])
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        return resp.content.decode()
+
+    def test_balao_nao_carrega_indentacao_do_template(self):
+        """O balão usa white-space:pre-wrap, então a indentação do template
+        virava linha em branco e recuo dentro da bolha. O conteúdo tem que
+        começar colado na tag."""
+        Message.objects.create(
+            conversation=self.conversation, sender_type='customer',
+            message_type='text', content='linha1\nlinha2',
+            external_id='ext-1', created_at=timezone.now(),
+        )
+
+        html = self._html()
+
+        self.assertIn('<div class="msg-bubble"><span class="msg-text">linha1\nlinha2</span>', html)
+        # e a quebra não pode ter virado <br> (senão sai dobrada com o pre-wrap)
+        self.assertNotIn('linha1<br>linha2', html)
+
+    def test_hora_e_tick_ficam_dentro_do_balao(self):
+        Message.objects.create(
+            conversation=self.conversation, sender_type='agent', sender=self.agent,
+            message_type='text', content='oi', external_id='ext-2', created_at=timezone.now(),
+        )
+
+        html = self._html()
+
+        self.assertIn('msg-meta', html)
+        self.assertIn('fa-check-double', html)
+        # a hora não pode mais estar solta como irmã do balão
+        self.assertNotIn('</div>\n                <div class="msg-time">', html)
+
+    def test_mensagens_seguidas_do_mesmo_remetente_sao_agrupadas(self):
+        agora = timezone.now()
+        for i in range(2):
+            Message.objects.create(
+                conversation=self.conversation, sender_type='customer',
+                sender_name='Joao', message_type='text', content=f'msg{i}',
+                external_id=f'ext-g{i}', created_at=agora + timedelta(seconds=i),
+            )
+
+        html = self._html()
+
+        # a segunda mensagem entra como "grouped" (sem repetir nome/rabicho);
+        # a primeira, não. Conta só a classe do elemento, já que a palavra
+        # "grouped" também aparece nas regras de CSS da página.
+        self.assertEqual(html.count('class="msg customer grouped"'), 1)
+        self.assertEqual(html.count('class="msg customer"'), 1)
+
+    def test_lista_lateral_mostra_responsavel(self):
+        """Sintoma relatado: respondi e a conversa não apareceu como assumida."""
+        self.conversation.assigned_to = self.agent
+        self.conversation.save(update_fields=['assigned_to'])
+
+        html = self._html()
+
+        self.assertIn('conv-assignee', html)
+        self.assertIn('Assumido por você', html)
+
+    def test_lista_lateral_usa_o_partial_compartilhado(self):
+        """conversation_detail tinha uma cópia própria da lista, sem
+        data-conv-id — o indicador de não lidas não achava o item."""
+        html = self._html()
+        self.assertIn('data-conv-id="%s"' % self.conversation.id, html)
+
+
+    def test_pagina_nao_vaza_comentario_de_template(self):
+        """{# ... #} do Django é comentário de UMA linha só; em várias linhas
+        o texto vaza pra tela. Comentários multilinha usam {% comment %}."""
+        Message.objects.create(
+            conversation=self.conversation, sender_type='customer',
+            message_type='text', content='oi', external_id='ext-c',
+        )
+        html = self._html()
+        self.assertNotIn('{#', html)
+        self.assertNotIn('de propósito', html)
+
+
+    def test_inbox_renderiza_com_responsavel(self):
+        """inbox.html usa _inbox_conv_item.html, um partial diferente do da
+        barra lateral — precisa renderizar e mostrar o responsável também."""
+        self.conversation.status = 'open'
+        self.conversation.assigned_to = self.agent
+        self.conversation.save(update_fields=['status', 'assigned_to'])
+
+        resp = self.client.get(reverse('atendimento:inbox'))
+
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+        self.assertIn('conv-assignee', html)
+        self.assertNotIn('{#', html)

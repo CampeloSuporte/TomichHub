@@ -405,21 +405,11 @@ def api_send_message(request, conversation_id):
         if not message_text:
             return JsonResponse({'success': False, 'error': 'Mensagem vazia'}, status=400)
 
-        # Auto-atribuição: se a conversa não tem atendente, atribui ao agente que respondeu
-        newly_assigned = False
-        if not conversation.assigned_to:
-            old_assigned_to_id = conversation.assigned_to_id
-            conversation.assigned_to = request.user
-            conversation.save(update_fields=['assigned_to'])
-            ConversationActivity.objects.create(
-                conversation=conversation,
-                actor=request.user,
-                action='assigned',
-                new_value=request.user.get_full_name() or request.user.username,
-            )
-            from .services import notify_reassignment
-            notify_reassignment(conversation, old_assigned_to_id)
-            newly_assigned = True
+        # A auto-atribuição ("quem responde, assume") vive em
+        # ConversationService.send_message, para valer também em mídia e
+        # mensagem agendada. Aqui só detectamos se ela acabou de acontecer,
+        # para o front trocar o cabeçalho sem recarregar.
+        was_unassigned = conversation.assigned_to_id is None
 
         # Envia mensagem
         success, result = ConversationService.send_message(
@@ -432,7 +422,10 @@ def api_send_message(request, conversation_id):
             return JsonResponse({
                 'success': True,
                 'message_id': result,
-                'newly_assigned': newly_assigned,
+                'newly_assigned': was_unassigned and conversation.assigned_to_id is not None,
+                'assigned_to_name': (
+                    conversation.assigned_to.get_full_name() or conversation.assigned_to.username
+                ) if conversation.assigned_to else None,
             })
         else:
             return JsonResponse({'success': False, 'error': result}, status=400)
@@ -461,12 +454,19 @@ def api_send_media(request, conversation_id):
         if not media_base64:
             return JsonResponse({'success': False, 'error': 'Base64 vazio'}, status=400)
 
+        was_unassigned = conversation.assigned_to_id is None
+
         success, result = ConversationService.send_media(
             conversation, media_base64, media_type, file_name, caption, request.user
         )
         if success:
             msg = Message.objects.get(id=result)
-            return JsonResponse({'success': True, 'message_id': result, 'content': msg.content})
+            return JsonResponse({
+                'success': True,
+                'message_id': result,
+                'content': msg.content,
+                'newly_assigned': was_unassigned and conversation.assigned_to_id is not None,
+            })
         else:
             return JsonResponse({'success': False, 'error': result}, status=400)
 

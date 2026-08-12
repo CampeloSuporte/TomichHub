@@ -11,10 +11,12 @@
             <div class="chat-header-name">{{ conversation.group.name|default:conversation.conversation_id }}</div>
             <div class="chat-header-sub">
                 <span class="chat-header-jid">{{ conversation.group.jid|default:conversation.conversation_id }}</span>
-                {% if conversation.assigned_to %}
-                <span class="chat-header-sep">·</span>
-                <span class="chat-status-online"><span class="chat-status-dot"></span> online</span>
-                {% endif %}
+                <span class="chat-header-sep" id="assigneeSep" style="display:{% if conversation.assigned_to %}inline{% else %}none{% endif %};">·</span>
+                <span class="chat-header-assignee{% if conversation.assigned_to_id == request.user.id %} mine{% endif %}" id="chatAssignee"
+                      style="display:{% if conversation.assigned_to %}inline-flex{% else %}none{% endif %};">
+                    <i class="fas fa-user-check"></i>
+                    <span id="chatAssigneeName">{% if conversation.assigned_to_id == request.user.id %}Assumido por você{% elif conversation.assigned_to %}Assumido por {{ conversation.assigned_to.first_name|default:conversation.assigned_to.username }}{% endif %}</span>
+                </span>
                 {% if conversation.cliente %}
                 <span class="chat-header-sep">·</span>
                 <a href="/clientes/listar/?id={{ conversation.cliente.id }}" style="color:var(--accent-400);text-decoration:none;font-size:11px;">
@@ -56,20 +58,20 @@
                     </button>
                 </div>
             </div>
-            {% if not conversation.assigned_to %}
-            <form method="post" style="display:inline;">
+            {% comment %}Os dois botões existem sempre no DOM e só alternam a
+            visibilidade: ao responder, a conversa é auto-atribuída e o JS
+            precisa trocar "Assumir" por "Transferir" na hora, sem recarregar.
+            {% endcomment %}
+            <form method="post" id="assumirForm" style="display:{% if conversation.assigned_to %}none{% else %}inline{% endif %};">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="assign">
                 <button type="submit" class="btn-cyber" style="font-size:10px;padding:5px 10px;">
                     <i class="fas fa-user-check"></i> Assumir
                 </button>
             </form>
-            {% endif %}
-            {% if conversation.assigned_to %}
-            <button class="btn-cyber secondary" onclick="transferModal.open()" style="font-size:10px;padding:5px 10px;" id="transferBtn">
+            <button class="btn-cyber secondary" onclick="transferModal.open()" style="font-size:10px;padding:5px 10px;display:{% if conversation.assigned_to %}inline-flex{% else %}none{% endif %};" id="transferBtn">
                 <i class="fas fa-exchange-alt"></i> Transferir
             </button>
-            {% endif %}
             <button class="btn-cyber secondary" onclick="mergeModal.open()" style="font-size:10px;padding:5px 10px;" id="mergeBtn" title="Mesclar este chamado duplicado com outro">
                 <i class="fas fa-object-group"></i> Mesclar
             </button>
@@ -147,7 +149,10 @@
     <!-- ── Mensagens ── -->
     <div class="chat-messages" id="chatMessages">
         {% for message in messages %}
-        <div class="msg {% if message.sender_type == 'agent' %}agent{% elif message.sender_type == 'internal' %}internal{% elif message.sender_type == 'system' %}system{% else %}customer{% endif %}" data-msg-id="{{ message.id }}">
+        {% ifchanged message.created_at|date:"Y-m-d" %}
+        <div class="day-divider"><span>{{ message.created_at|date:"d/m/Y" }}</span></div>
+        {% endifchanged %}
+        <div class="msg {% if message.sender_type == 'agent' %}agent{% elif message.sender_type == 'internal' %}internal{% elif message.sender_type == 'system' %}system{% else %}customer{% endif %}{% ifchanged message.sender_type message.sender_name message.created_at|date:"Y-m-d" %}{% else %} grouped{% endifchanged %}" data-msg-id="{{ message.id }}" data-sender-key="{% if message.sender_type == 'agent' %}agent{% elif message.sender_type == 'internal' %}internal{% elif message.sender_type == 'system' %}system{% else %}customer{% endif %}|{{ message.sender_name|default:'' }}">
             {% if message.sender_type == 'system' %}
             <div class="msg-system-text">{{ message.content }} · {{ message.created_at|date:"H:i" }}</div>
             {% else %}
@@ -160,28 +165,12 @@
                 <div class="msg-sender-name agent-name">{% if message.sender %}{{ message.sender.first_name|default:message.sender.username }}{% else %}{{ message.sender_name|default:"Agente" }}{% endif %}</div>
                 {% endif %}
 
-                <div class="msg-bubble">
-                    {% if message.message_type == 'image' and message.attachment_url %}
-                        <img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">
-                        {% if message.content %}<div class="msg-media-caption">{{ message.content|linebreaksbr }}</div>{% endif %}
-                    {% elif message.message_type == 'audio' and message.attachment_url %}
-                        <audio controls class="msg-audio-player" preload="none">
-                            <source src="{{ message.attachment_url }}">
-                        </audio>
-                    {% elif message.message_type == 'video' and message.attachment_url %}
-                        <video controls class="msg-video-player" preload="none">
-                            <source src="{{ message.attachment_url }}">
-                        </video>
-                        {% if message.content %}<div class="msg-media-caption">{{ message.content|linebreaksbr }}</div>{% endif %}
-                    {% elif message.message_type == 'document' and message.attachment_url %}
-                        <a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link">
-                            <i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}
-                        </a>
-                    {% else %}
-                        {{ message.content|linebreaksbr }}
-                    {% endif %}
-                </div>
-                <div class="msg-time">{{ message.created_at|date:"H:i" }}</div>
+                {% comment %}Atenção: o conteúdo é emitido colado nas tags de
+                propósito. .msg-text preserva quebras de linha
+                (white-space:pre-wrap), então qualquer indentação do template
+                aqui dentro vira linha em branco e recuo dentro do balão.
+                {% endcomment %}
+                <div class="msg-bubble">{% if message.message_type == 'image' and message.attachment_url %}<img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'audio' and message.attachment_url %}<audio controls class="msg-audio-player" preload="none"><source src="{{ message.attachment_url }}"></audio>{% elif message.message_type == 'video' and message.attachment_url %}<video controls class="msg-video-player" preload="none"><source src="{{ message.attachment_url }}"></video>{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'document' and message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}</a>{% else %}<span class="msg-text">{{ message.content|urlize }}</span>{% endif %}<span class="msg-meta"><span class="msg-time">{{ message.created_at|date:"H:i" }}</span>{% if message.sender_type == 'agent' %}<i class="fas fa-check-double msg-tick"></i>{% endif %}</span></div>
             </div>
             {% endif %}
         </div>
@@ -335,7 +324,7 @@
             <div style="flex:1;min-width:0;">
                 <div class="media-preview-name" id="mediaName">arquivo</div>
                 <div class="media-preview-type" id="mediaType">documento</div>
-                <input class="media-caption-input" id="mediaCaption" placeholder="Legenda (opcional)">
+                <input class="media-caption-input" id="mediaCaption" placeholder="Legenda (opcional)" autocomplete="off" name="legenda-midia-nao-preencher">
             </div>
             <button class="chat-icon-btn" onclick="chatApp.clearMedia()" title="Cancelar"><i class="fas fa-times"></i></button>
             <button class="chat-send" id="mediaSendBtn" onclick="chatApp.sendMedia()" title="Enviar mídia" style="margin-left:4px;">
@@ -769,8 +758,8 @@
 }
 #lightbox-close:hover { opacity: 1; }
 .msg-media-caption {
-    font-size: 12px;
-    color: var(--muted);
+    font-size: 13.5px;
+    color: inherit;   /* legenda é texto normal da bolha, como no WhatsApp */
     margin-top: 5px;
 }
 .msg-audio-player {
@@ -1395,6 +1384,7 @@
                 if (!_renderedIds.has(String(d.message_id))) {
                     renderMessage({id:d.message_id,content:d.content,sender_type:'agent',sender_name:'',created_at:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})});
                 }
+                if (d.newly_assigned) _onNewlyAssigned();
             } else { alert('Erro: '+(d.error||'Falha ao enviar')); }
         }).catch(function(){alert('Erro de conexão');})
         .finally(function(){
@@ -1407,30 +1397,51 @@
     function scrollBottom() { chatMsgs.scrollTop = chatMsgs.scrollHeight; }
     scrollBottom();
 
+    /* Só escapa. As quebras de linha ficam por conta do
+       .msg-text (white-space:pre-wrap), igual ao lado servidor — assim uma
+       mensagem recém-chegada e a mesma mensagem depois do F5 renderizam
+       exatamente igual. Aspas também são escapadas porque este texto às
+       vezes cai dentro de atributo (title=). */
     function escapeHTML(s) {
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+                        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    /* Equivalente ao filtro |urlize do template: links clicáveis nas
+       mensagens que chegam ao vivo, do mesmo jeito que nas já renderizadas.
+       Recebe texto JÁ escapado. */
+    function linkify(escaped) {
+        return escaped.replace(/\bhttps?:\/\/[^\s<]+/g, function(url) {
+            return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>';
+        });
     }
 
     function renderMediaBubble(msg) {
         var type = msg.message_type || 'text';
-        var url  = msg.attachment_url || '';
+        var url  = encodeURI(msg.attachment_url || '');
         var cap  = escapeHTML(msg.content || '');
 
         if (type === 'image' && url) {
             return '<img src="' + url + '" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">' +
-                   (cap ? '<div class="msg-media-caption">' + cap + '</div>' : '');
+                   (cap ? '<div class="msg-media-caption"><span class="msg-text">' + cap + '</span></div>' : '');
         }
         if (type === 'audio' && url) {
             return '<audio controls class="msg-audio-player" preload="none"><source src="' + url + '"></audio>';
         }
         if (type === 'video' && url) {
             return '<video controls class="msg-video-player" preload="none"><source src="' + url + '"></video>' +
-                   (cap ? '<div class="msg-media-caption">' + cap + '</div>' : '');
+                   (cap ? '<div class="msg-media-caption"><span class="msg-text">' + cap + '</span></div>' : '');
         }
         if (type === 'document' && url) {
             return '<a href="' + url + '" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> ' + (cap || 'Documento') + '</a>';
         }
-        return cap || escapeHTML(msg.content || '');
+        return '<span class="msg-text">' + linkify(cap) + '</span>';
+    }
+
+    /* Hora + tick dentro do balão, mesmo HTML que o template server-side. */
+    function renderMeta(cls, timeText) {
+        return '<span class="msg-meta"><span class="msg-time">' + escapeHTML(timeText || '') + '</span>' +
+               (cls === 'agent' ? '<i class="fas fa-check-double msg-tick"></i>' : '') + '</span>';
     }
 
     function renderMessage(msg) {
@@ -1444,15 +1455,23 @@
         var el = document.createElement('div');
         el.className = 'msg ' + cls;
         el.dataset.msgId = msg.id;
+        /* Chave de agrupamento: mensagens seguidas do mesmo remetente viram
+           um bloco só (sem repetir nome nem rabicho), como no WhatsApp. */
+        var senderKey = cls + '|' + (msg.sender_name || '');
+        el.dataset.senderKey = senderKey;
+        var prev = chatMsgs.lastElementChild;
+        if (cls !== 'system' && prev && prev.classList.contains('msg') &&
+            prev.dataset.senderKey === senderKey) {
+            el.classList.add('grouped');
+        }
 
         if (cls === 'system') {
-            el.innerHTML = '<div class="msg-system-text">' + escapeHTML(msg.content) + ' · ' + msg.created_at + '</div>';
+            el.innerHTML = '<div class="msg-system-text">' + escapeHTML(msg.content) + ' · ' + escapeHTML(msg.created_at) + '</div>';
         } else {
             el.innerHTML =
                 '<div class="msg-block' + (cls === 'internal' ? ' internal-block' : '') + '">' +
                 '<div class="msg-sender-name' + (cls === 'agent' ? ' agent-name' : '') + '">' + nameText + '</div>' +
-                '<div class="msg-bubble">' + renderMediaBubble(msg) + '</div>' +
-                '<div class="msg-time">' + msg.created_at + '</div>' +
+                '<div class="msg-bubble">' + renderMediaBubble(msg) + renderMeta(cls, msg.created_at) + '</div>' +
                 '</div>';
         }
         _renderedIds.add(String(msg.id));
@@ -1499,10 +1518,23 @@
         });
     }
 
+    /* Chamado quando o backend responde newly_assigned: a conversa acabou de
+       ser auto-atribuída a quem respondeu. Antes daqui só sumia o botão
+       "Assumir" — o cabeçalho continuava sem responsável e sem "Transferir",
+       então parecia que a conversa não tinha sido assumida. */
     function _onNewlyAssigned() {
-        /* Esconde o botão "Assumir" na UI */
-        var assumirForm = document.querySelector('form [name="action"][value="assign"]');
-        if (assumirForm) assumirForm.closest('form').style.display = 'none';
+        var assumirForm = document.getElementById('assumirForm');
+        if (assumirForm) assumirForm.style.display = 'none';
+
+        var transferBtn = document.getElementById('transferBtn');
+        if (transferBtn) transferBtn.style.display = 'inline-flex';
+
+        var badge = document.getElementById('chatAssignee');
+        var sep   = document.getElementById('assigneeSep');
+        var name  = document.getElementById('chatAssigneeName');
+        if (name)  name.textContent = 'Assumido por você';
+        if (badge) { badge.style.display = 'inline-flex'; badge.classList.add('mine'); }
+        if (sep)   sep.style.display = 'inline';
 
         /* Recarrega o conv-panel — sidebar_active_tab passa a 'mine'
            (pois agora está atribuído ao usuário) */
@@ -2127,7 +2159,7 @@
     /* ── Namespace público ── */
     window.chatApp = {
         setMode:setMode, toggleAttachMenu:toggleAttachMenu, closeAttachMenu:closeAttachMenu,
-        handleFileSelect:handleFileSelect, clearMedia:clearMedia,
+        handleFileSelect:handleFileSelect, clearMedia:clearMedia, sendMedia:sendMedia,
         startRecording:startRecording, stopRecording:stopRecording, cancelRecording:cancelRecording,
         toggleStatusMenu:toggleStatusMenu, updateStatus:updateStatus,
         closeResolucao:closeResolucao, confirmarResolucao:confirmarResolucao,

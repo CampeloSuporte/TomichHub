@@ -271,6 +271,36 @@ def notify_reassignment(conversation: Conversation, old_assigned_to_id):
     })
 
 
+def auto_assign_on_reply(conversation: Conversation, agent) -> bool:
+    """Atribui a conversa a quem respondeu, quando ela ainda não tem dono.
+
+    Fica aqui (e não na view) porque TODO envio de agente passa por
+    ConversationService.send_message/send_media: chat, mídia, mensagem
+    agendada e mensagem de encerramento. Quando essa regra morava só na
+    view de texto, responder por qualquer um dos outros caminhos deixava
+    o chamado sem responsável e ele nunca aparecia em "Assumidos".
+
+    Devolve True se acabou de atribuir (o front usa para trocar o
+    cabeçalho de "Assumir" para "Transferir" sem recarregar a página).
+    """
+    if agent is None or not getattr(agent, "is_authenticated", True):
+        return False
+    if conversation.assigned_to_id:
+        return False
+
+    old_assigned_to_id = conversation.assigned_to_id
+    conversation.assigned_to = agent
+    conversation.save(update_fields=["assigned_to"])
+    ConversationActivity.objects.create(
+        conversation=conversation,
+        actor=agent,
+        action="assigned",
+        new_value=agent.get_full_name() or agent.username,
+    )
+    notify_reassignment(conversation, old_assigned_to_id)
+    return True
+
+
 def _numero_nao_existe(response) -> bool:
     """Detecta o 400 específico da Evolution API que indica número inexistente
     no WhatsApp: {"response": {"message": [{"exists": false, ...}]}}."""
@@ -1106,6 +1136,9 @@ class ConversationService:
             display_name = ConversationService.get_agent_display_name(agent)
             whatsapp_text = f"*{display_name}*\n\n{text}"
 
+            # 0. Quem responde, assume — vale para qualquer caminho de envio
+            auto_assign_on_reply(conversation, agent)
+
             # 1. Salva no DB imediatamente com ID temporário
             now = timezone.now()
             temp_id = f"sending_{int(now.timestamp() * 1000)}_{conversation.id}"
@@ -1210,6 +1243,7 @@ class ConversationService:
                 content = type_labels.get(media_type, media_type)
 
             display_name = ConversationService.get_agent_display_name(agent)
+            auto_assign_on_reply(conversation, agent)
             now = timezone.now()
             msg = Message.objects.create(
                 conversation=conversation, sender_type='agent', sender=agent,

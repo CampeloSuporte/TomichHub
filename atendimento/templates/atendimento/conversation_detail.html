@@ -1,72 +1,14 @@
 {% extends base_tpl %}
 
 
-{% block conv_panel %}
-<div class="conv-panel-header">
-    <div class="conv-panel-top">
-        <h3>Conversas</h3>
-        <div class="conv-panel-icons">
-            <i class="fas fa-sync-alt" title="Atualizar" onclick="location.reload()"></i>
-            <button class="btn-new-conv" onclick="openStartConvModal()" title="Iniciar Conversa">
-                <i class="fas fa-plus"></i> Iniciar
-            </button>
-        </div>
-    </div>
-    <div class="conv-search">
-        <i class="fas fa-search"></i>
-        <input type="text" id="convSearch" placeholder="Buscar atendimento..." autocomplete="off">
-    </div>
-    <div class="conv-tabs">
-        <a href="{% url 'atendimento:inbox' %}?tab=mine" class="conv-tab {% if sidebar_active_tab == 'mine' %}active{% endif %}">
-            Assumidos {% if mine_count %}<span class="conv-tab-badge">{{ mine_count }}</span>{% endif %}
-        </a>
-        <a href="{% url 'atendimento:inbox' %}?tab=open" class="conv-tab {% if sidebar_active_tab == 'open' %}active{% endif %}">
-            Abertos {% if open_count %}<span class="conv-tab-badge">{{ open_count }}</span>{% endif %}
-        </a>
-        <a href="{% url 'atendimento:inbox' %}?tab=ongoing" class="conv-tab {% if sidebar_active_tab == 'ongoing' %}active{% endif %}">Em Andamento</a>
-    </div>
-</div>
-<div class="conv-select-all">
-    <input type="checkbox" id="selectAll"> <label for="selectAll">Selecionar todos</label>
-</div>
-<div class="conv-list" id="convList">
-    {% for conv in sidebar_conversations %}
-    <a href="{% url 'atendimento:conversation_detail' conv.id %}"
-       class="conv-item {% if conv.id == conversation.id %}active{% elif conv.status == 'new' %}unread{% endif %}"
-       data-conv-name="{{ conv.group.name|lower }}" data-conv-client="{{ conv.cliente.nome_empresa|lower|default:'' }}">
-        <div class="conv-avatar"
-             style="background:{% if conv.status == 'new' %}linear-gradient(135deg,#f59e0b,#d97706){% elif conv.status == 'pending' %}linear-gradient(135deg,var(--brand-600),#9900cc){% elif conv.status == 'resolved' %}linear-gradient(135deg,#22c55e,#16a34a){% else %}linear-gradient(135deg,#3b82f6,#6366f1){% endif %};">
-            {{ conv.group.name|first|upper }}
-        </div>
-        <div class="conv-meta">
-            <div class="conv-meta-top">
-                <span class="conv-name">{{ conv.group.name|default:conv.conversation_id }}</span>
-                <span class="conv-time">{{ conv.last_message_at|date:"H:i" }}</span>
-            </div>
-            <div class="conv-preview">{{ conv.cliente.nome_empresa|default:"Sem cliente" }}</div>
-        </div>
-        <div class="conv-side">
-            <i class="fab fa-whatsapp conv-wa"></i>
-        </div>
-    </a>
-    {% empty %}
-    <div class="conv-empty">
-        <i class="fas fa-comments"></i>
-        <p>Nenhuma conversa</p>
-    </div>
-    {% endfor %}
-</div>
-<script>
-document.getElementById('convSearch').addEventListener('input', function() {
-    const q = this.value.toLowerCase();
-    document.querySelectorAll('#convList .conv-item').forEach(function(el) {
-        const txt = (el.dataset.convName||'') + (el.dataset.convClient||'');
-        el.style.display = txt.includes(q) ? '' : 'none';
-    });
-});
-</script>
-{% endblock %}
-
+{% comment %}
+O bloco conv_panel NÃO é sobrescrito aqui de propósito: esta página herda a
+lista de base.html, que renderiza _conv_item.html. A cópia que existia aqui
+tinha divergido do partial e não emitia data-conv-id, badge de não lidas, tags
+nem SLA — ou seja, justamente dentro de uma conversa a lista perdia os
+indicadores, e markConvRead/markConvUnread (que buscam por [data-conv-id]) não
+achavam nada pra atualizar.
+{% endcomment %}
 
 {% block main_content %}
 {% include 'atendimento/_chat_content.html' %}
