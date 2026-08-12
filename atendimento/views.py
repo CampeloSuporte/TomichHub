@@ -553,6 +553,19 @@ def api_schedule_message(request, conversation_id):
 
 @staff_required
 @require_http_methods(["POST"])
+def api_cancel_scheduled_message(request, scheduled_id):
+    """Cancela uma mensagem agendada ainda pendente."""
+    sm = get_object_or_404(ScheduledMessage, id=scheduled_id)
+    if sm.status != 'pending':
+        return JsonResponse({'success': False, 'error': 'Esta mensagem já foi enviada ou cancelada'}, status=400)
+    sm.status = 'cancelled'
+    sm.cancelled_by = request.user
+    sm.save(update_fields=['status', 'cancelled_by'])
+    return JsonResponse({'success': True})
+
+
+@staff_required
+@require_http_methods(["POST"])
 def api_update_conversation(request, conversation_id):
     """Atualiza informações da conversa"""
     try:

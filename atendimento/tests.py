@@ -363,3 +363,33 @@ class ApiScheduleMessageTest(TestCase):
         items = resp.json()['scheduled']
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]['content'], 'Pendente')
+
+
+class ApiCancelScheduledMessageTest(TestCase):
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.agent = _criar_agente_staff()
+        self.client.force_login(self.agent)
+
+    def test_cancela_mensagem_pendente(self):
+        sm = ScheduledMessage.objects.create(
+            conversation=self.conversation, created_by=self.agent, message_type='text',
+            content='Cancelar isso', scheduled_for=timezone.now() + timedelta(hours=1),
+        )
+        url = reverse('atendimento:api_cancel_scheduled_message', args=[sm.id])
+        resp = self.client.post(url)
+        self.assertEqual(resp.status_code, 200)
+        sm.refresh_from_db()
+        self.assertEqual(sm.status, 'cancelled')
+        self.assertEqual(sm.cancelled_by, self.agent)
+
+    def test_cancelar_ja_enviada_retorna_400(self):
+        sm = ScheduledMessage.objects.create(
+            conversation=self.conversation, created_by=self.agent, message_type='text',
+            content='Ja foi', scheduled_for=timezone.now() - timedelta(hours=1), status='sent',
+        )
+        url = reverse('atendimento:api_cancel_scheduled_message', args=[sm.id])
+        resp = self.client.post(url)
+        self.assertEqual(resp.status_code, 400)
+        sm.refresh_from_db()
+        self.assertEqual(sm.status, 'sent')
