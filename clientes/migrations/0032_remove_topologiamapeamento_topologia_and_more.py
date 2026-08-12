@@ -10,13 +10,19 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='topologiamapeamento',
-            name='topologia',
-        ),
+        # AlterUniqueTogether tem que vir ANTES dos RemoveField: o
+        # unique_together de 0031 é ('topologia', 'acesso') e o Django
+        # resolve os nomes das colunas pelo estado do modelo na hora de
+        # derrubar o índice. Removendo o campo primeiro, a criação do banco
+        # de teste quebrava com "TopologiaMapeamento has no field named
+        # 'topologia'" — nenhum teste do projeto conseguia rodar do zero.
         migrations.AlterUniqueTogether(
             name='topologiamapeamento',
             unique_together=None,
+        ),
+        migrations.RemoveField(
+            model_name='topologiamapeamento',
+            name='topologia',
         ),
         migrations.RemoveField(
             model_name='topologiamapeamento',
