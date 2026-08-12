@@ -512,9 +512,24 @@ def enviar_mensagens_agendadas():
         status='pending', scheduled_for__lte=timezone.now()
     )
     for sm in due:
+        # Releitura: o atendente pode ter cancelado entre a query e agora.
+        if not ScheduledMessage.objects.filter(id=sm.id, status='pending').exists():
+            continue
+
         conversation = sm.conversation
+        # `visitados` trava ciclo de mesclagem (A→B, B→A): o worker roda com
+        # --concurrency=1 junto do beat, então um loop infinito aqui pararia
+        # todo o processamento em background do CRM, não só o agendador.
+        visitados = {conversation.id}
         while conversation.merged_into_id:
+            if conversation.merged_into_id in visitados:
+                logger.error(
+                    f"Ciclo de mesclagem a partir da conversa {sm.conversation_id}; "
+                    f"enviando em {conversation.id}"
+                )
+                break
             conversation = conversation.merged_into
+            visitados.add(conversation.id)
 
         if conversation.status in ('resolved', 'closed'):
             conversation.status = 'open'

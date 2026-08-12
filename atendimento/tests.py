@@ -250,3 +250,51 @@ class EnviarMensagensAgendadasTest(TestCase):
         self.assertEqual(sm.status, 'sent')
         msg = Message.objects.get(conversation=self.conversation, message_type='image')
         self.assertEqual(msg.content, 'Legenda da foto')
+
+
+class EnviarMensagensAgendadasGuardTest(TestCase):
+    """Guardas contra ciclo de mesclagem e contra corrida com o cancelamento."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.conversation.status = 'open'
+        self.conversation.save(update_fields=['status'])
+        self.agent = User.objects.create_user(username='ana', first_name='Ana')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_ciclo_de_mesclagem_nao_trava(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, 'wamid123')
+        outra = _criar_conversa()
+        outra.status = 'open'
+        outra.save(update_fields=['status'])
+        self.conversation.merged_into = outra
+        self.conversation.save(update_fields=['merged_into'])
+        outra.merged_into = self.conversation
+        outra.save(update_fields=['merged_into'])
+
+        sm = ScheduledMessage.objects.create(
+            conversation=self.conversation, created_by=self.agent,
+            message_type='text', content='Em ciclo',
+            scheduled_for=timezone.now() - timedelta(minutes=1),
+        )
+
+        enviar_mensagens_agendadas()
+
+        sm.refresh_from_db()
+        self.assertEqual(sm.status, 'sent')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_cancelada_no_meio_do_ciclo_nao_envia(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, 'wamid123')
+        sm = ScheduledMessage.objects.create(
+            conversation=self.conversation, created_by=self.agent,
+            message_type='text', content='Cancelada antes do envio',
+            scheduled_for=timezone.now() - timedelta(minutes=1),
+        )
+        ScheduledMessage.objects.filter(id=sm.id).update(status='cancelled')
+
+        enviar_mensagens_agendadas()
+
+        sm.refresh_from_db()
+        self.assertEqual(sm.status, 'cancelled')
+        self.assertFalse(Message.objects.filter(content='Cancelada antes do envio').exists())
