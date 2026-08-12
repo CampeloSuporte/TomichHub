@@ -225,7 +225,9 @@ def _read_attachment_as_base64(attachment_url: str) -> str:
     """Lê de volta um arquivo salvo por _save_media_file e devolve em
     base64 — usado pra reenviar a mídia de uma mensagem agendada, que só
     guarda a URL (não o base64) enquanto espera a hora de enviar."""
-    relative = attachment_url.replace(settings.MEDIA_URL, '', 1)
+    if not attachment_url.startswith(settings.MEDIA_URL):
+        raise ValueError(f"attachment_url fora de MEDIA_URL: {attachment_url}")
+    relative = attachment_url[len(settings.MEDIA_URL):]
     abs_path = os.path.join(settings.MEDIA_ROOT, relative)
     with open(abs_path, 'rb') as f:
         return base64.b64encode(f.read()).decode('ascii')
