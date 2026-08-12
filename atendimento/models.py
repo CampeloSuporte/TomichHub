@@ -300,6 +300,39 @@ class Message(models.Model):
         return f"Msg #{self.id}"
 
 
+class ScheduledMessage(models.Model):
+    """Mensagem agendada para envio futuro numa conversa."""
+    STATUS_CHOICES = [
+        ('pending', 'Pendente'),
+        ('sent', 'Enviada'),
+        ('cancelled', 'Cancelada'),
+        ('failed', 'Falhou'),
+    ]
+    MAX_ATTEMPTS = 5
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name='scheduled_messages')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    message_type = models.CharField(max_length=20, choices=Message.MESSAGE_TYPE_CHOICES, default='text')
+    content = models.TextField(blank=True)  # texto da mensagem, ou legenda da mídia (pode ser vazia)
+    attachment_url = models.TextField(null=True, blank=True)  # já salvo em MEDIA_ROOT no momento do agendamento
+    file_name = models.CharField(max_length=255, null=True, blank=True)  # nome original do arquivo, p/ reenviar
+    scheduled_for = models.DateTimeField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    attempts = models.PositiveSmallIntegerField(default=0)
+    last_error = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+    class Meta:
+        ordering = ['scheduled_for']
+        indexes = [models.Index(fields=['status', 'scheduled_for'])]
+
+    def __str__(self):
+        return f"Agendada #{self.id} - {self.get_status_display()} - {self.scheduled_for:%d/%m %H:%M}"
+
+
 # Manter ConversationTag para compatibilidade (será removido gradualmente)
 class ConversationTag(models.Model):
     """Tag legada — use Tag + Conversation.tags"""
