@@ -238,9 +238,12 @@ class EnviarMensagensAgendadasTest(TestCase):
         self.assertEqual(sm.status, 'failed')
         self.assertIn('erro simulado', sm.last_error)
 
+    # _save_media_file também é mockado: sem isso o reenvio grava um arquivo
+    # órfão em MEDIA_ROOT a cada rodada da suíte (mesma pasta das mídias reais).
+    @mock.patch('atendimento.services._save_media_file', return_value='/media/atendimento/media/fake.jpg')
     @mock.patch('atendimento.services._read_attachment_as_base64', return_value='ZmFrZQ==')
     @mock.patch('atendimento.services.EvolutionAPIClient')
-    def test_envia_mensagem_de_midia_vencida(self, mock_client_cls, mock_read_b64):
+    def test_envia_mensagem_de_midia_vencida(self, mock_client_cls, mock_read_b64, mock_save):
         mock_client_cls.return_value.send_media.return_value = True
         sm = ScheduledMessage.objects.create(
             conversation=self.conversation, created_by=self.agent,
@@ -393,3 +396,112 @@ class ApiCancelScheduledMessageTest(TestCase):
         self.assertEqual(resp.status_code, 400)
         sm.refresh_from_db()
         self.assertEqual(sm.status, 'sent')
+
+
+class AgendadorFluxoCompletoTest(TestCase):
+    """Integração ponta a ponta: o atendente agenda pela API, o Celery roda e a
+    mensagem sai. As outras classes testam cada peça isolada — esta garante que
+    o que o endpoint grava é exatamente o que a task consegue enviar depois."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.conversation.status = 'open'
+        self.conversation.save(update_fields=['status'])
+        self.agent = _criar_agente_staff()
+        self.client.force_login(self.agent)
+        self.url = reverse('atendimento:api_schedule_message', args=[self.conversation.id])
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_texto_agendado_pela_api_e_enviado_pela_task(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, 'wamid123')
+
+        # 1. agenda pra daqui a 2h
+        resp = self.client.post(self.url, data=json.dumps({
+            'message': 'Bom dia, seguimos com o chamado.',
+            'scheduled_for': (timezone.now() + timedelta(hours=2)).isoformat(),
+        }), content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+
+        # 2. aparece na listagem de pendentes
+        listagem = self.client.get(self.url).json()['scheduled']
+        self.assertEqual(len(listagem), 1)
+        self.assertEqual(listagem[0]['content'], 'Bom dia, seguimos com o chamado.')
+
+        # 3. nada é enviado antes da hora
+        enviar_mensagens_agendadas()
+        self.assertFalse(Message.objects.filter(conversation=self.conversation).exists())
+
+        # 4. chegada a hora, a task envia
+        sm = ScheduledMessage.objects.get()
+        sm.scheduled_for = timezone.now() - timedelta(minutes=1)
+        sm.save(update_fields=['scheduled_for'])
+        enviar_mensagens_agendadas()
+
+        sm.refresh_from_db()
+        self.assertEqual(sm.status, 'sent')
+        msg = Message.objects.get(conversation=self.conversation)
+        self.assertEqual(msg.content, 'Bom dia, seguimos com o chamado.')
+        self.assertEqual(msg.sender, self.agent)
+
+        # 5. some da listagem de pendentes
+        self.assertEqual(self.client.get(self.url).json()['scheduled'], [])
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_cancelar_antes_da_hora_impede_o_envio(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, 'wamid123')
+        self.client.post(self.url, data=json.dumps({
+            'message': 'Nao deve sair',
+            'scheduled_for': (timezone.now() + timedelta(hours=1)).isoformat(),
+        }), content_type='application/json')
+
+        sm = ScheduledMessage.objects.get()
+        self.client.post(reverse('atendimento:api_cancel_scheduled_message', args=[sm.id]))
+
+        sm.scheduled_for = timezone.now() - timedelta(minutes=1)
+        sm.save(update_fields=['scheduled_for'])
+        enviar_mensagens_agendadas()
+
+        sm.refresh_from_db()
+        self.assertEqual(sm.status, 'cancelled')
+        self.assertFalse(Message.objects.filter(conversation=self.conversation).exists())
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_midia_sem_legenda_nao_ganha_rotulo_grudado_no_agendamento(self, mock_client_cls):
+        """O ponto sutil da feature: agendar guarda a legenda CRUA (vazia), e o
+        rótulo padrão ('Imagem') só é calculado na hora do envio. Se o endpoint
+        gravasse 'Imagem' como legenda, a mídia sairia com esse texto colado."""
+        mock_client_cls.return_value.send_media.return_value = True
+        b64 = base64.b64encode(b'bytes-de-imagem-fake').decode()
+
+        resp = self.client.post(self.url, data=json.dumps({
+            'mediaBase64': b64, 'mediaType': 'image', 'fileName': 'print.jpg',
+            'caption': '', 'scheduled_for': (timezone.now() + timedelta(hours=1)).isoformat(),
+        }), content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+
+        sm = ScheduledMessage.objects.get()
+        self.assertEqual(sm.content, '')  # legenda crua, não 'Imagem'
+
+        sm.scheduled_for = timezone.now() - timedelta(minutes=1)
+        sm.save(update_fields=['scheduled_for'])
+        try:
+            enviar_mensagens_agendadas()
+
+            sm.refresh_from_db()
+            self.assertEqual(sm.status, 'sent')
+            msg = Message.objects.get(conversation=self.conversation)
+            self.assertEqual(msg.message_type, 'image')
+            # rótulo aplicado só no envio, e a legenda que foi pro WhatsApp é vazia
+            self.assertEqual(msg.content, 'Imagem')
+            _, kwargs = mock_client_cls.return_value.send_media.call_args
+            self.assertEqual(kwargs.get('caption'), '')
+        finally:
+            for url in ScheduledMessage.objects.values_list('attachment_url', flat=True):
+                if url:
+                    caminho = os.path.join(settings.MEDIA_ROOT, url.replace(settings.MEDIA_URL, '', 1))
+                    if os.path.exists(caminho):
+                        os.remove(caminho)
+            for url in Message.objects.exclude(attachment_url=None).values_list('attachment_url', flat=True):
+                caminho = os.path.join(settings.MEDIA_ROOT, url.replace(settings.MEDIA_URL, '', 1))
+                if os.path.exists(caminho):
+                    os.remove(caminho)
