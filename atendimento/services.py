@@ -1161,3 +1161,74 @@ class ConversationService:
         except Exception as e:
             logger.error(f"Erro ao enviar mensagem: {e}")
             return False, str(e)
+
+    @staticmethod
+    def send_media(conversation: Conversation, media_base64: str, media_type: str,
+                   file_name: str, caption: str, agent=None) -> Tuple[bool, str]:
+        """Salva a Message de mídia imediatamente e envia ao WhatsApp em
+        background. Mesma mecânica de send_message, mas para
+        imagem/áudio/vídeo/documento. Igual ao envio imediato, sempre salva
+        um arquivo novo em disco (mesmo se o chamador já tiver um
+        attachment_url de antes, como no agendador) — simples e evita um
+        segundo caminho de código só pra reaproveitar o arquivo."""
+        import threading as _threading
+        import mimetypes as _mt
+        import time as _t
+
+        try:
+            detected_mime, _ = _mt.guess_type(file_name)
+            if not detected_mime:
+                detected_mime = {
+                    'image': 'image/jpeg', 'audio': 'audio/ogg',
+                    'video': 'video/mp4', 'document': 'application/octet-stream',
+                }.get(media_type, 'application/octet-stream')
+
+            attachment_url = None
+            try:
+                attachment_url = _save_media_file(media_base64, detected_mime)
+            except Exception as _save_err:
+                logger.warning("Salvar midia falhou: %s", _save_err)
+
+            if caption:
+                content = caption
+            elif media_type == 'document':
+                content = file_name
+            else:
+                type_labels = {'image': 'Imagem', 'audio': 'Áudio', 'document': 'Documento', 'video': 'Vídeo'}
+                content = type_labels.get(media_type, media_type)
+
+            display_name = ConversationService.get_agent_display_name(agent)
+            now = timezone.now()
+            msg = Message.objects.create(
+                conversation=conversation, sender_type='agent', sender=agent,
+                sender_name=display_name, message_type=media_type, content=content,
+                external_id=f"local_media_{int(_t.time()*1000)}",
+                attachment_url=attachment_url, created_at=now,
+            )
+            conversation.last_message_at = now
+            if conversation.status == 'new':
+                conversation.status = 'open'
+            conversation.save(update_fields=['last_message_at', 'status'])
+
+            group_connection = conversation.group.connection
+            group_jid = conversation.group.jid
+            msg_id = msg.id
+
+            def _send_bg():
+                try:
+                    client = EvolutionAPIClient(group_connection)
+                    if media_type == 'audio':
+                        client.send_audio(group_jid, media_base64)
+                    else:
+                        client.send_media(group_jid, mediatype=media_type, media_b64=media_base64,
+                                          filename=file_name, caption=caption)
+                except Exception as _e:
+                    logger.error(f"Erro bg envio mídia (msg {msg_id}): {_e}")
+
+            _threading.Thread(target=_send_bg, daemon=True).start()
+
+            return True, str(msg.id)
+
+        except Exception as e:
+            logger.error(f"Erro ao enviar mídia: {e}")
+            return False, str(e)
