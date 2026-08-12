@@ -87,6 +87,12 @@ app.conf.beat_schedule = {
         'task': 'atendimento.tasks.enviar_lembretes_pessoais',
         'schedule': timedelta(minutes=5),
     },
+    # Agendador de mensagens: 1 min é a granularidade que o atendente
+    # escolhe no modal (datetime-local), então não adianta rodar mais raro.
+    'atendimento-enviar-mensagens-agendadas': {
+        'task': 'atendimento.tasks.enviar_mensagens_agendadas',
+        'schedule': timedelta(minutes=1),
+    },
     # Alertas de cobrança via WhatsApp — seg a sex às 8:30
     'alertas-whatsapp-cobranca': {
         'task': 'financeiro.tasks.enviar_alertas_whatsapp',
