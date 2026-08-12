@@ -80,6 +80,11 @@
             </button>
             {% endif %}
             {% endwith %}
+            <button class="btn-cyber secondary" onclick="scheduledMsgs.togglePanel()" id="btnSchedulePanel" title="Mensagens agendadas desta conversa">
+                <i class="fas fa-clock"></i>
+                {% if scheduled_count %}<span id="scheduleCountBadge" style="background:rgba(6,207,156,.2);color:#06cf9c;border-radius:10px;padding:1px 5px;font-size:9px;margin-left:2px">{{ scheduled_count }}</span>{% endif %}
+                Agendadas
+            </button>
             <!-- Botão Tarefas -->
             <button class="btn-cyber{% if conversation.is_task_conv %} task-active{% else %} secondary{% endif %}" onclick="taskPanel.toggle()" id="btnTaskPanel" style="font-size:10px;padding:5px 10px;" title="Tarefas vinculadas a esta conversa">
                 <i class="fas fa-tasks"></i>
