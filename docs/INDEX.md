@@ -1283,6 +1283,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 12/08/2026 | Atendimento: fix "respondi e a conversa não ficou assumida" — auto-atribuição movida da view para `services.auto_assign_on_reply`, valendo também para mídia e mensagem agendada; responsável visível na lista e no cabeçalho; balões deixaram de renderizar a indentação do template (`pre-wrap`); hora/✓✓ dentro do balão, agrupamento por remetente e divisor de data; fix migração `clientes/0032` que impedia criar banco de teste | ATENDIMENTO.md |
 | 12/08/2026 | Atendimento: agendador de mensagens — atendente programa envio de mensagem/mídia para data e hora futuras, com painel para ver e cancelar pendentes; task Celery a cada 1 min, reabre conversa fechada e segue mesclagem, retry até 5 tentativas | ATENDIMENTO.md |
 | 06/08/2026 | Fix `/homegeral`: `VariableDoesNotExist` quando tarefa sem responsável (variável usada como argumento de `\|default:` não tem lookup falho suprimido); mesmo padrão latente corrigido em `criado_por` da Wiki | TAREFAS.md, WIKI_ARTIGOS.md |
 | 05/08/2026 | Atendimento: indicador de mensagem não lida em conversas assumidas; fix transferência/atribuição não avisava outros atendentes em tempo real; visual do chat/lista estilo WhatsApp Dark; fix scrollbar das abas do Inbox + "Tarefas" movida pro menu principal | ATENDIMENTO.md |

@@ -760,5 +760,120 @@ Testes: `atendimento/tests.py` (25, incluindo `AgendadorFluxoCompletoTest` ponta
 
 ---
 
+## Correção — "respondi e a conversa não ficou como assumida" + balões mal formatados (2026-08-12)
+
+Três defeitos independentes que apareciam juntos na tela de conversa.
+
+### Bug 1 — auto-atribuição só valia para mensagem de texto pela view
+
+**Sintoma:** o atendente respondia pela plataforma e a conversa continuava sem
+responsável — não entrava na aba "Assumidos" e o cabeçalho seguia oferecendo
+"Assumir".
+
+**Causa:** a regra "quem responde, assume" morava dentro da view
+`api_send_message`. Os demais caminhos de envio chamam o service direto e
+pulavam a atribuição:
+
+| Caminho | Chama | Atribuía antes? |
+|---|---|---|
+| Chat (texto) | `api_send_message` → `send_message` | sim |
+| Chat (mídia) | `api_send_media` → `send_media` | **não** |
+| Mensagem agendada (Celery) | `enviar_mensagens_agendadas` → `send_message` | **não** |
+| Mensagem de encerramento | view de status → `send_message` | **não** |
+
+Caso real encontrado no banco: a conversa **TOMICH TEC - NOC** recebeu um envio
+agendado às 10:00 de 12/08 e seguia com `assigned_to = None`.
+
+**Correção:** a regra virou `services.auto_assign_on_reply(conversation, agent)`,
+chamada de dentro de `ConversationService.send_message` e `send_media` — ou seja,
+vale para todo caminho, presente e futuro. Ela cria a atividade `assigned` e
+dispara `notify_reassignment` (WebSocket). A view não decide mais nada: só compara
+`assigned_to_id` antes e depois para devolver `newly_assigned` ao front.
+
+> Ao criar um novo caminho de envio de agente, mande pelo `ConversationService`
+> em vez de gravar `Message` na mão — é o que garante atribuição, atividade e WS.
+
+### Bug 2 — balões com linhas em branco e recuo (só depois do F5)
+
+**Sintoma:** mensagem recém-enviada aparecia certa; a mesma mensagem depois de
+recarregar a página aparecia com duas linhas em branco e um recuo grande antes do
+texto.
+
+**Causa:** `.msg-bubble` usava `white-space: pre-wrap` para preservar as quebras de
+linha vindas do WhatsApp. Com isso, **a própria indentação do template** (as
+quebras de linha e ~24 espaços entre as tags) era renderizada dentro da bolha. O
+caminho JS não sofria disso porque monta o HTML sem indentação — daí a diferença
+entre "ao vivo" e "depois do F5".
+
+**Correção:** o `pre-wrap` saiu da bolha e foi para um `.msg-text` que é **emitido
+colado nas tags**. O `|linebreaksbr` do template e o `\n → <br>` do `escapeHTML`
+foram removidos: quem quebra linha agora é só o `pre-wrap`, nos dois caminhos.
+
+> ⚠️ Não reindentar o interior de `.msg-bubble` "para ficar legível" — volta o bug.
+> Comentários ali dentro precisam de `{% comment %}`: o `{# #}` do Django é de uma
+> linha só e, em várias linhas, o texto vaza para a tela.
+
+### Bug 3 — a lista de conversas dentro do chat era outra
+
+`conversation_detail.html` sobrescrevia o bloco `conv_panel` com uma cópia própria
+da lista, que tinha divergido do partial `_conv_item.html` e **não emitia
+`data-conv-id`** — justamente dentro de uma conversa, `markConvRead`/`markConvUnread`
+(que buscam por `[data-conv-id]`) não achavam o item, e a lista também perdia badge
+de não lidas, tags e SLA. A cópia foi removida; a página herda a lista de
+`base.html`.
+
+### O que mudou na tela
+
+- **Responsável visível:** `.conv-assignee` na lista (verde quando é você, "Sem
+  responsável" quando não tem dono) e "Assumido por você" no cabeçalho — substitui
+  o antigo "online", que na prática só indicava que a conversa tinha dono. Os dois
+  partials da lista (`_conv_item.html` e `_inbox_conv_item.html`) foram atualizados.
+- **Troca sem recarregar:** "Assumir" e "Transferir" agora existem sempre no DOM e
+  só alternam a visibilidade, então `_onNewlyAssigned()` atualiza o cabeçalho na
+  hora (antes só escondia "Assumir", e por isso parecia que nada tinha acontecido).
+- **Hora e ✓✓ dentro do balão**, canto inferior direito, via `float` — a última
+  linha do texto flui em volta e, se não couber, a hora desce sozinha.
+- **Agrupamento:** mensagens seguidas do mesmo remetente viram um bloco só, sem
+  repetir nome nem rabicho (`{% ifchanged %}` no servidor, `data-sender-key` no JS).
+- **Divisores de data** entre os dias — o CSS `.day-divider` já existia e nunca
+  tinha sido usado.
+- **Links clicáveis** (`|urlize` no servidor, `linkify()` no JS) e balões mais
+  largos no celular (85% em vez de 68%).
+
+### Efeito colateral fora do módulo
+
+A migração `clientes/0032_remove_topologiamapeamento_topologia_and_more.py`
+removia o campo `topologia` **antes** de derrubar o `unique_together`
+`('topologia', 'acesso')` que o referenciava. O Django resolve as colunas do índice
+pelo estado do modelo, então a criação de qualquer banco de teste quebrava com
+`FieldDoesNotExist: TopologiaMapeamento has no field named 'topologia'` — nenhum
+teste do projeto rodava do zero. As operações foram reordenadas.
+
+### Arquivos
+
+| Arquivo | Papel |
+|---|---|
+| `atendimento/services.py` | `auto_assign_on_reply`, chamada em `send_message`/`send_media` |
+| `atendimento/views.py` | `api_send_message`/`api_send_media` devolvem `newly_assigned` |
+| `atendimento/templates/atendimento/base.html` | CSS dos balões, `.conv-assignee`, `.chat-header-assignee` |
+| `atendimento/templates/atendimento/_chat_content.html` | markup do balão, `_onNewlyAssigned`, `linkify` |
+| `atendimento/templates/atendimento/_conv_item.html` | responsável na lista lateral |
+| `atendimento/templates/atendimento/_inbox_conv_item.html` | responsável na lista do Inbox |
+| `atendimento/templates/atendimento/conversation_detail.html` | deixou de sobrescrever `conv_panel` |
+| `clientes/migrations/0032_...py` | ordem das operações |
+
+Testes: `atendimento/tests.py` — 37 no total, sendo `AutoAtribuicaoAoResponderTest`
+(5) e `ChatRenderTest` (7) novos.
+
+### Deploy
+
+Alteração em `services.py`/`views.py` exige reiniciar **Gunicorn e Celery**. O
+Celery é fácil de esquecer e é justamente quem envia mensagem agendada — sem
+reiniciá-lo, o worker segue com o código antigo e o caso do Bug 1 continua
+acontecendo. Daphne não precisa: `consumers.py` não chama `send_message`.
+
+
+---
+
 **Mantido por:** CampeloSuporte  
 **Repositório:** /opt/crm
