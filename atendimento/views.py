@@ -180,7 +180,7 @@ def conversation_detail(request, conversation_id):
             notify_reassignment(conversation, old_assigned_to_id)
 
     # Mensagens
-    messages = conversation.messages.select_related('sender').order_by('created_at')
+    messages = conversation.messages.select_related('sender').prefetch_related('reactions').order_by('created_at')
 
     # Atualiza status de leitura das mensagens do cliente e avisa outras abas/dispositivos
     _marcar_mensagens_lidas(conversation)

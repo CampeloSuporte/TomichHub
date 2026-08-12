@@ -679,6 +679,26 @@ class ChatRenderTest(TestCase):
         self.assertNotIn('de propósito', html)
 
 
+    def test_balao_mostra_pilula_de_reacao(self):
+        from atendimento.models import MessageReaction
+        msg = Message.objects.create(
+            conversation=self.conversation, sender_type='agent', sender=self.agent,
+            message_type='text', content='ja verifiquei', external_id='ext-r',
+        )
+        MessageReaction.objects.create(message=msg, emoji='\U0001F44D', external_id='r1',
+                                       sender_name='Agiliza')
+        MessageReaction.objects.create(message=msg, emoji='', external_id='r2',
+                                       sender_name='Humberto')
+
+        html = self._html()
+
+        self.assertIn('msg-reactions', html)
+        self.assertIn('\U0001F44D', html)
+        # reacao criptografada: sem emoji, mostra "reagiu"
+        self.assertIn('msg-reaction unknown', html)
+        # dentro de um balão — a string solta também aparece num comentário do CSS
+        self.assertNotIn('<span class="msg-text">[sem conteúdo]</span>', html)
+
     def test_inbox_renderiza_com_responsavel(self):
         """inbox.html usa _inbox_conv_item.html, um partial diferente do da
         barra lateral — precisa renderizar e mostrar o responsável também."""
@@ -692,3 +712,136 @@ class ChatRenderTest(TestCase):
         html = resp.content.decode()
         self.assertIn('conv-assignee', html)
         self.assertNotIn('{#', html)
+
+
+class ReacaoWebhookTest(TestCase):
+    """Reações não podem virar balão vazio.
+
+    Payloads reais capturados da Evolution API. Reagir a uma mensagem de outro
+    participante chega como `reactionMessage` (emoji em texto puro); reagir a
+    uma mensagem que NÓS enviamos chega como `secretEncryptedMessage`, cifrada
+    — os dois caíam no fallback '[sem conteúdo]'.
+    """
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.conversation.status = 'open'
+        self.conversation.save(update_fields=['status'])
+        # process_webhook só trata grupos (@g.us) — o helper padrão cria um
+        # JID de contato individual, que seria ignorado logo na entrada.
+        self.group = self.conversation.group
+        self.group.jid = '551930903600-1620661694@g.us'
+        self.group.save(update_fields=['jid'])
+        self.alvo = Message.objects.create(
+            conversation=self.conversation, sender_type='agent',
+            message_type='text', content='Bom dia, já verifiquei aqui',
+            external_id='3EB07D031ED20B338740EA',
+        )
+
+    def _webhook(self, message, msg_id='REACAO1'):
+        return ConversationService.process_webhook({
+            'event': 'MESSAGES_UPSERT',
+            'instance': self.group.connection.instance_name,
+            'data': {
+                'key': {'id': msg_id, 'fromMe': False,
+                        'remoteJid': self.group.jid, 'participant': '55279@lid'},
+                'pushName': 'Agiliza Telecom',
+                'message': message,
+            },
+        })
+
+    def test_reaction_message_vira_reacao_e_nao_mensagem(self):
+        antes = Message.objects.count()
+
+        self._webhook({'reactionMessage': {
+            'key': {'id': self.alvo.external_id, 'fromMe': True, 'remoteJid': self.group.jid},
+            'text': '👍🏻',
+        }})
+
+        self.assertEqual(Message.objects.count(), antes, 'não pode criar balão')
+        self.assertEqual(self.alvo.reactions.count(), 1)
+        self.assertEqual(self.alvo.reactions.first().emoji, '👍🏻')
+        self.assertFalse(Message.objects.filter(content='[sem conteúdo]').exists())
+
+    def test_secret_encrypted_vira_reacao_sem_emoji(self):
+        """Caso relatado: cliente reage a uma mensagem enviada por nós."""
+        antes = Message.objects.count()
+
+        self._webhook({'secretEncryptedMessage': {
+            'encIv': 'fBzR79JJofiA/eLw',
+            'encPayload': 's1DEJh8LAjbVR8Yh+lGPCaanL456GSS3',
+            'secretEncType': 2,
+            'targetMessageKey': {'id': self.alvo.external_id, 'fromMe': True,
+                                 'remoteJid': self.group.jid},
+        }})
+
+        self.assertEqual(Message.objects.count(), antes)
+        self.assertEqual(self.alvo.reactions.count(), 1)
+        self.assertEqual(self.alvo.reactions.first().emoji, '')
+        self.assertFalse(Message.objects.filter(content='[sem conteúdo]').exists())
+
+    def test_reagir_de_novo_troca_a_reacao_da_mesma_pessoa(self):
+        self._webhook({'reactionMessage': {
+            'key': {'id': self.alvo.external_id}, 'text': '👍'}}, msg_id='R1')
+        self._webhook({'reactionMessage': {
+            'key': {'id': self.alvo.external_id}, 'text': '❤️'}}, msg_id='R2')
+
+        self.assertEqual(self.alvo.reactions.count(), 1)
+        self.assertEqual(self.alvo.reactions.first().emoji, '❤️')
+
+    def test_texto_vazio_remove_a_reacao(self):
+        self._webhook({'reactionMessage': {
+            'key': {'id': self.alvo.external_id}, 'text': '👍'}}, msg_id='R1')
+
+        self._webhook({'reactionMessage': {
+            'key': {'id': self.alvo.external_id}, 'text': ''}}, msg_id='R2')
+
+        self.assertEqual(self.alvo.reactions.count(), 0)
+
+    def test_reacao_a_mensagem_desconhecida_nao_cria_balao(self):
+        antes = Message.objects.count()
+
+        self._webhook({'reactionMessage': {
+            'key': {'id': 'MENSAGEM-QUE-NAO-TEMOS'}, 'text': '👍'}})
+
+        self.assertEqual(Message.objects.count(), antes)
+
+    def test_album_header_nao_vira_balao(self):
+        antes = Message.objects.count()
+
+        self._webhook({'albumMessage': {'expectedImageCount': 1, 'expectedVideoCount': 1}})
+
+        self.assertEqual(Message.objects.count(), antes)
+
+    def test_mensagem_de_texto_normal_continua_funcionando(self):
+        self._webhook({'conversation': 'esse foi o dado que não conseguiu add?'}, msg_id='TXT1')
+
+        msg = Message.objects.get(external_id='TXT1')
+        self.assertEqual(msg.content, 'esse foi o dado que não conseguiu add?')
+        self.assertEqual(msg.sender_type, 'customer')
+
+
+    def test_contato_compartilhado_mostra_o_nome(self):
+        self._webhook({'contactMessage': {
+            'displayName': 'Roberto Suporte',
+            'vcard': 'BEGIN:VCARD\nFN:Roberto Suporte\nEND:VCARD',
+        }}, msg_id='VCARD1')
+
+        msg = Message.objects.get(external_id='VCARD1')
+        self.assertEqual(msg.content, '\U0001F464 Roberto Suporte')
+
+    def test_varios_contatos_compartilhados(self):
+        self._webhook({'contactsArrayMessage': {'contacts': [
+            {'displayName': 'Roberto'}, {'displayName': 'Maria'},
+        ]}}, msg_id='VCARD2')
+
+        msg = Message.objects.get(external_id='VCARD2')
+        self.assertEqual(msg.content, '\U0001F464 Roberto, Maria')
+
+    def test_pin_e_child_nao_viram_balao(self):
+        antes = Message.objects.count()
+
+        self._webhook({'pinInChatMessage': {'key': {'id': 'x'}}}, msg_id='PIN1')
+        self._webhook({'associatedChildMessage': {}}, msg_id='CHILD1')
+
+        self.assertEqual(Message.objects.count(), antes)

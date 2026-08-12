@@ -987,6 +987,21 @@ body {
 .msg.internal .msg-meta { color:rgba(251,191,36,0.6); }
 .msg-system-text { font-size:11px; color:var(--wa-text-muted); background:var(--wa-panel); border-radius:20px; padding:3px 12px; }
 
+/* Reações penduradas na mensagem, como no WhatsApp: uma pílula sobreposta
+   na borda de baixo do balão. Antes cada reação virava um balão vazio
+   "[sem conteúdo]" no meio da conversa. */
+.msg-reactions { display:flex; gap:3px; margin-top:-9px; margin-left:6px; margin-right:6px; z-index:2; position:relative; }
+.msg.agent .msg-reactions { justify-content:flex-end; }
+.msg-reaction {
+    display:inline-flex; align-items:center; gap:3px;
+    background:var(--wa-panel); border:1px solid var(--wa-bg);
+    border-radius:12px; padding:1px 6px; font-size:11px; line-height:1.5;
+    color:var(--wa-text); box-shadow:0 1px 2px rgba(0,0,0,0.35); cursor:default;
+}
+/* Reação criptografada: sabemos que houve, não qual emoji. */
+.msg-reaction.unknown { color:var(--wa-text-muted); font-size:10px; }
+.msg-reaction .count { font-size:10px; color:var(--wa-text-muted); }
+
 /* ── Área de input (estilo WhatsApp) ── */
 .chat-input-area { background:var(--wa-panel); border-top:1px solid var(--wa-border); flex-shrink:0; }
 

@@ -344,6 +344,35 @@ class ConversationTag(models.Model):
         return self.name
 
 
+class MessageReaction(models.Model):
+    """Reação (emoji) de alguém do grupo a uma mensagem.
+
+    O WhatsApp entrega reação em dois formatos: `reactionMessage`, com o emoji
+    em texto puro, e `secretEncryptedMessage`, criptografado — este último é o
+    que chega quando alguém reage a uma mensagem que *nós* enviamos. Não temos
+    como decifrar o segundo (a chave é o messageSecret da mensagem original,
+    que não guardamos), por isso `emoji` pode ficar vazio: sabemos que houve
+    reação e a qual mensagem, mas não qual emoji.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4)
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='reactions')
+    emoji = models.CharField(max_length=32, blank=True, default='')
+    sender_name = models.CharField(max_length=255, blank=True, default='')
+    # Identifica quem reagiu, para trocar/remover a reação da mesma pessoa.
+    sender_jid = models.CharField(max_length=255, blank=True, default='', db_index=True)
+    external_id = models.CharField(max_length=255, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Reação de mensagem"
+        verbose_name_plural = "Reações de mensagens"
+        ordering = ['created_at']
+        indexes = [models.Index(fields=['message', 'created_at'])]
+
+    def __str__(self):
+        return f"{self.emoji or '?'} em {self.message_id}"
+
+
 class ConversationActivity(models.Model):
     """Log de atividades na conversa"""
     ACTION_CHOICES = [

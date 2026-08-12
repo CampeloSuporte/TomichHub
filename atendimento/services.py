@@ -10,7 +10,7 @@ from django.utils import timezone
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .models import (
-    WhatsAppConnection, ContactGroup, Conversation, Message,
+    WhatsAppConnection, ContactGroup, Conversation, Message, MessageReaction,
     ConversationActivity, ChatFlow, ChatFlowSession, Category,
 )
 from clientes.models import Cliente
@@ -56,6 +56,7 @@ def build_ice_servers() -> List[Dict]:
 _MEDIA_TYPE_MAP = {
     'imageMessage':    'image',
     'stickerMessage':  'image',
+    'lottieStickerMessage': 'image',   # figurinha animada
     'videoMessage':    'video',
     'audioMessage':    'audio',
     'pttMessage':      'audio',
@@ -269,6 +270,57 @@ def notify_reassignment(conversation: Conversation, old_assigned_to_id):
         "old_assigned_to_id": old_assigned_to_id,
         "assigned_to_id": conversation.assigned_to_id,
     })
+
+
+def _nomes_de_contato(msg_content: dict) -> str:
+    """Nome(s) do(s) contato(s) compartilhado(s) via vCard, ou string vazia.
+
+    Sem isto, compartilhar um contato no grupo virava um balão "[sem conteúdo]" —
+    o texto útil (displayName) fica dentro de contactMessage/contactsArrayMessage,
+    que a extração de texto não olhava.
+    """
+    unico = msg_content.get("contactMessage") or {}
+    if unico.get("displayName"):
+        return f"👤 {unico['displayName']}"
+
+    varios = (msg_content.get("contactsArrayMessage") or {}).get("contacts") or []
+    nomes = [c.get("displayName") for c in varios if c.get("displayName")]
+    if nomes:
+        return "👤 " + ", ".join(nomes)
+
+    return ""
+
+
+def _extrair_reacao(msg_content: dict):
+    """Detecta reação a uma mensagem e devolve (id_da_mensagem_alvo, emoji).
+
+    São dois formatos e a diferença importa:
+
+    - `reactionMessage`: emoji em texto puro. É o que chega quando alguém
+      reage a uma mensagem de outro participante.
+    - `secretEncryptedMessage`: mesma coisa, porém criptografada. É o que
+      chega quando reagem a uma mensagem que *nós* enviamos (`targetMessageKey.
+      fromMe = true`). O emoji é cifrado com o messageSecret da mensagem
+      original, que não guardamos, então devolvemos emoji vazio — dá pra
+      mostrar que houve reação, não qual foi.
+
+    Emoji vazio no `reactionMessage` significa reação *removida* (o WhatsApp
+    manda texto vazio pra desfazer), e isso é diferente de "não sei o emoji".
+    Por isso o retorno distingue os dois via `cifrada`.
+    """
+    reaction = msg_content.get("reactionMessage")
+    if reaction:
+        alvo = (reaction.get("key") or {}).get("id")
+        if alvo:
+            return {"alvo": alvo, "emoji": reaction.get("text") or "", "cifrada": False}
+
+    secreta = msg_content.get("secretEncryptedMessage")
+    if secreta:
+        alvo = (secreta.get("targetMessageKey") or {}).get("id")
+        if alvo:
+            return {"alvo": alvo, "emoji": "", "cifrada": True}
+
+    return None
 
 
 def auto_assign_on_reply(conversation: Conversation, agent) -> bool:
@@ -746,12 +798,37 @@ class ConversationService:
             msg_content = event_data.get("message", {})
             push_name = event_data.get("pushName") or ""
 
+            # ── Reações: anexam à mensagem alvo, não viram balão ───────────
+            # Sem isto caíam no fallback "[sem conteúdo]" e poluíam a conversa
+            # com balões vazios — era o caso mais comum de balão sem texto.
+            reacao = _extrair_reacao(msg_content)
+            if reacao:
+                reacao["external_id"] = key.get("id") or f"reac_{timezone.now().timestamp()}"
+                return ConversationService._registrar_reacao(
+                    reacao, push_name_override or push_name, participant
+                )
+
+            # Eventos sem conteúdo pra mostrar. Viravam balão "[sem conteúdo]".
+            #  - albumMessage: cabeçalho de álbum; as fotos chegam depois, cada
+            #    uma no seu próprio evento.
+            #  - pinInChatMessage: alguém fixou/desafixou mensagem no grupo.
+            #  - associatedChildMessage: item filho de outro evento.
+            # Testa a presença da chave, não o valor: estes eventos podem vir
+            # com objeto vazio ({}), que é falsy — com .get() escapariam do
+            # filtro e voltariam a virar balão "[sem conteúdo]".
+            for _ignorado in ("albumMessage", "pinInChatMessage", "associatedChildMessage"):
+                if _ignorado in msg_content:
+                    return {"success": True, "message": f"{_ignorado} ignored"}
+
             # Detecta se é mensagem de mídia
             detected_type = "text"
             for wkey, mtype in _MEDIA_TYPE_MAP.items():
                 if msg_content.get(wkey):
                     detected_type = mtype
                     break
+
+            # Contato compartilhado (vCard): mostra o nome em vez de nada.
+            _contatos = _nomes_de_contato(msg_content)
 
             # Extrai texto/legenda
             content = (
@@ -761,6 +838,7 @@ class ConversationService:
                 or msg_content.get("videoMessage", {}).get("caption")
                 or msg_content.get("documentMessage", {}).get("title")
                 or msg_content.get("documentMessage", {}).get("fileName")
+                or _contatos
                 or ("" if detected_type == "audio" else None)
                 or ("[mídia]" if detected_type != "text" else None)
                 or "[sem conteúdo]"
@@ -966,6 +1044,53 @@ class ConversationService:
             if not f.group_ids:
                 return f
         return None
+
+    @staticmethod
+    def _registrar_reacao(reacao: dict, push_name: str, participant: str) -> Dict:
+        """Anexa a reação à mensagem alvo e avisa a tela por WebSocket.
+
+        Não cria mensagem nenhuma: reação não é balão, é um detalhe da
+        mensagem que recebeu a reação (como no WhatsApp).
+        """
+        alvo = Message.objects.filter(external_id=reacao["alvo"]).first()
+        if not alvo:
+            # Reação a mensagem anterior ao histórico que temos. Ignorar é
+            # melhor do que criar um balão vazio pendurado no fim da conversa.
+            return {"success": True, "message": "reaction target not found"}
+
+        # Reagir de novo troca a reação anterior da mesma pessoa; texto vazio
+        # (e não cifrado) é o WhatsApp removendo a reação.
+        anteriores = alvo.reactions.filter(sender_jid=participant) if participant else None
+        if anteriores is not None:
+            anteriores.delete()
+
+        if not reacao["emoji"] and not reacao["cifrada"]:
+            ConversationService._broadcast_reacoes(alvo)
+            return {"success": True, "message": "reaction removed"}
+
+        MessageReaction.objects.get_or_create(
+            external_id=reacao["external_id"],
+            defaults={
+                "message": alvo,
+                "emoji": reacao["emoji"],
+                "sender_name": push_name or "",
+                "sender_jid": participant or "",
+            },
+        )
+        ConversationService._broadcast_reacoes(alvo)
+        return {"success": True, "message": "reaction saved"}
+
+    @staticmethod
+    def _broadcast_reacoes(msg: Message):
+        """Manda a lista atualizada de reações da mensagem para a tela."""
+        _ws_send_conversation(str(msg.conversation_id), {
+            "type": "reactions",
+            "message_id": str(msg.id),
+            "reactions": [
+                {"emoji": r.emoji, "sender_name": r.sender_name}
+                for r in msg.reactions.all()
+            ],
+        })
 
     @staticmethod
     def _salvar_msg(conversation, message_id, content, detected_type,

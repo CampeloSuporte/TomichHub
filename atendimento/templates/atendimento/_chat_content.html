@@ -171,6 +171,17 @@
                 aqui dentro vira linha em branco e recuo dentro do balão.
                 {% endcomment %}
                 <div class="msg-bubble">{% if message.message_type == 'image' and message.attachment_url %}<img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'audio' and message.attachment_url %}<audio controls class="msg-audio-player" preload="none"><source src="{{ message.attachment_url }}"></audio>{% elif message.message_type == 'video' and message.attachment_url %}<video controls class="msg-video-player" preload="none"><source src="{{ message.attachment_url }}"></video>{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'document' and message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}</a>{% else %}<span class="msg-text">{{ message.content|urlize }}</span>{% endif %}<span class="msg-meta"><span class="msg-time">{{ message.created_at|date:"H:i" }}</span>{% if message.sender_type == 'agent' %}<i class="fas fa-check-double msg-tick"></i>{% endif %}</span></div>
+                {% with reacoes=message.reactions.all %}{% if reacoes %}
+                <div class="msg-reactions" data-reactions-for="{{ message.id }}">
+                    {% for r in reacoes %}
+                    {% if r.emoji %}
+                    <span class="msg-reaction" title="{{ r.sender_name|default:'Alguém' }} reagiu">{{ r.emoji }}</span>
+                    {% else %}
+                    <span class="msg-reaction unknown" title="{{ r.sender_name|default:'Alguém' }} reagiu — o WhatsApp criptografa reações a mensagens que enviamos, então o emoji não fica disponível">reagiu</span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}{% endwith %}
             </div>
             {% endif %}
         </div>
@@ -1438,6 +1449,32 @@
         return '<span class="msg-text">' + linkify(cap) + '</span>';
     }
 
+    /* Reações chegam por WebSocket sempre como a lista completa da mensagem,
+       então a tela só substitui o bloco inteiro — não precisa somar/subtrair
+       nem saber se foi uma reação nova, trocada ou removida. */
+    function applyReactions(msgId, reactions) {
+        var msgEl = chatMsgs.querySelector('.msg[data-msg-id="' + msgId + '"]');
+        if (!msgEl) return;
+        var block = msgEl.querySelector('.msg-block');
+        if (!block) return;
+
+        var box = block.querySelector('.msg-reactions');
+        if (!reactions.length) { if (box) box.remove(); return; }
+
+        if (!box) {
+            box = document.createElement('div');
+            box.className = 'msg-reactions';
+            box.setAttribute('data-reactions-for', msgId);
+            block.appendChild(box);
+        }
+        box.innerHTML = reactions.map(function(r) {
+            var quem = escapeHTML(r.sender_name || 'Alguém');
+            return r.emoji
+                ? '<span class="msg-reaction" title="' + quem + ' reagiu">' + escapeHTML(r.emoji) + '</span>'
+                : '<span class="msg-reaction unknown" title="' + quem + ' reagiu — o WhatsApp criptografa reações a mensagens que enviamos">reagiu</span>';
+        }).join('');
+    }
+
     /* Hora + tick dentro do balão, mesmo HTML que o template server-side. */
     function renderMeta(cls, timeText) {
         return '<span class="msg-meta"><span class="msg-time">' + escapeHTML(timeText || '') + '</span>' +
@@ -1670,6 +1707,7 @@
             ws.onmessage = function(e) {
                 try {
                     var p=JSON.parse(e.data);
+                    if(p.type==='reactions'&&p.message_id) { applyReactions(p.message_id, p.reactions||[]); return; }
                     if(p.type==='new_message'&&p.message) {
                         var msgId = String(p.message.id);
                         if(!_renderedIds.has(msgId)) {
