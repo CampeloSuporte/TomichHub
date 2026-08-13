@@ -22,7 +22,8 @@ lidos direto do backup mais recente, com:
 - **id** do serviço (`vsi-id`, `pw-id`, `vc-id`) e **nome** como está na config;
 - peers/neighbors do túnel, **já resolvidos para o host do outro lado**;
 - interfaces de acesso e VLAN (`dot1q`) de cada serviço;
-- MTU, sinalização (LDP/BGP/static), `pw-type` e o trecho cru da config.
+- MTU, sinalização (LDP/BGP/static), `pw-type`, `flow-label` e o trecho cru da
+  config.
 
 Clicar num peer identificado leva direto ao host correspondente no diagrama
 (centraliza, seleciona e pisca o nó). Se o host existe no CRM mas ainda não foi
@@ -88,15 +89,24 @@ vsi 127-PPPOE-OLT-LEAL
 #
 ```
 
-A interface de acesso vem do binding na sub-interface:
+A interface de acesso vem do `l2 binding vsi`. Na prática deste ambiente ele
+está quase sempre na `Vlanif` da VLAN do serviço (1092 dos 1128 bindings reais)
+e, com menos frequência, numa sub-interface:
 
 ```
+interface Vlanif200
+ description 200-GERENCIA_POP-PRADO
+ l2 binding vsi 200-GERENCIA_POP-PRADO
+#
 interface GigabitEthernet0/1/3.3118
  vlan-type dot1q 3118
  description 3118-TRANSP-SIM-NDD-DNO
  l2 binding vsi 3118-TRANSP-SIM-DNO-DNO
 #
 ```
+
+O parser lê as duas formas; o **gerador** de clone usa sempre a `Vlanif` (ver
+"O acesso do VSI Huawei é a Vlanif").
 
 ### Huawei VRP — L2VC (VLL ponta a ponta)
 
@@ -221,11 +231,14 @@ Resposta:
   "host": {"id": 10, "nome": "BRAS", "ip": "45.228.38.254",
            "ips_identidade": {"10.1.1.1": "mpls lsr-id"}},
   "resumo": {"vpls": 7, "vpws": 0, "l2vc": 21, "total": 28},
+  "id_sugerido": 3503,
+  "pode_clonar": true,
   "servicos": [{
     "tipo": "l2vc", "tecnologia": "L2VC", "nome": "REDE_NEUTRA_RAPIDUS",
     "id": "295", "grupo": "", "descricao": "REDE_NEUTRA_RAPIDUS",
     "sinalizacao": "ldp", "mtu": "9000", "pw_type": "", "encapsulamento": "raw",
-    "vlan": "295", "vendor": "huawei", "linha": 1380, "trecho": "interface …",
+    "flow_label": "", "vlan": "295", "vendor": "huawei", "linha": 1380,
+    "trecho": "interface …",
     "peers": [{"ip": "10.1.1.2", "pw_id": "295", "mtu": "", "flow_label": false,
                "destino": {"acesso_id": 106, "nome": "SW-ATN-PE-BELA-VISTA",
                            "host": "10.1.1.2", "porta": 2299, "protocolo": "SSH",
@@ -304,8 +317,9 @@ que já existe trocando VLAN, id e cliente. O botão **Clonar** em cada linha
 abre um painel com três passos, o mesmo desenho da automação BGP:
 
 1. **Formulário** pré-preenchido com a config de origem — nome, id (já sugerido
-   como o primeiro livre no equipamento), VLAN, MTU, grupo (Datacom),
-   descrição, peers e interfaces de acesso. Peers e interfaces são listas: dá
+   como o primeiro livre no equipamento), VLAN, MTU, grupo (Datacom), descrição,
+   `flow-label`, peers e — conforme o fabricante — interfaces de acesso ou as
+   portas físicas onde a VLAN entra. Peers, interfaces e portas são listas: dá
    pra adicionar e remover linhas.
 2. **Comandos gerados** pelo backend num textarea **editável** — é a config
    exata que vai pro equipamento, revisável antes de enviar.
@@ -418,7 +432,8 @@ Validado no backend antes de gerar qualquer comando, com mensagem pronta pra UI:
 - nome já existente, ou fora de `[A-Za-z0-9._@:-]{1,63}`;
 - peer que não é IPv4 válido, ou repetido;
 - VLAN fora de 1–4094, MTU fora de 46–65535, id não numérico;
-- nenhum peer, ou nenhuma interface de acesso;
+- nenhum peer; nenhuma interface de acesso (exceto no VSI Huawei, que usa a
+  `Vlanif` e não pede interface);
 - Datacom sem grupo;
 - VSI Huawei sem VLAN (é nela que a `Vlanif` do serviço se apoia);
 - porta com modo diferente de `tagged`/`untagged`;
