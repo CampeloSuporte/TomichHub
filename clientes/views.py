@@ -6714,6 +6714,10 @@ from .l2vpn_actions import (
 
 _L2VPN_LIMITE_ARQUIVO = 3 * 1024 * 1024   # running-config completa cabe folgado
 _L2VPN_CACHE_TTL = 6 * 60 * 60            # 6h — o backup em si roda 1x/dia
+# Entra na chave do cache: mudar o parser (campo novo, sintaxe nova) muda o
+# formato do que está guardado, e sem isso o painel continuaria servindo o
+# parse antigo por até 6h. Suba junto com qualquer mudança em l2vpn_parser.
+_L2VPN_CACHE_VERSAO = 2
 # Quantos backups anteriores tentar quando o mais recente não revela nenhum IP
 # de identidade do equipamento. Loopback/LSR-ID praticamente não mudam, e é
 # comum a coleta mais nova vir truncada (paginação `---- More ----`) — sem esse
@@ -6751,7 +6755,7 @@ def _l2vpn_servicos_do_acesso(acesso):
     if not recentes:
         return [], None
     log, caminho = recentes[0]
-    chave = f'l2vpn:svc:{log.id}'
+    chave = f'l2vpn:svc:v{_L2VPN_CACHE_VERSAO}:{log.id}'
     servicos = cache.get(chave)
     if servicos is None:
         servicos = parse_l2vpn(_ler_backup(caminho))
@@ -6762,7 +6766,7 @@ def _l2vpn_servicos_do_acesso(acesso):
 def _l2vpn_ips_identidade(acesso):
     """{IP: origem} do acesso, cacheado por acesso (e não por backup: aqui o
     que interessa é o valor mais recente conhecido, não um backup específico)."""
-    chave = f'l2vpn:ident:acesso:{acesso.id}'
+    chave = f'l2vpn:ident:v{_L2VPN_CACHE_VERSAO}:acesso:{acesso.id}'
     ips = cache.get(chave)
     if ips is None:
         ips = {}

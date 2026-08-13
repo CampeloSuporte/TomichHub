@@ -33,7 +33,7 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 | `topo_engine.js` | Definição de tipos (`DEVICES`), interfaces (`IFACES`) e paths SVG dos ícones (`ICONS`) |
 | `topo_main.js` | Classe `TopoEditor` — lógica de renderização, eventos, persistência e importação |
 
-Versão atual: **topo_engine v=23 / topo_main v=31** (parâmetro de cache-busting no HTML).
+Versão atual: **topo_engine v=23 / topo_main v=32** (parâmetro de cache-busting no HTML).
 
 ---
 

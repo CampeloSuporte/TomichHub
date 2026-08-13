@@ -193,6 +193,11 @@ def validar_spec(spec, servicos, origem):
     if vendor == 'datacom' and not grupo:
         raise L2vpnNaoSuportado('No Datacom o serviço precisa de um grupo (vpws-group/vpls-group).')
 
+    flow_label = str(spec.get('flow_label') or '').strip().lower()
+    if flow_label and flow_label not in ('both', 'transmit', 'receive'):
+        raise L2vpnNaoSuportado(
+            f'flow-label inválido: "{flow_label}" — use both, transmit ou receive.')
+
     descricao = str(spec.get('descricao') or '').strip()[:200]
     if '\n' in descricao or '\r' in descricao:
         raise L2vpnNaoSuportado('Descrição não pode ter quebra de linha.')
@@ -210,6 +215,7 @@ def validar_spec(spec, servicos, origem):
         'portas': portas,
         'grupo': grupo,
         'descricao': descricao,
+        'flow_label': flow_label,
         'pw_type': str(origem.get('pw_type') or '').strip(),
         'encapsulamento': str(origem.get('encapsulamento') or '').strip(),
         # A config crua da origem é usada só pra copiar o *dialeto* do
@@ -237,6 +243,9 @@ def _comandos_huawei_vsi(spec):
     """VSI (VPLS multiponto). O binding da interface de acesso é feito na
     sub-interface, como nos backups reais deste ambiente."""
     cmds = [f'vsi {spec["nome"]}', 'pwsignal ldp', f'vsi-id {spec["id"]}']
+    # Ordem da config real: vsi-id, flow-label e só então os peers.
+    if spec['flow_label']:
+        cmds.append(f'flow-label {spec["flow_label"]}')
     for peer in spec['peers']:
         cmds.append(f'peer {peer}')
     cmds.append('quit')                       # sai do pwsignal
@@ -324,6 +333,12 @@ def _comandos_datacom(spec):
             cmds.append(f'pw-id {spec["id"]}')
             if spec['mtu']:
                 cmds.append(f'pw-mtu {spec["mtu"]}')
+            if spec['flow_label']:
+                # No vfi o pw-load-balance vem DEPOIS do pw-id/pw-mtu (no vpws
+                # vem antes) — cada um na ordem em que a config real gera.
+                cmds.append('pw-load-balance')
+                cmds.append(f'flow-label {spec["flow_label"]}')
+                cmds.append('exit')      # sai do pw-load-balance
             cmds.append('exit')          # sai do neighbor
         cmds.append('exit')              # sai do vfi
         cmds.append('bridge-domain')
@@ -339,6 +354,10 @@ def _comandos_datacom(spec):
                 'VPWS é ponto a ponto: use um peer só (para vários peers, clone um VPLS).')
         cmds.append(f'neighbor {spec["peers"][0]}')
         cmds.append(f'pw-type {pw_type}')
+        if spec['flow_label']:
+            cmds.append('pw-load-balance')
+            cmds.append(f'flow-label {spec["flow_label"]}')
+            cmds.append('exit')          # sai do pw-load-balance
         cmds.append(f'pw-id {spec["id"]}')
         if spec['mtu']:
             cmds.append(f'pw-mtu {spec["mtu"]}')

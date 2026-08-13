@@ -36,6 +36,12 @@
   da porta ou pela descrição, listando só as **físicas** (`Vlanif`, loopback, `NULL`, `MEth`,
   túneis, `l3 <nome>` do DmOS e sub-interfaces ficam de fora). No DmOS o nome é convertido da
   forma declarada (`gigabit-ethernet 1/1/1`) para a de referência (`gigabit-ethernet-1/1/1`).
+- ✅ **`flow-label` clonado junto**: faltava no VSI Huawei e também no Datacom (`pw-load-balance`).
+  O parser passou a lê-lo e o gerador o emite na posição da config real de cada fabricante —
+  entre `vsi-id` e `peer` no Huawei, antes do `pw-id` no VPWS e depois dele no VPLS Datacom.
+  Virou campo no formulário (both/transmit/receive/não usar), herdado da origem.
+- ✅ **Chave de cache versionada** (`_L2VPN_CACHE_VERSAO`): sem isso um campo novo no parser
+  demorava até 6 h pra aparecer, com o painel servindo o parse antigo no formato antigo.
 - ✅ Botão renomeado de "Mostrar VSI / L2VPN" para **"Mostrar L2VPN"**.
 
 **Onde está documentado?**

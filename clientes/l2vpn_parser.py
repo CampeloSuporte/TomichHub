@@ -57,6 +57,7 @@ def _novo_servico(tipo, tecnologia, nome, **extra):
         'mtu': '',
         'pw_type': '',
         'encapsulamento': '',
+        'flow_label': '',      # both | transmit | receive — balanceamento do pseudowire
         'vlan': '',
         'peers': [],
         'interfaces': [],
@@ -182,6 +183,12 @@ def _parse_huawei(conteudo, linhas):
                 mm = re.match(r'\s*encapsulation\s+(\S+)', linha)
                 if mm:
                     svc['encapsulamento'] = mm.group(1)
+                # `flow-label both` fica dentro do pwsignal, entre o vsi-id e os
+                # peers — é o que faz o tráfego do pseudowire balancear entre os
+                # caminhos do core, então some junto se não for clonado.
+                mm = re.match(r'\s*flow-label\s+(both|transmit|receive)', linha)
+                if mm:
+                    svc['flow_label'] = mm.group(1)
                 # MA5800: peer e VLAN de acesso vêm por referência.
                 mm = re.match(r'\s*vsi-pw-binding pwindex\s+(\d+)', linha)
                 if mm:
@@ -427,9 +434,12 @@ def _parse_datacom(conteudo):
             continue
 
         if tk == 'flow-label':
+            valor = tokens[i + 1] if i + 1 < len(tokens) else ''
+            if valor in ('both', 'transmit', 'receive'):
+                svc['flow_label'] = valor
             for peer in svc['peers']:
                 peer['flow_label'] = True
-            i += 2 if i + 1 < len(tokens) and tokens[i + 1] in ('both', 'transmit', 'receive') else 1
+            i += 2 if valor in ('both', 'transmit', 'receive') else 1
             continue
 
         if tk == 'access-interface' and i + 1 < len(tokens):

@@ -246,8 +246,13 @@ o operador procura pelo nome que ele digitou no equipamento.
 
 | Chave | Conteúdo | TTL |
 |---|---|---|
-| `l2vpn:svc:<backup_log_id>` | serviços parseados de um backup | 6 h |
-| `l2vpn:ident:acesso:<acesso_id>` | `{ip: origem}` de identidade do host | 6 h |
+| `l2vpn:svc:v<N>:<backup_log_id>` | serviços parseados de um backup | 6 h |
+| `l2vpn:ident:v<N>:acesso:<acesso_id>` | `{ip: origem}` de identidade do host | 6 h |
+
+O `v<N>` das chaves é `_L2VPN_CACHE_VERSAO` (`clientes/views.py`): **suba junto
+com qualquer mudança em `l2vpn_parser.py`**. Sem isso, um campo novo no parser
+demora até 6 h para aparecer — o painel continua servindo o parse antigo, no
+formato antigo.
 
 Os serviços são cacheados por **id do BackupLog**: o conteúdo de um backup nunca
 muda depois de gravado, então só um backup novo invalida (a chave muda junto).
@@ -341,9 +346,9 @@ diferente naquela interface.
 
 | Fabricante / tipo | Config gerada |
 |---|---|
-| Huawei VSI (VPLS) | `vsi NOME` + `pwsignal ldp` + `vsi-id` + um `peer` por peer + `mtu`; depois `vlan <VLAN>`, `interface Vlanif<VLAN>` com `l2 binding vsi NOME` e, para cada porta física escolhida, `port trunk allow-pass vlan <VLAN>` (tagged) ou `port default vlan <VLAN>` (untagged) |
+| Huawei VSI (VPLS) | `vsi NOME` + `pwsignal ldp` + `vsi-id` + `flow-label` + um `peer` por peer + `mtu`; depois `vlan <VLAN>`, `interface Vlanif<VLAN>` com `l2 binding vsi NOME` e, para cada porta física escolhida, `port trunk allow-pass vlan <VLAN>` (tagged) ou `port default vlan <VLAN>` (untagged) |
 | Huawei L2VC | `interface <porta>.<vlan>` + `vlan-type dot1q` + `description` + `mtu` + `mpls l2vc <peer> <vc-id> [raw\|tagged]` |
-| Datacom VPWS | `mpls l2vpn` → `vpws-group` → `vpn` → `neighbor` (`pw-type`/`pw-id`/`pw-mtu`) → `access-interface` + `dot1q` → `commit` |
+| Datacom VPWS | `mpls l2vpn` → `vpws-group` → `vpn` → `neighbor` (`pw-type`, `pw-load-balance`/`flow-label`, `pw-id`, `pw-mtu`) → `access-interface` + `dot1q` → `commit` |
 | Datacom VPLS | igual, com `vfi` (peers) e `bridge-domain` (`dot1q` + `access-interface`) |
 | MikroTik | `/interface vpls add …` + uma `/interface vlan add interface=<vpls>` por interface de acesso |
 
@@ -392,6 +397,12 @@ Detalhes que o gerador acerta e que um copiar-colar não acertaria:
 - **Dialeto do RouterOS**: `peer=` (v7) x `remote-peer=` (v6) e
   `cisco-static-id`/`cisco-style-id`/`vpls-id` são copiados da linha de origem
   daquele equipamento, não fixados no código.
+- **`flow-label`**: é o que faz o tráfego do pseudowire balancear entre os
+  caminhos do core, e sai da origem junto com o resto (dá pra trocar ou
+  desligar no formulário). Cada fabricante o coloca num lugar diferente, e o
+  gerador respeita a posição da config real: no Huawei entre o `vsi-id` e os
+  `peer`; no VPWS Datacom dentro do `neighbor`, **antes** do `pw-id`; no VPLS
+  Datacom dentro do `neighbor`, **depois** do `pw-id`/`pw-mtu`.
 - **Commit**: Huawei usa o `conn.commit()` do Netmiko (o `commit` na lista é só
   pro preview/auditoria mostrarem a ação completa); no DmOS o `commit` vai como
   linha de config mesmo — é o comando certo dentro do modo de configuração e
@@ -411,6 +422,7 @@ Validado no backend antes de gerar qualquer comando, com mensagem pronta pra UI:
 - Datacom sem grupo;
 - VSI Huawei sem VLAN (é nela que a `Vlanif` do serviço se apoia);
 - porta com modo diferente de `tagged`/`untagged`;
+- `flow-label` diferente de `both`/`transmit`/`receive`;
 - VPWS/L2VC/MikroTik com mais de um peer (são ponto a ponto — para multiponto,
   clone um VPLS/VSI);
 - fabricante fora de Huawei/Datacom/MikroTik.
