@@ -341,17 +341,54 @@ diferente naquela interface.
 
 | Fabricante / tipo | Config gerada |
 |---|---|
-| Huawei VSI (VPLS) | `vsi NOME` + `pwsignal ldp` + `vsi-id` + um `peer` por peer + `mtu`; depois `interface <porta>.<vlan>` com `vlan-type dot1q`, `description`, `mtu` e `l2 binding vsi NOME` |
+| Huawei VSI (VPLS) | `vsi NOME` + `pwsignal ldp` + `vsi-id` + um `peer` por peer + `mtu`; depois `vlan <VLAN>`, `interface Vlanif<VLAN>` com `l2 binding vsi NOME` e, para cada porta física escolhida, `port trunk allow-pass vlan <VLAN>` (tagged) ou `port default vlan <VLAN>` (untagged) |
 | Huawei L2VC | `interface <porta>.<vlan>` + `vlan-type dot1q` + `description` + `mtu` + `mpls l2vc <peer> <vc-id> [raw\|tagged]` |
 | Datacom VPWS | `mpls l2vpn` → `vpws-group` → `vpn` → `neighbor` (`pw-type`/`pw-id`/`pw-mtu`) → `access-interface` + `dot1q` → `commit` |
 | Datacom VPLS | igual, com `vfi` (peers) e `bridge-domain` (`dot1q` + `access-interface`) |
 | MikroTik | `/interface vpls add …` + uma `/interface vlan add interface=<vpls>` por interface de acesso |
 
+### O acesso do VSI Huawei é a Vlanif
+
+No VSI Huawei o serviço **não** é aplicado numa sub-interface: ele é aplicado na
+`Vlanif` da VLAN designada — 1092 dos 1128 bindings reais deste ambiente são em
+`Vlanif`, contra 36 em porta física. Por isso o formulário do VSI não pede
+"interface de acesso": a `Vlanif` sai da VLAN informada (que passa a ser
+obrigatória), e a VLAN é criada antes, já que a `Vlanif` não existe sem ela.
+
+O que se escolhe são as **portas físicas por onde a VLAN entra**, cada uma
+`tagged` ou `untagged`:
+
+| Modo | Comando gerado |
+|---|---|
+| tagged | `port trunk allow-pass vlan <VLAN>` |
+| untagged | `port default vlan <VLAN>` |
+
+O `port link-type` da porta **não** é alterado: trocar o tipo de uma porta em
+produção derruba o que já passa por ela. Se a porta ainda não for do tipo certo,
+a linha entra à mão no preview (que é editável). As portas são opcionais — a
+VLAN pode já estar liberada nos uplinks.
+
+### Interfaces vêm listadas do backup
+
+Os campos de interface (o `access-interface` do Datacom, a porta do L2VC Huawei
+e as portas físicas do VSI) são combos: digitar filtra **por nome da porta ou
+pela descrição** — é pela descrição (`CLIENTE-NETCENTER`, `LACP-CGNAT`) que se
+sabe qual porta é a certa. A lista vem do backup do próprio host, via
+`/clientes/acessos/<id>/interfaces-backup/`, e mostra **só interfaces físicas**:
+`Vlanif`, `LoopBack`, `NULL`, `MEth`, túneis, `l3 <nome>` do DmOS e
+sub-interfaces ficam de fora — num switch com 48 portas e 300 `Vlanif`, listar
+tudo junto torna a busca inútil, e `Vlanif` nunca é a porta onde a VLAN entra.
+
+No DmOS a interface é **declarada** com espaço (`interface gigabit-ethernet
+1/1/1`) e **referenciada** com hífen (`access-interface
+gigabit-ethernet-1/1/1`). A lista vem da declaração, então o que o operador
+escolhe é convertido para a forma de referência antes de virar comando.
+
 Detalhes que o gerador acerta e que um copiar-colar não acertaria:
 
-- **Sub-interface Huawei**: a interface da origem já vem como `Gi0/2/3.3127`
-  (é assim que aparece no backup). O sufixo antigo é **trocado** pela VLAN nova,
-  não concatenado — senão sairia `Gi0/2/3.3127.3200`.
+- **Sub-interface Huawei (L2VC)**: a interface da origem já vem como
+  `Gi0/2/3.3127` (é assim que aparece no backup). O sufixo antigo é **trocado**
+  pela VLAN nova, não concatenado — senão sairia `Gi0/2/3.3127.3200`.
 - **Dialeto do RouterOS**: `peer=` (v7) x `remote-peer=` (v6) e
   `cisco-static-id`/`cisco-style-id`/`vpls-id` são copiados da linha de origem
   daquele equipamento, não fixados no código.
@@ -372,6 +409,8 @@ Validado no backend antes de gerar qualquer comando, com mensagem pronta pra UI:
 - VLAN fora de 1–4094, MTU fora de 46–65535, id não numérico;
 - nenhum peer, ou nenhuma interface de acesso;
 - Datacom sem grupo;
+- VSI Huawei sem VLAN (é nela que a `Vlanif` do serviço se apoia);
+- porta com modo diferente de `tagged`/`untagged`;
 - VPWS/L2VC/MikroTik com mais de um peer (são ponto a ponto — para multiponto,
   clone um VPLS/VSI);
 - fabricante fora de Huawei/Datacom/MikroTik.

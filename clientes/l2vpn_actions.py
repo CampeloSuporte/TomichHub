@@ -41,6 +41,13 @@ MAX_LINHAS = 80
 MAX_COLUNAS = 500
 
 
+def eh_vsi_huawei(vendor, tipo):
+    """VSI Huawei tem um fluxo próprio: o serviço é aplicado na `Vlanif` da
+    VLAN designada (1092 dos 1128 bindings reais deste ambiente são em Vlanif),
+    e a VLAN chega às portas físicas por fora do bloco do serviço."""
+    return vendor == 'huawei' and (tipo or 'vpls') != 'l2vc'
+
+
 class L2vpnNaoSuportado(Exception):
     """Combinação fabricante+tipo sem sintaxe conferida em config real, ou
     spec inválida (id em uso, VLAN fora de faixa, peer inválido…). Melhor
@@ -65,6 +72,18 @@ def _int_na_faixa(valor, nome, minimo, maximo, obrigatorio=True):
     if not (minimo <= numero <= maximo):
         raise L2vpnNaoSuportado(f'{nome} fora da faixa {minimo}–{maximo} (recebido: {numero}).')
     return numero
+
+
+def _normalizar_iface(nome, vendor):
+    """No DmOS a interface é DECLARADA com espaço (`interface gigabit-ethernet
+    1/1/1`) e REFERENCIADA com hífen (`access-interface gigabit-ethernet-1/1/1`).
+    A lista do painel vem da declaração (é o que está no backup), então o que o
+    operador escolhe precisa virar a forma de referência antes de virar comando.
+    """
+    nome = (nome or '').strip()
+    if vendor == 'datacom':
+        return re.sub(r'\s+', '-', nome)
+    return nome
 
 
 def _ip_valido(texto, rotulo):
@@ -135,14 +154,37 @@ def validar_spec(spec, servicos, origem):
 
     interfaces = []
     for iface in (spec.get('interfaces') or []):
-        nome_if = str((iface or {}).get('nome') or '').strip()
+        nome_if = _normalizar_iface(str((iface or {}).get('nome') or '').strip(), vendor)
         if not nome_if:
             continue
         if not _IFACE_OK.match(nome_if):
             raise L2vpnNaoSuportado(f'Nome de interface inválido: "{nome_if}".')
         vlan_if = _int_na_faixa((iface or {}).get('vlan'), f'VLAN de {nome_if}', 1, 4094, obrigatorio=False)
         interfaces.append({'nome': nome_if, 'vlan': vlan_if})
-    if not interfaces:
+
+    # Portas físicas onde a VLAN do serviço passa (tagged/untagged). Só o VSI
+    # Huawei usa: ele é aplicado na Vlanif, então a VLAN precisa chegar até a
+    # porta por fora do bloco do serviço.
+    portas = []
+    for porta in (spec.get('portas') or []):
+        nome_p = _normalizar_iface(str((porta or {}).get('nome') or '').strip(), vendor)
+        if not nome_p:
+            continue
+        if not _IFACE_OK.match(nome_p):
+            raise L2vpnNaoSuportado(f'Nome de porta inválido: "{nome_p}".')
+        modo = str((porta or {}).get('modo') or 'tagged').strip().lower()
+        if modo not in ('tagged', 'untagged'):
+            raise L2vpnNaoSuportado(f'Modo inválido para a porta {nome_p}: use tagged ou untagged.')
+        portas.append({'nome': nome_p, 'modo': modo})
+
+    if eh_vsi_huawei(vendor, origem.get('tipo')):
+        # O VSI é aplicado na Vlanif da VLAN designada — sem VLAN não há onde
+        # aplicar. As portas físicas são opcionais: a VLAN pode já estar
+        # liberada nos uplinks.
+        if not vlan:
+            raise L2vpnNaoSuportado(
+                'O VSI é aplicado na Vlanif da VLAN — informe a VLAN do serviço.')
+    elif not interfaces:
         raise L2vpnNaoSuportado('Informe pelo menos uma interface de acesso.')
 
     grupo = str(spec.get('grupo') or '').strip()
@@ -165,6 +207,7 @@ def validar_spec(spec, servicos, origem):
         'mtu': mtu,
         'peers': peers,
         'interfaces': interfaces,
+        'portas': portas,
         'grupo': grupo,
         'descricao': descricao,
         'pw_type': str(origem.get('pw_type') or '').strip(),
@@ -201,18 +244,29 @@ def _comandos_huawei_vsi(spec):
         cmds.append(f'mtu {spec["mtu"]}')
     cmds.append('quit')                       # sai do vsi
 
-    for iface in spec['interfaces']:
-        vlan = iface['vlan'] or spec['vlan']
-        if not vlan:
-            raise L2vpnNaoSuportado(
-                f'A interface de acesso {iface["nome"]} precisa de uma VLAN (dot1q) no Huawei.')
-        cmds.append(f'interface {_subinterface_huawei(iface["nome"], vlan)}')
-        cmds.append(f'vlan-type dot1q {vlan}')
-        if spec['descricao']:
-            cmds.append(f'description {spec["descricao"]}')
-        if spec['mtu']:
-            cmds.append(f'mtu {spec["mtu"]}')
-        cmds.append(f'l2 binding vsi {spec["nome"]}')
+    # Acesso do VSI: a Vlanif da VLAN designada. Cria a VLAN antes — a Vlanif
+    # não existe enquanto a VLAN não existir.
+    vlan = spec['vlan']
+    cmds.append(f'vlan {vlan}')
+    if spec['descricao']:
+        cmds.append(f'description {spec["descricao"]}')
+    cmds.append('quit')
+    cmds.append(f'interface Vlanif{vlan}')
+    if spec['descricao']:
+        cmds.append(f'description {spec["descricao"]}')
+    cmds.append(f'l2 binding vsi {spec["nome"]}')
+    cmds.append('quit')
+
+    # Portas físicas onde a VLAN entra. Só a liberação da VLAN é emitida:
+    # mudar `port link-type` de uma porta em produção derruba o que já passa
+    # por ela, então o tipo do porta continua sendo decisão de quem revisa o
+    # preview (que é editável).
+    for porta in spec['portas']:
+        cmds.append(f'interface {porta["nome"]}')
+        if porta['modo'] == 'untagged':
+            cmds.append(f'port default vlan {vlan}')
+        else:
+            cmds.append(f'port trunk allow-pass vlan {vlan}')
         cmds.append('quit')
 
     # 'commit' aqui é só pro preview/auditoria mostrarem a ação completa — a

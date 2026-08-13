@@ -6667,12 +6667,35 @@ def interfaces_backup_acesso(request, acesso_id):
 
     fabricante = backup.template.fabricante if backup.template else ''
     interfaces = _extrair_interfaces_backup(conteudo, fabricante)
+    for item in interfaces:
+        item['logica'] = _interface_logica(item['nome'])
+        item['subinterface'] = _interface_subinterface(item['nome'])
 
     return JsonResponse({
         'interfaces': interfaces,
         'tem_backup': True,
         'data_backup': backup.data_backup.astimezone(timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M'),
     })
+
+
+# Interfaces que nunca são a porta física onde uma VLAN de cliente entra:
+# interface de VLAN (Vlanif/vlan-interface), loopback, túnel, gerência e o
+# `interface l3 <nome>` do DmOS. O painel de clonagem lista só as físicas —
+# num switch com 48 portas + 300 Vlanif, a lista fica inutilizável sem isso.
+_IFACE_LOGICA_RE = re.compile(
+    r'^\s*(vlanif|vlan-interface|vlan\d|loopback|loop\d|null|tunnel|virtual-template|'
+    r'virtual-ethernet|nve|register-tunnel|meth|mgmt|console|l3[\s-]|bridge|pppoe|'
+    r'lo\d|dialer|global|serial)', re.IGNORECASE)
+
+
+def _interface_logica(nome):
+    return bool(_IFACE_LOGICA_RE.match(nome or ''))
+
+
+def _interface_subinterface(nome):
+    """`GigabitEthernet0/2/3.101` — a VLAN vive na sub-interface, mas o
+    `port trunk allow-pass`/`access-interface` vai sempre na porta pai."""
+    return bool(re.search(r'\.\d+$', nome or ''))
 
 
 # ─── L2VPN (VSI/VPLS, VPWS, L2VC) na topologia ────────────────────────────────

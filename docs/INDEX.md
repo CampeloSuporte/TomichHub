@@ -27,6 +27,15 @@
 - ✅ **Preview sempre antes de aplicar**: "Gerar comandos" rola até o textarea e o destaca;
   o botão de aplicar só existe depois de gerar, e erros de validação passaram a aparecer
   em vermelho no painel em vez de num toast que some.
+- ✅ **VSI Huawei aplicado na Vlanif**: o VSI não é mais gerado em sub-interface — ele nasce na
+  `Vlanif` da VLAN designada (1092 dos 1128 bindings reais do ambiente são assim), com a VLAN
+  criada antes. O formulário passou a pedir as **portas físicas** onde a VLAN entra, cada uma
+  tagged (`port trunk allow-pass vlan`) ou untagged (`port default vlan`) — sem mexer no
+  `port link-type`, que derrubaria o que já passa pela porta.
+- ✅ **Interfaces listadas do backup**: os campos de interface viraram combos que buscam por nome
+  da porta ou pela descrição, listando só as **físicas** (`Vlanif`, loopback, `NULL`, `MEth`,
+  túneis, `l3 <nome>` do DmOS e sub-interfaces ficam de fora). No DmOS o nome é convertido da
+  forma declarada (`gigabit-ethernet 1/1/1`) para a de referência (`gigabit-ethernet-1/1/1`).
 - ✅ Botão renomeado de "Mostrar VSI / L2VPN" para **"Mostrar L2VPN"**.
 
 **Onde está documentado?**
