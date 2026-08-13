@@ -13,6 +13,7 @@ from modelo_equipamento.models import Modelo_equipamento
 from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
 from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate, ComentarioAcesso, OpenVPNConfig
+from .models import AcaoL2vpn
 from .models import ProxyServer
 from .models import AcessoSessao, AcessoComando, TerminalLinkExterno
 from .proxy_engine import ProxyEngine
@@ -6678,6 +6679,15 @@ def interfaces_backup_acesso(request, acesso_id):
 
 from django.core.cache import cache
 from .l2vpn_parser import parse_l2vpn, extrair_ips_identidade, resumo_por_tipo
+from .l2vpn_actions import (
+    L2vpnNaoSuportado,
+    VENDORS_SUPORTADOS as _L2VPN_VENDORS,
+    comandos_clonar,
+    executar as _l2vpn_executar,
+    sugerir_id,
+    validar_comandos_editados,
+    validar_spec,
+)
 
 _L2VPN_LIMITE_ARQUIVO = 3 * 1024 * 1024   # running-config completa cabe folgado
 _L2VPN_CACHE_TTL = 6 * 60 * 60            # 6h — o backup em si roda 1x/dia
@@ -6819,6 +6829,91 @@ def l2vpn_backup_acesso(request, acesso_id):
         'data_backup': log.data_backup.astimezone(
             timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M'),
         'arquivo': os.path.basename(log.arquivo_path),
+        # Sugestão de id livre e se dá pra clonar neste equipamento — a UI usa
+        # pra pré-preencher o formulário e pra esconder o botão onde não dá.
+        'id_sugerido': sugerir_id(anotados),
+        'pode_clonar': bool(anotados) and anotados[0].get('vendor') in _L2VPN_VENDORS,
+    })
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+@modulo_habilitado_required('topologia')
+def l2vpn_clonar_acesso(request, acesso_id):
+    """Clona um serviço L2VPN do host: monta a config do serviço novo a partir
+    de um existente e (fora do preview) aplica no equipamento.
+
+    body: {"origem_idx": int, "spec": {...}, "preview": bool, "comandos": [...]}
+
+    Mesmo contrato da automação BGP (`bgp_views.bgp_executar_acao`):
+    `preview=true` só devolve os comandos gerados, sem tocar no equipamento —
+    é o que preenche o textarea editável do modal. `preview=false` executa de
+    verdade e grava `AcaoL2vpn`; se vier `comandos`, usa exatamente o texto
+    revisado pelo operador em vez de gerar de novo.
+
+    Restrito a backoffice: criar pseudowire em equipamento de produção é
+    engenharia de rede, não função de portal de cliente.
+    """
+    acesso = get_object_or_404(Acesso.objects.select_related('cliente'), id=acesso_id)
+
+    if not (_perms.is_backoffice(request.user)
+            and _perms.ferramenta_habilitada(request.user, 'topologia')
+            and _perms.pode_acessar_cliente(request.user, acesso.cliente)):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    servicos, log = _l2vpn_servicos_do_acesso(acesso)
+    if log is None or not servicos:
+        return JsonResponse({'error': 'Sem serviços L2VPN no backup deste host.'}, status=404)
+
+    try:
+        origem_idx = int(body.get('origem_idx'))
+        origem = servicos[origem_idx]
+    except (TypeError, ValueError, IndexError):
+        return JsonResponse({'error': 'Serviço de origem inválido.'}, status=400)
+
+    try:
+        spec = validar_spec(body.get('spec') or {}, servicos, origem)
+        comandos_gerados = comandos_clonar(spec)
+    except L2vpnNaoSuportado as e:
+        return JsonResponse({'error': str(e)}, status=422)
+
+    if bool(body.get('preview', True)):
+        # Preview sempre gera do zero — é o texto inicial do textarea, nunca
+        # deve refletir uma edição anterior.
+        return JsonResponse({'comandos': comandos_gerados, 'vendor': spec['vendor']})
+
+    comandos_editados = body.get('comandos')
+    if comandos_editados is not None:
+        try:
+            comandos = validar_comandos_editados(comandos_editados)
+        except L2vpnNaoSuportado as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    else:
+        comandos = comandos_gerados
+
+    output, status = _l2vpn_executar(acesso, spec['vendor'], comandos)
+
+    AcaoL2vpn.objects.create(
+        acesso=acesso, usuario=request.user,
+        origem=f'{origem.get("tecnologia", "")} {origem.get("id", "")} {origem.get("nome", "")}'.strip(),
+        alvo=spec['nome'], servico_id=str(spec['id']), vendor=spec['vendor'],
+        comandos='\n'.join(comandos), output=output, status=status,
+    )
+
+    if status == 'sucesso':
+        # O serviço novo só vai aparecer na listagem depois do próximo backup —
+        # o cache guarda o parse do backup atual, que não muda. Deixa explícito
+        # na resposta pra UI avisar em vez de o operador achar que falhou.
+        logger.info(f'L2VPN clonado em {acesso}: {spec["nome"]} (id {spec["id"]}) por {request.user}')
+
+    return JsonResponse({
+        'status': status, 'output': output, 'comandos': comandos,
+        'nome': spec['nome'], 'id': spec['id'],
     })
 
 

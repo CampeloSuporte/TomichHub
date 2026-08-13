@@ -2,9 +2,11 @@
 
 **Arquivos principais:**
 - `clientes/l2vpn_parser.py` — parser dos serviços L2VPN e dos IPs de identidade
-- `clientes/views.py` — `l2vpn_backup_acesso` e helpers `_l2vpn_*`
-- `static/js/topo_main.js` — modal "Mostrar VSI / L2VPN" (`abrirL2vpn` e cia.)
+- `clientes/l2vpn_actions.py` — geração e execução da config de um serviço clonado
+- `clientes/views.py` — `l2vpn_backup_acesso`, `l2vpn_clonar_acesso` e helpers `_l2vpn_*`
+- `static/js/topo_main.js` — modal "Mostrar L2VPN" e painel de clonagem (`abrirL2vpn`, `clonarL2vpn`)
 - `clientes/templates/topologia_editor.html` — CSS do modal
+- Model `AcaoL2vpn` (migração `0108_acao_l2vpn`) — auditoria das aplicações
 
 **Atualizado em:** 2026-08-13
 
@@ -13,7 +15,7 @@
 ## Visão Geral
 
 Todo host da topologia que tem backup coletado ganha, no painel de propriedades,
-o botão **Mostrar VSI / L2VPN**. Ele abre um modal que documenta os serviços de
+o botão **Mostrar L2VPN**. Ele abre um modal que documenta os serviços de
 camada 2 configurados naquele equipamento — VSI/VPLS, VPWS e L2VC/pseudowire —
 lidos direto do backup mais recente, com:
 
@@ -25,6 +27,11 @@ lidos direto do backup mais recente, com:
 Clicar num peer identificado leva direto ao host correspondente no diagrama
 (centraliza, seleciona e pisca o nó). Se o host existe no CRM mas ainda não foi
 colocado no diagrama, o modal abre a documentação L2VPN dele.
+
+Cada serviço também pode ser **clonado**: o botão "Clonar" abre um painel com a
+config de origem já preenchida, o operador ajusta o que muda (nome, id, VLAN,
+peer, interface), revisa os comandos gerados e manda aplicar — o CRM conecta no
+equipamento e cria o serviço. Ver "Clonar um serviço" mais abaixo.
 
 Nada disso é digitado à mão nem fica guardado em tabela: é sempre derivado do
 backup, então acompanha a config real do equipamento.
@@ -201,6 +208,7 @@ neighbor … virtual-circuit-id` e `routing-instances` com `instance-type vpls`.
 | Método | URL | Descrição |
 |---|---|---|
 | `GET` | `/clientes/acessos/<acesso_id>/l2vpn-backup/` | Serviços L2VPN do host + resolução dos peers |
+| `POST` | `/clientes/acessos/<acesso_id>/l2vpn-clonar/` | Gera (preview) ou aplica a config de um serviço clonado |
 
 Resposta:
 
@@ -250,7 +258,7 @@ parse de todos os backups para montar o mapa de identidade).
 ## Interface
 
 - **Botão**: painel de propriedades do host (só aparece em nó vinculado a um
-  `Acesso` do CRM) → *Mostrar VSI / L2VPN*.
+  `Acesso` do CRM) → *Mostrar L2VPN*.
 - **Filtro por família** (Todos / VPLS·VSI / VPWS / L2VC) e busca livre por
   nome, id, VLAN, grupo, peer, nome do host do outro lado ou interface.
 - **Cores**: VPLS/VSI roxo, VPWS laranja, L2VC ciano — o mesmo par cor/fundo no
@@ -283,6 +291,86 @@ A chave `l2vpn` entra no dict de `parse_backup()`; as chaves rasas `vsi` e
 
 ---
 
+## Clonar um serviço
+
+O caminho mais comum de operação não é criar um circuito do zero: é repetir um
+que já existe trocando VLAN, id e cliente. O botão **Clonar** em cada linha
+abre um painel com três passos, o mesmo desenho da automação BGP:
+
+1. **Formulário** pré-preenchido com a config de origem — nome, id (já sugerido
+   como o primeiro livre no equipamento), VLAN, MTU, grupo (Datacom),
+   descrição, peers e interfaces de acesso. Peers e interfaces são listas: dá
+   pra adicionar e remover linhas.
+2. **Comandos gerados** pelo backend num textarea **editável** — é a config
+   exata que vai pro equipamento, revisável antes de enviar.
+3. **Aplicar no equipamento**, com confirmação explícita nomeando host e IP.
+   O CRM conecta (mesma conexão Netmiko do Painel de Scripts), envia e mostra
+   a saída crua do equipamento.
+
+A VLAN por interface fica **vazia** quando é igual à do serviço: assim ela herda
+o campo "VLAN (dot1q)" e mudar a VLAN do clone num lugar só vale pra todas as
+interfaces. Só aparece preenchida quando a origem realmente usa uma VLAN
+diferente naquela interface.
+
+### O que é gerado, por fabricante
+
+| Fabricante / tipo | Config gerada |
+|---|---|
+| Huawei VSI (VPLS) | `vsi NOME` + `pwsignal ldp` + `vsi-id` + um `peer` por peer + `mtu`; depois `interface <porta>.<vlan>` com `vlan-type dot1q`, `description`, `mtu` e `l2 binding vsi NOME` |
+| Huawei L2VC | `interface <porta>.<vlan>` + `vlan-type dot1q` + `description` + `mtu` + `mpls l2vc <peer> <vc-id> [raw\|tagged]` |
+| Datacom VPWS | `mpls l2vpn` → `vpws-group` → `vpn` → `neighbor` (`pw-type`/`pw-id`/`pw-mtu`) → `access-interface` + `dot1q` → `commit` |
+| Datacom VPLS | igual, com `vfi` (peers) e `bridge-domain` (`dot1q` + `access-interface`) |
+| MikroTik | `/interface vpls add …` + uma `/interface vlan add interface=<vpls>` por interface de acesso |
+
+Detalhes que o gerador acerta e que um copiar-colar não acertaria:
+
+- **Sub-interface Huawei**: a interface da origem já vem como `Gi0/2/3.3127`
+  (é assim que aparece no backup). O sufixo antigo é **trocado** pela VLAN nova,
+  não concatenado — senão sairia `Gi0/2/3.3127.3200`.
+- **Dialeto do RouterOS**: `peer=` (v7) x `remote-peer=` (v6) e
+  `cisco-static-id`/`cisco-style-id`/`vpls-id` são copiados da linha de origem
+  daquele equipamento, não fixados no código.
+- **Commit**: Huawei usa o `conn.commit()` do Netmiko (o `commit` na lista é só
+  pro preview/auditoria mostrarem a ação completa); no DmOS o `commit` vai como
+  linha de config mesmo — é o comando certo dentro do modo de configuração e
+  evita o prompt de "uncommitted changes" na saída.
+- **RouterOS não tem modo de configuração**: os comandos são enviados um a um,
+  diferente da automação BGP (que só precisava mandar um).
+
+### Recusas (`L2vpnNaoSuportado`)
+
+Validado no backend antes de gerar qualquer comando, com mensagem pronta pra UI:
+
+- id já em uso no equipamento (ou o próprio id da origem);
+- nome já existente, ou fora de `[A-Za-z0-9._@:-]{1,63}`;
+- peer que não é IPv4 válido, ou repetido;
+- VLAN fora de 1–4094, MTU fora de 46–65535, id não numérico;
+- nenhum peer, ou nenhuma interface de acesso;
+- Datacom sem grupo;
+- VPWS/L2VC/MikroTik com mais de um peer (são ponto a ponto — para multiponto,
+  clone um VPLS/VSI);
+- fabricante fora de Huawei/Datacom/MikroTik.
+
+O texto editado à mão ainda passa por um teto de sanidade (80 linhas, 500
+colunas) antes de ir pro equipamento.
+
+### Permissão e auditoria
+
+Restrito a **backoffice** (`is_backoffice` + ferramenta `topologia` habilitada +
+`pode_acessar_cliente`): criar pseudowire em equipamento de produção é
+engenharia de rede, não função de portal de cliente — mesma régua da automação
+BGP.
+
+Toda aplicação grava um `AcaoL2vpn`: quem clicou, serviço de origem, nome e id
+do serviço criado, fabricante, comandos exatos enviados, saída do equipamento e
+status.
+
+> Depois de aplicar, o serviço novo **não aparece na listagem na hora**: a lista
+> é lida do backup, não do equipamento ao vivo. O painel avisa isso — ele
+> aparece na próxima coleta de backup do host.
+
+---
+
 ## Limitações conhecidas
 
 - Serviços aparecem conforme o **último backup**: mudança feita no equipamento
@@ -291,3 +379,9 @@ A chave `l2vpn` entra no dict de `parse_backup()`; as chaves rasas `vsi` e
   outro cliente (ou de terceiro) fica como não identificado.
 - Sem backup coletado, o modal explica o motivo em vez de mostrar lista vazia.
 - EVPN (`evpn instance`, `bgp evpn`) ainda não é reconhecido.
+- A clonagem cria o serviço **só no host de origem** — o outro lado do túnel
+  (no peer) continua sendo config manual. Clonar nos dois lados de uma vez é um
+  passo natural daqui, mas hoje não existe.
+- Cisco e Juniper são lidos pelo parser mas não podem ser clonados: não há
+  ocorrência real de xconnect/l2circuit nos backups deste ambiente pra conferir
+  a sintaxe gerada.

@@ -2,6 +2,35 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 40 — 13/08/2026: Topologia — Clonar serviço L2VPN e aplicar no equipamento
+
+**O que foi implementado?**
+- ✅ **Clonar VSI/VPLS/VPWS/L2VC**: cada serviço do modal "Mostrar L2VPN" ganhou um botão
+  *Clonar* que abre um painel com a config de origem pré-preenchida (nome, id já sugerido
+  como o primeiro livre, VLAN, MTU, grupo, peers e interfaces de acesso — listas editáveis).
+- ✅ **Três passos, mesmo desenho da automação BGP**: formulário → comandos gerados num
+  textarea **editável** → *Aplicar no equipamento* com confirmação nomeando host e IP. O CRM
+  conecta pelo Netmiko (mesma conexão do Painel de Scripts) e mostra a saída crua.
+- ✅ **Geração por fabricante** (`clientes/l2vpn_actions.py`): Huawei VSI e L2VC, Datacom
+  VPWS e VPLS, MikroTik VPLS. Acerta o que copiar-colar erraria — troca (não concatena) o
+  sufixo da sub-interface Huawei, copia o dialeto do RouterOS do próprio equipamento
+  (`peer=` x `remote-peer=`, `cisco-static-id` x `vpls-id`) e usa o commit certo de cada um.
+- ✅ **Recusa antes de gerar** (`L2vpnNaoSuportado`): id em uso, nome duplicado, peer
+  inválido, VLAN/MTU fora de faixa, sem interface, Datacom sem grupo, VPWS/L2VC com mais de
+  um peer, fabricante não suportado (Cisco/Juniper são lidos, mas não clonados).
+- ✅ **Backoffice + auditoria**: `is_backoffice` + ferramenta `topologia` + posse do cliente;
+  toda aplicação grava `AcaoL2vpn` (origem, serviço criado, comandos, saída, status).
+- ✅ Botão renomeado de "Mostrar VSI / L2VPN" para **"Mostrar L2VPN"**.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[topologia_l2vpn.md](topologia_l2vpn.md)** | Seção "Clonar um serviço" — os 3 passos, o que é gerado por fabricante, recusas, permissão e auditoria |
+| **[topologia.md](topologia.md)** | Referência cruzada: nova URL backend |
+
+---
+
 ### Sessão 39 — 13/08/2026: Topologia — Documentação de L2VPN (VSI / VPLS / VPWS / L2VC)
 
 **O que foi implementado?**
@@ -1087,6 +1116,7 @@ apaga** logins já salvos indevidamente — isso precisa ser removido manualment
 - **[topologia_l2vpn.md](topologia_l2vpn.md)** — L2VPN na topologia (VSI/VPLS/VPWS/L2VC)
   - Sintaxes reconhecidas por fabricante (Huawei, Datacom, MikroTik, Cisco, Juniper)
   - Como o peer do túnel é resolvido para o host do outro lado
+  - Clonar um serviço e aplicar no equipamento (preview editável, recusas, auditoria)
   - Endpoint, cache e limitações
 
 - **[topologia.md](topologia.md)** — Editor visual de topologia de rede (SVG)
@@ -1342,6 +1372,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 | 01/08/2026 | Fix Automação BGP: "anunciar prefixo novo" também editava prefix-list compartilhada — redesenhado pra criar node/route-map/term novo na sessão (nunca edita a lista), UI lista todas as prefix-lists do equipamento com busca, sem pedir prefixo digitado | bgp_automacao.md |
 | 01/08/2026 | Fix Automação BGP: "parar de anunciar" no Huawei (`undo network` global) e Cisco/Datacom (edição direta de prefix-list compartilhada) — ambos corrigidos pra mexer só no node/route-map da sessão, sem tocar em objeto compartilhado; UX de "anunciar prefixo novo" agora lista as prefix-lists antes de pedir o prefixo | bgp_automacao.md |
 | 01/08/2026 | Automação BGP: botão atualizar snapshot sob demanda, communities cadastráveis por sessão, anunciar prefixo novo via varredura de prefix-lists (4 fabricantes) | bgp_automacao.md |
+| 13/08/2026 | Topologia: clonar serviço L2VPN (VSI/VPLS/VPWS/L2VC) a partir de um existente e aplicar no equipamento, com preview editável, confirmação e auditoria em AcaoL2vpn | topologia_l2vpn.md, topologia.md |
 | 13/08/2026 | Topologia: documentação de L2VPN (VSI/VPLS/VPWS/L2VC) lida do backup, peer do túnel ligado ao host do outro lado, parser multi-fabricante; artigo de infraestrutura com seção L2VPN unificada | topologia_l2vpn.md, topologia.md |
 | 31/07/2026 | Automação BGP: parser estendido (Mikrotik/Huawei/Cisco-Datacom/Juniper), simulador de match único, snapshot noturno, ativar/desativar sessão + prepend + parar de anunciar via UI | bgp_automacao.md |
 | 31/07/2026 | Terminal compartilhado (opt-in, múltiplos usuários na mesma conexão) + link externo temporário (sem login) para suporte; fix de autorização em `conectar_acesso` | terminal_ssh.md, AUDITORIA_ACESSOS.md |

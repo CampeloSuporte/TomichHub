@@ -192,6 +192,31 @@ body.effects-off .link-packet{display:none}
 .l2vpn-tag{font-size:.62rem;background:rgba(255,255,255,.07);border-radius:4px;padding:1px 5px;margin-left:6px;color:var(--muted)}
 .l2vpn-nada{font-size:.7rem;color:var(--muted);font-style:italic}
 .l2vpn-config{background:#0a0f14;border:1px solid var(--border);border-radius:7px;padding:9px 11px;font-family:'Courier New',monospace;font-size:.68rem;color:#9fb3c8;white-space:pre;overflow-x:auto;max-height:220px;overflow-y:auto;line-height:1.45}
+/* Clonar serviço — botão na linha e formulário do painel de clonagem */
+.l2vpn-clonar{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:3px 9px;font-size:.66rem;cursor:pointer;flex-shrink:0;display:flex;align-items:center;gap:5px;transition:background .15s,border-color .15s,color .15s}
+.l2vpn-clonar:hover{background:rgba(188,140,255,.14);border-color:var(--purple);color:var(--purple)}
+.l2vpn-form{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+@media (max-width:720px){.l2vpn-form{grid-template-columns:1fr}}
+.l2vpn-form-grupo{display:flex;flex-direction:column;gap:5px;min-width:0}
+.l2vpn-label{font-size:.68rem;color:var(--muted);font-weight:600;letter-spacing:.02em;display:flex;align-items:center;gap:8px}
+.l2vpn-input{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 9px;font-size:.78rem;outline:none;width:100%;min-width:0;transition:border-color .15s,box-shadow .15s}
+.l2vpn-input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,217,255,.12)}
+.l2vpn-input.curto{max-width:82px;flex-shrink:0}
+.l2vpn-linha-lista{display:flex;gap:6px;align-items:center}
+.l2vpn-mini{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:3px 8px;font-size:.65rem;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.l2vpn-mini:hover{border-color:var(--cyan);color:var(--cyan)}
+.l2vpn-mini.danger:hover{border-color:var(--red);color:var(--red)}
+.l2vpn-config.editavel{width:100%;white-space:pre;resize:vertical;color:var(--text);tab-size:2}
+.l2vpn-config.editavel:focus{border-color:var(--cyan);outline:none;box-shadow:0 0 0 3px rgba(0,217,255,.12)}
+/* Aplicar mexe em equipamento de produção: cor de alerta e confirmação
+   explícita antes de enviar (mesmo padrão da automação BGP). */
+.btn-ok.perigo{background:rgba(255,166,87,.15);border-color:var(--orange);color:var(--orange)}
+.btn-ok.perigo:hover{background:rgba(255,166,87,.28)}
+.l2vpn-confirma{display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;font-size:.78rem;color:var(--orange)}
+.l2vpn-confirma span{display:flex;align-items:center;gap:7px;flex:1;min-width:180px}
+.l2vpn-confirma b{color:var(--text)}
+.l2vpn-confirma .btn-ok,.l2vpn-confirma .btn-cancel{flex:0 0 auto;padding:7px 14px}
+.l2vpn-aviso{font-size:.7rem;color:var(--muted);margin-top:7px;line-height:1.5;border-left:2px solid var(--border);padding-left:9px}
 .l2vpn-vazio{padding:44px 20px;text-align:center;color:var(--muted);font-size:.82rem}
 .l2vpn-vazio i{font-size:1.8rem;display:block;margin-bottom:12px;opacity:.35}
 .l2vpn-dica{font-size:.72rem;margin-top:8px;opacity:.8;max-width:460px;margin-left:auto;margin-right:auto;line-height:1.5}
@@ -335,6 +360,6 @@ body.effects-off .link-packet{display:none}
   }
 </script>
 <script src="/static/js/topo_engine.js?v=23"></script>
-<script src="/static/js/topo_main.js?v=28"></script>
+<script src="/static/js/topo_main.js?v=29"></script>
 </body>
 </html>

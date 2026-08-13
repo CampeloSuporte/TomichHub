@@ -1531,6 +1531,40 @@ class AcaoBgp(models.Model):
         return f'[{self.tipo}] {quem} → {self.acesso} :: {self.alvo} [{self.status}]'
 
 
+class AcaoL2vpn(models.Model):
+    """Auditoria de uma clonagem de serviço L2VPN disparada pela topologia —
+    quem clicou, a config que foi enviada ao equipamento e o resultado.
+    Separado de `AcaoBgp` de propósito: é outra automação, com outro alvo
+    (serviço L2, não sessão BGP) e outro conjunto de campos relevantes."""
+
+    STATUS = [
+        ('sucesso', 'Sucesso'),
+        ('erro',    'Erro'),
+    ]
+
+    acesso       = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='acoes_l2vpn')
+    usuario      = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='+')
+    origem       = models.CharField(max_length=255, blank=True, default='',
+                                    verbose_name='Serviço de origem (clonado de)')
+    alvo         = models.CharField(max_length=255)   # nome do serviço criado
+    servico_id   = models.CharField(max_length=32, blank=True, default='',
+                                    verbose_name='ID do serviço (vsi-id/pw-id/vc-id)')
+    vendor       = models.CharField(max_length=20, blank=True, default='')
+    comandos     = models.TextField()                 # comandos reais enviados, um por linha
+    output       = models.TextField(blank=True, default='')
+    status       = models.CharField(max_length=10, choices=STATUS)
+    executado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-executado_em']
+        verbose_name = 'Ação L2VPN (Auditoria)'
+        verbose_name_plural = 'Ações L2VPN (Auditoria)'
+
+    def __str__(self):
+        quem = self.usuario.get_username() if self.usuario else '?'
+        return f'[l2vpn] {quem} → {self.acesso} :: {self.alvo} [{self.status}]'
+
+
 class BgpCommunity(models.Model):
     """Communities BGP cadastradas manualmente por sessão (upstream/operadora)
     — cada upstream publica sua própria lista (blackhole, no-export seletivo,

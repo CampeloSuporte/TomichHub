@@ -118,6 +118,7 @@ urlpatterns = [
     # Interfaces sugeridas a partir do backup (editor de Topologia)
     path('acessos/<int:acesso_id>/interfaces-backup/', views.interfaces_backup_acesso, name='interfaces_backup_acesso'),
     path('acessos/<int:acesso_id>/l2vpn-backup/', views.l2vpn_backup_acesso, name='l2vpn_backup_acesso'),
+    path('acessos/<int:acesso_id>/l2vpn-clonar/', views.l2vpn_clonar_acesso, name='l2vpn_clonar_acesso'),
 
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/(?P<porta>[0-9]+)/(?P<scheme>https?)(?P<path>/.*)?$', views.proxy_web_acesso, name='proxy_web_acesso'),
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/?$', views.proxy_web_acesso, name='proxy_web_acesso_legacy'),
