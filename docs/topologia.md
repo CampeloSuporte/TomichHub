@@ -33,7 +33,7 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 | `topo_engine.js` | Definição de tipos (`DEVICES`), interfaces (`IFACES`) e paths SVG dos ícones (`ICONS`) |
 | `topo_main.js` | Classe `TopoEditor` — lógica de renderização, eventos, persistência e importação |
 
-Versão atual: **topo_engine v=23 / topo_main v=29** (parâmetro de cache-busting no HTML).
+Versão atual: **topo_engine v=23 / topo_main v=30** (parâmetro de cache-busting no HTML).
 
 ---
 
@@ -376,6 +376,7 @@ O botão **PNG** na toolbar exporta a topologia atual como imagem PNG em resolu�
 | `GET` | `/clientes/<id>/topologia/hosts/` | Lista hosts CRM com tipo mapeado |
 | `GET` | `/clientes/acessos/<acesso_id>/interfaces-backup/` | Interfaces extraídas do backup mais recente do acesso (sugestão para Lado A/B) |
 | `GET` | `/clientes/acessos/<acesso_id>/l2vpn-backup/` | Serviços L2VPN (VSI/VPLS/VPWS/L2VC) do backup mais recente, com peers resolvidos para hosts — ver [topologia_l2vpn.md](topologia_l2vpn.md) |
+| `GET` | `/clientes/acessos/<acesso_id>/l2vpn-peers/` | Candidatos a peer de um túnel (hosts do cliente com identidade MPLS) para a busca por nome/IP no painel de clonagem |
 | `POST` | `/clientes/acessos/<acesso_id>/l2vpn-clonar/` | Gera (preview) ou aplica no equipamento a config de um serviço L2VPN clonado — backoffice, audita em `AcaoL2vpn` |
 
 ---

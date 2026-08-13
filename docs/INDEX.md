@@ -20,6 +20,13 @@
   um peer, fabricante não suportado (Cisco/Juniper são lidos, mas não clonados).
 - ✅ **Backoffice + auditoria**: `is_backoffice` + ferramenta `topologia` + posse do cliente;
   toda aplicação grava `AcaoL2vpn` (origem, serviço criado, comandos, saída, status).
+- ✅ **Peer escolhido por nome**: o campo virou um combo que busca por nome do host ou IP
+  entre os hosts do cliente com identidade MPLS, mostrando de onde o IP saiu (`mpls lsr-id`,
+  `LoopBack0`…) e quantos serviços L2VPN aquele host já tem — ordenado por quem já faz L2VPN.
+  Digitar o IP à mão continua valendo.
+- ✅ **Preview sempre antes de aplicar**: "Gerar comandos" rola até o textarea e o destaca;
+  o botão de aplicar só existe depois de gerar, e erros de validação passaram a aparecer
+  em vermelho no painel em vez de num toast que some.
 - ✅ Botão renomeado de "Mostrar VSI / L2VPN" para **"Mostrar L2VPN"**.
 
 **Onde está documentado?**

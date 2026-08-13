@@ -208,6 +208,7 @@ neighbor … virtual-circuit-id` e `routing-instances` com `instance-type vpls`.
 | Método | URL | Descrição |
 |---|---|---|
 | `GET` | `/clientes/acessos/<acesso_id>/l2vpn-backup/` | Serviços L2VPN do host + resolução dos peers |
+| `GET` | `/clientes/acessos/<acesso_id>/l2vpn-peers/` | Candidatos a peer: hosts do cliente com identidade MPLS, ordenados por quem já tem L2VPN |
 | `POST` | `/clientes/acessos/<acesso_id>/l2vpn-clonar/` | Gera (preview) ou aplica a config de um serviço clonado |
 
 Resposta:
@@ -306,6 +307,30 @@ abre um painel com três passos, o mesmo desenho da automação BGP:
 3. **Aplicar no equipamento**, com confirmação explícita nomeando host e IP.
    O CRM conecta (mesma conexão Netmiko do Painel de Scripts), envia e mostra
    a saída crua do equipamento.
+
+### Escolher o peer por nome
+
+O campo de peer é um combo: digitar filtra **por nome do host ou por IP** entre
+os outros hosts do cliente, mostrando o IP, o nome, de onde aquele IP saiu
+(`mpls lsr-id`, `LoopBack0`, `router-id`…) e quantos serviços L2VPN o host já
+tem. Clicar preenche o IP; digitar um IP à mão continua valendo — a lista é
+atalho, não trava.
+
+A ordem da lista é a ordem em que o operador pensa: primeiro os hosts que **já
+têm serviço L2VPN** (o outro lado de um circuito quase sempre é um equipamento
+que já faz L2VPN), depois os demais com identidade MPLS. Dentro de cada host, o
+IP mais provável vem primeiro — LSR-ID, depois transport-address, loopback,
+router-id e, por último, o IP de gerência (que raramente é o peer, e só aparece
+quando o backup não revelou nenhuma identidade).
+
+### O preview vem antes de aplicar
+
+"Gerar comandos" nunca toca no equipamento: ele só devolve a config montada, que
+aparece num textarea editável rolado até a vista e destacado por um instante. O
+botão "Aplicar no equipamento" **só existe depois** que os comandos foram
+gerados, e ainda passa pela confirmação nomeando host e IP. Se a geração for
+recusada (id em uso, peer inválido…), o motivo aparece em vermelho no painel e
+fica lá — não some como um toast.
 
 A VLAN por interface fica **vazia** quando é igual à do serviço: assim ela herda
 o campo "VLAN (dot1q)" e mudar a VLAN do clone num lugar só vale pra todas as

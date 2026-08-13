@@ -217,6 +217,23 @@ body.effects-off .link-packet{display:none}
 .l2vpn-confirma b{color:var(--text)}
 .l2vpn-confirma .btn-ok,.l2vpn-confirma .btn-cancel{flex:0 0 auto;padding:7px 14px}
 .l2vpn-aviso{font-size:.7rem;color:var(--muted);margin-top:7px;line-height:1.5;border-left:2px solid var(--border);padding-left:9px}
+.l2vpn-erro{font-size:.75rem;color:var(--red);background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.35);border-radius:7px;padding:9px 11px;line-height:1.5;display:flex;gap:8px;align-items:flex-start}
+/* Preview recém-gerado pisca uma vez — em tela curta ele nasce abaixo da
+   dobra e sem isso parece que "não gerou nada". */
+@keyframes l2vpn-destaque{0%,100%{border-color:var(--border)}35%{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(0,217,255,.16)}}
+.l2vpn-config.destacado{animation:l2vpn-destaque .7s ease-in-out 2}
+/* Combo de peer: busca por nome do host ou IP, sem impedir digitar o IP */
+.l2vpn-combo{position:relative}
+/* `fixed` (com left/top calculados no JS): dentro do modal a lista rola com
+   `overflow-y:auto`, e um dropdown `absolute` seria cortado na borda dela. */
+.l2vpn-drop{position:fixed;background:var(--surface);border:1px solid var(--cyan);border-radius:8px;box-shadow:var(--shadow-md);z-index:200;max-height:230px;overflow-y:auto;display:none}
+.l2vpn-drop.show{display:block}
+.l2vpn-drop-item{display:flex;align-items:baseline;gap:9px;padding:7px 10px;cursor:pointer;font-size:.74rem;border-bottom:1px solid rgba(255,255,255,.04)}
+.l2vpn-drop-item:last-child{border-bottom:none}
+.l2vpn-drop-item:hover{background:rgba(0,217,255,.12)}
+.l2vpn-drop-ip{font-family:'Courier New',monospace;color:var(--cyan);font-weight:700;flex-shrink:0}
+.l2vpn-drop-nome{color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.l2vpn-drop-meta{font-size:.65rem;color:var(--muted);flex-shrink:0}
 .l2vpn-vazio{padding:44px 20px;text-align:center;color:var(--muted);font-size:.82rem}
 .l2vpn-vazio i{font-size:1.8rem;display:block;margin-bottom:12px;opacity:.35}
 .l2vpn-dica{font-size:.72rem;margin-top:8px;opacity:.8;max-width:460px;margin-left:auto;margin-right:auto;line-height:1.5}
@@ -360,6 +377,6 @@ body.effects-off .link-packet{display:none}
   }
 </script>
 <script src="/static/js/topo_engine.js?v=23"></script>
-<script src="/static/js/topo_main.js?v=29"></script>
+<script src="/static/js/topo_main.js?v=30"></script>
 </body>
 </html>

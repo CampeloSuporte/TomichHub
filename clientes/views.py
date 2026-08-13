@@ -6836,6 +6836,72 @@ def l2vpn_backup_acesso(request, acesso_id):
     })
 
 
+# Ordem de preferência do IP a sugerir como peer de um túnel: o que o vizinho
+# de MPLS realmente usa pra fechar a sessão LDP, do mais específico pro mais
+# genérico. O IP de gerência entra só como último recurso (raramente é o peer).
+_L2VPN_ORIGEM_PESO = {
+    'mpls lsr-id': 0,
+    'mpls ldp lsr-id': 1,
+    'ldp transport-address': 2,
+    'mpls ldp router-id': 3,
+    'router-id': 5,
+    'IP de gerência (CRM)': 9,
+}
+
+
+def _l2vpn_peso_origem(origem):
+    if origem in _L2VPN_ORIGEM_PESO:
+        return _L2VPN_ORIGEM_PESO[origem]
+    # Blocos de loopback vêm com o nome da interface como origem
+    # (LoopBack0, loopback 0, lo0…) — ficam logo depois do LSR-ID.
+    return 4 if re.match(r'^(loopback|lo\d)', origem or '', re.IGNORECASE) else 6
+
+
+@login_required(login_url='login')
+@require_http_methods(['GET'])
+@modulo_habilitado_required('topologia')
+def l2vpn_peers_acesso(request, acesso_id):
+    """Candidatos a peer de um túnel L2VPN: os outros hosts do cliente, com os
+    IPs pelos quais eles são conhecidos no MPLS (LSR-ID/loopback), pra escolher
+    por nome em vez de decorar loopback.
+
+    Traz primeiro quem já tem serviço L2VPN configurado (é o caso comum: o
+    outro lado do circuito é um equipamento que já faz L2VPN), depois os
+    demais que têm identidade MPLS. Digitar um IP à mão continua valendo — a
+    lista é atalho, não trava.
+    """
+    acesso = get_object_or_404(Acesso.objects.select_related('cliente'), id=acesso_id)
+
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    candidatos = []
+    irmaos = Acesso.objects.filter(cliente=acesso.cliente).exclude(id=acesso.id)
+    for irmao in irmaos:
+        ips = _l2vpn_ips_identidade(irmao)
+        servicos, _ = _l2vpn_servicos_do_acesso(irmao)
+        if not ips and not servicos:
+            continue
+        itens = sorted(ips.items(), key=lambda par: _l2vpn_peso_origem(par[1]))
+        if not itens:
+            # Sem identidade no backup: só o IP de gerência como palpite.
+            itens = [(irmao.host, 'IP de gerência (CRM)')]
+        for ip, origem in itens:
+            candidatos.append({
+                'acesso_id': irmao.id,
+                'nome': irmao.tipo,
+                'host': irmao.host,
+                'ip': ip,
+                'origem': origem,
+                'servicos': len(servicos),
+            })
+
+    candidatos.sort(key=lambda c: (0 if c['servicos'] else 1,
+                                   _l2vpn_peso_origem(c['origem']),
+                                   (c['nome'] or '').lower()))
+    return JsonResponse({'peers': candidatos, 'total': len(candidatos)})
+
+
 @login_required(login_url='login')
 @require_http_methods(['POST'])
 @modulo_habilitado_required('topologia')
