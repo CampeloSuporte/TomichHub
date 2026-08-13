@@ -1836,6 +1836,7 @@ def _atualizar_snapshot_cliente(cliente, acesso, contexto_backup: str):
         'ospf':     parsed.get('ospf', []),
         'vsi':      parsed.get('vsi', []),
         'l2vc':     parsed.get('l2vc', []),
+        'l2vpn':    parsed.get('l2vpn', []),
         'as_local': parsed.get('as_local', ''),
     }]
 
@@ -1863,6 +1864,7 @@ def _atualizar_snapshot_cliente(cliente, acesso, contexto_backup: str):
                 'ips': p.get('ips', []), 'bgp': p.get('bgp', []),
                 'vlans': p.get('vlans', []), 'ospf': p.get('ospf', []),
                 'vsi': p.get('vsi', []), 'l2vc': p.get('l2vc', []),
+                'l2vpn': p.get('l2vpn', []),
                 'as_local': p.get('as_local', ''),
             })
         if todos_hosts:
@@ -1967,6 +1969,7 @@ def gerar_snapshots_conhecimento():
                 'ospf':     parsed.get('ospf', []),
                 'vsi':      parsed.get('vsi', []),
                 'l2vc':     parsed.get('l2vc', []),
+                'l2vpn':    parsed.get('l2vpn', []),
                 'as_local': parsed.get('as_local', ''),
             })
             total_equip += 1

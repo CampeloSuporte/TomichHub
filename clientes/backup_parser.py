@@ -1285,6 +1285,16 @@ def parse_backup(conteudo, nome_equip='', vendor_hint=''):
             resultado = {'ips': [], 'bgp': [], 'vlans': [], 'modelo': '', 'as_local': ''}
 
     resultado['vendor'] = vendor
+    # Serviços L2VPN (VSI/VPLS, VPWS, L2VC) vêm do parser dedicado
+    # (`clientes/l2vpn_parser.py`), que reconhece a sintaxe de cada fabricante
+    # pelas marcas do próprio texto — o mesmo dado que a topologia mostra no
+    # "Mostrar VSI / L2VPN" alimenta a seção L2VPN do artigo de infraestrutura.
+    # As chaves rasas `vsi`/`l2vc` seguem no dict por compatibilidade.
+    try:
+        from .l2vpn_parser import parse_l2vpn
+        resultado['l2vpn'] = parse_l2vpn(conteudo)
+    except Exception:
+        resultado['l2vpn'] = []
     return resultado
 
 
@@ -1355,37 +1365,30 @@ def formatar_artigo(nome_cliente, hosts_info, from_date):
                 linhas.append(f'- Processo **{o["process"]}**{rid} | Áreas: {areas}')
         linhas.append('')
 
-    # ── Seção 5: VSI (MPLS L2VPN) ────────────────────────────────────────────
-    all_vsi = [v for h in hosts_info for v in h.get('vsi', [])]
-    if all_vsi:
-        linhas.append(f'## VSI — Virtual Switch Instances ({len(all_vsi)})')
+    # ── Seção 5: L2VPN (VSI/VPLS, VPWS, L2VC) ────────────────────────────────
+    # Uma seção só, em tabela por equipamento: o operador procura o serviço
+    # pelo id (vsi-id/pw-id/vc-id) ou pelo nome, e precisa ver junto o peer do
+    # túnel e a interface/VLAN de acesso — separar por tecnologia obrigava a
+    # procurar o mesmo circuito em duas seções.
+    all_l2vpn = [(h.get('nome', '?'), s) for h in hosts_info for s in h.get('l2vpn', [])]
+    if all_l2vpn:
+        linhas.append(f'## L2VPN — VSI / VPLS / VPWS / L2VC ({len(all_l2vpn)} serviços)')
         by_equip = {}
-        for v in all_vsi:
-            by_equip.setdefault(v.get('equipamento', '?'), []).append(v)
+        for equip, servico in all_l2vpn:
+            by_equip.setdefault(equip, []).append(servico)
         for equip, lista in by_equip.items():
             linhas.append(f'### {equip}')
-            for v in lista:
-                vsid  = f' | vsi-id {v["vsi_id"]}' if v.get('vsi_id') else ''
-                peers = ', '.join(f'`{p}`' for p in v['peers']) if v.get('peers') else '—'
-                linhas.append(f'- **{v["nome"]}**{vsid} | peers: {peers}')
-        linhas.append('')
-
-    # ── Seção 6: L2VC / VPWS / xconnect ─────────────────────────────────────
-    all_l2vc = [c for h in hosts_info for c in h.get('l2vc', [])]
-    if all_l2vc:
-        linhas.append(f'## L2VC / VPWS ({len(all_l2vc)} circuitos)')
-        by_equip = {}
-        for c in all_l2vc:
-            by_equip.setdefault(c.get('equipamento', '?'), []).append(c)
-        for equip, lista in by_equip.items():
-            linhas.append(f'### {equip}')
-            for c in lista:
-                tipo  = c.get('tipo', 'l2vc').upper()
-                iface = f'`{c["interface"]}`' if c.get('interface') else '—'
-                peer  = f'`{c["peer"]}`'      if c.get('peer')      else '—'
-                vcid  = c.get('vc_id', '?')
-                linhas.append(f'- [{tipo}] iface: {iface} | peer: {peer} | vc-id: **{vcid}**')
-        linhas.append('')
+            linhas.append('| Tipo | ID | Nome | VLAN | MTU | Peers | Interfaces de acesso |')
+            linhas.append('|---|---|---|---|---|---|---|')
+            for s in lista:
+                peers = ', '.join(f'`{p["ip"]}`' for p in s.get('peers', [])) or '—'
+                ifaces = ', '.join(
+                    f'`{i["nome"]}`' + (f' (dot1q {i["vlan"]})' if i.get('vlan') else '')
+                    for i in s.get('interfaces', [])) or '—'
+                linhas.append(
+                    f'| {s.get("tecnologia", "")} | **{s.get("id") or "—"}** | {s.get("nome", "")} '
+                    f'| {s.get("vlan") or "—"} | {s.get("mtu") or "—"} | {peers} | {ifaces} |')
+            linhas.append('')
 
     # ── Seção 7: VLANs ───────────────────────────────────────────────────────
     all_vlans = [v for h in hosts_info for v in h.get('vlans', [])]
@@ -1415,8 +1418,7 @@ def formatar_artigo(nome_cliente, hosts_info, from_date):
     linhas.append(f'- Endereços IP encontrados: **{len(all_ips)}**')
     linhas.append(f'- Peers BGP: **{len(all_bgp)}**')
     linhas.append(f'- Processos OSPF: **{len(all_ospf)}**')
-    linhas.append(f'- VSI: **{len(all_vsi)}**')
-    linhas.append(f'- Circuitos L2VC/VPWS: **{len(all_l2vc)}**')
+    linhas.append(f'- Serviços L2VPN (VSI/VPLS/VPWS/L2VC): **{len(all_l2vpn)}**')
     linhas.append(f'- VLANs: **{len(all_vlans)}**')
 
     return '\n'.join(linhas)

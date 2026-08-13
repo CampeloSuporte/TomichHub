@@ -2,6 +2,35 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 39 — 13/08/2026: Topologia — Documentação de L2VPN (VSI / VPLS / VPWS / L2VC)
+
+**O que foi implementado?**
+- ✅ **"Mostrar VSI / L2VPN" no host da topologia**: o painel de propriedades de qualquer host
+  vinculado ao CRM ganhou um botão que abre um modal documentando os serviços de camada 2
+  configurados no equipamento — id (`vsi-id`/`pw-id`/`vc-id`), nome, peers, interfaces de acesso,
+  VLAN, MTU, sinalização e o trecho cru da config, tudo lido do backup mais recente.
+- ✅ **Peer do túnel vira link para o host do outro lado**: `peer`/`neighbor` nunca é o IP de
+  gerência, é o loopback/LSR-ID — o novo mapa de identidade (`extrair_ips_identidade`) casa o IP
+  com o host do cliente e o clique centraliza/seleciona esse host no diagrama. Peer sem match
+  aparece como "não identificado" (equipamento fora do inventário).
+- ✅ **Parser dedicado** (`clientes/l2vpn_parser.py`) reconhece Huawei VRP (VSI, `l2 binding vsi`,
+  `mpls l2vc`), Huawei MA5800 (`pw-para pwindex`), Datacom DmOS (`vpws-group`/`vpls-group`,
+  inclusive backup achatado numa linha só), MikroTik (`/interface vpls`), Cisco (xconnect/VFI/
+  IOS-XR) e Juniper (l2circuit/VPLS). Validado contra 456 backups reais: 1.086 serviços
+  extraídos, 112/112 num DM4000 com 112 `vpn`.
+- ✅ **Artigo de infraestrutura unificado**: a seção rasa "VSI" + "L2VC/VPWS" do artigo do
+  Agent NOC virou uma tabela única "L2VPN — VSI / VPLS / VPWS / L2VC" com o mesmo parser —
+  passou a documentar também os serviços Datacom, que a leitura antiga não reconhecia.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[topologia_l2vpn.md](topologia_l2vpn.md)** | Novo — sintaxes por fabricante, resolução peer→host, endpoint, cache, UI e limitações |
+| **[topologia.md](topologia.md)** | Referência cruzada: nova URL backend, atalho `Esc` no modal, versão do `topo_main.js` |
+
+---
+
 ### Sessão 38 — 10/08/2026: Fix — Gaps de Permissão do Consultor (SSH, Backups, Vínculo de Usuário) + Autofill do Chrome
 
 **O que foi diagnosticado e corrigido?**
@@ -1055,6 +1084,11 @@ apaga** logins já salvos indevidamente — isso precisa ser removido manualment
   - Visibilidade de senhas
   - Gerador aleatório
 
+- **[topologia_l2vpn.md](topologia_l2vpn.md)** — L2VPN na topologia (VSI/VPLS/VPWS/L2VC)
+  - Sintaxes reconhecidas por fabricante (Huawei, Datacom, MikroTik, Cisco, Juniper)
+  - Como o peer do túnel é resolvido para o host do outro lado
+  - Endpoint, cache e limitações
+
 - **[topologia.md](topologia.md)** — Editor visual de topologia de rede (SVG)
   - Sugestão de interface a partir do backup (`<datalist>` com nome + descrição)
   - Troca manual de ícone com trava contra a sincronização automática do CRM
@@ -1145,6 +1179,7 @@ docs/
 ├─ bgp_automacao.md ....................... 📌 Automação BGP: ativar/desativar sessão, prepend, parar de anunciar
 ├─ frontend_acessos.md
 ├─ topologia.md .......................... 📌 Editor visual de topologia de rede (SVG)
+├─ topologia_l2vpn.md ..................... 📌 L2VPN na topologia: VSI/VPLS/VPWS/L2VC do backup, peer → host
 ├─ WIKI_ARTIGOS.md ........................ 📌 Wiki de artigos técnicos (PDF, busca, admin)
 └─ MODULOS_CLIENTE.md ..................... 📌 Habilitar/desabilitar ferramentas por cliente
 └─ HOTSPOT_INTEGRACAO_DISPARO.md .......... 📌 Hotspot: disparo automático de WhatsApp (Chatmix + Opa Suite)
@@ -1307,6 +1342,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 | 01/08/2026 | Fix Automação BGP: "anunciar prefixo novo" também editava prefix-list compartilhada — redesenhado pra criar node/route-map/term novo na sessão (nunca edita a lista), UI lista todas as prefix-lists do equipamento com busca, sem pedir prefixo digitado | bgp_automacao.md |
 | 01/08/2026 | Fix Automação BGP: "parar de anunciar" no Huawei (`undo network` global) e Cisco/Datacom (edição direta de prefix-list compartilhada) — ambos corrigidos pra mexer só no node/route-map da sessão, sem tocar em objeto compartilhado; UX de "anunciar prefixo novo" agora lista as prefix-lists antes de pedir o prefixo | bgp_automacao.md |
 | 01/08/2026 | Automação BGP: botão atualizar snapshot sob demanda, communities cadastráveis por sessão, anunciar prefixo novo via varredura de prefix-lists (4 fabricantes) | bgp_automacao.md |
+| 13/08/2026 | Topologia: documentação de L2VPN (VSI/VPLS/VPWS/L2VC) lida do backup, peer do túnel ligado ao host do outro lado, parser multi-fabricante; artigo de infraestrutura com seção L2VPN unificada | topologia_l2vpn.md, topologia.md |
 | 31/07/2026 | Automação BGP: parser estendido (Mikrotik/Huawei/Cisco-Datacom/Juniper), simulador de match único, snapshot noturno, ativar/desativar sessão + prepend + parar de anunciar via UI | bgp_automacao.md |
 | 31/07/2026 | Terminal compartilhado (opt-in, múltiplos usuários na mesma conexão) + link externo temporário (sem login) para suporte; fix de autorização em `conectar_acesso` | terminal_ssh.md, AUDITORIA_ACESSOS.md |
 | 23/07/2026 | Hotspot: Integração Disparo — painel de ajuda visual no card Chatmix (Key/Token, ID do Template, sugestão de mensagem com botão Copiar); diagnóstico de "template pendente" e "canal errado na chave" | HOTSPOT_INTEGRACAO_DISPARO.md |

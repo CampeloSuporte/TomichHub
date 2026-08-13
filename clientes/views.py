@@ -6674,6 +6674,154 @@ def interfaces_backup_acesso(request, acesso_id):
     })
 
 
+# ─── L2VPN (VSI/VPLS, VPWS, L2VC) na topologia ────────────────────────────────
+
+from django.core.cache import cache
+from .l2vpn_parser import parse_l2vpn, extrair_ips_identidade, resumo_por_tipo
+
+_L2VPN_LIMITE_ARQUIVO = 3 * 1024 * 1024   # running-config completa cabe folgado
+_L2VPN_CACHE_TTL = 6 * 60 * 60            # 6h — o backup em si roda 1x/dia
+# Quantos backups anteriores tentar quando o mais recente não revela nenhum IP
+# de identidade do equipamento. Loopback/LSR-ID praticamente não mudam, e é
+# comum a coleta mais nova vir truncada (paginação `---- More ----`) — sem esse
+# fallback um host truncado "some" do mapa e os túneis que apontam pra ele
+# aparecem como não identificados.
+_L2VPN_FALLBACK_BACKUPS = 5
+
+
+def _backups_recentes(acesso, limite=1):
+    """Últimos backups aproveitáveis do acesso (mais novo primeiro), já
+    filtrando os que perderam o arquivo no disco."""
+    logs = BackupLog.objects.filter(
+        acesso=acesso, status__in=['SUCESSO', 'PARCIAL'],
+    ).exclude(arquivo_path='').select_related('template').order_by('-data_backup')[:limite * 3]
+    encontrados = []
+    for log in logs:
+        caminho = os.path.join(settings.MEDIA_ROOT, log.arquivo_path)
+        if os.path.exists(caminho):
+            encontrados.append((log, caminho))
+        if len(encontrados) >= limite:
+            break
+    return encontrados
+
+
+def _ler_backup(caminho):
+    with open(caminho, 'r', encoding='utf-8', errors='replace') as arquivo:
+        return arquivo.read(_L2VPN_LIMITE_ARQUIVO)
+
+
+def _l2vpn_servicos_do_acesso(acesso):
+    """(serviços, BackupLog) do backup mais recente do acesso. Cacheado por id
+    do BackupLog — o conteúdo de um backup nunca muda depois de gravado, então
+    só um backup novo invalida (a chave muda junto)."""
+    recentes = _backups_recentes(acesso, limite=1)
+    if not recentes:
+        return [], None
+    log, caminho = recentes[0]
+    chave = f'l2vpn:svc:{log.id}'
+    servicos = cache.get(chave)
+    if servicos is None:
+        servicos = parse_l2vpn(_ler_backup(caminho))
+        cache.set(chave, servicos, _L2VPN_CACHE_TTL)
+    return servicos, log
+
+
+def _l2vpn_ips_identidade(acesso):
+    """{IP: origem} do acesso, cacheado por acesso (e não por backup: aqui o
+    que interessa é o valor mais recente conhecido, não um backup específico)."""
+    chave = f'l2vpn:ident:acesso:{acesso.id}'
+    ips = cache.get(chave)
+    if ips is None:
+        ips = {}
+        for log, caminho in _backups_recentes(acesso, limite=_L2VPN_FALLBACK_BACKUPS):
+            ips = extrair_ips_identidade(_ler_backup(caminho))
+            if ips:
+                break
+        cache.set(chave, ips, _L2VPN_CACHE_TTL)
+    return ips
+
+
+def _l2vpn_mapa_identidade(acessos):
+    """{IP: {acesso…}} com os IPs pelos quais cada host do cliente é conhecido
+    pelos vizinhos MPLS (loopback/LSR-ID/router-id) mais o IP de gerência do
+    CRM. É esse mapa que transforma um `peer 198.18.255.2` no host do outro
+    lado do túnel."""
+    mapa = {}
+
+    def _registrar(ip, acesso, origem):
+        if not ip or ip in mapa:
+            return
+        mapa[ip] = {
+            'acesso_id': acesso.id,
+            'nome': acesso.tipo,
+            'host': acesso.host,
+            'porta': acesso.porta,
+            'protocolo': acesso.protocolo,
+            'origem': origem,
+        }
+
+    for acesso in acessos:
+        for ip, origem in _l2vpn_ips_identidade(acesso).items():
+            _registrar(ip, acesso, origem)
+
+    # O IP de gerência entra por último: quando o equipamento usa o próprio IP
+    # de gerência como LSR-ID, o mapa já pegou pelo backup (com a origem certa).
+    for acesso in acessos:
+        _registrar(acesso.host, acesso, 'IP de gerência (CRM)')
+
+    return mapa
+
+
+@login_required(login_url='login')
+@require_http_methods(['GET'])
+@modulo_habilitado_required('acessos')
+def l2vpn_backup_acesso(request, acesso_id):
+    """Serviços L2VPN (VSI/VPLS, VPWS e L2VC) documentados a partir do backup
+    mais recente do host, com cada peer do túnel já resolvido para o host do
+    outro lado quando ele também está cadastrado no cliente.
+
+    Alimenta o "Mostrar VSI / L2VPN" do editor de topologia: sem backup, ou
+    sem serviço L2 configurado, devolve lista vazia (o modal explica o motivo
+    em vez de sumir)."""
+    acesso = get_object_or_404(Acesso.objects.select_related('cliente'), id=acesso_id)
+
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    servicos, log = _l2vpn_servicos_do_acesso(acesso)
+    if log is None:
+        return JsonResponse({
+            'tem_backup': False, 'servicos': [], 'resumo': resumo_por_tipo([]),
+            'host': {'id': acesso.id, 'nome': acesso.tipo, 'ip': acesso.host},
+        })
+
+    irmaos = list(Acesso.objects.filter(cliente=acesso.cliente).exclude(id=acesso.id))
+    mapa = _l2vpn_mapa_identidade(irmaos)
+
+    # Anota cada peer com o host do outro lado (quando identificado). Copia o
+    # serviço para não gravar o resultado da resolução no valor cacheado.
+    anotados = []
+    for servico in servicos:
+        servico = dict(servico)
+        servico['peers'] = [dict(peer, destino=mapa.get(peer['ip'])) for peer in servico['peers']]
+        anotados.append(servico)
+
+    identidade_local = _l2vpn_ips_identidade(acesso)
+
+    return JsonResponse({
+        'tem_backup': True,
+        'servicos': anotados,
+        'resumo': resumo_por_tipo(anotados),
+        'host': {
+            'id': acesso.id, 'nome': acesso.tipo, 'ip': acesso.host,
+            'ips_identidade': identidade_local,
+        },
+        'data_backup': log.data_backup.astimezone(
+            timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M'),
+        'arquivo': os.path.basename(log.arquivo_path),
+    })
+
+
 def _exec_migration_topologia(request):
     if not request.user.is_authenticated or not request.user.is_superuser:
         return HttpResponse('Proibido', status=403)
