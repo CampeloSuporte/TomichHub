@@ -136,3 +136,39 @@ função (via `cadastrar_cliente`, que é `@backoffice_required`) e recebe `User
 Isso é comportamento pré-existente (Operador não gerencia usuários,
 `pode_gerenciar_usuarios = is_admin or is_consultor`), não um bug introduzido aqui. Se um Operador
 precisar vincular usuários de portal a Cliente no futuro, essa é a função a revisar.
+
+## Wiki liberável por instância (2026-08-13)
+
+**Sintoma:** não existia como o Administrador habilitar a Wiki num Consultor — a ferramenta
+simplesmente não aparecia na lista de checkboxes do cadastro de usuário.
+
+**Causa:** `wiki` nunca esteve em `InstanciaFerramenta.FERRAMENTA_CHOICES` (a tela de cadastro
+renderiza essa lista direto), e todas as views de `wiki/views.py` eram `@admin_required`.
+
+**O que mudou:**
+
+- `usuario/models.py`: nova opção `('wiki', 'Wiki (leitura)')` em `FERRAMENTA_CHOICES`
+  (migração `usuario/0006_alter_instanciaferramenta_ferramenta`). O checkbox aparece sozinho no
+  formulário, que é montado a partir dessa lista.
+- `wiki/views.py`: as views de **leitura** (`dashboard_wiki`, `visualizar_artigo`, `buscar_wiki`,
+  `listar_por_categoria`, `listar_por_tag`, `listar_por_fabricante`, `api_buscar_wiki`,
+  `api_visualizar_artigo`) passaram de `@admin_required` para
+  `@ferramenta_instancia_required('wiki')`.
+- **Escrita continua só do Administrador** (`cadastrar_artigo`, `editar_artigo`,
+  `deletar_artigo`, `cadastrar_categoria_ajax`). Motivo: `ArtigoWiki` **não tem `instancia` nem
+  `cliente`** — a base de conhecimento é global, então um Consultor com permissão de escrita
+  editaria/apagaria conteúdo de todas as outras instâncias. Se um dia a Wiki ganhar escopo por
+  instância, é aí que a decisão se revisa.
+- Templates: o item "Wiki" do menu (`templates/base.html`) e os botões da barra lateral do
+  terminal (`clientes/templates/terminal.html`, desktop e mobile) passaram a testar
+  `is_admin_bo or ferramentas_habilitadas.wiki` em vez de `is_admin_bo`/`request.user.is_staff`
+  (Consultor **não** é `is_staff` neste sistema — só o Administrador é). Os botões de
+  criar/editar/excluir artigo nos templates da Wiki ficaram sob `{% if is_admin_bo %}`.
+
+**Portal do cliente final não recebe a Wiki:** `portal_pode_usar_ferramenta` exige equivalente em
+`UsuarioModulo.MODULO_CHOICES`; `wiki` não tem, então retorna `False` — mesmo caso de
+`scripts`/`bgp`.
+
+**Verificado** com o Consultor `mmarinho` (instância "marinho"): com a ferramenta desligada,
+`/wiki/` e `/wiki/api/buscar/` redirecionam com aviso; ligada, ambas devolvem 200; e
+`/wiki/artigo/novo/` continua bloqueada nos dois casos.

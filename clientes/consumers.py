@@ -253,6 +253,32 @@ def _wg_peer_ativo(interface_nome: str) -> bool:
         return False
 
 
+def _rota_confere(host: str, dev_esperado: str) -> bool:
+    """
+    A rota que o kernel usa para `host` sai mesmo pela interface desse túnel?
+
+    Declarar a rede em `redes_privadas` não prova nada: a tabela de rotas é
+    única e roteia por DESTINO, então quando dois clientes declaram a mesma
+    faixa ampla (10.0.0.0/8 e afins) só uma rota vale e o tráfego do outro
+    entraria no túnel do cliente ERRADO. Sem `dev` esperado, ou sem conseguir
+    consultar o kernel, mantém o comportamento antigo (confia na declaração)
+    para não derrubar acesso que já funcionava.
+    """
+    if not dev_esperado:
+        return True
+    from . import vpn_manager as _vpnm
+    dev_real = _vpnm.rota_dev_para(host)
+    if not dev_real:
+        return True
+    if dev_real == dev_esperado:
+        return True
+    logger.warning(
+        f'⚠️ {host} é declarado por um túnel em {dev_esperado}, mas a rota do kernel sai por '
+        f'"{dev_real}" — colisão de faixa com outro cliente; ignorando esse túnel.'
+    )
+    return False
+
+
 def _pty_req_with_modes(shell, term='vt100', width=80, height=24):
     """
     Envia pty-req com POSIX terminal modes completos.
@@ -622,6 +648,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         try:
             import ipaddress as _ipa
             from .models import VPNWireGuard
+            from . import vpn_manager as _vpnm
 
             vpns = VPNWireGuard.objects.filter(cliente=cliente, ativo=True, peer_no_servidor=True)
             host_ip = _ipa.ip_address(host)
@@ -630,6 +657,8 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                 for rede_str in vpn.redes_lista():
                     try:
                         if host_ip in _ipa.ip_network(rede_str, strict=False):
+                            if not _rota_confere(host, vpn.interface_nome or _vpnm.WG_INTERFACE):
+                                continue
                             logger.info(f"✅ VPN WG cobre {host} via {vpn.nome} (if={vpn.interface_nome} src={vpn.servidor_ip_local})")
                             return vpn   # objeto truthy — compatível com `if vpn:`
                     except ValueError:
@@ -641,14 +670,15 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
     def _tunel_ovpn_cobre_ip(self, cliente, host):
         """
         Verifica se existe túnel OpenVPN (aba Túneis) que cobre o IP do host.
-        Ao contrário do WireGuard isolado, não precisa de source-bind — é um
-        único daemon/interface compartilhado (tun-crm) com rota já correta
-        no kernel via iroute por cliente, então a conexão direta já sai pelo
-        caminho certo automaticamente.
+        Cada túnel roda em uma instância dedicada com sua própria interface
+        (tun-crm-N) e a rota do cliente é instalada por ela, então não precisa
+        de source-bind — basta a rota do kernel apontar para a tun DESTE
+        túnel, o que `_rota_confere` valida (ver vpn_cobre_ip em views.py).
         """
         try:
             import ipaddress as _ipa
             from .models import VPNOpenVPN
+            from . import openvpn_tunnel_manager as _ovpnm
 
             tuneis = VPNOpenVPN.objects.filter(cliente=cliente, ativo=True, cert_emitido=True)
             host_ip = _ipa.ip_address(host)
@@ -657,6 +687,8 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                 for rede_str in tunel.redes_lista():
                     try:
                         if host_ip in _ipa.ip_network(rede_str, strict=False):
+                            if not _rota_confere(host, _ovpnm.dev_tun(tunel)):
+                                continue
                             logger.info(f"✅ Túnel OpenVPN cobre {host} via {tunel.nome}")
                             return tunel
                     except ValueError:

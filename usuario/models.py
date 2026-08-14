@@ -143,6 +143,11 @@ class InstanciaFerramenta(models.Model):
         ('lg', 'Pesquisa LG'),
         ('geoip', 'Geolocalização IP'),
         ('firmware', 'Firmware'),
+        # Wiki é base de conhecimento GLOBAL (ArtigoWiki não tem instancia nem
+        # cliente): liberar aqui dá leitura e busca — inclusive a barra lateral
+        # do terminal. Criar/editar/excluir artigo segue só com Administrador,
+        # senão um Consultor editaria conteúdo de todas as instâncias.
+        ('wiki', 'Wiki (leitura)'),
     ]
 
     instancia = models.ForeignKey(Instancia, on_delete=models.CASCADE, related_name='ferramentas')

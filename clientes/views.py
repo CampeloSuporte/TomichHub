@@ -3285,32 +3285,65 @@ def is_private_ip(ip):
 
 
 
+def _vpn_declara_ip(vpn, host_ip):
+    """A VPN/túnel declara alguma rede que contém esse IP?"""
+    import ipaddress as _ipa
+    for rede_str in vpn.redes_lista():
+        try:
+            if host_ip in _ipa.ip_network(rede_str, strict=False):
+                return True
+        except ValueError:
+            pass
+    return False
+
+
 def vpn_cobre_ip(cliente, host):
-    """Verifica se existe VPN WireGuard OU túnel OpenVPN (aba Túneis) com rota
-    que cobre o IP do host — em ambos os casos a rota já existe no kernel via
-    interface própria, então a conexão pode ser feita direto, sem SSH tunnel."""
+    """Verifica se existe VPN WireGuard OU túnel OpenVPN (aba Túneis) desse
+    cliente que realmente entregue o IP do host — nesse caso a conexão pode
+    ser feita direto, sem SSH tunnel.
+
+    Declarar a rede em `redes_privadas` não basta: a rota é do kernel, que é
+    único e roteia por DESTINO. Se dois clientes declaram a mesma faixa ampla
+    (o padrão CGNAT+RFC1918), só uma rota vale e a outra jogaria a conexão
+    dentro do túnel do cliente ERRADO — que ainda mascara a origem e pode
+    entregar num equipamento de mesmo IP na rede dele. Por isso o `dev` real
+    do `ip route get` tem que bater com a interface daquele túnel; quando não
+    bate, retorna False e o chamador cai no ProxyServer SSH, que é o caminho
+    correto."""
     try:
         import ipaddress as _ipa
         from .models import VPNWireGuard, VPNOpenVPN
+        from . import vpn_manager as _vpnm
+        from . import openvpn_tunnel_manager as _ovpnm
         host_ip = _ipa.ip_address(host)
 
-        vpns = VPNWireGuard.objects.filter(cliente=cliente, ativo=True, peer_no_servidor=True)
-        for vpn in vpns:
-            for rede_str in vpn.redes_lista():
-                try:
-                    if host_ip in _ipa.ip_network(rede_str, strict=False):
-                        return True
-                except ValueError:
-                    pass
+        candidatos = []   # (vpn, dev_esperado)
+        for vpn in VPNWireGuard.objects.filter(cliente=cliente, ativo=True, peer_no_servidor=True):
+            if _vpn_declara_ip(vpn, host_ip):
+                candidatos.append((vpn, vpn.interface_nome or _vpnm.WG_INTERFACE))
+        for tunel in VPNOpenVPN.objects.filter(cliente=cliente, ativo=True, cert_emitido=True):
+            if _vpn_declara_ip(tunel, host_ip):
+                candidatos.append((tunel, _ovpnm.dev_tun(tunel)))
 
-        tuneis = VPNOpenVPN.objects.filter(cliente=cliente, ativo=True, cert_emitido=True)
-        for tunel in tuneis:
-            for rede_str in tunel.redes_lista():
-                try:
-                    if host_ip in _ipa.ip_network(rede_str, strict=False):
-                        return True
-                except ValueError:
-                    pass
+        if not candidatos:
+            return False
+
+        dev_real = _vpnm.rota_dev_para(host)
+        if not dev_real:
+            # Sem conseguir consultar o kernel, mantém o comportamento antigo
+            # (confia na declaração) em vez de derrubar acesso que funcionava.
+            return True
+
+        for vpn, dev_esperado in candidatos:
+            if dev_esperado and dev_real == dev_esperado:
+                return True
+
+        logger.warning(
+            f'⚠️ VPN de {cliente.nome_empresa} declara {host}, mas a rota do kernel sai por '
+            f'"{dev_real}" (esperado {[d for _, d in candidatos]}) — provável colisão de faixa '
+            f'ampla com outro cliente. Tratando como NÃO coberto para não cair na rede errada.'
+        )
+        return False
     except Exception:
         pass
     return False
@@ -7325,7 +7358,33 @@ def vpn_ovpn_listar(request, cliente_id):
         'cert_emitido': v.cert_emitido,
         'criado_em':   v.criado_em.strftime('%d/%m/%Y %H:%M'),
     } for v in vpns]
-    return JsonResponse({'vpns': vpns_data, 'endpoint': ovpnm.OVPN_ENDPOINT_HOST})
+    return JsonResponse({
+        'vpns': vpns_data,
+        'endpoint': ovpnm.OVPN_ENDPOINT_HOST,
+        'redes_sugeridas': ovpnm.sugerir_redes(cliente),
+    })
+
+
+def _ovpn_erro_conflito(redes_raw, excluir_vpn_id=None):
+    """Mensagem de erro se alguma rede pedida se sobrepõe à de outro túnel/VPN
+    ativo, ou '' se estiver tudo livre. Criar o túnel assim mesmo não deixaria
+    dois clientes acessíveis — instalaria uma segunda rota para o mesmo
+    prefixo, que o kernel ignora, e mandaria o tráfego para a rede errada."""
+    import re as _re
+    redes = [r.strip() for r in _re.split(r'[,\n]+', redes_raw) if r.strip()]
+    conflitos = ovpnm.redes_em_conflito(redes, excluir_vpn_id=excluir_vpn_id)
+    if not conflitos:
+        return ''
+    linhas = [f'• {rede} já é declarada pelo {rotulo}'
+              for rede, _outra, rotulo in conflitos[:6]]
+    return (
+        'Estas redes já são roteadas por outro túnel/VPN ativo:\n'
+        + '\n'.join(linhas)
+        + '\n\nO kernel roteia por destino: uma segunda rota para o mesmo prefixo é '
+          'ignorada e o tráfego acabaria indo para a rede do outro cliente. '
+          'Declare as sub-redes específicas deste cliente (ex: 192.168.88.0/24) '
+          'em vez das faixas amplas.'
+    )
 
 
 @login_required
@@ -7344,6 +7403,10 @@ def vpn_ovpn_criar(request, cliente_id):
         body = _json.loads(request.body)
         nome      = body.get('nome', 'VPN MikroTik').strip() or 'VPN MikroTik'
         redes_raw = body.get('redes_privadas', '').strip() or '\n'.join(ovpnm.REDES_PADRAO)
+
+        erro_conflito = _ovpn_erro_conflito(redes_raw)
+        if erro_conflito:
+            return JsonResponse({'ok': False, 'erro': erro_conflito}, status=400)
 
         common_name = ovpnm.gerar_common_name(cliente)
         interface_nome, porta, subnet_n = ovpnm.alocar_proxima_instancia()
@@ -7391,8 +7454,14 @@ def vpn_ovpn_editar(request, vpn_id):
     vpn = get_object_or_404(VPNOpenVPN, id=vpn_id)
     try:
         body = _json.loads(request.body)
+        redes_raw = body.get('redes_privadas', '').strip()
+
+        erro_conflito = _ovpn_erro_conflito(redes_raw, excluir_vpn_id=vpn.id)
+        if erro_conflito:
+            return JsonResponse({'ok': False, 'erro': erro_conflito}, status=400)
+
         vpn.nome           = body.get('nome', '').strip() or vpn.nome
-        vpn.redes_privadas = body.get('redes_privadas', '').strip()
+        vpn.redes_privadas = redes_raw
         vpn.save()
 
         # Reescreve e reinicia SÓ a instância deste cliente — outros túneis

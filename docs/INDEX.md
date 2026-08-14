@@ -2,6 +2,39 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 41 — 13/08/2026: Túnel OpenVPN (MikroTik) — tráfego interno não passava
+
+**O que foi corrigido?**
+- 🐛 **Faltava `iroute` no client-config-dir**: em modo `--server` o OpenVPN mantém tabela de
+  roteamento interna própria; a `route` do `.conf` só entrega o pacote na `tun`. Sem `iroute` ele
+  descartava tudo em silêncio — túnel `running`, ping do `/29` respondendo e **nenhuma** rede
+  interna alcançável, nos dois túneis em produção. `atualizar_redes_instancia` também não reescrevia
+  o CCD ao editar as redes.
+- 🐛 **Redes amplas idênticas nos dois túneis**: ambos declaravam as 5 faixas CGNAT+RFC1918, o
+  kernel só usava as rotas da `tun-crm-2` e o `198.18.10.2` da TOPNET saía pelo túnel da
+  INFORTECLINE. Agora `redes_em_conflito()` recusa rede idêntica à de outro túnel/VPN WireGuard
+  ativa (nomeando o cliente dono) e o modal sugere as `/24` dos acessos privados do cliente em vez
+  das faixas amplas.
+- 🐛 **`vpn_cobre_ip` mentia para o proxy**: respondia "coberto" só pela declaração em
+  `redes_privadas`, mandando proxy web/Terminal/WinBox para dentro do túnel do cliente errado.
+  Passou a conferir o `dev` real da rota (`ip route get`) contra a interface daquele túnel; não
+  batendo, cai no ProxyServer SSH. Mesmo guard nos consumers (`_rota_confere`).
+- 🐛 **Unit zumbi**: `openvpn-server@server-crm-999` acumulou **558 mil** reinícios apontando para
+  um `.conf` que nunca existiu — falha ao subir a instância não desfazia o `enable`. Agora
+  `criar_instancia_servidor` limpa (`disable --now` + `reset-failed`) e `alocar_proxima_instancia`
+  não reaproveita um N com `.conf`/CCD sobrando em disco.
+- ✅ Validado ao vivo: os três equipamentos internos dos dois clientes saíram de 100% de perda para
+  ping e TCP OK, cada um pela sua própria `tun-crm-N`.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[tunel_openvpn_mikrotik.md](tunel_openvpn_mikrotik.md)** | Novo — arquitetura da instância dedicada, `route` × `iroute`, escolha das redes, diagnóstico |
+| **[proxy_web_acessos.md](proxy_web_acessos.md)** | Seção "Acesso Direto via VPN" — conferência do `dev` real da rota |
+
+---
+
 ### Sessão 40 — 13/08/2026: Topologia — Clonar serviço L2VPN e aplicar no equipamento
 
 **O que foi implementado?**
@@ -1124,6 +1157,12 @@ apaga** logins já salvos indevidamente — isso precisa ser removido manualment
   - Limitação de faixas amplas idênticas entre clientes
   - Diagnóstico rápido de roteamento
 
+- **[tunel_openvpn_mikrotik.md](tunel_openvpn_mikrotik.md)** — Túnel OpenVPN (CRM servidor, MikroTik cliente)
+  - Instância systemd dedicada por túnel (porta, `tun-crm-N`, `/29`, CCD, PKI)
+  - `route` (kernel) × `iroute` (tabela interna do OpenVPN) — as duas são obrigatórias
+  - Escolha das redes, validação de conflito e conferência do `dev` real da rota
+  - Diagnóstico rápido e correções de 13/08/2026
+
 - **[winbox_vnc.md](winbox_vnc.md)** — WinBox Web via VNC no browser
   - Arquitetura Xvfb + Openbox + x11vnc + noVNC
   - Fluxo de inicialização
@@ -1227,6 +1266,7 @@ docs/
 ├─ backup_automatico.md
 ├─ envio_credenciais_email.md
 ├─ winbox_vnc.md
+├─ tunel_openvpn_mikrotik.md .............. 📌 Túnel OpenVPN por cliente: route × iroute, conflito de redes
 ├─ terminal_ssh.md
 ├─ bgp_automacao.md ....................... 📌 Automação BGP: ativar/desativar sessão, prepend, parar de anunciar
 ├─ frontend_acessos.md

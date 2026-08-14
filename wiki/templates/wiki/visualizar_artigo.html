@@ -12,9 +12,11 @@
                 <a href="{% url 'wiki:dashboard' %}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-1"></i> Voltar
                 </a>
+                {% if is_admin_bo %}
                 <a href="{% url 'wiki:editar_artigo' artigo.slug %}" class="btn btn-outline-primary">
                     <i class="fas fa-edit me-1"></i> Editar
                 </a>
+                {% endif %}
             </div>
         </div>
 

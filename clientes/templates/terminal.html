@@ -860,7 +860,7 @@
                 </div>
                 <!-- Footer desktop -->
                 <div class="terminal-footer">
-                    {% if request.user.is_staff %}
+                    {% if is_admin_bo or ferramentas_habilitadas.wiki %}
                     <button class="btn-terminal btn-wiki" onclick="toggleWikiSidebar()">📖 Wiki</button>
                     {% endif %}
                     {% if request.user.is_staff %}
@@ -911,11 +911,15 @@
         <div class="mobile-menu-item" onclick="abrirModalLinkExterno();fecharMenuMobile()" style="color:#58a6ff">
             <span>🌐</span><span>Link Externo</span>
         </div>
-        {% if request.user.is_staff %}
+        {% if request.user.is_staff or ferramentas_habilitadas.wiki %}
         <div class="mobile-menu-separator"></div>
+        {% endif %}
+        {% if is_admin_bo or ferramentas_habilitadas.wiki %}
         <div class="mobile-menu-item item-wiki" onclick="toggleWikiSidebar();fecharMenuMobile()">
             <span>📖</span><span>Wiki</span>
         </div>
+        {% endif %}
+        {% if request.user.is_staff %}
         <div class="mobile-menu-item" onclick="abrirPainelScripts();fecharMenuMobile()" style="color:#ffa500">
             <span>⚡</span><span>Scripts</span>
         </div>

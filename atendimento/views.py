@@ -616,36 +616,29 @@ def api_update_conversation(request, conversation_id):
                     except Exception as _e:
                         logger.warning(f"Falha ao enviar msg de encerramento: {_e}")
 
-                # Mensagem de conclusão com número do protocolo — enviada ao
-                # WhatsApp em background para não bloquear a resposta HTTP
-                # (o card já sumiu da tela pelo WS acima).
-                conv_id = conversation.id
-                conv_number = conversation.conversation_id
-                group_connection = conversation.group.connection
-                group_jid = conversation.group.jid
-
-                def _send_conclusao_bg():
-                    import uuid as _uuid
-                    texto_conclusao = (
-                        f"✅ Chamado concluído!\n"
-                        f"📋 Protocolo: #{conv_number}"
+                # Marco de conclusão com o número do protocolo: fica SÓ no
+                # histórico interno da conversa — o grupo do cliente não recebe
+                # nada. Antes isso ia pro WhatsApp via EvolutionAPI (numa thread
+                # em background) e só era gravado se o envio desse certo; hoje é
+                # gravação direta, sem I/O externo e sem depender da API estar
+                # de pé. Quem quiser avisar o cliente no fechamento usa a
+                # "Mensagem de encerramento" das configurações, acima.
+                import uuid as _uuid
+                texto_conclusao = (
+                    f"✅ Chamado concluído!\n"
+                    f"📋 Protocolo: #{conversation.conversation_id}"
+                )
+                try:
+                    msg_conclusao = Message.objects.create(
+                        conversation=conversation, sender_type='system',
+                        sender_name='Sistema', message_type='text', content=texto_conclusao,
+                        external_id=f'concluido_{_uuid.uuid4().hex}',
                     )
-                    try:
-                        ok_conclusao, _remote_id = EvolutionAPIClient(group_connection).send_text(
-                            group_jid, texto_conclusao)
-                        if ok_conclusao:
-                            Message.objects.create(
-                                conversation_id=conv_id, sender_type='system',
-                                sender_name='Sistema', message_type='text', content=texto_conclusao,
-                                external_id=f'concluido_{_uuid.uuid4().hex}',
-                            )
-                        else:
-                            logger.warning(f"Falha ao enviar mensagem de conclusão (conv {conv_id})")
-                    except Exception as _e:
-                        logger.warning(f"Falha ao enviar mensagem de conclusão (conv {conv_id}): {_e}")
-
-                import threading as _threading
-                _threading.Thread(target=_send_conclusao_bg, daemon=True).start()
+                    # Sem WS a linha só apareceria ao recarregar a conversa.
+                    from .services import ConversationService as _CS
+                    _CS._broadcast_msg(conversation, conversation.group, msg_conclusao, inbox=False)
+                except Exception as _e:
+                    logger.warning(f"Falha ao registrar conclusão (conv {conversation.id}): {_e}")
 
         # Atualiza atribuição
         if 'assigned_to' in data:

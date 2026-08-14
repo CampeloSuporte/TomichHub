@@ -28,6 +28,12 @@ from .bgp_actions import (
     validar_anuncios_ao_vivo,
     validar_trial_suportado,
 )
+from .bgp_community_auto import (
+    comandos_definir_anuncio,
+    comandos_novo_prefixo,
+    comandos_provisionar_circuito,
+    montar_mapa,
+)
 from .bgp_matcher import listar_prefix_lists
 from .models import Acesso, AcaoBgp, BgpCommunity, BgpSnapshot
 from usuario import perms as _perms
@@ -159,6 +165,24 @@ def _gerar_comandos_por_tipo(tipo, vendor, dados, alvo, params):
         return comandos_novo_anuncio(vendor, dados, nome_sessao, lista_escolhida=lista, prefixo_novo=prefixo_novo)
     if tipo == 'criar_sessao':
         return comandos_criar_sessao(vendor, dados, params)
+    if tipo in ('anuncio_community', 'novo_prefixo_community', 'provisionar_circuito'):
+        # Automação de anúncios por community (Huawei) — o mapa de circuitos
+        # é redescoberto a cada chamada a partir do MESMO snapshot, então
+        # preview e execução enxergam exatamente o mesmo estado.
+        mapa = montar_mapa(dados, vendor)
+        if tipo == 'anuncio_community':
+            return comandos_definir_anuncio(
+                dados, mapa, alvo, str(params.get('circuito', '')),
+                params.get('acao', ''), route_policy=params.get('route_policy', ''),
+            )
+        if tipo == 'novo_prefixo_community':
+            destinos = {str(k): v for k, v in (params.get('destinos') or {}).items() if v}
+            return comandos_novo_prefixo(
+                dados, mapa, alvo, destinos, nome_policy=params.get('route_policy', ''),
+            )
+        return comandos_provisionar_circuito(
+            dados, mapa, str(params.get('circuito', '')), params.get('opcoes') or {},
+        )
     raise AcaoBgpNaoSuportada(f'Tipo de ação "{tipo}" desconhecido.')
 
 
@@ -269,6 +293,49 @@ def bgp_validar_anuncios(request, acesso_id):
     if resultado['status'] == 'erro':
         return JsonResponse({'error': resultado['mensagem']}, status=422)
     return JsonResponse(resultado)
+
+
+@login_required(login_url='login')
+@require_http_methods(["GET"])
+def bgp_community_mapa(request, acesso_id):
+    """
+    GET /clientes/bgp/<acesso_id>/community-mapa/ — descobre, a partir do
+    snapshot, os circuitos que a caixa já tem configurados no padrão de
+    community (`c-NN-<ação>` → `65100:<grupo><sufixo>`), a matriz
+    prefixo × circuito → ação em vigor e as inconsistências encontradas.
+
+    Leitura pura sobre `BgpSnapshot.dados` — não conecta em nada, não grava
+    nada. Devolve 422 pra fabricante sem suporte (a convenção é Huawei/VRP).
+    """
+    erro = _checar_staff(request)
+    if erro:
+        return erro
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+    erro = _checar_acesso(request, acesso)
+    if erro:
+        return erro
+    try:
+        snap = BgpSnapshot.objects.get(acesso_id=acesso_id)
+    except BgpSnapshot.DoesNotExist:
+        return JsonResponse({'error': 'Sem snapshot BGP para este host.'}, status=404)
+
+    try:
+        mapa = montar_mapa(snap.dados, snap.vendor)
+    except AcaoBgpNaoSuportada as e:
+        return JsonResponse({'error': str(e), 'suportado': False}, status=422)
+
+    if not mapa['circuitos']:
+        return JsonResponse({
+            'suportado': True, 'circuitos': {}, 'anuncios': [], 'acoes': mapa['acoes'],
+            'avisos': [], 'as_local': '',
+            'mensagem': 'Este equipamento não tem community-filters no padrão '
+                        '`c-NN-<ação>` — nada a mapear.',
+        })
+
+    sessoes = snap.dados.get('sessoes') or []
+    mapa['suportado'] = True
+    mapa['as_local'] = (sessoes[0].get('as_local', '') if sessoes else '') or snap.dados.get('as_local', '')
+    return JsonResponse(mapa)
 
 
 @login_required(login_url='login')
@@ -412,7 +479,12 @@ def bgp_executar_acao(request, acesso_id):
         return JsonResponse({'comandos': comandos})
 
     if isinstance(comandos_editados, list) and comandos_editados and all(isinstance(c, str) for c in comandos_editados):
-        if len(comandos_editados) > 30 or any(len(c) > 500 for c in comandos_editados):
+        # Limite de sanidade do texto editado no modal. Gerar o bloco padrão
+        # de um circuito (10 community-filters + ~10 nodes por família) passa
+        # facilmente de 30 linhas, então esse tipo tem um teto próprio — as
+        # demais ações continuam curtas por natureza.
+        limite_linhas = 300 if tipo == 'provisionar_circuito' else 30
+        if len(comandos_editados) > limite_linhas or any(len(c) > 500 for c in comandos_editados):
             return JsonResponse({'error': 'Comando editado longo demais — revise antes de enviar.'}, status=400)
         comandos = [c.strip() for c in comandos_editados if c.strip()]
     else:

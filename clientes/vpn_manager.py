@@ -82,6 +82,30 @@ def interface_existe():
     return r.returncode == 0
 
 
+def rota_dev_para(host):
+    """
+    Interface que o kernel REALMENTE usa para alcançar `host` ('wg2',
+    'tun-crm-1', 'eth0'…), ou None se não der para determinar.
+
+    Necessário porque declarar uma rede em `redes_privadas` não garante que a
+    rota do kernel aponte para aquele túnel: quando dois clientes declaram a
+    mesma faixa ampla (10.0.0.0/8 etc.), o kernel roteia por destino e só uma
+    das rotas vale — a outra vira uma promessa falsa que joga o tráfego no
+    túnel do cliente errado.
+    """
+    try:
+        r = subprocess.run(['ip', 'route', 'get', str(host)],
+                           capture_output=True, text=True, timeout=5)
+        if r.returncode != 0:
+            return None
+        partes = r.stdout.split()
+        if 'dev' in partes:
+            return partes[partes.index('dev') + 1]
+    except Exception as e:
+        logger.debug(f'rota_dev_para({host}) falhou: {e}')
+    return None
+
+
 def criar_interface_servidor(server_private_key):
     """Cria a interface wg0 se não existir."""
     if interface_existe():

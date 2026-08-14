@@ -535,6 +535,22 @@ def parse_huawei(conteudo, nome_equip=''):
             'index': int(idx),   # necessário pra achar o próximo índice livre (ação "anunciar prefixo novo")
         })
 
+    # ── ip community-filter basic NOME index N permit|deny VALOR [VALOR...] ──
+    # Alimenta a automação de anúncios por community (clientes/bgp_community_
+    # auto.py) — é daqui que sai o mapa "community → circuito/operadora".
+    # A simulação de anúncios (bgp_matcher) NÃO usa isso: community é um
+    # atributo da rota, não do prefixo, então continua fora do que dá pra
+    # avaliar estaticamente (ver `nao_suportado` logo abaixo).
+    community_filters = {}
+    for m in re.finditer(
+        r'^ip community-filter basic (\S+) index (\d+) (permit|deny) (.+)$',
+        conteudo, re.MULTILINE,
+    ):
+        community_filters.setdefault(m.group(1), []).append({
+            'index': int(m.group(2)), 'acao': m.group(3),
+            'valores': m.group(4).split(),
+        })
+
     # ── route-policy NOME permit|deny node N — bloco indentado ──────────────
     # Nós cujo único if-match é algo que não sabemos avaliar estaticamente
     # (ex: `if-match community-filter`, que depende de comunidade BGP já
@@ -542,7 +558,16 @@ def parse_huawei(conteudo, nome_equip=''):
     # em vez de virarem falso catch-all — um nó "vazio" tratado como
     # catch-all faria a policy inteira "rejeitar tudo" incorretamente assim
     # que esse nó aparecesse primeiro na ordem.
+    #
+    # `community_nodes` guarda EM SEPARADO (sem interferir na simulação) os
+    # nós que mexem com community — `if-match community-filter` e/ou
+    # `apply community` — porque a automação por community precisa
+    # justamente do que a simulação descarta: é assim que se descobre qual
+    # route-policy pertence a qual circuito e quais communities cada
+    # prefixo local carrega hoje.
+    community_nodes = {}
     termo_atual = None
+    node_com_atual = None
     for linha in conteudo.splitlines():
         m_node = re.match(r'route-policy (\S+) (permit|deny) node (\d+)', linha)
         if m_node:
@@ -554,26 +579,63 @@ def parse_huawei(conteudo, nome_equip=''):
                 'extra': {'policy': nome_rp, 'node': node, 'nao_suportado': False},
             }
             policies.setdefault(nome_rp, []).append(termo_atual)
+            node_com_atual = {
+                'policy': nome_rp, 'node': node, 'acao': acao_rp,
+                'community_filters': [], 'apply_community': [],
+                'apply_community_extra': [], 'prefix_lists': [],
+                'prepend_as': [], 'local_preference': None,
+            }
+            # Registrado já; os que não tiverem nada de community são
+            # descartados no final (evita comparar dicts por valor a cada
+            # linha só pra saber se este nó já entrou na lista).
+            community_nodes.setdefault(nome_rp, []).append(node_com_atual)
             continue
         if termo_atual is None:
             continue
         m_if_v4 = re.match(r'\s+if-match ip-prefix (\S+)', linha)
         m_if_v6 = re.match(r'\s+if-match ipv6 address prefix-list (\S+)', linha)
         if m_if_v4 or m_if_v6:
-            termo_atual['prefix_lists'].append((m_if_v4 or m_if_v6).group(1))
+            nome_pl = (m_if_v4 or m_if_v6).group(1)
+            termo_atual['prefix_lists'].append(nome_pl)
+            node_com_atual['prefix_lists'].append(nome_pl)
+            continue
+        m_if_com = re.match(r'\s+if-match community-filter (\S+)', linha)
+        if m_if_com:
+            node_com_atual['community_filters'].append(m_if_com.group(1))
+            termo_atual['extra']['nao_suportado'] = True
             continue
         if re.match(r'\s+if-match\s+', linha):
-            # if-match de um tipo que não sabemos avaliar (community-filter,
-            # as-path-filter etc.) — marca o nó pra ser descartado depois.
+            # if-match de um tipo que não sabemos avaliar (as-path-filter,
+            # tag etc.) — marca o nó pra ser descartado da simulação.
             termo_atual['extra']['nao_suportado'] = True
+            continue
+        m_apply_com = re.match(r'\s+apply community\s+(.+)$', linha)
+        if m_apply_com:
+            for valor in m_apply_com.group(1).split():
+                if valor == 'additive':
+                    continue
+                # `no-export`/`no-advertise`/`internet` são communities
+                # bem-conhecidas (palavra reservada, não aa:nn) — guardadas
+                # à parte pra não serem confundidas com community de
+                # circuito nem perdidas ao reescrever a lista.
+                if re.match(r'^\d+:\d+$', valor):
+                    node_com_atual['apply_community'].append(valor)
+                else:
+                    node_com_atual['apply_community_extra'].append(valor)
+            continue
+        m_lp = re.match(r'\s+apply local-preference (\d+)', linha)
+        if m_lp:
+            node_com_atual['local_preference'] = int(m_lp.group(1))
             continue
         m_prepend = re.match(r'\s+apply as-path ([\d\s]+?)\s*additive', linha)
         if m_prepend:
             termo_atual['prepend'] = len(m_prepend.group(1).split())
+            node_com_atual['prepend_as'] = m_prepend.group(1).split()
             continue
         # linha não-indentada e não é outro `route-policy` = saiu do bloco
         if linha and not linha.startswith((' ', '\t')):
             termo_atual = None
+            node_com_atual = None
 
     for nome_rp in list(policies.keys()):
         policies[nome_rp] = [
@@ -582,9 +644,35 @@ def parse_huawei(conteudo, nome_equip=''):
         if not policies[nome_rp]:
             del policies[nome_rp]
 
+    for nome_rp in list(community_nodes.keys()):
+        community_nodes[nome_rp] = [
+            n for n in community_nodes[nome_rp]
+            if n['community_filters'] or n['apply_community'] or n['apply_community_extra']
+        ]
+        if not community_nodes[nome_rp]:
+            del community_nodes[nome_rp]
+
     # ── Networks anunciados: network IP MASCARA_OU_LEN [route-policy NOME] ──
-    for m in re.finditer(r'^\s*network\s+(\S+)\s+(\S+)', conteudo, re.MULTILINE):
-        ip, mask_ou_len = m.group(1), m.group(2)
+    # A route-policy do `network` é a "policy local" do prefixo — é nela que
+    # ficam as communities que decidem pra quais circuitos aquele prefixo é
+    # anunciado (ver clientes/bgp_community_auto.py). A família vem do bloco
+    # `ipv4-family`/`ipv6-family` em que a linha está, necessária pra montar
+    # o comando no contexto certo.
+    familia_atual = ''
+    familia_por_linha = {}
+    for num, linha in enumerate(conteudo.splitlines()):
+        m_af = re.match(r'\s*(ipv4|ipv6)-family\b', linha)
+        if m_af:
+            familia_atual = 'v4' if m_af.group(1) == 'ipv4' else 'v6'
+        elif linha and not linha.startswith((' ', '\t')):
+            familia_atual = ''
+        familia_por_linha[num] = familia_atual
+
+    for m in re.finditer(
+        r'^\s*network\s+(\S+)\s+(\S+)(?:\s+route-policy\s+(\S+))?\s*$',
+        conteudo, re.MULTILINE,
+    ):
+        ip, mask_ou_len, rp_local = m.group(1), m.group(2), (m.group(3) or '')
         if '.' in mask_ou_len:
             pfx = _mascara_para_prefix(mask_ou_len)
         elif mask_ou_len.isdigit():
@@ -593,7 +681,15 @@ def parse_huawei(conteudo, nome_equip=''):
             continue
         if pfx is None:
             continue
-        networks.append({'prefixo': f'{ip}/{pfx}', 'habilitada': True, 'origem': 'network'})
+        num_linha = conteudo.count('\n', 0, m.start())
+        networks.append({
+            'prefixo': f'{ip}/{pfx}', 'habilitada': True, 'origem': 'network',
+            # Campos novos (2026-08-13, automação por community) — o contrato
+            # antigo (`prefixo`/`habilitada`/`origem`) segue intacto.
+            'route_policy': rp_local,
+            'ip': ip, 'mascara': mask_ou_len,
+            'familia': familia_por_linha.get(num_linha, '') or ('v6' if ':' in ip else 'v4'),
+        })
     if networks:
         prefix_lists['__networks__'] = [
             {'acao': 'permit', 'prefixo': n['prefixo'], 'len_min': None, 'len_max': None}
@@ -719,6 +815,9 @@ def parse_huawei(conteudo, nome_equip=''):
         'ospf': ospf_list, 'vsi': vsi_list, 'l2vc': l2vc_list,
         'modelo': modelo, 'as_local': as_local,
         'prefix_lists': prefix_lists, 'policies': policies, 'networks': networks,
+        # Só Huawei por enquanto — a automação de anúncios por community
+        # (clientes/bgp_community_auto.py) é escrita contra a gramática VRP.
+        'community_filters': community_filters, 'community_nodes': community_nodes,
     }
 
 

@@ -70,6 +70,71 @@ def _cidr_to_route(cidr):
     return str(net.network_address), str(net.netmask)
 
 
+def dev_tun(vpn):
+    """Nome da interface tun da instância deste túnel ('server-crm-3' →
+    'tun-crm-3'). É o `dev` que aparece no `ip route get` quando a rota
+    realmente aponta para ESTE cliente."""
+    return (vpn.interface_nome or '').replace('server-crm-', 'tun-crm-')
+
+
+def redes_em_conflito(redes, excluir_vpn_id=None):
+    """
+    Retorna [(rede_pedida, rede_do_outro, rótulo_do_outro), ...] para toda
+    rede IDÊNTICA a uma já declarada por OUTRO túnel OpenVPN ativo ou por uma
+    VPN WireGuard ativa.
+
+    Por que isso é obrigatório: a rota vive no kernel, que é único e roteia por
+    DESTINO. Duas instâncias declarando 10.0.0.0/8 instalam duas rotas para o
+    mesmo prefixo — só uma é usada, e o tráfego destinado ao equipamento do
+    cliente A entra no roteador do cliente B (que ainda mascara a origem e
+    tenta entregar em um IP igual na rede dele). Foi exatamente o que
+    aconteceu em produção: os dois túneis ativos declaravam as 5 faixas
+    padrão, o 198.18.10.2 da TOPNET saía pelo tun da INFORTECLINE e nenhum
+    dos dois funcionava. Mesma classe de incidente que motivou
+    `_outro_peer_usa_rede` no WireGuard (vpn_manager.py).
+
+    Prefixos de tamanhos diferentes (um /24 dentro do /8 de outro cliente) NÃO
+    entram aqui: o kernel casa o mais específico primeiro, então o resultado é
+    determinístico e é justamente o que se quer ao declarar a rede exata do
+    cliente. O que sobra dessa sobreposição — o outro cliente perder aquela
+    fatia — é a limitação de espaço de endereço já documentada no topo do
+    arquivo, e é coberta em tempo de conexão pelo `dev` real da rota
+    (`vpn_cobre_ip`, views.py).
+    """
+    from .models import VPNWireGuard, VPNOpenVPN
+
+    alvos = []
+    for rede in redes:
+        try:
+            alvos.append((rede, ipaddress.ip_network(rede, strict=False)))
+        except ValueError:
+            continue
+
+    existentes = []
+    ovpn_qs = VPNOpenVPN.objects.filter(ativo=True).exclude(id=excluir_vpn_id)
+    for outro in ovpn_qs.select_related('cliente'):
+        rotulo = f'túnel OpenVPN "{outro.nome}" ({outro.cliente.nome_empresa})'
+        for r in outro.redes_lista():
+            existentes.append((r, rotulo))
+    wg_qs = VPNWireGuard.objects.filter(ativo=True, peer_no_servidor=True)
+    for outro in wg_qs.select_related('cliente'):
+        rotulo = f'VPN WireGuard "{outro.nome}" ({outro.cliente.nome_empresa})'
+        for r in outro.redes_lista():
+            existentes.append((r, rotulo))
+
+    conflitos = []
+    for rede_str, alvo in alvos:
+        for outra_str, rotulo in existentes:
+            try:
+                outra = ipaddress.ip_network(outra_str, strict=False)
+            except ValueError:
+                continue
+            if alvo == outra:
+                conflitos.append((rede_str, outra_str, rotulo))
+                break
+    return conflitos
+
+
 # ─── PKI (pura em Python — sem depender de easy-rsa/openssl CLI) ────────────
 
 def _nome(cn, org='CRM Tunnel CA'):
@@ -257,6 +322,30 @@ def revogar_certificado(common_name):
     logger.info(f'🗑️ Certificado revogado: {common_name} (serial {serial})')
 
 
+def sugerir_redes(cliente):
+    """
+    Sugere as sub-redes /24 dos equipamentos privados JÁ cadastrados nos
+    Acessos do cliente. É o que o modal de criação pré-preenche no lugar das
+    faixas amplas: faixa ampla é cômoda mas colide com o outro cliente que
+    também declarou 10.0.0.0/8, e aí nenhum dos dois funciona (ver
+    `redes_em_conflito`). O operador pode ajustar/incluir outras redes.
+    """
+    from .models import Acesso
+    redes = []
+    for host in Acesso.objects.filter(cliente=cliente).values_list('host', flat=True):
+        ip_raw = (host or '').strip().split(':')[0]
+        try:
+            ip = ipaddress.ip_address(ip_raw)
+        except ValueError:
+            continue
+        if ip.version != 4 or not ip.is_private:
+            continue
+        rede = str(ipaddress.ip_network(f'{ip}/24', strict=False))
+        if rede not in redes:
+            redes.append(rede)
+    return sorted(redes)
+
+
 def gerar_common_name(cliente):
     import re
     slug = re.sub(r'[^a-z0-9]+', '-', (cliente.nome_empresa or 'cliente').lower()).strip('-')[:30]
@@ -278,10 +367,13 @@ def alocar_proxima_instancia():
     )
     n = 1
     while True:
-        if n not in usados_db:
-            interface_nome = f'server-crm-{n}'
-            porta = OVPN_BASE_PORT + n
-            return interface_nome, porta, n
+        interface_nome = f'server-crm-{n}'
+        # Além do banco, respeita sobra em disco: se uma remoção anterior
+        # falhou pela metade, o .conf/ccd do N antigo ainda está lá e reusar
+        # esse N faria o novo túnel herdar a config (e o CN) do túnel morto.
+        if n not in usados_db and not os.path.exists(_conf_path(interface_nome)) \
+                and not os.path.isdir(_ccd_dir(interface_nome)):
+            return interface_nome, OVPN_BASE_PORT + n, n
         n += 1
 
 
@@ -356,37 +448,78 @@ verb 3
 """
 
 
-def criar_instancia_servidor(vpn):
-    """Cria e sobe a instância dedicada deste túnel (config + ccd + systemd)."""
+def _gerar_conteudo_ccd(vpn):
+    """
+    Arquivo client-config-dir do cliente deste túnel.
+
+    O `iroute` é OBRIGATÓRIO: em modo `--server` o OpenVPN mantém uma tabela
+    de roteamento INTERNA própria. A diretiva `route` do .conf só faz o kernel
+    entregar o pacote na tun; sem um `iroute` casando com o destino, o próprio
+    OpenVPN descarta o pacote em silêncio (não existe rota interna para
+    nenhum cliente conectado). Sem essas linhas o túnel sobe, faz handshake e
+    responde ping no IP do /29 — mas NADA da rede interna do cliente é
+    alcançável, que era o sintoma em produção.
+    """
+    linhas = [
+        '# instância dedicada — iroute obrigatório para o OpenVPN saber que',
+        '# estas redes ficam ATRÁS deste cliente (a `route` do .conf só cuida',
+        '# do lado kernel; sem iroute o pacote é descartado internamente).',
+    ]
+    for rede in vpn.redes_lista():
+        try:
+            net, mask = _cidr_to_route(rede)
+        except ValueError:
+            continue
+        linhas.append(f'iroute {net} {mask}')
+    return '\n'.join(linhas) + '\n'
+
+
+def _escrever_arquivos_instancia(vpn):
+    """Grava .conf + client-config-dir da instância (usado ao criar e ao editar)."""
     os.makedirs(SERVER_DIR, exist_ok=True)
     ccd_dir = _ccd_dir(vpn.interface_nome)
     os.makedirs(ccd_dir, exist_ok=True)
     # ccd-exclusive: só quem tem arquivo aqui pode conectar — como só existe
     # UM arquivo (o do próprio cliente do túnel), a instância vira de-facto
     # single-tenant mesmo usando uma CA compartilhada entre todos os túneis.
+    # Arquivos de CNs antigos (túnel reemitido) são removidos para o
+    # ccd-exclusive continuar valendo de fato.
+    for antigo in os.listdir(ccd_dir):
+        if antigo != vpn.common_name:
+            try:
+                os.remove(os.path.join(ccd_dir, antigo))
+            except OSError:
+                pass
     with open(f'{ccd_dir}/{vpn.common_name}', 'w') as f:
-        f.write('# instância dedicada — sem diretivas extras necessárias\n')
+        f.write(_gerar_conteudo_ccd(vpn))
 
-    conf_path = _conf_path(vpn.interface_nome)
-    with open(conf_path, 'w') as f:
+    with open(_conf_path(vpn.interface_nome), 'w') as f:
         f.write(_gerar_conteudo_conf(vpn))
+
+
+def criar_instancia_servidor(vpn):
+    """Cria e sobe a instância dedicada deste túnel (config + ccd + systemd)."""
+    _escrever_arquivos_instancia(vpn)
 
     r = subprocess.run(
         ['sudo', '/usr/bin/systemctl', 'enable', '--now', f'openvpn-server@{vpn.interface_nome}'],
         capture_output=True, text=True,
     )
     if r.returncode != 0:
+        # Sem esta limpeza a unit fica habilitada e em Restart=on-failure para
+        # sempre: foi assim que openvpn-server@server-crm-999 acumulou 558 mil
+        # reinícios no servidor, tentando abrir um .conf que nunca existiu.
+        _desabilitar_unit(vpn.interface_nome)
         raise Exception(f'Falha ao subir openvpn-server@{vpn.interface_nome}: {r.stderr.strip()}')
     logger.info(f'✅ Instância {vpn.interface_nome} criada (porta {vpn.porta}, {_subnet_for(vpn.subnet_n)})')
 
 
 def atualizar_redes_instancia(vpn):
-    """Reescreve as rotas da instância e reinicia SÓ ela (reconexão breve
-    apenas para este cliente — zero impacto nos demais túneis, que rodam em
-    instâncias/processos totalmente separados)."""
-    conf_path = _conf_path(vpn.interface_nome)
-    with open(conf_path, 'w') as f:
-        f.write(_gerar_conteudo_conf(vpn))
+    """Reescreve as rotas da instância (kernel via `route` E interna via
+    `iroute` no ccd) e reinicia SÓ ela (reconexão breve apenas para este
+    cliente — zero impacto nos demais túneis, que rodam em instâncias/
+    processos totalmente separados)."""
+    _escrever_arquivos_instancia(vpn)
     r = subprocess.run(
         ['sudo', '/usr/bin/systemctl', 'restart', f'openvpn-server@{vpn.interface_nome}'],
         capture_output=True, text=True,
@@ -396,12 +529,20 @@ def atualizar_redes_instancia(vpn):
     logger.info(f'🔄 Instância {vpn.interface_nome} atualizada e reiniciada')
 
 
+def _desabilitar_unit(interface_nome):
+    """Para, desabilita e zera o contador de falhas da unit — o reset-failed é
+    o que impede a unit de continuar em loop de Restart depois que o .conf
+    dela deixa de existir."""
+    for args in (['disable', '--now'], ['reset-failed']):
+        subprocess.run(
+            ['sudo', '/usr/bin/systemctl', *args, f'openvpn-server@{interface_nome}'],
+            capture_output=True, text=True,
+        )
+
+
 def remover_instancia_servidor(vpn):
     """Para e remove por completo a instância dedicada deste túnel."""
-    subprocess.run(
-        ['sudo', '/usr/bin/systemctl', 'disable', '--now', f'openvpn-server@{vpn.interface_nome}'],
-        capture_output=True, text=True,
-    )
+    _desabilitar_unit(vpn.interface_nome)
     conf_path = _conf_path(vpn.interface_nome)
     try:
         os.remove(conf_path)

@@ -876,6 +876,17 @@ def aplicar_efeito_localmente(vendor, dados, tipo, nome_sessao, alvo, params):
         except Exception as e:
             logger.warning(f'aplicar_efeito_localmente (criar_sessao) falhou (não crítico): {e}')
         return
+    if tipo in ('anuncio_community', 'novo_prefixo_community', 'provisionar_circuito'):
+        # Automação por community: o alvo é um PREFIXO local (ou o próprio
+        # circuito), não uma sessão — o efeito é sobre a route-policy local
+        # ou sobre o catálogo de community-filters, não sobre `policies` da
+        # sessão. Ver clientes/bgp_community_auto.py.
+        from .bgp_community_auto import aplicar_efeito_local
+        try:
+            aplicar_efeito_local(dados, tipo, alvo, params)
+        except Exception as e:
+            logger.warning(f'aplicar_efeito_localmente ({tipo}) falhou (não crítico): {e}')
+        return
     try:
         sessao = _sessao_por_nome(dados, nome_sessao)
     except AcaoBgpNaoSuportada:

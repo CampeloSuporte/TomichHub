@@ -1506,6 +1506,11 @@ class AcaoBgp(models.Model):
         ('community',        'Aplicar community'),
         ('novo_anuncio',     'Anunciar prefixo novo'),
         ('criar_sessao',     'Criar sessão nova'),
+        # Automação de anúncios por community (Huawei) — ver
+        # clientes/bgp_community_auto.py
+        ('anuncio_community',      'Definir anúncio por community'),
+        ('novo_prefixo_community', 'Originar prefixo novo (community)'),
+        ('provisionar_circuito',   'Gerar config de circuito'),
     ]
     STATUS = [
         ('sucesso', 'Sucesso'),
@@ -1514,7 +1519,7 @@ class AcaoBgp(models.Model):
 
     acesso       = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='acoes_bgp')
     usuario      = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='+')
-    tipo         = models.CharField(max_length=20, choices=TIPOS)
+    tipo         = models.CharField(max_length=30, choices=TIPOS)
     alvo         = models.CharField(max_length=255)   # nome do peer, ou prefixo/policy afetado
     comandos     = models.TextField()                 # comandos reais enviados, um por linha
     output       = models.TextField(blank=True, default='')

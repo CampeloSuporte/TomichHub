@@ -160,6 +160,7 @@ urlpatterns = [
     path('ipam/prefixos/<int:prefixo_id>/marcar-em-uso/', ipam.ipam_prefixo_marcar_em_uso,  name='ipam_prefixo_marcar_em_uso'),
     path('ipam/prefixos/<int:prefixo_id>/pool-cheia/',   ipam.ipam_prefixo_pool_cheia,      name='ipam_prefixo_pool_cheia'),
     path('ipam/subredes/<int:subrede_id>/dividir/',        ipam.ipam_subrede_dividir,        name='ipam_subrede_dividir'),
+    path('ipam/subredes/<int:subrede_id>/subdivisoes/',    ipam.ipam_subrede_subdivisoes,    name='ipam_subrede_subdivisoes'),
     path('<int:cliente_id>/ipam/subredes/',              ipam.ipam_subredes_listar, name='ipam_subredes_listar'),
     path('<int:cliente_id>/ipam/subredes/salvar/',       ipam.ipam_subrede_salvar,  name='ipam_subrede_salvar'),
     path('ipam/subredes/<int:subrede_id>/deletar/',      ipam.ipam_subrede_deletar,   name='ipam_subrede_deletar'),
@@ -245,6 +246,7 @@ urlpatterns = [
     path('bgp/<int:acesso_id>/communities/',         bgpv.bgp_communities_listar, name='bgp_communities_listar'),
     path('bgp/<int:acesso_id>/communities/criar/',   bgpv.bgp_communities_criar,  name='bgp_communities_criar'),
     path('bgp/<int:acesso_id>/communities/<int:community_id>/deletar/', bgpv.bgp_communities_deletar, name='bgp_communities_deletar'),
+    path('bgp/<int:acesso_id>/community-mapa/',  bgpv.bgp_community_mapa,     name='bgp_community_mapa'),
     path('bgp/<int:acesso_id>/escanear-prefixo/', bgpv.bgp_escanear_prefixo, name='bgp_escanear_prefixo'),
     path('bgp/<int:acesso_id>/validar-anuncios/', bgpv.bgp_validar_anuncios, name='bgp_validar_anuncios'),
 

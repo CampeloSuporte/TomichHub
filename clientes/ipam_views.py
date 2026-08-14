@@ -398,6 +398,29 @@ def ipam_prefixo_deletar(request, prefixo_id):
     return JsonResponse({'ok': True})
 
 
+# Quantos registros uma divisão pode criar de uma vez. Existe por causa do
+# IPv6: dividir um /32 em /48 são 65.536 INSERTs num clique — e em /64,
+# 4 bilhões. Em IPv4 o pior caso realista (/16 em /30) são 16.384.
+DIVIDIR_LIMITE = 4096
+
+
+def _checar_limite_divisao(parent_net, target_pl, apenas_um):
+    """Mensagem de erro se a divisão não for permitida/razoável, senão None."""
+    # Mesmo teto do seletor de blocos: em IPv6 o automático para no /64.
+    if parent_net.version == 6 and target_pl > V6_MASCARA_MINIMA:
+        return (f'Em IPv6 a divisão automática vai até /{V6_MASCARA_MINIMA}. Pra p2p ou '
+                f'loopback (/126, /127, /128), cadastre a sub-rede digitando o CIDR '
+                f'em "Nova Sub-rede".')
+    if apenas_um:
+        return None
+    n = 2 ** (target_pl - parent_net.prefixlen)
+    if n > DIVIDIR_LIMITE:
+        return (f'Dividir {parent_net} em /{target_pl} criaria {_num_curto(n)} sub-redes '
+                f'(limite {_num_curto(DIVIDIR_LIMITE)}). Use o "+" pra criar só o bloco que '
+                f'precisa, ou marque "criar apenas o primeiro bloco".')
+    return None
+
+
 @login_required
 @require_http_methods(["POST"])
 @ferramenta_instancia_required('ipam')
@@ -420,9 +443,12 @@ def ipam_prefixo_dividir(request, prefixo_id):
         if target_pl <= prefixo_net.prefixlen or target_pl > max_pl:
             return JsonResponse({'ok': False, 'erro': f'prefixlen deve ser entre /{prefixo_net.prefixlen+1} e /{max_pl}'}, status=400)
 
-        subnets = list(prefixo_net.subnets(new_prefix=target_pl))
-        if apenas_um:
-            subnets = subnets[:1]
+        erro_qtd = _checar_limite_divisao(prefixo_net, target_pl, apenas_um)
+        if erro_qtd:
+            return JsonResponse({'ok': False, 'erro': erro_qtd}, status=400)
+
+        subnets = [next(prefixo_net.subnets(new_prefix=target_pl))] if apenas_um \
+                  else list(prefixo_net.subnets(new_prefix=target_pl))
 
         # Não duplicar redes já existentes
         existentes = set(IPAMSubRede.objects.filter(cliente=pobj.cliente)
@@ -450,6 +476,246 @@ def ipam_prefixo_dividir(request, prefixo_id):
 
 
 SUBDIVISOES_LIMITE = 4096
+# Teto de blocos somados quando se pede TODOS os tamanhos de uma vez
+# (num /24 a divisão completa /25../32 dá 510 blocos — cabe folgado).
+SUBDIVISOES_TODOS_LIMITE = 3000
+# Acima disto a máscara vira AMOSTRA em vez de lista completa. Em IPv6 é o
+# caso normal: um /32 tem 65.536 /48 e 4 bilhões de /64 — listar tudo é
+# impossível, e listar "os primeiros N" esconderia as alocações reais, que
+# num /32 costumam estar lá no fim (ex: 2804:57b0:e000::/40).
+SUBDIVISOES_LISTA_CHEIA   = 512
+SUBDIVISOES_AMOSTRA_CABECA = 32   # início do bloco, sempre listado
+SUBDIVISOES_AMOSTRA_MAX    = 128  # teto de blocos por máscara na amostra
+# Menor bloco que o IPAM quebra sozinho em IPv6. /64 é o tamanho de LAN: abaixo
+# disso (p2p /126, loopback /128) o endereçamento é escolhido a dedo, então
+# esses blocos entram digitando o CIDR na mão em "Nova Sub-rede", não por
+# subdivisão automática — que geraria listas de 2^62 blocos sem serventia.
+V6_MASCARA_MINIMA = 64
+
+
+def _mascaras_candidatas(parent_net, limite_pl):
+    """
+    Máscaras que fazem sentido oferecer dentro de `parent_net`.
+
+    IPv4 vai de /pai+1 até /pai+9. IPv6 anda de nibble em nibble e PARA no /64
+    (ver `V6_MASCARA_MINIMA`) — ninguém subdivide um /32 em /33, e nada abaixo
+    de /64 é escolhido por lista.
+    """
+    inicio = parent_net.prefixlen + 1
+    if parent_net.version == 4:
+        return [pl for pl in range(inicio, min(limite_pl, parent_net.prefixlen + 9) + 1)]
+
+    teto = min(limite_pl, V6_MASCARA_MINIMA)
+    return [pl for pl in range(inicio, teto + 1) if pl % 4 == 0]
+
+
+def _alocadas_no_bloco(cliente, parent_net, excluir_pai=False):
+    """
+    Sub-redes já cadastradas do cliente que caem dentro de `parent_net`.
+
+    `excluir_pai` existe porque a sub-rede pai *ela mesma* está cadastrada em
+    IPAMSubRede: sem isso ela apareceria como ocupante de todos os blocos
+    filhos, marcando o /24 inteiro como "parcial" contra si próprio.
+    """
+    alocadas = []
+    for s in IPAMSubRede.objects.filter(cliente=cliente):
+        try:
+            snet = ipaddress.ip_network(s.rede, strict=False)
+        except ValueError:
+            continue
+        if snet.version != parent_net.version or not snet.subnet_of(parent_net):
+            continue
+        if excluir_pai and snet == parent_net:
+            continue
+        alocadas.append((snet, s))
+    return alocadas
+
+
+def _indices_amostra(parent_net, target_pl, alocadas, total):
+    """
+    Índices dos blocos a listar quando a máscara gera blocos demais.
+
+    Pega o começo do bloco (onde as alocações normalmente começam) MAIS o
+    índice de cada sub-rede já cadastrada e o vizinho seguinte dela — que é
+    justamente o próximo bloco livre a usar. Sem isso, num /32 IPv6 a lista
+    mostraria só `2804:57b0:0::/40 …` e esconderia os /40 reais em `e000::`.
+    """
+    bits   = 128 if parent_net.version == 6 else 32
+    desloc = bits - target_pl
+    base   = int(parent_net.network_address)
+
+    def _idx(snet):
+        i = (int(snet.network_address) - base) >> desloc
+        return i if 0 <= i < total else None
+
+    # Ordem de prioridade dentro do orçamento: alocação exata nesta máscara,
+    # depois o vizinho dela (o próximo bloco livre a usar), depois alocações
+    # MAIS específicas (que deixam o bloco "parcial"), e só então o começo.
+    #
+    # Alocações mais AMPLAS que a máscara não viram âncora de propósito: se um
+    # /36 está alocado e estou listando /64, ancorar nele só produziria fileiras
+    # de "parcial" espalhadas, cada uma com um "⋯ 224 omitidos" no meio. A
+    # região inteira já está tomada — o que interessa ali é o começo.
+    exatas      = [s for s, _ in alocadas if s.prefixlen == target_pl]
+    especificas = [s for s, _ in alocadas if s.prefixlen > target_pl]
+    idx = set()
+
+    def _juntar(valores):
+        for v in valores:
+            if len(idx) >= SUBDIVISOES_AMOSTRA_MAX:
+                return
+            if v is not None:
+                idx.add(v)
+
+    _juntar(_idx(s) for s in exatas)
+    _juntar((_idx(s) or 0) + 1 for s in exatas if (_idx(s) or 0) + 1 < total)
+    _juntar(_idx(s) for s in especificas)
+    _juntar(range(min(SUBDIVISOES_AMOSTRA_CABECA, total)))
+    return sorted(idx)[:SUBDIVISOES_AMOSTRA_MAX]
+
+
+def _marcar_blocos(parent_net, target_pl, alocadas, indices=None):
+    """
+    Divide parent_net em /target_pl e marca cada bloco: livre / em uso / cheia / parcial.
+
+    Com `indices`, monta só os blocos daquelas posições (aritmética direta, sem
+    percorrer o gerador — um /64 dentro de um /32 são 4 bilhões de iterações) e
+    marca `salto` no primeiro bloco depois de cada intervalo pulado, pra UI
+    poder dizer que ali no meio ficou coisa de fora.
+    """
+    if indices is None:
+        fonte = parent_net.subnets(new_prefix=target_pl)
+        saltos = {}
+    else:
+        bits   = 128 if parent_net.version == 6 else 32
+        desloc = bits - target_pl
+        base   = int(parent_net.network_address)
+        fonte  = (ipaddress.ip_network((base + (i << desloc), target_pl)) for i in indices)
+        saltos = {pos: indices[pos] - indices[pos - 1] - 1
+                  for pos in range(1, len(indices)) if indices[pos] - indices[pos - 1] > 1}
+
+    blocos = []
+    for subnet in fonte:
+        exato = next((s for snet, s in alocadas if snet == subnet), None)
+        ocupante_parcial = None if exato else next(
+            (s for snet, s in alocadas if snet.subnet_of(subnet) or subnet.subnet_of(snet)), None)
+
+        if exato:
+            status = 'cheia' if exato.pool_cheia else 'em_uso'
+        elif ocupante_parcial:
+            status = 'parcial'
+        else:
+            status = 'livre'
+
+        bloco = {
+            'rede':        str(subnet),
+            'status':      status,
+            'subrede_id':  exato.id if exato else (ocupante_parcial.id if ocupante_parcial else None),
+            'descricao':   exato.descricao if exato else (ocupante_parcial.descricao if ocupante_parcial else ''),
+            'ocupado_por': ocupante_parcial.rede if ocupante_parcial else None,
+        }
+        pulados = saltos.get(len(blocos))
+        if pulados:
+            bloco['salto'] = pulados
+        blocos.append(bloco)
+    return blocos
+
+
+def _subdivisoes_payload(cliente, parent_net, prefixlen_raw,
+                         excluir_pai=False, limite_pl=None):
+    """
+    Monta os blocos possíveis dentro de um bloco pai, marcando cada um como
+    livre / em uso / cheio / parcial. Compartilhado pelas duas entradas —
+    prefixo (container) e sub-rede (ver `_alocadas_no_bloco`).
+
+    `prefixlen_raw`:
+      - um prefixlen (ex: `26`) → devolve a chave `blocos` só daquele tamanho;
+      - `'todos'` (ou vazio)    → devolve `grupos`, com a divisão COMPLETA:
+        num /24 são os 2 /25, os 4 /26, … até os 256 /32, tudo de uma vez, pra
+        escolher o bloco direto sem ter que trocar de máscara antes.
+
+    Em IPv6 "completa" é impossível (um /32 tem 4 bilhões de /64), então cada
+    máscara acima de `SUBDIVISOES_LISTA_CHEIA` vira amostra — ver
+    `_indices_amostra`, que garante as alocações existentes na lista.
+
+    Retorna `(payload, None)` em caso de sucesso, `(None, erro)` se inválido.
+    """
+    v6        = parent_net.version == 6
+    max_pl    = 128 if v6 else 32
+    limite_pl = max_pl if limite_pl is None else min(limite_pl, max_pl)
+    if v6:
+        limite_pl = min(limite_pl, V6_MASCARA_MINIMA)
+    opcoes = _mascaras_candidatas(parent_net, limite_pl)
+    if not opcoes:
+        if v6:
+            return None, (f'Em IPv6 a subdivisão automática vai até /{V6_MASCARA_MINIMA} — '
+                          f'/{parent_net.prefixlen} já é igual ou menor que isso. Blocos menores '
+                          f'(p2p, loopback) entram digitando o CIDR em "Nova Sub-rede".')
+        return None, f'/{parent_net.prefixlen} não tem como ser subdividido (limite /{limite_pl})'
+
+    todos = str(prefixlen_raw or 'todos').lower() == 'todos'
+    if not todos:
+        try:
+            target_pl = int(prefixlen_raw)
+        except (TypeError, ValueError):
+            return None, 'prefixlen inválido'
+        if target_pl <= parent_net.prefixlen or target_pl > limite_pl:
+            return None, f'prefixlen deve ser entre /{parent_net.prefixlen+1} e /{limite_pl}'
+
+    alocadas = _alocadas_no_bloco(cliente, parent_net, excluir_pai)
+
+    def _grupo(pl, teto_lista):
+        """Monta o grupo de uma máscara, em lista cheia ou em amostra."""
+        n = 2 ** (pl - parent_net.prefixlen)
+        if n <= teto_lista:
+            blocos = _marcar_blocos(parent_net, pl, alocadas)
+        else:
+            blocos = _marcar_blocos(parent_net, pl, alocadas,
+                                    indices=_indices_amostra(parent_net, pl, alocadas, n))
+        return {
+            'prefixlen':   pl,
+            'label':       _prefixlen_label(pl, parent_net.version),
+            'total':       n if n <= SUBDIVISOES_LIMITE else None,   # JSON não gosta de 2^96
+            'total_label': _num_curto(n),
+            'mostrando':   len(blocos),
+            'amostra':     len(blocos) < n,
+            'blocos':      blocos,
+        }
+
+    base = {
+        'ok':            True,
+        'prefixo':       str(parent_net),
+        'prefixlen_pai': parent_net.prefixlen,
+        'versao':        parent_net.version,
+        'opcoes':        [{'prefixlen': pl, 'label': _prefixlen_label(pl, parent_net.version),
+                           'total_label': _num_curto(2 ** (pl - parent_net.prefixlen))}
+                          for pl in opcoes],
+    }
+
+    if not todos:
+        # Máscara pedida na mão: lista cheia até o limite duro, senão amostra
+        # maior que a do modo "todos" (o usuário está focado nela).
+        g = _grupo(target_pl, SUBDIVISOES_LIMITE)
+        base.update({'prefixlen': target_pl, 'total': g['total'],
+                     'total_label': g['total_label'], 'mostrando': g['mostrando'],
+                     'amostra': g['amostra'], 'blocos': g['blocos']})
+        return base, None
+
+    grupos, somados = [], 0
+    for pl in opcoes:
+        if somados >= SUBDIVISOES_TODOS_LIMITE:
+            break
+        g = _grupo(pl, SUBDIVISOES_LISTA_CHEIA)
+        grupos.append(g)
+        somados += g['mostrando']
+
+    if not grupos:
+        return None, (f'/{parent_net.prefixlen} é grande demais pra listar a divisão '
+                      f'completa — escolha um tamanho específico.')
+
+    base.update({'prefixlen': 'todos', 'total': somados, 'grupos': grupos,
+                 'truncado': len(grupos) < len(opcoes)})
+    return base, None
 
 
 @login_required
@@ -469,62 +735,43 @@ def ipam_prefixo_subdivisoes(request, prefixo_id):
     except ValueError as e:
         return JsonResponse({'ok': False, 'erro': f'Prefixo inválido: {e}'}, status=400)
 
-    max_pl = 32 if prefixo_net.version == 4 else 128
-    opcoes = [pl for pl in range(prefixo_net.prefixlen + 1, min(max_pl, prefixo_net.prefixlen + 9) + 1)]
+    payload, erro = _subdivisoes_payload(pobj.cliente, prefixo_net,
+                                         request.GET.get('prefixlen'))
+    if erro:
+        return JsonResponse({'ok': False, 'erro': erro}, status=400)
+    payload['prefixo_id'] = pobj.id
+    return JsonResponse(payload)
 
+
+@login_required
+@ferramenta_instancia_required('ipam')
+def ipam_subrede_subdivisoes(request, subrede_id):
+    """
+    Mesma ideia de `ipam_prefixo_subdivisoes`, mas usando uma sub-rede já
+    cadastrada como bloco pai: pega um /24 e lista todos os /25../32 possíveis
+    dentro dele, pra criar uma sub-rede filha escolhendo o bloco na mão
+    (botão "+" da linha da sub-rede).
+
+    O teto vai até /32 (e /128 em IPv6): na teoria isso é host e viraria
+    IPAMEndereco, mas o cadastro deste CRM usa host como sub-rede em massa
+    (1.170 /32 e 22 /128 — loopbacks de equipamento), então cortar em /31
+    impediria justamente o caso mais comum.
+    """
+    sobj = get_object_or_404(IPAMSubRede, id=subrede_id)
+    _checar_obj_cliente(request, sobj)
     try:
-        target_pl = int(request.GET.get('prefixlen') or (opcoes[0] if opcoes else max_pl))
-    except (TypeError, ValueError):
-        return JsonResponse({'ok': False, 'erro': 'prefixlen inválido'}, status=400)
+        parent_net = ipaddress.ip_network(sobj.rede, strict=False)
+    except ValueError as e:
+        return JsonResponse({'ok': False, 'erro': f'Sub-rede inválida: {e}'}, status=400)
 
-    if target_pl <= prefixo_net.prefixlen or target_pl > max_pl:
-        return JsonResponse({'ok': False, 'erro': f'prefixlen deve ser entre /{prefixo_net.prefixlen+1} e /{max_pl}'}, status=400)
-
-    total_blocos = 2 ** (target_pl - prefixo_net.prefixlen)
-    if total_blocos > SUBDIVISOES_LIMITE:
-        return JsonResponse({'ok': False, 'erro': f'/{target_pl} geraria {total_blocos:,} blocos — escolha um prefixo menor (limite {SUBDIVISOES_LIMITE:,}).'}, status=400)
-
-    # Sub-redes já cadastradas do cliente que caem dentro deste prefixo
-    alocadas = []
-    for s in IPAMSubRede.objects.filter(cliente=pobj.cliente):
-        try:
-            snet = ipaddress.ip_network(s.rede, strict=False)
-        except ValueError:
-            continue
-        if snet.version == prefixo_net.version and snet.subnet_of(prefixo_net):
-            alocadas.append((snet, s))
-
-    blocos = []
-    for subnet in prefixo_net.subnets(new_prefix=target_pl):
-        exato = next((s for snet, s in alocadas if snet == subnet), None)
-        ocupante_parcial = None if exato else next(
-            (s for snet, s in alocadas if snet.subnet_of(subnet) or subnet.subnet_of(snet)), None)
-
-        if exato:
-            status = 'cheia' if exato.pool_cheia else 'em_uso'
-        elif ocupante_parcial:
-            status = 'parcial'
-        else:
-            status = 'livre'
-
-        blocos.append({
-            'rede':        str(subnet),
-            'status':      status,
-            'subrede_id':  exato.id if exato else (ocupante_parcial.id if ocupante_parcial else None),
-            'descricao':   exato.descricao if exato else (ocupante_parcial.descricao if ocupante_parcial else ''),
-            'ocupado_por': ocupante_parcial.rede if ocupante_parcial else None,
-        })
-
-    return JsonResponse({
-        'ok':            True,
-        'prefixo':       str(prefixo_net),
-        'prefixlen_pai': prefixo_net.prefixlen,
-        'prefixlen':     target_pl,
-        'total':         total_blocos,
-        'blocos':        blocos,
-        'opcoes':        [{'prefixlen': pl, 'label': _prefixlen_label(pl, prefixo_net.version),
-                            'total': 2 ** (pl - prefixo_net.prefixlen)} for pl in opcoes],
-    })
+    payload, erro = _subdivisoes_payload(sobj.cliente, parent_net,
+                                         request.GET.get('prefixlen'),
+                                         excluir_pai=True)
+    if erro:
+        return JsonResponse({'ok': False, 'erro': erro}, status=400)
+    # O modal de criação precisa do prefixo dono pra já vir pré-selecionado
+    payload['prefixo_id'] = sobj.prefixo_id
+    return JsonResponse(payload)
 
 
 DISPONIVEIS_TAMANHOS_MAX  = 6   # quantos tamanhos (máscaras) distintos sugerir
@@ -599,9 +846,12 @@ def ipam_subrede_dividir(request, subrede_id):
         if target_pl <= parent_net.prefixlen or target_pl > max_pl:
             return JsonResponse({'ok': False, 'erro': f'prefixlen deve ser maior que /{parent_net.prefixlen}'}, status=400)
 
-        subnets = list(parent_net.subnets(new_prefix=target_pl))
-        if apenas_um:
-            subnets = subnets[:1]
+        erro_qtd = _checar_limite_divisao(parent_net, target_pl, apenas_um)
+        if erro_qtd:
+            return JsonResponse({'ok': False, 'erro': erro_qtd}, status=400)
+
+        subnets = [next(parent_net.subnets(new_prefix=target_pl))] if apenas_um \
+                  else list(parent_net.subnets(new_prefix=target_pl))
 
         existentes = set(IPAMSubRede.objects.filter(cliente=sobj.cliente).values_list('rede', flat=True))
         criados, pulados = [], []
@@ -829,15 +1079,25 @@ def _livre_dict(net):
     }
 
 
+def _num_curto(n):
+    """2^64 em vez de 18.446.744.073.709.551.616 — número gigante não informa nada."""
+    return f'{n:,}'.replace(',', '.') if n <= 65536 else f'2^{n.bit_length() - 1}'
+
+
 def _prefixlen_label(prefixlen, version=4):
     max_prefix = 32 if version == 4 else 128
     n = 2 ** (max_prefix - prefixlen)
+    if n == 1:
+        return f'/{prefixlen} (1 endereço)'
     if version == 4:
         if prefixlen <= 16:
             return f'/{prefixlen} ({n:,} IPs)'
-        hosts = max(0, n - 2)
-        return f'/{prefixlen} ({hosts} hosts)'
-    return f'/{prefixlen} ({n:,} endereços)'
+        # /31 é ponto-a-ponto (RFC 3021): os 2 endereços são usáveis, então
+        # "0 hosts" da conta clássica (n-2) mentiria.
+        if prefixlen >= 31:
+            return f'/{prefixlen} ({n} endereços)'
+        return f'/{prefixlen} ({n - 2} hosts)'
+    return f'/{prefixlen} ({_num_curto(n)} endereços)'
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1003,7 +1263,11 @@ def ipam_subrede_ips(request, subrede_id):
     return JsonResponse({'ok': True, 'ips': data, 'subrede': s.rede})
 
 
-GRADE_MAX_ENDERECOS = 4096
+# Grade visual = uma célula por endereço. O teto é o /24 (256 endereços) e o
+# equivalente IPv6, /120 — acima disso vira uma malha de milhares de
+# quadradinhos que não se lê. A UI já esconde o botão nesse caso
+# (`tetoGrade` em _renderSrLeafRow); aqui é a mesma regra do lado do servidor.
+GRADE_MAX_ENDERECOS = 256
 
 
 @login_required
@@ -1025,8 +1289,9 @@ def ipam_subrede_grade(request, subrede_id):
     if net.num_addresses > GRADE_MAX_ENDERECOS:
         return JsonResponse({
             'ok': False,
-            'erro': (f'Sub-rede grande demais para grade visual ({net.num_addresses} endereços, '
-                     f'limite {GRADE_MAX_ENDERECOS}). Divida em blocos menores primeiro.'),
+            'erro': (f'Grade visual vai até /24 ({GRADE_MAX_ENDERECOS} endereços); '
+                     f'{s.rede} tem {net.num_addresses:,}'.replace(',', '.')
+                     + '. Abra a grade num bloco menor.'),
         }, status=400)
 
     enderecos = {e.ip: e for e in IPAMEndereco.objects.filter(subrede=s).select_related('acesso')}

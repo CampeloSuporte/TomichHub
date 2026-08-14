@@ -46,6 +46,14 @@ funcionam: `vpn_cobre_ip(cliente, host)` (`clientes/views.py`) confere se o IP d
 dentro de alguma rede roteada por uma VPN ativa do cliente — nesse caso a rota já existe no kernel
 via a interface da VPN, e a conexão é feita direto, sem túnel SSH.
 
+Desde 13/08/2026 não basta a rede estar **declarada** em `redes_privadas`: `vpn_cobre_ip` também
+confere, via `ip route get` (`vpn_manager.rota_dev_para`), se o `dev` real da rota é a interface
+daquele túnel (`wgN` / `tun-crm-N`). A tabela de rotas do kernel é única e roteia por destino, então
+quando dois clientes declaram a mesma faixa ampla só uma rota vale — sem essa conferência o proxy
+"tinha certeza" de alcançar o equipamento e entrava na rede do **outro** cliente. Não batendo, a
+função retorna `False` e o chamador cai no `ProxyServer` SSH, que é o caminho correto. Se o
+`ip route get` falhar, mantém-se o comportamento antigo (confia na declaração).
+
 **Atenção:** esse fallback existe em `proxy_web_acesso` (HTTP) mas **não** em todos os consumers
 WebSocket que também usam IP privado (Terminal SSH, Telnet, WinBox) — ver `docs/winbox_vnc.md`
 para o que já foi corrigido e o que ainda falta.

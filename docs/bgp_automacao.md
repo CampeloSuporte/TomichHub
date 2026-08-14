@@ -987,4 +987,144 @@ listar_prefix_lists`/a tela de escanear-prefixo) se outra sessão ainda a refere
 
 ---
 
-**Última atualização:** 04/08/2026
+## Anúncios por community — descoberta automática + intenção (Huawei, adicionado em 2026-08-13)
+
+**Arquivos:** `clientes/bgp_community_auto.py` (novo), `clientes/backup_parser.py` (`parse_huawei`),
+`clientes/bgp_views.py` (`bgp_community_mapa` + 3 tipos novos em `_gerar_comandos_por_tipo`),
+`clientes/bgp_actions.py` (`aplicar_efeito_localmente`), `clientes/templates/bgp_automacao.html`
+(painel "🎯 Anúncios por community"), migration `0107_alter_acaobgp_tipo`.
+
+Vários roteadores de borda deste CRM já usam uma convenção de **anúncio por community**, em que o
+prefixo carrega a "intenção" e a policy de saída de cada circuito traduz essa intenção em
+comportamento BGP. Esta feature **descobre essa convenção sozinha** a partir do backup e deixa o
+operador trabalhar por intenção (prefixo + circuito + ação), sem escrever `route-policy`,
+`community-filter` nem decorar número de community.
+
+```
+Prefixo → Circuito → Ação → Community → Route-Policy → Anúncio BGP
+```
+
+### A convenção (confirmada em 8 equipamentos reais)
+
+```
+ip community-filter basic c-02-export-2p index 10 permit 65100:50203
+                          └┬─┘ └───┬───┘                 └─┬─┘└┬┘└┬┘
+                       circuito   ação                    asn grupo sufixo
+
+route-policy AS263941-TOGONET-V4-OUT permit node 12     ← traduz a intenção
+ if-match community-filter c-02-export-2p
+ apply as-path 268080 268080 additive
+
+route-policy RT-BGP-LOCAL-52DC-38 permit node 10        ← declara a intenção
+ apply community 65100:50203 additive
+
+network 2804:52DC:3000:: 38 route-policy RT-BGP-LOCAL-52DC-38
+```
+
+Catálogo de ações (`ACOES`, sufixo fixo da community e node canônico na policy OUT):
+`export` (01/10), `export-1p` (02/11), `export-2p` (03/12), `export-3p` (04/13), `export-4p`
+(05/14), `export-ne` (08/15, `deny` + `apply community no-export`), `export-df` (09/16),
+`export-bh` (66/17), `export-bl` (67/09, `deny`), `import-rr` (00, só na policy de entrada).
+**O número de prepends é propriedade da AÇÃO** — nunca é cadastrado por anúncio.
+
+### Extração (`parse_huawei`)
+
+Três chaves novas no snapshot, sem alterar nenhum contrato existente:
+
+| Chave | Conteúdo |
+|---|---|
+| `community_filters` | `{"c-02-export-2p": [{"index": 10, "acao": "permit", "valores": ["65100:50203"]}]}` |
+| `community_nodes` | por route-policy, só os nodes que mexem com community (`if-match community-filter` e/ou `apply community`), com `prepend_as`/`local_preference`/`prefix_lists` |
+| `networks[].route_policy` / `.familia` / `.ip` / `.mascara` | a policy local de cada prefixo originado e a address-family (`ipv4-family`/`ipv6-family`) em que o `network` está |
+
+`community_nodes` existe **em separado** de `policies` justamente porque a simulação de anúncios
+descarta esses nós (community é atributo da rota, não do prefixo — ver "Termos não suportados"):
+a automação por community precisa exatamente do que a simulação joga fora.
+
+### Descoberta (`mapear_circuitos` / `mapear_anuncios`)
+
+- **Circuito ↔ sessão é resolvido pela EXPORT POLICY da sessão** — a policy que dá `if-match
+  community-filter c-NN-*` é, por definição, a saída daquele circuito. Foi a única regra que se
+  sustentou nos 8 equipamentos: o nome segue `AS<asn>-<NOME>-V4-OUT` na maioria mas nem sempre
+  (`RP-IX-SP-V4-OUT`), e há caixas onde a policy IN de um circuito carimba a community de origem de
+  **outro** (copy/paste real — vira aviso, não vira mapeamento errado).
+- **Grupo/ASN do circuito** vêm da community da ação `export`, não de uma média das ações: em
+  produção existem caixas onde `c-04-export-bh`/`c-04-export-bl` apontam pro grupo 503 (bloco
+  clonado do c-03 sem trocar o número). O circuito continua sendo o 504 e a divergência é reportada.
+- **Matriz de anúncios**: para cada `network` com route-policy local, as communities aplicadas são
+  resolvidas em `{circuito: ação}`. Communities fora do catálogo (ex: `65100:10091`, convenções
+  próprias do cliente) ficam em `communities_extras` e são **reemitidas intactas** em qualquer
+  reescrita.
+
+### Validações (§16 da especificação) — `validar_mapa`
+
+Rodam a cada carga do painel, sobre a config **já existente**: filtro referenciado que não existe,
+ação com community-filter mas sem node na policy OUT, quantidade de prepend divergente da ação,
+`deny node 999` ausente, policy referenciada e não criada, ASN de prepend não identificado, policy
+de entrada que não carimba a community de origem, mais de uma policy de saída por família. São
+avisos (não bloqueiam nada) — nos 8 equipamentos reais apontaram **58 inconsistências**, todas de
+config pré-existente.
+
+### Ações geradas
+
+| Tipo (`AcaoBgp.tipo`) | O que faz |
+|---|---|
+| `anuncio_community` | Muda a intenção de UM prefixo para UM circuito (inclusive "deixar de anunciar") |
+| `novo_prefixo_community` | Passa a originar um prefixo novo já com a intenção definida (route-policy local + `network` na address-family certa) |
+| `provisionar_circuito` | Gera só o que **falta** de um circuito: community-filters ausentes + nodes correspondentes na policy de saída + `deny node 999` |
+
+**Por que `undo apply community` + `apply community …`:** no VRP um `apply community` repetido no
+mesmo node SOMA à lista já configurada — sem o `undo` não haveria como remover uma community. Como
+o Huawei desta automação usa config candidata + `commit` (ver `_PRECISA_COMMIT`), as duas linhas
+viram uma alteração atômica: o prefixo nunca fica um instante sem communities na config em vigor.
+
+**Nunca edita objeto compartilhado:** a mudança é sempre na route-policy LOCAL do prefixo (que só
+serve àquele `network`), nunca na policy de uma sessão nem numa prefix-list — mesmo princípio já
+adotado em "parar de anunciar"/"anunciar prefixo novo".
+
+**Encaixe de node** (`_node_livre`): usa o node canônico do catálogo quando livre, senão o próximo
+livre. A ordem entre nodes de ação não é crítica (cada um casa um filtro diferente e um prefixo
+carrega no máximo uma community por circuito); as exceções respeitadas são `export-bl` antes dos
+permits e o `deny node 999` por último. Caso real que motivou o fallback: policies de peering CDN
+(`AS40027-NETFLIX-OCA-V4-OUT`) já usam o node 15, reservado no catálogo pro `export-ne`.
+
+### Endpoint e frontend
+
+`GET /clientes/bgp/<acesso_id>/community-mapa/` — leitura pura sobre `BgpSnapshot.dados` (não
+conecta em nada); 422 para fabricante diferente de Huawei, e o painel simplesmente não aparece.
+
+Painel novo no topo da tela: cards dos circuitos (grupo de community, ASN remoto, ASN de prepend,
+famílias, sessões, o que falta) e a **matriz prefixo × circuito**, onde cada célula é um `<select>`
+com o catálogo de ações. Trocar a ação abre o mesmo modal de preview/edição/trial já usado por toda
+ação desta tela. O `<select>` volta ao valor atual assim que o modal abre — quem muda a tela de
+verdade é a confirmação (que recarrega o painel), então cancelar não deixa a tela mentindo.
+
+O limite de sanidade do textarea editado subiu de 30 para **300 linhas** só em
+`provisionar_circuito` (o bloco padrão de um circuito passa fácil de 30 linhas); as demais ações
+continuam em 30.
+
+### Fonte da verdade
+
+A especificação original pedia o banco como fonte da verdade dos circuitos. A implementação
+mantém o **equipamento** como fonte (via snapshot do backup), que é o modelo do resto desta
+automação: os circuitos são descobertos a cada carga, não cadastrados. Isso evita o problema real
+de um cadastro paralelo divergir da caixa sem ninguém perceber — e as caixas já tinham a convenção
+configurada, que era o ponto de partida do pedido. O que o operador informa (nome, ASN remoto, ASN
+de prepend, policy alvo) é pedido no momento de gerar config que ainda não existe.
+
+### Validado em 2026-08-13
+
+Contra os 8 equipamentos Huawei reais que usam a convenção (acessos 20, 175, 324, 746, 826, 923,
+990, 1216): descoberta de 64 circuitos no total, matriz de anúncios de 159 prefixos, e o fluxo HTTP
+completo (mapa → preview → execução com `executar_acao_bgp` mockada → efeito otimista → auditoria)
+rodado ponta a ponta com `Client()` do Django — incluindo as recusas esperadas (prefixo não
+originado, circuito inexistente, ação `import-rr` num anúncio, prefixo inválido, circuito sem ASN
+de prepend, policy de saída ambígua). Nenhum comando real foi enviado a equipamento. Backfill dos
+57 `BgpSnapshot` existentes rodado depois da mudança do parser: 54 ok, 3 com erro pré-existente e
+não relacionado (2 já documentados acima — peer por hostname e prefix-list com notação de range —
+e um Mikrotik cujo backup tem caractere acentuado que o Postgres em SQL_ASCII recusa gravar no
+JSON; reproduzido também com o parser anterior).
+
+---
+
+**Última atualização:** 13/08/2026

@@ -30,9 +30,11 @@
                 <a href="{% url 'wiki:dashboard' %}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-1"></i> Voltar
                 </a>
+                {% if is_admin_bo %}
                 <a href="{% url 'wiki:cadastrar_artigo' %}" class="btn btn-primary">
                     <i class="fas fa-plus me-1"></i> Novo Artigo
                 </a>
+                {% endif %}
             </div>
         </div>
 
@@ -92,6 +94,7 @@
                                 <a href="{% url 'wiki:visualizar_artigo' artigo.slug %}" class="btn btn-sm btn-outline-primary" title="Visualizar">
                                     <i class="fas fa-eye"></i> Ver
                                 </a>
+                                {% if is_admin_bo %}
                                 <a href="{% url 'wiki:editar_artigo' artigo.slug %}" class="btn btn-sm btn-outline-warning" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </a>
@@ -101,6 +104,7 @@
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>
+                                {% endif %}
                             </div>
                         </div>
 

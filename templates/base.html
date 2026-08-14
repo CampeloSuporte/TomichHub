@@ -70,6 +70,8 @@
                         <li><a class="dropdown-item" href="{%url 'listar_modelos'%}">
                             <i class="fas fa-server me-2" style="color:#8b949e"></i>Modelos de equipamento
                         </a></li>
+                        {% endif %}
+                        {% if is_admin_bo or ferramentas_habilitadas.wiki %}
                         <li><a class="dropdown-item" href="{% url 'wiki:dashboard' %}">
                             <i class="fas fa-book me-2" style="color:#8b949e"></i>Wiki
                         </a></li>
