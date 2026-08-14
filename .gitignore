@@ -32,6 +32,17 @@ static/*
 static/js/*
 !static/js/topo_engine.js
 !static/js/topo_main.js
+!static/js/acessar_equipamento.js
+!static/js/terminal_tab_manager.js
+!static/monitoramento/
+static/monitoramento/*
+!static/monitoramento/js/
+static/monitoramento/js/*
+!static/monitoramento/js/*.js
+# Fora de propósito: `static/css`, `favicon*` e os outros JS (main.js,
+# listar_acesso.js, cadastrar_cliente.js) têm fonte em `staticfiles/` — a cópia
+# daqui é do collectstatic. `static/winbox4/` são binários de terceiros (~70 MB)
+# e `static/{admin,rest_framework}/` vêm dos apps do Django.
 
 # Mídia (uploads, backups, documentos gerados)
 media/
