@@ -84,9 +84,15 @@ porta e o número acompanha a operação em três lugares:
    dá pra medir o impacto depois mesmo que o backup tenha mudado.
 
 Ligar/desligar laser é **uma porta por vez** (`validar_alvo` recusa mais de
-uma) e exige um segundo clique de confirmação. Consulta não exige — exigir
-confirmação pra ler o estado de uma porta só ensinaria a clicar "sim" no
-automático, que é justamente o reflexo que não pode existir no laser.
+uma) e passa pelo preview editável + confirmação explícita.
+
+**Consulta não passa por nada disso.** `display port info/state` vai direto ao
+equipamento e mostra só o retorno — o comando é fixo, não muda nada e não há o
+que revisar; um textarea de comandos entre a pergunta e a resposta seria só um
+passo a mais. E confirmação em leitura teria o efeito contrário do desejado:
+ensinaria a clicar "sim" no automático, que é justamente o reflexo que não pode
+existir na hora de desativar uma porta. O preview continua valendo **só** para
+as ações de escrita.
 
 ## O preâmbulo dos comandos
 

@@ -2672,6 +2672,9 @@ class TopoEditor {
         <div class="pon-acoes">${acoes}</div>
         ${c.erro ? `<div class="l2vpn-erro"><i class="fas fa-triangle-exclamation"></i>
           <div>${this._esc(c.erro)}</div></div>` : ''}
+        ${c.executando ? `<div class="pon-executando">
+          <i class="fas fa-circle-notch fa-spin"></i>
+          Conectando na OLT e executando…</div>` : ''}
         ${c.comandos ? this._ponPreviewBloco() : ''}
         ${c.resultado ? this._ponResultado() : ''}
       </div>`;
@@ -2715,13 +2718,17 @@ class TopoEditor {
   }
 
   _ponResultado() {
-    const r = this._pon.resultado;
+    const c = this._pon;
+    const r = c.resultado;
     const ok = r.status === 'sucesso';
+    const rotulo = ((c.dados.acoes || []).find(a => a.chave === c.acao) || {}).label || '';
     return `
       <div class="pon-resultado">
         <div class="l2vpn-col-titulo" style="color:${ok ? 'var(--green)' : 'var(--red)'}">
           <i class="fas fa-${ok ? 'circle-check' : 'circle-xmark'}"></i>
-          ${ok ? 'Retorno do equipamento' : 'Falhou'}
+          ${ok ? this._esc(rotulo) : 'Falhou'}
+          <span style="color:var(--faint);font-weight:500;text-transform:none;letter-spacing:0">
+            · ${this._esc(c.slot)}/${c.porta}</span>
         </div>
         <pre class="l2vpn-config" style="max-height:260px">${this._esc(r.output || '(sem saída)')}</pre>
       </div>`;
@@ -2775,12 +2782,18 @@ class TopoEditor {
     if (ta) this._pon.comandosEditados = ta.value;
   }
 
-  /** preview=true: só monta os comandos no backend (nada é enviado ao
-   *  equipamento) — é o texto inicial do textarea. */
+  /** Dispara uma ação na porta selecionada.
+   *
+   *  Consulta (`info`/`state`) vai DIRETO ao equipamento: o comando é fixo,
+   *  não muda nada e não há o que revisar — mostrar um textarea de comandos
+   *  antes de um `display` só coloca um passo entre a pergunta e a resposta.
+   *  Escrita (laser) continua passando pelo preview editável + confirmação. */
   async _ponPreview(acao) {
     const c = this._pon;
-    Object.assign(c, {acao, resultado: null, confirmando: false, erro: '',
-                      comandos: null, comandosEditados: null});
+    const def = (c.dados.acoes || []).find(a => a.chave === acao) || {};
+    Object.assign(c, {acao, escreve: !!def.escreve, resultado: null, confirmando: false,
+                      erro: '', comandos: null, comandosEditados: null});
+    if (!def.escreve) { this._ponExecutar(); return; }
     this._pintarPon();
     try {
       const r = await fetch(`/clientes/acessos/${c.acessoId}/olt-pon/executar/`, {
