@@ -17,8 +17,21 @@ local_settings.py
 db.sqlite3
 gunicorn.sock
 
-# Arquivos estáticos coletados
-static/
+# Arquivos estáticos coletados (STATIC_ROOT). O conteúdo é gerado — vem do
+# collectstatic (admin/, rest_framework/, o que está em staticfiles/) ou é
+# biblioteca de terceiros baixada uma vez.
+#
+# EXCEÇÃO: alguns JS da aplicação são escritos à mão e existem SÓ aqui — não
+# vêm de `staticfiles/` nem de app nenhum, e o nginx serve este diretório
+# direto (`alias /opt/crm/static/`). Eles eram versionados até `static/` virar
+# ignorado por inteiro, e sem eles um clone não reproduz o front. Por isso a
+# pasta é ignorada por conteúdo (`static/*`) em vez de por diretório: assim dá
+# pra reincluir arquivo a arquivo abaixo.
+static/*
+!static/js/
+static/js/*
+!static/js/topo_engine.js
+!static/js/topo_main.js
 
 # Mídia (uploads, backups, documentos gerados)
 media/

@@ -33,7 +33,34 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 | `topo_engine.js` | Definição de tipos (`DEVICES`), interfaces (`IFACES`) e paths SVG dos ícones (`ICONS`) |
 | `topo_main.js` | Classe `TopoEditor` — lógica de renderização, eventos, persistência e importação |
 
-Versão atual: **topo_engine v=24 / topo_main v=33** (parâmetro de cache-busting no HTML).
+Versão atual: **topo_engine v=24 / topo_main v=34** (parâmetro de cache-busting no HTML).
+
+**Estes dois JS ficam em `static/` e mesmo assim são versionados.** `static/` é o
+`STATIC_ROOT` (destino do `collectstatic`) e está no `.gitignore`, mas esses dois
+arquivos são fonte escrita à mão que existe **só ali** — não vêm de `staticfiles/`
+nem de app nenhum, e o nginx serve o diretório direto (`alias /opt/crm/static/`).
+Ficaram fora do versionamento de 2026-03 até 2026-08-13 (saíram junto quando
+`static/` virou ignorado por inteiro): o editor rodava em produção com o front
+inteiro fora do git. Hoje o `.gitignore` ignora `static/` **por conteúdo** e
+reinclui arquivo a arquivo:
+
+```gitignore
+static/*
+!static/js/
+static/js/*
+!static/js/topo_engine.js
+!static/js/topo_main.js
+```
+
+Ao criar um JS novo do editor, acrescente a linha `!static/js/<arquivo>` — sem
+ela o arquivo nasce invisível pro git e some no próximo clone.
+
+> **Cuidado com `collectstatic` neste ambiente:** `staticfiles/js/` e
+> `static/js/` estão fora de sincronia nos dois sentidos (o `main.js` servido é
+> mais novo que a fonte; o `cadastrar_cliente.js` é mais velho). Rodar
+> `collectstatic` hoje sobrescreveria o `main.js` de produção por uma versão de
+> 2025. Os arquivos da topologia não correm esse risco — não existem em
+> `staticfiles/`, então o collectstatic não os toca.
 
 ---
 

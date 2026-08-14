@@ -1,0 +1,2484 @@
+class TopoEditor {
+  constructor(cfg) {
+    this.clienteId = cfg.clienteId;
+    this.diagramaId = cfg.diagramaId || null;
+    this.nodes = [];
+    this.links = [];
+    this.history = [];
+    this.histIdx = -1;
+    this.zoom = 1;
+    this.panX = 0;
+    this.panY = 0;
+    this.snap = true;
+    this.showGrid = true;
+    this.effectsOn = true; // fluxo animado nos links + pulso nos nodes do CRM
+    this.connectMode = false;
+    this.connectSrc = null;
+    this.dragging = null;
+    this.panning = null;
+    this.selected = null;
+    this.dirty = false;
+    this.wpDrag = null;   // {linkId, wpIdx} — arrastar waypoint
+    this._propsGen = 0;   // invalida fetch de interfaces em voo ao trocar seleção
+    this._ifaceCache = {}; // acesso_id -> [interfaces] (extraídas do backup)
+    this._l2vpn = null;    // estado do modal de VSI/VPLS/VPWS/L2VC quando aberto
+    this.selectedNodes = new Set(); // multi-seleção de nodes (seleção em área / shift+clique)
+    this.rubberBand = null;         // {x0,y0,x1,y1} durante o arraste do laço de seleção
+    this.groupDragging = null;      // {startX,startY,positions:{id:{x,y}}} arrasto em grupo
+    this.areaSelectMode = false;    // toggle do botão "Área" — troca pan por laço de seleção
+    this.svg = document.getElementById('canvas-svg');
+    this.vp = document.getElementById('viewport');
+    this.nodesLayer = document.getElementById('nodes-layer');
+    this.linksLayer = document.getElementById('links-layer');
+    this.preview = document.getElementById('connect-preview');
+    this.rubberEl = document.getElementById('rubber-band');
+
+    // Camada para handles de waypoints (acima dos links, abaixo dos nós)
+    this.handlesLayer = document.createElementNS('http://www.w3.org/2000/svg','g');
+    this.handlesLayer.id = 'handles-layer';
+    this.vp.insertBefore(this.handlesLayer, this.nodesLayer);
+
+    // Retoca a animação de fade do painel de propriedades (`#props-fade` no CSS)
+    // toda vez que o conteúdo troca — só setar innerHTML de novo no mesmo nó
+    // não reinicia uma CSS animation já concluída, então sem isso o fade só
+    // tocava uma vez (no load da página) e nunca mais ao trocar de seleção.
+    const propsBody = document.getElementById('props-body');
+    if (propsBody) {
+      new MutationObserver(() => {
+        propsBody.style.animation = 'none';
+        void propsBody.offsetWidth; // força reflow antes de restaurar
+        propsBody.style.animation = '';
+      }).observe(propsBody, {childList: true});
+    }
+
+    this._bindEvents();
+    this._buildPalette();
+  }
+
+  _id() { return 'n' + Date.now() + Math.random().toString(36).slice(2,6); }
+
+  _snap(v) { return this.snap ? Math.round(v/20)*20 : v; }
+
+  _svgPoint(e) {
+    const r = this.svg.getBoundingClientRect();
+    return {
+      x: (e.clientX - r.left - this.panX) / this.zoom,
+      y: (e.clientY - r.top  - this.panY) / this.zoom
+    };
+  }
+
+  _buildPalette() {
+    const pal = document.getElementById('palette');
+    // Agrupa por TOPO_DEVICES[type].group (metadado só de exibição — não
+    // afeta o modelo de dados do node nem o mapeamento automático função→tipo).
+    // Preserva a ordem de definição em topo_engine.js dentro de cada grupo.
+    const grupos = new Map();
+    Object.entries(TOPO_DEVICES).forEach(([type, def]) => {
+      const g = def.group || 'Outros';
+      if (!grupos.has(g)) grupos.set(g, []);
+      grupos.get(g).push([type, def]);
+    });
+
+    grupos.forEach((itens, grupo) => {
+      const header = document.createElement('div');
+      header.className = 'pal-group-title';
+      header.dataset.grupo = grupo;
+      header.textContent = grupo;
+      pal.appendChild(header);
+
+      itens.forEach(([type, def]) => {
+        const item = document.createElement('div');
+        item.className = 'pal-item';
+        item.draggable = true;
+        item.dataset.type = type;
+        // Chave de busca da paleta: rótulo + tipo interno + grupo, tudo sem
+        // acento, pra "radio" achar "Rádio PTP" e "ftth" achar OLT/ONU/Splitter.
+        item.dataset.busca = this._semAcento(`${def.label} ${type} ${grupo}`);
+        item.title = `Arraste para o canvas — ${def.label}`;
+        item.innerHTML = `
+          <div class="pal-icon" style="background:${def.color}1f;color:${def.color}">
+            <svg viewBox="0 0 48 48">${TOPO_ICONS[def.icon]||''}</svg>
+          </div>
+          <div><div class="pal-label">${def.label}</div></div>`;
+        item.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('device-type', type);
+        });
+        pal.appendChild(item);
+      });
+    });
+
+    const vazio = document.createElement('div');
+    vazio.className = 'pal-vazio';
+    vazio.id = 'pal-vazio';
+    vazio.textContent = 'Nenhum dispositivo com esse nome';
+    vazio.style.display = 'none';
+    pal.appendChild(vazio);
+
+    const busca = document.getElementById('pal-search');
+    if (busca) busca.addEventListener('input', () => this._filtrarPaleta(busca.value));
+  }
+
+  _semAcento(s) {
+    return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+
+  /** Filtra a paleta pelo texto digitado, escondendo também o título de um
+   *  grupo que ficou sem nenhum item visível (senão sobra cabeçalho órfão). */
+  _filtrarPaleta(termo) {
+    const q = this._semAcento(termo).trim();
+    const pal = document.getElementById('palette');
+    let visiveis = 0;
+    let grupoAtual = null, grupoTem = false;
+    const fecharGrupo = () => { if (grupoAtual) grupoAtual.style.display = grupoTem ? '' : 'none'; };
+
+    pal.querySelectorAll('.pal-group-title,.pal-item').forEach(el => {
+      if (el.classList.contains('pal-group-title')) {
+        fecharGrupo();
+        grupoAtual = el; grupoTem = false;
+        return;
+      }
+      const ok = !q || el.dataset.busca.includes(q);
+      el.style.display = ok ? '' : 'none';
+      if (ok) { grupoTem = true; visiveis++; }
+    });
+    fecharGrupo();
+    const vazio = document.getElementById('pal-vazio');
+    if (vazio) vazio.style.display = visiveis ? 'none' : '';
+  }
+
+  _bindEvents() {
+    const svg = this.svg;
+    const wrap = document.getElementById('canvas-wrap');
+
+    wrap.addEventListener('dragover', e => e.preventDefault());
+    wrap.addEventListener('drop', e => {
+      e.preventDefault();
+      const type = e.dataTransfer.getData('device-type');
+      if (!type) return;
+      const pt = this._svgPoint(e);
+      this.addNode(type, this._snap(pt.x), this._snap(pt.y));
+    });
+
+    svg.addEventListener('mousedown', e => this._onDown(e));
+    svg.addEventListener('mousemove', e => this._onMove(e));
+    svg.addEventListener('mouseup',   e => this._onUp(e));
+    svg.addEventListener('dblclick',  e => this._onDblClick(e));
+    svg.addEventListener('wheel', e => {
+      e.preventDefault();
+      const r = svg.getBoundingClientRect();
+      const cx = e.clientX - r.left, cy = e.clientY - r.top;
+      const dz = e.deltaY < 0 ? 1.1 : 0.9;
+      this.panX = cx - (cx - this.panX) * dz;
+      this.panY = cy - (cy - this.panY) * dz;
+      this.zoom *= dz;
+      this._updateVP();
+    }, {passive:false});
+
+    document.addEventListener('keydown', e => {
+      // Com o modal de L2VPN aberto, Esc fecha ele (mesmo com o foco no campo
+      // de busca) e os atalhos do canvas ficam suspensos — senão um Delete ou
+      // um "c" digitado editaria o diagrama escondido atrás do modal.
+      if (this._l2vpn) {
+        if (e.key === 'Escape') this.fecharL2vpn();
+        return;
+      }
+      if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+      if (e.ctrlKey && e.key === 's') { e.preventDefault(); this.save(); }
+      if (e.ctrlKey && e.key === 'z') { this.undo(); }
+      if (e.ctrlKey && e.key === 'y') { this.redo(); }
+      if (e.key === 'Delete' || e.key === 'Backspace') { this._deleteSelected(); }
+      if (e.key === 'c' || e.key === 'C') { this.toggleConnectMode(); }
+      if (e.key === 'Escape') { this._cancelConnect(); this._deselect(); this._clearMultiSelect(); }
+    });
+
+    document.getElementById('nome-diagrama').addEventListener('input', () => this._setDirty());
+  }
+
+  // ── Path generation ───────────────────────────────────────────────────────
+
+  _linkPath(link) {
+    const src = this.nodes.find(n => n.id === link.src);
+    const tgt = this.nodes.find(n => n.id === link.tgt);
+    if (!src || !tgt) return '';
+
+    const shape = link.shape || 'straight';
+    const wps   = link.waypoints || [];
+    const allPts = [{x:src.x, y:src.y}, ...wps, {x:tgt.x, y:tgt.y}];
+
+    if (shape === 'wavy') {
+      // Segmentos ondulados entre cada par de pontos
+      return allPts.slice(0,-1).map((p, i) =>
+        this._wavySeg(p.x, p.y, allPts[i+1].x, allPts[i+1].y, i === 0)
+      ).join(' ');
+    }
+
+    if (shape === 'curved') {
+      return this._catmullRom(allPts);
+    }
+
+    // straight (padrão)
+    return 'M' + allPts.map(p => `${p.x},${p.y}`).join(' L');
+  }
+
+  _wavySeg(x1, y1, x2, y2, isFirst) {
+    const dx = x2-x1, dy = y2-y1;
+    const len = Math.sqrt(dx*dx+dy*dy);
+    if (len < 2) return (isFirst ? `M${x1},${y1} ` : '') + `L${x2},${y2}`;
+    const nx = -dy/len, ny = dx/len;
+    const amp = 10, wl = 28;
+    const N = Math.max(20, Math.floor(len/5));
+    let d = isFirst ? `M${x1},${y1}` : '';
+    for (let i = 1; i <= N; i++) {
+      const t = i/N;
+      const px = x1+dx*t, py = y1+dy*t;
+      const w = Math.sin(t * Math.PI * 2 * (len/wl)) * amp;
+      d += ` L${(px+nx*w).toFixed(1)},${(py+ny*w).toFixed(1)}`;
+    }
+    return d;
+  }
+
+  _catmullRom(pts) {
+    if (pts.length < 2) return '';
+    if (pts.length === 2) {
+      const cp = this._cp(pts[0].x, pts[0].y, pts[1].x, pts[1].y);
+      return `M${pts[0].x},${pts[0].y} C${cp.c1x},${cp.c1y} ${cp.c2x},${cp.c2y} ${pts[1].x},${pts[1].y}`;
+    }
+    let d = `M${pts[0].x},${pts[0].y}`;
+    for (let i = 0; i < pts.length-1; i++) {
+      const p0 = pts[Math.max(0,i-1)], p1 = pts[i];
+      const p2 = pts[i+1], p3 = pts[Math.min(pts.length-1,i+2)];
+      const c1x = p1.x+(p2.x-p0.x)/6, c1y = p1.y+(p2.y-p0.y)/6;
+      const c2x = p2.x-(p3.x-p1.x)/6, c2y = p2.y-(p3.y-p1.y)/6;
+      d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x},${p2.y}`;
+    }
+    return d;
+  }
+
+  _cp(x1,y1,x2,y2) {
+    const dx=x2-x1, dy=y2-y1, d=Math.sqrt(dx*dx+dy*dy);
+    const ctrl=Math.min(d*.4,100);
+    const s = dx > 0 ? 0.8 : -0.8;
+    return {c1x:x1+ctrl*s, c1y:y1, c2x:x2-ctrl*s, c2y:y2};
+  }
+
+  // ── Waypoint handles ──────────────────────────────────────────────────────
+
+  _renderLinkHandles(link) {
+    this.handlesLayer.innerHTML = '';
+    if (!link) return;
+
+    const src = this.nodes.find(n => n.id === link.src);
+    const tgt = this.nodes.find(n => n.id === link.tgt);
+    if (!src || !tgt) return;
+
+    const wps = link.waypoints || [];
+    const allPts = [{x:src.x,y:src.y}, ...wps, {x:tgt.x,y:tgt.y}];
+
+    const mk = (cx,cy,r,fill,stroke,cls,data={}) => {
+      const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', r);
+      c.setAttribute('fill', fill); c.setAttribute('stroke', stroke);
+      c.setAttribute('stroke-width', '2');
+      c.setAttribute('class', cls);
+      Object.entries(data).forEach(([k,v]) => c.dataset[k] = v);
+      this.handlesLayer.appendChild(c);
+      return c;
+    };
+
+    // Midpoint handles (inserir waypoint) — círculo vazio
+    allPts.slice(0,-1).forEach((p,i) => {
+      const mx = (p.x + allPts[i+1].x)/2, my = (p.y + allPts[i+1].y)/2;
+      mk(mx,my,5,'#161b22','#58a6ff','wp-handle wp-mid',
+        {linkId:link.id, insertAfter:i});
+    });
+
+    // Waypoint handles (mover) — círculo preenchido
+    wps.forEach((wp,i) => {
+      mk(wp.x,wp.y,7,'#58a6ff','white','wp-handle wp-pt',
+        {linkId:link.id, wpIdx:i});
+    });
+  }
+
+  // ── Events ────────────────────────────────────────────────────────────────
+
+  _onDown(e) {
+    if (e.button !== 0) return;
+    const target = e.target;
+
+    // Waypoint handle drag
+    if (target.classList.contains('wp-handle')) {
+      const linkId = target.dataset.linkId;
+      const link = this.links.find(l => l.id === linkId);
+      if (!link) return;
+
+      if (target.classList.contains('wp-mid')) {
+        // Inserir novo waypoint
+        const insertAfter = parseInt(target.dataset.insertAfter);
+        const pt = this._svgPoint(e);
+        if (!link.waypoints) link.waypoints = [];
+        link.waypoints.splice(insertAfter, 0, {x:pt.x, y:pt.y});
+        this.wpDrag = {linkId, wpIdx: insertAfter};
+      } else {
+        // Mover waypoint existente
+        this.wpDrag = {linkId, wpIdx: parseInt(target.dataset.wpIdx)};
+      }
+      e.stopPropagation();
+      return;
+    }
+
+    const nodeEl = target.closest('.node');
+    const linkEl = target.closest('.link-hit');
+    const isAnchor = target.classList.contains('anchor');
+
+    if (this.connectMode && nodeEl) {
+      this.connectSrc = nodeEl.dataset.id;
+      this.anchorDrag = true;
+      nodeEl.classList.add('connecting');
+      e.stopPropagation();
+      return;
+    }
+
+    if (isAnchor && nodeEl) {
+      this.connectSrc = nodeEl.dataset.id;
+      this.anchorDrag = true;
+      nodeEl.classList.add('connecting');
+      e.stopPropagation();
+      return;
+    }
+
+    if (nodeEl) {
+      const id = nodeEl.dataset.id;
+
+      // Shift+clique: alterna o nó na multi-seleção sem abrir o painel de
+      // propriedades (mesmo padrão de editores gráficos — clique aditivo).
+      if (e.shiftKey) {
+        this._toggleMultiSelect(id);
+        e.stopPropagation();
+        return;
+      }
+
+      // Clicar (sem shift) num nó que já faz parte de um grupo selecionado
+      // arrasta o grupo inteiro, preservando a posição relativa entre eles.
+      if (this.selectedNodes.size > 1 && this.selectedNodes.has(id)) {
+        const pt = this._svgPoint(e);
+        const positions = {};
+        this.selectedNodes.forEach(nid => {
+          const n = this.nodes.find(n => n.id === nid);
+          if (n) positions[nid] = {x: n.x, y: n.y};
+        });
+        this.groupDragging = {startX: pt.x, startY: pt.y, positions};
+        e.stopPropagation();
+        return;
+      }
+
+      this._clearMultiSelect();
+      this._select('node', id);
+      const pt = this._svgPoint(e);
+      const node = this.nodes.find(n => n.id === id);
+      this.dragging = {id, offX: pt.x - node.x, offY: pt.y - node.y};
+      e.stopPropagation();
+      return;
+    }
+
+    if (linkEl) {
+      this._clearMultiSelect();
+      this._select('link', linkEl.dataset.id);
+      e.stopPropagation();
+      return;
+    }
+
+    // Área vazia do canvas: com o modo "Área" ativo (botão da toolbar) ou
+    // segurando Shift, arrastar desenha um laço de seleção em vez de fazer
+    // pan — captura todos os nodes cujo centro cair dentro do retângulo.
+    if (this.areaSelectMode || e.shiftKey) {
+      this._deselect();
+      this._clearMultiSelect();
+      const pt = this._svgPoint(e);
+      this.rubberBand = {x0: pt.x, y0: pt.y, x1: pt.x, y1: pt.y};
+      this._renderRubberBand();
+      e.stopPropagation();
+      return;
+    }
+
+    this._deselect();
+    this._clearMultiSelect();
+    this.panning = {startX: e.clientX, startY: e.clientY, px: this.panX, py: this.panY};
+  }
+
+  _onMove(e) {
+    if (this.wpDrag) {
+      const pt = this._svgPoint(e);
+      const link = this.links.find(l => l.id === this.wpDrag.linkId);
+      if (link && link.waypoints) {
+        link.waypoints[this.wpDrag.wpIdx] = {x:pt.x, y:pt.y};
+        this._renderLink(link);
+        this._renderLinkHandles(link);
+        this._setDirty();
+      }
+      return;
+    }
+    if (this.rubberBand) {
+      const pt = this._svgPoint(e);
+      this.rubberBand.x1 = pt.x;
+      this.rubberBand.y1 = pt.y;
+      this._renderRubberBand();
+      return;
+    }
+    if (this.groupDragging) {
+      const pt = this._svgPoint(e);
+      let dx = pt.x - this.groupDragging.startX;
+      let dy = pt.y - this.groupDragging.startY;
+      if (this.snap) { dx = Math.round(dx/20)*20; dy = Math.round(dy/20)*20; }
+      this.selectedNodes.forEach(id => {
+        const node = this.nodes.find(n => n.id === id);
+        const start = this.groupDragging.positions[id];
+        if (node && start) {
+          node.x = start.x + dx;
+          node.y = start.y + dy;
+          this._renderNode(node);
+        }
+      });
+      this._renderLinks();
+      this._setDirty();
+      return;
+    }
+    if (this.dragging) {
+      const pt = this._svgPoint(e);
+      const node = this.nodes.find(n => n.id === this.dragging.id);
+      if (node) {
+        node.x = this._snap(pt.x - this.dragging.offX);
+        node.y = this._snap(pt.y - this.dragging.offY);
+        this._renderNode(node);
+        this._renderLinks();
+        // Atualiza handles se um link do nó arrastado estiver selecionado
+        if (this.selected && this.selected.type === 'link') {
+          const selLink = this.links.find(l => l.id === this.selected.id);
+          if (selLink && (selLink.src === node.id || selLink.tgt === node.id)) {
+            this._renderLinkHandles(selLink);
+          }
+        }
+        this._setDirty();
+      }
+    } else if (this.panning) {
+      this.panX = this.panning.px + (e.clientX - this.panning.startX);
+      this.panY = this.panning.py + (e.clientY - this.panning.startY);
+      this._updateVP();
+    } else if (this.connectSrc) {
+      const pt = this._svgPoint(e);
+      const src = this.nodes.find(n => n.id === this.connectSrc);
+      if (src) {
+        this.preview.setAttribute('d', `M${src.x},${src.y} L${pt.x},${pt.y}`);
+        this.preview.style.display = '';
+      }
+    }
+  }
+
+  _onUp(e) {
+    if (this.wpDrag) { this._saveHistory(); this.wpDrag = null; return; }
+    if (this.rubberBand) { this._finishRubberBand(); this.rubberBand = null; return; }
+    if (this.groupDragging) { this._saveHistory(); this.groupDragging = null; return; }
+    if (this.dragging) { this._saveHistory(); this.dragging = null; }
+    if (this.panning)  { this.panning = null; }
+
+    if (this.anchorDrag && this.connectSrc) {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const nodeEl = el ? el.closest('.node') : null;
+      if (nodeEl && nodeEl.dataset.id !== this.connectSrc) {
+        this.addLink(this.connectSrc, nodeEl.dataset.id);
+      }
+      this.anchorDrag = false;
+      this._cancelConnect();
+    }
+  }
+
+  _onDblClick(e) {
+    // Remover waypoint com duplo-clique
+    const target = e.target;
+    if (target.classList.contains('wp-pt')) {
+      const linkId = target.dataset.linkId;
+      const wpIdx  = parseInt(target.dataset.wpIdx);
+      const link   = this.links.find(l => l.id === linkId);
+      if (link && link.waypoints) {
+        this._saveHistory();
+        link.waypoints.splice(wpIdx, 1);
+        this._renderLink(link);
+        this._renderLinkHandles(link);
+        this._setDirty();
+        e.stopPropagation();
+      }
+    }
+  }
+
+  _updateVP() {
+    this.vp.setAttribute('transform', `translate(${this.panX},${this.panY}) scale(${this.zoom})`);
+    document.getElementById('zoom-label').textContent = Math.round(this.zoom*100) + '%';
+  }
+
+  _cancelConnect() {
+    this.connectSrc = null;
+    this.preview.style.display = 'none';
+    document.querySelectorAll('.node.connecting').forEach(n => n.classList.remove('connecting'));
+  }
+
+  _select(type, id) {
+    this._deselect();
+    this.selected = {type, id};
+    // O painel só existe quando há algo selecionado — abre aqui e fecha no
+    // _deselect(), em vez de ficar ocupando a lateral com "selecione algo".
+    document.body.classList.remove('props-off');
+    if (type === 'node') {
+      const el = this.nodesLayer.querySelector(`[data-id="${id}"]`);
+      if (el) el.classList.add('selected');
+      this._showNodeProps(id);
+    } else {
+      const el = this.linksLayer.querySelector(`.link-hit[data-id="${id}"]`);
+      if (el) el.closest('g').classList.add('selected');
+      this._showLinkProps(id);
+      const link = this.links.find(l => l.id === id);
+      this._renderLinkHandles(link);
+    }
+  }
+
+  _deselect() {
+    this.selected = null;
+    document.body.classList.add('props-off');
+    this._propsGen++; // invalida qualquer fetch de interfaces (datalist) em voo
+    this.handlesLayer.innerHTML = '';
+    document.querySelectorAll('.node.selected, .link-group.selected').forEach(el => el.classList.remove('selected'));
+    document.getElementById('props-body').innerHTML = `<div class="prop-empty"><i class="fas fa-arrow-pointer"></i>Selecione um dispositivo<br>ou conexão no canvas</div>`;
+  }
+
+  _deleteSelected() {
+    if (this.selectedNodes.size > 1) {
+      this._saveHistory();
+      const ids = new Set(this.selectedNodes);
+      this.nodes = this.nodes.filter(n => !ids.has(n.id));
+      this.links = this.links.filter(l => !ids.has(l.src) && !ids.has(l.tgt));
+      this._clearMultiSelect();
+      this._deselect();
+      this._renderAll();
+      this._setDirty();
+      this._toast(`${ids.size} dispositivos removidos`);
+      return;
+    }
+    if (!this.selected) return;
+    this._saveHistory();
+    if (this.selected.type === 'node') {
+      const id = this.selected.id;
+      this.nodes = this.nodes.filter(n => n.id !== id);
+      this.links = this.links.filter(l => l.src !== id && l.tgt !== id);
+    } else {
+      this.links = this.links.filter(l => l.id !== this.selected.id);
+    }
+    this._deselect();
+    this._renderAll();
+    this._setDirty();
+  }
+
+  // ── Multi-seleção / seleção em área ─────────────────────────────────────
+
+  _renderRubberBand() {
+    if (!this.rubberEl || !this.rubberBand) return;
+    const {x0, y0, x1, y1} = this.rubberBand;
+    this.rubberEl.setAttribute('x', Math.min(x0, x1));
+    this.rubberEl.setAttribute('y', Math.min(y0, y1));
+    this.rubberEl.setAttribute('width', Math.abs(x1 - x0));
+    this.rubberEl.setAttribute('height', Math.abs(y1 - y0));
+    this.rubberEl.style.display = '';
+  }
+
+  _finishRubberBand() {
+    if (this.rubberEl) this.rubberEl.style.display = 'none';
+    if (!this.rubberBand) return;
+    const {x0, y0, x1, y1} = this.rubberBand;
+    const minX = Math.min(x0, x1), maxX = Math.max(x0, x1);
+    const minY = Math.min(y0, y1), maxY = Math.max(y0, y1);
+    // Arraste mínimo — um clique parado na área vazia (sem mover o mouse)
+    // não deve contar como um laço de seleção de 0x0.
+    if (maxX - minX < 4 && maxY - minY < 4) return;
+
+    const found = this.nodes.filter(n => n.x >= minX && n.x <= maxX && n.y >= minY && n.y <= maxY);
+    if (!found.length) return;
+
+    if (found.length === 1) {
+      // Só um nó capturado — comporta-se como seleção normal (abre o painel).
+      this._select('node', found[0].id);
+      return;
+    }
+
+    this.selectedNodes = new Set(found.map(n => n.id));
+    found.forEach(n => {
+      const el = this.nodesLayer.querySelector(`[data-id="${n.id}"]`);
+      if (el) el.classList.add('multi-selected');
+    });
+    this._updateMultiSelectStatus();
+  }
+
+  _toggleMultiSelect(id) {
+    this._deselect(); // fecha o painel de propriedades de seleção única, se aberto
+    const el = this.nodesLayer.querySelector(`[data-id="${id}"]`);
+    if (this.selectedNodes.has(id)) {
+      this.selectedNodes.delete(id);
+      if (el) el.classList.remove('multi-selected');
+    } else {
+      this.selectedNodes.add(id);
+      if (el) el.classList.add('multi-selected');
+    }
+    this._updateMultiSelectStatus();
+  }
+
+  _clearMultiSelect() {
+    if (!this.selectedNodes.size) return;
+    this.selectedNodes.forEach(id => {
+      const el = this.nodesLayer.querySelector(`[data-id="${id}"]`);
+      if (el) el.classList.remove('multi-selected');
+    });
+    this.selectedNodes.clear();
+    this._updateMultiSelectStatus();
+  }
+
+  _updateMultiSelectStatus() {
+    const el = document.getElementById('st-mode');
+    if (!el) return;
+    if (this.selectedNodes.size > 1) {
+      el.textContent = `${this.selectedNodes.size} selecionados — arraste um deles para mover o grupo`;
+    } else {
+      el.textContent = 'Modo: ' + (this.connectMode ? 'Conexão' : this.areaSelectMode ? 'Seleção de área' : 'Seleção');
+    }
+  }
+
+  addNode(type, x, y, extra={}) {
+    this._saveHistory();
+    const def = TOPO_DEVICES[type] || TOPO_DEVICES.host;
+    const node = {
+      id: extra.id || this._id(),
+      type, x, y,
+      label: extra.label || def.label,
+      ip: extra.ip || '',
+      color: extra.color || def.color,
+      w: 64, h: 64,
+      ...extra
+    };
+    this.nodes.push(node);
+    this._renderNode(node);
+    this._updateStatus();
+    this._setDirty();
+    return node;
+  }
+
+  addLink(srcId, tgtId, extra={}) {
+    this._saveHistory();
+    const link = {
+      id:        extra.id        || this._id(),
+      src: srcId, tgt: tgtId,
+      iface:     extra.iface     || '1g',
+      label:     extra.label     || '',
+      ip_local:  extra.ip_local  || '',
+      ip_remote: extra.ip_remote || '',
+      vlan:      extra.vlan      || '',
+      color:     extra.color     || null,
+      style:     extra.style     || 'solid',    // traço: solid/dashed/dotted
+      shape:     extra.shape     || 'straight', // forma: straight/curved/wavy
+      waypoints: extra.waypoints || [],          // [{x,y}, ...]
+      iface_a:   extra.iface_a   || '',          // interface lado A (ex: eth0, ge0/0/1)
+      iface_b:   extra.iface_b   || '',          // interface lado B
+    };
+    this.links.push(link);
+    this._renderLink(link);
+    this._updateStatus();
+    this._setDirty();
+    return link;
+  }
+
+  _renderNode(node) {
+    let el = this.nodesLayer.querySelector(`[data-id="${node.id}"]`);
+    if (!el) {
+      el = document.createElementNS('http://www.w3.org/2000/svg','g');
+      el.classList.add('node');
+      el.dataset.id = node.id;
+      this.nodesLayer.appendChild(el);
+    }
+    const def = TOPO_DEVICES[node.type] || TOPO_DEVICES.host;
+    const c = node.color || def.color;
+    el.setAttribute('transform', `translate(${node.x},${node.y})`);
+    // Anel pulsante (CSS) só em nodes vinculados a um Acesso real do CRM —
+    // ver `.node[data-live="1"] .node-ring` no <style> do template.
+    if (node.acesso_id) el.dataset.live = '1'; else delete el.dataset.live;
+
+    if (node.type === 'text_box') {
+      el.classList.add('text-box-node');
+      const lines = (node.label || '').split('\n');
+      const lh = 16, pad = 12;
+      const bw = Math.max(...lines.map(l => l.length * 7), 80) + pad*2;
+      const bh = lines.length * lh + pad*2;
+      el.innerHTML = `
+        <rect x="${-bw/2}" y="${-bh/2}" width="${bw}" height="${bh}" rx="6"
+          fill="${c}11" stroke="${c}" stroke-width="1.5" stroke-dasharray="6,3"/>
+        ${lines.map((l,i) => `<text x="0" y="${-bh/2 + pad + lh*i + 11}"
+          text-anchor="middle" font-size="12" fill="${c}"
+          font-family="'Segoe UI',sans-serif">${this._esc(l)}</text>`).join('')}
+        <circle class="anchor" cx="0" cy="${-bh/2}" r="7" fill="${c}" stroke="white" stroke-width="1.5"/>
+        <circle class="anchor" cx="0" cy="${bh/2}"  r="7" fill="${c}" stroke="white" stroke-width="1.5"/>
+        <circle class="anchor" cx="${-bw/2}" cy="0"  r="7" fill="${c}" stroke="white" stroke-width="1.5"/>
+        <circle class="anchor" cx="${bw/2}"  cy="0"  r="7" fill="${c}" stroke="white" stroke-width="1.5"/>`;
+      return;
+    }
+
+    el.classList.remove('text-box-node');
+    const hw = node.w/2, hh = node.h/2;
+    // Backdrop atrás do nome/IP — sem isso o texto claro fica pouco legível
+    // sobre os pontos do grid quando o node está fora do fundo sólido do canvas.
+    const maxLen = Math.max((node.label||'').length, (node.ip||'').length, 1);
+    const lblBgW = Math.max(34, maxLen * 6.4 + 14); // 6.4 (não 6): IP em negrito é um pouco mais largo
+    const lblBgH = node.ip ? 31 : 18;
+    // Chassi "de vidro": fundo bem translúcido na cor do device + borda a ~35%,
+    // brilho no topo e sombra interna embaixo. O contorno cheio de antes (cor
+    // pura, 1.5px) competia com o ícone e deixava a tela pesada com 20+ nodes.
+    el.innerHTML = `
+      <rect class="node-ring" x="${-hw-5}" y="${-hh-5}" width="${node.w+10}" height="${node.h+10}" rx="14" stroke="${c}" stroke-width="2"/>
+      <rect class="node-body" x="${-hw}" y="${-hh}" width="${node.w}" height="${node.h}" rx="12" fill="${c}1c" stroke="${c}59" stroke-width="1.5"/>
+      <rect x="${-hw}" y="${-hh}" width="${node.w}" height="${node.h}" rx="12" fill="url(#node-gloss)" pointer-events="none"/>
+      <rect x="${-hw}" y="${-hh}" width="${node.w}" height="${node.h}" rx="12" fill="url(#node-shade)" pointer-events="none"/>
+      <path d="M${-hw+9},${-hh+1.2} H${hw-9}" stroke="#fff" stroke-opacity=".18" stroke-width="1.2" fill="none" pointer-events="none"/>
+      <g class="node-icon" style="color:${c}" transform="translate(${-hw+8},${-hh+8}) scale(${(node.w-16)/48})">
+        ${TOPO_ICONS[def.icon]||''}
+      </g>
+      ${node.acesso_id ? `<circle class="node-led" cx="${hw-7}" cy="${-hh+7}" r="2.6" fill="#3fb950"/>` : ''}
+      <rect class="node-label-bg" x="${-lblBgW/2}" y="${hh+7}" width="${lblBgW}" height="${lblBgH}" rx="7"/>
+      <text x="0" y="${hh+19}" text-anchor="middle" font-size="11" font-weight="600" fill="#e6edf3" font-family="'Segoe UI',sans-serif" letter-spacing=".1">${this._esc(node.label)}</text>
+      ${node.ip ? `<text x="0" y="${hh+31}" text-anchor="middle" font-size="9" font-weight="700" fill="${c}" fill-opacity=".85" font-family="'Courier New',monospace">${this._esc(node.ip)}</text>` : ''}
+      <circle class="anchor" data-dir="N" cx="0" cy="${-hh}" r="5.5" fill="#0d1117" stroke="${c}" stroke-width="2.5"/>
+      <circle class="anchor" data-dir="S" cx="0" cy="${hh}"  r="5.5" fill="#0d1117" stroke="${c}" stroke-width="2.5"/>
+      <circle class="anchor" data-dir="W" cx="${-hw}" cy="0" r="5.5" fill="#0d1117" stroke="${c}" stroke-width="2.5"/>
+      <circle class="anchor" data-dir="E" cx="${hw}"  cy="0" r="5.5" fill="#0d1117" stroke="${c}" stroke-width="2.5"/>`;
+  }
+
+  _renderLink(link) {
+    const linkGroup = this.linksLayer.querySelector(`g[data-link="${link.id}"]`) || (() => {
+      const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+      g.classList.add('link-group');
+      g.dataset.link = link.id;
+      this.linksLayer.appendChild(g);
+      return g;
+    })();
+
+    const src = this.nodes.find(n => n.id === link.src);
+    const tgt = this.nodes.find(n => n.id === link.tgt);
+    if (!src || !tgt) { linkGroup.remove(); return; }
+
+    const ifaceDef = TOPO_IFACES[link.iface] || TOPO_IFACES['1g'];
+    const color = link.color || ifaceDef.color;
+    const w     = ifaceDef.w;
+    const dash  = link.style === 'dashed' ? '8,4' : link.style === 'dotted' ? '2,4' : '';
+    const d     = this._linkPath(link);
+
+    // Ponto médio para rótulo (centro entre src e tgt)
+    const wps = link.waypoints || [];
+    let midPt;
+    if (wps.length > 0) {
+      // Pega o waypoint do meio ou o ponto entre src e primeiro wp
+      const allPts = [{x:src.x,y:src.y}, ...wps, {x:tgt.x,y:tgt.y}];
+      const mid = allPts[Math.floor(allPts.length/2)];
+      midPt = mid;
+    } else {
+      midPt = {x:(src.x+tgt.x)/2, y:(src.y+tgt.y)/2};
+    }
+    const mx = midPt.x, my = midPt.y;
+
+    const userLbl  = link.label || '';
+
+    // Vetor unitário src→tgt, usado para afastar os rótulos de IP/Interface
+    // da borda do node por uma DISTÂNCIA FIXA em pixels (não uma % do
+    // comprimento do link). Com % fixa, links curtos entre nodes grandes
+    // colocavam o rótulo por baixo do próprio node — que é desenhado por
+    // cima (nodes-layer vem depois de links-layer no SVG) — e o texto
+    // sumia atrás do ícone. O clamp por linkLen evita que o rótulo passe do
+    // meio do link em conexões muito curtas.
+    const dx = tgt.x - src.x, dy = tgt.y - src.y;
+    const linkLen = Math.hypot(dx, dy) || 1;
+    const ux = dx / linkLen, uy = dy / linkLen;
+    const raioA = (src.w || 64) / 2 + 14;
+    const raioB = (tgt.w || 64) / 2 + 14;
+
+    // Largura de cada rótulo, calculada ANTES da posição — precisa entrar na
+    // conta da distância até o node (ver comentário abaixo).
+    const ipLocalW = Math.max(68, (link.ip_local||'').length * 6 + 8);
+    const ipRemoteW = Math.max(68, (link.ip_remote||'').length * 6 + 8);
+    const ifAW = Math.max(52, (link.iface_a||'').length * 5.5 + 8);
+    const ifBW = Math.max(52, (link.iface_b||'').length * 5.5 + 8);
+
+    // IPs P2P (acima da linha, logo depois do rótulo de interface). O texto
+    // usa text-anchor:middle, ou seja a METADE da largura do rótulo fica do
+    // lado do node — por isso a distância inclui `largura/2`: sem isso, um
+    // rótulo largo (nome de interface comprido, ex. "Eth-Trunk10") ficava com
+    // a metade de trás ainda em cima do node mesmo com a "distância fixa"
+    // aplicada só ao ponto central (bug visto em produção — texto cortado
+    // pela borda do node em links horizontais).
+    const clearIpA = Math.min(raioA + 16 + ipLocalW/2, linkLen * 0.45);
+    const clearIpB = Math.min(raioB + 16 + ipRemoteW/2, linkLen * 0.45);
+    const ipLocalX  = src.x + ux * clearIpA;
+    const ipLocalY  = src.y + uy * clearIpA - 8;
+    const ipRemoteX = tgt.x - ux * clearIpB;
+    const ipRemoteY = tgt.y - uy * clearIpB - 8;
+    const ipLocalHtml = link.ip_local ? `
+      <rect x="${ipLocalX-ipLocalW/2}" y="${ipLocalY-10}" width="${ipLocalW}" height="14" rx="5" fill="#0b0f15" fill-opacity=".92" stroke="${color}" stroke-opacity=".35"/>
+      <text class="link-ip" x="${ipLocalX}" y="${ipLocalY}">${this._esc(link.ip_local)}</text>` : '';
+    const ipRemoteHtml = link.ip_remote ? `
+      <rect x="${ipRemoteX-ipRemoteW/2}" y="${ipRemoteY-10}" width="${ipRemoteW}" height="14" rx="5" fill="#0b0f15" fill-opacity=".92" stroke="${color}" stroke-opacity=".35"/>
+      <text class="link-ip" x="${ipRemoteX}" y="${ipRemoteY}">${this._esc(link.ip_remote)}</text>` : '';
+
+    // Interfaces lado A e lado B — logo fora da borda do node, abaixo da
+    // linha. Mesmo ajuste de `largura/2` explicado acima.
+    const clearIfA = Math.min(raioA + ifAW/2 + 6, linkLen * 0.4);
+    const clearIfB = Math.min(raioB + ifBW/2 + 6, linkLen * 0.4);
+    const ifAx = src.x + ux * clearIfA;
+    const ifAy = src.y + uy * clearIfA + 14;
+    const ifBx = tgt.x - ux * clearIfB;
+    const ifBy = tgt.y - uy * clearIfB + 14;
+    const ifAHtml = link.iface_a ? `
+      <rect x="${ifAx-ifAW/2}" y="${ifAy-8.5}" width="${ifAW}" height="12" rx="4" fill="#0b0f15" fill-opacity=".92"/>
+      <text class="link-iface" x="${ifAx}" y="${ifAy}" fill="${color}">${this._esc(link.iface_a)}</text>` : '';
+    const ifBHtml = link.iface_b ? `
+      <rect x="${ifBx-ifBW/2}" y="${ifBy-8.5}" width="${ifBW}" height="12" rx="4" fill="#0b0f15" fill-opacity=".92"/>
+      <text class="link-iface" x="${ifBx}" y="${ifBy}" fill="${color}">${this._esc(link.iface_b)}</text>` : '';
+
+    // Rótulo do meio do link: nome (se houver), banda e VLAN em linhas
+    // separadas — "VLAN 100" embaixo da banda lê muito melhor que o antigo
+    // sufixo "V100" grudado na mesma linha ("100 Gbps V100").
+    const lblLines = [];
+    if (userLbl) lblLines.push({text: userLbl, fill: color, weight: 600});
+    lblLines.push({text: ifaceDef.label, fill: null, weight: 400});
+    if (link.vlan) lblLines.push({text: `VLAN ${link.vlan}`, fill: null, weight: 400});
+
+    const lblLineH = 12;
+    const bgW = Math.max(56, ...lblLines.map(l => l.text.length * 5.7 + 14));
+    const bgH = lblLines.length * lblLineH + 4;
+    const bgY = my - bgH/2 - 2;
+    const labelHtml = `
+      <rect x="${mx-bgW/2}" y="${bgY}" width="${bgW}" height="${bgH}" rx="6" fill="#0b0f15" fill-opacity=".92" stroke="${color}" stroke-opacity=".3"/>
+      ${lblLines.map((l,i) => {
+        const y = bgY + lblLineH*(i+1) - 1;
+        const attrs = l.fill ? ` fill="${l.fill}" font-size="10" font-weight="${l.weight}"` : '';
+        return `<text class="link-label" x="${mx}" y="${y}"${attrs}>${this._esc(l.text)}</text>`;
+      }).join('')}`;
+
+    // "Pacotes" trafegando de A pra B — usa o mesmo `d` do link como trilho de
+    // <animateMotion> (SVG anima o círculo ao longo do path automaticamente,
+    // na direção em que o path foi desenhado: src→tgt). Duração proporcional
+    // ao comprimento do link (px/s constante) pra todo link parecer andar na
+    // mesma "velocidade", em vez de um link curto parecer mais lento/rápido
+    // que um comprido com a mesma duração fixa.
+    const flowDur = Math.max(.6, Math.min(4, linkLen / 220));
+    const packetsHtml = `
+      <circle class="link-packet" r="${Math.max(2.2, w*.9)}" fill="${color}" style="color:${color}">
+        <animateMotion dur="${flowDur.toFixed(2)}s" repeatCount="indefinite" path="${d}"/>
+      </circle>
+      <circle class="link-packet" r="${Math.max(2.2, w*.9)}" fill="${color}" style="color:${color}">
+        <animateMotion dur="${flowDur.toFixed(2)}s" repeatCount="indefinite" path="${d}" begin="${(flowDur/2).toFixed(2)}s"/>
+      </circle>`;
+
+    linkGroup.innerHTML = `
+      <path class="link" d="${d}" stroke="${color}" stroke-width="${w}" stroke-dasharray="${dash}" stroke-linecap="round"/>
+      <path class="link-flow" d="${d}" stroke="${color}" stroke-width="${Math.max(1.2, w-1)}"/>
+      ${packetsHtml}
+      <path class="link-hit" d="${d}" data-id="${link.id}"/>
+      ${ipLocalHtml}${ipRemoteHtml}
+      ${ifAHtml}${ifBHtml}
+      ${labelHtml}`;
+
+    linkGroup.querySelector('.link-hit').addEventListener('click', e => {
+      e.stopPropagation();
+      this._select('link', link.id);
+    });
+
+    // Manter seleção visual se este link estiver selecionado
+    if (this.selected && this.selected.type === 'link' && this.selected.id === link.id) {
+      linkGroup.classList.add('selected');
+    }
+  }
+
+  _renderLinks() {
+    this.links.forEach(l => this._renderLink(l));
+  }
+
+  _renderAll() {
+    this.nodesLayer.innerHTML = '';
+    this.linksLayer.innerHTML = '';
+    this.handlesLayer.innerHTML = '';
+    this.nodes.forEach(n => this._renderNode(n));
+    this.links.forEach(l => this._renderLink(l));
+    // Undo/redo pode trazer de volta (ou remover) nodes que estavam na
+    // multi-seleção — descarta ids que não existem mais e reaplica o
+    // destaque visual nos que sobreviveram.
+    const validIds = new Set(this.nodes.map(n => n.id));
+    this.selectedNodes.forEach(id => { if (!validIds.has(id)) this.selectedNodes.delete(id); });
+    this.selectedNodes.forEach(id => {
+      const el = this.nodesLayer.querySelector(`[data-id="${id}"]`);
+      if (el) el.classList.add('multi-selected');
+    });
+    this._updateStatus();
+  }
+
+  // ── Properties panels ─────────────────────────────────────────────────────
+
+  _showNodeProps(id) {
+    const node = this.nodes.find(n => n.id === id);
+    if (!node) return;
+
+    if (node.type === 'text_box') {
+      document.getElementById('props-body').innerHTML = `
+        <div class="prop-title" style="color:${node.color}"><i class="fas fa-font"></i> Texto / Legenda</div>
+        <div class="prop-group">
+          <label class="prop-label">Conteúdo (Enter = nova linha)</label>
+          <textarea class="prop-input" id="pn-label" rows="4"
+            style="resize:vertical;font-family:'Segoe UI',sans-serif;font-size:.82rem">${this._esc(node.label)}</textarea>
+        </div>
+        <div class="prop-group">
+          <label class="prop-label">Cor</label>
+          <input type="color" class="prop-input" id="pn-color" value="${node.color}" style="height:36px;padding:2px">
+        </div>
+        <button class="prop-btn primary" onclick="topo._applyNodeProps('${id}')"><i class="fas fa-check"></i> Aplicar</button>
+        <button class="prop-btn danger" onclick="topo._deleteSelected()"><i class="fas fa-trash"></i> Remover</button>`;
+      return;
+    }
+
+    const def = TOPO_DEVICES[node.type] || TOPO_DEVICES.host;
+
+    let accessHtml = '';
+    if (node.acesso_id) {
+      const proto = (node.protocolo || '').toUpperCase();
+      const protoIcons = {SSH:'terminal',TELNET:'terminal',HTTP:'globe',HTTPS:'lock',WINBOX:'network-wired',FTP:'file',FTPS:'file'};
+      const icon = protoIcons[proto] || 'plug';
+      accessHtml = `
+        <div class="prop-group" style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
+          <label class="prop-label" style="color:var(--cyan)">Acessar Host</label>
+          <button class="prop-btn" style="background:rgba(63,185,80,.12);border-color:var(--green);color:var(--green)"
+            onclick="topo._acessarHost('${id}')">
+            <i class="fas fa-${icon}"></i> ${proto} — ${this._esc(node.ip)}${node.porta ? ':'+node.porta : ''}
+          </button>
+        </div>`;
+    }
+
+    const tipoOpts = Object.entries(TOPO_DEVICES)
+      .filter(([k]) => k !== 'text_box')
+      .map(([k,v]) => `<option value="${k}" ${node.type===k?'selected':''}>${v.label}</option>`).join('');
+
+    const autoNote = node.acesso_id ? `
+      <div class="prop-group" style="font-size:.68rem;color:var(--muted)">
+        ${node.type_manual
+          ? `<i class="fas fa-lock"></i> Ícone fixado manualmente — não muda mais sozinho ao reimportar hosts.
+             <button class="prop-btn" onclick="topo._resetNodeTypeAuto('${id}')" style="margin-top:6px"><i class="fas fa-rotate"></i> Voltar a ícone automático</button>`
+          : `<i class="fas fa-wand-magic-sparkles"></i> Ícone automático (pela função do CRM). Trocar abaixo fixa o ícone escolhido.`}
+      </div>` : '';
+
+    // Fica no topo do painel, antes dos campos de edição: é ação de consulta
+    // (o que esse host tem configurado), não propriedade do desenho — e no fim
+    // do painel exigia rolar pra descobrir que existe.
+    const l2vpnHtml = node.acesso_id ? `
+      <button class="prop-btn" id="btn-l2vpn"
+        style="background:rgba(188,140,255,.12);border-color:var(--purple);color:var(--purple);margin:0 0 12px"
+        onclick="topo.mostrarL2vpn('${id}')"
+        title="VSI/VPLS, VPWS e L2VC lidos do backup mais recente deste host">
+        <i class="fas fa-network-wired"></i> Mostrar L2VPN
+      </button>` : '';
+
+    // Cabeçalho do painel com o próprio ícone do device (não um genérico
+    // fa-server): é o mesmo desenho que está selecionado no canvas, então o
+    // olho liga painel↔node sem precisar reler o nome.
+    document.getElementById('props-body').innerHTML = `
+      <div class="prop-hero">
+        <div class="prop-hero-icon" style="background:${node.color}1f;color:${node.color}">
+          <svg viewBox="0 0 48 48">${TOPO_ICONS[def.icon]||''}</svg>
+        </div>
+        <div class="prop-hero-txt">
+          <b>${this._esc(node.label || def.label)}</b>
+          <span>${def.label}${node.acesso_id ? ' · host do CRM' : ''}</span>
+        </div>
+      </div>
+      ${l2vpnHtml}
+      <div class="prop-group">
+        <label class="prop-label">Nome</label>
+        <input class="prop-input" id="pn-label" value="${this._esc(node.label)}">
+      </div>
+      <div class="prop-group">
+        <label class="prop-label">Ícone / Tipo</label>
+        <select class="prop-select" id="pn-type">${tipoOpts}</select>
+      </div>
+      ${autoNote}
+      <div class="prop-group">
+        <label class="prop-label">IP de Gerência</label>
+        <input class="prop-input" id="pn-ip" placeholder="192.168.1.1" value="${this._esc(node.ip||'')}">
+      </div>
+      <div class="prop-group">
+        <label class="prop-label">Cor</label>
+        <input type="color" class="prop-input" id="pn-color" value="${node.color}" style="height:36px;padding:2px">
+      </div>
+      ${accessHtml}
+      <button class="prop-btn primary" onclick="topo._applyNodeProps('${id}')"><i class="fas fa-check"></i> Aplicar</button>
+      <button class="prop-btn danger" onclick="topo._deleteSelected()"><i class="fas fa-trash"></i> Remover</button>`;
+  }
+
+  async _resetNodeTypeAuto(id) {
+    const node = this.nodes.find(n => n.id === id);
+    if (!node) return;
+    this._saveHistory();
+    delete node.type_manual;
+    this._setDirty();
+    await this._refreshCrmNodeTypes();
+    this._toast('Ícone automático restaurado');
+    if (this.selected && this.selected.type === 'node' && this.selected.id === id) {
+      this._showNodeProps(id);
+    }
+  }
+
+  _acessarHost(nodeId) {
+    const node = this.nodes.find(n => n.id === nodeId);
+    if (!node || !node.acesso_id) return;
+    const proto = (node.protocolo || '').toUpperCase();
+    if (proto === 'HTTP' || proto === 'HTTPS') {
+      const porta = node.porta ? ':' + node.porta : '';
+      window.open(`${proto.toLowerCase()}://${node.ip}${porta}`, '_blank');
+      return;
+    }
+    const acesso = {
+      id: node.acesso_id, tipo: node.label, host: node.ip,
+      porta: node.porta, protocolo: node.protocolo,
+      usuario: node.usuario || '', cliente_id: node.cliente_id || this.clienteId,
+    };
+    localStorage.setItem('acessoPendente', JSON.stringify(acesso));
+    window.open(`/clientes/terminal/?cliente=${acesso.cliente_id}`, '_blank');
+  }
+
+  _applyNodeProps(id) {
+    const node = this.nodes.find(n => n.id === id);
+    if (!node) return;
+    this._saveHistory();
+    node.label = document.getElementById('pn-label').value;
+    const ipEl = document.getElementById('pn-ip');
+    if (ipEl) node.ip = ipEl.value;
+    node.color = document.getElementById('pn-color').value;
+    const typeEl = document.getElementById('pn-type');
+    if (typeEl && typeEl.value !== node.type) {
+      node.type = typeEl.value;
+      node.type_manual = true; // usuário escolheu na mão — reimportar hosts não sobrescreve mais
+    }
+    this._renderNode(node);
+    this._setDirty();
+    this._toast('Aplicado');
+    this._showNodeProps(id); // atualiza a nota de ícone automático/manual no painel
+  }
+
+  // ── L2VPN: VSI / VPLS / VPWS / L2VC documentados a partir do backup ────────
+  //
+  // O backend (`/clientes/acessos/<id>/l2vpn-backup/`) lê o backup mais recente
+  // do host, extrai os serviços L2 e já resolve cada peer/neighbor do túnel
+  // para o host do outro lado — aqui só falta pintar isso e ligar o clique do
+  // peer ao nó correspondente no diagrama.
+
+  mostrarL2vpn(nodeId) {
+    const node = this.nodes.find(n => n.id === nodeId);
+    if (!node || !node.acesso_id) return;
+    this.abrirL2vpn(node.acesso_id, node.label);
+  }
+
+  async abrirL2vpn(acessoId, titulo) {
+    this._l2vpn = {acessoId, titulo: titulo || '', filtro: 'todos', busca: '',
+                   abertos: new Set(), dados: null, clone: null,
+                   peersLista: null, ifacesLista: null, _ultimoErro: ''};
+    this._renderL2vpnModal(`
+      <div style="padding:40px;text-align:center;color:var(--muted)">
+        <i class="fas fa-circle-notch fa-spin" style="font-size:1.6rem"></i>
+        <div style="margin-top:12px;font-size:.82rem">Lendo o backup do equipamento…</div>
+      </div>`);
+    try {
+      const r = await fetch(`/clientes/acessos/${acessoId}/l2vpn-backup/`, {
+        headers: {'X-Requested-With': 'XMLHttpRequest'},
+      });
+      // Sessão expirada: o @login_required devolve um 302 pro /auth/login/ e o
+      // .json() estouraria com um erro genérico — avisa o motivo de verdade.
+      if (r.redirected || r.status === 401 || r.status === 403) {
+        this.fecharL2vpn();
+        this._toast('Sessão expirada — recarregue a página e faça login', 'error');
+        return;
+      }
+      if (!r.ok) throw new Error(r.status);
+      if (!this._l2vpn || this._l2vpn.acessoId !== acessoId) return; // modal já trocou
+      const dados = await r.json();
+      // Índice estável por serviço: é ele que vai nos onclick (expandir/ir pro
+      // peer), nunca o nome — nome vem da config do equipamento e escapar HTML
+      // não protege dentro de uma string JS de atributo.
+      (dados.servicos || []).forEach((s, i) => { s.idx = i; });
+      this._l2vpn.dados = dados;
+      this._pintarL2vpn();
+    } catch (e) {
+      this._renderL2vpnModal(`
+        <div style="padding:36px;text-align:center;color:var(--red);font-size:.85rem">
+          <i class="fas fa-triangle-exclamation" style="font-size:1.5rem;display:block;margin-bottom:10px"></i>
+          Não foi possível ler os serviços L2VPN deste host.
+        </div>
+        <div class="modal-footer"><button class="btn-cancel" onclick="topo.fecharL2vpn()">Fechar</button></div>`);
+    }
+  }
+
+  fecharL2vpn() {
+    const el = document.getElementById('l2vpn-modal');
+    if (el) el.remove();
+    this._l2vpn = null;
+  }
+
+  _renderL2vpnModal(html) {
+    let el = document.getElementById('l2vpn-modal');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'l2vpn-modal';
+      el.className = 'modal-overlay';
+      el.addEventListener('mousedown', e => { if (e.target === el) this.fecharL2vpn(); });
+      document.body.appendChild(el);
+    }
+    el.innerHTML = `<div class="modal-box l2vpn-box">${html}</div>`;
+  }
+
+  _l2vpnFiltrados() {
+    const {dados, filtro, busca} = this._l2vpn;
+    const termo = busca.trim().toLowerCase();
+    return (dados.servicos || []).filter(s => {
+      if (filtro !== 'todos' && s.tipo !== filtro) return false;
+      if (!termo) return true;
+      const alvo = [s.nome, s.id, s.grupo, s.descricao, s.vlan, s.tecnologia,
+                    ...s.peers.map(p => `${p.ip} ${(p.destino || {}).nome || ''}`),
+                    ...s.interfaces.map(i => `${i.nome} ${i.descricao}`)].join(' ').toLowerCase();
+      return alvo.includes(termo);
+    });
+  }
+
+  _pintarL2vpn() {
+    const {dados, filtro, busca} = this._l2vpn;
+
+    if (!dados.tem_backup) {
+      this._renderL2vpnModal(`
+        ${this._l2vpnCabecalho()}
+        <div class="l2vpn-vazio">
+          <i class="fas fa-inbox"></i>
+          <div>Este host ainda não tem backup coletado.</div>
+          <div class="l2vpn-dica">Os serviços L2VPN são lidos do backup — habilite o backup
+            do equipamento no cadastro do acesso para documentá-los aqui.</div>
+        </div>
+        <div class="modal-footer"><button class="btn-cancel" onclick="topo.fecharL2vpn()">Fechar</button></div>`);
+      return;
+    }
+
+    const total = (dados.servicos || []).length;
+    if (!total) {
+      this._renderL2vpnModal(`
+        ${this._l2vpnCabecalho()}
+        <div class="l2vpn-vazio">
+          <i class="fas fa-diagram-project"></i>
+          <div>Nenhum VSI, VPLS, VPWS ou L2VC encontrado no backup deste host.</div>
+          <div class="l2vpn-dica">Backup de ${this._esc(dados.data_backup || '')}.</div>
+        </div>
+        <div class="modal-footer"><button class="btn-cancel" onclick="topo.fecharL2vpn()">Fechar</button></div>`);
+      return;
+    }
+
+    const lista = this._l2vpnFiltrados();
+    const chips = [['todos', 'Todos', total],
+                   ['vpls', 'VPLS / VSI', dados.resumo.vpls],
+                   ['vpws', 'VPWS', dados.resumo.vpws],
+                   ['l2vc', 'L2VC', dados.resumo.l2vc]]
+      .filter(([k, , n]) => k === 'todos' || n)
+      .map(([k, rotulo, n]) => `
+        <button class="l2vpn-chip ${filtro === k ? 'ativo' : ''} tipo-${k}"
+          onclick="topo._l2vpnFiltrar('${k}')">${rotulo} <b>${n}</b></button>`).join('');
+
+    this._renderL2vpnModal(`
+      ${this._l2vpnCabecalho()}
+      <div class="l2vpn-barra">
+        <div class="l2vpn-chips">${chips}</div>
+        <input class="l2vpn-busca" id="l2vpn-busca" placeholder="Filtrar por nome, id, VLAN, peer…"
+               value="${this._esc(busca)}" autocomplete="off">
+      </div>
+      <div class="l2vpn-lista">
+        ${lista.length
+          ? lista.map(s => this._l2vpnLinha(s)).join('')
+          : `<div class="l2vpn-vazio"><i class="fas fa-filter"></i><div>Nenhum serviço com esse filtro.</div></div>`}
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="topo._l2vpnCopiar()"><i class="fas fa-copy"></i> Copiar tabela</button>
+        <button class="btn-cancel" onclick="topo.fecharL2vpn()">Fechar</button>
+      </div>`);
+
+    const busca_el = document.getElementById('l2vpn-busca');
+    if (busca_el) {
+      busca_el.addEventListener('input', e => {
+        this._l2vpn.busca = e.target.value;
+        this._pintarL2vpn();
+        const novo = document.getElementById('l2vpn-busca');
+        if (novo) { novo.focus(); novo.setSelectionRange(novo.value.length, novo.value.length); }
+      });
+    }
+  }
+
+  _l2vpnCabecalho() {
+    const {dados, titulo} = this._l2vpn;
+    const identidade = Object.entries((dados && dados.host && dados.host.ips_identidade) || {});
+    return `
+      <div class="l2vpn-head">
+        <div>
+          <div class="l2vpn-titulo"><i class="fas fa-diagram-project"></i>
+            Serviços L2VPN — ${this._esc(titulo || (dados.host && dados.host.nome) || '')}</div>
+          <div class="l2vpn-sub">
+            ${dados.host ? this._esc(dados.host.ip) : ''}
+            ${dados.data_backup ? `· backup de ${this._esc(dados.data_backup)}` : ''}
+            ${identidade.length
+              ? `· conhecido pelos vizinhos como ${identidade.slice(0, 3).map(
+                   ([ip, origem]) => `<b title="${this._esc(origem)}">${this._esc(ip)}</b>`).join(', ')}`
+              : ''}
+          </div>
+        </div>
+        <i class="fas fa-times l2vpn-fechar" onclick="topo.fecharL2vpn()" title="Fechar (Esc)"></i>
+      </div>`;
+  }
+
+  _l2vpnLinha(s) {
+    const aberto = this._l2vpn.abertos.has(s.idx);
+    const peers = s.peers.length
+      ? s.peers.map((p, i) => this._l2vpnPeer(p, s.idx, i)).join('')
+      : `<span class="l2vpn-peer sem-peer" title="O serviço está configurado sem peer — túnel incompleto no equipamento"><i class="fas fa-unlink"></i> sem peer</span>`;
+
+    const meta = [
+      s.vlan ? `VLAN ${this._esc(s.vlan)}` : '',
+      s.mtu ? `MTU ${this._esc(s.mtu)}` : '',
+      s.grupo ? `grupo ${this._esc(s.grupo)}` : '',
+      s.sinalizacao ? this._esc(s.sinalizacao.toUpperCase()) : '',
+    ].filter(Boolean).join(' · ');
+
+    return `
+      <div class="l2vpn-item ${aberto ? 'aberto' : ''}">
+        <div class="l2vpn-item-head" onclick="topo._l2vpnToggle(${s.idx})">
+          <span class="l2vpn-badge tipo-${s.tipo}">${this._esc(s.tecnologia)}</span>
+          <span class="l2vpn-id">${s.id ? '#' + this._esc(s.id) : '—'}</span>
+          <span class="l2vpn-nome">${this._esc(s.nome)}
+            ${s.descricao && s.descricao !== s.nome ? `<em>${this._esc(s.descricao)}</em>` : ''}</span>
+          <span class="l2vpn-meta">${meta}</span>
+          ${this._l2vpnPodeClonar(s) ? `<button class="l2vpn-clonar"
+            onclick="event.stopPropagation();topo.clonarL2vpn(${s.idx})"
+            title="Criar um serviço novo a partir deste, editando o que muda">
+            <i class="fas fa-clone"></i> Clonar</button>` : ''}
+          <i class="fas fa-chevron-${aberto ? 'up' : 'down'} l2vpn-seta"></i>
+        </div>
+        <div class="l2vpn-peers">${peers}</div>
+        ${aberto ? this._l2vpnDetalhe(s) : ''}
+      </div>`;
+  }
+
+  _l2vpnPeer(p, idxServico, idxPeer) {
+    const destino = p.destino;
+    const pwid = p.pw_id ? ` <em>pw ${this._esc(p.pw_id)}</em>` : '';
+    if (!destino) {
+      return `<span class="l2vpn-peer nao-ident"
+        title="Nenhum host deste cliente tem esse IP como loopback/LSR-ID nos backups">
+        <i class="fas fa-question-circle"></i> ${this._esc(p.ip)}${pwid}</span>`;
+    }
+    return `<button class="l2vpn-peer ident" onclick="topo._irParaPeer(${idxServico}, ${idxPeer})"
+      title="${this._esc(destino.nome)} — ${this._esc(p.ip)} (${this._esc(destino.origem)}). Clique para ir até o host no diagrama.">
+      <i class="fas fa-arrow-right-arrow-left"></i> ${this._esc(destino.nome)}
+      <span class="l2vpn-peer-ip">${this._esc(p.ip)}</span>${pwid}</button>`;
+  }
+
+  _l2vpnDetalhe(s) {
+    const ifaces = s.interfaces.length
+      ? s.interfaces.map(i => `
+          <li><code>${this._esc(i.nome)}</code>
+            ${i.vlan ? `<span class="l2vpn-tag">dot1q ${this._esc(i.vlan)}</span>` : ''}
+            ${i.descricao ? `<em>${this._esc(i.descricao)}</em>` : ''}</li>`).join('')
+      : '<li class="l2vpn-nada">nenhuma interface de acesso encontrada no backup</li>';
+
+    return `
+      <div class="l2vpn-detalhe">
+        <div class="l2vpn-col">
+          <div class="l2vpn-col-titulo">Interfaces de acesso</div>
+          <ul class="l2vpn-ifaces">${ifaces}</ul>
+          ${s.pw_type ? `<div class="l2vpn-col-titulo" style="margin-top:8px">pw-type</div>
+            <div class="l2vpn-nada">${this._esc(s.pw_type)}${s.encapsulamento ? ' · ' + this._esc(s.encapsulamento) : ''}</div>` : ''}
+        </div>
+        <div class="l2vpn-col">
+          <div class="l2vpn-col-titulo">Config no equipamento
+            ${s.linha ? `<span class="l2vpn-tag">linha ${s.linha}</span>` : ''}</div>
+          <pre class="l2vpn-config">${this._esc(s.trecho || '—')}</pre>
+        </div>
+      </div>`;
+  }
+
+  // ── Clonar um serviço L2VPN ───────────────────────────────────────────────
+  //
+  // Fluxo em três passos, igual ao da automação BGP: formulario pre-preenchido
+  // com a config de origem -> comandos gerados pelo backend num textarea
+  // editavel -> confirmacao explicita antes de aplicar no equipamento.
+
+  _l2vpnPodeClonar(s) {
+    return ['huawei', 'datacom', 'mikrotik'].includes(s.vendor);
+  }
+
+  _l2vpnDicaVendor(s) {
+    if (s.vendor === 'mikrotik') {
+      return 'RouterOS: o nome é o da interface VPLS; cada "interface de acesso" vira uma VLAN criada sobre ela.';
+    }
+    if (s.vendor === 'datacom') {
+      return 'DmOS: o serviço nasce dentro do grupo informado; a config é confirmada com <code>commit</code>.';
+    }
+    return s.tipo === 'l2vc'
+      ? 'Huawei: o pseudowire é criado na sub-interface (interface.VLAN), com <code>mpls l2vc</code>.'
+      : 'Huawei: cria a VLAN e o VSI, e faz o <code>l2 binding vsi</code> na <code>Vlanif</code> dela.';
+  }
+
+  clonarL2vpn(idx) {
+    const s = (this._l2vpn.dados.servicos || [])[idx];
+    if (!s) return;
+    // Copia profunda: editar o formulário não pode sujar a listagem por trás.
+    this._l2vpn.clone = {
+      idx,
+      origem: s,
+      // `form` guarda o que está digitado. Todo re-render do painel (adicionar
+      // peer, gerar comandos, confirmar) parte daqui — renderizar direto da
+      // origem apagaria o que o operador já tinha editado.
+      form: {
+        nome: `${s.nome}-CLONE`,
+        id: String(this._l2vpn.dados.id_sugerido || ''),
+        vlan: s.vlan || '',
+        mtu: s.mtu || '',
+        grupo: s.grupo || '',
+        descricao: s.descricao || '',
+        flow_label: s.flow_label || '',
+        // `pw-type vlan N` (DmOS): a tag que trafega DENTRO do túnel, que não
+        // é obrigatoriamente a VLAN de acesso — por isso campo próprio.
+        pw_vlan: s.pw_vlan || '',
+        ldp_lsr_id: (this._l2vpn.dados.ldp || {}).lsr_id || '',
+      },
+      // Fechar a sessão LDP targeted junto: já vem marcado, porque o caso em
+      // que ela falta é justamente o de clonar para um peer novo — e sem
+      // sessão o pseudowire nasce down.
+      ldp: true,
+      peers: s.peers.map(p => p.ip),
+      // VLAN por interface fica VAZIA quando é a mesma do serviço: assim ela
+      // herda o campo "VLAN (dot1q)" e mudar a VLAN do clone num lugar só já
+      // vale pra todas as interfaces. Só fica explícita quando a origem
+      // realmente usa uma VLAN diferente naquela interface.
+      interfaces: s.interfaces.length
+        ? s.interfaces.map(i => ({nome: i.nome, vlan: String(i.vlan || '') === String(s.vlan || '') ? '' : i.vlan}))
+        : [{nome: '', vlan: ''}],
+      // Portas físicas onde a VLAN entra — só o VSI Huawei usa (ele é aplicado
+      // na Vlanif). Começa vazia: a interface da origem é a Vlanif dela, que
+      // não serve de palpite pra porta física do serviço novo.
+      portas: [{nome: '', modo: 'tagged'}],
+      comandos: null,
+      resultado: null,
+      confirmando: false,
+      erro: '',
+    };
+    this._pintarL2vpnClone();
+  }
+
+  _l2vpnVoltarLista() {
+    if (!this._l2vpn) return;
+    this._l2vpn.clone = null;
+    this._pintarL2vpn();
+  }
+
+  _pintarL2vpnClone() {
+    const c = this._l2vpn.clone;
+    const s = c.origem;
+    const f = c.form;
+    const ehDatacom = s.vendor === 'datacom';
+
+    const linhasPeer = c.peers.map((ip, i) => `
+      <div class="l2vpn-linha-lista l2vpn-combo">
+        <input class="l2vpn-input" id="cl-peer-${i}" value="${this._esc(ip)}" autocomplete="off"
+               placeholder="Digite o IP ou busque pelo nome do host">
+        <div class="l2vpn-drop" id="cl-peer-drop-${i}"></div>
+        <button class="l2vpn-mini danger" onclick="topo._l2vpnRemoverPeer(${i})" title="Remover peer">
+          <i class="fas fa-times"></i></button>
+      </div>`).join('');
+
+    const vsiHuawei = s.vendor === 'huawei' && s.tipo !== 'l2vc';
+
+    const linhasIface = c.interfaces.map((iface, i) => `
+      <div class="l2vpn-linha-lista l2vpn-combo">
+        <input class="l2vpn-input" id="cl-if-${i}" value="${this._esc(iface.nome)}" autocomplete="off"
+               placeholder="${s.vendor === 'mikrotik' ? 'vlan200-CLIENTE (nome da VLAN nova)' : 'busque pela porta ou pela descrição'}">
+        ${s.vendor === 'mikrotik' ? '' : `<div class="l2vpn-drop" id="cl-if-drop-${i}"></div>`}
+        <input class="l2vpn-input curto" id="cl-ifvlan-${i}" value="${this._esc(iface.vlan || '')}"
+               placeholder="VLAN" title="Vazio = usa a VLAN do serviço acima">
+        <button class="l2vpn-mini danger" onclick="topo._l2vpnRemoverIface(${i})" title="Remover interface">
+          <i class="fas fa-times"></i></button>
+      </div>`).join('');
+
+    // Huawei VSI: o acesso é sempre a Vlanif da VLAN designada, então em vez
+    // de "interface de acesso" o que se escolhe são as PORTAS FÍSICAS por onde
+    // a VLAN entra, cada uma tagged ou untagged.
+    const linhasPorta = (c.portas || []).map((porta, i) => `
+      <div class="l2vpn-linha-lista l2vpn-combo">
+        <input class="l2vpn-input" id="cl-porta-${i}" value="${this._esc(porta.nome)}" autocomplete="off"
+               placeholder="busque pela porta ou pela descrição">
+        <div class="l2vpn-drop" id="cl-porta-drop-${i}"></div>
+        <select class="l2vpn-select" id="cl-portamodo-${i}" title="tagged = port trunk allow-pass · untagged = port default vlan">
+          <option value="tagged" ${porta.modo !== 'untagged' ? 'selected' : ''}>tagged</option>
+          <option value="untagged" ${porta.modo === 'untagged' ? 'selected' : ''}>untagged</option>
+        </select>
+        <button class="l2vpn-mini danger" onclick="topo._l2vpnRemoverPorta(${i})" title="Remover porta">
+          <i class="fas fa-times"></i></button>
+      </div>`).join('');
+
+    const blocoAcesso = vsiHuawei ? `
+      <div class="l2vpn-form-grupo" style="grid-column:1/-1">
+        <label class="l2vpn-label">Portas físicas onde a VLAN entra
+          <button class="l2vpn-mini" onclick="topo._l2vpnAddPorta()"><i class="fas fa-plus"></i></button>
+          <span class="l2vpn-tag">opcional</span></label>
+        ${linhasPorta}
+        <div class="l2vpn-aviso">
+          O VSI é aplicado em <b>interface Vlanif${this._esc(c.form.vlan || '<VLAN>')}</b>, criada e
+          vinculada automaticamente. Aqui você libera a VLAN nas portas físicas:
+          <b>tagged</b> gera <code>port trunk allow-pass vlan</code>, <b>untagged</b> gera
+          <code>port default vlan</code>. O <code>port link-type</code> da porta não é alterado —
+          trocar o tipo de uma porta em produção derruba o que já passa por ela.
+        </div>
+      </div>` : `
+      <div class="l2vpn-form-grupo">
+        <label class="l2vpn-label">Interfaces de acesso
+          <button class="l2vpn-mini" onclick="topo._l2vpnAddIface()"><i class="fas fa-plus"></i></button></label>
+        ${linhasIface}
+      </div>`;
+
+    const erro = c.erro ? `
+      <div class="l2vpn-form-grupo" style="grid-column:1/-1">
+        <div class="l2vpn-erro"><i class="fas fa-circle-exclamation"></i> ${this._esc(c.erro)}</div>
+      </div>` : '';
+
+    // O preview fica sempre visível: os comandos que vão pro equipamento são
+    // mostrados (e continuam editáveis) antes e durante a confirmação.
+    const passoComandos = c.comandos ? `
+      <div class="l2vpn-form-grupo" style="grid-column:1/-1">
+        <label class="l2vpn-label" style="color:var(--cyan)">
+          <i class="fas fa-terminal"></i> Comandos que serão enviados a
+          ${this._esc(this._l2vpn.dados.host.nome)} — revise e edite se precisar
+          <span class="l2vpn-tag">${c.comandos.length} linhas</span>
+        </label>
+        <textarea class="l2vpn-config editavel" id="cl-comandos" rows="${Math.min(c.comandos.length + 1, 18)}"
+          spellcheck="false">${this._esc(c.comandos.join('\n'))}</textarea>
+      </div>` : `
+      <div class="l2vpn-form-grupo" style="grid-column:1/-1">
+        <div class="l2vpn-aviso"><i class="fas fa-circle-info"></i>
+          Clique em <b>Gerar comandos</b> para ver a config exata que será enviada ao equipamento.
+          Nada é aplicado até você revisar e confirmar.</div>
+      </div>`;
+
+    const resultado = c.resultado ? `
+      <div class="l2vpn-form-grupo" style="grid-column:1/-1">
+        <label class="l2vpn-label" style="color:${c.resultado.status === 'sucesso' ? 'var(--green)' : 'var(--red)'}">
+          ${c.resultado.status === 'sucesso'
+            ? '<i class="fas fa-check-circle"></i> Aplicado no equipamento'
+            : '<i class="fas fa-triangle-exclamation"></i> O equipamento recusou'}
+        </label>
+        <pre class="l2vpn-config">${this._esc(c.resultado.output || '(sem saída)')}</pre>
+        ${c.resultado.status === 'sucesso' ? `<div class="l2vpn-aviso">
+          O serviço novo só vai aparecer nesta lista depois do próximo backup do host — a listagem é
+          lida do backup, não do equipamento ao vivo.</div>` : ''}
+      </div>` : '';
+
+    const acoes = c.resultado && c.resultado.status === 'sucesso'
+      ? `<button class="btn-ok" onclick="topo._l2vpnVoltarLista()"><i class="fas fa-list"></i> Voltar aos serviços</button>`
+      : (c.confirmando
+        ? `<div class="l2vpn-confirma">
+             <span><i class="fas fa-triangle-exclamation"></i>
+               Aplicar em <b>${this._esc(this._l2vpn.dados.host.nome)}</b> (${this._esc(this._l2vpn.dados.host.ip)}) agora?</span>
+             <button class="btn-ok" onclick="topo._l2vpnAplicar(true)">Sim, aplicar</button>
+             <button class="btn-cancel" onclick="topo._l2vpnCancelarConfirma()">Cancelar</button>
+           </div>`
+        : `<button class="btn-cancel" onclick="topo._l2vpnVoltarLista()">Voltar</button>
+           <button class="btn-ok" onclick="topo._l2vpnGerar()">
+             <i class="fas fa-wand-magic-sparkles"></i> ${c.comandos ? 'Gerar de novo' : 'Gerar comandos'}</button>
+           ${c.comandos ? `<button class="btn-ok perigo" onclick="topo._l2vpnAplicar(false)">
+             <i class="fas fa-bolt"></i> Aplicar no equipamento</button>` : ''}`);
+
+    this._renderL2vpnModal(`
+      <div class="l2vpn-head">
+        <div>
+          <div class="l2vpn-titulo"><i class="fas fa-clone"></i> Clonar ${this._esc(s.tecnologia)}
+            ${s.id ? '#' + this._esc(s.id) : ''} — ${this._esc(s.nome)}</div>
+          <div class="l2vpn-sub">${this._l2vpnDicaVendor(s)}</div>
+        </div>
+        <i class="fas fa-times l2vpn-fechar" onclick="topo.fecharL2vpn()" title="Fechar (Esc)"></i>
+      </div>
+      <div class="l2vpn-lista">
+        <div class="l2vpn-form">
+          <div class="l2vpn-form-grupo">
+            <label class="l2vpn-label">Nome do serviço novo</label>
+            <input class="l2vpn-input" id="cl-nome" value="${this._esc(f.nome)}">
+          </div>
+          <div class="l2vpn-form-grupo">
+            <label class="l2vpn-label">ID (${this._esc(s.tecnologia === 'VSI' ? 'vsi-id' : 'pw-id / vc-id')})</label>
+            <input class="l2vpn-input" id="cl-id" value="${this._esc(f.id)}">
+          </div>
+          <div class="l2vpn-form-grupo">
+            <label class="l2vpn-label">VLAN (dot1q)</label>
+            <input class="l2vpn-input" id="cl-vlan" value="${this._esc(f.vlan)}">
+          </div>
+          <div class="l2vpn-form-grupo">
+            <label class="l2vpn-label">MTU</label>
+            <input class="l2vpn-input" id="cl-mtu" value="${this._esc(f.mtu)}">
+          </div>
+          ${ehDatacom ? `
+          <div class="l2vpn-form-grupo">
+            <label class="l2vpn-label">Grupo (${s.tipo === 'vpls' ? 'vpls-group' : 'vpws-group'})</label>
+            <input class="l2vpn-input" id="cl-grupo" value="${this._esc(f.grupo)}">
+          </div>
+          <div class="l2vpn-form-grupo">
+            <label class="l2vpn-label">VLAN do pseudowire
+              <span class="l2vpn-tag">pw-type vlan N</span></label>
+            <input class="l2vpn-input" id="cl-pwvlan" value="${this._esc(f.pw_vlan)}"
+                   placeholder="igual à origem">
+          </div>` : ''}
+          <div class="l2vpn-form-grupo">
+            <label class="l2vpn-label">Descrição</label>
+            <input class="l2vpn-input" id="cl-desc" value="${this._esc(f.descricao)}">
+          </div>
+          ${s.vendor === 'mikrotik' ? '' : `
+          <div class="l2vpn-form-grupo">
+            <label class="l2vpn-label">flow-label
+              <span class="l2vpn-tag">balanceamento do pseudowire</span></label>
+            <select class="l2vpn-select" id="cl-flow" style="width:100%">
+              ${['both', 'transmit', 'receive'].map(v => `
+                <option value="${v}" ${f.flow_label === v ? 'selected' : ''}>${v}</option>`).join('')}
+              <option value="" ${!f.flow_label ? 'selected' : ''}>não usar</option>
+            </select>
+          </div>`}
+          <div class="l2vpn-form-grupo">
+            <label class="l2vpn-label">Peers (outro lado do túnel)
+              <button class="l2vpn-mini" onclick="topo._l2vpnAddPeer()"><i class="fas fa-plus"></i></button></label>
+            ${linhasPeer}
+          </div>
+          ${this._l2vpnBlocoLdp()}
+          ${blocoAcesso}
+          ${erro}
+          ${passoComandos}
+          ${resultado}
+        </div>
+      </div>
+      <div class="modal-footer">${acoes}</div>`);
+
+    this._l2vpnLigarCombos();
+  }
+
+  /** Bloco "Sessão LDP" do formulário de clonagem.
+   *
+   *  O pseudowire só sobe se existir sessão LDP targeted com o peer, e ela
+   *  mora FORA do bloco do serviço — clonar um VSI/VPWS para um peer novo não
+   *  fechava o circuito sozinho. Aqui o operador vê, peer a peer, quem já tem
+   *  sessão no backup e quem vai ser criado junto com o serviço.
+   */
+  _l2vpnBlocoLdp() {
+    const c = this._l2vpn.clone;
+    const s = c.origem;
+    if (!['huawei', 'datacom'].includes(s.vendor)) return '';   // RouterOS: outro modelo de LDP
+
+    const ldp = this._l2vpn.dados.ldp || {peers: {}, lsr_id: '', tem_bloco: false};
+    const jaTem = ldp.peers || {};
+    const peers = c.peers.filter(Boolean);
+    const faltando = peers.filter(ip => !(ip in jaTem));
+
+    const status = peers.length ? peers.map(ip => {
+      const ok = ip in jaTem;
+      return `<span class="l2vpn-peer ${ok ? 'ident' : 'nao-ident'}" style="cursor:default">
+        <i class="fas fa-${ok ? 'check' : 'plus'}"></i>
+        <span class="l2vpn-peer-ip">${this._esc(ip)}</span>
+        <em>${ok ? 'sessão já existe' : 'será criada'}</em></span>`;
+    }).join('') : '<span class="l2vpn-nada">Informe um peer acima.</span>';
+
+    return `
+      <div class="l2vpn-form-grupo" style="grid-column:1/-1">
+        <label class="l2vpn-label">
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer">
+            <input type="checkbox" id="cl-ldp" ${c.ldp ? 'checked' : ''}
+                   onchange="topo._l2vpnLerForm();topo._pintarL2vpnClone()"
+                   style="accent-color:var(--cyan);width:14px;height:14px">
+            Fechar também a sessão LDP com o peer
+          </label>
+          <span class="l2vpn-tag">${s.vendor === 'huawei'
+            ? 'mpls ldp remote-peer' : 'mpls ldp · neighbor targeted'}</span>
+        </label>
+        <div class="l2vpn-peers" style="padding:2px 0 0">${status}</div>
+        ${c.ldp && s.vendor === 'datacom' ? `
+          <div class="l2vpn-linha-lista" style="margin-top:6px">
+            <span class="l2vpn-tag" style="margin:0">lsr-id</span>
+            <input class="l2vpn-input" id="cl-ldp-lsr" value="${this._esc(c.form.ldp_lsr_id)}"
+                   placeholder="loopback-0">
+          </div>
+          <div class="l2vpn-aviso">O <code>neighbor targeted</code> fica dentro do
+            <code>lsr-id</code>, e qual loopback está em uso muda por equipamento —
+            ${ldp.lsr_id
+              ? `este veio do backup deste host (<b>${this._esc(ldp.lsr_id)}</b>).`
+              : 'não achei no backup, confira antes de aplicar.'}</div>` : ''}
+        ${c.ldp && !faltando.length && peers.length ? `
+          <div class="l2vpn-aviso">Todos os peers já têm sessão — nada de LDP será enviado.</div>` : ''}
+        ${c.ldp && !ldp.tem_bloco ? `
+          <div class="l2vpn-aviso">O backup deste host não mostra bloco de LDP; revise o
+            preview antes de aplicar.</div>` : ''}
+      </div>`;
+  }
+
+  // ── Combos de busca (peer, interface, porta) ──────────────────────────────
+  //
+  // Um combo só, com fontes diferentes: peers vêm de /l2vpn-peers/ (hosts do
+  // cliente com identidade MPLS) e interfaces de /interfaces-backup/ (o que o
+  // backup do próprio host mostra). Em ambos, digitar continua valendo — a
+  // lista é atalho, não trava o campo.
+
+  async _l2vpnCarregarListas() {
+    const est = this._l2vpn;
+    if (!est.peersLista) {
+      est.peersLista = [];   // evita duas buscas simultâneas
+      try {
+        const r = await fetch(`/clientes/acessos/${est.acessoId}/l2vpn-peers/`,
+                              {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+        if (r.ok && !r.redirected) est.peersLista = (await r.json()).peers || [];
+      } catch (e) { /* sem lista o campo continua aceitando IP digitado */ }
+    }
+    if (!est.ifacesLista) {
+      est.ifacesLista = [];
+      try {
+        const r = await fetch(`/clientes/acessos/${est.acessoId}/interfaces-backup/`,
+                              {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+        if (r.ok && !r.redirected) {
+          // Só portas físicas: num switch com 48 portas e 300 Vlanif, listar
+          // as lógicas junto torna a busca inútil — e Vlanif nunca é a porta
+          // onde a VLAN do cliente entra.
+          est.ifacesLista = ((await r.json()).interfaces || [])
+            .filter(i => !i.logica && !i.subinterface);
+        }
+      } catch (e) { /* idem */ }
+    }
+  }
+
+  _l2vpnOpcoesPeer(termo) {
+    // Busca por nome do host OU por IP — o operador raramente lembra o
+    // loopback, mas sempre sabe o nome do equipamento do outro lado.
+    return (this._l2vpn.peersLista || [])
+      .filter(p => !termo || (p.nome || '').toLowerCase().includes(termo) || p.ip.includes(termo))
+      .slice(0, 8)
+      .map(p => ({
+        valor: p.ip,
+        principal: p.ip,
+        secundario: p.nome,
+        meta: p.origem + (p.servicos ? ` · ${p.servicos} L2VPN` : ''),
+      }));
+  }
+
+  _l2vpnOpcoesIface(termo) {
+    // Busca por nome da porta OU pela descrição — é pela descrição
+    // ("CLIENTE-NETCENTER") que se sabe qual porta é a certa.
+    return (this._l2vpn.ifacesLista || [])
+      .filter(i => !termo || i.nome.toLowerCase().includes(termo)
+                          || (i.descricao || '').toLowerCase().includes(termo))
+      .slice(0, 10)
+      .map(i => ({
+        valor: i.nome,
+        principal: i.nome,
+        secundario: i.descricao || '',
+        meta: i.ip || '',
+      }));
+  }
+
+  _l2vpnLigarCombos() {
+    const c = this._l2vpn.clone;
+    if (!c) return;
+    c.peers.forEach((_, i) => this._l2vpnLigarCombo(
+      `cl-peer-${i}`, `cl-peer-drop-${i}`, termo => this._l2vpnOpcoesPeer(termo)));
+    c.interfaces.forEach((_, i) => this._l2vpnLigarCombo(
+      `cl-if-${i}`, `cl-if-drop-${i}`, termo => this._l2vpnOpcoesIface(termo)));
+    (c.portas || []).forEach((_, i) => this._l2vpnLigarCombo(
+      `cl-porta-${i}`, `cl-porta-drop-${i}`, termo => this._l2vpnOpcoesIface(termo)));
+
+    // Rolar a lista move o campo, mas não o dropdown (que é `fixed`) — fecha.
+    const lista = document.querySelector('#l2vpn-modal .l2vpn-lista');
+    if (lista) {
+      lista.addEventListener('scroll', () => {
+        document.querySelectorAll('#l2vpn-modal .l2vpn-drop.show')
+          .forEach(d => d.classList.remove('show'));
+      });
+    }
+  }
+
+  _l2vpnLigarCombo(inputId, dropId, fnOpcoes) {
+    const input = document.getElementById(inputId);
+    const drop = document.getElementById(dropId);
+    if (!input || !drop) return;
+    const abrir = async () => {
+      await this._l2vpnCarregarListas();
+      this._l2vpnPintarCombo(input, drop, fnOpcoes(input.value.trim().toLowerCase()));
+    };
+    input.addEventListener('focus', abrir);
+    input.addEventListener('input', abrir);
+    input.addEventListener('blur', () => setTimeout(() => drop.classList.remove('show'), 160));
+  }
+
+  _l2vpnPintarCombo(input, drop, itens) {
+    if (!itens.length) {
+      drop.classList.remove('show');
+      drop.innerHTML = '';
+      return;
+    }
+    drop.innerHTML = itens.map((it, k) => `
+      <div class="l2vpn-drop-item" data-k="${k}">
+        <span class="l2vpn-drop-ip">${this._esc(it.principal)}</span>
+        <span class="l2vpn-drop-nome">${this._esc(it.secundario)}</span>
+        <span class="l2vpn-drop-meta">${this._esc(it.meta)}</span>
+      </div>`).join('');
+    // Delegação em vez de onclick inline: nome de porta e descrição vêm da
+    // config do equipamento e não podem ser interpolados numa string JS.
+    // `preventDefault` no mousedown evita o blur que fecharia o dropdown antes.
+    drop.onmousedown = e => {
+      const alvo = e.target.closest('.l2vpn-drop-item');
+      if (!alvo) return;
+      e.preventDefault();
+      input.value = itens[+alvo.dataset.k].valor;
+      drop.classList.remove('show');
+      this._l2vpnLerForm();
+    };
+    drop.classList.add('show');
+
+    // Posiciona em coordenadas de viewport (CSS `position:fixed`) — dentro do
+    // modal a lista rola com overflow, que cortaria um dropdown `absolute`.
+    const r = input.getBoundingClientRect();
+    const abaixo = window.innerHeight - r.bottom;
+    drop.style.left = `${r.left}px`;
+    drop.style.width = `${r.width}px`;
+    if (abaixo < Math.min(230, drop.scrollHeight) + 12 && r.top > abaixo) {
+      drop.style.top = 'auto';                                   // sem espaço embaixo: abre pra cima
+      drop.style.bottom = `${window.innerHeight - r.top + 3}px`;
+    } else {
+      drop.style.bottom = 'auto';
+      drop.style.top = `${r.bottom + 3}px`;
+    }
+  }
+
+  _l2vpnLerForm() {
+    // Lê o que está digitado e guarda no estado: o painel é re-renderizado
+    // inteiro a cada ação (adicionar peer, gerar comandos, confirmar), então
+    // o que não for salvo aqui se perde. Campo ausente do DOM (ex: a tela de
+    // confirmação, que não mostra o formulário) mantém o valor atual.
+    const c = this._l2vpn.clone;
+    const campo = (id, atual) => {
+      const el = document.getElementById(id);
+      return el ? el.value.trim() : atual;
+    };
+
+    c.form = {
+      nome: campo('cl-nome', c.form.nome),
+      id: campo('cl-id', c.form.id),
+      vlan: campo('cl-vlan', c.form.vlan),
+      mtu: campo('cl-mtu', c.form.mtu),
+      grupo: campo('cl-grupo', c.form.grupo),
+      descricao: campo('cl-desc', c.form.descricao),
+      flow_label: campo('cl-flow', c.form.flow_label),
+      pw_vlan: campo('cl-pwvlan', c.form.pw_vlan),
+      ldp_lsr_id: campo('cl-ldp-lsr', c.form.ldp_lsr_id),
+    };
+    const chkLdp = document.getElementById('cl-ldp');
+    if (chkLdp) c.ldp = chkLdp.checked;
+    c.peers = c.peers.map((atual, i) => campo(`cl-peer-${i}`, atual));
+    c.interfaces = c.interfaces.map((atual, i) => ({
+      nome: campo(`cl-if-${i}`, atual.nome), vlan: campo(`cl-ifvlan-${i}`, atual.vlan),
+    }));
+    c.portas = (c.portas || []).map((atual, i) => ({
+      nome: campo(`cl-porta-${i}`, atual.nome),
+      modo: campo(`cl-portamodo-${i}`, atual.modo) || 'tagged',
+    }));
+    if (!c.peers.length) c.peers = [''];
+    if (!c.interfaces.length) c.interfaces = [{nome: '', vlan: ''}];
+    if (!c.portas.length) c.portas = [{nome: '', modo: 'tagged'}];
+    return {
+      ...c.form,
+      ldp: !!c.ldp,
+      peers: c.peers.filter(Boolean),
+      interfaces: c.interfaces.filter(i => i.nome),
+      portas: c.portas.filter(p => p.nome),
+    };
+  }
+
+  _l2vpnAddPeer()  { this._l2vpnLerForm(); this._l2vpn.clone.peers.push(''); this._pintarL2vpnClone(); }
+  _l2vpnAddIface() { this._l2vpnLerForm(); this._l2vpn.clone.interfaces.push({nome: '', vlan: ''}); this._pintarL2vpnClone(); }
+
+  _l2vpnRemoverPeer(i) {
+    this._l2vpnLerForm();
+    this._l2vpn.clone.peers.splice(i, 1);
+    if (!this._l2vpn.clone.peers.length) this._l2vpn.clone.peers = [''];
+    this._pintarL2vpnClone();
+  }
+
+  _l2vpnAddPorta() {
+    this._l2vpnLerForm();
+    this._l2vpn.clone.portas.push({nome: '', modo: 'tagged'});
+    this._pintarL2vpnClone();
+  }
+
+  _l2vpnRemoverPorta(i) {
+    this._l2vpnLerForm();
+    this._l2vpn.clone.portas.splice(i, 1);
+    if (!this._l2vpn.clone.portas.length) this._l2vpn.clone.portas = [{nome: '', modo: 'tagged'}];
+    this._pintarL2vpnClone();
+  }
+
+  _l2vpnRemoverIface(i) {
+    this._l2vpnLerForm();
+    this._l2vpn.clone.interfaces.splice(i, 1);
+    if (!this._l2vpn.clone.interfaces.length) this._l2vpn.clone.interfaces = [{nome: '', vlan: ''}];
+    this._pintarL2vpnClone();
+  }
+
+  _l2vpnCancelarConfirma() {
+    this._l2vpn.clone.confirmando = false;
+    this._pintarL2vpnClone();
+  }
+
+  async _l2vpnPost(corpo) {
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+    const r = await fetch(`/clientes/acessos/${this._l2vpn.acessoId}/l2vpn-clonar/`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': csrf ? csrf.value : ''},
+      body: JSON.stringify(corpo),
+    });
+    if (r.redirected || r.status === 401) {
+      this._toast('Sessão expirada — recarregue a página e faça login', 'error');
+      return null;
+    }
+    let dados = {};
+    try { dados = await r.json(); } catch (e) { dados = {}; }
+    if (!r.ok) {
+      // Guarda a mensagem pro painel mostrar de forma persistente: um toast
+      // de 2,5s some antes do operador ler por que a config foi recusada.
+      this._l2vpn._ultimoErro = dados.error || `Erro ${r.status} ao falar com o servidor.`;
+      this._toast(this._l2vpn._ultimoErro, 'error');
+      return null;
+    }
+    this._l2vpn._ultimoErro = '';
+    return dados;
+  }
+
+  async _l2vpnGerar() {
+    const c = this._l2vpn.clone;
+    const spec = this._l2vpnLerForm();
+    const dados = await this._l2vpnPost({origem_idx: c.idx, spec, preview: true});
+    if (!dados) {
+      c.erro = this._l2vpn._ultimoErro;
+      c.comandos = null;
+      this._pintarL2vpnClone();
+      return;
+    }
+    c.erro = '';
+    c.comandos = dados.comandos || [];
+    c.resultado = null;
+    this._pintarL2vpnClone();
+    // Traz o preview pra vista: em tela curta ele nasce abaixo da dobra e
+    // parece que "nao gerou nada".
+    const ta = document.getElementById('cl-comandos');
+    if (ta) {
+      ta.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+      ta.classList.add('destacado');
+      setTimeout(() => ta.classList.remove('destacado'), 1400);
+    }
+    this._toast(`${c.comandos.length} comandos gerados — revise antes de aplicar`);
+  }
+
+  async _l2vpnAplicar(confirmado) {
+    const c = this._l2vpn.clone;
+    if (!confirmado) {
+      // Guarda o que estiver no textarea antes de trocar a tela pela pergunta
+      // de confirmação, senão uma edição manual dos comandos se perderia.
+      const ta = document.getElementById('cl-comandos');
+      if (ta) c.comandos = ta.value.split('\n').map(l => l.trim()).filter(Boolean);
+      c.spec = this._l2vpnLerForm();
+      c.confirmando = true;
+      this._pintarL2vpnClone();
+      return;
+    }
+    c.confirmando = false;
+    this._renderL2vpnModal(`
+      <div style="padding:40px;text-align:center;color:var(--muted)">
+        <i class="fas fa-circle-notch fa-spin" style="font-size:1.6rem"></i>
+        <div style="margin-top:12px;font-size:.82rem">Conectando no equipamento e aplicando…</div>
+      </div>`);
+    const dados = await this._l2vpnPost({
+      origem_idx: c.idx, spec: c.spec, preview: false, comandos: c.comandos,
+    });
+    if (!dados) {
+      c.erro = this._l2vpn._ultimoErro;
+      this._pintarL2vpnClone();
+      return;
+    }
+    c.erro = '';
+    c.resultado = dados;
+    this._pintarL2vpnClone();
+    this._toast(dados.status === 'sucesso' ? `${dados.nome} criado no equipamento`
+                                           : 'O equipamento recusou — veja a saída',
+                dados.status === 'sucesso' ? 'ok' : 'error');
+  }
+
+  _l2vpnFiltrar(tipo) {
+    if (!this._l2vpn) return;
+    this._l2vpn.filtro = tipo;
+    this._pintarL2vpn();
+  }
+
+  _l2vpnToggle(idx) {
+    if (!this._l2vpn) return;
+    const abertos = this._l2vpn.abertos;
+    if (abertos.has(idx)) abertos.delete(idx); else abertos.add(idx);
+    this._pintarL2vpn();
+  }
+
+  _l2vpnCopiar() {
+    const linhas = ['| Tipo | ID | Nome | VLAN | MTU | Peers | Interfaces |',
+                    '|---|---|---|---|---|---|---|'];
+    this._l2vpnFiltrados().forEach(s => {
+      const peers = s.peers.map(p => p.destino ? `${p.ip} (${p.destino.nome})` : p.ip).join('<br>') || '—';
+      const ifaces = s.interfaces.map(i => i.vlan ? `${i.nome}.${i.vlan}` : i.nome).join('<br>') || '—';
+      linhas.push(`| ${s.tecnologia} | ${s.id || '—'} | ${s.nome} | ${s.vlan || '—'} | ${s.mtu || '—'} | ${peers} | ${ifaces} |`);
+    });
+    const texto = linhas.join('\n');
+    navigator.clipboard.writeText(texto)
+      .then(() => this._toast(`${linhas.length - 2} serviços copiados em Markdown`))
+      .catch(() => this._toast('Não foi possível copiar', 'error'));
+  }
+
+  _irParaPeer(idxServico, idxPeer) {
+    if (!this._l2vpn || !this._l2vpn.dados) return;
+    const servico = (this._l2vpn.dados.servicos || [])[idxServico];
+    const peer = servico && servico.peers[idxPeer];
+    if (!peer || !peer.destino) return;
+    const destino = peer.destino;
+
+    const node = this.nodes.find(n => String(n.acesso_id) === String(destino.acesso_id));
+    if (node) {
+      this.fecharL2vpn();
+      this._focarNode(node.id);
+      this._toast(`${node.label} — outro lado do túnel (${peer.ip})`);
+      return;
+    }
+    // Host existe no CRM mas ainda não está no diagrama: em vez de não fazer
+    // nada, abre a documentação L2VPN dele (o "Importar Hosts" traz o ícone
+    // pro canvas depois, se a pessoa quiser desenhar o enlace).
+    this._toast('Host fora do diagrama — abrindo os serviços dele');
+    this.abrirL2vpn(destino.acesso_id, destino.nome);
+  }
+
+  _focarNode(nodeId) {
+    const node = this.nodes.find(n => n.id === nodeId);
+    if (!node) return false;
+    const r = this.svg.getBoundingClientRect();
+    this.zoom = Math.max(this.zoom, 0.9);
+    this.panX = r.width / 2 - node.x * this.zoom;
+    this.panY = r.height / 2 - node.y * this.zoom;
+    this._updateVP();
+    this._select('node', nodeId);
+    const el = this.nodesLayer.querySelector(`[data-id="${nodeId}"]`);
+    if (el) {
+      el.classList.remove('node-flash');
+      void el.getBoundingClientRect(); // reinicia a animação se clicar de novo
+      el.classList.add('node-flash');
+      setTimeout(() => el.classList.remove('node-flash'), 1800);
+    }
+    return true;
+  }
+
+  _showLinkProps(id) {
+    const link = this.links.find(l => l.id === id);
+    if (!link) return;
+    const ifaceOpts = Object.entries(TOPO_IFACES).map(([k,v]) =>
+      `<option value="${k}" ${link.iface===k?'selected':''}>${v.label}</option>`).join('');
+
+    const shape = link.shape || 'straight';
+    const wps   = link.waypoints || [];
+    const src = this.nodes.find(n => n.id === link.src);
+    const tgt = this.nodes.find(n => n.id === link.tgt);
+    const gen = this._propsGen;
+
+    document.getElementById('props-body').innerHTML = `
+      <div class="prop-title"><i class="fas fa-ethernet"></i> Conexão</div>
+      <div class="prop-group">
+        <label class="prop-label">Interface / Velocidade</label>
+        <select class="prop-select" id="pl-iface">${ifaceOpts}</select>
+      </div>
+      <div class="prop-group">
+        <label class="prop-label">Label</label>
+        <input class="prop-input" id="pl-label" placeholder="Link name" value="${this._esc(link.label||'')}">
+      </div>
+      <div class="prop-group">
+        <label class="prop-label">Interface Lado A${src&&src.label?' — '+this._esc(src.label):''}</label>
+        <input class="prop-input" id="pl-ifa" list="dl-ifa" autocomplete="off"
+               placeholder="ge0/0/1, eth0, sfp1…" value="${this._esc(link.iface_a||'')}">
+        <datalist id="dl-ifa"></datalist>
+      </div>
+      <div class="prop-group">
+        <label class="prop-label">Interface Lado B${tgt&&tgt.label?' — '+this._esc(tgt.label):''}</label>
+        <input class="prop-input" id="pl-ifb" list="dl-ifb" autocomplete="off"
+               placeholder="ge0/0/2, eth1, sfp2…" value="${this._esc(link.iface_b||'')}">
+        <datalist id="dl-ifb"></datalist>
+      </div>
+      <div class="prop-group">
+        <label class="prop-label">IP Local (P2P)${src&&src.label?' — '+this._esc(src.label):''}</label>
+        <input class="prop-input" id="pl-ipl" list="dl-ipl" autocomplete="off"
+               placeholder="10.0.0.1/30" value="${this._esc(link.ip_local||'')}">
+        <datalist id="dl-ipl"></datalist>
+      </div>
+      <div class="prop-group">
+        <label class="prop-label">IP Remoto (P2P)${tgt&&tgt.label?' — '+this._esc(tgt.label):''}</label>
+        <input class="prop-input" id="pl-ipr" list="dl-ipr" autocomplete="off"
+               placeholder="10.0.0.2/30" value="${this._esc(link.ip_remote||'')}">
+        <datalist id="dl-ipr"></datalist>
+      </div>
+      <div class="prop-group">
+        <label class="prop-label">VLAN</label>
+        <input class="prop-input" id="pl-vlan" placeholder="100" value="${link.vlan||''}">
+      </div>
+      <div class="prop-group">
+        <label class="prop-label">Traço</label>
+        <select class="prop-select" id="pl-style">
+          <option value="solid"  ${link.style==='solid' ?'selected':''}>Sólido</option>
+          <option value="dashed" ${link.style==='dashed'?'selected':''}>Tracejado</option>
+          <option value="dotted" ${link.style==='dotted'?'selected':''}>Pontilhado</option>
+        </select>
+      </div>
+      <div class="prop-group">
+        <label class="prop-label">Forma da linha</label>
+        <select class="prop-select" id="pl-shape">
+          <option value="straight" ${shape==='straight'?'selected':''}>Reta</option>
+          <option value="curved"   ${shape==='curved'  ?'selected':''}>Curva</option>
+          <option value="wavy"     ${shape==='wavy'    ?'selected':''}>Ondulada</option>
+        </select>
+      </div>
+      <div class="prop-group" style="background:rgba(88,166,255,.07);border-radius:6px;padding:8px;font-size:.75rem;color:var(--muted)">
+        <i class="fas fa-route" style="color:var(--cyan);margin-right:5px"></i>
+        <strong style="color:var(--text)">Editar caminho:</strong><br>
+        Arraste o <span style="color:#58a6ff">●</span> no meio da linha para dobrar.<br>
+        <span style="color:#58a6ff">○</span> círculos criados = waypoints.<br>
+        <strong>Duplo-clique</strong> em um waypoint para removê-lo.
+        ${wps.length > 0 ? `<br><br><button class="prop-btn" onclick="topo._clearWaypoints('${id}')" style="margin-top:4px"><i class="fas fa-minus-circle"></i> Limpar waypoints (${wps.length})</button>` : ''}
+      </div>
+      <button class="prop-btn" onclick="topo._applyLinkProps('${id}')"><i class="fas fa-check"></i> Aplicar</button>
+      <button class="prop-btn danger" onclick="topo._deleteSelected()"><i class="fas fa-trash"></i> Remover</button>`;
+
+    this._populateIfaceDatalist('dl-ifa', src && src.acesso_id, gen);
+    this._populateIfaceDatalist('dl-ifb', tgt && tgt.acesso_id, gen);
+    this._populateIpDatalist('dl-ipl', src && src.acesso_id, gen);
+    this._populateIpDatalist('dl-ipr', tgt && tgt.acesso_id, gen);
+
+    // Ao escolher/digitar uma interface que bate com o nome exato de uma
+    // interface do backup, sugere o IP P2P dela (só se a interface tiver
+    // roteamento configurado e o campo de IP ainda estiver vazio).
+    const ifaEl = document.getElementById('pl-ifa');
+    const ifbEl = document.getElementById('pl-ifb');
+    if (ifaEl) ifaEl.addEventListener('input', () => this._sugerirIpPorInterface('pl-ifa', 'pl-ipl', src && src.acesso_id));
+    if (ifbEl) ifbEl.addEventListener('input', () => this._sugerirIpPorInterface('pl-ifb', 'pl-ipr', tgt && tgt.acesso_id));
+  }
+
+  async _sugerirIpPorInterface(ifInputId, ipInputId, acessoId) {
+    if (!acessoId) return;
+    const ifEl = document.getElementById(ifInputId);
+    const ipEl = document.getElementById(ipInputId);
+    if (!ifEl || !ipEl || ipEl.value.trim()) return; // nunca sobrescreve IP já preenchido
+    const nome = ifEl.value.trim();
+    if (!nome) return;
+    const interfaces = await this._fetchInterfaces(acessoId);
+    // Campo pode ter mudado enquanto buscava (cache já deve resolver na hora,
+    // mas o guard cobre o primeiro acesso a um node ainda não cacheado).
+    if (ifEl.value.trim() !== nome || ipEl.value.trim()) return;
+    const item = interfaces.find(i => i.nome === nome);
+    if (item && item.ip) {
+      ipEl.value = item.ip;
+      this._toast(`IP ${item.ip} sugerido a partir do backup (${nome})`);
+    }
+  }
+
+  // ── Sugestão de interfaces a partir do backup ───────────────────────────────
+
+  async _fetchInterfaces(acessoId) {
+    if (!acessoId) return [];
+    // Cacheia por acesso_id (mesmo lista vazia) — evita refazer a mesma consulta
+    // toda vez que o painel de propriedades do link é reaberto na sessão.
+    if (acessoId in this._ifaceCache) return this._ifaceCache[acessoId];
+    try {
+      const r = await fetch(`/clientes/acessos/${acessoId}/interfaces-backup/`);
+      const lista = r.ok ? ((await r.json()).interfaces || []) : [];
+      this._ifaceCache[acessoId] = lista;
+      return lista;
+    } catch (e) { return []; }
+  }
+
+  async _populateIfaceDatalist(datalistId, acessoId, gen) {
+    if (!acessoId) return; // nó não veio do CRM (ou sem acesso vinculado) — datalist fica vazia, input livre
+    const interfaces = await this._fetchInterfaces(acessoId);
+    if (gen !== this._propsGen) return; // seleção mudou enquanto a busca corria — descarta
+    const dl = document.getElementById(datalistId);
+    if (!dl) return;
+    // A descrição da interface no backup (ex. "P2P-SW-CORE-P6") vira a legenda
+    // da sugestão no dropdown — ajuda a escolher a interface certa sem precisar
+    // decorar o nome físico da porta. Preenche tanto o atributo `label` (usado
+    // pelo Firefox) quanto o texto do <option> (usado pelo Chrome/Edge) para
+    // cobrir os dois jeitos que os navegadores renderizam <datalist>.
+    dl.innerHTML = interfaces.map(i => {
+      const desc = this._esc(i.descricao || '');
+      const labelAttr = desc ? ` label="${desc}"` : '';
+      return `<option value="${this._esc(i.nome)}"${labelAttr}>${desc}</option>`;
+    }).join('');
+  }
+
+  async _populateIpDatalist(datalistId, acessoId, gen) {
+    if (!acessoId) return; // nó não veio do CRM (ou sem acesso vinculado) — datalist fica vazia, input livre
+    const interfaces = await this._fetchInterfaces(acessoId);
+    if (gen !== this._propsGen) return; // seleção mudou enquanto a busca corria — descarta
+    const dl = document.getElementById(datalistId);
+    if (!dl) return;
+    // Reaproveita o mesmo cache/consulta das interfaces (nenhuma chamada de
+    // rede extra) — só interfaces com IP roteado configurado no backup fazem
+    // sentido aqui, a maioria das portas L2/trunk não tem endereço.
+    dl.innerHTML = interfaces.filter(i => i.ip).map(i => {
+      const legenda = this._esc([i.nome, i.descricao].filter(Boolean).join(' — '));
+      const labelAttr = legenda ? ` label="${legenda}"` : '';
+      return `<option value="${this._esc(i.ip)}"${labelAttr}>${legenda}</option>`;
+    }).join('');
+  }
+
+  _applyLinkProps(id) {
+    const link = this.links.find(l => l.id === id);
+    if (!link) return;
+    this._saveHistory();
+    link.iface     = document.getElementById('pl-iface').value;
+    link.label     = document.getElementById('pl-label').value;
+    link.iface_a   = document.getElementById('pl-ifa').value;
+    link.iface_b   = document.getElementById('pl-ifb').value;
+    link.ip_local  = document.getElementById('pl-ipl').value;
+    link.ip_remote = document.getElementById('pl-ipr').value;
+    link.vlan      = document.getElementById('pl-vlan').value;
+    link.style     = document.getElementById('pl-style').value;
+    link.shape     = document.getElementById('pl-shape').value;
+    this._renderLink(link);
+    this._renderLinkHandles(link);
+    this._setDirty();
+    this._toast('Aplicado');
+  }
+
+  _clearWaypoints(id) {
+    const link = this.links.find(l => l.id === id);
+    if (!link) return;
+    this._saveHistory();
+    link.waypoints = [];
+    this._renderLink(link);
+    this._renderLinkHandles(link);
+    this._showLinkProps(id);
+    this._setDirty();
+    this._toast('Waypoints removidos');
+  }
+
+  // ── Controls ─────────────────────────────────────────────────────────────
+
+  toggleConnectMode() {
+    this.connectMode = !this.connectMode;
+    if (this.connectMode && this.areaSelectMode) {
+      this.areaSelectMode = false;
+      document.getElementById('btn-area-select').classList.remove('active');
+    }
+    this._cancelConnect();
+    const btn = document.getElementById('btn-connect');
+    btn.classList.toggle('active', this.connectMode);
+    document.getElementById('canvas-svg').style.cursor = this.connectMode ? 'crosshair' : 'default';
+    this._updateMultiSelectStatus();
+  }
+
+  toggleAreaSelect() {
+    this.areaSelectMode = !this.areaSelectMode;
+    if (this.areaSelectMode && this.connectMode) {
+      this.connectMode = false;
+      document.getElementById('btn-connect').classList.remove('active');
+    }
+    this._cancelConnect();
+    const btn = document.getElementById('btn-area-select');
+    btn.classList.toggle('active', this.areaSelectMode);
+    document.getElementById('canvas-svg').style.cursor = this.areaSelectMode ? 'crosshair' : 'default';
+    this._updateMultiSelectStatus();
+  }
+
+  /** Paleta de dispositivos: cartão flutuante, fechado ao abrir a topologia
+   *  (o canvas é o que interessa). O botão da borda esquerda traz de volta. */
+  togglePalette() {
+    const fechada = document.body.classList.toggle('pal-off');
+    if (!fechada) setTimeout(() => document.getElementById('pal-search')?.focus(), 260);
+  }
+
+  /** Fecha o painel de propriedades — junto some a seleção, senão fica um node
+   *  aceso no canvas sem nenhum painel explicando o porquê. */
+  fecharProps() {
+    this._deselect();
+    this._clearMultiSelect();
+  }
+
+  toggleGrid() {
+    this.showGrid = !this.showGrid;
+    document.getElementById('grid-bg').style.display = this.showGrid ? '' : 'none';
+    document.getElementById('btn-grid').classList.toggle('active', this.showGrid);
+  }
+
+  toggleSnap() {
+    this.snap = !this.snap;
+    document.getElementById('btn-snap').classList.toggle('active', this.snap);
+  }
+
+  toggleEffects() {
+    this.effectsOn = !this.effectsOn;
+    document.body.classList.toggle('effects-off', !this.effectsOn);
+    document.getElementById('btn-effects').classList.toggle('active', this.effectsOn);
+  }
+
+  zoomIn()  { this.zoom = Math.min(4, this.zoom*1.2); this._updateVP(); }
+  zoomOut() { this.zoom = Math.max(.1, this.zoom/1.2); this._updateVP(); }
+  zoomFit() {
+    if (!this.nodes.length) { this.zoom=1;this.panX=0;this.panY=0;this._updateVP();return; }
+    const xs = this.nodes.map(n=>n.x), ys = this.nodes.map(n=>n.y);
+    const mx=Math.min(...xs)-80, my=Math.min(...ys)-80, Mx=Math.max(...xs)+80, My=Math.max(...ys)+80;
+    const r = this.svg.getBoundingClientRect();
+    const zx=r.width/(Mx-mx), zy=r.height/(My-my);
+    this.zoom = Math.min(zx,zy,.8);
+    this.panX = (r.width-(Mx-mx)*this.zoom)/2 - mx*this.zoom;
+    this.panY = (r.height-(My-my)*this.zoom)/2 - my*this.zoom;
+    this._updateVP();
+  }
+
+  // ── History ───────────────────────────────────────────────────────────────
+
+  _saveHistory() {
+    this.history = this.history.slice(0, this.histIdx+1);
+    this.history.push(JSON.stringify({nodes:this.nodes, links:this.links}));
+    if (this.history.length > 50) this.history.shift();
+    else this.histIdx++;
+  }
+  undo() {
+    if (this.histIdx <= 0) return;
+    this.histIdx--;
+    const s = JSON.parse(this.history[this.histIdx]);
+    this.nodes=s.nodes; this.links=s.links;
+    this._renderAll(); this._setDirty();
+  }
+  redo() {
+    if (this.histIdx >= this.history.length-1) return;
+    this.histIdx++;
+    const s = JSON.parse(this.history[this.histIdx]);
+    this.nodes=s.nodes; this.links=s.links;
+    this._renderAll(); this._setDirty();
+  }
+
+  _setDirty() {
+    this.dirty = true;
+    document.getElementById('st-save').textContent = '● Não salvo';
+    document.getElementById('st-save').style.color = 'var(--orange)';
+    // Ponto no próprio botão Salvar: a barra de status fica no rodapé e passa
+    // despercebida — o aviso de "tem coisa não salva" precisa estar onde a
+    // pessoa vai clicar.
+    document.getElementById('btn-salvar')?.classList.add('dirty');
+  }
+
+  // ── Save / Load ───────────────────────────────────────────────────────────
+
+  async save() {
+    const nome = document.getElementById('nome-diagrama').value || 'Nova Topologia';
+    const payload = {nome, dados_json: JSON.stringify({nodes:this.nodes, links:this.links})};
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    try {
+      const r = await fetch(`/clientes/${this.clienteId}/topologia/salvar/`, {
+        method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf},
+        body: JSON.stringify(payload)
+      });
+      const d = await r.json();
+      if (d.ok) {
+        this.diagramaId = d.diagrama_id;
+        this.dirty = false;
+        document.getElementById('st-save').textContent = '✓ Salvo';
+        document.getElementById('st-save').style.color = 'var(--green)';
+        document.getElementById('btn-salvar')?.classList.remove('dirty');
+        this._toast('Topologia salva!');
+      }
+    } catch(e) { this._toast('Erro ao salvar: '+e,'error'); }
+  }
+
+  async importHosts() {
+    this._toast('Importando hosts...');
+    try {
+      const r = await fetch(`/clientes/${this.clienteId}/topologia/hosts/`);
+      if (!r.ok) { this._toast(`Erro ${r.status}`, 'error'); return; }
+      const d = await r.json();
+      if (!d.hosts || !d.hosts.length) { this._toast('Nenhum host cadastrado', 'error'); return; }
+      const grid = 180, perRow = 5;
+      let added = 0;
+      d.hosts.forEach((h, i) => {
+        const existing = this.nodes.find(n => n.id === 'crm_' + h.id);
+        if (existing) {
+          existing.funcao = h.funcao;
+          // Ícone trocado manualmente pelo usuário (ver _applyNodeProps) não é
+          // sobrescrito por uma reimportação — só o mapeamento automático (função
+          // do CRM → tipo) é sincronizado aqui.
+          if (!existing.type_manual && existing.type !== h.tipo) {
+            existing.type = h.tipo;
+            this._renderNode(existing); this._setDirty();
+          }
+          return;
+        }
+        const col = i % perRow, row = Math.floor(i / perRow);
+        this.addNode(h.tipo, 120 + col * grid, 120 + row * 140, {
+          label: h.label || h.ip, ip: h.ip, id: 'crm_' + h.id,
+          funcao: h.funcao, acesso_id: h.id, protocolo: h.protocolo,
+          porta: h.porta, usuario: h.usuario, cliente_id: h.cliente_id,
+        });
+        added++;
+      });
+      if (added > 0) this.zoomFit();
+      this._toast(`${added} hosts importados`);
+    } catch(e) { this._toast('Erro: ' + e.message, 'error'); }
+  }
+
+  async _refreshCrmNodeTypes() {
+    try {
+      const r = await fetch(`/clientes/${this.clienteId}/topologia/hosts/`);
+      if (!r.ok) return;
+      const d = await r.json();
+      let updated = false;
+      (d.hosts || []).forEach(h => {
+        const node = this.nodes.find(n => n.id === 'crm_' + h.id);
+        if (!node) return;
+        node.funcao = h.funcao;
+        if (!node.type_manual && node.type !== h.tipo) {
+          node.type = h.tipo;
+          this._renderNode(node); updated = true;
+        }
+      });
+      if (updated) { this._renderLinks(); this._setDirty(); }
+    } catch(e) { /* silencioso */ }
+  }
+
+  exportPNG() {
+    const svgData = new XMLSerializer().serializeToString(this.svg);
+    const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+    const svgUrl = URL.createObjectURL(svgBlob);
+    const r = this.svg.getBoundingClientRect();
+    const scale = 2;
+    const canvas = document.createElement('canvas');
+    canvas.width  = r.width  * scale;
+    canvas.height = r.height * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#0d1117';
+    ctx.fillRect(0, 0, r.width, r.height);
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(svgUrl);
+      canvas.toBlob(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'topologia.png';
+        a.click();
+        this._toast('PNG exportado');
+      }, 'image/png');
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(svgUrl);
+      this._toast('Erro ao exportar PNG', 'error');
+    };
+    img.src = svgUrl;
+  }
+
+  fromJSON(data) {
+    try {
+      const d = typeof data === 'string' ? JSON.parse(data) : data;
+      this.nodes = d.nodes || [];
+      this.links = (d.links || []).map(l => ({
+        waypoints: [], shape: 'straight', iface_a: '', iface_b: '', ...l
+      }));
+      this.selectedNodes = new Set();
+      this._renderAll();
+      if (this.nodes.length) this.zoomFit();
+    } catch(e) { console.warn(e); }
+  }
+
+  _updateStatus() {
+    document.getElementById('st-nodes').textContent = this.nodes.length;
+    document.getElementById('st-links').textContent = this.links.length;
+    const hint = document.getElementById('canvas-hint');
+    if (hint) hint.classList.toggle('show', !this.nodes.length);
+  }
+
+  // ── Legenda de tipos de interface ───────────────────────────────────────
+
+  toggleLegend() {
+    const panel = document.getElementById('legend-panel');
+    const btn = document.getElementById('btn-legend');
+    if (!panel) return;
+    const show = !panel.classList.contains('show');
+    if (show && !panel.dataset.built) {
+      const itens = Object.values(TOPO_IFACES).map(v =>
+        `<div class="legend-item"><span class="legend-swatch" style="background:${v.color}"></span>${v.label}</div>`
+      ).join('');
+      panel.innerHTML = `
+        <div class="legend-title">
+          <span><i class="fas fa-ethernet"></i> Interfaces</span>
+          <i class="fas fa-times legend-close" onclick="topo.toggleLegend()"></i>
+        </div>
+        <div class="legend-grid">${itens}</div>`;
+      panel.dataset.built = '1';
+    }
+    panel.classList.toggle('show', show);
+    if (btn) btn.classList.toggle('active', show);
+  }
+
+  _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  _toast(msg, type='ok') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.borderColor = type==='error' ? 'var(--red)' : 'var(--green)';
+    t.style.color       = type==='error' ? 'var(--red)' : 'var(--green)';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  window.topo = new TopoEditor({
+    clienteId: window.TOPO_CLIENTE_ID,
+    diagramaId: window.TOPO_DIAGRAMA_ID,
+  });
+  topo._updateStatus(); // estado inicial da dica de canvas vazio, antes de qualquer fetch resolver
+
+  const dados = window.TOPO_DADOS;
+  const temNodes = dados && (typeof dados === 'string'
+    ? dados.includes('"nodes"') && JSON.parse(dados)?.nodes?.length
+    : dados.nodes?.length);
+
+  if (temNodes) {
+    topo.fromJSON(dados);
+    topo._refreshCrmNodeTypes();
+  } else {
+    topo.importHosts();
+  }
+
+  document.getElementById('btn-grid').classList.add('active');
+  document.getElementById('btn-snap').classList.add('active');
+  // Efeitos (pulso nos nodes do CRM, fluxo animado e "pacotes" nos links) vêm
+  // ligados por padrão, exceto para quem pediu menos movimento no SO/navegador
+  // (prefers-reduced-motion) — nesse caso já inicia desligado, sem exigir que
+  // a pessoa descubra e clique no botão "Efeitos" manualmente.
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    topo.effectsOn = false;
+    document.body.classList.add('effects-off');
+  } else {
+    document.getElementById('btn-effects').classList.add('active');
+  }
+});
