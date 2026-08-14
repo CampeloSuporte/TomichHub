@@ -355,6 +355,58 @@ body.props-off #props{transform:translateX(calc(100% + 20px));opacity:0;pointer-
 .l2vpn-vazio i{font-size:1.8rem;display:block;margin-bottom:12px;opacity:.35}
 .l2vpn-dica{font-size:.72rem;margin-top:8px;opacity:.8;max-width:460px;margin-left:auto;margin-right:auto;line-height:1.5}
 .l2vpn-box .modal-footer{padding:12px 18px;border-top:1px solid var(--border);margin-top:0}
+/* ── Modal de portas PON (OLT Huawei) ───────────────────────────────────────
+   A grade de portas é o coração da tela: a cor diz a ocupação, então dá pra
+   ver de longe onde está a base — e onde um `laser-switch off` doeria. */
+.pon-box{width:820px;max-width:96vw;max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden}
+.pon-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 18px 12px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(0,217,255,.06),transparent)}
+.pon-titulo{font-size:.98rem;font-weight:700;color:var(--cyan);display:flex;align-items:center;gap:8px}
+.pon-sub{font-size:.72rem;color:var(--muted);margin-top:5px;line-height:1.6}
+.pon-sub b{color:var(--text);font-weight:600}
+.pon-corpo{flex:1;overflow-y:auto;padding:14px 18px 18px}
+.pon-grade-titulo{font-size:.7rem;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pon-legenda{display:flex;align-items:center;gap:10px;margin-left:auto;text-transform:none;letter-spacing:0;font-weight:500;color:var(--faint)}
+.pon-dot{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:4px;vertical-align:-1px}
+.pon-dot.vazia{background:rgba(255,255,255,.09);box-shadow:inset 0 0 0 1px var(--border)}
+.pon-dot.ocupada{background:rgba(63,185,80,.5);box-shadow:inset 0 0 0 1px var(--green)}
+.pon-dot.cheia{background:rgba(0,217,255,.5);box-shadow:inset 0 0 0 1px var(--cyan)}
+.pon-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(62px,1fr));gap:8px}
+.pon-porta{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:9px 4px;border-radius:10px;cursor:pointer;background:rgba(255,255,255,.03);border:1px solid var(--border);color:var(--muted);transition:transform .13s var(--ease-out),border-color .15s,background .15s,color .15s}
+.pon-porta b{font-size:.9rem;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.pon-porta em{font-style:normal;font-size:.66rem;opacity:.85;font-variant-numeric:tabular-nums}
+.pon-porta:hover{transform:translateY(-2px);border-color:#3a4757}
+.pon-porta:active{transform:translateY(0) scale(.96)}
+.pon-porta.vazia{opacity:.45}
+.pon-porta.ocupada{background:rgba(63,185,80,.1);border-color:rgba(63,185,80,.4);color:var(--green)}
+.pon-porta.cheia{background:rgba(0,217,255,.12);border-color:rgba(0,217,255,.45);color:var(--cyan)}
+.pon-porta.sel{box-shadow:0 0 0 2px var(--cyan),0 6px 16px rgba(0,0,0,.4);border-color:var(--cyan);opacity:1}
+.pon-vazio{margin-top:16px;padding:26px;text-align:center;font-size:.78rem;color:var(--faint);border:1px dashed var(--border);border-radius:12px}
+.pon-detalhe{margin-top:16px;border:1px solid var(--border);border-radius:12px;padding:14px;background:rgba(255,255,255,.02)}
+.pon-detalhe-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+.pon-detalhe-head b{font-size:1rem;color:var(--cyan);font-family:'Courier New',monospace}
+.pon-detalhe-head span{font-size:.72rem;color:var(--muted)}
+.pon-onts{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;max-height:96px;overflow-y:auto}
+.pon-ont{font-size:.68rem;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;padding:3px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.pon-ont b{color:var(--text);font-family:'Courier New',monospace;margin-right:5px}
+.pon-ont.mais{color:var(--faint);font-style:italic}
+.pon-acoes{display:flex;gap:8px;flex-wrap:wrap}
+.pon-acao{display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:9px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);font-size:.76rem;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s,color .15s,transform .13s var(--ease-out)}
+.pon-acao:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(0,217,255,.08)}
+.pon-acao:active{transform:scale(.96)}
+.pon-acao.sel{border-color:var(--cyan);color:var(--cyan);background:rgba(0,217,255,.14)}
+/* Ação de escrita (laser) nasce vermelha: a diferença entre consultar e apagar
+   o laser de uma porta com 200 assinantes não pode depender de ler o rótulo. */
+.pon-acao.perigo{border-color:rgba(248,81,73,.45);color:var(--red)}
+.pon-acao.perigo:hover{background:rgba(248,81,73,.12);border-color:var(--red);color:var(--red)}
+.pon-acao.perigo.sel{background:rgba(248,81,73,.18);border-color:var(--red)}
+.pon-preview{margin-top:14px}
+.pon-preview-acoes{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.pon-preview-acoes .btn-ok,.pon-preview-acoes .btn-cancel{flex:0 0 auto;padding:8px 16px}
+.pon-alerta{display:flex;gap:10px;align-items:flex-start;margin-top:10px;padding:10px 12px;border-radius:9px;font-size:.74rem;line-height:1.55;background:rgba(248,81,73,.09);border:1px solid rgba(248,81,73,.4);color:#ffb4b0}
+.pon-alerta i{color:var(--red);margin-top:2px}
+.pon-alerta b{color:#fff}
+.pon-resultado{margin-top:14px}
+@media (max-width:640px){.pon-grade{grid-template-columns:repeat(auto-fill,minmax(52px,1fr))}}
 /* Destaque do host apontado por um peer ao vir do modal (ver _focarNode) */
 @keyframes node-flash{0%,100%{stroke-opacity:.2}25%,75%{stroke-opacity:1}}
 .node.node-flash .node-ring{stroke:var(--green)!important;stroke-width:3;animation:node-flash .55s ease-in-out 3}

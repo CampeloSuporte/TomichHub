@@ -5,7 +5,7 @@
 - `static/js/topo_engine.js`
 - `static/js/topo_main.js`
 
-**Atualizado em:** 2026-08-13
+**Atualizado em:** 2026-08-14
 
 ---
 
@@ -23,6 +23,8 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 - Documentação de serviços L2VPN (VSI/VPLS, VPWS e L2VC) lida do backup de cada host,
   com o peer de cada túnel ligado ao host do outro lado, e clonagem de serviço aplicada
   no equipamento — ver [topologia_l2vpn.md](topologia_l2vpn.md)
+- Diagnóstico e operação das portas PON de OLT Huawei (placas e ONTs lidas do backup,
+  `display port info/state` e `laser-switch` ao vivo) — ver [olt_pon.md](olt_pon.md)
 
 ---
 
@@ -33,7 +35,7 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 | `topo_engine.js` | Definição de tipos (`DEVICES`), interfaces (`IFACES`) e paths SVG dos ícones (`ICONS`) |
 | `topo_main.js` | Classe `TopoEditor` — lógica de renderização, eventos, persistência e importação |
 
-Versão atual: **topo_engine v=24 / topo_main v=34** (parâmetro de cache-busting no HTML).
+Versão atual: **topo_engine v=24 / topo_main v=35** (parâmetro de cache-busting no HTML).
 
 **Estes dois JS ficam em `static/` e mesmo assim são versionados.** `static/` é o
 `STATIC_ROOT` (destino do `collectstatic`) e está no `.gitignore`, mas esses dois
@@ -551,6 +553,19 @@ rollback caso necessário.
 navegador com o console aberto (Network + Console) para capturar se `/interfaces-backup/` retorna
 vazio, se o `<datalist>` chega a ser populado, e se "Aplicar" está sendo clicado com o campo
 realmente vazio na tela.
+
+---
+
+## Portas PON de OLT Huawei — 2026-08-14
+
+O painel de propriedades de um host **OLT** ganhou o botão **"Portas PON"**:
+inventário de placas/portas lido do backup (com as ONTs de cada porta) e, sobre
+ele, `display port info/state` e o `laser-switch` ao vivo no equipamento.
+
+Documentado em **[olt_pon.md](olt_pon.md)** — inclui a tabela de portas por
+família de placa, o preâmbulo de comandos (`undo interactive`/`scroll`), por que
+a execução usa shell Paramiko em vez de Netmiko e como o número de ONTs
+afetadas acompanha um `laser-switch off`.
 
 ---
 

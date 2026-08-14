@@ -182,6 +182,10 @@ class TopoEditor {
         if (e.key === 'Escape') this.fecharL2vpn();
         return;
       }
+      if (this._pon) {
+        if (e.key === 'Escape') this.fecharPon();
+        return;
+      }
       if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
       if (e.ctrlKey && e.key === 's') { e.preventDefault(); this.save(); }
       if (e.ctrlKey && e.key === 'z') { this.undo(); }
@@ -986,6 +990,20 @@ class TopoEditor {
     // Cabeçalho do painel com o próprio ícone do device (não um genérico
     // fa-server): é o mesmo desenho que está selecionado no canvas, então o
     // olho liga painel↔node sem precisar reler o nome.
+    // Botão de portas PON: só em node que é OLT. A checagem olha o tipo do
+    // ícone, a função cadastrada no CRM e o nome do host — uma OLT importada
+    // sem função vira `host` no mapeamento automático e ficaria sem o botão.
+    const ehOlt = node.acesso_id && (
+      node.type === 'olt' ||
+      /\bolt\b|ma5\d{3}/i.test(`${node.funcao || ''} ${node.label || ''}`));
+    const ponHtml = ehOlt ? `
+      <button class="prop-btn" id="btn-pon"
+        style="background:rgba(0,217,255,.12);border-color:var(--cyan);color:var(--cyan);margin:0 0 12px"
+        onclick="topo.mostrarPon('${id}')"
+        title="Placas e portas PON lidas do backup — consulta de porta e liga/desliga do laser (OLT Huawei)">
+        <i class="fas fa-diagram-successor"></i> Portas PON
+      </button>` : '';
+
     document.getElementById('props-body').innerHTML = `
       <div class="prop-hero">
         <div class="prop-hero-icon" style="background:${node.color}1f;color:${node.color}">
@@ -997,6 +1015,7 @@ class TopoEditor {
         </div>
       </div>
       ${l2vpnHtml}
+      ${ponHtml}
       <div class="prop-group">
         <label class="prop-label">Nome</label>
         <input class="prop-input" id="pn-label" value="${this._esc(node.label)}">
@@ -2436,6 +2455,362 @@ class TopoEditor {
     }
     panel.classList.toggle('show', show);
     if (btn) btn.classList.toggle('active', show);
+  }
+
+
+  // ── Portas PON de OLT Huawei (MA5600T/MA5800) ──────────────────────────────
+  // Inventário (placas, portas, ONTs) vem do backup; `display port info/state`
+  // e o `laser-switch` vão ao equipamento na hora, com preview editável e
+  // confirmação — mesmo contrato do clone de L2VPN e da automação BGP.
+
+  async mostrarPon(nodeId) {
+    const node = this.nodes.find(n => n.id === nodeId);
+    if (!node || !node.acesso_id) return;
+    this._pon = {
+      acessoId: node.acesso_id, nodeNome: node.label || '', dados: null,
+      slot: null, porta: null, acao: null, comandos: null, resultado: null,
+      confirmando: false, erro: '', carregando: true,
+    };
+    this._renderPonModal(`
+      <div style="padding:40px;text-align:center;color:var(--muted)">
+        <i class="fas fa-circle-notch fa-spin" style="font-size:1.6rem"></i>
+        <div style="margin-top:12px;font-size:.82rem">Lendo as placas PON do backup…</div>
+      </div>`);
+    try {
+      const r = await fetch(`/clientes/acessos/${node.acesso_id}/olt-pon/`, {
+        headers: {'X-Requested-With': 'XMLHttpRequest'},
+      });
+      // Sessão expirada vira 302 pro login e o .json() estouraria com um erro
+      // genérico — mesmo tratamento do modal de L2VPN.
+      if (r.redirected || r.status === 401 || r.status === 403) {
+        this.fecharPon();
+        this._toast('Sessão expirada — recarregue a página e faça login', 'error');
+        return;
+      }
+      if (!r.ok) throw new Error(r.status);
+      if (!this._pon || this._pon.acessoId !== node.acesso_id) return; // modal trocou
+      const dados = await r.json();
+      this._pon.dados = dados;
+      this._pon.carregando = false;
+      // Abre já na primeira placa: com uma placa só (caso comum) não faz
+      // sentido exigir um clique antes de ver as portas.
+      if ((dados.placas || []).length) this._pon.slot = dados.placas[0].slot;
+      this._pintarPon();
+    } catch (e) {
+      this._renderPonModal(`
+        <div style="padding:36px;text-align:center;color:var(--red);font-size:.85rem">
+          <i class="fas fa-triangle-exclamation" style="font-size:1.5rem;display:block;margin-bottom:10px"></i>
+          Não foi possível ler as placas PON deste host.
+        </div>
+        <div class="modal-footer"><button class="btn-cancel" onclick="topo.fecharPon()">Fechar</button></div>`);
+    }
+  }
+
+  fecharPon() {
+    const el = document.getElementById('pon-modal');
+    if (el) el.remove();
+    this._pon = null;
+  }
+
+  _renderPonModal(html) {
+    let el = document.getElementById('pon-modal');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'pon-modal';
+      el.className = 'modal-overlay';
+      el.addEventListener('mousedown', e => { if (e.target === el) this.fecharPon(); });
+      document.body.appendChild(el);
+    }
+    el.innerHTML = `<div class="modal-box pon-box">${html}</div>`;
+  }
+
+  _ponPlacaAtual() {
+    const d = this._pon.dados || {};
+    return (d.placas || []).find(p => p.slot === this._pon.slot) || null;
+  }
+
+  _ponPortaAtual() {
+    const placa = this._ponPlacaAtual();
+    if (!placa || this._pon.porta === null) return null;
+    return placa.portas.find(p => p.porta === this._pon.porta) || null;
+  }
+
+  _ponCabecalho() {
+    const d = this._pon.dados || {};
+    const host = d.host || {};
+    return `
+      <div class="pon-head">
+        <div>
+          <div class="pon-titulo"><i class="fas fa-network-wired"></i>
+            Portas PON — ${this._esc(d.modelo || 'OLT Huawei')}</div>
+          <div class="pon-sub">
+            <b>${this._esc(host.nome || this._pon.nodeNome)}</b> · ${this._esc(host.ip || '')}
+            ${d.total_onts ? ` · ${d.total_onts} ONTs em ${(d.placas || []).length} placa(s)` : ''}
+            <br>Inventário do backup de <b>${this._esc(d.data_backup || '—')}</b>
+          </div>
+        </div>
+        <i class="fas fa-times l2vpn-fechar" onclick="topo.fecharPon()" title="Fechar (Esc)"></i>
+      </div>`;
+  }
+
+  _pintarPon() {
+    const c = this._pon;
+    const d = c.dados || {};
+
+    if (!d.tem_backup || d.suportado === false) {
+      this._renderPonModal(`
+        ${this._ponCabecalho()}
+        <div class="l2vpn-vazio" style="padding:38px 24px">
+          <i class="fas fa-plug-circle-xmark"></i>
+          <div>${this._esc(d.mensagem || 'Este host não tem inventário PON.')}</div>
+        </div>
+        <div class="modal-footer"><button class="btn-cancel" onclick="topo.fecharPon()">Fechar</button></div>`);
+      return;
+    }
+
+    const placa = this._ponPlacaAtual();
+    const chips = (d.placas || []).map(p => `
+      <button class="l2vpn-chip ${p.slot === c.slot ? 'ativo' : ''}"
+        onclick="topo._ponSelecionarPlaca('${p.slot}')">
+        ${this._esc(p.slot)} <b>${this._esc(p.tipo || '')}</b>
+        <em style="font-style:normal;opacity:.7">${p.onts} ONT</em>
+      </button>`).join('');
+
+    this._renderPonModal(`
+      ${this._ponCabecalho()}
+      <div class="l2vpn-barra"><div class="l2vpn-chips">${chips}</div></div>
+      <div class="pon-corpo">
+        ${placa ? this._ponGrade(placa) : ''}
+        ${this._ponDetalhe()}
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="topo.fecharPon()">Fechar</button>
+      </div>`);
+
+    // Com 16 portas na grade, o preview e o retorno nascem fora da área
+    // visível do modal — sem isso o clique na ação parece não ter feito nada.
+    const foco = document.querySelector('.pon-resultado') || document.querySelector('.pon-preview');
+    if (foco) foco.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+  }
+
+  /** Grade de portas da placa. A cor é a ocupação (quantas ONTs), então dá pra
+   *  ver de longe onde está a base — e onde um laser-switch off doeria. */
+  _ponGrade(placa) {
+    const tiles = placa.portas.map(p => {
+      const classes = ['pon-porta'];
+      if (p.porta === this._pon.porta) classes.push('sel');
+      if (!p.configurada) classes.push('vazia');
+      else if (p.onts >= 50) classes.push('cheia');
+      else if (p.onts > 0) classes.push('ocupada');
+      return `
+        <button class="${classes.join(' ')}" onclick="topo._ponSelecionarPorta(${p.porta})"
+          title="Porta ${p.porta} — ${p.onts} ONT${p.onts === 1 ? '' : 's'}${p.configurada ? '' : ' (sem configuração no backup)'}">
+          <b>${p.porta}</b><em>${p.onts || '—'}</em>
+        </button>`;
+    }).join('');
+    return `
+      <div class="pon-grade-wrap">
+        <div class="pon-grade-titulo">
+          Placa ${this._esc(placa.slot)} · ${this._esc(placa.tipo || 'tipo desconhecido')} ·
+          ${placa.portas_total} portas
+          <span class="pon-legenda">
+            <i class="pon-dot vazia"></i> sem config
+            <i class="pon-dot ocupada"></i> com ONT
+            <i class="pon-dot cheia"></i> 50+
+          </span>
+        </div>
+        <div class="pon-grade">${tiles}</div>
+      </div>`;
+  }
+
+  _ponDetalhe() {
+    const c = this._pon;
+    const porta = this._ponPortaAtual();
+    if (!porta) {
+      return `<div class="pon-vazio">Escolha uma porta acima para consultar ou operar.</div>`;
+    }
+
+    const clientes = (porta.clientes || []).map(o => `
+      <span class="pon-ont"><b>${this._esc(o.ont)}</b>
+        ${this._esc(o.desc || o.sn || '')}</span>`).join('');
+    const restantes = porta.onts - (porta.clientes || []).length;
+
+    const acoes = (c.dados.acoes || []).map(a => `
+      <button class="pon-acao ${a.escreve ? 'perigo' : ''} ${c.acao === a.chave ? 'sel' : ''}"
+        onclick="topo._ponPreview('${a.chave}')">
+        <i class="fas fa-${a.chave === 'info' ? 'circle-info'
+                          : a.chave === 'state' ? 'wave-square'
+                          : a.chave === 'laser_off' ? 'power-off' : 'bolt'}"></i>
+        ${this._esc(a.label)}
+      </button>`).join('');
+
+    return `
+      <div class="pon-detalhe">
+        <div class="pon-detalhe-head">
+          <div>
+            <b>${this._esc(c.slot)}/${porta.porta}</b>
+            <span>${porta.onts} ONT${porta.onts === 1 ? '' : 's'}${porta.auto_find ? ' · ont-auto-find' : ''}${porta.distancia ? ' · ' + this._esc(porta.distancia) : ''}</span>
+          </div>
+        </div>
+        ${porta.onts ? `<div class="pon-onts">${clientes}
+          ${restantes > 0 ? `<span class="pon-ont mais">+${restantes}</span>` : ''}</div>` : ''}
+        <div class="pon-acoes">${acoes}</div>
+        ${c.erro ? `<div class="l2vpn-erro"><i class="fas fa-triangle-exclamation"></i>
+          <div>${this._esc(c.erro)}</div></div>` : ''}
+        ${c.comandos ? this._ponPreviewBloco() : ''}
+        ${c.resultado ? this._ponResultado() : ''}
+      </div>`;
+  }
+
+  _ponPreviewBloco() {
+    const c = this._pon;
+    const escreve = !!c.escreve;
+    const porta = this._ponPortaAtual() || {onts: 0};
+    return `
+      <div class="pon-preview">
+        <div class="l2vpn-col-titulo">Comandos que serão enviados</div>
+        <textarea class="l2vpn-config editavel" id="pon-comandos"
+          rows="${Math.min(c.comandos.length + 1, 12)}"
+          oninput="topo._pon.comandosEditados = this.value">${this._esc(c.comandos.join('\n'))}</textarea>
+        ${escreve ? `
+          <div class="pon-alerta">
+            <i class="fas fa-triangle-exclamation"></i>
+            <div><b>Isto muda o equipamento.</b>
+              ${c.acao === 'laser_off'
+                ? `Apagar o laser da porta <b>${this._esc(c.slot)}/${porta.porta}</b> derruba
+                   <b>${porta.onts} ONT${porta.onts === 1 ? '' : 's'}</b> — a base inteira dessa porta fica sem sinal
+                   até o laser voltar.`
+                : `Religa o laser da porta <b>${this._esc(c.slot)}/${porta.porta}</b>.`}
+            </div>
+          </div>` : ''}
+        <div class="pon-preview-acoes">
+          ${c.confirmando
+            ? `<div class="l2vpn-confirma">
+                 <span><i class="fas fa-triangle-exclamation"></i>
+                   Confirma enviar para <b>${this._esc((c.dados.host || {}).nome || '')}</b>?</span>
+                 <button class="btn-ok perigo" onclick="topo._ponExecutar()">Sim, enviar</button>
+                 <button class="btn-cancel" onclick="topo._ponCancelarConfirma()">Cancelar</button>
+               </div>`
+            : `<button class="btn-ok ${escreve ? 'perigo' : ''}" onclick="topo._ponConfirmar()">
+                 <i class="fas fa-paper-plane"></i> ${escreve ? 'Aplicar no equipamento' : 'Executar consulta'}
+               </button>
+               <button class="btn-cancel" onclick="topo._ponLimpar()">Cancelar</button>`}
+        </div>
+      </div>`;
+  }
+
+  _ponResultado() {
+    const r = this._pon.resultado;
+    const ok = r.status === 'sucesso';
+    return `
+      <div class="pon-resultado">
+        <div class="l2vpn-col-titulo" style="color:${ok ? 'var(--green)' : 'var(--red)'}">
+          <i class="fas fa-${ok ? 'circle-check' : 'circle-xmark'}"></i>
+          ${ok ? 'Retorno do equipamento' : 'Falhou'}
+        </div>
+        <pre class="l2vpn-config" style="max-height:260px">${this._esc(r.output || '(sem saída)')}</pre>
+      </div>`;
+  }
+
+  _ponSelecionarPlaca(slot) {
+    Object.assign(this._pon, {slot, porta: null, acao: null, comandos: null,
+                              resultado: null, confirmando: false, erro: ''});
+    this._pintarPon();
+  }
+
+  _ponSelecionarPorta(porta) {
+    Object.assign(this._pon, {porta, acao: null, comandos: null,
+                              resultado: null, confirmando: false, erro: ''});
+    this._pintarPon();
+  }
+
+  _ponLimpar() {
+    Object.assign(this._pon, {acao: null, comandos: null, comandosEditados: null,
+                              confirmando: false, erro: ''});
+    this._pintarPon();
+  }
+
+  _ponCancelarConfirma() {
+    this._pon.confirmando = false;
+    this._pintarPon();
+  }
+
+  _ponConfirmar() {
+    // Guarda o texto do textarea antes de re-renderizar (o innerHTML novo
+    // descarta o elemento e, com ele, qualquer edição não lida).
+    this._ponLerTextarea();
+    // Consulta é leitura pura: exigir um segundo clique de confirmação pra ver
+    // o estado de uma porta só ensina a clicar em "sim" no automático — e é
+    // justamente esse reflexo que não pode existir no laser.
+    if (!this._pon.escreve) { this._ponExecutar(); return; }
+    this._pon.confirmando = true;
+    this._pintarPon();
+  }
+
+  _ponLerTextarea() {
+    const ta = document.getElementById('pon-comandos');
+    if (ta) this._pon.comandosEditados = ta.value;
+  }
+
+  /** preview=true: só monta os comandos no backend (nada é enviado ao
+   *  equipamento) — é o texto inicial do textarea. */
+  async _ponPreview(acao) {
+    const c = this._pon;
+    Object.assign(c, {acao, resultado: null, confirmando: false, erro: '',
+                      comandos: null, comandosEditados: null});
+    this._pintarPon();
+    try {
+      const r = await fetch(`/clientes/acessos/${c.acessoId}/olt-pon/executar/`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json',
+                  'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value},
+        body: JSON.stringify({acao, slot: c.slot, portas: [c.porta], preview: true}),
+      });
+      const d = await r.json();
+      if (!r.ok) { c.erro = d.error || `Erro ${r.status}`; this._pintarPon(); return; }
+      c.comandos = d.comandos;
+      c.escreve = d.escreve;
+      c.ontsAfetadas = d.onts_afetadas;
+      this._pintarPon();
+    } catch (e) {
+      c.erro = 'Falha ao gerar os comandos: ' + e;
+      this._pintarPon();
+    }
+  }
+
+  async _ponExecutar() {
+    const c = this._pon;
+    this._ponLerTextarea();
+    const comandos = (c.comandosEditados !== null && c.comandosEditados !== undefined)
+      ? c.comandosEditados.split('\n').map(l => l.trim()).filter(Boolean)
+      : c.comandos;
+
+    c.confirmando = false;
+    c.resultado = null;
+    c.executando = true;
+    this._pintarPon();
+    this._toast('Conectando no equipamento…');
+
+    try {
+      const r = await fetch(`/clientes/acessos/${c.acessoId}/olt-pon/executar/`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json',
+                  'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value},
+        body: JSON.stringify({acao: c.acao, slot: c.slot, portas: [c.porta],
+                              preview: false, comandos}),
+      });
+      const d = await r.json();
+      c.executando = false;
+      if (!r.ok) { c.erro = d.error || `Erro ${r.status}`; this._pintarPon(); return; }
+      c.resultado = d;
+      this._pintarPon();
+      this._toast(d.status === 'sucesso' ? 'Comando executado' : 'O equipamento recusou',
+                  d.status === 'sucesso' ? 'ok' : 'error');
+    } catch (e) {
+      c.executando = false;
+      c.erro = 'Falha ao executar: ' + e;
+      this._pintarPon();
+    }
   }
 
   _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }

@@ -14,6 +14,7 @@ from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
 from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate, ComentarioAcesso, OpenVPNConfig
 from .models import AcaoL2vpn
+from .models import AcaoOltPon
 from .models import ProxyServer
 from .models import AcessoSessao, AcessoComando, TerminalLinkExterno
 from .proxy_engine import ProxyEngine
@@ -7081,6 +7082,176 @@ def l2vpn_clonar_acesso(request, acesso_id):
     return JsonResponse({
         'status': status, 'output': output, 'comandos': comandos,
         'nome': spec['nome'], 'id': spec['id'],
+    })
+
+
+# ─── Portas PON de OLT Huawei (MA5600T/MA5800) ────────────────────────────────
+
+from .olt_pon import (
+    ACOES as _PON_ACOES,
+    OltPonNaoSuportado,
+    acao_escreve as _pon_escreve,
+    comandos_pon,
+    executar as _pon_executar,
+    parse_pon,
+    validar_alvo as _pon_validar_alvo,
+    validar_comandos_editados as _pon_validar_comandos,
+)
+
+# Sobe junto com qualquer mudança em `olt_pon.parse_pon` — mesma regra do
+# cache do L2VPN: o parse guardado tem o formato da versão que o gerou.
+_PON_CACHE_VERSAO = 1
+
+
+def _pon_inventario_do_acesso(acesso):
+    """(inventário, BackupLog) do backup mais recente. Cacheado por id do
+    BackupLog, que nunca muda de conteúdo depois de gravado — reaproveita o
+    mesmo helper de leitura do L2VPN (`_backups_recentes`/`_ler_backup`)."""
+    recentes = _backups_recentes(acesso, limite=1)
+    if not recentes:
+        return None, None
+    log, caminho = recentes[0]
+    chave = f'pon:inv:v{_PON_CACHE_VERSAO}:{log.id}'
+    inventario = cache.get(chave)
+    if inventario is None:
+        inventario = parse_pon(_ler_backup(caminho))
+        cache.set(chave, inventario, _L2VPN_CACHE_TTL)
+    return inventario, log
+
+
+def _pon_pode(request, acesso):
+    """Mesma régua do clone de L2VPN: mexer em porta de OLT é engenharia de
+    rede, não função de portal de cliente."""
+    return (_perms.is_backoffice(request.user)
+            and _perms.ferramenta_habilitada(request.user, 'topologia')
+            and _perms.pode_acessar_cliente(request.user, acesso.cliente))
+
+
+@login_required(login_url='login')
+@require_http_methods(['GET'])
+@modulo_habilitado_required('topologia')
+def olt_pon_acesso(request, acesso_id):
+    """Inventário das placas e portas PON do host, lido do backup mais recente.
+
+    É a tela que abre antes de qualquer conexão: quais placas existem, quantas
+    portas cada uma tem, quantas ONTs estão em cada porta e quem são elas. O
+    equipamento só é tocado quando o operador dispara uma ação.
+    """
+    acesso = get_object_or_404(Acesso.objects.select_related('cliente'), id=acesso_id)
+    if not _pon_pode(request, acesso):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    inventario, log = _pon_inventario_do_acesso(acesso)
+    if log is None:
+        return JsonResponse({
+            'tem_backup': False,
+            'mensagem': 'Nenhum backup deste host foi encontrado — rode um backup antes.',
+        })
+    if not inventario.get('suportado'):
+        return JsonResponse({
+            'tem_backup': True, 'suportado': False,
+            'mensagem': ('O backup mais recente deste host não tem placas PON Huawei. '
+                         'Esta automação cobre OLT Huawei MA5600T/MA5800 — '
+                         'ZTE, Datacom e Parks usam outra CLI.'),
+            'data_backup': log.data_backup.astimezone(
+                timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M'),
+        })
+
+    return JsonResponse({
+        'tem_backup': True,
+        'suportado': True,
+        'modelo': inventario['modelo'],
+        'placas': inventario['placas'],
+        'total_onts': inventario['total_onts'],
+        'total_portas': inventario['total_portas'],
+        'acoes': [{'chave': k, 'label': v['label'], 'escreve': v['escreve']}
+                  for k, v in _PON_ACOES.items()],
+        'host': {'id': acesso.id, 'nome': acesso.tipo, 'ip': acesso.host},
+        'data_backup': log.data_backup.astimezone(
+            timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M'),
+        'arquivo': os.path.basename(log.arquivo_path),
+    })
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+@modulo_habilitado_required('topologia')
+def olt_pon_executar(request, acesso_id):
+    """Consulta (`display port info/state`) ou liga/desliga o laser de uma
+    porta PON.
+
+    body: {"acao": "info|state|laser_off|laser_on", "slot": "0/1",
+           "portas": [0, 3], "preview": bool, "comandos": [...]}
+
+    Mesmo contrato das outras automações: `preview=true` só devolve os
+    comandos, sem tocar no equipamento — é o texto do textarea editável.
+    `preview=false` executa de verdade e grava `AcaoOltPon`.
+
+    A placa e as portas são conferidas contra o inventário do backup antes de
+    virar comando: `interface gpon 0/9` num chassi que só vai até 0/5 entra no
+    modo de configuração de um slot vazio, e aí o comando seguinte roda em
+    contexto errado.
+    """
+    acesso = get_object_or_404(Acesso.objects.select_related('cliente'), id=acesso_id)
+    if not _pon_pode(request, acesso):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    inventario, log = _pon_inventario_do_acesso(acesso)
+    if log is None or not (inventario or {}).get('suportado'):
+        return JsonResponse(
+            {'error': 'Sem inventário PON no backup deste host.'}, status=404)
+
+    acao = str(body.get('acao') or '').strip()
+    try:
+        slot, portas = _pon_validar_alvo(inventario, body.get('slot'), body.get('portas'), acao)
+        comandos_gerados = comandos_pon(slot, portas, acao)
+    except OltPonNaoSuportado as e:
+        return JsonResponse({'error': str(e)}, status=422)
+
+    # Quantas ONTs estão nas portas alvo — vai pro preview (a UI usa pra
+    # confirmação do laser) e pra auditoria.
+    placa = next(p for p in inventario['placas'] if p['slot'] == slot)
+    onts_afetadas = sum(p['onts'] for p in placa['portas'] if p['porta'] in portas)
+
+    if bool(body.get('preview', True)):
+        return JsonResponse({
+            'comandos': comandos_gerados,
+            'escreve': _pon_escreve(acao),
+            'onts_afetadas': onts_afetadas,
+        })
+
+    comandos_editados = body.get('comandos')
+    if comandos_editados is not None:
+        try:
+            comandos = _pon_validar_comandos(comandos_editados)
+        except OltPonNaoSuportado as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    else:
+        comandos = comandos_gerados
+
+    output, status = _pon_executar(acesso, comandos)
+
+    AcaoOltPon.objects.create(
+        acesso=acesso, usuario=request.user, acao=acao, slot=slot,
+        portas=','.join(str(p) for p in portas), onts_afetadas=onts_afetadas,
+        escrita=_pon_escreve(acao), comandos='\n'.join(comandos),
+        output=output, status=status,
+    )
+
+    if _pon_escreve(acao):
+        logger.warning(
+            f'PON {acao} em {acesso} placa {slot} porta(s) {portas} '
+            f'({onts_afetadas} ONTs) por {request.user} — {status}')
+
+    return JsonResponse({
+        'status': status, 'output': output, 'comandos': comandos,
+        'acao': acao, 'slot': slot, 'portas': portas,
+        'onts_afetadas': onts_afetadas,
     })
 
 

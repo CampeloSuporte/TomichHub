@@ -5,6 +5,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-14 (Topologia: portas PON de OLT Huawei)
+
+### Adicionado
+
+- **Automação de portas PON para OLT Huawei MA5600T/MA5800**
+  ([`clientes/olt_pon.py`](clientes/olt_pon.py), [`docs/olt_pon.md`](docs/olt_pon.md)):
+  o painel de propriedades de um host OLT na topologia ganhou o botão
+  **"Portas PON"**, que lê do backup mais recente as placas do chassi e a grade
+  de portas de cada uma — com quantas ONTs estão em cada porta e quem são elas.
+  Sobre esse inventário, o operador dispara no equipamento
+  `display port info <porta>`, `display port state <porta>` e
+  `port <porta> laser-switch on/off`, com preview editável antes de enviar
+  (mesmo contrato das automações de BGP e L2VPN).
+- **O impacto do laser aparece antes do clique**: `laser-switch off` derruba
+  todas as ONTs da porta, então o número (e os nomes das primeiras ONTs) sai na
+  grade, no aviso vermelho do preview e no registro de auditoria
+  (`AcaoOltPon.onts_afetadas`, congelado no momento da ação). Laser é uma porta
+  por vez e exige confirmação explícita; consulta executa direto.
+- Endpoints `GET/POST /clientes/acessos/<id>/olt-pon/` com a mesma régua de
+  permissão do clone de L2VPN (backoffice + ferramenta `topologia` + posse do
+  cliente) e auditoria em `AcaoOltPon` (migração `0109_acao_olt_pon`).
+
+Detecção validada nos backups reais: dos 69 acessos com `interface gpon`, os 18
+Huawei entram e os 51 ZTE/Datacom/Parks ficam de fora com mensagem explicando —
+0 falso positivo e 0 falso negativo.
+
+---
+
 ## [Não publicado] — 2026-08-14 (Atendimento em tempo real e tráfego animado na topologia)
 
 ### Corrigido

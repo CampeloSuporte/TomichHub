@@ -1570,6 +1570,55 @@ class AcaoL2vpn(models.Model):
         return f'[l2vpn] {quem} → {self.acesso} :: {self.alvo} [{self.status}]'
 
 
+class AcaoOltPon(models.Model):
+    """Auditoria de uma consulta ou operação numa porta PON de OLT Huawei
+    disparada pela topologia.
+
+    Separado de `AcaoL2vpn`/`AcaoBgp` porque o alvo é outro (placa/porta de uma
+    OLT) e porque aqui existe uma distinção que não existe nas outras: metade
+    das ações é leitura pura (`display port info/state`) e a outra metade
+    apaga o laser de uma porta, derrubando todos os assinantes dela. O campo
+    `onts_afetadas` guarda quantas ONTs estavam naquela porta no momento da
+    ação — é o que permite auditar depois o tamanho do impacto, mesmo que o
+    backup mude.
+    """
+
+    STATUS = [
+        ('sucesso', 'Sucesso'),
+        ('erro',    'Erro'),
+    ]
+    ACOES = [
+        ('info',      'Informações da porta'),
+        ('state',     'Estado da porta'),
+        ('laser_off', 'Desligar laser'),
+        ('laser_on',  'Ligar laser'),
+    ]
+
+    acesso         = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='acoes_olt_pon')
+    usuario        = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name='+')
+    acao           = models.CharField(max_length=20, choices=ACOES)
+    slot           = models.CharField(max_length=16, verbose_name='Placa (frame/slot)')
+    portas         = models.CharField(max_length=64, blank=True, default='',
+                                      verbose_name='Portas alvo (separadas por vírgula)')
+    onts_afetadas  = models.IntegerField(default=0,
+                                         verbose_name='ONTs nas portas no momento da ação')
+    escrita        = models.BooleanField(default=False,
+                                         verbose_name='Alterou o equipamento (laser on/off)')
+    comandos       = models.TextField()                 # comandos reais enviados, um por linha
+    output         = models.TextField(blank=True, default='')
+    status         = models.CharField(max_length=10, choices=STATUS)
+    executado_em   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-executado_em']
+        verbose_name = 'Ação PON na OLT (Auditoria)'
+        verbose_name_plural = 'Ações PON na OLT (Auditoria)'
+
+    def __str__(self):
+        quem = self.usuario.get_username() if self.usuario else '?'
+        return f'[pon] {quem} → {self.acesso} :: {self.acao} {self.slot}/{self.portas} [{self.status}]'
+
+
 class BgpCommunity(models.Model):
     """Communities BGP cadastradas manualmente por sessão (upstream/operadora)
     — cada upstream publica sua própria lista (blackhole, no-export seletivo,

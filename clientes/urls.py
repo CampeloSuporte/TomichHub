@@ -120,6 +120,9 @@ urlpatterns = [
     path('acessos/<int:acesso_id>/l2vpn-backup/', views.l2vpn_backup_acesso, name='l2vpn_backup_acesso'),
     path('acessos/<int:acesso_id>/l2vpn-peers/', views.l2vpn_peers_acesso, name='l2vpn_peers_acesso'),
     path('acessos/<int:acesso_id>/l2vpn-clonar/', views.l2vpn_clonar_acesso, name='l2vpn_clonar_acesso'),
+    # Portas PON de OLT Huawei (inventário do backup + display/laser ao vivo)
+    path('acessos/<int:acesso_id>/olt-pon/', views.olt_pon_acesso, name='olt_pon_acesso'),
+    path('acessos/<int:acesso_id>/olt-pon/executar/', views.olt_pon_executar, name='olt_pon_executar'),
 
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/(?P<porta>[0-9]+)/(?P<scheme>https?)(?P<path>/.*)?$', views.proxy_web_acesso, name='proxy_web_acesso'),
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/?$', views.proxy_web_acesso, name='proxy_web_acesso_legacy'),
