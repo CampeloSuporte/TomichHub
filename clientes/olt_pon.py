@@ -202,8 +202,10 @@ PREAMBULO = ['enable', 'config', 'undo interactive', 'undo smart', 'scroll']
 ACOES = {
     'info':  {'label': 'Informações da porta', 'comando': 'display port info {porta}', 'escreve': False},
     'state': {'label': 'Estado da porta',      'comando': 'display port state {porta}', 'escreve': False},
-    'laser_off': {'label': 'Desligar laser',   'comando': 'port {porta} laser-switch off', 'escreve': True},
-    'laser_on':  {'label': 'Ligar laser',      'comando': 'port {porta} laser-switch on',  'escreve': True},
+    'laser_off': {'label': 'Desativar porta (laser off)',
+                  'comando': 'port {porta} laser-switch off', 'escreve': True},
+    'laser_on':  {'label': 'Ativar porta (laser on)',
+                  'comando': 'port {porta} laser-switch on',  'escreve': True},
 }
 
 _SLOT_RE = re.compile(r'^\d{1,2}/\d{1,2}$')

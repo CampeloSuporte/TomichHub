@@ -2594,7 +2594,12 @@ class TopoEditor {
   }
 
   /** Grade de portas da placa. A cor é a ocupação (quantas ONTs), então dá pra
-   *  ver de longe onde está a base — e onde um laser-switch off doeria. */
+   *  ver de longe onde está a base — e onde desativar a porta doeria.
+   *
+   *  Cada porta traz o próprio botão de desativar (laser off): o laser É o
+   *  liga/desliga da porta PON, então ele mora na porta, não escondido atrás
+   *  de um clique de seleção. O botão não executa nada sozinho — abre o
+   *  preview daquela porta, que ainda exige a confirmação explícita. */
   _ponGrade(placa) {
     const tiles = placa.portas.map(p => {
       const classes = ['pon-porta'];
@@ -2602,11 +2607,21 @@ class TopoEditor {
       if (!p.configurada) classes.push('vazia');
       else if (p.onts >= 50) classes.push('cheia');
       else if (p.onts > 0) classes.push('ocupada');
+      const impacto = p.onts ? ` — derruba ${p.onts} ONT${p.onts === 1 ? '' : 's'}` : ' (sem ONT cadastrada)';
+      // Wrapper por fora: <button> dentro de <button> é HTML inválido e o
+      // clique interno nem sempre chega ao handler certo.
       return `
-        <button class="${classes.join(' ')}" onclick="topo._ponSelecionarPorta(${p.porta})"
-          title="Porta ${p.porta} — ${p.onts} ONT${p.onts === 1 ? '' : 's'}${p.configurada ? '' : ' (sem configuração no backup)'}">
-          <b>${p.porta}</b><em>${p.onts || '—'}</em>
-        </button>`;
+        <div class="pon-porta-wrap">
+          <button class="${classes.join(' ')}" onclick="topo._ponSelecionarPorta(${p.porta})"
+            title="Porta ${p.porta} — ${p.onts} ONT${p.onts === 1 ? '' : 's'}${p.configurada ? '' : ' (sem configuração no backup)'}">
+            <b>${p.porta}</b><em>${p.onts || '—'}</em>
+          </button>
+          <button class="pon-laser" onclick="topo._ponDesativarPorta(${p.porta})"
+            title="Desativar a porta ${placa.slot}/${p.porta} (laser off)${impacto}"
+            aria-label="Desativar a porta ${p.porta}">
+            <i class="fas fa-power-off"></i>
+          </button>
+        </div>`;
     }).join('');
     return `
       <div class="pon-grade-wrap">
@@ -2716,6 +2731,14 @@ class TopoEditor {
     Object.assign(this._pon, {slot, porta: null, acao: null, comandos: null,
                               resultado: null, confirmando: false, erro: ''});
     this._pintarPon();
+  }
+
+  /** Botão de desativar na própria porta: seleciona e já monta o preview do
+   *  laser off — a confirmação continua sendo um segundo clique, no preview. */
+  _ponDesativarPorta(porta) {
+    Object.assign(this._pon, {porta, acao: null, comandos: null, comandosEditados: null,
+                              resultado: null, confirmando: false, erro: ''});
+    this._ponPreview('laser_off');
   }
 
   _ponSelecionarPorta(porta) {

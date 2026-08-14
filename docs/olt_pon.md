@@ -24,8 +24,14 @@ Selecionada uma porta, dá pra disparar no equipamento:
 |---|---|---|
 | Informações da porta | `display port info <porta>` | leitura |
 | Estado da porta | `display port state <porta>` | leitura |
-| Desligar laser | `port <porta> laser-switch off` | **escrita — derruba a porta** |
-| Ligar laser | `port <porta> laser-switch on` | escrita |
+| Desativar porta (laser off) | `port <porta> laser-switch off` | **escrita — derruba a porta** |
+| Ativar porta (laser on) | `port <porta> laser-switch on` | escrita |
+
+O laser **é** o liga/desliga da porta PON — por isso o rótulo fala do efeito
+("desativar a porta"), não do comando, e por isso **cada porta da grade tem o
+próprio botão de desativar** (o ícone de power no canto do quadradinho), sem
+precisar selecionar a porta antes. O botão não executa nada sozinho: ele abre o
+preview daquela porta, que ainda exige a confirmação explícita.
 
 Os três comandos são os do treinamento oficial de MA5800 (Aula 7 — comandos
 úteis) e rodam **dentro do modo de configuração da placa PON**, que é o que o
@@ -70,7 +76,8 @@ nela ficam sem sinal até o laser voltar. Por isso o inventário conta as ONTs p
 porta e o número acompanha a operação em três lugares:
 
 1. **na grade**, como número embaixo do índice da porta (e a cor: cinza = sem
-   configuração, verde = com ONT, ciano = 50+);
+   configuração, verde = com ONT, ciano = 50+) — e no `title` do botão de
+   desativar de cada porta, que já diz quantas ONTs ela derruba;
 2. **no preview**, num aviso vermelho — *"Apagar o laser da porta 0/1/4 derruba
    29 ONTs"* — com os nomes/SNs das primeiras ONTs listados logo acima;
 3. **na auditoria** (`AcaoOltPon.onts_afetadas`), congelado no momento da ação:
