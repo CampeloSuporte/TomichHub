@@ -984,3 +984,102 @@ Exige `migrate` e restart de **Gunicorn e Celery**.
 
 **Mantido por:** CampeloSuporte  
 **Repositório:** /opt/crm
+
+## Conclusão do chamado deixa de ir pro grupo (2026-08-13)
+
+**Pedido:** ao fechar um chamado, o grupo do cliente não deve receber a mensagem de chamado
+concluído — ela só aparece internamente, no histórico da conversa.
+
+**Como era** (`atendimento/views.py`, `api_update_conversation`): ao mudar o status para
+`resolved`/`closed`, uma thread em background chamava
+`EvolutionAPIClient(...).send_text(group_jid, "✅ Chamado concluído! 📋 Protocolo: #N")` e só
+gravava a `Message` **se o envio desse certo** — ou seja, o registro interno dependia da
+Evolution API estar de pé (falha de envio = nenhum rastro no histórico).
+
+**Como ficou:** a mensagem é gravada direto como `Message(sender_type='system')` na conversa,
+sem nenhuma chamada externa, e é empurrada pro chat aberto com
+`ConversationService._broadcast_msg(..., inbox=False)` — sem isso a linha só apareceria ao
+recarregar a conversa. Efeitos colaterais bem-vindos: some a thread em background, some a
+dependência da API pra registrar o fechamento, e a resposta HTTP não espera I/O nenhum.
+
+`inbox=False` de propósito: o card já saiu das listas pelo `conversation_status` disparado logo
+antes; mandar um `new_message` pra caixa de entrada faria a conversa fechada reaparecer.
+
+**A "Mensagem de encerramento" das configurações continua sendo enviada ao cliente** (o campo
+`msg_encerramento` em Configurações → texto livre, hoje vazio nesta instalação). Ela é a via
+oficial pra avisar o cliente no fechamento; quem não quer aviso nenhum deixa o campo em branco.
+Só a linha automática de protocolo virou interna.
+
+**Verificado** fechando uma conversa via `POST /atendimento/api/conversation/<id>/update/`
+com `EvolutionAPIClient.send_text` sob `mock` (transação revertida no fim): 0 chamadas de envio,
+status `resolved`, e 1 mensagem interna `sender_type='system'` com o texto do protocolo.
+
+---
+
+## 🔁 Lista lateral em tempo real (14/08/2026)
+
+**Sintoma relatado:** "tenho que ficar atualizando a página para aparecer as mensagens em aberto".
+
+**Causa:** o WebSocket do inbox funcionava — tocava o som, mostrava o toast e piscava o item —
+mas nenhum dos dois handlers sabia **inserir** um chamado que ainda não estava na tela:
+
+- `inbox.html` só percorria os itens já renderizados (`querySelectorAll`) e atualizava hora e
+  ordem. Chamado novo simplesmente não tinha item pra atualizar.
+- `base.html` tinha `__refreshConvPanel()`, que refaz a lista com HTML do servidor, mas buscava
+  `location.pathname`. Dentro de um chamado essa URL é o `conversation_detail`, que **não**
+  renderiza o bloco `conv_panel` (herda a lista que já está na tela) — a resposta vinha com o
+  bloco vazio e a função saía sem fazer nada. Como o atendente passa o dia dentro de um chamado,
+  na prática o refresh nunca acontecia.
+
+**Como ficou:**
+
+| Situação | O que acontece agora |
+|---|---|
+| Mensagem de conversa que já está na lista | Atualiza hora e sobe pro topo (client-side, sem fetch) |
+| Mensagem de conversa que **não** está na lista | `__scheduleConvPanelRefresh()` → refaz a lista pelo Inbox |
+| `conversation_reassigned` (qualquer atendente) | Refaz a lista — antes o chamado que outro assumiu ficava na minha aba "Abertos" |
+| `conversation_status` resolved/closed | Remove o item também na sidebar do template base |
+| WebSocket reconectou | Um refresh de recuperação (eventos perdidos não chegam retroativamente) |
+
+`__refreshConvPanel()` agora busca sempre `/atendimento/inbox/?tab=<aba ativa>` — o Inbox é a
+única view que renderiza `conv_panel`. Ele preserva busca, scroll e o destaque do chamado aberto,
+e só roda no Inbox ou dentro de um chamado (em Dashboard/Relatórios a sidebar é outra coisa).
+O agendamento tem debounce de 700ms com teto de 3s, pra rajada de mensagens não adiar o refresh
+indefinidamente.
+
+**Também corrigido no mesmo caminho:**
+
+- Badge da "Caixa de Entrada" somava **+1 por mensagem** em vez de contar chamados: 5 mensagens
+  do mesmo grupo viravam "5 chamados sem atendente". Agora é recalculado a partir da aba "Abertos".
+- Contador de não lidas subia **2 por mensagem** com o Inbox aberto — `base.html` e `inbox.html`
+  chamavam `markConvUnread` para o mesmo evento. Ficou só em `base.html`, que roda em toda tela.
+- Bolha flutuante de chamado recém-atribuído só aparecia no recarregamento de 60s: a checagem
+  `[data-conv-id]` varria o documento inteiro e o item da lista lateral também tem esse atributo,
+  então o chamado "já existia". Agora a busca é dentro de `#gchatBubbles` e só pro próprio usuário.
+
+**Testes:** `AtualizacaoAutomaticaDaListaTest` cobre o Inbox via AJAX devolvendo a lista no bloco
+`conv_panel`, o `conversation_detail` devolvendo o bloco vazio (o motivo de o refresh apontar pro
+Inbox) e um chamado novo aparecendo na lista que o refresh busca.
+
+---
+
+## 🤖 Auto atendimento não escreve mais nos grupos (14/08/2026)
+
+O fluxo ativo disparava, **a cada chamado aberto**, a saudação e a mensagem de conclusão direto no
+grupo do cliente (`ConversationService._flow_enviar` → `EvolutionAPIClient.send_text`). Como o
+chamado já é aberto na primeira mensagem, sem depender de resposta do bot, essas duas mensagens só
+poluíam a conversa do grupo.
+
+O envio automático saiu de `process_webhook`. O que **continua** existindo:
+
+- a tela `/atendimento/auto-atendimento/` e os fluxos cadastrados (com um aviso no topo);
+- a notificação de "novo chamado em aberto", que vai para o **grupo interno** configurado em
+  Configurações (`notif_abertos_group_id`), não para o grupo do cliente;
+- a "Mensagem de encerramento" das configurações, que é a via oficial de avisar o cliente.
+
+`ChatFlowSession` não é criada em lugar nenhum desde a simplificação do fluxo (0 linhas no banco),
+então `_processar_passo_fluxo`/`_finalizar_fluxo` já eram caminhos inalcançáveis.
+
+**Testes:** `AutoAtendimentoNaoPoluiGrupoTest` — com um fluxo universal ativo, uma primeira
+mensagem de grupo não gera nenhuma chamada de `send_text` nem balão `sender_type='system'`.
+Verificado que os mesmos testes falham no código anterior (2 chamadas de `send_text`).

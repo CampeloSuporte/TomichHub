@@ -1603,10 +1603,78 @@ document.addEventListener('click', function() {
        mesma técnica usada ao assumir/transferir um chamado na própria aba,
        reaproveitada aqui para refletir mudanças feitas por OUTRO atendente
        (ex.: alguém me transferiu um chamado) sem exigir F5 manual. */
+    var INBOX_URL = "{% url 'atendimento:inbox' %}";
+
+    /* Aba ativa da lista (Assumidos / Abertos / Em Andamento / Tarefa) —
+       precisa ir na URL do refresh, senão a lista volta sempre pra "Abertos". */
+    function _activePanelTab() {
+        if (window._activeInboxTab) return window._activeInboxTab;
+        var btn = document.querySelector('.conv-panel .conv-tab.active');
+        if (btn) {
+            var m = (btn.getAttribute('onclick') || '').match(/switchInboxTab\('([^']+)'/);
+            if (m) return m[1];
+            var href = btn.getAttribute('href') || '';
+            var t = href.match(/[?&]tab=([^&]+)/);
+            if (t) return t[1];
+        }
+        return 'open';
+    }
+
+    function _applyConvPanelHtml(convPanel, newCP) {
+        /* Preserva o que é estado local da tela e se perde no replace:
+           texto da busca, scroll e destaque do chamado aberto. */
+        var oldSearch = (convPanel.querySelector('#convSearch') || {}).value || '';
+        var oldList   = convPanel.querySelector('.conv-list');
+        var oldScroll = oldList ? oldList.scrollTop : 0;
+
+        convPanel.innerHTML = newCP.innerHTML;
+
+        /* Re-executa scripts do conv-panel (busca, WS da lista) */
+        newCP.querySelectorAll('script').forEach(function(s) {
+            var ns = document.createElement('script');
+            ns.textContent = s.textContent;
+            document.body.appendChild(ns);
+            document.body.removeChild(ns);
+        });
+
+        var input = convPanel.querySelector('#convSearch');
+        if (input && oldSearch) {
+            input.value = oldSearch;
+            input.dispatchEvent(new Event('input'));
+        }
+        var newList = convPanel.querySelector('.conv-list');
+        if (newList && oldScroll) newList.scrollTop = oldScroll;
+
+        /* Marca de novo o chamado que está aberto no momento */
+        var here = location.pathname.replace(/\/+$/, '');
+        convPanel.querySelectorAll('.conv-item').forEach(function(el) {
+            var h = (el.getAttribute('href') || '').replace(/\/+$/, '');
+            el.classList.toggle('active', !!h && h === here);
+        });
+
+        window.__syncOpenBadges();
+    }
+
+    /* A lista SEMPRE vem do Inbox: ele é a única view que renderiza o bloco
+       conv_panel. O detalhe da conversa deliberadamente não renderiza (herda a
+       lista que já está na tela), então buscar `location.pathname` devolvia um
+       painel VAZIO e a função saía sem fazer nada — era exatamente por isso
+       que, com um chamado aberto, chamado novo em "Abertos" só aparecia
+       depois de recarregar a página. */
     window.__refreshConvPanel = function(cb) {
         var convPanel = document.querySelector('.conv-panel');
         if (!convPanel) { if (cb) cb(false); return; }
-        fetch(location.pathname + location.search, {
+
+        /* Refaz a lista só onde ela é a lista de chamados: no Inbox (painel de
+           abas) ou dentro de um chamado (sidebar herdada do Inbox). Em
+           Dashboard/Relatórios/Grupos a sidebar é a genérica do template base
+           — trocá-la pelo HTML do Inbox fazia o painel mudar de cara sozinho
+           no meio da navegação. */
+        var noInbox    = !!convPanel.querySelector('.inbox-tab-list');
+        var emConversa = /\/conversation\//.test(location.pathname);
+        if (!noInbox && !emConversa) { if (cb) cb(false); return; }
+
+        fetch(INBOX_URL + '?tab=' + _activePanelTab(), {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
             credentials: 'same-origin'
         })
@@ -1616,17 +1684,73 @@ document.addEventListener('click', function() {
             var doc = (new DOMParser()).parseFromString(html, 'text/html');
             var newCP = doc.querySelector('[data-target="conv-panel"]');
             if (!newCP || !newCP.innerHTML.trim()) { if (cb) cb(false); return; }
-            convPanel.innerHTML = newCP.innerHTML;
-            /* Re-executa scripts do conv-panel (busca, WS da lista) */
-            newCP.querySelectorAll('script').forEach(function(s) {
-                var ns = document.createElement('script');
-                ns.textContent = s.textContent;
-                document.body.appendChild(ns);
-                document.body.removeChild(ns);
-            });
+            _applyConvPanelHtml(convPanel, newCP);
             if (cb) cb(true);
         })
         .catch(function() { if (cb) cb(false); });
+    };
+
+    /* Recalcula os contadores a partir da lista que está na tela — o badge do
+       menu "Caixa de Entrada" era incrementado de 1 em 1 a cada mensagem
+       recebida, então uma conversa que mandasse 5 mensagens somava 5 no
+       contador de "chamados sem atendente". */
+    window.__syncOpenBadges = function() {
+        var panel = document.querySelector('.conv-panel');
+        if (!panel) return;
+        /* SÓ a lista de "Abertos" do Inbox serve de fonte. O #convList do
+           template base muda de conteúdo conforme a aba do chamado que está
+           na tela (pode ser "Assumidos" ou "Em Andamento"), então contá-lo
+           colocaria no badge de chamados-sem-atendente um número que não
+           tem nada a ver. Na dúvida, não mexe no badge do servidor. */
+        var lista = panel.querySelector('#tab-open');
+        if (!lista) return;
+        var n = lista.querySelectorAll('.conv-item').length;
+
+        /* href$="/inbox/" casa só a "Caixa de Entrada": "Conversas em Tarefa"
+           aponta pro mesmo path com ?tab=task e o Dashboard é /atendimento/. */
+        var navLink = document.querySelector('.nav-item[href$="/inbox/"]');
+        if (navLink) {
+            var badge = navLink.querySelector('.nav-badge');
+            if (n > 0) {
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'nav-badge';
+                    navLink.insertBefore(badge, navLink.querySelector('.nav-item-arrow'));
+                }
+                badge.textContent = n;
+            } else if (badge) {
+                badge.remove();
+            }
+        }
+        var tabBadge = panel.querySelector('#badge-open');
+        if (tabBadge) {
+            tabBadge.textContent = n;
+            tabBadge.style.display = n > 0 ? '' : 'none';
+        }
+    };
+
+    /* Refresh com debounce — várias mensagens chegando em rajada viram UM
+       único refresh, em vez de um fetch por mensagem. O teto de 3s existe
+       porque debounce puro pode nunca disparar: numa rajada em que cada
+       mensagem chega antes dos 700ms, cada uma rearmava o timer e a lista
+       ficava sem atualizar justamente na hora de maior movimento. */
+    var _refreshTimer = null, _refreshDesdeDe = 0;
+    var REFRESH_MAX_ESPERA = 3000;
+
+    window.__scheduleConvPanelRefresh = function(delay) {
+        var agora = Date.now();
+        if (!_refreshTimer) _refreshDesdeDe = agora;
+
+        var espera = delay === undefined ? 700 : delay;
+        var restante = REFRESH_MAX_ESPERA - (agora - _refreshDesdeDe);
+        if (espera > restante) espera = Math.max(0, restante);
+
+        clearTimeout(_refreshTimer);
+        _refreshTimer = setTimeout(function() {
+            _refreshTimer = null;
+            if (typeof window.__spaClearPrefetchCache === 'function') window.__spaClearPrefetchCache();
+            window.__refreshConvPanel();
+        }, espera);
     };
 
     function pulseConvItem(convId) {
@@ -1671,14 +1795,32 @@ document.addEventListener('click', function() {
                         if (typeof window.__spaClearPrefetchCache === 'function') window.__spaClearPrefetchCache();
                         var iAmNewAssignee = p.assigned_to_id === currentUserId;
                         var iWasOldAssignee = p.old_assigned_to_id === currentUserId;
-                        if (iAmNewAssignee || iWasOldAssignee) {
-                            window.__refreshConvPanel();
-                        }
+                        /* Refresh SEMPRE, não só quando o chamado é meu: quando
+                           outro atendente assume, o chamado tem que sair da
+                           minha aba "Abertos" na hora — antes ele ficava lá,
+                           parecendo sem dono, até eu recarregar a página. */
+                        window.__scheduleConvPanelRefresh(iAmNewAssignee || iWasOldAssignee ? 0 : 900);
                         if (iAmNewAssignee) {
                             if (typeof playSoundTicket === 'function') playSoundTicket();
                             showBrowserNotif('🔄 Chamado transferido para você', p.group_name || 'Um chamado foi transferido para você.');
                             showToast(p.group_name || 'Chamado', 'Transferido para você', p.conversation_id, (p.group_name || '??').substring(0, 2).toUpperCase(), true);
                         }
+                        return;
+                    }
+
+                    /* Chamado resolvido/encerrado por qualquer atendente → sai da
+                       lista. O inbox.html já trata isso, mas o script dele só
+                       roda quando a lista de abas está montada; ao entrar direto
+                       num chamado (F5 na URL da conversa) a sidebar vem do
+                       template base e ficava com chamados já encerrados. */
+                    if (p.type === 'conversation_status' && p.conversation_id &&
+                        (p.status === 'resolved' || p.status === 'closed')) {
+                        if (typeof window.__spaClearPrefetchCache === 'function') window.__spaClearPrefetchCache();
+                        document.querySelectorAll('.conv-item[data-conv-id="' + p.conversation_id + '"]').forEach(function(el) {
+                            if (typeof window.fadeOutRemove === 'function') window.fadeOutRemove(el);
+                            else el.remove();
+                        });
+                        setTimeout(window.__syncOpenBadges, 400);
                         return;
                     }
 
@@ -1692,6 +1834,14 @@ document.addEventListener('click', function() {
 
                     var conv = p.conversation;
                     var msg  = p.message;
+
+                    /* Chamado que ainda não está na lista da tela (recém-aberto,
+                       ou que acabou de entrar em "Abertos") → busca a lista
+                       nova no servidor. Sem isto o WebSocket só tocava o som e
+                       mostrava o toast, e o item em si só surgia com F5. */
+                    if (conv.id && !document.querySelector('.conv-item[data-conv-id="' + conv.id + '"]')) {
+                        window.__scheduleConvPanelRefresh();
+                    }
 
                     if (msg.sender_type === 'agent') return;
 
@@ -1730,12 +1880,9 @@ document.addEventListener('click', function() {
                     /* 4. Pisca a conversa no sidebar */
                     pulseConvItem(convId);
 
-                    /* 5. Atualiza badge do nav "Caixa de Entrada" */
-                    var badge = document.querySelector('.nav-item[href*="inbox"] .nav-badge');
-                    if (badge) {
-                        var n = (parseInt(badge.textContent) || 0) + 1;
-                        badge.textContent = n;
-                    }
+                    /* 5. Badge do nav "Caixa de Entrada" — recalculado a partir
+                          da lista (contador de chamados, não de mensagens). */
+                    window.__syncOpenBadges();
                 } catch(err) {}
             };
             notifWs.onclose = function() {
@@ -3665,6 +3812,7 @@ function showToast(msg){
 'use strict';
 console.log('[gchat] init — usuário: {% if request.user.is_authenticated %}{{ request.user.username }}{% else %}anon{% endif %}');
 var _convs={}, _gcWs=null, _gcConvId=null, _gcRendered=new Set(), _gcSending=false, _gcPollTimer=null, _gcLastTs=null;
+var MEU_USER_ID = {{ request.user.id|default:0 }};
 
 var _pal=['#1abc9c','#16a085','#2ecc71','#27ae60','#3498db','#2980b9','#9b59b6','#8e44ad','#e67e22','#d35400','#e74c3c','#c0392b','#1dd1a1','#00b894','#fd79a8','#6c5ce7','#00cec9','#0984e3','#e17055','#fdcb6e'];
 function avatarColor(s){ var h=0; for(var i=0;i<s.length;i++){h=s.charCodeAt(i)+((h<<5)-h);h|=0;} return _pal[Math.abs(h)%_pal.length]; }
@@ -3826,15 +3974,20 @@ window.pulseBubble = function(convId) {
     var bubble = container.querySelector('[data-conv-id="' + convId + '"]');
     if (!bubble) { loadMyConvs(); return; }
 
-    /* Incrementa badge */
+    /* Incrementa badge. Os querySelector abaixo podem devolver null enquanto a
+       bolha está sendo remontada — sem as guardas isso virava TypeError, e como
+       pulseBubble é chamado no meio do handler do WebSocket, o erro abortava os
+       passos seguintes (piscar o item na lista, atualizar o contador). */
     var badge = bubble.querySelector('.gchat-bubble-badge');
-    var cur = parseInt(badge.textContent) || 0;
-    badge.textContent = cur + 1;
-    badge.classList.add('visible');
+    if (badge) {
+        badge.textContent = (parseInt(badge.textContent) || 0) + 1;
+        badge.classList.add('visible');
+    }
     bubble.classList.add('has-unread');
 
     /* Flash rápido: escala + anel luminoso */
     var avatar = bubble.querySelector('.gchat-bubble-avatar');
+    if (!avatar) return;
     avatar.style.transition = 'transform 0.15s, box-shadow 0.15s';
     avatar.style.transform  = 'scale(1.3) translateY(-5px)';
     avatar.style.boxShadow  = '0 0 0 5px rgba(255,255,255,0.45), 0 6px 20px rgba(0,0,0,0.5)';
@@ -3856,8 +4009,13 @@ window.pulseBubble = function(convId) {
                     var p=JSON.parse(e.data);
                     if(p.type==='new_message'&&p.conversation){
                         var conv=p.conversation;
-                        /* Recarrega lista se a atribuição mudou (nova conversa assumida/transferida) */
-                        if(conv.assigned_to_id && !document.querySelector('[data-conv-id="'+conv.id+'"]')){
+                        /* Recarrega a lista de bolhas se o chamado é meu e ainda
+                           não tem bolha. A busca era em document inteiro, e o
+                           item da lista lateral também tem data-conv-id — então
+                           qualquer chamado visível na sidebar "já existia" e a
+                           bolha só aparecia no recarregamento de 60s. */
+                        if(conv.assigned_to_id===MEU_USER_ID &&
+                           !document.querySelector('#gchatBubbles [data-conv-id="'+conv.id+'"]')){
                             loadMyConvs();
                         }
                     } else if(p.type==='conversation_status' && p.conversation_id &&

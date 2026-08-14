@@ -123,9 +123,22 @@ document.getElementById('convSearch').addEventListener('input', function() {
         window.__inboxListWS = null;
     }
 
+    var jaConectou = false;
+
     function connect() {
         ws = new WebSocket(proto + '://' + location.host + '/ws/atendimento/inbox/');
         window.__inboxListWS = ws;
+
+        ws.onopen = function() {
+            delay = 2000;
+            /* Reconexão: tudo que aconteceu enquanto o socket esteve fora do ar
+               não chega retroativamente. Busca a lista atual uma vez para não
+               ficar com chamados fantasmas / faltando até o próximo evento. */
+            if (jaConectou && typeof window.__scheduleConvPanelRefresh === 'function') {
+                window.__scheduleConvPanelRefresh(300);
+            }
+            jaConectou = true;
+        };
 
         ws.onmessage = function(e) {
             try {
@@ -141,6 +154,7 @@ document.getElementById('convSearch').addEventListener('input', function() {
                     /* Descarta HTML pré-carregado que ainda contenha este
                        chamado, para não "ressuscitá-lo" ao navegar em seguida */
                     if (typeof window.__spaClearPrefetchCache === 'function') window.__spaClearPrefetchCache();
+                    if (typeof window.__syncOpenBadges === 'function') setTimeout(window.__syncOpenBadges, 400);
                     return;
                 }
                 /* Chamado foi lido (nesta ou em outra aba/dispositivo) → some o indicador */
@@ -149,25 +163,49 @@ document.getElementById('convSearch').addEventListener('input', function() {
                     return;
                 }
 
+                /* Chamado mudou de dono → a lista muda de aba (sai de "Abertos",
+                   entra em "Assumidos" de alguém). Só o servidor sabe montar
+                   isso corretamente — por isso refaz a lista em vez de tentar
+                   mover o item no navegador. */
+                if (payload.type === 'conversation_reassigned') {
+                    if (typeof window.__scheduleConvPanelRefresh === 'function') {
+                        window.__scheduleConvPanelRefresh();
+                    }
+                    return;
+                }
+
                 if (payload.type !== 'new_message' || !payload.conversation) return;
                 var conv   = payload.conversation;
                 var convId = conv.id;
-                var isCustomerMsg = payload.message && payload.message.sender_type === 'customer';
 
-                /* Atualiza em TODAS as listas */
-                document.querySelectorAll('[href*="' + convId + '"]').forEach(function(el) {
-                    var preview = el.querySelector('.conv-preview');
-                    var time    = el.querySelector('.conv-time');
-                    if (preview && payload.message) preview.textContent = (payload.message.content || '').slice(0, 50);
-                    if (time)    time.textContent    = conv.last_message_at;
+                /* Atualiza em TODAS as listas. O seletor era '[href*=convId]',
+                   que casava com qualquer link cujo href contivesse o id —
+                   inclusive fora da lista. Agora casa só o item da conversa. */
+                var itens = document.querySelectorAll('.conv-item[data-conv-id="' + convId + '"]');
+
+                /* Conversa que ainda não está em nenhuma lista (chamado aberto
+                   agora, ou que acabou de virar "Aberto"): não dá pra montar o
+                   item no navegador — falta cliente, tags, SLA, protocolo. Pede
+                   a lista pronta ao servidor. Era este o caso que obrigava a
+                   ficar dando F5 pra ver chamado novo. */
+                if (!itens.length) {
+                    if (typeof window.__scheduleConvPanelRefresh === 'function') {
+                        window.__scheduleConvPanelRefresh();
+                    }
+                    return;
+                }
+
+                itens.forEach(function(el) {
+                    var time = el.querySelector('.conv-time');
+                    if (time) time.textContent = conv.last_message_at;
                     /* Move para o topo na lista onde está */
                     var parent = el.parentNode;
                     if (parent) parent.insertBefore(el, parent.firstChild);
                 });
-                /* Indicador persistente de não lida — só para mensagens do cliente */
-                if (isCustomerMsg && typeof window.markConvUnread === 'function') {
-                    window.markConvUnread(convId);
-                }
+                /* O contador de não lidas é marcado em base.html, que escuta o
+                   mesmo grupo de WebSocket e roda em todas as telas. Marcar
+                   aqui também fazia CADA mensagem do cliente somar 2 no badge
+                   da conversa enquanto o Inbox estava aberto. */
             } catch(err) {}
         };
 

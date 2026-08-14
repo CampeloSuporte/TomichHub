@@ -785,3 +785,35 @@ funcional de nenhuma ação — é puramente polish visual/tátil.
 | Duplo-clique em waypoint | Remover waypoint |
 | `Shift` + arrastar (área vazia) | Laço de seleção em área — seleciona vários dispositivos |
 | `Shift` + clique num dispositivo | Adiciona/remove esse dispositivo da multi-seleção |
+
+---
+
+## Fluxo de Tráfego nos Links — Corrigido em 2026-08-14
+
+O fluxo animado descrito acima ("tracinhos que correm do Lado A pro Lado B") **existia no código
+desde 2026-07-20 e nunca foi visível.** A `<path class="link-flow">` era renderizada com
+`stroke="${color}"` — a mesma cor da `<path class="link">` sólida desenhada logo abaixo dela.
+Um tracejado da cor exata da linha que está por baixo não aparece: o que se via na tela era só a
+linha sólida, mais as 2 bolinhas de `.link-packet`. Por isso o efeito era pedido de novo como se
+nunca tivesse sido feito.
+
+**Como ficou:**
+
+| Camada (ordem de desenho) | Papel |
+|---|---|
+| `.link` | Linha sólida, cor e espessura da interface — carrega a semântica (banda, estilo, seleção) |
+| `.link-glow` | Halo desfocado (`blur(2.5px)`, `opacity:.22`) na cor do enlace, acompanhando o dash — dá "corpo" ao tráfego sem engordar a linha sólida |
+| `.link-flow` | O tracejado que corre. Traço **claro** (`#eaf6ff`) com `mix-blend-mode:screen`, para acender sobre a linha colorida em vez de sumir nela |
+| `.link-packet` | As 2 bolinhas de `<animateMotion>`, agora com halo na cor do link + núcleo branco |
+
+O `drop-shadow` do `.link-flow` usa `currentColor`, e o JS passa `style="color:${color}"` nas duas
+paths novas — assim o brilho continua sendo da cor do enlace mesmo com o traço branco. A cor do
+traço vem do CSS (não do atributo `stroke`), porque regra CSS vence atributo de apresentação.
+
+**`prefers-reduced-motion` agora usa `display:none`, não `animation:none`.** Com o traço claro,
+congelar a animação deixaria um tracejado branco **fixo** por cima de todo link — inclusive dos
+configurados como sólidos, escondendo o `stroke-dasharray` de estilo (sólido/tracejado/pontilhado).
+O mesmo já valia para `body.effects-off`, que sempre usou `display:none`.
+
+Cache-busting: `topo_main.js?v=35` em [`topologia_editor.html`](../clientes/templates/topologia_editor.html)
+— ver [`docs/../CHANGELOG.md`] e a nota sobre versionamento de `static/` antes de rodar `collectstatic`.

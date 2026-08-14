@@ -5,6 +5,47 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-14 (Atendimento em tempo real e tráfego animado na topologia)
+
+### Corrigido
+
+- **Chamado novo só aparecia na lista depois de F5**
+  ([`atendimento/templates/atendimento/base.html`](atendimento/templates/atendimento/base.html),
+  [`inbox.html`](atendimento/templates/atendimento/inbox.html)): o WebSocket avisava (som, toast,
+  pisca-pisca), mas os dois handlers só sabiam atualizar itens **já** renderizados. E o
+  `__refreshConvPanel()`, que refaz a lista com HTML do servidor, buscava a URL da página atual —
+  dentro de um chamado essa URL é o `conversation_detail`, que não renderiza o bloco `conv_panel`,
+  então a resposta vinha vazia e a função saía sem fazer nada. Como o atendente fica o dia dentro
+  de um chamado, o refresh nunca rodava. Agora a lista vem sempre do Inbox (`?tab=<aba ativa>`),
+  preservando busca, scroll e o chamado destacado, com debounce de 700ms (teto de 3s).
+- **Chamado assumido por outro atendente ficava na minha aba "Abertos"**: o `conversation_reassigned`
+  só refazia a lista de quem ganhou ou perdeu o chamado. Agora refaz para todo mundo.
+- **Badge da "Caixa de Entrada" contava mensagens, não chamados**: cada mensagem recebida somava
+  +1, então um grupo que mandasse 5 mensagens virava "5 chamados sem atendente". Passou a ser
+  recalculado a partir da aba "Abertos".
+- **Contador de não lidas subia de 2 em 2** com o Inbox aberto — `base.html` e `inbox.html`
+  chamavam `markConvUnread` para o mesmo evento de WebSocket.
+- **Bolha flutuante de chamado recém-atribuído demorava até 60s**: a checagem de "já tem bolha?"
+  varria o documento inteiro, e o item da lista lateral também tem `data-conv-id`.
+- **Fluxo animado dos links da topologia era invisível**
+  ([`clientes/templates/topologia_editor.html`](clientes/templates/topologia_editor.html)): o
+  `.link-flow` herdava o `stroke` do próprio link, ou seja, tracinhos da mesma cor da linha sólida
+  desenhada logo abaixo. A animação existia e nunca dava pra ver.
+
+### Alterado
+
+- **Auto atendimento não escreve mais nos grupos**
+  ([`atendimento/services.py`](atendimento/services.py)): a saudação e a mensagem de conclusão do
+  fluxo eram enviadas ao grupo do cliente a cada chamado aberto, poluindo a conversa. O chamado já
+  abre na 1ª mensagem sem depender do bot. A tela de configuração continua (com aviso no topo), e a
+  notificação de "novo chamado" segue indo pro grupo **interno** configurado.
+- **Tráfego dos links da topologia ficou visível de verdade**: traço claro com `mix-blend-mode:
+  screen`, halo desfocado na cor do enlace e "pacotes" com brilho mais forte. Com
+  `prefers-reduced-motion` o fluxo some por completo (antes só a animação parava, o que deixaria um
+  tracejado branco fixo por cima de todo link).
+
+---
+
 ## [Não publicado] — 2026-08-13 (L2VPN: clone fiel à origem e sessão LDP junto)
 
 ### Corrigido
@@ -73,6 +114,37 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **Campos do painel de propriedades apareciam centralizados**: o `text-align:center` do estado
   vazio vinha inline no `#props-body` e, como o JS só troca o `innerHTML`, continuava valendo
   para os formulários. O estilo passou para a classe `.prop-empty`.
+
+---
+
+## [Não publicado] — 2026-08-13 (Túnel OpenVPN MikroTik: tráfego interno não passava)
+
+### Corrigido
+
+- **`iroute` obrigatório no client-config-dir** ([`clientes/openvpn_tunnel_manager.py`](clientes/openvpn_tunnel_manager.py)):
+  em modo `--server` o OpenVPN tem tabela de roteamento interna própria e a `route` do `.conf` só
+  entrega o pacote na `tun` — sem `iroute` ele descartava tudo em silêncio. Sintoma: túnel
+  `running`, handshake fechado, ping do `/29` respondendo e **nenhuma** rede interna alcançável.
+  Afetava os dois túneis em produção. `atualizar_redes_instancia` passou a reescrever o CCD junto
+  com o `.conf` (antes, editar as redes só mexia no lado kernel).
+- **Colisão de redes entre túneis**: `redes_em_conflito()` recusa criar/editar túnel com rede
+  idêntica à de outro túnel OpenVPN ou VPN WireGuard ativa, nomeando o cliente dono; o modal de
+  criação sugere as `/24` dos acessos privados do cliente (`sugerir_redes`) no lugar das faixas
+  CGNAT+RFC1918, que colidiam entre clientes e faziam o kernel usar as rotas de um só deles.
+- **`vpn_cobre_ip` mandava o proxy para o túnel errado** ([`clientes/views.py`](clientes/views.py)):
+  respondia "coberto" só pela declaração em `redes_privadas`. Agora confere o `dev` real da rota
+  (`vpn_manager.rota_dev_para`, via `ip route get`) contra a interface daquele túnel — não batendo,
+  cai no ProxyServer SSH. Mesmo guard (`_rota_confere`) nos consumers de Terminal/WinBox.
+- **Unit systemd zumbi**: falha ao subir a instância não desfazia o `enable`, e
+  `openvpn-server@server-crm-999` acumulou 558 mil reinícios apontando para um `.conf` inexistente.
+  `criar_instancia_servidor` agora limpa (`disable --now` + `reset-failed`), `remover_instancia_servidor`
+  também dá `reset-failed`, e `alocar_proxima_instancia` não reaproveita N com `.conf`/CCD em disco.
+
+### Documentação
+
+- Novo [`docs/tunel_openvpn_mikrotik.md`](docs/tunel_openvpn_mikrotik.md) — arquitetura da instância
+  dedicada, `route` × `iroute`, escolha das redes e diagnóstico. Seção de VPN direta atualizada em
+  [`docs/proxy_web_acessos.md`](docs/proxy_web_acessos.md).
 
 ---
 

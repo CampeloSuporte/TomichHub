@@ -845,3 +845,103 @@ class ReacaoWebhookTest(TestCase):
         self._webhook({'associatedChildMessage': {}}, msg_id='CHILD1')
 
         self.assertEqual(Message.objects.count(), antes)
+
+
+class AutoAtendimentoNaoPoluiGrupoTest(TestCase):
+    """O robô respondia toda primeira mensagem com a saudação + a mensagem de
+    conclusão do fluxo, direto no grupo do cliente. Como o chamado já abre na
+    1ª mensagem sem depender de resposta do bot, isso só enchia a conversa do
+    grupo de mensagens automáticas."""
+
+    def setUp(self):
+        from atendimento.models import ChatFlow
+        self.conversation = _criar_conversa()
+        self.group = self.conversation.group
+        self.group.jid = '551930903601-1620661695@g.us'
+        self.group.save(update_fields=['jid'])
+        # Fluxo universal (group_ids vazio) e ativo — pega qualquer grupo
+        self.flow = ChatFlow.objects.create(
+            name='Primeiro atendimento', active=True,
+            greeting_message='Olá! Seu chamado foi aberto.',
+            completion_message='Em breve um atendente responde.',
+        )
+        # A conversa criada pelo helper ficaria como "chamado já aberto";
+        # o caminho que disparava o bot é o de conversa nova.
+        self.conversation.status = 'closed'
+        self.conversation.save(update_fields=['status'])
+
+    def _webhook(self, texto, msg_id):
+        return ConversationService.process_webhook({
+            'event': 'MESSAGES_UPSERT',
+            'instance': self.group.connection.instance_name,
+            'data': {
+                'key': {'id': msg_id, 'fromMe': False,
+                        'remoteJid': self.group.jid, 'participant': '55279@lid'},
+                'pushName': 'Cliente',
+                'message': {'conversation': texto},
+            },
+        })
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_chamado_novo_nao_manda_nada_no_grupo(self, mock_client_cls):
+        resultado = self._webhook('bom dia, sem internet', 'MSGNOVA1')
+
+        self.assertTrue(resultado['success'])
+        mock_client_cls.return_value.send_text.assert_not_called()
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_chamado_novo_nao_cria_balao_do_robo(self, mock_client_cls):
+        self._webhook('bom dia, sem internet', 'MSGNOVA2')
+
+        conv = Conversation.objects.filter(
+            group=self.group, status='open').order_by('-created_at').first()
+        self.assertIsNotNone(conv)
+        self.assertFalse(
+            conv.messages.filter(sender_type='system').exists(),
+            'auto atendimento não deve mais gravar balão "Auto Atendimento"',
+        )
+        self.assertEqual(conv.messages.filter(sender_type='customer').count(), 1)
+
+
+class AtualizacaoAutomaticaDaListaTest(TestCase):
+    """A lista lateral só se atualizava com F5.
+
+    O WebSocket avisava da mensagem nova (som + toast), mas o refresh do painel
+    buscava a URL da página atual. Dentro de um chamado essa URL é o
+    conversation_detail, que herda a lista em vez de renderizá-la — a resposta
+    vinha com o bloco vazio e nada era atualizado. A fonte correta é o Inbox.
+    """
+
+    def setUp(self):
+        self.agent = _criar_agente_staff('bruno')
+        self.client.force_login(self.agent)
+        self.conversation = _criar_conversa()
+        self.conversation.status = 'open'
+        self.conversation.save(update_fields=['status'])
+
+    def _ajax(self, url):
+        return self.client.get(url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+    def test_inbox_via_ajax_devolve_a_lista_no_bloco_conv_panel(self):
+        html = self._ajax(reverse('atendimento:inbox')).content.decode()
+
+        self.assertIn('data-target="conv-panel"', html)
+        self.assertIn('data-conv-id="%s"' % self.conversation.id, html)
+
+    def test_detalhe_da_conversa_via_ajax_nao_traz_a_lista(self):
+        """Documenta por que o refresh precisa apontar para o Inbox: aqui o
+        bloco conv_panel vem vazio de propósito (a lista já está na tela)."""
+        url = reverse('atendimento:conversation_detail', args=[self.conversation.id])
+        html = self._ajax(url).content.decode()
+
+        self.assertIn('data-target="conv-panel"', html)
+        self.assertNotIn('data-conv-id="%s"' % self.conversation.id, html)
+
+    def test_chamado_novo_aparece_na_lista_buscada_pelo_refresh(self):
+        nova = _criar_conversa()
+        nova.status = 'open'
+        nova.save(update_fields=['status'])
+
+        html = self._ajax(reverse('atendimento:inbox') + '?tab=open').content.decode()
+
+        self.assertIn('data-conv-id="%s"' % nova.id, html)

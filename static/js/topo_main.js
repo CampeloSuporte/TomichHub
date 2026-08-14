@@ -879,7 +879,8 @@ class TopoEditor {
 
     linkGroup.innerHTML = `
       <path class="link" d="${d}" stroke="${color}" stroke-width="${w}" stroke-dasharray="${dash}" stroke-linecap="round"/>
-      <path class="link-flow" d="${d}" stroke="${color}" stroke-width="${Math.max(1.2, w-1)}"/>
+      <path class="link-glow" d="${d}" stroke="${color}" stroke-width="${w + 4}" style="color:${color}"/>
+      <path class="link-flow" d="${d}" stroke-width="${Math.max(1.4, w - .6)}" style="color:${color}"/>
       ${packetsHtml}
       <path class="link-hit" d="${d}" data-id="${link.id}"/>
       ${ipLocalHtml}${ipRemoteHtml}

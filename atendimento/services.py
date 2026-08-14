@@ -957,18 +957,13 @@ class ConversationService:
             if atendente_pessoal:
                 _alertar_atendente_pessoal(conv, group, atendente_pessoal, connection)
 
-            flow = ConversationService._flow_do_grupo(group)
-            if flow and not atendente_pessoal:
-                # Auto-atendimento simplificado: sem perguntas — só avisa que
-                # o chamado foi aberto (o chamado já está 'open' desde a
-                # linha acima, antes deste bloco rodar). Nada de sessão de
-                # fluxo aguardando resposta do cliente.
-                ConversationService._flow_enviar(conv, group, connection, flow.greeting_message)
-                if flow.completion_message:
-                    ConversationService._flow_enviar(conv, group, connection, flow.completion_message)
-                if not conv.assigned_to:
-                    _notify_new_open_conversation(conv, connection)
-            elif not conv.assigned_to:
+            # O auto-atendimento NÃO manda mais nada para o grupo do cliente.
+            # Ele respondia com a saudação + a mensagem de conclusão a cada
+            # chamado aberto, o que só poluía a conversa do grupo (o chamado
+            # já é aberto na 1ª mensagem, sem depender de resposta do bot).
+            # A configuração continua existindo em "Auto Atendimento" para
+            # assunto/categoria; o que saiu foi o envio automático.
+            if not conv.assigned_to:
                 _notify_new_open_conversation(conv, connection)
             logger.info(f"Chamado aberto na 1ª msg: conversa #{conv.conversation_id}")
 

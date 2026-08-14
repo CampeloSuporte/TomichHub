@@ -161,13 +161,31 @@ body.effects-off .node[data-live="1"] .node-ring{animation:none}
 .link-hit{fill:none;stroke:transparent;stroke-width:16;cursor:pointer}
 /* Fluxo animado — tracinhos que "correm" do Lado A pro Lado B, dando a
    sensação de tráfego passando pelo link. Puramente decorativo (sem
-   pointer-events, não interfere no clique nem no modelo de dados). */
-.link-flow{fill:none;pointer-events:none;stroke-dasharray:5 11;opacity:.6;animation:link-flow 1.1s linear infinite}
-@keyframes link-flow{to{stroke-dashoffset:-16}}
+   pointer-events, não interfere no clique nem no modelo de dados).
+   IMPORTANTE: o traço é claro (quase branco) de propósito. Enquanto herdava
+   o `stroke` do próprio link, os tracinhos ficavam da MESMA cor da linha
+   sólida desenhada logo abaixo — ou seja, a animação existia mas era
+   invisível. O `mix-blend-mode:screen` deixa o dash "acender" sobre a linha
+   colorida, e o drop-shadow usa currentColor (definido no JS com a cor do
+   link) pra manter o brilho na cor do enlace. */
+.link-flow{
+  fill:none;pointer-events:none;
+  stroke:#eaf6ff;stroke-linecap:round;
+  stroke-dasharray:6 14;opacity:.85;
+  mix-blend-mode:screen;
+  filter:drop-shadow(0 0 3px currentColor);
+  animation:link-flow .95s linear infinite;
+}
+@keyframes link-flow{to{stroke-dashoffset:-20}}
 body.effects-off .link-flow{display:none}
+/* Halo suave por baixo do fluxo — dá "corpo" ao tráfego sem engordar a linha
+   sólida (que carrega a semântica de banda via stroke-width). */
+.link-glow{fill:none;pointer-events:none;opacity:.22;filter:blur(2.5px);
+  stroke-dasharray:6 14;animation:link-flow .95s linear infinite}
+body.effects-off .link-glow{display:none}
 /* "Pacotes" viajando pelo link (<animateMotion>, ver _renderLink) — o brilho
    dá a impressão de um pulso de luz/dado passando, tipo tráfego de verdade. */
-.link-packet{pointer-events:none;filter:drop-shadow(0 0 3px currentColor)}
+.link-packet{pointer-events:none;filter:drop-shadow(0 0 5px currentColor) drop-shadow(0 0 2px #fff)}
 body.effects-off .link-packet{display:none}
 .link-label-bg{fill:var(--surface);rx:4}
 .link-label{font-size:10px;fill:#9fb0c0;text-anchor:middle;pointer-events:none;font-weight:500}
@@ -373,7 +391,11 @@ body:not(.pal-off) #legend-panel{left:236px}
 /* Movimento reduzido: some o que é puramente decorativo (fluxo dos links,
    pulso dos hosts, deslocamentos) e ficam só as transições de opacidade. */
 @media (prefers-reduced-motion: reduce){
-  .link-flow,.link-packet,.node[data-live="1"] .node-ring{animation:none}
+  /* Fluxo e halo somem por completo (display), não só a animação: o traço é
+     branco e a dasharray é dele, então "congelado" ele viraria um tracejado
+     claro fixo por cima de TODO link — inclusive dos que são sólidos. */
+  .link-flow,.link-glow{display:none}
+  .link-packet,.node[data-live="1"] .node-ring{animation:none}
   .pal-item:hover{transform:none}
   .tb-btn:active,.prop-btn:active,#zoom-ctl button:active,.anchor:hover{transform:none}
   .modal-box,#props-body{animation-duration:.01ms}
@@ -520,6 +542,6 @@ body:not(.pal-off) #legend-panel{left:236px}
   }
 </script>
 <script src="/static/js/topo_engine.js?v=24"></script>
-<script src="/static/js/topo_main.js?v=34"></script>
+<script src="/static/js/topo_main.js?v=35"></script>
 </body>
 </html>
