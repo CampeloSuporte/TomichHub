@@ -2623,11 +2623,18 @@ class TopoEditor {
           </button>
         </div>`;
     }).join('');
+    // Placa sem `board add` no backup: o total de portas saiu do que está
+    // configurado. Dizer isso é obrigação — o operador precisa saber que uma
+    // porta física pode não estar listada (o contrário, oferecer porta que não
+    // existe, foi o bug que gerou "% Parameter error" na OLT-HU-LEAL).
+    const nota = placa.portas_inferidas ? `
+      <span class="pon-nota" title="Sem a linha 'board add ${this._esc(placa.slot)}' no backup, o total de portas veio do que está configurado nela">
+        <i class="fas fa-circle-info"></i> portas vistas no backup</span>` : '';
     return `
       <div class="pon-grade-wrap">
         <div class="pon-grade-titulo">
           Placa ${this._esc(placa.slot)} · ${this._esc(placa.tipo || 'tipo desconhecido')} ·
-          ${placa.portas_total} portas
+          ${placa.portas_total} portas ${nota}
           <span class="pon-legenda">
             <i class="pon-dot vazia"></i> sem config
             <i class="pon-dot ocupada"></i> com ONT
@@ -2726,10 +2733,17 @@ class TopoEditor {
       <div class="pon-resultado">
         <div class="l2vpn-col-titulo" style="color:${ok ? 'var(--green)' : 'var(--red)'}">
           <i class="fas fa-${ok ? 'circle-check' : 'circle-xmark'}"></i>
-          ${ok ? this._esc(rotulo) : 'Falhou'}
+          ${ok ? this._esc(rotulo) : 'O equipamento recusou o comando'}
           <span style="color:var(--faint);font-weight:500;text-transform:none;letter-spacing:0">
             · ${this._esc(c.slot)}/${c.porta}</span>
         </div>
+        ${!ok ? `<div class="pon-recusa">
+          <i class="fas fa-triangle-exclamation"></i>
+          <div><b>${this._esc(r.recusa || 'A CLI rejeitou o comando.')}</b>
+            <br>${c.escreve
+              ? 'Nada foi alterado na porta — o comando não chegou a valer.'
+              : 'A consulta não retornou dados.'}</div>
+        </div>` : ''}
         <pre class="l2vpn-config" style="max-height:260px">${this._esc(r.output || '(sem saída)')}</pre>
       </div>`;
   }

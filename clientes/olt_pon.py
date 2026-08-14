@@ -47,7 +47,6 @@ _PORTAS_POR_FAMILIA = {
     'GPBD': 8, 'GPBH': 8, 'GPFD': 16, 'GPSF': 16, 'GPLF': 16,
     'GPHF': 16, 'GPUF': 16, 'CGHF': 16, 'FLSF': 16,
 }
-_PORTAS_PADRAO = 16
 
 # Nome da placa no `board add`: H903GPSF → família GPSF.
 _FAMILIA_RE = re.compile(r'^[A-Z]*\d*([A-Z]{4})$')
@@ -83,7 +82,16 @@ def _familia(tipo_placa):
 
 
 def _portas_da_familia(tipo_placa):
-    return _PORTAS_POR_FAMILIA.get(_familia(tipo_placa), _PORTAS_PADRAO)
+    """Quantas portas a placa tem, ou None quando o tipo é desconhecido.
+
+    Devolver None (em vez de um padrão de 16) é o ponto: nem toda placa PON
+    aparece no `board add` do backup — placa confirmada em campo
+    (`board confirm`) não entra no bloco `[pre-config]`. Assumir 16 nesses
+    casos INVENTA portas: aconteceu na OLT-HU-LEAL, cujo backup mostra
+    `port 0..7` (placa de 8), e o painel ofereceu a porta 8 — o equipamento
+    respondeu `% Parameter error`.
+    """
+    return _PORTAS_POR_FAMILIA.get(_familia(tipo_placa))
 
 
 def eh_olt_huawei(conteudo):
@@ -152,10 +160,19 @@ def parse_pon(conteudo):
                 })
 
         vistas = set(auto_find) | set(distancia) | set(onts_por_porta)
-        # Quantas portas a placa tem: a família manda, mas nunca menos do que o
-        # backup mostra — placa desconhecida ou com porta além do previsto
-        # continua completa.
-        total_portas = max(_portas_da_familia(tipo), (max(vistas) + 1) if vistas else 0)
+        vistas_max = (max(vistas) + 1) if vistas else 0
+        da_familia = _portas_da_familia(tipo)
+        if da_familia:
+            # Tipo conhecido: a família manda (uma GPBD tem 8 portas mesmo com
+            # só 3 configuradas), mas nunca menos do que o backup mostra.
+            total_portas = max(da_familia, vistas_max)
+            inferidas = False
+        else:
+            # Tipo desconhecido: vale só o que o backup prova. Melhor esconder
+            # uma porta que existe do que oferecer uma que não existe — a
+            # segunda opção manda comando pra porta inexistente.
+            total_portas = vistas_max
+            inferidas = True
 
         portas = []
         for idx in range(total_portas):
@@ -176,6 +193,10 @@ def parse_pon(conteudo):
             'tipo': tipo,
             'familia': _familia(tipo),
             'portas_total': total_portas,
+            # True = a placa não tem `board add` no backup e o número de portas
+            # saiu do que está configurado. A UI avisa: se a placa física tiver
+            # mais portas, elas não aparecem aqui.
+            'portas_inferidas': inferidas,
             'portas': portas,
             'onts': sum(p['onts'] for p in portas),
         })
@@ -297,6 +318,38 @@ def validar_comandos_editados(comandos):
 
 # ─── Execução no equipamento ──────────────────────────────────────────────────
 
+# Recusa da CLI. Conectar e enviar sem estourar exceção NÃO quer dizer que o
+# comando valeu: o VRP responde o erro no texto e segue no prompt. Sem olhar a
+# saída, um `laser-switch` recusado era gravado como sucesso e o operador saía
+# achando que a porta estava desativada — foi o que aconteceu na OLT-HU-LEAL
+# (porta 8 inexistente, `% Parameter error`, auditoria dizendo "sucesso").
+#
+# O `%` sozinho não serve de gatilho (aparece em percentual dentro de saída
+# legítima), então cada padrão exige a palavra do erro junto.
+_ERRO_CLI_RE = re.compile(
+    r'%\s*(?:parameter error|unknown command|wrong parameter|incomplete command|'
+    r'too many parameters|invalid input|invalid parameter|command not found|error:)'
+    r'|^\s*Failure:'
+    r'|\bcommand is not supported\b',
+    re.IGNORECASE | re.MULTILINE)
+
+
+def detectar_erro_cli(output):
+    """Primeira recusa encontrada na saída, ou '' se o equipamento aceitou.
+
+    Devolve a linha inteira (e não só o trecho casado) porque é ela que a UI
+    mostra — `% Parameter error, the error locates at '^'` diz muito mais que
+    "parameter error".
+    """
+    m = _ERRO_CLI_RE.search(output or '')
+    if not m:
+        return ''
+    inicio = (output.rfind('\n', 0, m.start()) + 1)
+    fim = output.find('\n', m.end())
+    linha = output[inicio:(fim if fim != -1 else len(output))].strip()
+    return linha or m.group(0).strip()
+
+
 def executar(acesso, comandos):
     """Conecta e envia os comandos, devolvendo (output, status).
 
@@ -346,6 +399,12 @@ def executar(acesso, comandos):
         client.get_transport().set_keepalive(10)
 
         output = _executar_comandos_huawei(client, comandos)
+        # A conexão funcionou, mas a CLI pode ter recusado o comando — quem
+        # decide o status é a saída, não a ausência de exceção.
+        recusa = detectar_erro_cli(output)
+        if recusa:
+            logger.warning(f'⚠️ OLT {acesso} recusou o comando PON: {recusa}')
+            return output, 'erro'
         return output, 'sucesso'
     except Exception as e:
         logger.error(f'❌ Erro no diagnóstico PON em {acesso}: {e}')

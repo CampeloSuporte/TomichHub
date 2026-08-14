@@ -66,8 +66,19 @@ levantada dos 18 backups de OLT Huawei deste ambiente:
 | `GPBD`, `GPBH` | 8 | H805GPBD, H806GPBD, H807GPBH |
 | `GPSF`, `GPLF`, `GPHF`, `GPUF`, `GPFD`, `CGHF`, `FLSF` | 16 | H903GPSF, H901GPHF, H902GPUF |
 
-É só palpite de exibição: se o backup mostrar uma porta além do previsto, o
-`max(indice)+1` manda e a placa continua completa. Placa desconhecida assume 16.
+A regra tem dois ramos, e a diferença entre eles já custou um incidente:
+
+- **Tipo conhecido** → a família manda (uma GPBD tem 8 portas mesmo com só 3
+  configuradas), mas nunca menos do que o backup mostra: uma porta além do
+  previsto entra do mesmo jeito (`max(indice)+1`).
+- **Tipo desconhecido** (sem `board add` para aquele slot) → vale **só o que o
+  backup prova**, `max(indice)+1`, sem nenhum padrão. A placa vem marcada com
+  `portas_inferidas: true` e o painel mostra o aviso *"portas vistas no
+  backup"*: se a placa física tiver mais portas, elas não aparecem ali.
+
+Esconder uma porta que existe é errado; **oferecer uma que não existe é pior** —
+manda comando para um alvo inexistente. Por isso o ramo desconhecido erra para
+menos.
 
 ## O raio de alcance do laser-switch
 
@@ -187,6 +198,49 @@ Toda execução grava `AcaoOltPon` (usuário, ação, placa/portas, ONTs afetada
 se foi escrita, comandos enviados, output e status). As ações de escrita ainda
 saem no log da aplicação em nível `warning`, com o número de ONTs.
 
+## Incidente — porta inventada e "sucesso" mentiroso (2026-08-14)
+
+Primeira operação real de `laser-switch` em produção, na OLT-HU-LEAL, placa
+`0/1`, porta 8. O equipamento respondeu:
+
+```
+port 8 laser-switchoff
+                                    ^
+  % Parameter error, the error locates at '^'
+```
+
+E a auditoria registrou **`status: sucesso`**. Dois defeitos distintos, os dois
+meus:
+
+**1. O painel ofereceu uma porta que não existe.** O backup dessa OLT não tem
+`board add 0/1` — a placa foi confirmada em campo (`board confirm`) e por isso
+não entra no bloco `[pre-config]`. Sem o tipo, o código assumia o padrão de 16
+portas e desenhava as portas 8–15. A informação certa estava no próprio backup o
+tempo todo: as linhas `port 0` a `port 7` provam uma placa de 8. Confirmado ao
+vivo no equipamento com um comando inofensivo — `display port state 8` devolve o
+mesmo `% Parameter error`, e `display port state 7` responde normal.
+
+O eco `laser-switchoff` (sem o espaço) despistou: parecia corrupção de
+transmissão, mas era só como o VRP redesenha a linha ao apontar o erro. Os
+`display` da mesma sessão chegaram intactos.
+
+**2. Conexão sem exceção virou "sucesso".** O `executar` só olhava se o Paramiko
+estourou; o VRP recusa comando **no texto** e segue no prompt, então a recusa
+passava batido. Numa ação destrutiva isso é o pior tipo de bug silencioso: o
+operador sai achando que desativou a porta e ela continua no ar (ou, na direção
+oposta, acha que religou e não religou).
+
+Hoje `detectar_erro_cli` varre a saída atrás da recusa (`% Parameter error`,
+`% Unknown command`, `Failure:` e afins — o `%` sozinho não serve de gatilho,
+aparece em percentual de saída legítima), o status vira `erro` e o painel mostra
+a linha exata do equipamento com um "nada foi alterado na porta". A migração
+`0110_corrige_status_acao_olt_pon` reavaliou os registros já gravados: os dois
+`laser_off` recusados passaram de `sucesso` para `erro`.
+
+Impacto do ajuste de portas em toda a base: das 61 placas PON das 18 OLTs
+Huawei, **1** tinha o tipo desconhecido — justamente a que falhou, agora com 8
+portas em vez de 16. Nenhuma ficou sem portas.
+
 ## Limitações conhecidas
 
 - **Só Huawei MA5600T/MA5800.** ZTE, Datacom e Parks têm CLI própria e ficam de
@@ -197,3 +251,6 @@ saem no log da aplicação em nível `warning`, com o número de ONTs.
   painel **não** mostra se o laser de uma porta está apagado — quem responde
   isso é o `display port state`.
 - Uma ação por vez: não há fila nem execução em lote entre placas.
+- Placa sem `board add` no backup só mostra as portas que aparecem
+  configuradas — uma porta física vazia e nunca tocada fica de fora até a
+  primeira configuração (ou até o `board add` existir no backup).

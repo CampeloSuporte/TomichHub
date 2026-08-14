@@ -7092,6 +7092,7 @@ from .olt_pon import (
     OltPonNaoSuportado,
     acao_escreve as _pon_escreve,
     comandos_pon,
+    detectar_erro_cli as _pon_recusa,
     executar as _pon_executar,
     parse_pon,
     validar_alvo as _pon_validar_alvo,
@@ -7100,7 +7101,7 @@ from .olt_pon import (
 
 # Sobe junto com qualquer mudança em `olt_pon.parse_pon` — mesma regra do
 # cache do L2VPN: o parse guardado tem o formato da versão que o gerou.
-_PON_CACHE_VERSAO = 1
+_PON_CACHE_VERSAO = 2
 
 
 def _pon_inventario_do_acesso(acesso):
@@ -7252,6 +7253,10 @@ def olt_pon_executar(request, acesso_id):
         'status': status, 'output': output, 'comandos': comandos,
         'acao': acao, 'slot': slot, 'portas': portas,
         'onts_afetadas': onts_afetadas,
+        # Linha da recusa quando a CLI rejeitou (ex.: porta inexistente). Sem
+        # ela a UI mostraria a saída crua e o operador teria que garimpar o
+        # motivo no meio do texto.
+        'recusa': _pon_recusa(output) if status == 'erro' else '',
     })
 
 

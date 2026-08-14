@@ -5,6 +5,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-14 (PON: porta inventada e "sucesso" mentiroso)
+
+### Corrigido
+
+- **O painel oferecia porta PON que não existe** ([`clientes/olt_pon.py`](clientes/olt_pon.py)):
+  quando a placa não tem `board add` no backup (confirmada em campo, não entra
+  no `[pre-config]`), o código assumia 16 portas e desenhava portas 8–15 numa
+  placa de 8. Na primeira operação real isso virou `% Parameter error` na
+  OLT-HU-LEAL. Agora, sem o tipo da placa, vale só o que o backup prova
+  (`port 0..7` → 8 portas) e o painel avisa "portas vistas no backup". Das 61
+  placas das 18 OLTs Huawei, 1 estava nessa situação.
+- **Comando recusado pelo equipamento era gravado como sucesso**: o VRP responde
+  a recusa no texto e segue no prompt, e o `executar` só olhava se a conexão
+  estourou exceção. Numa ação destrutiva é o pior bug silencioso — o operador
+  sai achando que desativou a porta. `detectar_erro_cli` agora varre a saída,
+  o status vira `erro` e o painel mostra a linha exata do equipamento com um
+  "nada foi alterado na porta". A migração `0110_corrige_status_acao_olt_pon`
+  reavaliou o histórico: 2 registros passaram de `sucesso` para `erro`.
+
+### Alterado
+
+- Consulta de porta (`display port info/state`) não passa mais pelo preview de
+  comandos — executa e mostra só o retorno. Preview editável e confirmação
+  continuam valendo para as ações de escrita (laser).
+- Cada porta da grade ganhou o próprio botão de desativar, e os rótulos das
+  ações passaram a falar do efeito ("Desativar porta") em vez do comando.
+
+---
+
 ## [Não publicado] — 2026-08-14 (Topologia: portas PON de OLT Huawei)
 
 ### Adicionado
