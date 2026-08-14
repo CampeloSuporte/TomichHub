@@ -118,9 +118,69 @@ def sugerir_id(servicos, base=None):
     return candidato
 
 
-def validar_spec(spec, servicos, origem):
+_LSR_ID_OK = re.compile(r'^[A-Za-z0-9._/-]{1,48}$')
+
+# Fabricantes com sintaxe de LDP targeted conferida em config real daqui.
+# RouterOS fica de fora: a sessão LDP dele é outro modelo (`/mpls ldp neighbor`)
+# e não há ocorrência nos backups deste ambiente pra conferir.
+_LDP_SUPORTADO = {'huawei', 'datacom'}
+
+
+def peers_sem_ldp(peers, ldp_backup):
+    """Dos peers do serviço, quais ainda NÃO têm sessão LDP targeted no
+    equipamento. É o que a clonagem precisa criar — o pseudowire não sobe sem
+    a sessão, e ela mora fora do bloco do serviço."""
+    ja_tem = set((ldp_backup or {}).get('peers') or {})
+    return [p for p in peers if p not in ja_tem]
+
+
+def _nome_remote_peer(texto, ip):
+    """Rótulo do bloco `mpls ldp remote-peer` no Huawei. É texto livre; nos
+    backups daqui aparece tanto o IP quanto o nome do equipamento do outro
+    lado — usa o nome quando o CRM identificou o peer (mais legível na config)
+    e cai no IP quando não identificou."""
+    limpo = re.sub(r'[^A-Za-z0-9._:@-]+', '-', str(texto or '').strip()).strip('-')
+    return limpo[:63] if limpo and _NOME_OK.match(limpo[:63]) else ip
+
+
+def comandos_ldp(vendor, peers, lsr_id='', nomes=None):
+    """Sessão LDP targeted com cada peer, na sintaxe de cada fabricante:
+
+        Huawei VRP                     Datacom DmOS
+        ─────────────────────────      ────────────────────────────
+        mpls ldp remote-peer NOME      mpls ldp
+         remote-ip 10.1.1.1             lsr-id loopback-0
+        #                                neighbor targeted 21.21.21.21
+    """
+    if not peers:
+        return []
+    nomes = nomes or {}
+    if vendor == 'huawei':
+        cmds = []
+        for ip in peers:
+            cmds.append(f'mpls ldp remote-peer {_nome_remote_peer(nomes.get(ip), ip)}')
+            cmds.append(f'remote-ip {ip}')
+            cmds.append('quit')
+        return cmds
+    if vendor == 'datacom':
+        # O `neighbor targeted` do DmOS vive DENTRO do `lsr-id`, e qual
+        # loopback está em uso muda por equipamento — vem lido do backup.
+        cmds = ['mpls ldp', f'lsr-id {lsr_id}']
+        for ip in peers:
+            cmds.append(f'neighbor targeted {ip}')
+            cmds.append('exit')
+        cmds += ['exit', 'exit']     # sai do lsr-id e do mpls ldp
+        return cmds
+    raise L2vpnNaoSuportado(
+        f'Sessão LDP targeted automática ainda não suportada em "{vendor}".')
+
+
+def validar_spec(spec, servicos, origem, ldp_backup=None):
     """Normaliza e valida o que veio do formulário de clonagem. Devolve a
-    spec limpa; levanta `L2vpnNaoSuportado` com mensagem pronta pra UI."""
+    spec limpa; levanta `L2vpnNaoSuportado` com mensagem pronta pra UI.
+
+    `ldp_backup` é o que `l2vpn_parser.extrair_ldp` leu do backup (lsr-id e
+    peers que já têm sessão) — é com ele que se decide o que falta criar."""
     vendor = (origem.get('vendor') or '').lower()
     if vendor not in VENDORS_SUPORTADOS:
         raise L2vpnNaoSuportado(
@@ -202,6 +262,32 @@ def validar_spec(spec, servicos, origem):
     if '\n' in descricao or '\r' in descricao:
         raise L2vpnNaoSuportado('Descrição não pode ter quebra de linha.')
 
+    # VLAN do pseudowire (`pw-type vlan N` do DmOS): é a tag que trafega DENTRO
+    # do túnel e precisa bater com a do outro lado — não é a VLAN de acesso,
+    # que pode ser outra no mesmo serviço. Vem do formulário já pré-preenchida
+    # com a da origem.
+    pw_vlan = _int_na_faixa(spec.get('pw_vlan'), 'VLAN do pseudowire', 1, 4094, obrigatorio=False)
+
+    # ── Sessão LDP targeted ──────────────────────────────────────────────────
+    ldp_backup = ldp_backup or {}
+    ldp_peers, ldp_lsr_id, ldp_nomes = [], '', {}
+    if spec.get('ldp'):
+        if vendor not in _LDP_SUPORTADO:
+            raise L2vpnNaoSuportado(
+                f'Sessão LDP targeted automática ainda não suportada em "{vendor}" — '
+                'crie a sessão à mão e desmarque a opção.')
+        ldp_peers = peers_sem_ldp(peers, ldp_backup)
+        ldp_lsr_id = str(spec.get('ldp_lsr_id') or ldp_backup.get('lsr_id') or '').strip()
+        if vendor == 'datacom' and ldp_peers and not ldp_lsr_id:
+            raise L2vpnNaoSuportado(
+                'Não achei o `lsr-id` no backup deste equipamento — informe qual loopback '
+                'o `mpls ldp` usa (ex.: loopback-0) ou desmarque a sessão LDP.')
+        if ldp_lsr_id and not _LSR_ID_OK.match(ldp_lsr_id):
+            raise L2vpnNaoSuportado(f'lsr-id inválido: "{ldp_lsr_id}".')
+        nomes_ui = spec.get('ldp_nomes') or {}
+        if isinstance(nomes_ui, dict):
+            ldp_nomes = {ip: str(nomes_ui.get(ip) or '')[:80] for ip in ldp_peers}
+
     return {
         'vendor': vendor,
         'tipo': origem.get('tipo') or 'vpls',
@@ -217,6 +303,10 @@ def validar_spec(spec, servicos, origem):
         'descricao': descricao,
         'flow_label': flow_label,
         'pw_type': str(origem.get('pw_type') or '').strip(),
+        'pw_vlan': pw_vlan,
+        'ldp_peers': ldp_peers,
+        'ldp_lsr_id': ldp_lsr_id,
+        'ldp_nomes': ldp_nomes,
         'encapsulamento': str(origem.get('encapsulamento') or '').strip(),
         # A config crua da origem é usada só pra copiar o *dialeto* do
         # RouterOS daquele equipamento (peer= x remote-peer=, cisco-static-id
@@ -320,6 +410,10 @@ def _comandos_datacom(spec):
     eh_vpls = spec['tipo'] == 'vpls'
     grupo_cmd = 'vpls-group' if eh_vpls else 'vpws-group'
     pw_type = spec['pw_type'] or 'vlan'
+    # `pw-type vlan 2400` — o vlan-id do pw-type é parte do comando e sumia no
+    # clone (saía `pw-type vlan` puro, mudando o encapsulamento do túnel).
+    if spec.get('pw_vlan') and pw_type == 'vlan':
+        pw_type = f'vlan {spec["pw_vlan"]}'
 
     cmds = ['mpls l2vpn', f'{grupo_cmd} {spec["grupo"]}', f'vpn {spec["nome"]}']
     if spec['descricao']:
@@ -352,6 +446,12 @@ def _comandos_datacom(spec):
         if len(spec['peers']) > 1:
             raise L2vpnNaoSuportado(
                 'VPWS é ponto a ponto: use um peer só (para vários peers, clone um VPLS).')
+        # `qinq` é do serviço (fica logo depois da description na config real) e
+        # muda a forma da interface de acesso: com ele o `dot1q` vai DENTRO de
+        # um bloco `encapsulation`, sem ele vai direto na access-interface.
+        qinq = spec['encapsulamento'] == 'qinq'
+        if qinq:
+            cmds.append('qinq')
         cmds.append(f'neighbor {spec["peers"][0]}')
         cmds.append(f'pw-type {pw_type}')
         if spec['flow_label']:
@@ -365,7 +465,11 @@ def _comandos_datacom(spec):
         for iface in spec['interfaces']:
             vlan = iface['vlan'] or spec['vlan']
             cmds.append(f'access-interface {iface["nome"]}')
-            if vlan:
+            if vlan and qinq:
+                cmds.append('encapsulation')
+                cmds.append(f'dot1q {vlan}')
+                cmds.append('exit')      # sai do encapsulation
+            elif vlan:
                 cmds.append(f'dot1q {vlan}')
             cmds.append('exit')
 
@@ -414,15 +518,24 @@ def _comandos_mikrotik(spec):
 
 
 def comandos_clonar(spec):
-    """Comandos de criação do serviço clonado, prontos pro preview editável."""
+    """Comandos de criação do serviço clonado, prontos pro preview editável.
+
+    A sessão LDP targeted (quando pedida e faltando) vem ANTES do serviço: sem
+    ela o pseudowire fica down, e é config de fora do bloco do serviço."""
     vendor = spec['vendor']
     if vendor == 'huawei':
-        return _comandos_huawei_l2vc(spec) if spec['tipo'] == 'l2vc' else _comandos_huawei_vsi(spec)
-    if vendor == 'datacom':
-        return _comandos_datacom(spec)
-    if vendor == 'mikrotik':
-        return _comandos_mikrotik(spec)
-    raise L2vpnNaoSuportado(f'Fabricante "{vendor}" não suportado para criar serviço L2VPN.')
+        servico = (_comandos_huawei_l2vc(spec) if spec['tipo'] == 'l2vc'
+                   else _comandos_huawei_vsi(spec))
+    elif vendor == 'datacom':
+        servico = _comandos_datacom(spec)
+    elif vendor == 'mikrotik':
+        servico = _comandos_mikrotik(spec)
+    else:
+        raise L2vpnNaoSuportado(f'Fabricante "{vendor}" não suportado para criar serviço L2VPN.')
+
+    ldp = comandos_ldp(vendor, spec.get('ldp_peers') or [],
+                       spec.get('ldp_lsr_id') or '', spec.get('ldp_nomes'))
+    return ldp + servico
 
 
 def validar_comandos_editados(comandos):

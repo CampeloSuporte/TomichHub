@@ -193,6 +193,21 @@ Detalhes que o parser trata:
   por tokens, guardando o offset de cada `vpn` para reconstruir a linha e o
   trecho de config de cada serviço.
 
+### LDP targeted (a sessão que sustenta o pseudowire)
+
+Lido por `extrair_ldp` para saber quais peers já têm sessão e qual `lsr-id` o
+equipamento usa:
+
+```
+mpls ldp remote-peer sw-core-01          | mpls ldp
+ remote-ip 198.18.255.0                  |  lsr-id loopback-0
+#                                        |   neighbor targeted 21.21.21.21
+        (Huawei VRP)                     |        (Datacom DmOS)
+```
+
+Também entra `mpls lsr-id <IP>` (Huawei) como LSR-ID local quando não há um
+`lsr-id` nomeado. Nos 2656 backups deste ambiente, 331 têm bloco de LDP legível.
+
 ### MikroTik RouterOS
 
 ```
@@ -362,9 +377,75 @@ diferente naquela interface.
 |---|---|
 | Huawei VSI (VPLS) | `vsi NOME` + `pwsignal ldp` + `vsi-id` + `flow-label` + um `peer` por peer + `mtu`; depois `vlan <VLAN>`, `interface Vlanif<VLAN>` com `l2 binding vsi NOME` e, para cada porta física escolhida, `port trunk allow-pass vlan <VLAN>` (tagged) ou `port default vlan <VLAN>` (untagged) |
 | Huawei L2VC | `interface <porta>.<vlan>` + `vlan-type dot1q` + `description` + `mtu` + `mpls l2vc <peer> <vc-id> [raw\|tagged]` |
-| Datacom VPWS | `mpls l2vpn` → `vpws-group` → `vpn` → `neighbor` (`pw-type`, `pw-load-balance`/`flow-label`, `pw-id`, `pw-mtu`) → `access-interface` + `dot1q` → `commit` |
+| Datacom VPWS | `mpls l2vpn` → `vpws-group` → `vpn` → [`qinq`] → `neighbor` (`pw-type vlan [N]`, `pw-load-balance`/`flow-label`, `pw-id`, `pw-mtu`) → `access-interface` + `dot1q` (dentro de `encapsulation` quando o serviço é qinq) → `commit` |
 | Datacom VPLS | igual, com `vfi` (peers) e `bridge-domain` (`dot1q` + `access-interface`) |
 | MikroTik | `/interface vpls add …` + uma `/interface vlan add interface=<vpls>` por interface de acesso |
+
+### Fechar a sessão LDP junto — 2026-08-13
+
+O pseudowire só sobe se existir **sessão LDP targeted** com o peer, e ela mora
+**fora** do bloco do serviço: clonar um VSI/VPWS apontando para um peer novo
+criava o serviço e deixava o circuito down. O formulário passou a ter a opção
+**"Fechar também a sessão LDP com o peer"** (marcada por padrão), que mostra
+peer a peer quem já tem sessão no backup e quem será criado — quem já tem é
+pulado, nada de comando duplicado.
+
+| Fabricante | Config gerada |
+|---|---|
+| Huawei VRP | `mpls ldp remote-peer <nome>` + `remote-ip <peer>` (um bloco por peer) |
+| Datacom DmOS | `mpls ldp` → `lsr-id <loopback>` → `neighbor targeted <peer>` |
+
+Dois detalhes que vêm do backup, não de valor fixo no código:
+
+- **`lsr-id` do DmOS** — o `neighbor targeted` vive *dentro* dele e qual loopback
+  está em uso muda por equipamento, então `extrair_ldp` lê o que o host usa
+  (`lsr-id loopback-0`) e o campo aparece no formulário já preenchido, editável.
+  Sem `lsr-id` no backup a clonagem recusa em vez de chutar `loopback-0`.
+- **nome do `remote-peer` no Huawei** — é rótulo livre; nos backups daqui
+  aparece tanto o IP quanto o nome do equipamento do outro lado. Usa o nome do
+  host quando o CRM identificou o peer (resolvido no servidor, pelo mesmo mapa
+  de identidade que casa peer → host no modal) e cai no IP quando não
+  identificou.
+
+MikroTik fica de fora: a sessão LDP do RouterOS é outro modelo
+(`/mpls ldp neighbor`) e não há ocorrência nos backups deste ambiente para
+conferir a sintaxe — com ele a opção nem aparece.
+
+### VLAN de acesso × VLAN do pseudowire — corrigido em 2026-08-13
+
+No DmOS o `pw-type vlan N` traz a **VLAN que trafega dentro do túnel**, que não
+é obrigatoriamente a VLAN de acesso do cliente. Existe config real assim neste
+ambiente:
+
+```
+vpn CGNAT_NAS03_PUTIRI
+ qinq
+ neighbor 24.24.24.24
+  pw-type vlan 2400        ← VLAN do pseudowire
+ !
+ access-interface gigabit-ethernet-1/1/3
+  encapsulation
+   dot1q 86                ← VLAN de acesso
+  !
+ !
+```
+
+O parser guardava as duas no mesmo campo (`vlan`) e, como o `access-interface`
+aparece **antes** do `dot1q` dele, a interface herdava a VLAN do pseudowire e o
+`dot1q 86` era ignorado — o clone saía com `dot1q 2400` e `pw-type vlan` sem o
+id. Agora são campos separados (`vlan` = acesso, `pw_vlan` = pseudowire), a VLAN
+lida na própria interface sobrepõe a herdada (`_add_interface(sobrepor_vlan=True)`)
+e o formulário mostra os dois campos.
+
+### VLAN do VSI Huawei vem do binding — corrigido em 2026-08-13
+
+O bloco `vsi` não tem VLAN nenhuma (só o `vsi-id`): a VLAN do serviço é a da
+interface onde ele foi amarrado (`interface Vlanif200` + `l2 binding vsi`). O
+parser não fazia essa ligação, então o serviço ficava com VLAN vazia — **238
+VSIs distintos** nos backups deste ambiente — e, como o clone do VSI é aplicado
+na `Vlanif` da VLAN, o formulário abria com o campo obrigatório em branco e o
+número aparecendo só na linha da interface. Agora o `l2 binding vsi` preenche a
+VLAN do serviço quando ela ainda não é conhecida.
 
 ### O acesso do VSI Huawei é a Vlanif
 

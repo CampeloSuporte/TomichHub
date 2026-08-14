@@ -56,6 +56,9 @@ def _novo_servico(tipo, tecnologia, nome, **extra):
         'sinalizacao': '',
         'mtu': '',
         'pw_type': '',
+        # VLAN do pseudowire (`pw-type vlan N` do DmOS) — separada da VLAN de
+        # acesso porque as duas podem ser diferentes no mesmo serviço.
+        'pw_vlan': '',
         'encapsulamento': '',
         'flow_label': '',      # both | transmit | receive — balanceamento do pseudowire
         'vlan': '',
@@ -86,12 +89,21 @@ def _add_peer(servico, ip, pw_id='', mtu='', flow_label=False):
     return peer
 
 
-def _add_interface(servico, nome, vlan='', descricao=''):
+def _add_interface(servico, nome, vlan='', descricao='', sobrepor_vlan=False):
+    """Interface de acesso do serviço. Idempotente por nome.
+
+    `sobrepor_vlan=True` é para a VLAN LIDA NA PRÓPRIA INTERFACE (o `dot1q`
+    dela): ela vale mais que a VLAN herdada do serviço, que só entra como
+    palpite. Sem isso o palpite chegava primeiro e ficava — no DmOS o
+    `access-interface` aparece ANTES do `dot1q` dele, então uma interface com
+    `dot1q 86` num serviço com `pw-type vlan 2400` era mostrada (e clonada)
+    como VLAN 2400. Caso real deste ambiente, ver docs/topologia_l2vpn.md.
+    """
     if not nome:
         return
     for iface in servico['interfaces']:
         if iface['nome'] == nome:
-            if vlan and not iface['vlan']:
+            if vlan and (sobrepor_vlan or not iface['vlan']):
                 iface['vlan'] = vlan
             if descricao and not iface['descricao']:
                 iface['descricao'] = descricao
@@ -238,6 +250,13 @@ def _parse_huawei(conteudo, linhas):
                     servicos.append(svc)
                     por_vsi[mm.group(1)] = svc
                 _add_interface(svc, iface, vlan=vlan, descricao=desc)
+                # A VLAN do VSI é a da interface onde ele foi amarrado — no
+                # bloco `vsi` ela não aparece (só o vsi-id). Sem isso o serviço
+                # ficava com VLAN vazia e a clonagem, que aplica o VSI na
+                # `Vlanif` da VLAN, não tinha o que preencher: o operador via o
+                # número só na linha da interface e o campo "VLAN" em branco.
+                if vlan and not svc['vlan']:
+                    svc['vlan'] = vlan
                 continue
             # `mpls l2vc PEER VC-ID [raw|tagged] [mtu N]` ou, com template,
             # `mpls l2vc PEER pw-template NOME VC-ID`.
@@ -425,11 +444,17 @@ def _parse_datacom(conteudo):
             continue
 
         if tk == 'pw-type' and i + 1 < len(tokens):
-            # `pw-type vlan [VLAN-ID]` — o id opcional é a VLAN do pseudowire.
+            # `pw-type vlan [VLAN-ID]` — o id opcional é a VLAN DO PSEUDOWIRE
+            # (a tag que sai no túnel), que não é necessariamente a VLAN de
+            # acesso do cliente: em config real deste ambiente existe
+            # `pw-type vlan 2400` com `access-interface ... dot1q 86`. Guarda
+            # em `pw_vlan` e só usa como palpite da VLAN de acesso enquanto
+            # nenhum `dot1q` explícito tiver aparecido.
             svc['pw_type'] = tokens[i + 1]
             i += 2
             if i < len(tokens) and tokens[i].isdigit():
-                svc['vlan'] = tokens[i]
+                svc['pw_vlan'] = tokens[i]
+                svc['vlan'] = svc['vlan'] or tokens[i]
                 i += 1
             continue
 
@@ -458,9 +483,15 @@ def _parse_datacom(conteudo):
                     continue
                 j += 1
             if j < len(tokens) and tokens[j].isdigit():
-                svc['vlan'] = svc['vlan'] or tokens[j]
+                # Dentro de uma `access-interface` o dot1q é a VLAN DELA e
+                # manda na VLAN do serviço também (o palpite anterior podia ter
+                # vindo do `pw-type vlan N`, que é outra coisa). Fora dela
+                # (bridge-domain) é a VLAN do serviço mesmo.
                 if iface_atual:
-                    _add_interface(svc, iface_atual, vlan=tokens[j])
+                    _add_interface(svc, iface_atual, vlan=tokens[j], sobrepor_vlan=True)
+                    if svc.get('pw_vlan') and svc['vlan'] == svc['pw_vlan']:
+                        svc['vlan'] = tokens[j]
+                svc['vlan'] = svc['vlan'] or tokens[j]
                 i = j + 1
                 continue
             i = j + 1
@@ -697,6 +728,67 @@ def _parse_juniper(conteudo, linhas):
             svc['mtu'] = mm.group(1)
 
     return [s for s in por_chave.values() if s['peers'] or s['interfaces']]
+
+
+# ─── Sessão LDP targeted (o "outro lado" do pseudowire) ───────────────────────
+
+def extrair_ldp(conteudo):
+    """O que o equipamento já tem de LDP targeted, lido do backup.
+
+    O pseudowire só sobe se existir sessão LDP com o peer, e ela não faz parte
+    do bloco do serviço — por isso clonar um VSI/VPWS para um peer novo não
+    fecha o circuito sozinho. Devolve o que é preciso para gerar essa parte:
+
+        {'lsr_id': 'loopback-0',            # DmOS: qual loopback está em uso
+         'peers': {'10.1.1.1': 'CORE-01'},  # peers já configurados → nome/rótulo
+         'tem_bloco': True}                 # o backup mostra config de LDP
+
+    Sintaxes reais deste ambiente:
+
+        Huawei VRP                     Datacom DmOS
+        ─────────────────────────      ────────────────────────────
+        mpls ldp remote-peer NOME      mpls ldp
+         remote-ip 10.1.1.1             lsr-id loopback-0
+        #                                neighbor targeted 21.21.21.21
+
+    No DmOS o `lsr-id` importa: o `neighbor targeted` vive DENTRO dele, e qual
+    loopback está em uso varia por equipamento — por isso é lido daqui em vez
+    de fixado como `loopback-0`.
+    """
+    dados = {'lsr_id': '', 'peers': {}, 'tem_bloco': False}
+
+    # Huawei: cada remote-peer é um bloco; o nome do bloco é rótulo livre (nos
+    # backups daqui costuma ser o próprio IP) e o `remote-ip` é o que vale.
+    for m in re.finditer(
+            r'^mpls ldp remote-peer\s+(\S+)[^\n]*\n((?:[ \t][^\n]*\n)*)',
+            conteudo, re.MULTILINE):
+        dados['tem_bloco'] = True
+        nome = m.group(1)
+        mm = re.search(rf'^\s*remote-ip\s+({_IP})', m.group(2), re.MULTILINE)
+        if mm:
+            dados['peers'][mm.group(1)] = nome
+
+    # Datacom: um bloco `mpls ldp` só, com os targeted dentro do `lsr-id`.
+    m = re.search(r'^[ \t]*mpls ldp[ \t]*$', conteudo, re.MULTILINE)
+    if m:
+        resto = conteudo[m.end():]
+        fim = re.search(r'^(?![ \t!])\S.*$', resto, re.MULTILINE)
+        bloco = resto[:fim.start()] if fim else resto[:20000]
+        dados['tem_bloco'] = True
+        mm = re.search(r'^\s*lsr-id\s+(\S+)', bloco, re.MULTILINE)
+        if mm:
+            dados['lsr_id'] = mm.group(1)
+        for mp in re.finditer(rf'^\s*neighbor targeted\s+({_IP})', bloco, re.MULTILINE):
+            dados['peers'].setdefault(mp.group(1), '')
+
+    # `mpls lsr-id 10.1.1.2` (Huawei) só entra se o DmOS não tiver respondido —
+    # é o LSR-ID local, útil como referência quando não há lsr-id nomeado.
+    if not dados['lsr_id']:
+        mm = re.search(rf'^\s*mpls lsr-id\s+({_IP})', conteudo, re.MULTILINE)
+        if mm:
+            dados['lsr_id'] = mm.group(1)
+
+    return dados
 
 
 # ─── IPs de identidade (para casar peer → host) ───────────────────────────────

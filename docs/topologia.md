@@ -5,7 +5,7 @@
 - `static/js/topo_engine.js`
 - `static/js/topo_main.js`
 
-**Atualizado em:** 2026-07-31
+**Atualizado em:** 2026-08-13
 
 ---
 
@@ -33,7 +33,7 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 | `topo_engine.js` | Definição de tipos (`DEVICES`), interfaces (`IFACES`) e paths SVG dos ícones (`ICONS`) |
 | `topo_main.js` | Classe `TopoEditor` — lógica de renderização, eventos, persistência e importação |
 
-Versão atual: **topo_engine v=23 / topo_main v=32** (parâmetro de cache-busting no HTML).
+Versão atual: **topo_engine v=24 / topo_main v=33** (parâmetro de cache-busting no HTML).
 
 ---
 
@@ -41,23 +41,37 @@ Versão atual: **topo_engine v=23 / topo_main v=32** (parâmetro de cache-bustin
 
 Cada tipo tem `label`, `color` (hex) e `icon` (chave em `ICONS`).
 
-| Tipo | Label | Cor | Ícone |
-|---|---|---|---|
-| `router` | Roteador | `#00d9ff` | Círculo preenchido com 4 setas retas apontando pra fora (N/S/L/O) — estilo AWS/Cisco |
-| `switch_l2` | Switch L2 | `#3fb950` | Caixa física com porta uplink (jack redondo) + 4 portas RJ45 + badge "L2" |
-| `switch_l3` | Switch L3 | `#58a6ff` | Caixa física com porta uplink (jack redondo) + 4 portas RJ45 + badge "L3" |
-| `radio` | Rádio | `#ffa657` | Ondas de rádio |
-| `dwdm` | DWDM | `#bc8cff` | Caixa com elipses ópticas |
-| `olt` | OLT | `#e3b341` | Rack com slots + label OLT |
-| `onu` | ONU/ONT | `#63e6be` | Box compacto + label ONU |
-| `server` | Servidor | `#8b949e` | Rack de 3 unidades |
-| `firewall` | Firewall | `#f85149` | Escudo |
-| `cgnat` | CGNAT | `#ff6b35` | Caixa com 3 entradas → 1 saída + "NAT" |
-| `vm` | VM | `#a78bfa` | Caixas empilhadas + "VM" |
-| `cloud` | Cloud/ISP | `#6e7681` | Nuvem |
-| `cpe` | CPE | `#d2a8ff` | Caixa com antena |
-| `host` | Host/PC | `#79c0ff` | Monitor |
-| `text_box` | Texto/Legenda | `#e3b341` | Caixa tracejada |
+| Tipo | Label | Grupo | Cor | Ícone |
+|---|---|---|---|---|
+| `router` | Roteador | Rede / Core | `#00d9ff` | Cilindro (linguagem Cisco) com duas setas de fluxo contrário na face de cima |
+| `switch_l3` | Switch L3 | Rede / Core | `#58a6ff` | Chassi 1U com 4 portas + pill "L3" e o par de setas de roteamento acima |
+| `switch_l2` | Switch L2 | Rede / Core | `#3fb950` | Mesmo chassi 1U com 4 portas + pill "L2" (sem as setas) |
+| `firewall` | Firewall | Rede / Core | `#f85149` | Parede de tijolos com escudo em contorno branco |
+| `cgnat` | CGNAT | Rede / Core | `#ff6b35` | 3 entradas convergindo → caixa "NAT" → 1 saída |
+| `dwdm` | DWDM | Rede / Core | `#bc8cff` | Chassi com prisma separando o feixe em 3 comprimentos de onda (cores reais) |
+| `olt` | OLT | Acesso / FTTH | `#e3b341` | Chassi com 2 placas de linha + leque PON de 3 saídas |
+| `splitter` | Splitter | Acesso / FTTH | `#2dd4bf` | Caixa passiva: 1 fibra entra, 5 saem |
+| `onu` | ONU/ONT | Acesso / FTTH | `#63e6be` | Caixinha do assinante com rabicho de fibra e porta LAN |
+| `cpe` | CPE | Acesso / FTTH | `#d2a8ff` | Gateway com 2 antenas, LEDs frontais e leque Wi-Fi |
+| `radio` | Rádio PTP | Wireless | `#ffa657` | Parabólica de perfil no mastro + frentes de onda |
+| `ap` | Access Point | Wireless | `#ffd166` | Disco de teto + cone de cobertura |
+| `internet` | Internet/WAN | Trânsito / Peering | `#38bdf8` | Globo com meridianos |
+| `ix` | IX / PTT | Trânsito / Peering | `#f778ba` | Hexágono "IX" com 6 participantes conectados |
+| `cloud` | Cloud/ISP | Trânsito / Peering | `#8b98a5` | Nuvem com malha interna |
+| `server` | Servidor | Servidores | `#8b949e` | Rack 3U com baias e LEDs |
+| `vm` | VM | Servidores | `#a78bfa` | Três caixas empilhadas + "VM" na da frente |
+| `host` | Host/PC | Servidores | `#79c0ff` | Monitor com prompt na tela |
+| `text_box` | Texto/Legenda | Anotações | `#e3b341` | Cartão pontilhado com linhas de texto |
+
+**Linguagem visual do set (redesign 2026-08-13):** todo ícone é desenhado num viewBox 48×48
+ocupando a área ótica `x:3..45 / y:6..42`, para nenhum device pesar mais que o outro na paleta.
+`currentColor` é a cor do device; recessos usam `#04121a` com opacidade e os detalhes (portas,
+LEDs) usam `#fff` em três níveis (.9/.6/.35) — é o que dá profundidade sem filtro nenhum.
+Nada de `url(#...)` dentro dos ícones: o mesmo markup é injetado no SVG do canvas **e** em
+`<svg>` soltos da paleta, onde os `<defs>` do template não existem. Detalhe importante de
+legibilidade: cada ícone precisa sobreviver a **22px** (tile da paleta), então o limite prático
+é ~5 formas grandes — as primeiras versões com régua de portinhas e setas de fluxo viravam
+ruído nesse tamanho.
 
 ---
 
@@ -70,12 +84,16 @@ e `acesso.tipo` (ambos lowercased) para o tipo de dispositivo:
 | Keywords no nome da função/tipo | Tipo resultante |
 |---|---|
 | `cgnat`, `cg-nat`, `carrier grade nat` | `cgnat` |
+| `ix.br`, `ixbr`, `ix br`, `ix-`, `ptt `, `ptt-`, `ptt.`, `peering` | `ix` |
+| `transito`, `trânsito`, `upstream`, `internet`, `wan-`, `wan ` | `internet` |
 | `bras`, `bng`, `broadband network` | `router` |
 | `router`, `roteador`, `core`, `border`, `borda` | `router` |
 | `switch l3`, `sw-l3`, `camada 3` | `switch_l3` |
 | `switch`, `sw-`, `catalyst`, `nexus` | `switch_l2` |
-| `radio`, `wireless`, `ubiquiti`, `mikrotik`, `ap `, `airmax`, `ltu` | `radio` |
+| `access point`, `acess point`, `ponto de acesso`, `unifi`, `ap-`, `ap_` | `ap` |
+| `radio`, `rádio`, `wireless`, `ubiquiti`, `mikrotik`, `ap `, `airmax`, `ltu` | `radio` |
 | `dwdm`, `oadm`, `ots`, `mstp`, `transponder` | `dwdm` |
+| `splitter`, `divisor optico`, `divisor óptico` | `splitter` |
 | `olt`, `gpon`, `xgs`, `epon` | `olt` |
 | `onu`, `ont` | `onu` |
 | `server`, `servidor`, `zabbix`, `grafana`, `proxmox` | `server` |
@@ -83,6 +101,11 @@ e `acesso.tipo` (ambos lowercased) para o tipo de dispositivo:
 | `vm`, `virtual machine`, `virtualizado`, `kvm`, `qemu`, `vmware`, `vps` | `vm` |
 | `cpe`, `modem` | `cpe` |
 | *(padrão)* | `host` |
+
+A ordem da lista é significativa: `ix`/`internet` vêm **antes** de `router`/`switch` (um host
+chamado "Router IX.br" é, no desenho, o ponto de troca) e `ap` vem antes de `radio`. Palavras
+curtas (`ix`, `ptt`, `wan`) só entram com separador — sem isso casariam com "matrix", "unix"
+e qualquer nome que contenha as letras.
 
 ---
 
@@ -501,6 +524,80 @@ rollback caso necessário.
 navegador com o console aberto (Network + Console) para capturar se `/interfaces-backup/` retorna
 vazio, se o `<datalist>` chega a ser populado, e se "Aplicar" está sendo clicado com o campo
 realmente vazio na tela.
+
+---
+
+## Repaginação Visual — 2026-08-13
+
+Redesenho do set de ícones e da interface inteira do editor. Nada aqui muda o modelo de dados:
+`dados_json` continua com os mesmos campos, e topologias salvas antes disso abrem iguais — só
+com o desenho novo. Arquivos: `topo_engine.js` (ícones), `topo_main.js` (render de node/link e
+paleta) e o `<style>` de `topologia_editor.html`.
+
+### Ícones
+
+- **Set inteiro redesenhado** numa linguagem só (ver "Tipos de Dispositivo" acima): mesma área
+  ótica, mesma escala de opacidade, mesma espessura de traço. O critério de aceitação foi o
+  ícone continuar legível no tile de **22px** da paleta, não só nos 64px do node.
+- **5 tipos novos, todos de rede:** `internet` (WAN/globo), `ix` (IX.br/PTT), `splitter`
+  (splitter óptico da planta FTTH), `ap` (access point) e o `switch_l3` agora separado do L2
+  pelas setas de roteamento. A paleta ganhou os grupos **Wireless** e **Trânsito / Peering**.
+- Os tipos antigos continuam todos existindo com a mesma chave — nenhum node salvo perde ícone.
+
+### Node no canvas
+
+- Chassi "de vidro": fundo na cor do device a ~11%, borda a ~35%, brilho no topo
+  (`#node-gloss`) e sombra interna na base (`#node-shade`, novo `<defs>`). O contorno cheio
+  de antes competia com o ícone e deixava a tela pesada com 20+ nodes.
+- Âncoras de conexão viraram "portas" vazadas (fundo do canvas + anel na cor), menores
+  (r=5.5) e com `scale(1.35)` no hover.
+- Host vindo do CRM (`node.acesso_id`) ganhou um **LED verde** no canto do chassi, além do anel
+  pulsante que já existia.
+- IP embaixo do nome agora sai na cor do device (antes cinza) — amarra rótulo e node.
+- Pastilhas dos links (IP P2P, interface, banda/VLAN) unificadas: fundo escuro, canto
+  arredondado e borda fina na cor da interface; a do meio passou a ter largura calculada pelo
+  texto mais longo (era fixa em 56/64px e estourava com "VLAN 3100").
+
+### Painéis flutuantes (paleta e propriedades)
+
+Os dois painéis laterais deixaram de ser colunas do flex e viraram **cartões flutuantes sobre o
+canvas** (`.panel-card`), que agora ocupa a largura toda. Entram e saem com `transform`, sem
+re-layout do SVG — o desenho não "pula" quando um painel abre.
+
+| Painel | Estado inicial | Como abre | Como fecha |
+|---|---|---|---|
+| Dispositivos (`#palette`) | **fechado** (`body.pal-off`, já no HTML) | botão `#btn-palette` na borda superior esquerda → `topo.togglePalette()` | X no cabeçalho (mesmo toggle) |
+| Propriedades (`#props`) | **fechado** (`body.props-off`) | sozinho, ao selecionar node ou link (`_select`) | ao perder a seleção (`_deselect`, Esc, clique no vazio) ou no X (`topo.fecharProps()`, que também limpa a seleção) |
+
+As classes nascem no `<body>` do template, não via JS: setadas depois, os painéis apareceriam
+abertos no primeiro paint e "fugiriam" da tela quando o script rodasse. `togglePalette()` põe o
+foco na busca ao abrir (depois da transição). O botão da borda some enquanto o painel está
+aberto — os dois ocupam o mesmo canto.
+
+Para não ficar nada escondido atrás dos cartões, a legenda de interfaces desloca para
+`left:236px` com a paleta aberta e o controle de zoom para `right:292px` com as propriedades
+abertas (regras `body:not(.pal-off) #legend-panel` / `body:not(.props-off) #zoom-ctl`).
+
+### Interface
+
+- **Toolbar** em clusters segmentados (`.tb-group`): exportar/desfazer/refazer, os toggles de
+  modo (Grid/Snap/Conectar/Área) e legenda/efeitos viram blocos únicos com divisória interna —
+  14 botões soltos em fila viravam uma parede de ícones. Marca com tile em gradiente.
+- **Tooltip próprio** (`[data-tip]`) no lugar do `title` nativo: 450ms de atraso, saída
+  imediata, ancorado no botão. Variantes `.tip-top` / `.tip-left`.
+- **Busca na paleta** (`#pal-search` → `_filtrarPaleta`): filtra por rótulo, tipo interno e
+  grupo, sem acento (`_semAcento`), escondendo o título de grupo que ficou vazio.
+- **Controle de zoom flutuante** no canto inferior direito do canvas (− / % / + / ajustar), no
+  lugar dos três botões de lupa na toolbar; clicar no "%" também ajusta à tela.
+- **Painel de propriedades** com cabeçalho mostrando o próprio ícone do device selecionado
+  (`.prop-hero`), rótulos em caixa alta e "Aplicar" como botão primário.
+  *Bug de arrasto corrigido junto:* o `text-align:center` do estado vazio vinha inline no
+  `#props-body` e, como o JS só troca o `innerHTML`, ficava valendo para os formulários — todo
+  campo do painel aparecia centralizado. Agora o estilo vive em `.prop-empty`.
+- **Barra de status** com pontos coloridos e números tabulares; o botão Salvar mostra um ponto
+  (`.tb-btn.primary.dirty`) enquanto houver alteração não salva — o aviso do rodapé passava
+  despercebido.
+- `prefers-reduced-motion` desliga fluxo dos links, pulso dos nodes e deslocamentos.
 
 ---
 

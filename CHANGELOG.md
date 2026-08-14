@@ -5,6 +5,77 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-13 (L2VPN: clone fiel à origem e sessão LDP junto)
+
+### Corrigido
+
+- **Clone do DmOS trocava a VLAN de acesso pela do pseudowire**
+  ([`clientes/l2vpn_parser.py`](clientes/l2vpn_parser.py)): `pw-type vlan N` (a tag que trafega
+  dentro do túnel) e o `dot1q` da `access-interface` (a VLAN do cliente) caíam no mesmo campo, e
+  como o `access-interface` vem **antes** do `dot1q` dele, a interface herdava a VLAN do
+  pseudowire e o dot1q real era ignorado. Caso real do ambiente: serviço com `pw-type vlan 2400`
+  e `dot1q 86` era clonado com `dot1q 2400` — e sem o `2400` no `pw-type`, que saía pelado.
+  Agora são campos separados (`vlan` = acesso, `pw_vlan` = pseudowire), a VLAN lida na própria
+  interface sobrepõe a herdada, e o formulário mostra os dois.
+- **VSI Huawei vinha sem VLAN** (238 VSIs distintos nos backups): o bloco `vsi` não tem VLAN — ela
+  é a da interface do `l2 binding vsi` (`Vlanif200`). Como o clone do VSI é aplicado na `Vlanif`
+  da VLAN, o formulário abria com o campo obrigatório em branco e o número só na linha da
+  interface. O binding agora preenche a VLAN do serviço.
+- **`qinq` e o vlan-id do `pw-type` sumiam no clone** ([`clientes/l2vpn_actions.py`](clientes/l2vpn_actions.py)):
+  serviço qinq é regenerado com o `qinq` no `vpn` e o `dot1q` dentro do bloco `encapsulation`,
+  como na config de origem.
+
+### Adicionado
+
+- **Fechar a sessão LDP targeted junto com o clone**: o pseudowire não sobe sem sessão LDP com o
+  peer, e ela mora fora do bloco do serviço. O formulário ganhou a opção (marcada por padrão),
+  mostrando peer a peer quem já tem sessão no backup e quem será criado. Gera
+  `mpls ldp remote-peer` + `remote-ip` no Huawei e `mpls ldp` → `lsr-id` → `neighbor targeted` no
+  DmOS — com o `lsr-id` **lido do backup** (qual loopback está em uso muda por equipamento) e o
+  nome do `remote-peer` resolvido pelo host do CRM. MikroTik fica de fora (sintaxe não conferida
+  em config real deste ambiente).
+
+---
+
+## [Não publicado] — 2026-08-13 (Topologia: repaginação visual e ícones de rede)
+
+### Alterado
+
+- **Set de ícones redesenhado** ([`static/js/topo_engine.js`](static/js/topo_engine.js)): todos os
+  devices ganharam desenho novo numa linguagem visual única (mesma área ótica, mesma escala de
+  opacidade, mesma espessura de traço), com vocabulário de rede — roteador como cilindro de
+  fluxo contrário, switch como chassi 1U com portas e pill L2/L3, DWDM com prisma separando
+  comprimentos de onda, firewall como parede de tijolos com escudo, OLT com leque PON. Critério
+  de aceitação: continuar legível a 22px no tile da paleta.
+- **Editor repaginado** ([`clientes/templates/topologia_editor.html`](clientes/templates/topologia_editor.html),
+  [`static/js/topo_main.js`](static/js/topo_main.js)): toolbar em clusters segmentados, tooltip
+  próprio no lugar do `title` nativo, busca na paleta, controle de zoom flutuante no canvas,
+  node com chassi de vidro + LED de host do CRM, âncoras de conexão menores, pastilhas de rótulo
+  de link unificadas e painel de propriedades com o ícone do device selecionado no cabeçalho.
+  Nenhuma mudança no `dados_json` — topologias salvas abrem iguais, só com o desenho novo.
+
+### Adicionado
+
+- **Painéis laterais viraram cartões flutuantes e abrem sob demanda**: ao abrir a topologia o
+  canvas ocupa a tela inteira — a paleta de dispositivos fica fechada e volta pelo botão
+  "Dispositivos" no canto superior esquerdo, e o painel de propriedades aparece sozinho só
+  quando um dispositivo ou conexão é selecionado (some ao desmarcar, no Esc ou no X). Legenda e
+  controle de zoom se afastam sozinhos para não ficarem atrás dos painéis.
+- **5 tipos de dispositivo de rede** na paleta: `internet` (WAN), `ix` (IX.br/PTT), `splitter`
+  (splitter óptico), `ap` (access point) e os grupos **Wireless** e **Trânsito / Peering**. O
+  mapeamento automático função→tipo da importação de hosts ([`clientes/views.py`](clientes/views.py))
+  reconhece as palavras-chave dos novos tipos, com IX/trânsito avaliados antes de router/switch.
+- Indicador de alteração não salva no próprio botão **Salvar** e suporte a
+  `prefers-reduced-motion` (desliga fluxo dos links e pulso dos nodes).
+
+### Corrigido
+
+- **Campos do painel de propriedades apareciam centralizados**: o `text-align:center` do estado
+  vazio vinha inline no `#props-body` e, como o JS só troca o `innerHTML`, continuava valendo
+  para os formulários. O estilo passou para a classe `.prop-empty`.
+
+---
+
 ## [Não publicado] — 2026-08-10 (Nova aba Vulnerabilidades: varredura de amplificação DDoS nos blocos RPKI/IRR)
 
 ### Adicionado

@@ -6475,12 +6475,20 @@ def topologia_hosts(request, cliente_id):
         tipo = 'host'
         mapa = [
             (['cgnat','cg-nat','carrier grade nat'], 'cgnat'),
+            # IX/PTT e trânsito vêm antes de router/switch: um host chamado
+            # "Router IX.br" é, no desenho, o ponto de troca — não mais um
+            # roteador igual aos outros. Palavras curtas ('ix', 'ptt', 'wan')
+            # só entram com separador, senão casariam com "matrix", "unix" etc.
+            (['ix.br','ixbr','ix br','ix-','ptt ','ptt-','ptt.','peering'], 'ix'),
+            (['transito','trânsito','upstream','internet','wan-','wan '], 'internet'),
             (['bras','bng','broadband network'], 'router'),
             (['router','roteador','core','border','borda'], 'router'),
             (['switch l3','sw-l3','camada 3'], 'switch_l3'),
             (['switch','sw-','catalyst','nexus'], 'switch_l2'),
-            (['radio','wireless','ubiquiti','mikrotik','ap ','airmax','ltu'], 'radio'),
+            (['access point','acess point','ponto de acesso','unifi','ap-','ap_'], 'ap'),
+            (['radio','rádio','wireless','ubiquiti','mikrotik','ap ','airmax','ltu'], 'radio'),
             (['dwdm','oadm','ots','mstp','transponder'], 'dwdm'),
+            (['splitter','divisor optico','divisor óptico'], 'splitter'),
             (['olt','gpon','xgs','epon'], 'olt'),
             (['onu','ont'], 'onu'),
             (['server','servidor','zabbix','grafana','proxmox'], 'server'),
@@ -6701,12 +6709,13 @@ def _interface_subinterface(nome):
 # ─── L2VPN (VSI/VPLS, VPWS, L2VC) na topologia ────────────────────────────────
 
 from django.core.cache import cache
-from .l2vpn_parser import parse_l2vpn, extrair_ips_identidade, resumo_por_tipo
+from .l2vpn_parser import parse_l2vpn, extrair_ips_identidade, extrair_ldp, resumo_por_tipo
 from .l2vpn_actions import (
     L2vpnNaoSuportado,
     VENDORS_SUPORTADOS as _L2VPN_VENDORS,
     comandos_clonar,
     executar as _l2vpn_executar,
+    peers_sem_ldp,
     sugerir_id,
     validar_comandos_editados,
     validar_spec,
@@ -6717,7 +6726,7 @@ _L2VPN_CACHE_TTL = 6 * 60 * 60            # 6h — o backup em si roda 1x/dia
 # Entra na chave do cache: mudar o parser (campo novo, sintaxe nova) muda o
 # formato do que está guardado, e sem isso o painel continuaria servindo o
 # parse antigo por até 6h. Suba junto com qualquer mudança em l2vpn_parser.
-_L2VPN_CACHE_VERSAO = 2
+_L2VPN_CACHE_VERSAO = 3
 # Quantos backups anteriores tentar quando o mais recente não revela nenhum IP
 # de identidade do equipamento. Loopback/LSR-ID praticamente não mudam, e é
 # comum a coleta mais nova vir truncada (paginação `---- More ----`) — sem esse
@@ -6761,6 +6770,21 @@ def _l2vpn_servicos_do_acesso(acesso):
         servicos = parse_l2vpn(_ler_backup(caminho))
         cache.set(chave, servicos, _L2VPN_CACHE_TTL)
     return servicos, log
+
+
+def _l2vpn_ldp_do_acesso(acesso):
+    """LDP targeted que o equipamento já tem (lsr-id + peers), do mesmo backup
+    dos serviços. Mesma chave de cache por BackupLog: o arquivo não muda."""
+    recentes = _backups_recentes(acesso, limite=1)
+    if not recentes:
+        return {'lsr_id': '', 'peers': {}, 'tem_bloco': False}
+    log, caminho = recentes[0]
+    chave = f'l2vpn:ldp:v{_L2VPN_CACHE_VERSAO}:{log.id}'
+    ldp = cache.get(chave)
+    if ldp is None:
+        ldp = extrair_ldp(_ler_backup(caminho))
+        cache.set(chave, ldp, _L2VPN_CACHE_TTL)
+    return ldp
 
 
 def _l2vpn_ips_identidade(acesso):
@@ -6860,6 +6884,9 @@ def l2vpn_backup_acesso(request, acesso_id):
         # pra pré-preencher o formulário e pra esconder o botão onde não dá.
         'id_sugerido': sugerir_id(anotados),
         'pode_clonar': bool(anotados) and anotados[0].get('vendor') in _L2VPN_VENDORS,
+        # LDP targeted já configurado: o modal usa pra marcar sozinho a opção
+        # de fechar a sessão só quando o peer escolhido ainda não tem uma.
+        'ldp': _l2vpn_ldp_do_acesso(acesso),
     })
 
 
@@ -6969,8 +6996,22 @@ def l2vpn_clonar_acesso(request, acesso_id):
     except (TypeError, ValueError, IndexError):
         return JsonResponse({'error': 'Serviço de origem inválido.'}, status=400)
 
+    ldp_backup = _l2vpn_ldp_do_acesso(acesso)
+    spec_bruta = dict(body.get('spec') or {})
+    if spec_bruta.get('ldp') and not spec_bruta.get('ldp_nomes'):
+        # Nome do bloco `mpls ldp remote-peer` (Huawei): quem sabe o nome do
+        # equipamento do outro lado é o CRM, não o formulário — resolve aqui
+        # pelo mesmo mapa de identidade que casa peer → host no modal.
+        mapa = _l2vpn_mapa_identidade(
+            list(Acesso.objects.filter(cliente=acesso.cliente).exclude(id=acesso.id)))
+        spec_bruta['ldp_nomes'] = {
+            ip: (mapa.get(ip) or {}).get('nome') or ''
+            for ip in peers_sem_ldp(
+                [str(p).strip() for p in (spec_bruta.get('peers') or [])], ldp_backup)
+        }
+
     try:
-        spec = validar_spec(body.get('spec') or {}, servicos, origem)
+        spec = validar_spec(spec_bruta, servicos, origem, ldp_backup)
         comandos_gerados = comandos_clonar(spec)
     except L2vpnNaoSuportado as e:
         return JsonResponse({'error': str(e)}, status=422)
