@@ -172,6 +172,19 @@ class DescobertaTest(SimpleTestCase):
         self.assertEqual(linha['efetivo']['c-81']['filtro'], 'glob-all-ptts-ixbr')
         self.assertNotIn('c-01', linha['efetivo'])
 
+    def test_avisa_quando_o_prepend_ignora_o_fake_as_da_sessao(self):
+        dados = dados_base()
+        dados['sessoes'][0]['fake_as'] = '52995'   # c-01 prepende 268080
+        mapa = montar_mapa(dados)
+        self.assertTrue(any('fake-as 52995' in a and 'não alonga o caminho' in a
+                            for a in mapa['avisos']), mapa['avisos'])
+
+    def test_fake_as_da_sessao_fica_visivel_no_circuito(self):
+        dados = dados_base()
+        dados['sessoes'][0]['fake_as'] = '52995'
+        mapa = montar_mapa(dados)
+        self.assertEqual(mapa['circuitos']['c-01']['sessoes'][0]['fake_as'], '52995')
+
 
 class ComandosAnuncioTest(SimpleTestCase):
     def setUp(self):
@@ -435,6 +448,18 @@ class CriarCircuitoTest(SimpleTestCase):
     def test_cria_o_filtro_global_do_tipo_quando_a_caixa_nao_tem(self):
         cmds = self._criar('c-02')   # a caixa de teste não tem glob-all-upstream
         self.assertIn(f'ip community-filter basic glob-all-upstream index 10 permit {ASN}:60001', cmds)
+
+    def test_fake_as_entra_na_sessao_e_manda_no_prepend(self):
+        cmds = self._criar('c-04', nome='TEN', peer_as='65020', fake_as='52995')
+        self.assertIn('peer 192.0.2.1 fake-as 52995', cmds)
+        # o prepend repete o ASN que o peer ENXERGA, não o do `bgp <N>`
+        self.assertIn('apply as-path 52995 52995 additive', cmds)
+        self.assertNotIn('apply as-path 268080 268080 additive', cmds)
+
+    def test_recusa_prepend_que_nao_repete_o_fake_as(self):
+        with self.assertRaises(AcaoBgpNaoSuportada) as ctx:
+            self._criar('c-04', fake_as='52995', prepend_as='268080')
+        self.assertIn('fake-as 52995', str(ctx.exception))
 
     def test_subir_desabilitada_usa_ignore_e_nao_a_ausencia_de_enable(self):
         # No VRP o peer nasce ativo: sem `ignore` ele subiria assim que a

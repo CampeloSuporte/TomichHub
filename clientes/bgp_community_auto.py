@@ -328,6 +328,10 @@ def mapear_circuitos(dados):
             'peer_as': sessao.get('peer_as', ''), 'descricao': sessao.get('descricao', ''),
             'familia': familia, 'habilitada': sessao.get('habilitada', True),
             'policy_out': policy_out, 'policy_in': sessao.get('policy_in', ''),
+            # `peer X fake-as N` faz o roteador se apresentar como N pra esse
+            # peer — é N que ele vê no AS_PATH, e é N que o prepend precisa
+            # repetir (senão o prepend não conta pra esse vizinho).
+            'fake_as': sessao.get('fake_as', ''),
         })
         c[('ipv6' if familia == 'v6' else 'ipv4')] = True
         anterior = c['policies'].get(f'{familia}_out')
@@ -849,6 +853,17 @@ def validar_mapa(dados, mapa):
                 f'{cid}: nenhum ASN de prepend identificado nas policies de saída — '
                 f'as ações de prepend não podem ser geradas para este circuito.'
             )
+        # Sessão com fake-as: o peer enxerga o ASN falso, então prepend com
+        # qualquer outro ASN não alonga o caminho aos olhos DELE — as ações de
+        # prepend deste circuito ficam sem efeito prático.
+        fakes = {s['fake_as'] for s in c['sessoes'] if s.get('fake_as')}
+        for fake in sorted(fakes):
+            if c['prepend_as'] and c['prepend_as'] != fake:
+                avisos.append(
+                    f'{cid}: a sessão usa `fake-as {fake}` (é esse o ASN que o peer vê), '
+                    f'mas a policy de saída prepende {c["prepend_as"]} — o prepend não '
+                    f'alonga o caminho para este vizinho.'
+                )
         for chave_policy in ('v4_in', 'v6_in', 'v4_out', 'v6_out'):
             nome_policy = c['policies'].get(chave_policy)
             if nome_policy and nome_policy not in policies_todas:
@@ -1656,7 +1671,7 @@ def _bloco_policy_in(nome_policy, familia, bogons, full_routing, communities,
 
 
 def _bloco_sessao(as_local, familias, peers_por_familia, policies, grupos=None,
-                  public_as_only=False, habilitar=True):
+                  public_as_only=False, habilitar=True, fake_as=''):
     """
     O bloco `bgp <ASN>` de uma sessão nova, no formato das caixas em produção.
 
@@ -1682,6 +1697,11 @@ def _bloco_sessao(as_local, familias, peers_por_familia, policies, grupos=None,
                 comandos.append(f'peer {peer["ip"]} group {grupo}')
             if peer.get('descricao'):
                 comandos.append(f'peer {peer["ip"]} description {peer["descricao"]}')
+            if fake_as:
+                # Por peer, e não no grupo: é assim que o parser lê o fake-as
+                # de volta (`peer <IP> fake-as N`), então é assim que o painel
+                # continua sabendo qual ASN este vizinho enxerga.
+                comandos.append(f'peer {peer["ip"]} fake-as {fake_as}')
             if not habilitar:
                 # No VRP um peer nasce ATIVO — deixar de emitir `enable` não o
                 # segura. Quem segura é `peer … ignore`, o mesmo comando que o
@@ -1831,7 +1851,19 @@ def comandos_criar_circuito(dados, mapa, circuito_id, opcoes=None):
     grupo = str(opcoes.get('grupo') or (circuito or {}).get('grupo') or slot['grupo'])
     asn_community = str(opcoes.get('asn_community') or (circuito or {}).get('asn_community')
                         or _asn_community_prevalente(mapa['circuitos']))
-    prepend_as = str(opcoes.get('prepend_as') or (circuito or {}).get('prepend_as') or as_local).strip()
+    fake_as = str(opcoes.get('fake_as') or '').strip()
+    if fake_as and not fake_as.isdigit():
+        raise AcaoBgpNaoSuportada('O fake-AS tem que ser um número.')
+    # Com fake-as o peer enxerga o ASN falso — prepend com qualquer outro não
+    # alonga o caminho pra ele. Por isso o fake-as manda no prepend, na frente
+    # do que o circuito já usava.
+    prepend_as = str(opcoes.get('prepend_as') or fake_as
+                     or (circuito or {}).get('prepend_as') or as_local).strip()
+    if fake_as and prepend_as != fake_as:
+        raise AcaoBgpNaoSuportada(
+            f'Com `fake-as {fake_as}` o prepend tem que repetir {fake_as} — é esse o ASN '
+            f'que este peer enxerga; prepend de {prepend_as} não alongaria o caminho pra ele.'
+        )
     local_preference = str(opcoes.get('local_preference') or '').strip()
     if local_preference and not local_preference.isdigit():
         raise AcaoBgpNaoSuportada('A local-preference tem que ser um número.')
@@ -1908,7 +1940,7 @@ def comandos_criar_circuito(dados, mapa, circuito_id, opcoes=None):
     comandos += _bloco_sessao(
         as_local, familias, peers, policies, grupos=grupos_peer,
         public_as_only=bool(opcoes.get('public_as_only', slot['tipo'] == 'ix')),
-        habilitar=bool(opcoes.get('habilitar', True)),
+        habilitar=bool(opcoes.get('habilitar', True)), fake_as=fake_as,
     )
     return comandos + ['commit']
 
@@ -1945,6 +1977,9 @@ def comandos_criar_downstream(dados, mapa, opcoes=None):
     local_preference = str(opcoes.get('local_preference') or '').strip()
     if local_preference and not local_preference.isdigit():
         raise AcaoBgpNaoSuportada('A local-preference tem que ser um número.')
+    fake_as = str(opcoes.get('fake_as') or '').strip()
+    if fake_as and not fake_as.isdigit():
+        raise AcaoBgpNaoSuportada('O fake-AS tem que ser um número.')
 
     ja_usados = {s.get('peer_ip') for s in (dados.get('sessoes') or [])}
     familias, peers = _peers_das_opcoes(dados, opcoes, ja_usados, f'EBGP-DOWNSTREAM-{nome}')
@@ -2046,7 +2081,7 @@ def comandos_criar_downstream(dados, mapa, opcoes=None):
                      'quit']
 
     comandos += _bloco_sessao(as_local, familias, peers, policies,
-                              habilitar=bool(opcoes.get('habilitar', True)))
+                              habilitar=bool(opcoes.get('habilitar', True)), fake_as=fake_as)
     return comandos + ['commit']
 
 # ─── Atualização otimista do painel ──────────────────────────────────────────
@@ -2289,7 +2324,8 @@ def _registrar_criacao_local(dados, tipo, alvo, params):
                 'habilitada': bool(opcoes.get('habilitar', True)),
                 'policy_in': opcoes.get(f'policy_{familia}_in') or f'{base}-IN',
                 'policy_out': opcoes.get(f'policy_{familia}_out') or f'{base}-OUT',
-                'fake_as': '', 'prepend_as': as_local,
+                'fake_as': str(opcoes.get('fake_as') or ''),
+                'prepend_as': str(opcoes.get('fake_as') or '') or as_local,
             })
             ips_existentes.add(ip)
 

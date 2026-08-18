@@ -345,12 +345,15 @@
     .cs2-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; margin-bottom: 14px; }
     .cs2-campo { display: flex; flex-direction: column; gap: 4px; }
     .cs2-campo label { color: #7d8590; font-size: 11px; }
-    .cs2-campo input, .cs2-campo textarea {
+    .cs2-campo .cs2-inline { display: flex; align-items: center; gap: 6px; color: #adbac7; }
+    .cs2-campo input:disabled { opacity: .45; cursor: not-allowed; }
+    .cs2-campo input, .cs2-campo textarea, .cs2-campo select {
         background: #0d1117; border: 1px solid #30363d; color: #e6edf3;
         border-radius: 4px; padding: 6px 9px; font-size: 12px; width: 100%; box-sizing: border-box;
         font-family: inherit;
     }
-    .cs2-campo input:focus, .cs2-campo textarea:focus { outline: none; border-color: #58a6ff; }
+    .cs2-campo input:focus, .cs2-campo textarea:focus, .cs2-campo select:focus { outline: none; border-color: #58a6ff; }
+    .cs2-campo .dica code { color: #58a6ff; font-family: 'Cascadia Code', monospace; }
     .cs2-campo .dica { color: #484f58; font-size: 10.5px; }
     .cs2-fam { border: 1px solid #30363d; border-radius: 6px; padding: 10px 12px; margin-bottom: 10px; }
     .cs2-fam-head { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #e6edf3; cursor: pointer; }
@@ -502,6 +505,11 @@
         <div class="cs2-resumo" id="caSessaoResumo"></div>
 
         <div class="cs2-grid">
+            <div class="cs2-campo" id="caSessaoSlotWrap" style="display:none;">
+                <label for="caSessaoSlot">Circuito disponível</label>
+                <select id="caSessaoSlot" onchange="caSessaoAtualizarResumo()"></select>
+                <span class="dica">é o slot que define o grupo de community</span>
+            </div>
             <div class="cs2-campo">
                 <label for="caSessaoNome">Nome</label>
                 <input type="text" id="caSessaoNome" placeholder="BR-DIGITAL" oninput="caSessaoAtualizarResumo()">
@@ -518,6 +526,16 @@
             <div class="cs2-campo" id="caSessaoPrependWrap">
                 <label for="caSessaoPrepend">ASN de prepend</label>
                 <input type="text" id="caSessaoPrepend" placeholder="ASN repetido nas ações de prepend">
+                <span class="dica" id="caSessaoPrependDica"></span>
+            </div>
+            <div class="cs2-campo">
+                <label class="cs2-inline">
+                    <input type="checkbox" id="caSessaoFakeOn" onchange="caSessaoToggleFake()">
+                    Apresentar outro ASN nesta sessão (fake-AS)
+                </label>
+                <input type="text" id="caSessaoFake" placeholder="ASN que este peer vai enxergar"
+                       disabled oninput="caSessaoSincronizarPrepend()">
+                <span class="dica">vira <code>peer &lt;IP&gt; fake-as N</code>; o prepend passa a repetir N</span>
             </div>
         </div>
 
@@ -1175,16 +1193,18 @@ function caGrupos() {
     Object.values(CA_MAPA.circuitos).forEach(c => {
         (porTipo[c.tipo] = porTipo[c.tipo] || []).push(c);
     });
-    // Slots que o template prevê e a caixa ainda não tem: entram no meio dos
-    // existentes, na ordem do id, pra lacuna ficar visível onde ela está.
+    // Os slots livres NÃO entram na grade: o painel mostra só o que está
+    // configurado. Eles ficam atrás do botão "adicionar" de cada família.
+    const livresPorTipo = {};
     (CA_MAPA.slots_vagos || []).forEach(v => {
-        (porTipo[v.tipo] = porTipo[v.tipo] || []).push(v);
+        (livresPorTipo[v.tipo] = livresPorTipo[v.tipo] || []).push(v);
     });
     const grupos = (CA_MAPA.tipos || [])
-        .filter(t => porTipo[t.chave])
+        .filter(t => porTipo[t.chave] || livresPorTipo[t.chave])
         .map(t => ({
             chave: t.chave, rotulo: t.plural,
-            itens: porTipo[t.chave].sort((a, b) => a.id.localeCompare(b.id)),
+            itens: (porTipo[t.chave] || []).sort((a, b) => a.id.localeCompare(b.id)),
+            livres: livresPorTipo[t.chave] || [],
         }));
     // Tipos que o backend não conhece (não deve acontecer, mas não some com o
     // circuito da tela se acontecer).
@@ -1202,7 +1222,7 @@ function caGrupos() {
     const downs = Object.values(CA_MAPA.downstreams || {}).sort((a, b) => a.id.localeCompare(b.id));
     grupos.push({
         chave: 'downstream', rotulo: 'Downstream / clientes',
-        itens: downs, acao_nova: true,
+        itens: downs, livres: [], acao_nova: true,
     });
     return grupos;
 }
@@ -1267,8 +1287,7 @@ function caRenderizar() {
     document.getElementById('caDestinosLista').innerHTML = caGrupos().map(g => `
         <div class="ca-grupo">
             <div class="ca-grupo-titulo">${escapeHtml(g.rotulo)} <span class="conta">${g.itens.length}</span></div>
-            <div class="ca-destinos-grid">${g.itens.map(caCardDestino).join('')}${
-                g.acao_nova ? caCardNovoDownstream() : ''}</div>
+            <div class="ca-destinos-grid">${g.itens.map(caCardDestino).join('')}${caCardAdicionar(g)}</div>
         </div>`).join('');
 
     const emMatriz = CA_VISAO === 'matriz';
@@ -1282,18 +1301,6 @@ function caCardDestino(d) {
     const selecionado = d.id === CA_DESTINO ? ' selecionado' : '';
     const cont = caContagem(d);
     const clique = `onclick="caSelecionar('${escapeHtml(d.id)}')"`;
-
-    // Slot vago: o template prevê o circuito, a caixa não tem. Clicar abre o
-    // formulário que sobe policies + sessão de uma vez.
-    if (caEhVago(d)) {
-        return `
-        <button type="button" class="ca-destino-card vago" onclick="caAbrirSessao('${escapeHtml(d.id)}')"
-                title="Subir o circuito ${escapeHtml(d.id)} do zero: community-filters, route-policies de entrada e saída e a sessão BGP">
-            <div class="cd-topo"><span class="cd-id">${escapeHtml(d.id)}</span><span class="cd-nome">vago</span></div>
-            <div class="cd-meta"><code>${escapeHtml((CA_MAPA.padroes || {}).asn_community || '')}:${escapeHtml(d.grupo)}xx</code></div>
-            <div class="cd-meta"><span class="ca-pill info">＋ configurar</span></div>
-        </button>`;
-    }
 
     if (caEhDownstream(d)) {
         const familias = [d.ipv4 ? 'V4' : '', d.ipv6 ? 'V6' : ''].filter(Boolean).join('+');
@@ -1352,12 +1359,26 @@ function caCardDestino(d) {
     </button>`;
 }
 
-function caCardNovoDownstream() {
+/** Um card de "adicionar" por família, no fim da grade. Os slots livres do
+ *  template ficam AQUI (e não como cards soltos): o painel mostra o que está
+ *  configurado, e quem quer subir mais escolhe da lista dentro do formulário. */
+function caCardAdicionar(g) {
+    if (g.acao_nova) {
+        return `
+        <button type="button" class="ca-destino-card vago" onclick="caAbrirSessao('')"
+                title="Sobe uma sessão de cliente: tabela cheia na saída, só os prefixos dele na entrada">
+            <div class="cd-topo"><span class="cd-id">＋</span><span class="cd-nome">novo cliente</span></div>
+            <div class="cd-meta">policies e prefix-list geradas no padrão da caixa</div>
+            <div class="cd-meta"><span class="ca-pill info">＋ subir sessão</span></div>
+        </button>`;
+    }
+    if (!g.livres || !g.livres.length) return '';
+    const rotulo = { upstream: 'operadora', ix: 'IX', cdn: 'CDN' }[g.chave] || g.chave;
     return `
-    <button type="button" class="ca-destino-card vago" onclick="caAbrirSessao('')"
-            title="Sobe uma sessão de cliente: tabela cheia na saída, só os prefixos dele na entrada">
-        <div class="cd-topo"><span class="cd-id">＋</span><span class="cd-nome">novo cliente</span></div>
-        <div class="cd-meta">policies e prefix-list geradas no padrão da caixa</div>
+    <button type="button" class="ca-destino-card vago" onclick="caAbrirSessao('', '${escapeHtml(g.chave)}')"
+            title="Slots livres: ${escapeHtml(g.livres.map(v => v.id).join(', '))}">
+        <div class="cd-topo"><span class="cd-id">＋</span><span class="cd-nome">adicionar ${escapeHtml(rotulo)}</span></div>
+        <div class="cd-meta">${g.livres.length} slot(s) livre(s) — a partir de <code>${escapeHtml(g.livres[0].id)}</code></div>
         <div class="cd-meta"><span class="ca-pill info">＋ subir sessão</span></div>
     </button>`;
 }
@@ -1456,7 +1477,8 @@ function caBlocoContexto(d) {
 
     const sessoes = d.sessoes.map(s => `
         <span class="ca-sessao ${s.habilitada ? '' : 'off'}" title="${escapeHtml(s.descricao || '')}">
-            ${escapeHtml(s.peer_ip)} <span>AS${escapeHtml(s.peer_as || '?')} · ${s.familia.toUpperCase()}${s.habilitada ? '' : ' · desabilitada'}</span>
+            ${escapeHtml(s.peer_ip)} <span>AS${escapeHtml(s.peer_as || '?')} · ${s.familia.toUpperCase()}${
+                s.fake_as ? ' · fake-as ' + escapeHtml(s.fake_as) : ''}${s.habilitada ? '' : ' · desabilitada'}</span>
         </span>`).join('');
     const wiring = ['v4', 'v6'].map(fam => {
         const linhas = (d.nodes_out[fam] || []);
@@ -1811,12 +1833,26 @@ const CA_TIPO_TEXTO = {
     },
 };
 
-function caAbrirSessao(destinoId) {
+function caAbrirSessao(destinoId, tipoNovo) {
     const circuito = destinoId ? (CA_MAPA.circuitos[destinoId] || null) : null;
     const slot = destinoId ? (circuito || caSlotVago(destinoId)) : null;
     if (destinoId && !slot) return;
-    const tipo = destinoId ? slot.tipo : 'downstream';
+    const tipo = destinoId ? slot.tipo : (tipoNovo || 'downstream');
     CA_SESSAO = { destino: destinoId || '', tipo, circuito };
+
+    // Modo "adicionar": o slot ainda não foi escolhido — a lista de livres
+    // daquela família vira o primeiro campo do formulário.
+    const livres = (CA_MAPA.slots_vagos || []).filter(v => v.tipo === tipo);
+    const escolhendoSlot = !destinoId && tipo !== 'downstream';
+    document.getElementById('caSessaoSlotWrap').style.display = escolhendoSlot ? '' : 'none';
+    if (escolhendoSlot) {
+        if (!livres.length) return;
+        document.getElementById('caSessaoSlot').innerHTML = livres.map(v =>
+            `<option value="${escapeHtml(v.id)}">${escapeHtml(v.id)} — community ${
+                escapeHtml((CA_MAPA.padroes || {}).asn_community || '')}:${escapeHtml(v.grupo)}xx</option>`
+        ).join('');
+        CA_SESSAO.destino = livres[0].id;
+    }
 
     const texto = CA_TIPO_TEXTO[tipo] || CA_TIPO_TEXTO.upstream;
     document.getElementById('caSessaoTitulo').textContent =
@@ -1831,7 +1867,10 @@ function caAbrirSessao(destinoId) {
         (circuito && circuito.prepend_as) || CA_MAPA.as_local || '';
     document.getElementById('caSessaoPrependWrap').style.display = tipo === 'downstream' ? 'none' : '';
     document.getElementById('caSessaoHabilitar').checked = true;
+    document.getElementById('caSessaoFakeOn').checked = false;
+    document.getElementById('caSessaoFake').value = '';
     document.getElementById('caSessaoErro').textContent = '';
+    caSessaoToggleFake();
 
     ['v4', 'v6'].forEach(fam => {
         document.getElementById(`caSessaoPeers${fam.toUpperCase()}`).innerHTML = '';
@@ -1853,6 +1892,40 @@ function caAbrirSessao(destinoId) {
     caSessaoAtualizarResumo();
     document.getElementById('caSessaoOverlay').classList.add('aberto');
     document.getElementById('caSessaoNome').focus();
+}
+
+/** O prepend só faz sentido repetindo o ASN que o peer enxerga: com fake-AS
+ *  ligado, o campo passa a ser espelho dele (e sai do caminho do operador). */
+function caSessaoToggleFake() {
+    const ligado = document.getElementById('caSessaoFakeOn').checked;
+    const campoFake = document.getElementById('caSessaoFake');
+    const campoPrepend = document.getElementById('caSessaoPrepend');
+    campoFake.disabled = !ligado;
+    campoPrepend.disabled = ligado;
+    document.getElementById('caSessaoPrependDica').textContent = ligado
+        ? 'segue o fake-AS — é o ASN que este peer vê'
+        : '';
+    if (ligado) {
+        campoFake.focus();
+        caSessaoSincronizarPrepend();
+    } else if (CA_SESSAO) {
+        campoPrepend.value = (CA_SESSAO.circuito && CA_SESSAO.circuito.prepend_as)
+            || CA_MAPA.as_local || '';
+    }
+}
+
+function caSessaoSincronizarPrepend() {
+    if (!document.getElementById('caSessaoFakeOn').checked) return;
+    document.getElementById('caSessaoPrepend').value =
+        document.getElementById('caSessaoFake').value.trim();
+}
+
+/** Circuito alvo: o slot escolhido na lista (modo adicionar) ou o que veio no
+ *  clique do card. */
+function caSessaoDestinoAtual() {
+    const seletor = document.getElementById('caSessaoSlotWrap');
+    if (seletor.style.display !== 'none') return document.getElementById('caSessaoSlot').value;
+    return CA_SESSAO ? CA_SESSAO.destino : '';
 }
 
 function caFecharSessao() {
@@ -1915,10 +1988,11 @@ function caSessaoAtualizarResumo() {
         partes.push(`policies <code>DOWNSTREAM-${nome}-V4-IN/OUT</code>`);
         partes.push(`prefix-list <code>PL-DOWNSTREAM-${nome}-V4</code>`);
     } else {
-        const slot = CA_SESSAO.circuito || caSlotVago(CA_SESSAO.destino) || {};
+        const destino = caSessaoDestinoAtual();
+        const slot = CA_SESSAO.circuito || caSlotVago(destino) || {};
         const grupo = slot.grupo || (CA_SESSAO.circuito || {}).grupo || '';
         const asn = (CA_MAPA.padroes || {}).asn_community || '';
-        partes.push(`<b>${escapeHtml(CA_SESSAO.destino)}</b> · communities <code>${escapeHtml(asn)}:${escapeHtml(grupo)}xx</code>`);
+        partes.push(`<b>${escapeHtml(destino)}</b> · communities <code>${escapeHtml(asn)}:${escapeHtml(grupo)}xx</code>`);
         // Circuito que já existe pode ter a policy de saída com OUTRO nome (foi
         // criada para o operador anterior). Ela é reaproveitada — e é melhor o
         // operador saber disso aqui do que descobrir lendo o preview.
@@ -1943,10 +2017,17 @@ function caConfirmarSessao() {
     if (!nome) { erro.textContent = 'Informe o nome.'; return; }
     if (!/^\d+$/.test(peerAs)) { erro.textContent = 'Informe o ASN do outro lado (só números).'; return; }
 
+    const usaFake = document.getElementById('caSessaoFakeOn').checked;
+    const fakeAs = document.getElementById('caSessaoFake').value.trim();
+    if (usaFake && !/^\d+$/.test(fakeAs)) {
+        erro.textContent = 'Informe o ASN do fake-AS (só números) ou desmarque a opção.';
+        return;
+    }
     const opcoes = {
         nome, peer_as: peerAs,
         local_preference: document.getElementById('caSessaoLp').value.trim(),
-        prepend_as: document.getElementById('caSessaoPrepend').value.trim(),
+        prepend_as: usaFake ? fakeAs : document.getElementById('caSessaoPrepend').value.trim(),
+        fake_as: usaFake ? fakeAs : '',
         habilitar: document.getElementById('caSessaoHabilitar').checked,
     };
     let algumPeer = false;
@@ -1977,7 +2058,7 @@ function caConfirmarSessao() {
         return;
     }
 
-    const cid = CA_SESSAO.destino;
+    const cid = caSessaoDestinoAtual();
     caFecharSessao();
     pedirAcao('criar_circuito_community', cid, { destino: cid, opcoes },
         `Subir o circuito ${cid} (${nome})`);

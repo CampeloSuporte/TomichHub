@@ -1257,8 +1257,12 @@ cada slot é uma **conta**, não um cadastro:
 | `cdn-NN`  | cdn-01 … cdn-05  | `610 + NN` (611-615) | `<asn>:60021`   |
 
 `slot_padrao('c-02')` devolve `{tipo: upstream, numero: 2, grupo: '502'}` e
-`mapear_slots()` devolve os que a caixa ainda não tem — que o painel mostra
-como cards tracejados, na ordem do id, no meio dos circuitos que existem. O
+`mapear_slots()` devolve os que a caixa ainda não tem. Esses slots **não**
+aparecem na grade: o painel lista só o que está configurado, e cada família
+termina num card "＋ adicionar" que abre o formulário com a lista de livres
+num seletor (`c-04 — community 65100:504xx`). Uma caixa com 6 upstreams e
+nenhum IX mostra 6 cards e dois botões de adicionar, em vez de 25 cards em que
+19 são buracos. O
 ASN da community não é perguntado: sai de `_asn_community_prevalente()`, a
 maioria entre os circuitos já configurados (nas caixas de referência é 65100
 ou 65101 — ASN privado, diferente do ASN do `bgp <N>`).
@@ -1366,6 +1370,27 @@ full routing). iBGP fica de fora. IPv4 e IPv6 do mesmo cliente são agrupados
 pelo nome da policy sem o sufixo de família — as três formas que aparecem nas
 caixas (`-V4-IN`, `-IPv4_out`, `-IPV6-OUT`) caem no mesmo cliente. Nas 8 caixas
 Huawei isso encontrou 11 clientes e 119 slots do template ainda vagos.
+
+### fake-AS
+
+`peer <IP> fake-as N` faz o roteador se apresentar como **N** para aquele
+vizinho — é N que ele enxerga no AS_PATH, não o ASN do `bgp <ASN>`. O
+formulário tem a opção "apresentar outro ASN nesta sessão"; marcada, o campo de
+prepend vira espelho do fake-AS e sai do caminho do operador.
+
+Isso não é conveniência de UI, é correção: **prepend só conta se repetir o ASN
+que o peer vê.** Prepender o ASN real numa sessão com fake-as não alonga
+caminho nenhum para aquele vizinho — a rota chega com o mesmo tamanho de
+AS_PATH de sempre. Por isso `comandos_criar_circuito` recusa a combinação
+`fake_as=52995` com `prepend_as=268080` em vez de gerar config que parece certa
+e não faz nada.
+
+O fake-as é emitido **por peer** (`peer <IP> fake-as N`), e não no peer-group,
+porque é assim que `parse_huawei` o lê de volta — no grupo, o painel perderia a
+informação de qual ASN aquele vizinho enxerga. Sessões que já têm fake-as
+passaram a mostrá-lo no painel, e `mapear_circuitos` avisa quando a policy de
+saída prepende um ASN diferente do fake-as da sessão (achado que vale para
+config feita à mão antes desta automação).
 
 ### Proteções
 
