@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-18 (Usuários: exclusão de usuário)
+
+### Adicionado
+
+- **Excluir usuário** ([`usuario/views.py`](usuario/views.py), [`usuario/urls.py`](usuario/urls.py),
+  [`usuario/templates/cadastrar_usuario.html`](usuario/templates/cadastrar_usuario.html)): a tela
+  de usuários só tinha cadastrar/editar — não existia como excluir um usuário, nem para o
+  Administrador. Nova view `deletar_usuario` (rota `excluir-usuario/`) com o mesmo escopo de
+  `editar_usuario`: Administrador exclui qualquer um, Consultor só os Operadores e logins de
+  portal da própria Instância (`usuarios_gerenciaveis_por`); bloqueada a auto-exclusão. Botão de
+  lixeira por linha + modal de confirmação na listagem. Ver
+  [docs/PERMISSOES_CONSULTOR.md](docs/PERMISSOES_CONSULTOR.md).
+
+---
+
 ## [Não publicado] — 2026-08-14 (PON: porta inventada e "sucesso" mentiroso)
 
 ### Corrigido

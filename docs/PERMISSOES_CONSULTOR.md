@@ -4,12 +4,12 @@
 - `usuario/perms.py` — ponto único de verdade de papel/instância (`get_role`, `is_admin`,
   `is_consultor`, `is_backoffice`, `pode_acessar_cliente`, `usuarios_gerenciaveis_por`)
 - `usuario/models.py` — `PerfilUsuario` (back-office), `Instancia`, novo `PortalUsuarioInstancia`
-- `usuario/views.py` — `cadastrar_usuario`, `editar_usuario`
+- `usuario/views.py` — `cadastrar_usuario`, `editar_usuario`, `deletar_usuario`
 - `clientes/consumers.py` — `SSHConsumer._usuario_pode_acessar`
 - `clientes/views.py` — `deletar_backup`, `deletar_cliente` (este já corrigido em 09/08,
   commit `0370002cd`)
 
-**Atualizado em:** 2026-08-10
+**Atualizado em:** 2026-08-18
 
 **Ver também:** [terminal_ssh.md](terminal_ssh.md), [frontend_acessos.md](frontend_acessos.md)
 
@@ -172,3 +172,31 @@ renderiza essa lista direto), e todas as views de `wiki/views.py` eram `@admin_r
 **Verificado** com o Consultor `mmarinho` (instância "marinho"): com a ferramenta desligada,
 `/wiki/` e `/wiki/api/buscar/` redirecionam com aviso; ligada, ambas devolvem 200; e
 `/wiki/artigo/novo/` continua bloqueada nos dois casos.
+
+## Excluir usuário — feature ausente, não gap de checagem (2026-08-18)
+
+**Sintoma:** Consultor não conseguia excluir os usuários (Operadores/Clientes de portal) que ele
+mesmo cadastrou em `/auth/cadastrar_usuario/`.
+
+**Causa:** diferente dos outros itens desta página, **não era** uma tela migrada pra
+`usuario.perms` com checagem desalinhada — a ação de excluir usuário **nunca existiu** no
+sistema, nem para o Administrador. `cadastrar_usuario`/`editar_usuario` já cobriam criar e editar;
+faltava a view, a rota e o botão de exclusão.
+
+**O que foi adicionado:**
+
+- `usuario/views.py` `deletar_usuario`: mesmo escopo de `editar_usuario` — `is_admin(user)` vê
+  qualquer um, senão exige `usuarios_gerenciaveis_por(user).filter(id=usuario_id).exists()`
+  (Consultor só exclui Operadores e logins de portal da própria `Instancia`). Bloqueia
+  auto-exclusão (`str(usuario_id) == str(request.user.id)`).
+- `usuario/urls.py`: rota `excluir-usuario/` → `deletar_usuario`.
+- `usuario/templates/cadastrar_usuario.html`: botão de lixeira por linha (oculto na própria linha
+  do usuário logado) + modal de confirmação, no mesmo padrão visual do modal de exclusão de
+  `cadastrar_cliente.html`.
+
+**Por que o escopo de `editar_usuario` e não o de `pode_resetar_2fa`:** `pode_resetar_2fa` também
+libera o Consultor sobre logins vinculados a `Cliente.usuario`/`usuarios_adicionais` da própria
+instância — apropriado pra destravar 2FA, mas exclusão de usuário é uma ação mais destrutiva e
+deve ficar restrita ao que o Consultor de fato **gerencia** (`usuarios_gerenciaveis_por`), igual a
+editar. Um Consultor nunca gerencia (nem edita nem exclui) outro Consultor ou Administrador, porque
+`usuarios_gerenciaveis_por` filtra só pela própria `Instancia`.

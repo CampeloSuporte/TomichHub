@@ -210,6 +210,11 @@
                                                     </button>
                                                 </form>
                                                 {% endif %}
+                                                {% if usuarios.id != request.user.id %}
+                                                <button class="btn-action btn-delete" onclick="confirmarExclusao({{ usuarios.id }}, '{{ usuarios.username|escapejs }}')" title="Excluir">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                                {% endif %}
                                             </div>
                                         </td>
                                         </tr>
@@ -463,6 +468,41 @@
         </div>
     </div>
 </div>
+<!-- Modal de Exclusão -->
+<div class="modal fade" id="exclusaoModal" tabindex="-1" aria-labelledby="exclusaoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exclusaoModalLabel"><i class="fas fa-trash me-2"></i>Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: var(--error-red);"></i>
+                </div>
+                <p class="text-center" style="color: var(--text-light); font-family: 'Courier New', monospace; font-size: 14px;">
+                    Tem certeza que deseja excluir o usuário <strong id="exclusao_username" style="color: var(--error-red);"></strong>?
+                </p>
+                <p class="text-center" style="color: var(--text-muted); font-size: 12px;">
+                    Esta ação não pode ser desfeita.
+                </p>
+                <form id="exclusaoForm" method="post" action="{% url 'deletar_usuario' %}">
+                    {% csrf_token %}
+                    <input type="hidden" id="exclusao_id" name="id">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i> Cancelar
+                </button>
+                <button type="submit" form="exclusaoForm" class="btn" style="background: var(--error-red); color: #fff; border: none; font-family: 'Courier New', monospace; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; padding: 12px 30px;">
+                    <i class="fas fa-trash me-2"></i> Excluir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
 
@@ -578,6 +618,13 @@ function editarUsuario(id, username, email, role, instanciaId, modulosHabilitado
 
     // Abre o modal
     const modal = new bootstrap.Modal(document.getElementById('edicaoModal'));
+    modal.show();
+}
+
+function confirmarExclusao(id, username) {
+    document.getElementById('exclusao_id').value = id;
+    document.getElementById('exclusao_username').textContent = username;
+    const modal = new bootstrap.Modal(document.getElementById('exclusaoModal'));
     modal.show();
 }
 </script>
