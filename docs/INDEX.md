@@ -144,7 +144,7 @@
 
 | Documentação | Tema |
 |--------------|------|
-| **[PERMISSOES_CONSULTOR.md](PERMISSOES_CONSULTOR.md)** | Novo — os 3 gaps de permissão, causa raiz e correção de cada um, pendências registradas |
+| **[PERMISSOES_CONSULTOR.md](PERMISSOES_CONSULTOR.md)** | Gaps de permissão do Consultor (causa raiz e correção de cada um) + exclusão de usuário (feature nova, 2026-08-18) |
 | **[frontend_acessos.md](frontend_acessos.md)** | Seção "Follow-up — Corrigido em 2026-08-10" do autofill do Chrome |
 | **[terminal_ssh.md](terminal_ssh.md)** | Referência cruzada — consumer corrigido |
 

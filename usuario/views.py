@@ -268,6 +268,32 @@ def editar_usuario(request):
     messages.error(request, 'Método não permitido.')
     return redirect('cadastrar_usuario')
 
+
+@login_required(login_url='login')
+@perms.pode_gerenciar_usuarios_required
+def deletar_usuario(request):
+    if request.method != 'POST':
+        return redirect('cadastrar_usuario')
+
+    usuario_id = request.POST.get('id')
+
+    if str(usuario_id) == str(request.user.id):
+        messages.error(request, 'Você não pode excluir seu próprio usuário.')
+        return redirect('cadastrar_usuario')
+
+    # Mesmo escopo de editar_usuario: Administrador vê todos, Consultor só
+    # os usuários da própria instância (usuarios_gerenciaveis_por).
+    if not perms.is_admin(request.user) and not perms.usuarios_gerenciaveis_por(request.user).filter(id=usuario_id).exists():
+        messages.error(request, 'Você não possui permissão para excluir este usuário.')
+        return redirect('cadastrar_usuario')
+
+    usuario = get_object_or_404(User, id=usuario_id)
+    username = usuario.username
+    usuario.delete()
+    messages.success(request, f"Usuário '{username}' excluído com sucesso.")
+    return redirect('cadastrar_usuario')
+
+
 def login(request):
     """
     View de login com redirecionamento automático para cliente ou admin.
