@@ -5,6 +5,73 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-18 (BGP por community: IX, CDN, "anunciar para todos" e painel por destino)
+
+### Adicionado
+
+- **Circuitos de IX e CDN entraram no mapa** ([`clientes/bgp_community_auto.py`](clientes/bgp_community_auto.py)):
+  a automação só reconhecia `c-NN`, mas as caixas que já seguem o template otimizado usam três
+  famílias — `c-NN` (operadora/upstream), `ix-NN` e `cdn-NN`. No acesso 20 o sistema enxergava
+  10 dos 25 circuitos configurados; no acesso 923, 9 de 28. Nas caixas antigas, em que até o IX
+  se chama `c-NN` (c-81..c-83), o tipo real vem do `glob-all-*` que a própria policy de saída
+  referencia — informação da config, não palpite pelo nome.
+- **Communities globais viraram destino manipulável**: `glob-all-upstream`, `glob-all-ptts-ixbr`
+  e `glob-all-cdns` ("anunciar para todos os upstreams/IX/CDNs" — §4/§15 da especificação) são
+  descobertas com o **alcance real**, isto é, quais circuitos têm um node casando aquele filtro.
+  Marcar um prefixo com uma community global sem alcance é recusado com essa explicação: nas
+  caixas antigas o bloco `glob-*` inteiro foi colado e nunca referenciado (config morta, hoje
+  reportada em um aviso consolidado).
+- **Efeito real de cada prefixo, além da intenção declarada**: no VRP vale o primeiro node que
+  casa, e a global fica no node 12 enquanto os prepends individuais ficam em 13-16 — um prefixo
+  marcado com `glob-all-upstream` **e** `c-01-export-2p` é anunciado **sem prepend**, e o node
+  individual nunca roda. O mapa resolve isso por ordem de node e o painel mostra o efeito em
+  vigor, com quais filtros perderam a disputa.
+- 22 testes novos em [`clientes/tests_bgp_community_auto.py`](clientes/tests_bgp_community_auto.py).
+
+### Corrigido
+
+- **"Anunciar com no-export" não anunciava nada**: a ação `export-ne` era gerada como node
+  `deny` + `apply community no-export` — num node `deny` a rota não é anunciada e o `apply` nem
+  chega a rodar, ou seja, o oposto do rótulo. Agora é `permit` + `apply` (§9 do template), e o
+  `deny` que existe nas caixas antigas passou a ser reportado como inconsistência.
+- **Sessões de IX apareciam como inexistentes** ([`clientes/backup_parser.py`](clientes/backup_parser.py)):
+  IX é configurado em peer-group (`group EBGP-PTT-SP-V4 external` + N route servers), com as
+  route-policies **no grupo**, não no peer. O parser lia só o peer, então todo circuito de IX
+  ficava "sem sessão BGP" e a automação se recusava a agir sobre ele. Passou a herdar
+  `route-policy … import/export` do grupo quando o peer não tem a sua — como o VRP se comporta.
+  No acesso 20, circuitos com sessão vinculada foram de 3 para 7; em 33 backups conferidos,
+  nenhuma sessão perdida e 80 `policy_out` preenchidas.
+- **`enable`/`undo … enable` passaram a respeitar a address-family**: um grupo IPv6 é desligado
+  na `ipv4-family unicast` e ligado na `ipv6-family unicast` — lendo o arquivo inteiro de uma
+  vez, todos os peers de IX v6 apareciam desabilitados.
+
+### Alterado
+
+- **O painel deixou de despejar tudo de uma vez**
+  ([`clientes/templates/bgp_automacao.html`](clientes/templates/bgp_automacao.html)): a matriz
+  prefixo × todos-os-circuitos, com 25 circuitos, era uma parede de seletores. Agora são dois
+  passos — cards de destino agrupados por tipo (operadoras, IX, CDNs, "anunciar para todos") e,
+  ao clicar em um, o painel daquele destino com as sessões BGP, como a policy de saída traduz
+  cada community (`node → filtro`) e os prefixos com busca, filtro de família, "só os que vão
+  para cá", o efeito atual de cada um e o seletor de como anunciar. A matriz continua no botão
+  **⊞ Visão geral**, agora só leitura, e clicar numa coluna abre o painel daquele circuito.
+- **Config gerada saiu igual ao template padrão**: nodes na ordem do template (bloqueio 9,
+  blackhole 10, anúncio 11, global 12, prepends 13-16, no-export 17, `deny node 999` no fim), o
+  preview emitido em ordem de node, e um circuito novo já leva o `if-match community-filter
+  glob-all-<tipo>` quando esse filtro existe na caixa — sem ele, "anunciar para todos" não
+  alcança o circuito recém-criado.
+- **`export-df` virou legado** (§20 do template): continua sendo lida e manipulável onde já
+  existe, mas não entra em config nova nem conta como "faltando".
+- O parâmetro da ação passou a se chamar `destino` (circuito ou grupo global); o antigo
+  `circuito` continua aceito.
+
+Validado contra os 8 Huawei reais que usam a convenção (acessos 20, 175, 324, 746, 826, 923,
+990, 1216): 83 circuitos descobertos contra 67 antes, 160 prefixos mapeados e 79 avisos de
+config pré-existente. Nenhum comando foi enviado a equipamento durante o desenvolvimento.
+Detalhamento técnico em [`docs/bgp_automacao.md`](docs/bgp_automacao.md).
+
+---
+
 ## [Não publicado] — 2026-08-14 (PON: porta inventada e "sucesso" mentiroso)
 
 ### Corrigido
