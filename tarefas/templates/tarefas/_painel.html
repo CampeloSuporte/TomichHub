@@ -219,10 +219,8 @@
                         </select>
                     </div>
                     <div class="col-6 mb-2">
-                        <label class="form-label">Responsável</label>
-                        <select name="user_id" class="form-select" id="editResponsavel">
-                            <option value="">— Ninguém —</option>
-                        </select>
+                        <label class="form-label">Responsáveis <span style="font-weight:400;color:var(--text-muted,#7d8590);">(Ctrl/Cmd p/ vários)</span></label>
+                        <select name="responsaveis" class="form-select" id="editResponsavel" multiple size="4"></select>
                     </div>
                 </div>
             </div>
@@ -288,15 +286,16 @@
             document.getElementById('editStatus').value = btn.dataset.status || 'pendente';
 
             const selResp = document.getElementById('editResponsavel');
-            selResp.innerHTML = '<option value="">— Ninguém —</option>';
+            selResp.innerHTML = '';
             fetch(btn.dataset.usuariosUrl)
                 .then(r => r.json())
                 .then(data => {
+                    const idsAtuais = (data.responsaveis_ids || []).map(String);
                     (data.results || []).forEach(u => {
                         const opt = document.createElement('option');
                         opt.value = u.id;
                         opt.textContent = u.nome;
-                        if (String(u.id) === btn.dataset.assignedToId) opt.selected = true;
+                        if (idsAtuais.includes(String(u.id))) opt.selected = true;
                         selResp.appendChild(opt);
                     });
                 });

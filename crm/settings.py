@@ -230,8 +230,9 @@ CACHES = {
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 
-# ── Sessão: expira em 4 horas de inatividade ──
-SESSION_COOKIE_AGE = 1 * 60 * 60        # 3600 segundos
+# ── Sessão: expira em 7 dias de inatividade (era 1h — deslogava no meio de
+# qualquer navegação mais longa, ex. dentro do proxy web de acessos) ──
+SESSION_COOKIE_AGE = 7 * 24 * 60 * 60   # 604800 segundos
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # mantém entre abas/reaberturas até o limite
 SESSION_SAVE_EVERY_REQUEST = True        # renova o timer a cada request (sliding window)
 # ✅ FORÇAR timezone local em todos os DateTimeFields

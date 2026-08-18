@@ -12,9 +12,11 @@ import qrcode
 from django.contrib.auth.hashers import check_password, make_password
 from django.utils import timezone
 
-from .models import TOTPBackupCode
+from .models import TOTPBackupCode, DispositivoConfiavel
 
 ISSUER_NAME = 'TOMICH HUB'
+DISPOSITIVO_CONFIAVEL_COOKIE = 'dispositivo_confiavel'
+DISPOSITIVO_CONFIAVEL_DIAS = 30
 
 
 def gerar_secret():
@@ -62,3 +64,37 @@ def verificar_backup_code(device, codigo):
             backup.save(update_fields=['usado_em'])
             return True
     return False
+
+
+def criar_dispositivo_confiavel(user, descricao=''):
+    """Gera um token novo pra 'confiar neste navegador' e grava só o hash
+    no banco (mesmo padrão de backup code). Retorna (valor_do_cookie,
+    expira_em) — o token em texto puro só existe nesse retorno, pra virar
+    cookie; nunca é persistido."""
+    token = secrets.token_urlsafe(32)
+    expira_em = timezone.now() + timezone.timedelta(days=DISPOSITIVO_CONFIAVEL_DIAS)
+    DispositivoConfiavel.objects.create(
+        usuario=user,
+        token_hash=make_password(token),
+        descricao=descricao[:255],
+        expira_em=expira_em,
+    )
+    return f"{user.id}:{token}", expira_em
+
+
+def verificar_dispositivo_confiavel(cookie_valor):
+    """Retorna o User dono do cookie 'dispositivo_confiavel' se ele
+    corresponder a um registro válido (não expirado); None caso contrário.
+    Atualiza `ultimo_uso_em` no acerto."""
+    if not cookie_valor or ':' not in cookie_valor:
+        return None
+    user_id, token = cookie_valor.split(':', 1)
+    if not user_id.isdigit():
+        return None
+    agora = timezone.now()
+    for dispositivo in DispositivoConfiavel.objects.filter(usuario_id=user_id, expira_em__gt=agora):
+        if check_password(token, dispositivo.token_hash):
+            dispositivo.ultimo_uso_em = agora
+            dispositivo.save(update_fields=['ultimo_uso_em'])
+            return dispositivo.usuario
+    return None

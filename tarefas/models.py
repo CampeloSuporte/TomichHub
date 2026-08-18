@@ -16,6 +16,12 @@ class TarefaManager(models.Manager):
             return self.filter(instancia=instancia) if instancia else self.none()
         return self.none()
 
+    def do_cliente(self, cliente):
+        """Tarefas de um cliente específico — base do Kanban na aba do
+        cliente (usado tanto por back-office quanto pelo próprio portal do
+        cliente; a permissão de acesso ao `cliente` é checada na view)."""
+        return self.filter(cliente=cliente).select_related('criado_por').prefetch_related('responsaveis')
+
 
 class Tarefa(models.Model):
     """To-do do back-office, opcionalmente vinculado a um Cliente. Sem
@@ -56,8 +62,9 @@ class Tarefa(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDENTE)
     prioridade = models.CharField(max_length=20, choices=PRIORIDADE_CHOICES, default=PRIORIDADE_MEDIA)
     prazo = models.DateTimeField(null=True, blank=True)
-    assigned_to = models.ForeignKey(
-        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tarefas_atribuidas'
+    responsaveis = models.ManyToManyField(
+        User, blank=True, related_name='tarefas_responsavel',
+        help_text='Quem está responsável pela tarefa — pode ser mais de uma pessoa.'
     )
     criado_por = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tarefas_criadas'
@@ -74,7 +81,6 @@ class Tarefa(models.Model):
         verbose_name_plural = 'Tarefas'
         indexes = [
             models.Index(fields=['instancia', 'status']),
-            models.Index(fields=['assigned_to', 'status']),
             models.Index(fields=['status', 'prazo']),
         ]
 

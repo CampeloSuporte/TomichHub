@@ -62,6 +62,63 @@ para o que já foi corrigido e o que ainda falta.
 
 ## Problemas Conhecidos e Soluções
 
+### Host cadastrado com path embutido quebra o proxy (e o roteamento SSH) — Corrigido em 17/08/2026
+
+**Sintoma:** acesso Zabbix (`Acesso.host = "198.18.1.13/zabbix"`, campo cadastrado com IP **e**
+path juntos em vez de só o IP) dava "Sem resposta" no proxy — mesmo com túnel SSH ativo e
+funcional pro cliente. Outros dois acessos (Grafana porta 3000, host limpo; um host com IP
+público em porta não-padrão) reportados como quebrados no mesmo lote — investigação confirmou que
+esses dois já funcionavam (a real causa era só o host malformado; o de IP público tinha um
+problema de rede externo, não de CRM).
+
+**Causa** (`clientes/views.py::proxy_web_acesso`): o código assumia que `acesso.host` é sempre um
+IP/hostname puro. Com `"198.18.1.13/zabbix"`:
+- `ProxyEngine.is_private_ip(target_host)` recebe a string suja, `ipaddress.ip_address()` levanta
+  `ValueError`, e a função **retorna `False` silenciosamente** — mesmo o IP sendo privado
+  (`198.18.0.0/15` é RFC reservado), o acesso deixava de passar pelo túnel SSH e tentava ir
+  direto, inalcançável a partir do servidor do CRM.
+- `target_url = f"{scheme}://{target_host}:{porta_web}{full_path}"` virava
+  `"http://198.18.1.13/zabbix:80/..."` — `urlparse` corta o `netloc` no primeiro `/`, então
+  `":80/"` vira parte literal do **path**, não a porta.
+
+**Correção:** separa hostname puro de path fixo eventualmente embutido, e reinjeta esse path na
+requisição só quando ele ainda não veio embutido no path atual (evita duplicar quando os links do
+próprio dispositivo já trazem o prefixo, ex: `href="/zabbix/menu.php"`):
+
+```python
+target_host = acesso.host.strip()
+base_path = ''
+if '://' in target_host:
+    parsed_host = urlparse(target_host)
+    target_host = parsed_host.hostname
+    base_path = parsed_host.path.rstrip('/')
+elif '/' in target_host:
+    target_host, _, rest = target_host.partition('/')
+    rest = rest.strip('/')
+    if rest:
+        base_path = '/' + rest
+
+if base_path:
+    bp = base_path.strip('/')
+    p_no_slash = path.lstrip('/')
+    if p_no_slash != bp and not p_no_slash.startswith(bp + '/'):
+        path = base_path + path
+```
+
+Não foi feita nenhuma migração de dado — o parsing lida com o valor existente no banco
+(`"198.18.1.13/zabbix"`) em tempo de requisição; criar um campo separado só pra isso seria mudança
+de schema desnecessária.
+
+**Validado ao vivo:** testado via `requests` direto contra `https://crm.tomich.com.br` (Django test
+client pra sessão + `requests.Session` pra bater no Gunicorn/Daphne reais) — os 3 acessos do
+relato: 200 OK (Zabbix, antes falhava), 200 OK (Grafana, já funcionava), 502 (o de IP público —
+confirmado por teste TCP direto que é a rede do cliente que não responde nessa porta a partir do
+servidor do CRM, não um bug de código).
+
+**Nota operacional:** essa rota é servida pelo **Daphne**, não pelo Gunicorn (ver seção
+"Roteado pelo nginx" acima) — reiniciar só o Gunicorn depois de mexer em `proxy_web_acesso` não
+aplica a mudança; é preciso `systemctl restart daphne` também.
+
 ### Login funciona mas a página fica voltando pra tela de login (loop) — Corrigido em 04/08/2026
 
 **Sintoma:** em equipamentos com interface SPA própria (reproduzido com um AP Mimosa/Airspan C5c),
@@ -121,5 +178,5 @@ puro no log do Daphne). Se precisar depurar um host específico de novo, prefira
 
 ---
 
-**Última atualização:** 04/08/2026
+**Última atualização:** 17/08/2026
 **Autor:** CampeloSuporte

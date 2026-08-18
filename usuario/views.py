@@ -1,7 +1,10 @@
 import json
 import requests
+from urllib.parse import urlencode
 from django.conf import settings
+from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.shortcuts import render,redirect,get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -268,6 +271,28 @@ def editar_usuario(request):
     messages.error(request, 'Método não permitido.')
     return redirect('cadastrar_usuario')
 
+def _next_seguro(request, valor=None):
+    """Valida um destino de pós-login (`next`) contra host/scheme atuais —
+    mesma checagem que o Django faz nativamente em LoginView, pra não abrir
+    open redirect. `valor` explícito tem prioridade; senão lê de POST/GET."""
+    next_url = valor if valor is not None else (request.POST.get('next') or request.GET.get('next'))
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return next_url
+    return None
+
+
+def _redirect_pos_login(request, user, next_url=None):
+    """Volta pra onde o usuário estava tentando ir (ex: uma URL de proxy de
+    acesso que expirou a sessão no meio da navegação) quando houver um
+    `next` válido; senão cai no dashboard fixo de sempre."""
+    destino = _next_seguro(request, next_url)
+    if destino:
+        return redirect(destino)
+    return redirect_user_by_role(user)
+
+
 def login(request):
     """
     View de login com redirecionamento automático para cliente ou admin.
@@ -277,16 +302,20 @@ def login(request):
         # Se já está logado, redireciona para o dashboard apropriado
         if request.user.is_authenticated:
             return redirect_user_by_role(request.user)
-        
+
         return render(request, 'login.html', {
             'turnstile_site_key': settings.TURNSTILE_SITE_KEY,
+            'next': request.GET.get('next', ''),
         })
 
     else:
+        next_url = request.POST.get('next', '')
+
         if not _verificar_turnstile(request):
             messages.error(request, "Verificação de segurança falhou. Tente novamente.")
             return render(request, 'login.html', {
                 'turnstile_site_key': settings.TURNSTILE_SITE_KEY,
+                'next': next_url,
             })
 
         username = request.POST.get('username')
@@ -296,11 +325,25 @@ def login(request):
         if user is not None:
             device = getattr(user, 'totp_device', None)
             if device and device.confirmado:
+                # Navegador já marcado como confiável pra esse usuário
+                # (checkbox "Confiar neste navegador" na tela de 2FA) pula a
+                # segunda etapa — continua exigindo usuário+senha sempre.
+                cookie_valor = request.COOKIES.get(totp_lib.DISPOSITIVO_CONFIAVEL_COOKIE)
+                usuario_confiavel = totp_lib.verificar_dispositivo_confiavel(cookie_valor) if cookie_valor else None
+                if usuario_confiavel and usuario_confiavel.id == user.id:
+                    auth_login(request, user)
+                    tipo_usuario = _TIPO_LABELS.get(perms.get_role(user), 'Cliente')
+                    messages.success(request, f"Login realizado com sucesso. Bem-vindo, {tipo_usuario}!")
+                    return _redirect_pos_login(request, user)
+
                 # 2FA ativo: guarda o usuário como "pendente" na sessão sem
                 # autenticar ainda — só loga de fato depois do código certo
-                # em verificar_2fa.
+                # em verificar_2fa. O `next` não sobrevive ao redirect (essa
+                # segunda etapa é sua própria página, sem querystring), então
+                # fica guardado na sessão até lá.
                 request.session['2fa_user_id'] = user.id
                 request.session['2fa_tentativas'] = 0
+                request.session['2fa_next'] = _next_seguro(request, next_url)
                 return redirect('verificar_2fa')
 
             auth_login(request, user)
@@ -308,10 +351,13 @@ def login(request):
             tipo_usuario = _TIPO_LABELS.get(perms.get_role(user), 'Cliente')
             messages.success(request, f"Login realizado com sucesso. Bem-vindo, {tipo_usuario}!")
 
-            # Redirecionar baseado no tipo de usuário
-            return redirect_user_by_role(user)
+            # Redirecionar baseado no tipo de usuário (ou de volta pra onde
+            # ele estava, se a sessão caducou no meio de uma navegação)
+            return _redirect_pos_login(request, user, next_url)
         else:
             messages.error(request, "Usuário ou senha inválidos.")
+            if next_url:
+                return redirect(f"{reverse('login')}?{urlencode({'next': next_url})}")
             return redirect('login')
 
 
@@ -330,16 +376,28 @@ def verificar_2fa(request):
         if device and device.confirmado and (totp_lib.verificar_codigo(device, codigo) or totp_lib.verificar_backup_code(device, codigo)):
             del request.session['2fa_user_id']
             request.session.pop('2fa_tentativas', None)
+            next_url = request.session.pop('2fa_next', None)
             auth_login(request, user)
 
             tipo_usuario = _TIPO_LABELS.get(perms.get_role(user), 'Cliente')
             messages.success(request, f"Login realizado com sucesso. Bem-vindo, {tipo_usuario}!")
-            return redirect_user_by_role(user)
+            response = _redirect_pos_login(request, user, next_url)
+
+            if request.POST.get('lembrar_dispositivo') == 'on':
+                valor_cookie, expira_em = totp_lib.criar_dispositivo_confiavel(
+                    user, descricao=request.META.get('HTTP_USER_AGENT', '')
+                )
+                response.set_cookie(
+                    totp_lib.DISPOSITIVO_CONFIAVEL_COOKIE, valor_cookie,
+                    expires=expira_em, httponly=True, secure=request.is_secure(), samesite='Lax',
+                )
+            return response
 
         tentativas = request.session.get('2fa_tentativas', 0) + 1
         if tentativas >= 5:
             request.session.pop('2fa_user_id', None)
             request.session.pop('2fa_tentativas', None)
+            request.session.pop('2fa_next', None)
             messages.error(request, 'Muitas tentativas inválidas. Faça login novamente.')
             return redirect('login')
 

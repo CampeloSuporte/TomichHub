@@ -16,11 +16,11 @@
         {% if t.prazo %}{{ t.prazo|date:"d/m H:i" }}{% else %}—{% endif %}
     </td>
     {% if not ocultar_responsavel %}
-    <td>{% if t.assigned_to %}{{ t.assigned_to.get_full_name|default:t.assigned_to.username }}{% else %}—{% endif %}</td>
+    <td>{% for r in t.responsaveis.all %}{{ r.get_full_name|default:r.username }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
     {% endif %}
     <td>
         <div class="tarefa-acoes">
-            {% if not t.assigned_to %}
+            {% if request.user not in t.responsaveis.all %}
             <form method="post" action="{% url 'tarefa_assumir' t.id %}">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{{ request.path }}">
@@ -36,8 +36,7 @@
                     data-cliente-nome="{{ t.cliente.nome_empresa|default:'' }}"
                     data-prazo="{{ t.prazo|date:'Y-m-d\TH:i'|default:'' }}"
                     data-prioridade="{{ t.prioridade }}"
-                    data-status="{{ t.status }}"
-                    data-assigned-to-id="{{ t.assigned_to_id|default:'' }}">
+                    data-status="{{ t.status }}">
                 Editar
             </button>
         </div>

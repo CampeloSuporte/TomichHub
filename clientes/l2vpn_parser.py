@@ -902,3 +902,58 @@ def resumo_por_tipo(servicos):
         resumo[servico['tipo']] = resumo.get(servico['tipo'], 0) + 1
     resumo['total'] = len(servicos)
     return resumo
+
+
+# ─── Inventário de VLANs (não só as usadas em L2VPN) ──────────────────────────
+
+def extrair_vlans(conteudo):
+    """Todas as VLANs configuradas no equipamento — inventário simples por
+    switch, independente de a VLAN estar amarrada a um serviço L2VPN ou não.
+
+    Mesma filosofia do parser de L2VPN: só cobre a sintaxe que já apareceu em
+    backup real deste ambiente (Huawei VRP); MikroTik é melhor esforço, sem
+    amostra conferida ainda. Outros fabricantes voltam lista vazia."""
+    if not conteudo:
+        return []
+    linhas = conteudo.replace('\r\n', '\n').split('\n')
+
+    if re.search(r'^interface\s+Vlanif\d+', conteudo, re.MULTILINE | re.IGNORECASE):
+        vlans, vistos = [], set()
+        for idx, cabecalho, corpo, fim in _iter_blocos_vrp(linhas):
+            m = re.match(r'^interface\s+Vlanif(\d+)$', cabecalho, re.IGNORECASE)
+            if not m or m.group(1) in vistos:
+                continue
+            vistos.add(m.group(1))
+            desc, ip = '', ''
+            for linha in corpo:
+                mm = re.match(r'\s*description\s+(.+?)\s*$', linha)
+                if mm and not desc:
+                    desc = mm.group(1)
+                mm = re.match(r'\s*ip address\s+(\S+\s+\S+)', linha)
+                if mm and not ip:
+                    ip = mm.group(1)
+            vlans.append({'vlan': m.group(1), 'interface': f'Vlanif{m.group(1)}', 'descricao': desc, 'ip': ip})
+        return sorted(vlans, key=lambda v: int(v['vlan']))
+
+    if '/interface vlan' in conteudo:
+        # RouterOS: bloco `/interface vlan` seguido de várias linhas `add …`
+        # — sem amostra real deste ambiente pra conferir; melhor esforço.
+        m = re.search(r'^/interface vlan\s*\n(.*?)(?=^/|\Z)', conteudo, re.MULTILINE | re.DOTALL)
+        vlans = []
+        for linha in (m.group(1) if m else '').split('\n'):
+            if not linha.strip().startswith('add'):
+                continue
+            mv = re.search(r'\bvlan-id=(\d+)', linha)
+            if not mv:
+                continue
+            mn = re.search(r'\bname=(\S+)', linha)
+            mi = re.search(r'\binterface=(\S+)', linha)
+            vlans.append({
+                'vlan': mv.group(1),
+                'interface': mn.group(1) if mn else '',
+                'descricao': f'sobre {mi.group(1)}' if mi else '',
+                'ip': '',
+            })
+        return sorted(vlans, key=lambda v: int(v['vlan']))
+
+    return []

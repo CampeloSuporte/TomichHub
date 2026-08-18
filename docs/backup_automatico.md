@@ -5,7 +5,7 @@
 - `clientes/management/commands/rotina_backup.py` — management command
 - `crm/celery.py` — agendamento Celery Beat
 
-**Atualizado em:** 2026-07-20
+**Atualizado em:** 2026-08-18
 
 ---
 
@@ -309,6 +309,68 @@ criar subpastas). Afeta tanto o botão manual de backup quanto o pipeline autom�
 função `realizar_backup`, chamada por `clientes/tasks.py`).
 
 ---
+
+## Botão "Backup em Massa" — implementado de verdade em 17/08/2026
+
+Já existia na aba Backups da tela do cliente, mas era um **stub**: `executarBackupEmMassa()`
+só mostrava um toast "EM DESENVOLVIMENTO" e fechava o modal, sem chamar nenhum endpoint. O modal
+que lista os acessos elegíveis (`abrirModalBackupEmMassa`) também estava quebrado — chamava
+`/clientes/acessos/listar/`, uma rota que **nunca existiu** no sistema.
+
+**Correções** (`clientes/views.py` + `clientes/templates/listar.html`):
+- Nova view `listar_acessos_backup_habilitado` (`GET /clientes/acessos/listar/?cliente=<id>`) —
+  devolve os `Acesso` do cliente com `backup_habilitado=True`.
+- `executarBackupEmMassa()` reescrita: percorre a lista sequencialmente, chama o endpoint já
+  existente de backup individual (`/clientes/backups/executar/<id>/`) pra cada um, atualiza o
+  status do item na tela (rodando/ok/sem mudanças/erro) e refaz a lista ao final.
+
+## Botão "Listar hosts sem template e backups habilitados" — novo em 18/08/2026
+
+Ferramenta de configuração em massa, mesma aba Backups: acha acessos SSH que ainda **não** têm
+backup habilitado, mostra cada um numa linha com seletor de template + checkbox "Habilitar" +
+checkbox "Automático" (`backup_automatico`), e aplica tudo de uma vez ao salvar — resolve o caso
+de um lote grande de equipamentos cadastrados sem passar pelo pipeline automático (que exige
+`modelo` preenchido, ver critérios de elegibilidade acima).
+
+**Endpoints** (`clientes/views.py`):
+
+| Rota | Método | Descrição |
+|---|---|---|
+| `/clientes/acessos/sem-backup/?cliente=<id>` | GET (JSON) | Acessos `protocolo='SSH', backup_habilitado=False` do cliente |
+| `/clientes/backups/configurar-massa/` | POST (JSON) | `{"itens": [{"acesso_id", "habilitado", "automatico", "template_id"}, ...]}` |
+
+`configurar_backup_massa` valida item a item (não é tudo-ou-nada): se `habilitado=true` mas
+`template_id` vazio, aquele item específico entra na lista de `erros` da resposta e **não** é
+salvo — os demais itens do lote continuam sendo aplicados normalmente. Sem essa validação seria
+fácil reproduzir o mesmo estado "backup habilitado sem template" que já causa
+`'error': 'Template de backup não configurado'` em `executar_backup_acesso` na hora de rodar.
+
+## Correção — Excluir erro de backup voltava pro dashboard geral (17/08/2026)
+
+**Sintoma:** clicar em excluir um backup com `status='ERRO'` não excluía nada — o usuário era
+jogado de volta pra listagem geral de clientes, dando a impressão de ter "voltado pro dashboard".
+
+**Causa** (`clientes/views.py::deletar_backup`): backup que falhou nunca chega a gerar arquivo —
+`BackupLog.arquivo_path` fica `''`. O código fazia
+`os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)` sem checar isso antes: com
+`arquivo_path=''`, o `join` devolve o **próprio `MEDIA_ROOT`** (um diretório inteiro, não um
+arquivo), e `os.remove()` nele levanta `IsADirectoryError`. O `except Exception` genérico
+capturava e fazia `redirect('listar_clientes')` **sem** o parâmetro `?id=<cliente_id>` (diferente
+do caminho de sucesso, que inclui) — daí a sensação de cair na listagem geral em vez de continuar
+na tela do cliente.
+
+**Correção:**
+
+```python
+if backup.arquivo_path:
+    arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
+    if os.path.isfile(arquivo_path):
+        os.remove(arquivo_path)
+backup.delete()
+```
+
+E o fallback de erro passou a preservar `?id=<cliente_id>` também (guardado antes do `try`, pra
+não quebrar se a exceção acontecer antes dessa atribuição).
 
 ## Observações Importantes
 

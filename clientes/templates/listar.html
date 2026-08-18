@@ -200,6 +200,13 @@
                     </a>
                 </li>
                 {% endif %}
+                {% if is_admin_puro or modulos_habilitados.tarefas %}
+                <li class="nav-item">
+                    <a class="nav-link" onclick="trocarAba(event, 'tarefas')">
+                        <i class="fas fa-tasks me-1"></i>Tarefas
+                    </a>
+                </li>
+                {% endif %}
             </ul>
 
         <!-- ABA ACESSOS -->
@@ -1006,6 +1013,166 @@
                 </div>
             </div>
 
+    <!-- ABA TAREFAS (Kanban) -->
+    <div id="tab-tarefas" class="tab-content-main" style="display: {% if is_admin_puro or modulos_habilitados.tarefas %}block{% else %}none{% endif %};">
+        <style>
+            .kanban-board { display:flex; gap:14px; overflow-x:auto; padding-bottom:8px; align-items:flex-start; }
+            .kanban-col { flex:1 1 260px; min-width:260px; max-width:340px; background:var(--card-bg); border:1px solid var(--border); border-radius:10px; display:flex; flex-direction:column; max-height:calc(100vh - 280px); }
+            .kanban-col-header { padding:12px 14px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; font-weight:600; font-size:13px; color:var(--text-light); }
+            .kanban-col-count { background:var(--dark-bg); border:1px solid var(--border); color:var(--text-muted); font-size:11px; padding:1px 8px; border-radius:10px; }
+            .kanban-cards { flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:8px; min-height:80px; }
+            .kanban-card { background:var(--dark-bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; cursor:grab; transition:border-color .15s; }
+            .kanban-card:hover { border-color:var(--accent-cyan); }
+            .kanban-card.sortable-ghost { opacity:.35; }
+            .kanban-card.sortable-chosen { border-color:var(--accent-cyan); }
+            .kanban-card-titulo { font-size:13px; color:var(--text-light); font-weight:500; margin-bottom:6px; word-break:break-word; }
+            .kanban-card-meta { display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+            .kanban-badge { font-size:10px; padding:2px 7px; border-radius:6px; border:1px solid transparent; font-weight:600; white-space:nowrap; }
+            .kanban-badge-alta { background:rgba(248,81,73,.12); color:var(--error-red); border-color:rgba(248,81,73,.35); }
+            .kanban-badge-media { background:rgba(88,166,255,.12); color:var(--accent-cyan); border-color:rgba(88,166,255,.35); }
+            .kanban-badge-baixa { background:rgba(63,185,80,.12); color:var(--primary-green); border-color:rgba(63,185,80,.35); }
+            .kanban-badge-prazo { background:rgba(125,133,144,.12); color:var(--text-muted); border-color:var(--border); }
+            .kanban-badge-atrasada { background:rgba(248,81,73,.12); color:var(--error-red); border-color:rgba(248,81,73,.35); }
+            .kanban-card-responsavel { font-size:11px; color:var(--text-muted); margin-top:6px; display:flex; align-items:center; gap:4px; }
+            .kanban-empty { text-align:center; color:var(--text-muted); font-size:12px; padding:20px 6px; }
+            .kanban-col-atrasada { border-color:rgba(248,81,73,.4); }
+            .kanban-col-atrasada .kanban-col-header { border-bottom-color:rgba(248,81,73,.3); }
+            .kanban-col-atrasada .kanban-card { border-color:rgba(248,81,73,.3); }
+            .kanban-col-atrasada .kanban-card:hover { border-color:var(--error-red); }
+        </style>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div style="font-size:13px;color:var(--text-muted);">
+                <i class="fas fa-hand-pointer me-1"></i> Arraste os cartões entre as colunas para mudar o status. Tarefas com prazo vencido caem automaticamente em "Atrasada".
+            </div>
+            <button class="btn btn-sm btn-primary" onclick="abrirModalNovaTarefaKanban()">
+                <i class="fas fa-plus me-1"></i> Nova Tarefa
+            </button>
+        </div>
+
+        <div class="kanban-board" id="kanbanBoard">
+            <div class="kanban-col kanban-col-atrasada" data-status="atrasada">
+                <div class="kanban-col-header">
+                    <span><i class="fas fa-triangle-exclamation me-1" style="color:var(--error-red);"></i>Atrasada</span>
+                    <span class="kanban-col-count" id="kanban-count-atrasada">0</span>
+                </div>
+                <div class="kanban-cards" id="kanban-cards-atrasada"></div>
+            </div>
+            <div class="kanban-col" data-status="pendente">
+                <div class="kanban-col-header">
+                    <span><i class="fas fa-hourglass-half me-1" style="color:#d29922;"></i>Pendente</span>
+                    <span class="kanban-col-count" id="kanban-count-pendente">0</span>
+                </div>
+                <div class="kanban-cards" id="kanban-cards-pendente"></div>
+            </div>
+            <div class="kanban-col" data-status="andamento">
+                <div class="kanban-col-header">
+                    <span><i class="fas fa-spinner me-1" style="color:var(--accent-cyan);"></i>Em Andamento</span>
+                    <span class="kanban-col-count" id="kanban-count-andamento">0</span>
+                </div>
+                <div class="kanban-cards" id="kanban-cards-andamento"></div>
+            </div>
+            <div class="kanban-col" data-status="concluida">
+                <div class="kanban-col-header">
+                    <span><i class="fas fa-check-circle me-1" style="color:var(--primary-green);"></i>Concluída</span>
+                    <span class="kanban-col-count" id="kanban-count-concluida">0</span>
+                </div>
+                <div class="kanban-cards" id="kanban-cards-concluida"></div>
+            </div>
+            <div class="kanban-col" data-status="cancelada">
+                <div class="kanban-col-header">
+                    <span><i class="fas fa-ban me-1" style="color:var(--text-muted);"></i>Cancelada</span>
+                    <span class="kanban-col-count" id="kanban-count-cancelada">0</span>
+                </div>
+                <div class="kanban-cards" id="kanban-cards-cancelada"></div>
+            </div>
+        </div>
+
+        <!-- Modal Nova Tarefa -->
+        <div id="modalNovaTarefaKanban" class="modal-overlay" style="display:none;">
+            <div class="modal-acesso" style="max-width:520px;">
+                <div class="modal-header-acesso">
+                    <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Nova Tarefa</h2>
+                    <button class="btn-close-modal" onclick="fecharModalKanban('modalNovaTarefaKanban')"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body-acesso">
+                    <div class="mb-2">
+                        <label class="form-label">Título</label>
+                        <input type="text" id="ktTitulo" class="form-control" maxlength="255" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Descrição</label>
+                        <textarea id="ktDescricao" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-2">
+                            <label class="form-label">Prazo</label>
+                            <input type="datetime-local" id="ktPrazo" class="form-control">
+                        </div>
+                        <div class="col-6 mb-2">
+                            <label class="form-label">Prioridade</label>
+                            <select id="ktPrioridade" class="form-select">
+                                <option value="baixa">Baixa</option>
+                                <option value="media" selected>Média</option>
+                                <option value="alta">Alta</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer-acesso">
+                        <button type="button" class="btn-cancel-modal" onclick="fecharModalKanban('modalNovaTarefaKanban')"><i class="fas fa-times me-2"></i>Cancelar</button>
+                        <button type="button" class="btn-submit-modal" onclick="salvarNovaTarefaKanban()"><i class="fas fa-check me-2"></i>Criar Tarefa</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Editar Tarefa -->
+        <div id="modalEditarTarefaKanban" class="modal-overlay" style="display:none;">
+            <div class="modal-acesso" style="max-width:520px;">
+                <div class="modal-header-acesso">
+                    <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Editar Tarefa</h2>
+                    <button class="btn-close-modal" onclick="fecharModalKanban('modalEditarTarefaKanban')"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body-acesso">
+                    <input type="hidden" id="ketId">
+                    <div class="mb-2">
+                        <label class="form-label">Título</label>
+                        <input type="text" id="ketTitulo" class="form-control" maxlength="255" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Descrição</label>
+                        <textarea id="ketDescricao" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-2">
+                            <label class="form-label">Prazo</label>
+                            <input type="datetime-local" id="ketPrazo" class="form-control">
+                        </div>
+                        <div class="col-6 mb-2">
+                            <label class="form-label">Prioridade</label>
+                            <select id="ketPrioridade" class="form-select">
+                                <option value="baixa">Baixa</option>
+                                <option value="media">Média</option>
+                                <option value="alta">Alta</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-2" id="ketResponsavelWrap" style="display:none;">
+                        <label class="form-label">Responsáveis <span style="font-weight:400;color:var(--text-muted);">(Ctrl/Cmd p/ vários)</span></label>
+                        <select id="ketResponsavel" class="form-select" multiple size="4"></select>
+                    </div>
+                    <div class="modal-footer-acesso" style="justify-content:space-between;">
+                        <button type="button" class="btn-cancel-modal" id="ketExcluirBtn" style="border-color:rgba(248,81,73,.4);color:#f85149;" onclick="excluirTarefaKanban()"><i class="fas fa-trash me-2"></i>Excluir</button>
+                        <div style="display:flex;gap:8px;">
+                            <button type="button" class="btn-cancel-modal" onclick="fecharModalKanban('modalEditarTarefaKanban')"><i class="fas fa-times me-2"></i>Cancelar</button>
+                            <button type="button" class="btn-submit-modal" onclick="salvarEdicaoTarefaKanban()"><i class="fas fa-check me-2"></i>Salvar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ABA BACKUPS -->
         <div id="tab-backups" class="tab-content-main" style="display: none;">
             <div class="card">
@@ -1018,6 +1185,9 @@
                             </button>
                             <button class="btn btn-sm btn-primary" onclick="abrirModalBackupEmMassa()">
                                 <i class="fas fa-play me-1"></i> Backup em Massa
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning" onclick="abrirModalHostsSemBackup()">
+                                <i class="fas fa-triangle-exclamation me-1"></i> Listar hosts sem template e backups habilitados
                             </button>
                         </div>
                     </div>
@@ -1140,6 +1310,34 @@
                         <i class="fas fa-play me-2"></i> Executar Backups
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal Hosts SSH sem backup habilitado (configurar em massa) -->
+    <div id="modalHostsSemBackup" class="modal-overlay" style="display:none;">
+        <div class="modal-acesso" style="max-width:950px;width:95%;max-height:88vh;display:flex;flex-direction:column;">
+            <div class="modal-header-acesso" style="flex-shrink:0;">
+                <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Hosts sem template e backups habilitados</h2>
+                <button class="btn-close-modal" onclick="fecharModalHostsSemBackup()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body-acesso" style="overflow-y:auto;flex:1;">
+                <div class="alert" style="background: rgba(255, 170, 0, 0.1); border-left: 3px solid var(--warning-orange); color: var(--text-light); margin-bottom: 16px;">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Acessos com protocolo SSH que ainda não têm backup habilitado. Marque, escolha o template e salve em massa.
+                </div>
+                <div id="hostsSemBackupLista">
+                    <div class="text-center py-4"><i class="fas fa-spinner fa-spin" style="font-size:32px;color:var(--accent-cyan);opacity:.3;"></i></div>
+                </div>
+            </div>
+            <div class="modal-footer-acesso" style="flex-shrink:0;">
+                <button type="button" class="btn-cancel-modal" onclick="fecharModalHostsSemBackup()">
+                    <i class="fas fa-times me-2"></i> Cancelar
+                </button>
+                <button type="button" class="btn-submit-modal" onclick="salvarHostsSemBackupMassa()">
+                    <i class="fas fa-check me-2"></i> Salvar Alterações
+                </button>
             </div>
         </div>
     </div>
@@ -1524,27 +1722,6 @@
                             </button>
                         </div>
                         {% endif %}
-                    </div>
-                </div>
-
-                <!-- ── VPN WireGuard ─────────────────────────────────── -->
-                <div class="card mt-4">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center justify-content-between mb-3">
-                            <div>
-                                <h5 class="mb-0"><i class="fas fa-network-wired me-2" style="color:#58a6ff"></i>VPN WireGuard — MikroTik</h5>
-                                <small style="color:rgba(88,166,255,.4)">Conecta redes privadas do cliente sem precisar de servidor Linux/proxy</small>
-                            </div>
-                            <button class="btn btn-sm" onclick="wgCriarVPN()"
-                                style="background:rgba(88,166,255,.15);border:1px solid #58a6ff;color:#58a6ff;font-size:.8rem">
-                                <i class="fas fa-plus me-1"></i> Nova VPN WireGuard
-                            </button>
-                        </div>
-                        <div id="wg-lista" style="min-height:60px">
-                            <div style="color:rgba(88,166,255,.4);font-size:.85rem;text-align:center;padding:20px">
-                                <i class="fas fa-spinner fa-spin me-2"></i> Carregando...
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -2658,6 +2835,8 @@ Você acabou de se conectar ao nosso Wi-Fi Grátis e foi selecionado para ganhar
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'ips')"><i class="fas fa-map-marker-alt me-1"></i>Endereços IP</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'vlans')"><i class="fas fa-layer-group me-1"></i>VLANs</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'vpns')"><i class="fas fa-shield-alt me-1"></i>VPNs</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'l2vpn')"><i class="fas fa-diagram-project me-1"></i>L2VPN</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'vlans-switch')"><i class="fas fa-folder-tree me-1"></i>VLANs por Switch</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'importar')"><i class="fas fa-file-import me-1"></i>Importar</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'historico')"><i class="fas fa-history me-1"></i>Histórico</a></li>
         </ul>
@@ -2750,6 +2929,52 @@ Você acabou de se conectar ao nosso Wi-Fi Grátis e foi selecionado para ganhar
                     <tbody id="ipam-vpns-tbody"><tr><td colspan="9" class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></td></tr></tbody>
                 </table>
             </div>
+        </div>
+
+        <!-- ─── L2VPN (VSI / VPWS / VPLS / L2VC) ─── -->
+        <div id="ipam-sub-l2vpn" class="ipam-sub" style="display:none;">
+            <style>
+                /* Pastas (compartilhado entre L2VPN e VLANs por Switch) */
+                .switch-folder-row { display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;transition:background .15s; }
+                .switch-folder-row:hover { background:rgba(255,255,255,.04); }
+                .switch-folder-row.aberta { background:rgba(88,166,255,.07); }
+                .switch-folder-icon { color:#e8a33d;width:16px;text-align:center;flex-shrink:0; }
+                .switch-folder-nome { font-weight:600;color:var(--text-light);font-size:.88rem; }
+                .switch-folder-host { color:var(--text-muted);font-size:.76rem;margin-left:4px; }
+                .switch-folder-meta { display:flex;gap:6px;flex-wrap:wrap;margin-left:auto; }
+                .switch-folder-contents { margin:2px 0 8px 32px;padding-left:14px;border-left:1px dashed var(--border); }
+                .l2vpn-chip { font-size:.72rem;padding:2px 8px;border-radius:10px;border:1px solid transparent;font-weight:600; }
+                .l2vpn-chip-vpls { background:rgba(163,113,247,.12);color:#a371f7;border-color:rgba(163,113,247,.35); }
+                .l2vpn-chip-vpws { background:rgba(255,170,0,.12);color:var(--warning-orange);border-color:rgba(255,170,0,.35); }
+                .l2vpn-chip-l2vc { background:rgba(88,166,255,.12);color:var(--accent-cyan);border-color:rgba(88,166,255,.35); }
+                .l2vpn-chip-vazio { background:rgba(125,133,144,.1);color:var(--text-muted);border-color:var(--border); }
+                .l2vpn-svc-row td { vertical-align:top; }
+                .l2vpn-peer-ok { color:var(--primary-green); }
+                .l2vpn-peer-nao-identificado { color:var(--warning-orange); }
+                .l2vpn-peer-vazio { color:var(--error-red); }
+            </style>
+            <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
+                <input type="search" id="l2vpn-busca" class="form-control form-control-sm" style="max-width:280px;background:var(--surface);color:var(--text-light);border-color:var(--border);"
+                       placeholder="Buscar switch pelo nome..." autocomplete="off" oninput="ipamL2vpnBuscar(this.value)">
+                <button class="btn btn-sm btn-outline-secondary" onclick="ipamCarregarL2vpn()"><i class="fas fa-rotate me-1"></i>Atualizar</button>
+            </div>
+            <div id="l2vpn-switches-lista">
+                <div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+            <div id="l2vpn-paginacao" class="d-flex justify-content-between align-items-center mt-2"></div>
+        </div>
+
+        <!-- ─── VLANs POR SWITCH ─── -->
+        <div id="ipam-sub-vlans-switch" class="ipam-sub" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
+                <input type="search" id="vlansw-busca" class="form-control form-control-sm" style="max-width:280px;background:var(--surface);color:var(--text-light);border-color:var(--border);"
+                       placeholder="Buscar switch pelo nome..." autocomplete="off" oninput="ipamVlanSwBuscar(this.value)">
+                <button class="btn btn-sm btn-outline-secondary" onclick="ipamCarregarVlanSw()"><i class="fas fa-rotate me-1"></i>Atualizar</button>
+            </div>
+            <div id="vlansw-switches-lista">
+                <div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+            <div id="vlansw-paginacao" class="d-flex justify-content-between align-items-center mt-2"></div>
         </div>
 
         <!-- ─── IMPORTAR ─── -->
@@ -2869,6 +3094,9 @@ const IPAM = {
     prefixos: [], subredes: [], vlans: [],
     buscarTimer: null,
 };
+
+const L2VPN = { carregado: false, switches: [], aberto: null, cacheDetalhe: {}, busca: '', pagina: 1, porPagina: 20 };
+const VLANSW = { carregado: false, switches: [], aberto: null, cacheDetalhe: {}, busca: '', pagina: 1, porPagina: 20 };
 
 /* ── Estilos inline IPAM ── */
 (function(){
@@ -3093,6 +3321,8 @@ window.ipamAba = function(e, nome) {
     if(nome === 'ips')       { ipamCarregarIPs(); if(!IPAM.subredes.length) ipamCarregarSubRedes(); }
     if(nome === 'vlans')     ipamCarregarVlans();
     if(nome === 'vpns')      ipamCarregarVpns();
+    if(nome === 'l2vpn')     { if(!L2VPN.carregado) ipamCarregarL2vpn(); }
+    if(nome === 'vlans-switch') { if(!VLANSW.carregado) ipamCarregarVlanSw(); }
     if(nome === 'historico') ipamCarregarHistorico();
 };
 
@@ -4258,6 +4488,312 @@ window.ipamCarregarVpns = async function(){
 };
 
 /* ═════════════════════════════════════════════════
+   L2VPN — VSI / VPLS / VPWS / L2VC por switch
+   (extraído do backup — mesmo motor do modal "Mostrar L2VPN" da Topologia)
+═════════════════════════════════════════════════ */
+window.ipamCarregarL2vpn = async function(){
+    const lista = document.getElementById('l2vpn-switches-lista');
+    lista.innerHTML = '<div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></div>';
+    try {
+        const r = await fetch(`/clientes/${CID}/ipam/l2vpn/switches/`);
+        const d = await r.json();
+        L2VPN.carregado = true;
+        L2VPN.switches = d.switches || [];
+        L2VPN.aberto = null;
+        L2VPN.cacheDetalhe = {};
+        L2VPN.busca = '';
+        L2VPN.pagina = 1;
+        const buscaEl = document.getElementById('l2vpn-busca');
+        if (buscaEl) buscaEl.value = '';
+        _l2vpnRenderLista();
+    } catch (e) {
+        lista.innerHTML = '<div class="text-center text-muted py-3">Erro ao carregar switches.</div>';
+    }
+};
+
+function ipamL2vpnBuscar(valor){
+    L2VPN.busca = valor;
+    L2VPN.pagina = 1;
+    L2VPN.aberto = null;
+    _l2vpnRenderLista();
+}
+
+function ipamL2vpnIrPagina(p){
+    L2VPN.pagina = p;
+    _l2vpnRenderLista();
+}
+
+function _l2vpnFiltrados(){
+    const q = (L2VPN.busca || '').trim().toLowerCase();
+    if (!q) return L2VPN.switches;
+    return L2VPN.switches.filter(sw => (sw.nome || '').toLowerCase().includes(q) || (sw.host || '').toLowerCase().includes(q));
+}
+
+function _l2vpnRenderLista(){
+    const lista = document.getElementById('l2vpn-switches-lista');
+    const paginacaoEl = document.getElementById('l2vpn-paginacao');
+
+    if (!L2VPN.switches.length) {
+        lista.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-diagram-project" style="font-size:32px;opacity:.3;"></i><p class="mt-2 mb-0">Nenhum switch identificado nos acessos deste cliente.</p></div>';
+        if (paginacaoEl) paginacaoEl.innerHTML = '';
+        return;
+    }
+
+    const filtrados = _l2vpnFiltrados();
+    if (!filtrados.length) {
+        lista.innerHTML = '<div class="text-center text-muted py-4">Nenhum switch encontrado para essa busca.</div>';
+        if (paginacaoEl) paginacaoEl.innerHTML = '';
+        return;
+    }
+
+    const totalPaginas = Math.max(1, Math.ceil(filtrados.length / L2VPN.porPagina));
+    if (L2VPN.pagina > totalPaginas) L2VPN.pagina = totalPaginas;
+    const inicio = (L2VPN.pagina - 1) * L2VPN.porPagina;
+    const paginaAtual = filtrados.slice(inicio, inicio + L2VPN.porPagina);
+
+    lista.innerHTML = paginaAtual.map(sw => {
+        const r = sw.resumo || {vpls:0, vpws:0, l2vc:0, total:0};
+        const chips = r.total
+            ? `${r.vpls ? `<span class="l2vpn-chip l2vpn-chip-vpls">${r.vpls} VPLS/VSI</span>` : ''}
+               ${r.vpws ? `<span class="l2vpn-chip l2vpn-chip-vpws">${r.vpws} VPWS</span>` : ''}
+               ${r.l2vc ? `<span class="l2vpn-chip l2vpn-chip-l2vc">${r.l2vc} L2VC</span>` : ''}`
+            : (sw.tem_backup ? '<span class="l2vpn-chip l2vpn-chip-vazio">Sem serviço L2VPN</span>' : '<span class="l2vpn-chip l2vpn-chip-vazio">Sem backup</span>');
+        const aberto = L2VPN.aberto === sw.acesso_id;
+        return `
+        <div>
+            <div class="switch-folder-row ${aberto ? 'aberta' : ''}" onclick="ipamL2vpnToggle(${sw.acesso_id})">
+                <i class="fas fa-folder${aberto ? '-open' : ''} switch-folder-icon"></i>
+                <span class="switch-folder-nome">${_escapeHtmlKanban(sw.nome)}</span>
+                <span class="switch-folder-host">${_escapeHtmlKanban(sw.host)}${sw.data_backup ? ' · backup ' + sw.data_backup : ''}</span>
+                <div class="switch-folder-meta">${chips}</div>
+            </div>
+            ${aberto ? `<div class="switch-folder-contents" id="l2vpn-detalhe-${sw.acesso_id}" onclick="event.stopPropagation()"><div class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin"></i></div></div>` : ''}
+        </div>`;
+    }).join('');
+
+    if (L2VPN.aberto !== null && paginaAtual.some(sw => sw.acesso_id === L2VPN.aberto)) {
+        _l2vpnCarregarDetalhe(L2VPN.aberto);
+    }
+
+    if (!paginacaoEl) return;
+    if (totalPaginas <= 1) {
+        paginacaoEl.innerHTML = `<span style="color:var(--text-muted);font-size:.8rem;">${filtrados.length} switch${filtrados.length !== 1 ? 'es' : ''}</span>`;
+    } else {
+        paginacaoEl.innerHTML = `
+            <span style="color:var(--text-muted);font-size:.8rem;">${filtrados.length} switches — página ${L2VPN.pagina} de ${totalPaginas}</span>
+            <div class="d-flex gap-1">
+                <button class="btn btn-sm btn-outline-secondary" ${L2VPN.pagina <= 1 ? 'disabled' : ''} onclick="ipamL2vpnIrPagina(${L2VPN.pagina - 1})"><i class="fas fa-chevron-left"></i></button>
+                <button class="btn btn-sm btn-outline-secondary" ${L2VPN.pagina >= totalPaginas ? 'disabled' : ''} onclick="ipamL2vpnIrPagina(${L2VPN.pagina + 1})"><i class="fas fa-chevron-right"></i></button>
+            </div>`;
+    }
+}
+
+function ipamL2vpnToggle(acessoId){
+    L2VPN.aberto = (L2VPN.aberto === acessoId) ? null : acessoId;
+    _l2vpnRenderLista();
+}
+
+async function _l2vpnCarregarDetalhe(acessoId){
+    const alvo = document.getElementById(`l2vpn-detalhe-${acessoId}`);
+    if (!alvo) return;
+    if (L2VPN.cacheDetalhe[acessoId]) { alvo.innerHTML = _l2vpnRenderServicos(L2VPN.cacheDetalhe[acessoId]); return; }
+    try {
+        const r = await fetch(`/clientes/acessos/${acessoId}/l2vpn-backup/`);
+        const d = await r.json();
+        L2VPN.cacheDetalhe[acessoId] = d;
+        alvo.innerHTML = _l2vpnRenderServicos(d);
+    } catch (e) {
+        alvo.innerHTML = '<div class="text-muted text-center py-2">Erro ao carregar os serviços deste switch.</div>';
+    }
+}
+
+function _l2vpnRenderServicos(d){
+    if (!d.tem_backup) {
+        return '<div class="text-muted text-center py-2">Sem backup coletado para este switch ainda.</div>';
+    }
+    if (!d.servicos || !d.servicos.length) {
+        return '<div class="text-muted text-center py-2">Backup coletado, mas nenhum serviço L2VPN (VSI/VPWS/VPLS/L2VC) encontrado.</div>';
+    }
+    const tipoClasse = {vpls: 'l2vpn-chip-vpls', vpws: 'l2vpn-chip-vpws', l2vc: 'l2vpn-chip-l2vc'};
+    const linhas = d.servicos.map(s => {
+        const peersHtml = (s.peers && s.peers.length)
+            ? s.peers.map(p => {
+                if (p.destino) return `<div class="l2vpn-peer-ok"><i class="fas fa-check-circle"></i> ${_escapeHtmlKanban(p.destino.nome)} <span style="color:var(--text-muted);">(${p.ip})</span></div>`;
+                return `<div class="l2vpn-peer-nao-identificado"><i class="fas fa-question-circle"></i> ${p.ip} <span style="color:var(--text-muted);">(não identificado)</span></div>`;
+            }).join('')
+            : '<div class="l2vpn-peer-vazio"><i class="fas fa-triangle-exclamation"></i> sem peer</div>';
+        const listaInterfaces = (s.interfaces || []).map(i => {
+            const desc = i.descricao ? ` <span style="color:var(--text-light);">— ${_escapeHtmlKanban(i.descricao)}</span>` : '';
+            const vlan = i.vlan ? ` <span style="opacity:.7;">(vlan ${_escapeHtmlKanban(i.vlan)})</span>` : '';
+            return `${_escapeHtmlKanban(i.nome)}${vlan}${desc}`;
+        });
+        const interfacesHtml = listaInterfaces.length
+            ? (listaInterfaces.length > 4
+                ? `<div style="max-height:130px;overflow-y:auto;padding-right:4px;">${listaInterfaces.join('<br>')}</div>
+                   <div style="color:var(--text-muted);opacity:.8;margin-top:2px;">${listaInterfaces.length} interfaces de acesso</div>`
+                : listaInterfaces.join('<br>'))
+            : '—';
+        return `
+        <tr class="l2vpn-svc-row">
+            <td><span class="l2vpn-chip ${tipoClasse[s.tipo] || ''}">${_escapeHtmlKanban(s.tecnologia || s.tipo)}</span></td>
+            <td style="font-family:'Courier New',monospace;font-size:.8rem;">${_escapeHtmlKanban(s.id || '—')}</td>
+            <td style="color:var(--text-light);">${_escapeHtmlKanban(s.nome || '—')}</td>
+            <td>${_escapeHtmlKanban(s.vlan || '—')}</td>
+            <td>${_escapeHtmlKanban(s.mtu || '—')}</td>
+            <td>${peersHtml}</td>
+            <td style="font-size:.8rem;color:var(--text-muted);min-width:220px;">${interfacesHtml}</td>
+        </tr>`;
+    }).join('');
+    return `
+    <div class="table-responsive">
+        <table class="table table-dark table-hover table-sm mb-0" style="font-size:.82rem;">
+            <thead><tr><th>Tipo</th><th>ID</th><th>Nome</th><th>VLAN</th><th>MTU</th><th>Peer</th><th>Interfaces</th></tr></thead>
+            <tbody>${linhas}</tbody>
+        </table>
+    </div>`;
+}
+
+/* ═════════════════════════════════════════════════
+   VLANs POR SWITCH — inventário completo (não só as
+   usadas em L2VPN), mesmo padrão de pastas do L2VPN
+═════════════════════════════════════════════════ */
+window.ipamCarregarVlanSw = async function(){
+    const lista = document.getElementById('vlansw-switches-lista');
+    lista.innerHTML = '<div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></div>';
+    try {
+        const r = await fetch(`/clientes/${CID}/ipam/vlans-switch/switches/`);
+        const d = await r.json();
+        VLANSW.carregado = true;
+        VLANSW.switches = d.switches || [];
+        VLANSW.aberto = null;
+        VLANSW.cacheDetalhe = {};
+        VLANSW.busca = '';
+        VLANSW.pagina = 1;
+        const buscaEl = document.getElementById('vlansw-busca');
+        if (buscaEl) buscaEl.value = '';
+        _vlanSwRenderLista();
+    } catch (e) {
+        lista.innerHTML = '<div class="text-center text-muted py-3">Erro ao carregar switches.</div>';
+    }
+};
+
+function ipamVlanSwBuscar(valor){
+    VLANSW.busca = valor;
+    VLANSW.pagina = 1;
+    VLANSW.aberto = null;
+    _vlanSwRenderLista();
+}
+
+function ipamVlanSwIrPagina(p){
+    VLANSW.pagina = p;
+    _vlanSwRenderLista();
+}
+
+function _vlanSwFiltrados(){
+    const q = (VLANSW.busca || '').trim().toLowerCase();
+    if (!q) return VLANSW.switches;
+    return VLANSW.switches.filter(sw => (sw.nome || '').toLowerCase().includes(q) || (sw.host || '').toLowerCase().includes(q));
+}
+
+function _vlanSwRenderLista(){
+    const lista = document.getElementById('vlansw-switches-lista');
+    const paginacaoEl = document.getElementById('vlansw-paginacao');
+
+    if (!VLANSW.switches.length) {
+        lista.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-folder-tree" style="font-size:32px;opacity:.3;"></i><p class="mt-2 mb-0">Nenhum switch identificado nos acessos deste cliente.</p></div>';
+        if (paginacaoEl) paginacaoEl.innerHTML = '';
+        return;
+    }
+
+    const filtrados = _vlanSwFiltrados();
+    if (!filtrados.length) {
+        lista.innerHTML = '<div class="text-center text-muted py-4">Nenhum switch encontrado para essa busca.</div>';
+        if (paginacaoEl) paginacaoEl.innerHTML = '';
+        return;
+    }
+
+    const totalPaginas = Math.max(1, Math.ceil(filtrados.length / VLANSW.porPagina));
+    if (VLANSW.pagina > totalPaginas) VLANSW.pagina = totalPaginas;
+    const inicio = (VLANSW.pagina - 1) * VLANSW.porPagina;
+    const paginaAtual = filtrados.slice(inicio, inicio + VLANSW.porPagina);
+
+    lista.innerHTML = paginaAtual.map(sw => {
+        const chip = sw.total_vlans
+            ? `<span class="l2vpn-chip l2vpn-chip-l2vc">${sw.total_vlans} VLAN${sw.total_vlans !== 1 ? 's' : ''}</span>`
+            : (sw.tem_backup ? '<span class="l2vpn-chip l2vpn-chip-vazio">Sem VLAN encontrada</span>' : '<span class="l2vpn-chip l2vpn-chip-vazio">Sem backup</span>');
+        const aberto = VLANSW.aberto === sw.acesso_id;
+        return `
+        <div>
+            <div class="switch-folder-row ${aberto ? 'aberta' : ''}" onclick="ipamVlanSwToggle(${sw.acesso_id})">
+                <i class="fas fa-folder${aberto ? '-open' : ''} switch-folder-icon"></i>
+                <span class="switch-folder-nome">${_escapeHtmlKanban(sw.nome)}</span>
+                <span class="switch-folder-host">${_escapeHtmlKanban(sw.host)}${sw.data_backup ? ' · backup ' + sw.data_backup : ''}</span>
+                <div class="switch-folder-meta">${chip}</div>
+            </div>
+            ${aberto ? `<div class="switch-folder-contents" id="vlansw-detalhe-${sw.acesso_id}" onclick="event.stopPropagation()"><div class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin"></i></div></div>` : ''}
+        </div>`;
+    }).join('');
+
+    if (VLANSW.aberto !== null && paginaAtual.some(sw => sw.acesso_id === VLANSW.aberto)) {
+        _vlanSwCarregarDetalhe(VLANSW.aberto);
+    }
+
+    if (!paginacaoEl) return;
+    if (totalPaginas <= 1) {
+        paginacaoEl.innerHTML = `<span style="color:var(--text-muted);font-size:.8rem;">${filtrados.length} switch${filtrados.length !== 1 ? 'es' : ''}</span>`;
+    } else {
+        paginacaoEl.innerHTML = `
+            <span style="color:var(--text-muted);font-size:.8rem;">${filtrados.length} switches — página ${VLANSW.pagina} de ${totalPaginas}</span>
+            <div class="d-flex gap-1">
+                <button class="btn btn-sm btn-outline-secondary" ${VLANSW.pagina <= 1 ? 'disabled' : ''} onclick="ipamVlanSwIrPagina(${VLANSW.pagina - 1})"><i class="fas fa-chevron-left"></i></button>
+                <button class="btn btn-sm btn-outline-secondary" ${VLANSW.pagina >= totalPaginas ? 'disabled' : ''} onclick="ipamVlanSwIrPagina(${VLANSW.pagina + 1})"><i class="fas fa-chevron-right"></i></button>
+            </div>`;
+    }
+}
+
+function ipamVlanSwToggle(acessoId){
+    VLANSW.aberto = (VLANSW.aberto === acessoId) ? null : acessoId;
+    _vlanSwRenderLista();
+}
+
+async function _vlanSwCarregarDetalhe(acessoId){
+    const alvo = document.getElementById(`vlansw-detalhe-${acessoId}`);
+    if (!alvo) return;
+    if (VLANSW.cacheDetalhe[acessoId]) { alvo.innerHTML = _vlanSwRenderTabela(VLANSW.cacheDetalhe[acessoId]); return; }
+    try {
+        const r = await fetch(`/clientes/acessos/${acessoId}/vlans-backup/`);
+        const d = await r.json();
+        VLANSW.cacheDetalhe[acessoId] = d;
+        alvo.innerHTML = _vlanSwRenderTabela(d);
+    } catch (e) {
+        alvo.innerHTML = '<div class="text-muted text-center py-2">Erro ao carregar as VLANs deste switch.</div>';
+    }
+}
+
+function _vlanSwRenderTabela(d){
+    if (!d.tem_backup) {
+        return '<div class="text-muted text-center py-2">Sem backup coletado para este switch ainda.</div>';
+    }
+    if (!d.vlans || !d.vlans.length) {
+        return '<div class="text-muted text-center py-2">Backup coletado, mas nenhuma VLAN encontrada (fabricante ainda não suportado por esse inventário).</div>';
+    }
+    const linhas = d.vlans.map(v => `
+        <tr>
+            <td style="font-family:'Courier New',monospace;font-size:.8rem;color:var(--text-light);">${_escapeHtmlKanban(v.vlan)}</td>
+            <td style="font-family:'Courier New',monospace;font-size:.8rem;">${_escapeHtmlKanban(v.interface || '—')}</td>
+            <td>${_escapeHtmlKanban(v.descricao || '—')}</td>
+            <td style="font-family:'Courier New',monospace;font-size:.8rem;color:var(--accent-cyan);">${_escapeHtmlKanban(v.ip || '—')}</td>
+        </tr>`).join('');
+    return `
+    <div class="table-responsive">
+        <table class="table table-dark table-hover table-sm mb-0" style="font-size:.82rem;">
+            <thead><tr><th>VLAN</th><th>Interface</th><th>Descrição</th><th>IP</th></tr></thead>
+            <tbody>${linhas}</tbody>
+        </table>
+    </div>`;
+}
+
+/* ═════════════════════════════════════════════════
    MODAL — Abrir / Salvar
 ═════════════════════════════════════════════════ */
 const MODAL_FORMS = {
@@ -5366,6 +5902,7 @@ function getCsrfToken(){
 
     <script src="{% static 'js/main.js' %}?v=funcaotab3fix"></script>
     <script src="{% static 'js/listar_acesso.js' %}?v=2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
 
     <script>
@@ -6848,7 +7385,7 @@ function getCsrfToken(){
         'tuneis': 'tuneis', 'documentos': 'documentos', 'rpki-irr': 'rpki_irr',
         'vulnerabilidades': 'rpki_irr',
         'monitoramento': 'monitoramento', 'documentacao': 'documentacao',
-        'hotspot': 'hotspot', 'testes-rede': 'testes_rede',
+        'hotspot': 'hotspot', 'testes-rede': 'testes_rede', 'tarefas': 'tarefas',
     };
     function moduloBloqueado(nomeAba) {
         if (window.IS_ADMIN_MODULOS) return false;
@@ -6880,7 +7417,6 @@ function getCsrfToken(){
             topoSubAba('editor');
         }
         if (nomeAba === 'tuneis') {
-            if (typeof wgCarregarLista   === 'function') wgCarregarLista();
             if (typeof tovpnCarregarLista === 'function') tovpnCarregarLista();
         }
         if (nomeAba === 'vpn') {
@@ -6896,6 +7432,9 @@ function getCsrfToken(){
         if (nomeAba === 'vulnerabilidades') {
             if (typeof ampscanCarregar === 'function') ampscanCarregar();
             if (typeof rotaloopCarregar === 'function') rotaloopCarregar();
+        }
+        if (nomeAba === 'tarefas') {
+            if (typeof carregarKanbanTarefas === 'function') carregarKanbanTarefas();
         }
     }
 
@@ -7366,276 +7905,8 @@ function getCsrfToken(){
             });
     }
 
-    // ============================================
-    // VPN WireGuard
-    // ============================================
-
-    const WG_CLIENTE_ID = {{ cliente.id }};
-    const WG_CSRF = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-
-    async function wgCarregarLista() {
-        try {
-            const r = await fetch(`/clientes/${WG_CLIENTE_ID}/vpn-wg/listar/`);
-            const d = await r.json();
-            const el = document.getElementById('wg-lista');
-            if (!el) return;
-
-            if (!d.vpns || !d.vpns.length) {
-                el.innerHTML = `<div style="color:rgba(88,166,255,.4);text-align:center;padding:20px;font-size:.85rem">
-                    <i class="fas fa-lock-open me-2" style="opacity:.4"></i>
-                    Nenhuma VPN WireGuard configurada para este cliente.
-                </div>`;
-                return;
-            }
-
-            // Armazena dados das VPNs para uso nos modais (evita passar JSON no onclick)
-            window._wgVpnData = {};
-            d.vpns.forEach(v => { window._wgVpnData[v.id] = v; });
-
-            el.innerHTML = d.vpns.map(v => {
-                const online = v.conectado;
-                const dot    = online
-                    ? '<span style="color:#3fb950;font-size:10px">●</span>'
-                    : '<span style="color:#666;font-size:10px">●</span>';
-                const status = online ? 'Conectado' : (v.peer_no_servidor ? 'Aguardando' : 'Sem peer');
-                const hs = v.last_handshake
-                    ? new Date(v.last_handshake * 1000).toLocaleString('pt-BR')
-                    : '—';
-                const redes = v.redes.length ? v.redes.join(', ') : '—';
-
-                return `<div style="background:#161b22;border:1px solid rgba(88,166,255,.15);border-radius:8px;padding:14px;margin-bottom:10px">
-                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-                        <div>
-                            <strong style="color:#e6edf3">${dot} ${v.nome}</strong>
-                            <span style="margin-left:10px;font-size:.75rem;color:${online ? '#3fb950' : 'rgba(88,166,255,.35)'}">${status}</span>
-                            <div style="font-size:.78rem;color:rgba(88,166,255,.4);margin-top:2px">
-                                IP VPN: <span style="color:#58a6ff">${v.vpn_ip}</span>
-                                &nbsp;|&nbsp; Redes: <span style="color:#e3b341">${redes}</span>
-                            </div>
-                            <div style="font-size:.72rem;color:#666;margin-top:2px">
-                                Último handshake: ${hs}
-                                ${online ? ` | ↓ ${v.rx} ↑ ${v.tx}` : ''}
-                            </div>
-                        </div>
-                        <div style="display:flex;gap:6px;flex-wrap:wrap">
-                            <button class="btn btn-sm" onclick="wgVerScript(${v.id})"
-                                style="background:rgba(88,166,255,.1);border:1px solid #58a6ff;color:#58a6ff;font-size:.75rem">
-                                <i class="fas fa-code me-1"></i> Script MikroTik
-                            </button>
-                            <button class="btn btn-sm" onclick="wgEditarRedes(${v.id})"
-                                style="background:rgba(88,166,255,.1);border:1px solid #58a6ff;color:#58a6ff;font-size:.75rem">
-                                <i class="fas fa-edit me-1"></i> Editar Redes
-                            </button>
-                            ${!v.peer_no_servidor ? `<button class="btn btn-sm" onclick="wgReativar(${v.id})"
-                                style="background:rgba(227,179,65,.1);border:1px solid #e3b341;color:#e3b341;font-size:.75rem">
-                                <i class="fas fa-sync me-1"></i> Ativar Peer
-                            </button>` : ''}
-                            <button class="btn btn-sm" onclick="wgDeletar(${v.id}, '${v.nome}')"
-                                style="background:rgba(248,81,73,.1);border:1px solid #f85149;color:#f85149;font-size:.75rem">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>`;
-            }).join('');
-        } catch(e) {
-            document.getElementById('wg-lista').innerHTML =
-                `<div style="color:#f85149;font-size:.82rem">Erro ao carregar VPNs: ${e.message}</div>`;
-        }
-    }
-
-    async function wgCriarVPN() {
-        // Modal de criação
-        const html = `<div id="wg-modal-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center">
-            <div style="background:#161b22;border:1px solid rgba(88,166,255,.15);border-radius:12px;padding:28px;width:460px;max-width:95vw">
-                <h5 style="color:#58a6ff;margin-bottom:20px"><i class="fas fa-network-wired me-2"></i>Nova VPN WireGuard</h5>
-                <div style="margin-bottom:12px">
-                    <label style="color:rgba(88,166,255,.4);font-size:.82rem;display:block;margin-bottom:4px">Nome da VPN</label>
-                    <input id="wgNome" class="form-control" value="VPN MikroTik" style="background:#0d1117;border-color:rgba(88,166,255,.15);color:#e6edf3">
-                </div>
-                <div style="margin-bottom:16px">
-                    <label style="color:rgba(88,166,255,.4);font-size:.82rem;display:block;margin-bottom:4px">
-                        Redes privadas do cliente <small style="color:#666">(uma por linha, ex: 192.168.1.0/24)</small>
-                    </label>
-                    <textarea id="wgRedes" class="form-control" rows="4" placeholder="192.168.1.0/24&#10;10.0.0.0/8"
-                        style="background:#0d1117;border-color:rgba(88,166,255,.15);color:#e6edf3;font-family:'Inter', sans-serif;font-size:.82rem"></textarea>
-                    <small style="color:#666">O CRM poderá acessar diretamente IPs dessas redes após a VPN ser estabelecida</small>
-                </div>
-                <div style="display:flex;gap:10px;justify-content:flex-end">
-                    <button onclick="document.getElementById('wg-modal-overlay').remove()"
-                        style="background:transparent;border:1px solid rgba(88,166,255,.15);color:rgba(88,166,255,.4);padding:6px 16px;border-radius:6px;cursor:pointer">Cancelar</button>
-                    <button onclick="wgConfirmarCriacao()"
-                        style="background:#58a6ff18;border:1px solid #58a6ff;color:#58a6ff;padding:6px 16px;border-radius:6px;cursor:pointer">
-                        <i class="fas fa-plus me-1"></i> Criar VPN
-                    </button>
-                </div>
-            </div>
-        </div>`;
-        document.body.insertAdjacentHTML('beforeend', html);
-    }
-
-    async function wgConfirmarCriacao() {
-        const nome  = document.getElementById('wgNome').value.trim();
-        const redes = document.getElementById('wgRedes').value.trim();
-        document.getElementById('wg-modal-overlay')?.remove();
-        document.getElementById('wg-lista').innerHTML =
-            '<div style="color:rgba(88,166,255,.4);text-align:center;padding:20px"><i class="fas fa-spinner fa-spin me-2"></i>Criando VPN...</div>';
-        try {
-            const r = await fetch(`/clientes/${WG_CLIENTE_ID}/vpn-wg/criar/`, {
-                method: 'POST',
-                headers: {'Content-Type':'application/json','X-CSRFToken': WG_CSRF},
-                body: JSON.stringify({nome, redes_privadas: redes})
-            });
-            const d = await r.json();
-            if (d.ok) {
-                wgCarregarLista();
-                wgVerScript(d.vpn_id);
-            } else {
-                uiAlert('Erro: ' + (d.erro || 'Falha ao criar VPN'));
-                wgCarregarLista();
-            }
-        } catch(e) {
-            uiAlert('Erro: ' + e.message);
-            wgCarregarLista();
-        }
-    }
-
-    async function wgVerScript(vpnId) {
-        try {
-            const r = await fetch(`/clientes/vpn-wg/${vpnId}/script/`);
-            const d = await r.json();
-            if (!d.ok) { uiAlert('Erro ao gerar script'); return; }
-
-            const html = `<div id="wg-script-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center">
-                <div style="background:#0d1117;border:1px solid rgba(88,166,255,.15);border-radius:12px;padding:24px;width:720px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-                        <h5 style="color:#58a6ff;margin:0"><i class="fas fa-terminal me-2"></i>Script MikroTik — ${d.nome}</h5>
-                        <button onclick="document.getElementById('wg-script-overlay').remove()"
-                            style="background:transparent;border:none;color:rgba(88,166,255,.4);font-size:1.4rem;cursor:pointer">✕</button>
-                    </div>
-                    <div style="background:#161b22;border:1px solid #21262d;border-radius:6px;flex:1;overflow:auto;padding:14px">
-                        <pre id="wg-script-content" style="color:#e6edf3;font-family:'Inter', sans-serif;font-size:.78rem;margin:0;white-space:pre-wrap">${d.script.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
-                    </div>
-                    <div style="display:flex;gap:10px;margin-top:12px">
-                        <button onclick="wgCopiarScript()"
-                            style="background:rgba(88,166,255,.15);border:1px solid #58a6ff;color:#58a6ff;padding:7px 18px;border-radius:6px;cursor:pointer;font-size:.85rem">
-                            <i class="fas fa-copy me-1"></i> Copiar Script
-                        </button>
-                        <button onclick="wgDownloadScript('${d.nome}', document.getElementById('wg-script-content').textContent)"
-                            style="background:rgba(63,185,80,.1);border:1px solid #30363d;color:#3fb950;padding:7px 18px;border-radius:6px;cursor:pointer;font-size:.85rem">
-                            <i class="fas fa-download me-1"></i> Download .rsc
-                        </button>
-                        <button onclick="document.getElementById('wg-script-overlay').remove()"
-                            style="margin-left:auto;background:transparent;border:1px solid rgba(88,166,255,.15);color:rgba(88,166,255,.4);padding:7px 18px;border-radius:6px;cursor:pointer;font-size:.85rem">
-                            Fechar
-                        </button>
-                    </div>
-                </div>
-            </div>`;
-            document.body.insertAdjacentHTML('beforeend', html);
-        } catch(e) { uiAlert('Erro: ' + e.message); }
-    }
-
-    function wgCopiarScript() {
-        const text = document.getElementById('wg-script-content')?.textContent || '';
-        navigator.clipboard.writeText(text).then(() => {
-            const btn = event.target.closest('button');
-            btn.innerHTML = '<i class="fas fa-check me-1"></i> Copiado!';
-            btn.style.color = '#3fb950';
-            setTimeout(() => {
-                btn.innerHTML = '<i class="fas fa-copy me-1"></i> Copiar Script';
-                btn.style.color = '#58a6ff';
-            }, 2000);
-        });
-    }
-
-    function wgDownloadScript(nome, content) {
-        const blob = new Blob([content], {type: 'text/plain'});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `vpn-crm-${nome.replace(/\s+/g,'-').toLowerCase()}.rsc`;
-        a.click();
-        URL.revokeObjectURL(a.href);
-    }
-
-    async function wgDeletar(vpnId, nome) {
-        if (!await uiConfirm({titulo:'Remover VPN', msg:`Remover VPN "${nome}"?\n\nIsso também remove o peer do servidor.`, icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Remover'})) return;
-        try {
-            const r = await fetch(`/clientes/vpn-wg/${vpnId}/deletar/`, {
-                method: 'POST', headers: {'X-CSRFToken': WG_CSRF}
-            });
-            const d = await r.json();
-            if (d.ok) wgCarregarLista();
-            else uiAlert('Erro: ' + d.erro);
-        } catch(e) { uiAlert('Erro: ' + e.message); }
-    }
-
-    async function wgReativar(vpnId) {
-        try {
-            const r = await fetch(`/clientes/vpn-wg/${vpnId}/reativar/`, {
-                method: 'POST', headers: {'X-CSRFToken': WG_CSRF}
-            });
-            const d = await r.json();
-            if (d.ok) { wgCarregarLista(); }
-            else uiAlert('Erro: ' + d.erro);
-        } catch(e) { uiAlert('Erro: ' + e.message); }
-    }
-
-    function wgEditarRedes(vpnId) {
-        const v = (window._wgVpnData || {})[vpnId] || {};
-        const nome = v.nome || '';
-        const redesStr = Array.isArray(v.redes) ? v.redes.join('\n') : '';
-        const html = `<div id="wg-edit-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center">
-            <div style="background:#161b22;border:1px solid rgba(88,166,255,.15);border-radius:12px;padding:28px;width:460px;max-width:95vw">
-                <h5 style="color:#58a6ff;margin-bottom:4px"><i class="fas fa-edit me-2"></i>Editar VPN</h5>
-                <p style="color:rgba(88,166,255,.4);font-size:.8rem;margin-bottom:16px">${nome}</p>
-                <div style="margin-bottom:12px">
-                    <label style="color:rgba(88,166,255,.4);font-size:.82rem;display:block;margin-bottom:4px">Nome da VPN</label>
-                    <input id="wgEditNome" class="form-control" value="${nome}" style="background:#0d1117;border-color:rgba(88,166,255,.15);color:#e6edf3">
-                </div>
-                <div style="margin-bottom:16px">
-                    <label style="color:rgba(88,166,255,.4);font-size:.82rem;display:block;margin-bottom:4px">
-                        Redes privadas <small style="color:#666">(uma por linha, ex: 192.168.1.0/24)</small>
-                    </label>
-                    <textarea id="wgEditRedes" class="form-control" rows="5"
-                        style="background:#0d1117;border-color:rgba(88,166,255,.15);color:#e6edf3;font-family:'Inter', sans-serif;font-size:.82rem">${redesStr}</textarea>
-                    <small style="color:#666">O CRM usará estas redes para rotear tráfego via VPN</small>
-                </div>
-                <div style="display:flex;gap:10px;justify-content:flex-end">
-                    <button onclick="document.getElementById('wg-edit-overlay').remove()"
-                        style="background:transparent;border:1px solid rgba(88,166,255,.15);color:rgba(88,166,255,.4);padding:6px 16px;border-radius:6px;cursor:pointer">Cancelar</button>
-                    <button onclick="wgConfirmarEdicao(${vpnId})"
-                        style="background:#58a6ff18;border:1px solid #58a6ff;color:#58a6ff;padding:6px 16px;border-radius:6px;cursor:pointer">
-                        <i class="fas fa-save me-1"></i> Salvar
-                    </button>
-                </div>
-            </div>
-        </div>`;
-        document.body.insertAdjacentHTML('beforeend', html);
-    }
-
-    async function wgConfirmarEdicao(vpnId) {
-        const nome  = document.getElementById('wgEditNome').value.trim();
-        const redes = document.getElementById('wgEditRedes').value.trim();
-        try {
-            const r = await fetch(`/clientes/vpn-wg/${vpnId}/editar/`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRFToken': WG_CSRF},
-                body: JSON.stringify({nome, redes_privadas: redes}),
-            });
-            const d = await r.json();
-            if (d.ok) {
-                document.getElementById('wg-edit-overlay').remove();
-                wgCarregarLista();
-            } else {
-                uiAlert('Erro: ' + d.erro);
-            }
-        } catch(e) { uiAlert('Erro: ' + e.message); }
-    }
-
     // Carrega ao abrir aba Tuneis
     document.querySelector('a[onclick*="tuneis"]')?.addEventListener('click', () => {
-        setTimeout(wgCarregarLista, 200);
         setTimeout(tovpnCarregarLista, 200);
     });
 
@@ -8258,6 +8529,9 @@ function getCsrfToken(){
             if (abaAtiva === 'monitoramento') {
                 if (window.GRAPH && typeof window.GRAPH.init === 'function') window.GRAPH.init();
             }
+            if (abaAtiva === 'tarefas') {
+                if (typeof carregarKanbanTarefas === 'function') carregarKanbanTarefas();
+            }
         }
 
         // A aba padrão "Acessos" pode estar desabilitada para este cliente —
@@ -8344,26 +8618,31 @@ function getCsrfToken(){
         }
     });
 
+    let _acessosBackupEmMassa = [];
+    let _backupEmMassaRodando = false;
+
     function abrirModalBackupEmMassa() {
         const container = document.getElementById('listaAcessosComBackup');
         container.innerHTML = '<p class="text-muted text-center py-3">Carregando...</p>';
         document.getElementById('modalBackupEmMassa').style.display = 'flex';
         document.body.style.overflow = 'hidden';
+        _atualizarStatusBackupEmMassa('Pronto para executar backups');
 
         fetch(`/clientes/acessos/listar/?cliente={{ cliente.id }}`)
             .then(r => r.json())
             .then(data => {
-                const acessos = (data.acessos || data || []).filter(a => a.backup_habilitado);
-                if (!acessos.length) {
+                _acessosBackupEmMassa = (data.acessos || data || []).filter(a => a.backup_habilitado);
+                if (!_acessosBackupEmMassa.length) {
                     container.innerHTML = `<div class="text-center py-4">
                         <i class="fas fa-info-circle" style="font-size:48px;color:var(--text-muted);opacity:.3"></i>
                         <p class="mt-3 text-muted">Nenhum equipamento com backup habilitado</p></div>`;
                 } else {
-                    let html = '<ul style="list-style:none;padding:0">';
-                    acessos.forEach(a => {
-                        html += `<li style="padding:10px;border-bottom:1px solid var(--border);color:var(--text-light)">
-                            <i class="fas fa-check-circle" style="color:var(--primary-green);margin-right:8px"></i>
-                            ${a.tipo} - ${a.host}</li>`;
+                    let html = '<ul style="list-style:none;padding:0" id="listaBackupEmMassaItens">';
+                    _acessosBackupEmMassa.forEach(a => {
+                        html += `<li id="backup-massa-item-${a.id}" style="padding:10px;border-bottom:1px solid var(--border);color:var(--text-light)">
+                            <i class="fas fa-circle-notch item-icone" style="color:var(--text-muted);margin-right:8px;opacity:.3"></i>
+                            <span class="item-label">${a.tipo} - ${a.host}</span>
+                            <span class="item-resultado" style="float:right;font-size:12px;color:var(--text-muted);"></span></li>`;
                     });
                     html += '</ul>';
                     container.innerHTML = html;
@@ -8371,54 +8650,472 @@ function getCsrfToken(){
             })
             .catch(() => {
                 container.innerHTML = '<p class="text-muted text-center py-3">Erro ao carregar acessos.</p>';
+                _acessosBackupEmMassa = [];
             });
     }
 
     function fecharModalBackupEmMassa() {
+        if (_backupEmMassaRodando) return;
         document.getElementById('modalBackupEmMassa').style.display = 'none';
         document.body.style.overflow = 'auto';
     }
 
-    function executarBackupEmMassa() {
-        // Implementar lógica de backup em massa
-        showInfo('EM DESENVOLVIMENTO', 'Funcionalidade de backup em massa será implementada em breve', 3000);
-        fecharModalBackupEmMassa();
+    function _atualizarStatusBackupEmMassa(texto) {
+        const el = document.querySelector('#modalBackupEmMassa .status-text');
+        if (el) el.textContent = texto;
+    }
+
+    function _atualizarItemBackupEmMassa(acessoId, estado, texto) {
+        const li = document.getElementById(`backup-massa-item-${acessoId}`);
+        if (!li) return;
+        const icone = li.querySelector('.item-icone');
+        const resultado = li.querySelector('.item-resultado');
+        const cores = { rodando: '#00d9ff', ok: '#3fb950', semmudanca: '#00d9ff', erro: '#dc3545' };
+        const classes = {
+            rodando: 'fas fa-spinner fa-spin',
+            ok: 'fas fa-check-circle',
+            semmudanca: 'fas fa-check',
+            erro: 'fas fa-times-circle'
+        };
+        icone.className = `${classes[estado]} item-icone`;
+        icone.style.color = cores[estado];
+        icone.style.opacity = 1;
+        if (resultado) resultado.textContent = texto || '';
+    }
+
+    async function executarBackupEmMassa() {
+        if (_backupEmMassaRodando) return;
+        if (!_acessosBackupEmMassa.length) {
+            showInfo('NADA A FAZER', 'Nenhum equipamento com backup habilitado.', 3000);
+            return;
+        }
+
+        _backupEmMassaRodando = true;
+        const btn = document.querySelector('#modalBackupEmMassa .btn-submit-modal');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Executando...'; }
+
+        let sucesso = 0, semMudanca = 0, erro = 0;
+        for (const acesso of _acessosBackupEmMassa) {
+            _atualizarStatusBackupEmMassa(`Executando backup de ${acesso.tipo}... (${sucesso + semMudanca + erro + 1}/${_acessosBackupEmMassa.length})`);
+            _atualizarItemBackupEmMassa(acesso.id, 'rodando');
+            try {
+                const r = await fetch(`/clientes/backups/executar/${acesso.id}/`);
+                const data = await r.json();
+                if (data.success) {
+                    if (data.sem_mudancas) {
+                        semMudanca++;
+                        _atualizarItemBackupEmMassa(acesso.id, 'semmudanca', 'sem mudanças');
+                    } else {
+                        sucesso++;
+                        _atualizarItemBackupEmMassa(acesso.id, 'ok', data.duracao || 'ok');
+                    }
+                } else {
+                    erro++;
+                    _atualizarItemBackupEmMassa(acesso.id, 'erro', data.error || 'erro');
+                }
+            } catch (e) {
+                erro++;
+                _atualizarItemBackupEmMassa(acesso.id, 'erro', 'erro de rede');
+            }
+        }
+
+        _backupEmMassaRodando = false;
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-play me-2"></i> Executar Backups'; }
+        _atualizarStatusBackupEmMassa(`Concluído: ${sucesso} ok, ${semMudanca} sem mudanças, ${erro} com erro`);
+
+        uiToast(`Backup em massa concluído: ${sucesso} ok, ${semMudanca} sem mudanças, ${erro} com erro`, erro ? 'erro' : 'ok');
+        carregarBackups();
+    }
+
+    /* ═══════════════ HOSTS SSH SEM BACKUP HABILITADO (configurar em massa) ═══════════════ */
+    let _templatesBackupCache = null;
+
+    function abrirModalHostsSemBackup() {
+        const container = document.getElementById('hostsSemBackupLista');
+        container.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin" style="font-size:32px;color:var(--accent-cyan);opacity:.3;"></i></div>';
+        document.getElementById('modalHostsSemBackup').style.display = 'flex';
+
+        Promise.all([
+            fetch(`/clientes/acessos/sem-backup/?cliente={{ cliente.id }}`).then(r => r.json()),
+            _templatesBackupCache ? Promise.resolve(_templatesBackupCache) : fetch('/clientes/backups/templates/').then(r => r.json())
+        ]).then(([dadosAcessos, dadosTemplates]) => {
+            _templatesBackupCache = dadosTemplates;
+            const acessos = dadosAcessos.acessos || [];
+            const templates = dadosTemplates.templates || [];
+
+            if (!acessos.length) {
+                container.innerHTML = `<div class="text-center py-4">
+                    <i class="fas fa-circle-check" style="font-size:48px;color:var(--primary-green);opacity:.4"></i>
+                    <p class="mt-3 text-muted">Todos os hosts SSH deste cliente já têm backup habilitado.</p></div>`;
+                return;
+            }
+
+            const opcoesTemplate = templates.map(t => `<option value="${t.id}" style="background-color:var(--card-bg);color:var(--text-light);">${_escapeHtmlKanban(t.nome)} (${_escapeHtmlKanban(t.fabricante)})</option>`).join('');
+
+            let html = `
+                <div class="table-responsive">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Equipamento</th>
+                                <th>Host</th>
+                                <th>Template</th>
+                                <th style="text-align:center;">Habilitar</th>
+                                <th style="text-align:center;">Automático</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+            acessos.forEach(a => {
+                html += `
+                    <tr data-acesso-id="${a.id}">
+                        <td><span style="color:var(--primary-green);font-weight:700;"><i class="fas fa-server me-1"></i>${_escapeHtmlKanban(a.tipo)}</span></td>
+                        <td><span style="font-size:12px;">${_escapeHtmlKanban(a.host)}</span></td>
+                        <td>
+                            <select class="form-select form-select-sm hsb-template" style="background-color:var(--card-bg);color:var(--text-light);border-color:var(--border);min-width:200px;">
+                                <option value="" style="background-color:var(--card-bg);color:var(--text-light);">— Selecionar —</option>
+                                ${opcoesTemplate}
+                            </select>
+                        </td>
+                        <td style="text-align:center;"><input type="checkbox" class="form-check-input hsb-habilitar" style="width:18px;height:18px;"></td>
+                        <td style="text-align:center;"><input type="checkbox" class="form-check-input hsb-automatico" style="width:18px;height:18px;" ${a.backup_automatico ? 'checked' : ''}></td>
+                    </tr>`;
+            });
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
+
+            acessos.forEach(a => {
+                const linha = container.querySelector(`tr[data-acesso-id="${a.id}"]`);
+                if (linha && a.backup_template_id) linha.querySelector('.hsb-template').value = a.backup_template_id;
+            });
+        }).catch(() => {
+            container.innerHTML = '<p class="text-muted text-center py-3">Erro ao carregar hosts.</p>';
+        });
+    }
+
+    function fecharModalHostsSemBackup() {
+        document.getElementById('modalHostsSemBackup').style.display = 'none';
+    }
+
+    function salvarHostsSemBackupMassa() {
+        const linhas = document.querySelectorAll('#hostsSemBackupLista tr[data-acesso-id]');
+        const itens = [];
+        linhas.forEach(linha => {
+            const habilitado = linha.querySelector('.hsb-habilitar').checked;
+            const automatico = linha.querySelector('.hsb-automatico').checked;
+            const templateId = linha.querySelector('.hsb-template').value;
+            // Só manda quem teve alguma alteração real (evita reescrever tudo sem necessidade)
+            if (!habilitado && !automatico && !templateId) return;
+            itens.push({
+                acesso_id: parseInt(linha.dataset.acessoId, 10),
+                habilitado, automatico,
+                template_id: templateId ? parseInt(templateId, 10) : null,
+            });
+        });
+
+        if (!itens.length) {
+            uiToast('Nenhuma alteração para salvar.', 'info');
+            return;
+        }
+
+        const btn = document.querySelector('#modalHostsSemBackup .btn-submit-modal');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...'; }
+
+        fetch('/clientes/backups/configurar-massa/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ itens })
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check me-2"></i> Salvar Alterações'; }
+                if (data.success) {
+                    uiToast(`${data.atualizados} host(s) atualizado(s).${data.erros && data.erros.length ? ' ' + data.erros.length + ' com erro.' : ''}`, data.erros && data.erros.length ? 'erro' : 'ok');
+                    (data.erros || []).forEach(e => uiToast(e, 'erro'));
+                    fecharModalHostsSemBackup();
+                    carregarBackups();
+                } else {
+                    uiToast(data.error || 'Erro ao salvar alterações.', 'erro');
+                }
+            })
+            .catch(() => {
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check me-2"></i> Salvar Alterações'; }
+                uiToast('Erro de rede ao salvar alterações.', 'erro');
+            });
+    }
+
+    /* ═══════════════ KANBAN DE TAREFAS ═══════════════ */
+    const KANBAN_CLIENTE_ID = {{ cliente.id }};
+    const KANBAN_IS_BACKOFFICE = {{ is_admin|yesno:"true,false" }};
+    let _kanbanTarefas = [];
+    let _kanbanResponsaveis = [];
+    let _kanbanSortableIniciado = false;
+    const KANBAN_COLUNAS = ['pendente', 'andamento', 'concluida', 'cancelada'];
+
+    function carregarKanbanTarefas() {
+        fetch(`/tarefas/kanban/${KANBAN_CLIENTE_ID}/`)
+            .then(r => r.json())
+            .then(data => {
+                _kanbanTarefas = data.tarefas || [];
+                _kanbanResponsaveis = data.responsaveis || [];
+                renderKanban();
+                initKanbanSortable();
+            })
+            .catch(() => uiToast('Erro ao carregar tarefas.', 'erro'));
+    }
+
+    function _escapeHtmlKanban(s) {
+        const d = document.createElement('div');
+        d.textContent = s || '';
+        return d.innerHTML;
+    }
+
+    function renderKanban() {
+        // "Atrasada" é calculada a partir do prazo (não é um status gravado):
+        // prazo vencido + status ainda pendente/andamento. Tarefa atrasada
+        // aparece só aqui, nunca ao mesmo tempo na coluna do seu status real.
+        const atrasadas = _kanbanTarefas.filter(t => t.atrasada);
+        const contAtrasada = document.getElementById('kanban-cards-atrasada');
+        document.getElementById('kanban-count-atrasada').textContent = atrasadas.length;
+        contAtrasada.innerHTML = atrasadas.length
+            ? atrasadas.map(_kanbanCardHtml).join('')
+            : '<div class="kanban-empty">Nenhuma tarefa atrasada</div>';
+
+        KANBAN_COLUNAS.forEach(status => {
+            const container = document.getElementById(`kanban-cards-${status}`);
+            const tarefasColuna = _kanbanTarefas.filter(t => t.status === status && !t.atrasada);
+            document.getElementById(`kanban-count-${status}`).textContent = tarefasColuna.length;
+            container.innerHTML = tarefasColuna.length
+                ? tarefasColuna.map(_kanbanCardHtml).join('')
+                : '<div class="kanban-empty">Nenhuma tarefa</div>';
+        });
+    }
+
+    function _kanbanCardHtml(t) {
+        const prioClasse = t.prioridade === 'alta' ? 'kanban-badge-alta' : (t.prioridade === 'baixa' ? 'kanban-badge-baixa' : 'kanban-badge-media');
+        const prioLabel = t.prioridade === 'alta' ? 'Alta' : (t.prioridade === 'baixa' ? 'Baixa' : 'Média');
+        const prazoHtml = t.prazo_fmt
+            ? `<span class="kanban-badge ${t.atrasada ? 'kanban-badge-atrasada' : 'kanban-badge-prazo'}"><i class="fas fa-clock"></i> ${t.prazo_fmt}</span>`
+            : '';
+        const nomesResp = (t.responsaveis || []).map(r => r.nome);
+        const respHtml = nomesResp.length
+            ? `<div class="kanban-card-responsavel"><i class="fas fa-user"></i> ${_escapeHtmlKanban(nomesResp.join(', '))}</div>`
+            : '';
+        return `
+            <div class="kanban-card" data-id="${t.id}" onclick="abrirModalEditarTarefaKanban(${t.id})">
+                <div class="kanban-card-titulo">${_escapeHtmlKanban(t.titulo)}</div>
+                <div class="kanban-card-meta">
+                    <span class="kanban-badge ${prioClasse}">${prioLabel}</span>
+                    ${prazoHtml}
+                </div>
+                ${respHtml}
+            </div>`;
+    }
+
+    function initKanbanSortable() {
+        if (_kanbanSortableIniciado || typeof Sortable === 'undefined') return;
+        _kanbanSortableIniciado = true;
+        document.querySelectorAll('#kanbanBoard .kanban-cards').forEach(col => {
+            // "Atrasada" é automática (calculada pelo prazo) — dá pra tirar um
+            // cartão de lá arrastando (ex: marcar como concluída), mas não dá
+            // pra soltar um cartão dentro dela manualmente (put:false).
+            const ehColunaAtrasada = col.id === 'kanban-cards-atrasada';
+            new Sortable(col, {
+                group: { name: 'kanban-tarefas', put: !ehColunaAtrasada },
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: function (evt) {
+                    const tarefaId = evt.item.dataset.id;
+                    const novoStatus = evt.to.closest('.kanban-col').dataset.status;
+                    const statusAnterior = evt.from.closest('.kanban-col').dataset.status;
+                    // Defensivo: put:false já bloqueia isso na UI, mas nunca manda
+                    // "atrasada" pro backend (não é um status válido de Tarefa).
+                    if (novoStatus === 'atrasada') { renderKanban(); return; }
+                    if (novoStatus === statusAnterior && evt.oldIndex === evt.newIndex) return;
+                    moverTarefaKanban(tarefaId, novoStatus);
+                }
+            });
+        });
+    }
+
+    function moverTarefaKanban(tarefaId, novoStatus) {
+        const tarefa = _kanbanTarefas.find(t => String(t.id) === String(tarefaId));
+        const statusAntigo = tarefa ? tarefa.status : null;
+        if (tarefa) tarefa.status = novoStatus;
+
+        const fd = new FormData();
+        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+        fd.append('status', novoStatus);
+        fetch(`/tarefas/kanban/mover/${tarefaId}/`, { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.tarefa) {
+                    // Usa a tarefa devolvida pelo servidor (não só o status): o
+                    // campo `atrasada` é recalculado no backend e precisa vir
+                    // atualizado, senão um cartão atrasado movido pra Concluída
+                    // some da tela em vez de aparecer na coluna certa.
+                    const idx = _kanbanTarefas.findIndex(t => t.id === data.tarefa.id);
+                    if (idx !== -1) _kanbanTarefas[idx] = data.tarefa;
+                } else {
+                    if (tarefa) tarefa.status = statusAntigo;
+                    uiToast(data.error || 'Erro ao mover tarefa.', 'erro');
+                }
+                renderKanban();
+            })
+            .catch(() => {
+                if (tarefa) tarefa.status = statusAntigo;
+                renderKanban();
+                uiToast('Erro de rede ao mover tarefa.', 'erro');
+            });
+    }
+
+    function abrirModalNovaTarefaKanban() {
+        document.getElementById('ktTitulo').value = '';
+        document.getElementById('ktDescricao').value = '';
+        document.getElementById('ktPrazo').value = '';
+        document.getElementById('ktPrioridade').value = 'media';
+        document.getElementById('modalNovaTarefaKanban').style.display = 'flex';
+    }
+
+    function fecharModalKanban(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    function salvarNovaTarefaKanban() {
+        const titulo = document.getElementById('ktTitulo').value.trim();
+        if (!titulo) { uiToast('Informe um título.', 'erro'); return; }
+
+        const fd = new FormData();
+        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+        fd.append('titulo', titulo);
+        fd.append('descricao', document.getElementById('ktDescricao').value.trim());
+        fd.append('prazo', document.getElementById('ktPrazo').value);
+        fd.append('prioridade', document.getElementById('ktPrioridade').value);
+
+        fetch(`/tarefas/kanban/${KANBAN_CLIENTE_ID}/criar/`, { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    fecharModalKanban('modalNovaTarefaKanban');
+                    uiToast('Tarefa criada.', 'ok');
+                    carregarKanbanTarefas();
+                } else {
+                    uiToast(data.error || 'Erro ao criar tarefa.', 'erro');
+                }
+            })
+            .catch(() => uiToast('Erro de rede ao criar tarefa.', 'erro'));
+    }
+
+    function abrirModalEditarTarefaKanban(id) {
+        const t = _kanbanTarefas.find(x => x.id === id);
+        if (!t) return;
+        document.getElementById('ketId').value = t.id;
+        document.getElementById('ketTitulo').value = t.titulo;
+        document.getElementById('ketDescricao').value = t.descricao || '';
+        document.getElementById('ketPrazo').value = t.prazo || '';
+        document.getElementById('ketPrioridade').value = t.prioridade;
+
+        const respWrap = document.getElementById('ketResponsavelWrap');
+        const excluirBtn = document.getElementById('ketExcluirBtn');
+        if (KANBAN_IS_BACKOFFICE) {
+            respWrap.style.display = '';
+            const sel = document.getElementById('ketResponsavel');
+            sel.innerHTML = '';
+            const idsAtuais = (t.responsaveis || []).map(r => String(r.id));
+            _kanbanResponsaveis.forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u.id;
+                opt.textContent = u.nome;
+                if (idsAtuais.includes(String(u.id))) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        } else {
+            respWrap.style.display = 'none';
+        }
+        excluirBtn.style.display = t.pode_gerenciar ? '' : 'none';
+
+        document.getElementById('modalEditarTarefaKanban').style.display = 'flex';
+    }
+
+    function salvarEdicaoTarefaKanban() {
+        const id = document.getElementById('ketId').value;
+        const titulo = document.getElementById('ketTitulo').value.trim();
+        if (!titulo) { uiToast('Informe um título.', 'erro'); return; }
+
+        const fd = new FormData();
+        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+        fd.append('titulo', titulo);
+        fd.append('descricao', document.getElementById('ketDescricao').value.trim());
+        fd.append('prazo', document.getElementById('ketPrazo').value);
+        fd.append('prioridade', document.getElementById('ketPrioridade').value);
+        if (KANBAN_IS_BACKOFFICE) {
+            fd.append('responsaveis_form_present', '1');
+            Array.from(document.getElementById('ketResponsavel').selectedOptions).forEach(opt => {
+                fd.append('responsaveis', opt.value);
+            });
+        }
+
+        fetch(`/tarefas/kanban/editar/${id}/`, { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    fecharModalKanban('modalEditarTarefaKanban');
+                    uiToast('Tarefa atualizada.', 'ok');
+                    carregarKanbanTarefas();
+                } else {
+                    uiToast(data.error || 'Erro ao salvar tarefa.', 'erro');
+                }
+            })
+            .catch(() => uiToast('Erro de rede ao salvar tarefa.', 'erro'));
+    }
+
+    function excluirTarefaKanban() {
+        const id = document.getElementById('ketId').value;
+        uiConfirm({titulo:'Excluir Tarefa', msg:'Tem certeza que deseja excluir esta tarefa?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'}).then(ok => {
+            if (!ok) return;
+            const fd = new FormData();
+            fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+            fetch(`/tarefas/kanban/excluir/${id}/`, { method: 'POST', body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        fecharModalKanban('modalEditarTarefaKanban');
+                        uiToast('Tarefa excluída.', 'ok');
+                        carregarKanbanTarefas();
+                    } else {
+                        uiToast(data.error || 'Erro ao excluir tarefa.', 'erro');
+                    }
+                })
+                .catch(() => uiToast('Erro de rede ao excluir tarefa.', 'erro'));
+        });
     }
     function executarBackup(acessoId, tipo) {
         console.log('▶️ Executando backup para:', acessoId, tipo);
-        
-        // Buscar dados do acesso
-        fetch(`/clientes/acessos/buscar/${acessoId}/`)
+
+        // Quem decide se o host é alcançável é o backend — ele conhece as duas
+        // saídas para IP privado (ProxyServer SSH e túnel OpenVPN) e confere a
+        // rota real. Duplicar essa regra aqui em regex já barrou backup de
+        // cliente que só tem túnel.
+        fetch(`/clientes/proxies/ativo/?acesso_id=${acessoId}`)
             .then(r => r.json())
-            .then(dados => {
-                // Validar IP privado
-                const host = dados.host;
-                const regexPrivado = /^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)/;
-                
-                if (regexPrivado.test(host)) {
-                    console.warn('⚠️ IP PRIVADO DETECTADO:', host);
-                    
-                    // Verificar se tem proxy ativo
-                    fetch(`/clientes/proxies/ativo/?cliente_id={{ cliente.id }}`)
-                        .then(r => r.json())
-                        .then(data => {
-                            if (!data.tem_proxy_ativo) {
-                                showError(
-                                    'IP PRIVADO SEM PROXY',
-                                    'Este equipamento tem IP privado mas não há proxy SSH ativo.\n' +
-                                    'Configure um túnel SSH na aba "Túneis SSH" antes de tentar fazer backup.',
-                                    6000
-                                );
-                                return;
-                            }
-                            
-                            // Backup pode prosseguir
-                            realizarBackupDe(acessoId, tipo);
-                        });
-                } else {
-                    // IP público, backup direto
-                    realizarBackupDe(acessoId, tipo);
+            .then(data => {
+                if (data.alcancavel === false) {
+                    showError(
+                        'IP PRIVADO SEM CAMINHO',
+                        `Este equipamento tem IP privado (${data.host_equipamento || ''}) e o cliente não tem ` +
+                        'proxy SSH ativo nem túnel OpenVPN cobrindo esse IP.\n' +
+                        'Configure um deles na aba "Túneis" antes de tentar fazer backup.',
+                        6000
+                    );
+                    return;
                 }
+                realizarBackupDe(acessoId, tipo);
+            })
+            .catch(e => {
+                // Falha na pré-checagem não pode impedir o backup: o backend
+                // valida de novo e devolve o erro certo.
+                console.warn('Pré-checagem de alcance falhou, seguindo:', e);
+                realizarBackupDe(acessoId, tipo);
             });
     }
 

@@ -33,7 +33,7 @@ def _contexto_tarefas(request):
     quanto no quadro_instancia (Consultor/Operador), escopados por
     Tarefa.objects.visiveis_para (Administrador vê tudo, resto só a própria
     instância)."""
-    qs = Tarefa.objects.visiveis_para(request.user).select_related('cliente', 'assigned_to')
+    qs = Tarefa.objects.visiveis_para(request.user).select_related('cliente').prefetch_related('responsaveis')
     em_aberto = qs.exclude(status__in=[Tarefa.STATUS_CONCLUIDA, Tarefa.STATUS_CANCELADA])
 
     return {
@@ -44,8 +44,8 @@ def _contexto_tarefas(request):
             status=Tarefa.STATUS_CONCLUIDA, concluida_em__date=timezone.now().date()
         ).count(),
         'tarefas_atrasadas': em_aberto.filter(prazo__lt=timezone.now()).order_by('prazo')[:10],
-        'minhas_tarefas': em_aberto.filter(assigned_to=request.user).order_by('prazo', '-prioridade')[:10],
-        'tarefas_nao_assumidas': em_aberto.filter(assigned_to__isnull=True).order_by('-prioridade', 'criado_em')[:10],
+        'minhas_tarefas': em_aberto.filter(responsaveis=request.user).distinct().order_by('prazo', '-prioridade')[:10],
+        'tarefas_nao_assumidas': em_aberto.filter(responsaveis__isnull=True).order_by('-prioridade', 'criado_em')[:10],
     }
 
 @login_required(login_url='login')

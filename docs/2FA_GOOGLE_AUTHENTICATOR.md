@@ -1,14 +1,14 @@
 # Autenticação em Duas Etapas (2FA) — Google Authenticator
 
 **Arquivos principais:**
-- `usuario/models.py` — `TOTPDevice`, `TOTPBackupCode`
-- `usuario/totp.py` — geração/verificação TOTP, QR code, códigos de backup
+- `usuario/models.py` — `TOTPDevice`, `TOTPBackupCode`, `DispositivoConfiavel`
+- `usuario/totp.py` — geração/verificação TOTP, QR code, códigos de backup, dispositivo confiável
 - `usuario/views.py` — `login`, `verificar_2fa`, `configurar_2fa`, `resetar_2fa_admin`
 - `usuario/middleware.py` — `Forcar2FAMiddleware`, `ProtegerAdminMiddleware`
 - `usuario/urls.py` — `/auth/2fa/`, `/auth/2fa/verificar/`, `/auth/2fa/resetar/`
-- `usuario/templates/configurar_2fa.html`, `templates/verificar_2fa.html`
+- `templates/login.html`, `templates/verificar_2fa.html`
 
-**Atualizado em:** 03/08/2026
+**Atualizado em:** 18/08/2026
 
 ---
 
@@ -135,6 +135,85 @@ class ProtegerAdminMiddleware:
   existe mais link direto pra quem não é admin, e a rota continua bloqueada mesmo se alguém adivinhar
   a URL.
 
+## Redirect pós-login (`next`) — corrigido em 18/08/2026
+
+**Sintoma:** um usuário navegando dentro do proxy web de acessos (ex: tela de login do Grafana,
+`/clientes/acessos/<id>/web/<porta>/http/login`) caía de volta no **dashboard do CRM** em vez de
+continuar de onde estava, sempre que a sessão expirava no meio da navegação.
+
+**Causa:** a rota do proxy é protegida por `@login_required(login_url='login')` — quando a sessão
+expira, o Django redireciona pra `/auth/login/?next=<url original>` (comportamento nativo do
+decorator). O `next` chegava íntegro até a view (`crm/urls.py` repassa a querystring no redirect de
+`/login/` pra `/auth/login/`), mas `usuario.views.login()` e `verificar_2fa()` **nunca liam esse
+parâmetro** — sempre chamavam `redirect_user_by_role(user)` incondicionalmente, mandando pro
+dashboard fixo do papel do usuário.
+
+**Correção** (`usuario/views.py`):
+
+```python
+def _next_seguro(request, valor=None):
+    next_url = valor if valor is not None else (request.POST.get('next') or request.GET.get('next'))
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return next_url
+    return None
+
+def _redirect_pos_login(request, user, next_url=None):
+    destino = _next_seguro(request, next_url)
+    return redirect(destino) if destino else redirect_user_by_role(user)
+```
+
+- `url_has_allowed_host_and_scheme` (mesma validação que o `LoginView` nativo do Django usa) evita
+  open redirect — um `next` apontando pra fora do próprio domínio é ignorado, cai no fallback.
+- `login.html` ganhou um `<input type="hidden" name="next">`, preenchido a partir de
+  `request.GET.get('next')` (view passa isso no contexto do GET) — sobrevive ao POST do formulário.
+- Quando o usuário tem 2FA confirmado, o fluxo passa por duas telas (`login` → `verificar_2fa`);
+  `next` não sobrevive nesse redirect (é uma página própria, sem querystring), então fica guardado
+  em `request.session['2fa_next']` até `verificar_2fa` concluir e chamar `_redirect_pos_login`
+  de novo com esse valor.
+
+## Navegador confiável ("lembrar este dispositivo") — novo em 18/08/2026
+
+Pedido do usuário: parar de pedir o código do Authenticator toda vez no mesmo navegador — **sem**
+abrir mão de exigir usuário+senha sempre. Modelo novo:
+
+```python
+class DispositivoConfiavel(models.Model):
+    usuario = models.ForeignKey(User, related_name='dispositivos_confiaveis')
+    token_hash = models.CharField(max_length=128)   # hash via make_password, nunca texto puro
+    descricao = models.CharField(max_length=255, blank=True, default='')  # User-Agent, informativo
+    criado_em = models.DateTimeField(auto_now_add=True)
+    expira_em = models.DateTimeField()               # 30 dias a partir da criação
+    ultimo_uso_em = models.DateTimeField(null=True, blank=True)
+```
+
+Fluxo (`usuario/totp.py`):
+
+- **`verificar_2fa`**: checkbox "Confiar neste navegador por 30 dias" (marcado por padrão) no
+  form. Se marcado e o código bater, `criar_dispositivo_confiavel(user, descricao=user_agent)`
+  gera um token aleatório (`secrets.token_urlsafe(32)`), grava só o **hash** no banco, e devolve
+  `f"{user.id}:{token}"` — vira um cookie `dispositivo_confiavel` (`HttpOnly`, `Secure` se HTTPS,
+  `SameSite=Lax`, `expires=expira_em`).
+- **`login`**: antes de forçar a segunda etapa, se o usuário tem 2FA confirmado, checa o cookie:
+  `verificar_dispositivo_confiavel(cookie_valor)` procura um `DispositivoConfiavel` não expirado
+  cujo hash bata com o token do cookie **e** cujo `usuario_id` (embutido no próprio valor do
+  cookie, antes do `:`) seja o mesmo do login em andamento — evita que um cookie de outro usuário
+  no mesmo navegador (conta compartilhada) sirva de bypass pra essa conta. Batendo, pula direto
+  pra `auth_login()` + `_redirect_pos_login`, sem passar por `verificar_2fa`. `ultimo_uso_em` é
+  atualizado a cada uso.
+- **Revogação:** não existe UI pra listar/revogar dispositivos confiáveis ainda — fica registrado
+  como próximo passo natural (o registro já existe no banco, `admin.py` do app `usuario` dá pra
+  gerenciar via Django Admin enquanto isso).
+
+## Duração da sessão — aumentada em 18/08/2026
+
+`crm/settings.py`: `SESSION_COOKIE_AGE` subiu de **1 hora** pra **7 dias**
+(`SESSION_EXPIRE_AT_BROWSER_CLOSE=False`, `SESSION_SAVE_EVERY_REQUEST=True` continuam iguais —
+sliding window, o timer reinicia a cada request). O valor de 1h era curto demais pra qualquer
+navegação mais longa (ex: dentro do proxy web de acessos), forçando login/2FA repetido no meio do
+uso — motivo direto do bug do `next` acima.
+
 ## Reset por Administrador/Consultor — `/auth/2fa/resetar/`
 
 `resetar_2fa_admin`, protegida por `perms.pode_gerenciar_usuarios_required` (mesmo decorator de
@@ -165,4 +244,4 @@ de `cadastrar_usuario.html`, só quando `usuarios.tem_2fa` é `True`.
 
 ---
 
-**Última atualização:** 02/08/2026
+**Última atualização:** 18/08/2026

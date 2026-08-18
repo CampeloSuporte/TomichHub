@@ -66,6 +66,9 @@ urlpatterns = [
     path('backups/download/<int:backup_id>/', views.download_backup, name='download_backup'),
     path('backups/deletar/<int:backup_id>/', views.deletar_backup, name='deletar_backup'),
     path('backups/templates/', views.buscar_templates_backup, name='buscar_templates_backup'),
+    path('acessos/listar/', views.listar_acessos_backup_habilitado, name='listar_acessos_backup_habilitado'),
+    path('acessos/sem-backup/', views.listar_acessos_sem_backup, name='listar_acessos_sem_backup'),
+    path('backups/configurar-massa/', views.configurar_backup_massa, name='configurar_backup_massa'),
 
     # Terminal e Winbox
     path('terminal/', views.terminal_page, name='terminal_page'),
@@ -120,6 +123,9 @@ urlpatterns = [
     path('acessos/<int:acesso_id>/l2vpn-backup/', views.l2vpn_backup_acesso, name='l2vpn_backup_acesso'),
     path('acessos/<int:acesso_id>/l2vpn-peers/', views.l2vpn_peers_acesso, name='l2vpn_peers_acesso'),
     path('acessos/<int:acesso_id>/l2vpn-clonar/', views.l2vpn_clonar_acesso, name='l2vpn_clonar_acesso'),
+    path('<int:cliente_id>/ipam/l2vpn/switches/', views.l2vpn_switches_cliente, name='l2vpn_switches_cliente'),
+    path('<int:cliente_id>/ipam/vlans-switch/switches/', views.vlans_switches_cliente, name='vlans_switches_cliente'),
+    path('acessos/<int:acesso_id>/vlans-backup/', views.vlans_backup_acesso, name='vlans_backup_acesso'),
     # Portas PON de OLT Huawei (inventário do backup + display/laser ao vivo)
     path('acessos/<int:acesso_id>/olt-pon/', views.olt_pon_acesso, name='olt_pon_acesso'),
     path('acessos/<int:acesso_id>/olt-pon/executar/', views.olt_pon_executar, name='olt_pon_executar'),
@@ -127,14 +133,6 @@ urlpatterns = [
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/(?P<porta>[0-9]+)/(?P<scheme>https?)(?P<path>/.*)?$', views.proxy_web_acesso, name='proxy_web_acesso'),
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/?$', views.proxy_web_acesso, name='proxy_web_acesso_legacy'),
 
-    # ── VPN WireGuard ────────────────────────────────────────────────────
-    path('<int:cliente_id>/vpn-wg/listar/',          views.vpn_wg_listar,        name='vpn_wg_listar'),
-    path('<int:cliente_id>/vpn-wg/criar/',           views.vpn_wg_criar,         name='vpn_wg_criar'),
-    path('<int:cliente_id>/vpn-wg/status/',          views.vpn_wg_status,        name='vpn_wg_status'),
-    path('vpn-wg/<int:vpn_id>/script/',              views.vpn_wg_script,        name='vpn_wg_script'),
-    path('vpn-wg/<int:vpn_id>/deletar/',             views.vpn_wg_deletar,       name='vpn_wg_deletar'),
-    path('vpn-wg/<int:vpn_id>/reativar/',            views.vpn_wg_reativar_peer, name='vpn_wg_reativar'),
-    path('vpn-wg/<int:vpn_id>/editar/',              views.vpn_wg_editar,        name='vpn_wg_editar'),
 
     # ── Túnel OpenVPN (aba Túneis) ───────────────────────────────────────
     path('<int:cliente_id>/vpn-ovpn/listar/',        views.vpn_ovpn_listar,          name='vpn_ovpn_listar'),

@@ -2,7 +2,8 @@
 
 **Arquivo principal:** `clientes/ipam_views.py`  
 **Models:** `IPAMVlan`, `IPAMPrefixo`, `IPAMSubRede`, `IPAMEndereco`, `IPAMVpnDoc`  
-**Atualizado em:** 2026-05-26
+**Sub-abas L2VPN/VLANs por Switch:** views em `clientes/views.py`, parser em `clientes/l2vpn_parser.py`  
+**Atualizado em:** 18/08/2026
 
 ---
 
@@ -223,3 +224,71 @@ pra a mesma feature valer nas duas famílias:
 | `IPAMSubRede`  | `cliente`, `rede` (CIDR), `prefixo` (FK), `vlan` (FK), `status` |
 | `IPAMEndereco` | `cliente`, `ip`, `subrede` (FK), `hostname`, `descricao`     |
 | `IPAMVpnDoc`   | documentação de VPNs vinculada ao cliente                     |
+
+---
+
+## Sub-abas "L2VPN" e "VLANs por Switch" — novas em 18/08/2026
+
+Duas sub-abas novas dentro de Documentação de Rede, **separadas** da sub-aba "VPNs" acima
+(essa é `IPAMVpnDoc`, VPN de camada 3 — IPSec/GRE/L2TP/WireGuard, documentada à mão). As novas são
+camada 2 (VSI/VPWS/VPLS/L2VC e inventário de VLAN), **extraídas do backup**, não digitadas.
+
+### Reaproveitamento — nada duplicado
+
+O parser e a resolução de peer→host já existiam prontos, implementados dias antes pra alimentar o
+modal "Mostrar L2VPN" do editor de Topologia (ver [topologia_l2vpn.md](topologia_l2vpn.md) — fonte
+de verdade completa do parser, sintaxes suportadas por fabricante, cache, etc.). As sub-abas aqui
+são só uma **segunda superfície de UI** pro mesmo backend: uma listagem tabular por switch, fora
+do canvas SVG do editor, sem precisar abrir o diagrama de topologia pra ver os serviços L2VPN de
+um cliente.
+
+### "Quais Acessos são switch?"
+
+Não existe campo `Acesso.eh_switch` — é inferido por palavra-chave em `funcao.descricao`/`tipo`
+(`clientes/views.py::_acesso_eh_switch`), mesmo critério (reduzido) que `topologia_hosts` usa pra
+desenhar o ícone `switch_l2`/`switch_l3` no editor:
+
+```python
+def _acesso_eh_switch(acesso):
+    funcao_nome = ((acesso.funcao.descricao or '') if acesso.funcao else '').lower()
+    tipo_lower = (acesso.tipo or '').lower()
+    palavras = ['switch l3', 'sw-l3', 'camada 3', 'switch', 'sw-', 'catalyst', 'nexus']
+    return any(p in funcao_nome or p in tipo_lower for p in palavras)
+```
+
+### Endpoints
+
+| Rota | Descrição |
+|---|---|
+| `GET /clientes/<cliente_id>/ipam/l2vpn/switches/` | Switches do cliente + resumo `{vpls, vpws, l2vc, total}` por switch (roda `_l2vpn_servicos_do_acesso` uma vez por switch — mesmo cache por `BackupLog.id` do editor de Topologia) |
+| `GET /clientes/acessos/<acesso_id>/l2vpn-backup/` | Detalhe de um switch — **reaproveitado direto** do editor de Topologia, endpoint já existente, nenhuma view nova |
+| `GET /clientes/<cliente_id>/ipam/vlans-switch/switches/` | Switches do cliente + contagem total de VLANs em cada um |
+| `GET /clientes/acessos/<acesso_id>/vlans-backup/` | VLANs configuradas naquele switch (número, interface, descrição, IP) |
+
+Ambas as listagens são gated por `@modulo_habilitado_required('acessos')` — mesma exigência do
+endpoint de detalhe já existente (`l2vpn_backup_acesso`), pra não ter um caminho de permissão
+diferente conforme a UI de entrada.
+
+### Extrator de VLAN — `clientes/l2vpn_parser.py::extrair_vlans`
+
+Novo, complementar ao parser de L2VPN — devolve **todas** as VLANs configuradas no equipamento
+(não só as amarradas a um serviço L2VPN). Mesma filosofia do parser de L2VPN: só cobre sintaxe já
+vista em backup real deste ambiente.
+
+- **Huawei VRP** (confirmado com dado real): cada bloco `interface Vlanif<N>` vira uma VLAN, com
+  `description` e `ip address` quando presentes. Testado num switch real com 24 interfaces
+  amarradas a um único VSI de agregação PPPoE (`l2 binding vsi` — serviço legítimo, "junta 24
+  VLANs de acesso diferentes numa única instância de switch virtual pro servidor PPPoE", não bug)
+  — o inventário completo desse mesmo switch tem **102 VLANs**, a maioria fora de qualquer L2VPN.
+- **MikroTik** (`/interface vlan` + `add vlan-id=... name=... interface=...`): melhor esforço, sem
+  amostra real deste ambiente conferida ainda.
+- Outros fabricantes: lista vazia (mesmo princípio de "não inventar parser sem amostra real" do
+  L2VPN).
+
+### UI — pastas, busca e paginação
+
+As duas sub-abas usam o mesmo componente visual: cada switch é uma **pasta** (ícone
+`fa-folder`/`fa-folder-open`, cor âmbar), clicar expande e mostra o conteúdo indentado com uma
+guia pontilhada (CSS compartilhado: `.switch-folder-row`, `.switch-folder-contents`). Campo de
+busca por nome/IP do switch, 20 switches por página com paginação — tudo client-side (a lista
+inteira já vem numa única chamada, com os resumos já calculados).

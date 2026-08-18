@@ -2,6 +2,58 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 42 — 18/08/2026: Proxy web, 2FA, Kanban de Tarefas, L2VPN/VLANs por switch, Backups
+
+**O que foi corrigido?**
+- 🐛 **Proxy web quebrava com host cadastrado como `"IP/path"`** (ex: Zabbix): `is_private_ip`
+  falhava silenciosamente numa string suja e o acesso ia direto em vez de pelo túnel SSH; a porta
+  também acabava colada dentro do path. Parsing agora separa hostname de path fixo e reinjeta o
+  path sem duplicar.
+- 🐛 **Excluir erro de backup jogava pro dashboard geral**: `arquivo_path=''` (backup que falhou)
+  virava o próprio `MEDIA_ROOT` no `os.path.join`, `os.remove` num diretório estourava
+  `IsADirectoryError`, e o fallback de erro não preservava `?id=<cliente>`.
+- 🐛 **Botão "Backup em Massa" era um stub** (só um toast "EM DESENVOLVIMENTO") e o modal chamava
+  uma rota que nunca existiu (`/clientes/acessos/listar/`) — implementado de verdade.
+- 🐛 **Login não respeitava `next`**: sessão expirando no meio da navegação do proxy web (ex: tela
+  de login de um equipamento) sempre voltava pro dashboard fixo em vez de continuar de onde estava
+  — `usuario.views.login`/`verificar_2fa` nunca liam esse parâmetro.
+- 🐛 **Seletor de "Responsável" das tarefas vazava conta de teste**: cliente sem instância própria
+  mostrava *todo* admin legado da plataforma, sem escopo — incluindo contas sem e-mail, sobra de
+  cadastro. Reescrito por cliente: admins reais + atendentes da instância + usuário de portal
+  vinculado ao próprio cliente.
+- 🐛 **`TypeError` de datetime naive x aware** ao criar/editar tarefa com prazo — `<input
+  type="datetime-local">` nunca manda timezone; corrigido nos 4 pontos que processam `prazo`.
+
+**O que foi implementado?**
+- ✅ **2FA — dispositivo confiável**: checkbox "Confiar neste navegador por 30 dias" na tela de
+  código — pula a segunda etapa em logins seguintes no mesmo navegador (usuário+senha continuam
+  sempre exigidos). `SESSION_COOKIE_AGE` subiu de 1h pra 7 dias.
+- ✅ **Kanban de Tarefas por cliente** (aba nova em `listar.html`): 5 colunas (Atrasada calculada +
+  Pendente/Andamento/Concluída/Cancelada), drag-and-drop via SortableJS, acessível ao portal do
+  cliente final pras próprias tarefas.
+- ✅ **Múltiplos responsáveis por tarefa**: `Tarefa.assigned_to` (FK único) migrado pra
+  `Tarefa.responsaveis` (M2M), preservando os vínculos existentes.
+- ✅ **Sub-abas "L2VPN" e "VLANs por Switch"** em Documentação de Rede: lista switches em formato
+  de pasta (busca + paginação), clicar mostra VSI/VPWS/VPLS/L2VC ou o inventário de VLAN daquele
+  switch — reaproveita 100% do parser/cache que já existia pro editor de Topologia, só uma segunda
+  superfície de UI. Extrator de VLAN novo (`l2vpn_parser.extrair_vlans`, Huawei VRP confirmado com
+  dado real).
+- ✅ **Botão "Listar hosts sem template e backups habilitados"**: configuração em massa
+  (template + habilitar + automático) pros acessos SSH ainda sem backup configurado.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[proxy_web_acessos.md](proxy_web_acessos.md)** | Bug do host com path embutido |
+| **[2FA_GOOGLE_AUTHENTICATOR.md](2FA_GOOGLE_AUTHENTICATOR.md)** | `next` pós-login, dispositivo confiável, duração de sessão |
+| **[TAREFAS.md](TAREFAS.md)** | Kanban, `responsaveis` M2M, correção do seletor, bug de datetime |
+| **[ipam.md](ipam.md)** | Sub-abas L2VPN / VLANs por Switch |
+| **[topologia_l2vpn.md](topologia_l2vpn.md)** | Parser/cache reaproveitado pelas sub-abas acima |
+| **[backup_automatico.md](backup_automatico.md)** | Backup em Massa, hosts sem backup, exclusão de erro |
+
+---
+
 ### Sessão 41 — 13/08/2026: Túnel OpenVPN (MikroTik) — tráfego interno não passava
 
 **O que foi corrigido?**
