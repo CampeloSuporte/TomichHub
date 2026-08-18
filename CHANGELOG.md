@@ -5,6 +5,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-18 (BGP: fake-AS na sessão e painel só com o que está configurado)
+
+### Adicionado
+
+- **fake-AS no formulário de subir sessão** ([`clientes/bgp_community_auto.py`](clientes/bgp_community_auto.py)):
+  a opção "apresentar outro ASN nesta sessão" emite `peer <IP> fake-as N`. Com ela marcada, o
+  campo de prepend vira espelho do fake-AS — e isso não é conveniência de tela, é correção:
+  **prepend só conta se repetir o ASN que o peer enxerga**. Prepender o ASN real numa sessão
+  com fake-as não alonga o caminho para aquele vizinho, a rota chega com o mesmo AS_PATH de
+  sempre. A combinação divergente (`fake_as=52995` com `prepend_as=268080`) é recusada em vez
+  de gerar config que parece certa e não faz nada.
+- O fake-as é emitido **por peer**, não no peer-group, porque é assim que `parse_huawei` o lê
+  de volta — no grupo, o painel perderia de vista qual ASN aquele vizinho enxerga. Sessões que
+  já usam fake-as passaram a mostrá-lo no painel, e o mapa avisa quando a policy de saída
+  prepende um ASN diferente do fake-as da sessão (vale para config feita à mão antes desta
+  automação).
+
+### Alterado
+
+- **O painel voltou a mostrar só o que existe** ([`clientes/templates/bgp_automacao.html`](clientes/templates/bgp_automacao.html)):
+  os slots livres do template saíram da grade. Cada família lista os circuitos configurados e
+  termina num card "＋ adicionar", que abre o formulário já com os livres num seletor
+  (`c-04 — community 65100:504xx`). Uma caixa com 6 upstreams e nenhum IX passa de 25 cards,
+  19 deles buracos, para 6 cards e dois botões de adicionar.
+
+52 testes em [`clientes/tests_bgp_community_auto.py`](clientes/tests_bgp_community_auto.py).
+
+---
+
 ## [Não publicado] — 2026-08-18 (BGP: subir circuito e sessão do zero pelo painel)
 
 ### Adicionado
