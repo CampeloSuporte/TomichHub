@@ -482,17 +482,56 @@ def parse_huawei(conteudo, nome_equip=''):
     for m in re.finditer(r'peer ([\d.:a-fA-F]+) description (.+)', conteudo):
         desc_map[m.group(1)] = m.group(2).strip()
 
+    # Peer-group: no VRP a config do grupo (`peer <GRUPO> route-policy … export`)
+    # vale pra todo membro que não tenha a sua própria. É assim que os IX são
+    # configurados na prática — `group EBGP-PTT-SP-V4 external` + N route
+    # servers no grupo —, então sem herdar do grupo esses peers ficavam sem
+    # policy nenhuma e o circuito correspondente aparecia "sem sessão".
+    grupo_do_peer = {}
+    for m in re.finditer(r'peer ([\d.:a-fA-F]+) group (\S+)', conteudo):
+        grupo_do_peer[m.group(1)] = m.group(2)
+
     # `peer X ignore` derruba a sessão inteira; `undo peer X enable` (dentro
     # de ipv4-family/ipv6-family) desativa só a troca de rotas naquela AF —
     # os dois coexistem no mesmo bloco `bgp <ASN>` e qualquer um dos dois
-    # basta pra considerar a sessão desabilitada.
-    ignorados = set(re.findall(r'peer ([\d.:a-fA-F]+) ignore\b', conteudo))
-    af_desabilitados = set(re.findall(r'undo peer ([\d.:a-fA-F]+) enable\b', conteudo))
+    # basta pra considerar a sessão desabilitada. Vale tanto pro peer quanto
+    # pro grupo dele (o nome do grupo não é IP, daí o padrão mais largo).
+    _NOME_PEER = r'[\w.:-]+'
+    ignorados = set(re.findall(rf'peer ({_NOME_PEER}) ignore\b', conteudo))
+
+    # `enable`/`undo … enable` são POR address-family, e só as unicast
+    # interessam aqui (é de anúncio de prefixo que esta automação trata).
+    # Dois arranjos reais que o parser precisa distinguir:
+    #   - grupo IPv6 desligado na `ipv4-family unicast` e ligado na
+    #     `ipv6-family unicast` — está no ar, não pode aparecer desabilitado;
+    #   - peer desligado na `ipv4-family unicast` e ligado só em vpnv4/vpnv6/
+    #     l2vpn — para efeito de unicast, está fora mesmo.
+    af_desabilitados, habilitados_unicast = set(), set()
+    af_atual = ''
+    for linha in conteudo.splitlines():
+        m_af = re.match(r'\s*(?:undo\s+)?(ipv4-family|ipv6-family|l2vpn-ad-family)\s*(\S*)', linha)
+        if m_af:
+            af_atual = f'{m_af.group(1)} {m_af.group(2)}'.strip()
+            continue
+        if linha.strip() and not linha[0].isspace():
+            af_atual = ''   # linha na coluna 0 = saiu do bloco `bgp <ASN>`
+        unicast = af_atual in ('ipv4-family unicast', 'ipv6-family unicast',
+                               'ipv4-family', 'ipv6-family')
+        if not unicast:
+            continue
+        m_undo = re.match(rf'\s*undo peer ({_NOME_PEER}) enable\b', linha)
+        if m_undo:
+            af_desabilitados.add(m_undo.group(1))
+            continue
+        m_on = re.match(rf'\s*peer ({_NOME_PEER}) enable\b', linha)
+        if m_on:
+            habilitados_unicast.add(m_on.group(1))
+    af_desabilitados -= habilitados_unicast
 
     policy_in_map, policy_out_map = {}, {}
-    for m in re.finditer(r'peer ([\d.:a-fA-F]+) route-policy (\S+) import', conteudo):
+    for m in re.finditer(rf'peer ({_NOME_PEER}) route-policy (\S+) import', conteudo):
         policy_in_map[m.group(1)] = m.group(2)
-    for m in re.finditer(r'peer ([\d.:a-fA-F]+) route-policy (\S+) export', conteudo):
+    for m in re.finditer(rf'peer ({_NOME_PEER}) route-policy (\S+) export', conteudo):
         policy_out_map[m.group(1)] = m.group(2)
 
     # `peer X fake-as N` faz o roteador se apresentar com o AS N (em vez do
@@ -506,14 +545,17 @@ def parse_huawei(conteudo, nome_equip=''):
     for m in re.finditer(r'peer ([\d.:a-fA-F]+) as-number (\d+)', conteudo):
         peer_ip = m.group(1)
         fake_as = fake_as_map.get(peer_ip, '')
+        grupo = grupo_do_peer.get(peer_ip, '')
+        desabilitado = {peer_ip, grupo} & (ignorados | af_desabilitados)
         bgp.append({
             'peer_ip': peer_ip, 'peer_as': m.group(2),
             'as_local': as_local, 'equipamento': nome_equip,
             'descricao': desc_map.get(peer_ip, ''),
             'nome': peer_ip,   # Huawei não tem identificador próprio — o comando de ação usa o IP
-            'habilitada': peer_ip not in ignorados and peer_ip not in af_desabilitados,
-            'policy_in': policy_in_map.get(peer_ip, ''),
-            'policy_out': policy_out_map.get(peer_ip, ''),
+            'grupo': grupo,
+            'habilitada': not desabilitado,
+            'policy_in': policy_in_map.get(peer_ip) or policy_in_map.get(grupo, ''),
+            'policy_out': policy_out_map.get(peer_ip) or policy_out_map.get(grupo, ''),
             'fake_as': fake_as,
             # AS a repetir no prepend — fake-as tem prioridade sobre o AS
             # real quando configurado (é o que o peer efetivamente enxerga).

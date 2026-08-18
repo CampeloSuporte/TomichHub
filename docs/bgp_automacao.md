@@ -1021,11 +1021,13 @@ route-policy RT-BGP-LOCAL-52DC-38 permit node 10        ← declara a intenção
 network 2804:52DC:3000:: 38 route-policy RT-BGP-LOCAL-52DC-38
 ```
 
-Catálogo de ações (`ACOES`, sufixo fixo da community e node canônico na policy OUT):
-`export` (01/10), `export-1p` (02/11), `export-2p` (03/12), `export-3p` (04/13), `export-4p`
-(05/14), `export-ne` (08/15, `deny` + `apply community no-export`), `export-df` (09/16),
-`export-bh` (66/17), `export-bl` (67/09, `deny`), `import-rr` (00, só na policy de entrada).
-**O número de prepends é propriedade da AÇÃO** — nunca é cadastrado por anúncio.
+Catálogo de ações (`ACOES`, sufixo fixo da community e node canônico na policy OUT — ordem do
+template, ver a seção de 18/08/2026): `export-bl` (67/09, `deny`), `export-bh` (66/10),
+`export` (01/11), o node 12 reservado à community global, `export-1p` (02/13), `export-2p`
+(03/14), `export-3p` (04/15), `export-4p` (05/16), `export-ne` (08/17, `permit` + `apply
+community no-export`), `export-df` (09, legada — reconhecida, não gerada), `import-rr` (00, só
+na policy de entrada). **O número de prepends é propriedade da AÇÃO** — nunca é cadastrado por
+anúncio.
 
 ### Extração (`parse_huawei`)
 
@@ -1127,4 +1129,108 @@ JSON; reproduzido também com o parser anterior).
 
 ---
 
-**Última atualização:** 13/08/2026
+## Anúncios por community — IX, CDN, grupos globais e painel por destino (Huawei, 2026-08-18)
+
+**Arquivos:** `clientes/bgp_community_auto.py`, `clientes/backup_parser.py` (`parse_huawei`),
+`clientes/bgp_views.py`, `clientes/templates/bgp_automacao.html`,
+`clientes/tests_bgp_community_auto.py` (novo).
+
+A versão anterior só enxergava circuitos `c-NN`. As caixas que já migraram para o template
+otimizado usam **três famílias de circuito** e as **communities globais** — e nelas o sistema
+mostrava menos da metade do que estava configurado (no acesso 20: 10 circuitos de 25).
+
+### O que passou a ser reconhecido
+
+| Estrutura | Community | Exemplo |
+|---|---|---|
+| `c-NN-<ação>` | `<asn>:50N<sufixo>` | operadora/upstream |
+| `ix-NN-<ação>` | `<asn>:60N<sufixo>` | IX/PTT |
+| `cdn-NN-<ação>` | `<asn>:61N<sufixo>` | CDN |
+| `glob-all-upstream[-Np]` | `<asn>:6000N` | anunciar para **todos** os upstreams |
+| `glob-all-ptts-ixbr[-Np]` | `<asn>:6001N` | idem, IX |
+| `glob-all-cdns[-Np]` | `<asn>:6002N` | idem, CDNs |
+
+O `id` do circuito passou a ser o próprio prefixo do filtro (`c-01`, `ix-05`, `cdn-02`) — é ele
+que vai em `AcaoBgp.alvo` e no parâmetro `destino` da ação. O campo antigo `circuito` continua
+aceito no `params` (`bgp_views._gerar_comandos_por_tipo`).
+
+**Tipo do circuito:** vem do nome do filtro; quando a caixa é antiga e chama tudo de `c-NN`
+(inclusive os IX — `c-81`..`c-83`), o tipo real vem do `glob-all-*` que a policy de saída daquele
+circuito referencia. É informação da própria config, não heurística de nome.
+
+**Alcance dos grupos globais:** um `glob-*` só faz alguma coisa se alguma policy de saída der
+`if-match community-filter glob-all-…`. O mapa calcula esse alcance circuito a circuito, e
+marcar um prefixo com uma community global sem alcance é **recusado** com essa explicação —
+nas caixas antigas o bloco `glob-*` inteiro foi colado e nunca referenciado (config morta,
+reportada em UM aviso consolidado).
+
+### Efeito real × intenção (`efetivo`)
+
+No VRP vale o **primeiro node que casa**. Como a global fica no node 12 e os prepends
+individuais nos nodes 13-16, um prefixo marcado com `glob-all-upstream` **e** com
+`c-01-export-2p` é anunciado **sem prepend** — o node individual nunca roda.
+
+`mapear_anuncios` resolve isso: além de `destinos` (intenções individuais) e `globais`
+(intenções "para todos"), cada linha traz `efetivo[<circuito>]` com o node vencedor, se
+anuncia, quantos prepends, se leva no-export e quais filtros ficaram `ignorados`. É o que o
+painel mostra na coluna "Efeito hoje" — a intenção declarada e o efeito real lado a lado.
+
+### Correções no catálogo
+
+- **`export-ne` virou `permit`** (era `deny`): "anunciar com no-export" é `permit` + `apply
+  community no-export`; num node `deny` a rota não é anunciada e o `apply` nem roda. As caixas
+  antigas têm esse `deny` e agora isso aparece como aviso ("o efeito é o contrário do rótulo").
+- **Nodes na ordem do template** (§9/§18): bloqueio 9, blackhole 10, anúncio 11, **global 12**,
+  prepends 13-16, no-export 17, `deny node 999` no fim. O preview sai em ordem de node.
+- **`export-df` é legado** (§20, CORREÇÃO 4): continua sendo lida e manipulável onde já existe,
+  mas não entra em config nova nem conta como "faltando".
+- Provisionar um circuito também emite o `if-match community-filter glob-all-<tipo>` (node 12)
+  quando esse filtro já existe na caixa — sem ele, "anunciar para todos" não alcança o circuito
+  novo. O bloco `glob-*` em si nunca é criado por tabela: padronizar a caixa é decisão do
+  operador, não efeito colateral de completar um circuito.
+
+### Peer-group no `parse_huawei`
+
+Os IX são configurados em grupo (`group EBGP-PTT-SP-V4 external` + N route servers), com as
+route-policies **no grupo**, não no peer. O parser passou a mapear `peer <IP> group <NOME>` e a
+herdar `route-policy … import/export` (e `ignore`/`undo … enable`) do grupo quando o peer não
+tem a sua própria — é assim que o VRP se comporta. Sem isso, todo circuito de IX aparecia "sem
+sessão BGP" e a automação se recusava a agir sobre ele. No acesso 20, os circuitos com sessão
+vinculada foram de 3 para 7. As sessões agora também trazem `grupo`.
+
+### Painel reorganizado (o pedido que originou a mudança)
+
+A matriz prefixo × todos-os-circuitos deixou de ser a tela principal — com 25 circuitos ela era
+uma parede de seletores. Agora são **dois passos**:
+
+1. **Destinos** em cards agrupados por tipo (operadoras, IX, CDNs, "anunciar para todos"), cada
+   um com grupo de community, ASN remoto, famílias, sessões, o que falta de config e quantos
+   prefixos vão para lá hoje.
+2. **Painel do destino** (clique no card): sessões BGP daquele circuito, como a policy de saída
+   traduz cada community (`node → filtro`) e a lista de prefixos com busca, filtro por família,
+   "só os que vão para cá", o efeito real de cada um e o seletor de como anunciar (agrupado em
+   Anúncio / Com prepend / Especiais, só com as ações que aquele destino tem).
+
+A matriz continua disponível no botão **⊞ Visão geral**, agora só leitura: `●` anunciado, `●N`
+com N prepends, azul quando quem decide é a community global, `⊘` bloqueado; clicar numa coluna
+abre o painel daquele circuito. Toda mudança continua passando pelo mesmo modal de
+preview/edição/trial.
+
+### Validado em 2026-08-18
+
+Contra os 8 equipamentos Huawei reais que usam a convenção (acessos 20, 175, 324, 746, 826, 923,
+990, 1216): **83 circuitos** descobertos (eram 67), matriz de 160 prefixos, 79 avisos (a
+consolidação dos globais mortos e o silêncio nas ações legadas tiraram ~2/3 do ruído das
+checagens novas). Geração de comandos conferida caso a caso pelo mesmo caminho da view
+(`_gerar_comandos_por_tipo`), incluindo as recusas esperadas (global sem alcance, variante de
+global que ninguém casa, circuito sem sessão, família errada, ação repetida). O bloco gerado
+para um circuito IX novo sai idêntico ao template padrão. Nenhum comando real foi enviado a
+equipamento. 22 testes novos em `clientes/tests_bgp_community_auto.py` (e os 36 já existentes
+seguem passando).
+
+Os snapshots em banco só passam a mostrar IX/CDN depois de reprocessados — "🔄 Atualizar agora"
+na tela do host, ou a rotina noturna das 02:45.
+
+---
+
+**Última atualização:** 18/08/2026

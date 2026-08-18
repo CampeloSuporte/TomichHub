@@ -169,9 +169,8 @@
 
     /* Automação de anúncios por community (Huawei) */
     /* Ocupa a largura toda da tela em vez do `max-width: 1100px` centralizado
-       do `.conteudo`: a matriz é prefixo × circuito, e uma caixa com 6+
-       circuitos não cabe em 1100px — as últimas colunas ficavam fora da área
-       visível mesmo com o scroll horizontal do container. */
+       do `.conteudo`: são até 25 circuitos + grupos globais, e a visão de
+       matriz não cabe em 1100px. */
     #painelCommunity { max-width: none; margin: 0; padding: 20px 20px 0; }
     .ca-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 16px; }
     .ca-head {
@@ -181,41 +180,129 @@
     .ca-titulo { font-weight: 600; font-size: 13px; }
     .ca-sub { color: #7d8590; font-size: 11px; }
     .ca-head-acoes { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-    .ca-corpo { padding: 12px 16px; }
-    .ca-circuitos { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .ca-circuito {
-        border: 1px solid #30363d; border-radius: 6px; padding: 7px 10px;
-        font-size: 11px; line-height: 1.5; min-width: 190px;
+    .ca-corpo { padding: 12px 16px 16px; }
+
+    /* Lista de destinos (circuitos + grupos globais), agrupada por tipo */
+    .ca-grupo { margin-bottom: 12px; }
+    .ca-grupo-titulo {
+        font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+        color: #7d8590; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
     }
-    .ca-circuito.ativo { border-color: rgba(63,185,80,.4); }
-    .ca-circuito.inativo { opacity: .55; }
-    .ca-circuito b { font-size: 12px; color: #e6edf3; }
-    .ca-circuito .ca-meta { color: #7d8590; }
-    .ca-circuito code { color: #58a6ff; }
-    .ca-circuito .btn.pequeno { margin-top: 5px; }
+    .ca-grupo-titulo .conta { color: #484f58; }
+    .ca-destinos-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 8px;
+    }
+    .ca-destino-card {
+        display: block; width: 100%; text-align: left; font: inherit; color: #e6edf3;
+        background: #0d1117; border: 1px solid #30363d; border-radius: 6px;
+        padding: 8px 10px; cursor: pointer;
+        transition: border-color .12s ease, background .12s ease;
+    }
+    .ca-destino-card:hover { border-color: #58a6ff; background: #11171f; }
+    .ca-destino-card.selecionado {
+        border-color: #58a6ff; background: #10202e; box-shadow: inset 3px 0 0 #58a6ff;
+    }
+    .ca-destino-card.inativo { opacity: .6; }
+    .ca-destino-card .cd-topo { display: flex; align-items: baseline; gap: 6px; }
+    .ca-destino-card .cd-id { font-weight: 600; font-size: 12px; font-family: 'Cascadia Code', monospace; }
+    .ca-destino-card .cd-nome {
+        color: #7d8590; font-size: 11px; overflow: hidden;
+        text-overflow: ellipsis; white-space: nowrap;
+    }
+    .ca-destino-card .cd-meta {
+        color: #7d8590; font-size: 10.5px; margin-top: 4px;
+        display: flex; gap: 5px; flex-wrap: wrap; align-items: center;
+    }
+    .ca-destino-card code { color: #58a6ff; font-family: 'Cascadia Code', monospace; }
+
+    .ca-pill {
+        display: inline-flex; align-items: center; gap: 3px; font-size: 10px;
+        padding: 1px 6px; border-radius: 999px; border: 1px solid #30363d; color: #7d8590;
+        white-space: nowrap;
+    }
+    .ca-pill.ok { color: #6fdd85; border-color: rgba(63,185,80,.4); background: rgba(63,185,80,.07); }
+    .ca-pill.alerta { color: #d29922; border-color: rgba(210,153,34,.4); background: rgba(210,153,34,.07); }
+    .ca-pill.bloq { color: #ff8080; border-color: rgba(248,81,73,.4); background: rgba(248,81,73,.07); }
+    .ca-pill.info { color: #58a6ff; border-color: rgba(88,166,255,.4); background: rgba(88,166,255,.07); }
+
+    /* Painel do destino selecionado */
+    .ca-detalhe { border: 1px solid #30363d; border-radius: 8px; background: #0d1117; margin-top: 4px; }
+    .ca-detalhe-head {
+        display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;
+        padding: 12px 14px; border-bottom: 1px solid #21262d;
+    }
+    .ca-detalhe-head h4 { margin: 0 0 5px; font-size: 13px; font-weight: 600; }
+    .ca-detalhe-head .ca-badges { display: flex; gap: 5px; flex-wrap: wrap; }
+    .ca-detalhe-acoes { margin-left: auto; display: flex; gap: 6px; align-items: flex-start; }
+    .ca-detalhe-corpo { padding: 12px 14px 14px; }
+    .ca-bloco-titulo {
+        font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+        color: #7d8590; margin: 0 0 6px;
+    }
+    .ca-sessoes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .ca-sessao {
+        font-size: 10.5px; border: 1px solid #30363d; border-radius: 4px;
+        padding: 3px 7px; color: #adbac7; font-family: 'Cascadia Code', monospace;
+    }
+    .ca-sessao span { color: #7d8590; }
+    .ca-sessao.off { opacity: .5; }
+    .ca-wiring {
+        font-size: 10.5px; color: #7d8590; font-family: 'Cascadia Code', monospace;
+        display: flex; flex-wrap: wrap; gap: 4px 10px; margin-bottom: 12px;
+    }
+    .ca-wiring b { color: #adbac7; font-weight: 600; }
+    .ca-filtros { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+    .ca-filtros input[type=search], .ca-filtros select {
+        background: #0d1117; border: 1px solid #30363d; color: #e6edf3;
+        border-radius: 4px; padding: 4px 8px; font-size: 11px;
+    }
+    .ca-filtros input[type=search] { min-width: 210px; }
+    .ca-filtros label { font-size: 11px; color: #7d8590; display: flex; align-items: center; gap: 4px; }
+    .ca-filtros .contagem { margin-left: auto; font-size: 11px; color: #7d8590; }
+
+    .ca-tabela { overflow-x: auto; }
+    .ca-tabela table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+    .ca-tabela th, .ca-tabela td {
+        padding: 6px 8px; border-bottom: 1px solid #21262d; text-align: left; vertical-align: middle;
+    }
+    .ca-tabela th {
+        color: #7d8590; font-weight: 600; text-transform: uppercase; font-size: 10px;
+        letter-spacing: .04em; white-space: nowrap;
+    }
+    .ca-tabela tr:hover td { background: #11171f; }
+    .ca-tabela td.ca-prefixo { font-family: 'Cascadia Code', monospace; color: #e6edf3; white-space: nowrap; }
+    .ca-tabela td.ca-prefixo small { display: block; color: #7d8590; font-family: inherit; }
+    .ca-tabela tr.nao-editavel td.ca-prefixo { color: #7d8590; }
+    .ca-tabela select {
+        background: #0d1117; border: 1px solid #30363d; color: #e6edf3;
+        border-radius: 4px; padding: 4px 6px; font-size: 11px; min-width: 190px;
+    }
+    .ca-tabela select:disabled { opacity: .35; cursor: not-allowed; }
+    .ca-tabela select.tem-acao { border-color: rgba(63,185,80,.5); color: #6fdd85; }
+    .ca-tabela td.ca-efeito { white-space: nowrap; }
+    .ca-vazio { color: #7d8590; font-size: 11.5px; padding: 14px 2px; }
+
+    /* Visão de matriz (só leitura — quem edita é o painel do destino) */
     .ca-matriz { overflow-x: auto; }
     .ca-matriz table { width: 100%; border-collapse: collapse; font-size: 11px; }
     .ca-matriz th, .ca-matriz td {
         padding: 5px 8px; border-bottom: 1px solid #21262d; text-align: left; white-space: nowrap;
     }
     .ca-matriz th { color: #7d8590; font-weight: 600; text-transform: uppercase; font-size: 10px; }
-    /* Coluna do prefixo fica fixa: numa caixa com muitos circuitos a matriz
-       rola na horizontal, e sem isso o operador perde de vista QUAL prefixo
-       está editando ao chegar nas últimas colunas. */
+    /* Coluna do prefixo fica fixa: com muitos circuitos a matriz rola na
+       horizontal, e sem isso o operador perde de vista QUAL prefixo é a linha. */
     .ca-matriz th:first-child, .ca-matriz td.ca-prefixo {
         position: sticky; left: 0; z-index: 1; background: #161b22;
         border-right: 1px solid #30363d;
     }
     .ca-matriz td.ca-prefixo { font-family: 'Cascadia Code', monospace; color: #e6edf3; }
     .ca-matriz td.ca-prefixo small { color: #7d8590; display: block; font-family: inherit; }
-    .ca-matriz td:not(.ca-prefixo) { min-width: 190px; }
-    .ca-matriz select {
-        background: #0d1117; border: 1px solid #30363d; color: #e6edf3;
-        border-radius: 4px; padding: 3px 6px; font-size: 11px; width: 100%;
-    }
-    .ca-matriz select:disabled { opacity: .35; }
-    .ca-matriz select.tem-acao { border-color: rgba(63,185,80,.5); color: #6fdd85; }
-    .ca-matriz tr.nao-editavel td.ca-prefixo { color: #7d8590; }
+    .ca-matriz td.cel { text-align: center; color: #484f58; cursor: pointer; }
+    .ca-matriz td.cel.on { color: #6fdd85; }
+    .ca-matriz td.cel.glob { color: #58a6ff; }
+    .ca-matriz td.cel.bloq { color: #ff8080; }
+    .ca-matriz td.cel:hover { background: #11171f; }
+
     .ca-avisos { display: none; padding: 0 16px 12px; }
     .ca-avisos.aberto { display: block; }
     .ca-aviso {
@@ -229,7 +316,8 @@
         border-radius: 4px; padding: 6px 9px; font-size: 12px;
     }
     .ca-form-linha input[type=text] { min-width: 220px; }
-    .ca-destinos { max-height: 240px; overflow-y: auto; border: 1px solid #30363d; border-radius: 6px; padding: 8px; }
+    .ca-destinos { max-height: 260px; overflow-y: auto; border: 1px solid #30363d; border-radius: 6px; padding: 8px; }
+    .ca-destinos .ca-grupo-titulo { margin-top: 6px; }
     .ca-destino { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; font-size: 11px; }
     .ca-destino span { min-width: 200px; }
 
@@ -257,7 +345,10 @@
 </div>
 
 <!-- Automação de anúncios por community: só aparece quando a caixa tem
-     community-filters no padrão `c-NN-<ação>` (ver bgp_community_auto.py) -->
+     community-filters no padrão `c-NN`/`ix-NN`/`cdn-NN` + ação (ver
+     bgp_community_auto.py). A navegação é em dois passos: escolher o DESTINO
+     (circuito ou grupo global) e, dentro dele, como cada prefixo é anunciado —
+     em vez de despejar a matriz prefixo × todos-os-circuitos de uma vez. -->
 <div class="conteudo" id="painelCommunity" style="display:none; padding-bottom:0;">
     <div class="ca-card">
         <div class="ca-head">
@@ -267,13 +358,15 @@
             </div>
             <div class="ca-head-acoes">
                 <button class="btn" onclick="caAbrirNovoPrefixo()" title="Passa a originar um prefixo novo já com a intenção de anúncio definida">＋ Originar prefixo</button>
+                <button class="btn" id="caBtnVisao" onclick="caAlternarVisao()" title="Alterna entre o painel do destino e a visão geral prefixo × circuito">⊞ Visão geral</button>
                 <button class="btn" id="caBtnAvisos" onclick="caToggleAvisos()" style="display:none;"></button>
             </div>
         </div>
         <div class="ca-avisos" id="caAvisos"></div>
         <div class="ca-corpo">
-            <div class="ca-circuitos" id="caCircuitos"></div>
-            <div class="ca-matriz" id="caMatriz"></div>
+            <div id="caDestinosLista"></div>
+            <div id="caDetalhe"></div>
+            <div class="ca-matriz" id="caMatriz" style="display:none;"></div>
         </div>
     </div>
 </div>
@@ -883,12 +976,19 @@ function fecharModal() {
 }
 
 // ── Automação de anúncios por community (Huawei) ───────────────────────────
-// O operador declara a INTENÇÃO (prefixo + circuito + ação) e o backend
-// resolve community → route-policy local → comportamento na saída. Toda a
-// descoberta (quais circuitos existem, qual community é de quem, o que cada
-// prefixo anuncia hoje) vem do endpoint /community-mapa/, que só lê o
-// snapshot — ver clientes/bgp_community_auto.py.
+// O operador declara a INTENÇÃO (prefixo + destino + ação) e o backend resolve
+// community → route-policy local → comportamento na saída. Toda a descoberta
+// (quais circuitos existem, quais grupos globais a caixa usa, o que cada
+// prefixo anuncia hoje e o que a policy faz de fato com ele) vem do endpoint
+// /community-mapa/, que só lê o snapshot — ver clientes/bgp_community_auto.py.
+//
+// A tela tem dois passos: escolher o DESTINO (um circuito ou um grupo global)
+// e, dentro dele, mexer prefixo a prefixo. A "visão geral" prefixo × circuito
+// continua disponível, mas só pra leitura — quem edita é o painel do destino.
 let CA_MAPA = null;
+let CA_DESTINO = null;                                   // id do destino aberto
+let CA_VISAO = 'painel';                                 // 'painel' | 'matriz'
+let CA_FILTRO = { busca: '', familia: '', somente: false };
 
 async function carregarCommunityAuto() {
     const painel = document.getElementById('painelCommunity');
@@ -910,18 +1010,92 @@ async function carregarCommunityAuto() {
     }
 }
 
-function caCircuitosOrdenados() {
-    return Object.values(CA_MAPA.circuitos).sort((a, b) => a.id.localeCompare(b.id));
+// ── Helpers de destino ─────────────────────────────────────────────────────
+function caDestino(id) {
+    if (!CA_MAPA || !id) return null;
+    return (CA_MAPA.globais || {})[id] || CA_MAPA.circuitos[id] || null;
 }
 
+function caEhGlobal(d) { return !!d && d.tipo === 'global'; }
+
+function caAcao(chave) {
+    return (CA_MAPA.acoes || []).find(a => a.chave === chave) || null;
+}
+
+function caRotuloAcao(chave) {
+    const a = caAcao(chave);
+    return a ? a.rotulo : chave;
+}
+
+/** Destinos agrupados por tipo, na ordem do catálogo: operadoras, IX, CDNs e,
+ *  por último, os grupos globais que realmente alcançam algum circuito. */
+function caGrupos() {
+    const porTipo = {};
+    Object.values(CA_MAPA.circuitos).forEach(c => {
+        (porTipo[c.tipo] = porTipo[c.tipo] || []).push(c);
+    });
+    const grupos = (CA_MAPA.tipos || [])
+        .filter(t => porTipo[t.chave])
+        .map(t => ({
+            chave: t.chave, rotulo: t.plural,
+            itens: porTipo[t.chave].sort((a, b) => a.id.localeCompare(b.id)),
+        }));
+    // Tipos que o backend não conhece (não deve acontecer, mas não some com o
+    // circuito da tela se acontecer).
+    Object.keys(porTipo).forEach(chave => {
+        if (!grupos.some(g => g.chave === chave)) {
+            grupos.push({ chave, rotulo: chave, itens: porTipo[chave] });
+        }
+    });
+    const globais = Object.values(CA_MAPA.globais || {})
+        .filter(g => g.alcance)
+        .sort((a, b) => a.id.localeCompare(b.id));
+    if (globais.length) {
+        grupos.push({ chave: 'global', rotulo: 'Anunciar para todos', itens: globais });
+    }
+    return grupos;
+}
+
+/** Quantos prefixos originados hoje chegam neste destino. */
+function caContagem(d) {
+    const anuncios = CA_MAPA.anuncios || [];
+    const marcados = caEhGlobal(d)
+        ? anuncios.filter(l => l.globais[d.id]).length
+        : anuncios.filter(l => l.efetivo[d.id] && l.efetivo[d.id].anuncia).length;
+    return { marcados, total: anuncios.length };
+}
+
+/** Ações que fazem sentido oferecer neste destino: as que têm community-filter
+ *  configurado — e, nos grupos globais, só as variantes que algum circuito
+ *  realmente casa (as outras existem como filtro mas não anunciam nada). */
+function caAcoesDisponiveis(d) {
+    return (CA_MAPA.acoes || []).filter(a => {
+        const conf = d.acoes[a.chave];
+        if (!conf) return false;
+        if (caEhGlobal(d)) return (conf.circuitos || []).length > 0;
+        return true;
+    });
+}
+
+/** Um destino só aceita prefixo de uma família se houver sessão BGP nela. */
+function caAtendeFamilia(d, familia) {
+    if (!caEhGlobal(d)) return d.sessoes.some(s => s.familia === familia);
+    return (d.circuitos || []).some(cid => {
+        const c = CA_MAPA.circuitos[cid];
+        return c && c.sessoes.some(s => s.familia === familia);
+    });
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
 function caRenderizar() {
-    const circuitos = caCircuitosOrdenados();
+    const circuitos = Object.values(CA_MAPA.circuitos);
     const comSessao = circuitos.filter(c => c.sessoes.length);
+    const globaisAtivos = Object.values(CA_MAPA.globais || {}).filter(g => g.alcance);
     const anuncios = CA_MAPA.anuncios || [];
 
     document.getElementById('caResumo').textContent =
-        `${circuitos.length} circuito(s) mapeado(s) · ${comSessao.length} com sessão BGP ativa · ` +
-        `${anuncios.length} prefixo(s) originado(s)`;
+        `${circuitos.length} circuito(s) mapeado(s) · ${comSessao.length} com sessão BGP · ` +
+        `${globaisAtivos.length} grupo(s) global(is) em uso · ${anuncios.length} prefixo(s) originado(s)`;
 
     const btnAvisos = document.getElementById('caBtnAvisos');
     const avisos = CA_MAPA.avisos || [];
@@ -935,90 +1109,345 @@ function caRenderizar() {
         document.getElementById('caAvisos').innerHTML = '';
     }
 
-    document.getElementById('caCircuitos').innerHTML = circuitos.map(c => {
-        const familias = [c.ipv4 ? 'IPv4' : '', c.ipv6 ? 'IPv6' : ''].filter(Boolean).join(' + ') || '—';
+    // O destino aberto pode ter sumido depois de um refresh do snapshot.
+    if (CA_DESTINO && !caDestino(CA_DESTINO)) CA_DESTINO = null;
+
+    document.getElementById('caDestinosLista').innerHTML = caGrupos().map(g => `
+        <div class="ca-grupo">
+            <div class="ca-grupo-titulo">${escapeHtml(g.rotulo)} <span class="conta">${g.itens.length}</span></div>
+            <div class="ca-destinos-grid">${g.itens.map(caCardDestino).join('')}</div>
+        </div>`).join('');
+
+    const emMatriz = CA_VISAO === 'matriz';
+    document.getElementById('caBtnVisao').textContent = emMatriz ? '◧ Painel do destino' : '⊞ Visão geral';
+    document.getElementById('caDetalhe').style.display = emMatriz ? 'none' : '';
+    document.getElementById('caMatriz').style.display = emMatriz ? '' : 'none';
+    if (emMatriz) caRenderMatriz(); else caRenderDetalhe();
+}
+
+function caCardDestino(d) {
+    const selecionado = d.id === CA_DESTINO ? ' selecionado' : '';
+    const cont = caContagem(d);
+    const clique = `onclick="caSelecionar('${escapeHtml(d.id)}')"`;
+
+    if (caEhGlobal(d)) {
+        const com = (d.acoes.export || {}).community || '';
         return `
-        <div class="ca-circuito ${c.sessoes.length ? 'ativo' : 'inativo'}">
-            <b>c-${escapeHtml(c.id)}${c.nome ? ' · ' + escapeHtml(c.nome) : ''}</b>
-            <div class="ca-meta">community <code>${escapeHtml(c.asn_community)}:${escapeHtml(c.grupo)}xx</code></div>
-            <div class="ca-meta">${c.peer_as ? 'AS' + escapeHtml(c.peer_as) : 'sem ASN remoto'} ·
-                ${familias} · ${c.sessoes.length} sessão(ões)</div>
-            <div class="ca-meta">prepend: ${c.prepend_as ? 'AS' + escapeHtml(c.prepend_as) : '—'}${
-                c.faltando.length ? ' · <span style="color:#d29922">falta: ' + escapeHtml(c.faltando.join(', ')) + '</span>' : ''}</div>
-            <button class="btn pequeno" onclick="caAbrirCircuito('${escapeHtml(c.id)}')">⚙ Gerar config faltante</button>
-        </div>`;
-    }).join('');
-
-    if (!comSessao.length) {
-        document.getElementById('caMatriz').innerHTML =
-            '<div class="vazio" style="padding:20px">Nenhum circuito tem sessão BGP vinculada — nada a anunciar por aqui ainda.</div>';
-        return;
-    }
-    if (!anuncios.length) {
-        document.getElementById('caMatriz').innerHTML =
-            '<div class="vazio" style="padding:20px">Nenhum prefixo originado por `network` neste equipamento.</div>';
-        return;
+        <button type="button" class="ca-destino-card${selecionado}" ${clique}
+                title="Uma community só que alcança ${d.alcance} circuito(s): ${escapeHtml(d.circuitos.join(', '))}">
+            <div class="cd-topo"><span class="cd-id">⊕ ${escapeHtml(d.rotulo)}</span></div>
+            <div class="cd-meta">
+                <span class="ca-pill info">${d.alcance} circuito(s)</span>
+                ${com ? `<code>${escapeHtml(com)}</code>` : ''}
+            </div>
+            <div class="cd-meta">${cont.marcados} de ${cont.total} prefixo(s) marcados</div>
+        </button>`;
     }
 
-    const cabecalho = comSessao.map(c =>
-        `<th title="community ${escapeHtml(c.asn_community)}:${escapeHtml(c.grupo)}xx">c-${escapeHtml(c.id)}<br>${escapeHtml(c.nome || '')}</th>`
-    ).join('');
+    const familias = [d.ipv4 ? 'V4' : '', d.ipv6 ? 'V6' : ''].filter(Boolean).join('+');
+    const inativo = d.sessoes.length ? '' : ' inativo';
+    const pills = [];
+    if (d.sessoes.length) {
+        pills.push(`<span class="ca-pill">${d.sessoes.length} sessão(ões)</span>`);
+        if (familias) pills.push(`<span class="ca-pill">${familias}</span>`);
+    } else {
+        pills.push('<span class="ca-pill alerta">sem sessão BGP</span>');
+    }
+    if (d.faltando.length) {
+        pills.push(`<span class="ca-pill alerta" title="ações sem community-filter: ${escapeHtml(d.faltando.join(', '))}">falta config</span>`);
+    }
+    return `
+    <button type="button" class="ca-destino-card${selecionado}${inativo}" ${clique}
+            title="${escapeHtml(d.rotulo)}${d.peer_as ? ' · AS' + escapeHtml(d.peer_as) : ''}">
+        <div class="cd-topo">
+            <span class="cd-id">${escapeHtml(d.id)}</span>
+            <span class="cd-nome">${escapeHtml(d.nome || '—')}</span>
+        </div>
+        <div class="cd-meta">
+            <code>${escapeHtml(d.asn_community)}:${escapeHtml(d.grupo)}xx</code>
+            ${d.peer_as ? `<span>AS${escapeHtml(d.peer_as)}</span>` : ''}
+        </div>
+        <div class="cd-meta">${pills.join('')}</div>
+        <div class="cd-meta">${cont.marcados} de ${cont.total} prefixo(s) anunciados</div>
+    </button>`;
+}
 
-    const linhas = anuncios.map((l, li) => {
-        const celulas = comSessao.map(c => {
-            const temFamilia = c.sessoes.some(s => s.familia === l.familia);
-            const acaoAtual = l.destinos[c.id] || '';
-            const desabilitado = !l.editavel || !temFamilia;
-            const titulo = !l.editavel
-                ? (l.avisos[0] || 'Prefixo sem route-policy local editável.')
-                : (!temFamilia ? `c-${c.id} não tem sessão ${l.familia.toUpperCase()}` : '');
-            const opcoes = ['<option value="">— não anunciar</option>'].concat(
-                (CA_MAPA.acoes || []).map(a => {
-                    const existe = Object.prototype.hasOwnProperty.call(c.acoes, a.chave);
-                    return `<option value="${a.chave}" ${a.chave === acaoAtual ? 'selected' : ''} ${existe ? '' : 'disabled'}>` +
-                           `${escapeHtml(a.rotulo)}${existe ? '' : ' (sem filtro)'}</option>`;
-                })
-            ).join('');
-            return `<td><select class="${acaoAtual ? 'tem-acao' : ''}" ${desabilitado ? 'disabled' : ''}
-                        title="${escapeHtml(titulo)}"
-                        onchange="caMudarAnuncio(${li}, '${escapeHtml(c.id)}', this)">${opcoes}</select></td>`;
-        }).join('');
-        return `
-        <tr class="${l.editavel ? '' : 'nao-editavel'}">
-            <td class="ca-prefixo">${escapeHtml(l.prefixo)}
-                <small>${escapeHtml(l.route_policy || 'sem route-policy local')}${
-                    l.communities_extras.length ? ' · extras: ' + escapeHtml(l.communities_extras.join(' ')) : ''}</small>
-            </td>
-            ${celulas}
-        </tr>`;
-    }).join('');
+function caSelecionar(id) {
+    CA_DESTINO = (CA_DESTINO === id && CA_VISAO === 'painel') ? null : id;
+    CA_VISAO = 'painel';
+    CA_FILTRO = { busca: '', familia: '', somente: false };
+    caRenderizar();
+    if (CA_DESTINO) {
+        document.getElementById('caDetalhe').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
 
-    document.getElementById('caMatriz').innerHTML = `
-        <table>
-            <thead><tr><th>Prefixo originado</th>${cabecalho}</tr></thead>
-            <tbody>${linhas}</tbody>
-        </table>`;
+function caAlternarVisao() {
+    CA_VISAO = CA_VISAO === 'matriz' ? 'painel' : 'matriz';
+    caRenderizar();
 }
 
 function caToggleAvisos() {
     document.getElementById('caAvisos').classList.toggle('aberto');
 }
 
-function caMudarAnuncio(linhaIdx, circuitoId, selectEl) {
+// ── Painel do destino ──────────────────────────────────────────────────────
+function caRenderDetalhe() {
+    const alvo = document.getElementById('caDetalhe');
+    const d = caDestino(CA_DESTINO);
+    if (!d) {
+        alvo.innerHTML = '<div class="ca-vazio">Escolha um circuito ou grupo global acima para ver e mudar como cada prefixo é anunciado por lá.</div>';
+        return;
+    }
+    alvo.innerHTML = `
+        <div class="ca-detalhe">
+            <div class="ca-detalhe-head">
+                <div>
+                    <h4>${caEhGlobal(d) ? '⊕ ' + escapeHtml(d.rotulo) : escapeHtml(d.id) + (d.nome ? ' · ' + escapeHtml(d.nome) : '')}</h4>
+                    <div class="ca-badges">${caBadgesDestino(d)}</div>
+                </div>
+                <div class="ca-detalhe-acoes">
+                    ${caEhGlobal(d) ? '' : `<button class="btn" onclick="caAbrirCircuito('${escapeHtml(d.id)}')" title="Gera só o que falta: community-filters ausentes e os nodes correspondentes na route-policy de saída">⚙ Gerar config faltante</button>`}
+                    <button class="btn" onclick="caSelecionar('${escapeHtml(d.id)}')">✕ Fechar</button>
+                </div>
+            </div>
+            <div class="ca-detalhe-corpo">
+                ${caBlocoContexto(d)}
+                ${caBlocoPrefixos(d)}
+            </div>
+        </div>`;
+}
+
+function caBadgesDestino(d) {
+    if (caEhGlobal(d)) {
+        const variantes = caAcoesDisponiveis(d)
+            .map(a => `<span class="ca-pill">${escapeHtml(a.rotulo)}</span>`).join('');
+        return `<span class="ca-pill info">alcança ${d.alcance} circuito(s)</span>${variantes}`;
+    }
+    const b = [`<span class="ca-pill">${escapeHtml(d.tipo_rotulo || '')}</span>`,
+               `<span class="ca-pill">community <code>${escapeHtml(d.asn_community)}:${escapeHtml(d.grupo)}xx</code></span>`];
+    if (d.peer_as) b.push(`<span class="ca-pill">AS remoto ${escapeHtml(d.peer_as)}</span>`);
+    if (d.prepend_as) b.push(`<span class="ca-pill">prepend AS${escapeHtml(d.prepend_as)}</span>`);
+    if (d.globais.length) {
+        b.push(`<span class="ca-pill info" title="a policy de saída também casa esta community global">${escapeHtml(d.globais.join(', '))}</span>`);
+    }
+    b.push(d.faltando.length
+        ? `<span class="ca-pill alerta">falta: ${escapeHtml(d.faltando.join(', '))}</span>`
+        : '<span class="ca-pill ok">config completa</span>');
+    return b.join('');
+}
+
+/** Sessões e wiring: o "porquê" do que o painel mostra logo abaixo. */
+function caBlocoContexto(d) {
+    if (caEhGlobal(d)) {
+        const circuitos = (d.circuitos || []).map(cid => {
+            const c = CA_MAPA.circuitos[cid];
+            const nome = c && c.nome ? ' · ' + escapeHtml(c.nome) : '';
+            return `<span class="ca-sessao">${escapeHtml(cid)}${nome}</span>`;
+        }).join('');
+        const coms = Object.entries(d.acoes)
+            .map(([chave, a]) => `<span><b>${escapeHtml(a.community)}</b> ${escapeHtml(caRotuloAcao(chave))}${(a.circuitos || []).length ? '' : ' (sem alcance)'}</span>`)
+            .join('');
+        return `
+            <div class="ca-bloco-titulo">Circuitos alcançados</div>
+            <div class="ca-sessoes">${circuitos || '<span class="ca-vazio">nenhum</span>'}</div>
+            <div class="ca-bloco-titulo">Communities do grupo</div>
+            <div class="ca-wiring">${coms}</div>`;
+    }
+
+    const sessoes = d.sessoes.map(s => `
+        <span class="ca-sessao ${s.habilitada ? '' : 'off'}" title="${escapeHtml(s.descricao || '')}">
+            ${escapeHtml(s.peer_ip)} <span>AS${escapeHtml(s.peer_as || '?')} · ${s.familia.toUpperCase()}${s.habilitada ? '' : ' · desabilitada'}</span>
+        </span>`).join('');
+    const wiring = ['v4', 'v6'].map(fam => {
+        const linhas = (d.nodes_out[fam] || []);
+        if (!linhas.length) return '';
+        return `<span><b>${fam.toUpperCase()}</b> ${escapeHtml(linhas[0].policy)}: ` +
+            linhas.map(w => `${w.node}→${escapeHtml(w.filtro)}${w.acao === 'deny' ? ' (deny)' : ''}${w.prepend ? ' +' + w.prepend + 'p' : ''}`).join(', ') +
+            '</span>';
+    }).filter(Boolean).join('');
+    return `
+        <div class="ca-bloco-titulo">Sessões BGP deste circuito</div>
+        <div class="ca-sessoes">${sessoes || '<span class="ca-vazio">Nenhuma sessão vinculada — a config existe, mas o peer ainda não está configurado neste equipamento.</span>'}</div>
+        ${wiring ? `<div class="ca-bloco-titulo">Como a policy de saída traduz cada community</div><div class="ca-wiring">${wiring}</div>` : ''}`;
+}
+
+function caPrefixosVisiveis(d) {
+    const busca = CA_FILTRO.busca.trim().toLowerCase();
+    return (CA_MAPA.anuncios || []).map((l, idx) => ({ l, idx })).filter(({ l }) => {
+        if (CA_FILTRO.familia && l.familia !== CA_FILTRO.familia) return false;
+        if (busca && !l.prefixo.toLowerCase().includes(busca)) return false;
+        if (CA_FILTRO.somente) {
+            return caEhGlobal(d) ? !!l.globais[d.id] : !!l.efetivo[d.id];
+        }
+        return true;
+    });
+}
+
+function caBlocoPrefixos(d) {
+    const visiveis = caPrefixosVisiveis(d);
+    const cont = caContagem(d);
+    const linhas = visiveis.map(({ l, idx }) => caLinhaPrefixo(d, l, idx)).join('');
+    return `
+        <div class="ca-bloco-titulo">Prefixos originados por este equipamento</div>
+        <div class="ca-filtros">
+            <input type="search" id="caBusca" placeholder="filtrar prefixo…" value="${escapeHtml(CA_FILTRO.busca)}"
+                   oninput="caMudarFiltro('busca', this.value)">
+            <select onchange="caMudarFiltro('familia', this.value)">
+                <option value="" ${CA_FILTRO.familia ? '' : 'selected'}>IPv4 e IPv6</option>
+                <option value="v4" ${CA_FILTRO.familia === 'v4' ? 'selected' : ''}>Só IPv4</option>
+                <option value="v6" ${CA_FILTRO.familia === 'v6' ? 'selected' : ''}>Só IPv6</option>
+            </select>
+            <label><input type="checkbox" ${CA_FILTRO.somente ? 'checked' : ''}
+                   onchange="caMudarFiltro('somente', this.checked)"> só os que vão para cá</label>
+            <span class="contagem">${cont.marcados} de ${cont.total} prefixo(s)</span>
+        </div>
+        <div class="ca-tabela">
+            <table>
+                <thead><tr><th>Prefixo</th><th>Efeito hoje</th><th>Anunciar como</th></tr></thead>
+                <tbody>${linhas || '<tr><td colspan="3" class="ca-vazio">Nenhum prefixo com esse filtro.</td></tr>'}</tbody>
+            </table>
+        </div>`;
+}
+
+function caLinhaPrefixo(d, l, idx) {
+    const atual = (caEhGlobal(d) ? l.globais : l.destinos)[d.id] || '';
+    const familiaOk = caAtendeFamilia(d, l.familia);
+    const desabilitado = !l.editavel || !familiaOk;
+    const motivo = !l.editavel
+        ? (l.avisos[0] || 'Prefixo sem route-policy local editável.')
+        : (!familiaOk ? `${d.id}: nenhuma sessão ${l.familia.toUpperCase()} — este prefixo é ${l.familia.toUpperCase()}.` : '');
+
+    const opcoes = ['<option value="">— não anunciar</option>']
+        .concat(['anuncio', 'prepend', 'especial'].map(grupo => {
+            const itens = caAcoesDisponiveis(d).filter(a => a.grupo_ui === grupo);
+            if (!itens.length) return '';
+            const rot = { anuncio: 'Anúncio', prepend: 'Com prepend', especial: 'Especiais' }[grupo];
+            return `<optgroup label="${rot}">` + itens.map(a =>
+                `<option value="${a.chave}" ${a.chave === atual ? 'selected' : ''}>${escapeHtml(a.rotulo)}</option>`
+            ).join('') + '</optgroup>';
+        })).join('');
+
+    return `
+    <tr class="${l.editavel ? '' : 'nao-editavel'}">
+        <td class="ca-prefixo">${escapeHtml(l.prefixo)}
+            <small>${escapeHtml(l.route_policy || 'sem route-policy local')}${
+                l.communities_extras.length ? ' · extras: ' + escapeHtml(l.communities_extras.join(' ')) : ''}</small>
+        </td>
+        <td class="ca-efeito">${caEfeito(d, l)}</td>
+        <td>
+            <select class="${atual ? 'tem-acao' : ''}" ${desabilitado ? 'disabled' : ''}
+                    title="${escapeHtml(motivo)}"
+                    onchange="caDefinirAcao(${idx}, '${escapeHtml(d.id)}', this)">${opcoes}</select>
+        </td>
+    </tr>`;
+}
+
+/** O que a config em vigor faz com este prefixo neste destino — resolvendo
+ *  junto a intenção individual e a global (no VRP vale o primeiro node que
+ *  casa, então a global pode ganhar de um prepend individual). */
+function caEfeito(d, l) {
+    if (caEhGlobal(d)) {
+        const chave = l.globais[d.id];
+        if (!chave) return '<span class="ca-pill">—</span>';
+        return `<span class="ca-pill ok">${escapeHtml(caRotuloAcao(chave))}</span>` +
+               `<span class="ca-pill info" title="circuitos alcançados">${(d.acoes[chave] || {}).circuitos?.length || 0} circuito(s)</span>`;
+    }
+    const ef = l.efetivo[d.id];
+    if (!ef) return '<span class="ca-pill">não anunciado</span>';
+    const partes = [];
+    if (!ef.anuncia) {
+        partes.push('<span class="ca-pill bloq">bloqueado</span>');
+    } else {
+        partes.push(`<span class="ca-pill ok">anuncia${ef.prepend ? ' · ' + ef.prepend + ' prepend(s)' : ''}</span>`);
+        if (ef.no_export) partes.push('<span class="ca-pill">no-export</span>');
+    }
+    if (ef.filtro.startsWith('glob-')) {
+        partes.push(`<span class="ca-pill info" title="quem decide é a community global ${escapeHtml(ef.filtro)} (node ${ef.node})">via ${escapeHtml(ef.filtro)}</span>`);
+    }
+    if (ef.ignorados.length) {
+        partes.push(`<span class="ca-pill alerta" title="o node ${ef.node} (${escapeHtml(ef.filtro)}) casa antes e vence; ${escapeHtml(ef.ignorados.join(', '))} nunca chega a rodar neste prefixo">conflito</span>`);
+    }
+    return partes.join(' ');
+}
+
+function caMudarFiltro(campo, valor) {
+    CA_FILTRO[campo] = valor;
+    caRenderDetalhe();
+    if (campo === 'busca') {
+        const campoBusca = document.getElementById('caBusca');
+        if (campoBusca) {
+            campoBusca.focus();
+            campoBusca.setSelectionRange(campoBusca.value.length, campoBusca.value.length);
+        }
+    }
+}
+
+function caDefinirAcao(linhaIdx, destinoId, selectEl) {
     const linha = CA_MAPA.anuncios[linhaIdx];
+    const d = caDestino(destinoId);
     const acao = selectEl.value;
-    const circuito = CA_MAPA.circuitos[circuitoId];
+    const rotulo = acao ? caRotuloAcao(acao) : 'não anunciar';
     // O select volta pro valor atual na hora: quem muda de verdade é a ação
-    // confirmada no modal (que recarrega o painel inteiro no final). Sem
-    // isso, cancelar o modal deixaria a tela mostrando um estado que não
-    // existe no equipamento.
-    const rotulo = acao
-        ? (CA_MAPA.acoes.find(a => a.chave === acao) || {}).rotulo
-        : 'não anunciar';
-    selectEl.value = linha.destinos[circuitoId] || '';
+    // confirmada no modal (que recarrega o painel inteiro no final). Sem isso,
+    // cancelar o modal deixaria a tela mostrando um estado que não existe no
+    // equipamento.
+    selectEl.value = (caEhGlobal(d) ? linha.globais : linha.destinos)[destinoId] || '';
+    const nome = caEhGlobal(d) ? d.rotulo : destinoId + (d.nome ? ' (' + d.nome + ')' : '');
     pedirAcao('anuncio_community', linha.prefixo,
-        { circuito: circuitoId, acao, route_policy: linha.route_policy },
-        `${linha.prefixo} → c-${circuitoId}${circuito.nome ? ' (' + circuito.nome + ')' : ''}: ${rotulo}`);
+        { destino: destinoId, acao, route_policy: linha.route_policy },
+        `${linha.prefixo} → ${nome}: ${rotulo}`);
+}
+
+// ── Visão geral (só leitura) ───────────────────────────────────────────────
+function caRenderMatriz() {
+    const alvo = document.getElementById('caMatriz');
+    const circuitos = Object.values(CA_MAPA.circuitos)
+        .filter(c => c.sessoes.length)
+        .sort((a, b) => a.id.localeCompare(b.id));
+    const anuncios = CA_MAPA.anuncios || [];
+    if (!circuitos.length) {
+        alvo.innerHTML = '<div class="ca-vazio">Nenhum circuito tem sessão BGP vinculada — nada a anunciar por aqui ainda.</div>';
+        return;
+    }
+    if (!anuncios.length) {
+        alvo.innerHTML = '<div class="ca-vazio">Nenhum prefixo originado por `network` neste equipamento.</div>';
+        return;
+    }
+
+    const cabecalho = circuitos.map(c =>
+        `<th title="${escapeHtml(c.asn_community)}:${escapeHtml(c.grupo)}xx">${escapeHtml(c.id)}<br>${escapeHtml(c.nome || '')}</th>`
+    ).join('');
+
+    const linhas = anuncios.map(l => {
+        const celulas = circuitos.map(c => {
+            const ef = l.efetivo[c.id];
+            let classe = 'cel', texto = '·', titulo = 'não anunciado';
+            if (ef && !ef.anuncia) {
+                classe += ' bloq'; texto = '⊘'; titulo = `bloqueado por ${ef.filtro}`;
+            } else if (ef) {
+                classe += ef.filtro.startsWith('glob-') ? ' glob' : ' on';
+                texto = ef.prepend ? '●' + ef.prepend : '●';
+                titulo = `${ef.filtro} (node ${ef.node})${ef.prepend ? ' · ' + ef.prepend + ' prepend(s)' : ''}`;
+            }
+            return `<td class="${classe}" title="${escapeHtml(titulo)}"
+                        onclick="caSelecionar('${escapeHtml(c.id)}')">${texto}</td>`;
+        }).join('');
+        return `
+        <tr>
+            <td class="ca-prefixo">${escapeHtml(l.prefixo)}
+                <small>${escapeHtml(l.route_policy || 'sem route-policy local')}</small>
+            </td>
+            ${celulas}
+        </tr>`;
+    }).join('');
+
+    alvo.innerHTML = `
+        <table>
+            <thead><tr><th>Prefixo originado</th>${cabecalho}</tr></thead>
+            <tbody>${linhas}</tbody>
+        </table>
+        <div class="ca-vazio">● anunciado · ●N com N prepends · <span style="color:#58a6ff">azul</span> = por community global · ⊘ bloqueado. Clique numa coluna para abrir o painel daquele circuito.</div>`;
 }
 
 // ── Originar prefixo novo ──────────────────────────────────────────────────
@@ -1026,18 +1455,23 @@ function caAbrirNovoPrefixo() {
     document.getElementById('caPrefixoInput').value = '';
     document.getElementById('caPolicyInput').value = '';
     document.getElementById('caPrefixoErro').textContent = '';
-    document.getElementById('caDestinos').innerHTML = caCircuitosOrdenados()
-        .filter(c => c.sessoes.length)
-        .map(c => {
+    const grupos = caGrupos().map(g => {
+        const itens = g.itens.filter(d => caEhGlobal(d) ? d.alcance : d.sessoes.length);
+        if (!itens.length) return '';
+        const linhas = itens.map(d => {
             const opcoes = ['<option value="">— não anunciar</option>'].concat(
-                (CA_MAPA.acoes || []).map(a =>
-                    `<option value="${a.chave}" ${Object.prototype.hasOwnProperty.call(c.acoes, a.chave) ? '' : 'disabled'}>${escapeHtml(a.rotulo)}</option>`)
+                caAcoesDisponiveis(d).map(a => `<option value="${a.chave}">${escapeHtml(a.rotulo)}</option>`)
             ).join('');
+            const nome = caEhGlobal(d) ? '⊕ ' + d.rotulo : d.id + ' ' + (d.nome || '');
             return `<div class="ca-destino">
-                <span>c-${escapeHtml(c.id)} ${escapeHtml(c.nome || '')}</span>
-                <select data-circuito="${escapeHtml(c.id)}">${opcoes}</select>
+                <span>${escapeHtml(nome)}</span>
+                <select data-destino="${escapeHtml(d.id)}">${opcoes}</select>
             </div>`;
-        }).join('') || '<span class="communities-vazio">Nenhum circuito com sessão ativa.</span>';
+        }).join('');
+        return `<div class="ca-grupo-titulo">${escapeHtml(g.rotulo)}</div>${linhas}`;
+    }).join('');
+    document.getElementById('caDestinos').innerHTML =
+        grupos || '<span class="communities-vazio">Nenhum destino com sessão ativa.</span>';
     document.getElementById('caPrefixoOverlay').classList.add('aberto');
 }
 
@@ -1053,12 +1487,12 @@ function caConfirmarNovoPrefixo() {
     }
     const destinos = {};
     document.querySelectorAll('#caDestinos select').forEach(sel => {
-        if (sel.value) destinos[sel.dataset.circuito] = sel.value;
+        if (sel.value) destinos[sel.dataset.destino] = sel.value;
     });
     caFecharNovoPrefixo();
     pedirAcao('novo_prefixo_community', prefixo,
         { destinos, route_policy: document.getElementById('caPolicyInput').value.trim() },
-        `Originar ${prefixo} (${Object.keys(destinos).length} circuito(s))`);
+        `Originar ${prefixo} (${Object.keys(destinos).length} destino(s))`);
 }
 
 // ── Gerar/completar a config padrão de um circuito ─────────────────────────
@@ -1066,9 +1500,10 @@ let caCircuitoAtual = null;
 
 function caAbrirCircuito(circuitoId) {
     const c = CA_MAPA.circuitos[circuitoId];
+    if (!c) return;
     caCircuitoAtual = circuitoId;
     document.getElementById('caCircuitoTitulo').textContent =
-        `⚙ Config do circuito c-${circuitoId}${c.nome ? ' — ' + c.nome : ''}`;
+        `⚙ Config do circuito ${circuitoId}${c.nome ? ' — ' + c.nome : ''}`;
     document.getElementById('caCircV4').checked = c.ipv4 || !c.ipv6;
     document.getElementById('caCircV6').checked = !!c.ipv6;
     // ASN local do equipamento como palpite: nas caixas reais o prepend
@@ -1112,9 +1547,9 @@ function caConfirmarCircuito() {
     }
     const c = CA_MAPA.circuitos[cid];
     caFecharCircuito();
-    pedirAcao('provisionar_circuito', `c-${cid}`,
-        { circuito: cid, opcoes, grupo: c.grupo, asn_community: c.asn_community },
-        `Gerar config faltante do circuito c-${cid}`);
+    pedirAcao('provisionar_circuito', cid,
+        { destino: cid, opcoes, grupo: c.grupo, asn_community: c.asn_community },
+        `Gerar config faltante do circuito ${cid}`);
 }
 
 // ── Anunciar prefixo novo (escolher uma prefix-list já existente pra

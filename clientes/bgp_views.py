@@ -170,9 +170,13 @@ def _gerar_comandos_por_tipo(tipo, vendor, dados, alvo, params):
         # é redescoberto a cada chamada a partir do MESMO snapshot, então
         # preview e execução enxergam exatamente o mesmo estado.
         mapa = montar_mapa(dados, vendor)
+        # `destino` é o identificador do circuito (`c-01`, `ix-05`, `cdn-02`)
+        # ou do grupo global (`glob-all-upstream`). `circuito` é o nome antigo
+        # do mesmo campo — aceito pra não quebrar nada que já esteja no ar.
+        destino = str(params.get('destino') or params.get('circuito') or '')
         if tipo == 'anuncio_community':
             return comandos_definir_anuncio(
-                dados, mapa, alvo, str(params.get('circuito', '')),
+                dados, mapa, alvo, destino,
                 params.get('acao', ''), route_policy=params.get('route_policy', ''),
             )
         if tipo == 'novo_prefixo_community':
@@ -181,7 +185,7 @@ def _gerar_comandos_por_tipo(tipo, vendor, dados, alvo, params):
                 dados, mapa, alvo, destinos, nome_policy=params.get('route_policy', ''),
             )
         return comandos_provisionar_circuito(
-            dados, mapa, str(params.get('circuito', '')), params.get('opcoes') or {},
+            dados, mapa, destino, params.get('opcoes') or {},
         )
     raise AcaoBgpNaoSuportada(f'Tipo de ação "{tipo}" desconhecido.')
 
@@ -301,8 +305,10 @@ def bgp_community_mapa(request, acesso_id):
     """
     GET /clientes/bgp/<acesso_id>/community-mapa/ — descobre, a partir do
     snapshot, os circuitos que a caixa já tem configurados no padrão de
-    community (`c-NN-<ação>` → `65100:<grupo><sufixo>`), a matriz
-    prefixo × circuito → ação em vigor e as inconsistências encontradas.
+    community (`c-NN`/`ix-NN`/`cdn-NN` + ação → `65100:<grupo><sufixo>`), os
+    grupos globais "anunciar para todos" e o alcance real de cada um, a matriz
+    prefixo × destino → ação em vigor (com o efeito real por circuito) e as
+    inconsistências encontradas.
 
     Leitura pura sobre `BgpSnapshot.dados` — não conecta em nada, não grava
     nada. Devolve 422 pra fabricante sem suporte (a convenção é Huawei/VRP).
@@ -326,10 +332,10 @@ def bgp_community_mapa(request, acesso_id):
 
     if not mapa['circuitos']:
         return JsonResponse({
-            'suportado': True, 'circuitos': {}, 'anuncios': [], 'acoes': mapa['acoes'],
-            'avisos': [], 'as_local': '',
+            'suportado': True, 'circuitos': {}, 'globais': {}, 'anuncios': [],
+            'acoes': mapa['acoes'], 'tipos': mapa['tipos'], 'avisos': [], 'as_local': '',
             'mensagem': 'Este equipamento não tem community-filters no padrão '
-                        '`c-NN-<ação>` — nada a mapear.',
+                        '`c-NN-<ação>` / `ix-NN-<ação>` / `cdn-NN-<ação>` — nada a mapear.',
         })
 
     sessoes = snap.dados.get('sessoes') or []
