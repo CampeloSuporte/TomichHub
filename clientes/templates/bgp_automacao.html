@@ -1919,7 +1919,16 @@ function caSessaoAtualizarResumo() {
         const grupo = slot.grupo || (CA_SESSAO.circuito || {}).grupo || '';
         const asn = (CA_MAPA.padroes || {}).asn_community || '';
         partes.push(`<b>${escapeHtml(CA_SESSAO.destino)}</b> · communities <code>${escapeHtml(asn)}:${escapeHtml(grupo)}xx</code>`);
-        partes.push(`policies <code>AS${peerAs}-${nome}-V4-IN/OUT</code>`);
+        // Circuito que já existe pode ter a policy de saída com OUTRO nome (foi
+        // criada para o operador anterior). Ela é reaproveitada — e é melhor o
+        // operador saber disso aqui do que descobrir lendo o preview.
+        const atuais = (CA_SESSAO.circuito || {}).policies || {};
+        const saida = atuais.v4_out || atuais.v4_out_orfa || atuais.v6_out || atuais.v6_out_orfa || '';
+        if (saida && saida !== `AS${peerAs}-${nome}-V4-OUT` && saida !== `AS${peerAs}-${nome}-V6-OUT`) {
+            partes.push(`saída <b>já existente</b> <code>${escapeHtml(saida)}</code> (reaproveitada)`);
+        } else {
+            partes.push(`policies <code>AS${peerAs}-${nome}-V4-IN/OUT</code>`);
+        }
         if (CA_SESSAO.tipo === 'ix') partes.push(`peer-group <code>EBGP-${nome}-V4</code>`);
     }
     partes.push(`famílias ${familias.map(f => f.toUpperCase()).join(' + ') || '—'}`);
