@@ -5,6 +5,75 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-18 (BGP: subir circuito e sessão do zero pelo painel)
+
+### Adicionado
+
+- **Slot vago virou ponto de partida** ([`clientes/bgp_community_auto.py`](clientes/bgp_community_auto.py)):
+  o painel passou a mostrar também os circuitos que o template prevê e a caixa não tem — 119
+  slots vagos nas 8 caixas Huawei. Clicar num deles (`c-02`, `ix-04`, `cdn-03`) abre o
+  formulário que sobe o circuito **inteiro** em um `commit` só: community-filters,
+  route-policy de entrada, route-policy de saída no layout do template e o bloco
+  `bgp <ASN>` com a sessão. O grupo de community não é perguntado — é conta do próprio slot
+  (§6/§7/§8: c-02 → 502, ix-07 → 607, cdn-03 → 613) —, e o ASN da community sai da maioria
+  dos circuitos já configurados, não de um padrão fixo (as caixas usam 65100 e 65101, ASN
+  privado diferente do ASN do `bgp <N>`).
+- **IX sai no formato de IX**: `group EBGP-<NOME>-V4 external` com os route servers como
+  membros, `public-as-only` e as route-policies **no grupo** — que é como o IX.br é
+  configurado nas caixas em produção e, não por acaso, o que o parser consegue ler de volta.
+  Operadora e CDN saem com peer individual e as policies no peer.
+- **Sessão de downstream** ([`comandos_criar_downstream`](clientes/bgp_community_auto.py)):
+  na saída o cliente recebe a tabela cheia; na entrada só passam os prefixos dele, pela
+  prefix-list `PL-DOWNSTREAM-<NOME>` gerada a partir do formulário, com `deny node 999` no
+  fim. E o detalhe que faz a sessão servir para alguma coisa: **as communities de reanúncio
+  vão na policy de ENTRADA** — as policies de saída terminam em `deny node 999`, então sem
+  carimbar as rotas do cliente na entrada elas ficariam presas no equipamento. O formulário
+  traz a mesma lista de destinos do "originar prefixo".
+- **Os clientes que já existem apareceram sozinhos**: `mapear_downstreams` descobre uma sessão
+  de downstream sem depender de nome — sessão fora do catálogo de communities cuja policy de
+  saída libera a tabela cheia, com iBGP excluído. Achou 11 clientes nas caixas atuais, cada um
+  com o que pode mandar e para onde é reanunciado, agrupando IPv4 e IPv6 do mesmo cliente
+  mesmo quando as policies seguem convenções diferentes (`-V4-IN`, `-IPv4_out`, `-IPV6-OUT`).
+
+### Corrigido
+
+- **"Subir desabilitada" não desabilitava nada**: a primeira versão apenas omitia o
+  `peer … enable`, mas no VRP o peer nasce ativo — a sessão subiria junto com a config. Agora
+  sai `peer … ignore`, exatamente o comando que o botão Ativar do painel desfaz.
+- **Filtro de bogons que não filtra**: `if-match ip-prefix X` só casa quando **X permite** a
+  rota, então a `BOGONS-V4` do template, escrita toda em `deny`, nunca casa — o `deny node 5`
+  que a usa é config morta e os bogons passam pelo node seguinte, que aceita `0.0.0.0/0
+  less-equal 24`. A geração reaproveita uma lista de bogons em `permit` (as caixas já têm a
+  `BOGONS-V4-IN`) ou cria uma a partir do §2. E recusa a lista que permite a tabela inteira:
+  a BOGONS de uma das caixas tem `permit 0.0.0.0/0 greater-equal 25 less-equal 32`, que num
+  `deny node` derrubaria a sessão inteira — a mesma entrada enganava a detecção de full
+  routing, agora resolvida exigindo `len_min == 0`.
+- **Peer IPv6 na address-family errada**: todo peer/grupo v6 gerado leva `undo peer … enable`
+  na `ipv4-family unicast` além do `enable` na v6 — no VRP ele nasce habilitado na v4 mesmo
+  sendo IPv6, e é isso que as caixas em produção têm.
+
+### Alterado
+
+- Proteções contra o erro caro deste formulário: nome que colida com a route-policy ou o
+  peer-group **de outro circuito** é recusado (subir `ix-05` chamando de "PTT-SP" quando
+  `AS26162-PTT-SP-V4-OUT` já é do `ix-01` faria os nodes do circuito novo entrarem na policy
+  do antigo, e no caso do peer-group trocaria as policies de uma sessão de IX no ar — nenhum
+  dos dois apareceria como erro no equipamento). Também recusa peer já configurado, IP na
+  família errada e prefix-list de cliente já existente.
+- Circuito que já existe reaproveita a policy de saída que ele tem, mesmo com nome fora da
+  convenção; o formulário passou a mostrar isso enquanto o operador preenche, em vez de deixar
+  a descoberta para o preview.
+- A atualização otimista do painel passou a registrar o circuito completo (filtros, nodes da
+  policy de saída e sessões), e não só os community-filters: sem isso o slot recém-criado
+  continuaria aparecendo como vago até o próximo backup, e o operador aplicaria tudo de novo.
+
+26 gerações conferidas contra as 8 caixas Huawei reais (todos os tipos, com e sem
+`habilitar`), 48 testes em [`clientes/tests_bgp_community_auto.py`](clientes/tests_bgp_community_auto.py).
+Nenhum comando foi enviado a equipamento durante o desenvolvimento. Detalhamento em
+[`docs/bgp_automacao.md`](docs/bgp_automacao.md).
+
+---
+
 ## [Não publicado] — 2026-08-18 (BGP por community: IX, CDN, "anunciar para todos" e painel por destino)
 
 ### Adicionado
