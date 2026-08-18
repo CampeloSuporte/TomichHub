@@ -29,6 +29,8 @@ from .bgp_actions import (
     validar_trial_suportado,
 )
 from .bgp_community_auto import (
+    comandos_criar_circuito,
+    comandos_criar_downstream,
     comandos_definir_anuncio,
     comandos_novo_prefixo,
     comandos_provisionar_circuito,
@@ -165,7 +167,8 @@ def _gerar_comandos_por_tipo(tipo, vendor, dados, alvo, params):
         return comandos_novo_anuncio(vendor, dados, nome_sessao, lista_escolhida=lista, prefixo_novo=prefixo_novo)
     if tipo == 'criar_sessao':
         return comandos_criar_sessao(vendor, dados, params)
-    if tipo in ('anuncio_community', 'novo_prefixo_community', 'provisionar_circuito'):
+    if tipo in ('anuncio_community', 'novo_prefixo_community', 'provisionar_circuito',
+                'criar_circuito_community', 'criar_downstream_community'):
         # Automação de anúncios por community (Huawei) — o mapa de circuitos
         # é redescoberto a cada chamada a partir do MESMO snapshot, então
         # preview e execução enxergam exatamente o mesmo estado.
@@ -184,6 +187,11 @@ def _gerar_comandos_por_tipo(tipo, vendor, dados, alvo, params):
             return comandos_novo_prefixo(
                 dados, mapa, alvo, destinos, nome_policy=params.get('route_policy', ''),
             )
+        if tipo == 'criar_circuito_community':
+            # Circuito novo: policies de entrada/saída + a sessão BGP inteira.
+            return comandos_criar_circuito(dados, mapa, destino, params.get('opcoes') or {})
+        if tipo == 'criar_downstream_community':
+            return comandos_criar_downstream(dados, mapa, params.get('opcoes') or {})
         return comandos_provisionar_circuito(
             dados, mapa, destino, params.get('opcoes') or {},
         )
@@ -489,7 +497,8 @@ def bgp_executar_acao(request, acesso_id):
         # de um circuito (10 community-filters + ~10 nodes por família) passa
         # facilmente de 30 linhas, então esse tipo tem um teto próprio — as
         # demais ações continuam curtas por natureza.
-        limite_linhas = 300 if tipo == 'provisionar_circuito' else 30
+        limite_linhas = 300 if tipo in ('provisionar_circuito', 'criar_circuito_community',
+                                        'criar_downstream_community') else 30
         if len(comandos_editados) > limite_linhas or any(len(c) > 500 for c in comandos_editados):
             return JsonResponse({'error': 'Comando editado longo demais — revise antes de enviar.'}, status=400)
         comandos = [c.strip() for c in comandos_editados if c.strip()]

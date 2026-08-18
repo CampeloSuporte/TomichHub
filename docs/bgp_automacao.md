@@ -1234,3 +1234,165 @@ na tela do host, ou a rotina noturna das 02:45.
 ---
 
 **Última atualização:** 18/08/2026
+---
+
+## Subir circuito e sessão do zero — slots vagos e downstream (Huawei, 2026-08-18)
+
+Até aqui a automação por community só sabia mexer no que a caixa **já tinha**:
+completar o bloco de um circuito existente e mudar a intenção de um prefixo. O
+passo que faltava é o começo — configurar a sessão. É o que esta parte faz:
+clicar num slot vago (`c-02`, `ix-04`, `cdn-03`), preencher a sessão e sair com
+tudo aplicado: community-filters, route-policy de entrada, route-policy de
+saída e o bloco `bgp <ASN>`.
+
+### O slot vago
+
+O template reserva uma faixa por família (§6/§7/§8), e o grupo de community de
+cada slot é uma **conta**, não um cadastro:
+
+| Família   | Slots            | Grupo               | Community global |
+|-----------|------------------|---------------------|------------------|
+| `c-NN`    | c-01 … c-10      | `500 + NN` (501-510) | `<asn>:60001`   |
+| `ix-NN`   | ix-01 … ix-10    | `600 + NN` (601-610) | `<asn>:60011`   |
+| `cdn-NN`  | cdn-01 … cdn-05  | `610 + NN` (611-615) | `<asn>:60021`   |
+
+`slot_padrao('c-02')` devolve `{tipo: upstream, numero: 2, grupo: '502'}` e
+`mapear_slots()` devolve os que a caixa ainda não tem — que o painel mostra
+como cards tracejados, na ordem do id, no meio dos circuitos que existem. O
+ASN da community não é perguntado: sai de `_asn_community_prevalente()`, a
+maioria entre os circuitos já configurados (nas caixas de referência é 65100
+ou 65101 — ASN privado, diferente do ASN do `bgp <N>`).
+
+### O que `comandos_criar_circuito` gera
+
+Na ordem em que uma coisa depende da outra — nada é referenciado antes de
+existir, e nada existente é reemitido:
+
+1. **prefix-lists de apoio** (`BOGONS-*`, `FULL-ROUTING*`), só se faltarem;
+2. **community-filters** do slot, mais o `glob-all-<tipo>` quando a caixa não
+   o tem (sem ele o node de "anunciar para todos" seria config morta);
+3. **route-policy de entrada** no layout do §9: bogons fora no node 5, tabela
+   cheia aceita no node 10 com a community de origem (`<asn>:<grupo>00`) e a
+   local-preference do papel, `deny node 999` no fim;
+4. **route-policy de saída**: o mesmo `_blocos_policy_out` usado por "gerar
+   config faltante" — bloqueio 9, blackhole 10, anúncio 11, global 12,
+   prepends 13-16, no-export 17, `deny node 999`;
+5. **a sessão**, no formato do fabricante conforme o papel (abaixo);
+6. `commit`.
+
+### Operadora/CDN x IX: dois arranjos de sessão
+
+Operadora e CDN levam peer individual com as policies **no peer**:
+
+```
+peer 201.16.70.254 as-number 14840
+peer 201.16.70.254 description EBGP-AS14840-BR-DIGITAL-V4
+ipv4-family unicast
+ peer 201.16.70.254 enable
+ peer 201.16.70.254 route-policy AS14840-BR-DIGITAL-V4-IN import
+ peer 201.16.70.254 route-policy AS14840-BR-DIGITAL-V4-OUT export
+ peer 201.16.70.254 advertise-community
+ peer 201.16.70.254 advertise-ext-community
+```
+
+IX leva peer-group com as policies **no grupo** e os route servers como
+membros — que é como o IX.br é configurado nas caixas em produção e, não por
+acaso, o que o parser consegue ler de volta (`parse_huawei` herda a policy do
+grupo desde 18/08; antes disso todo circuito de IX aparecia "sem sessão"):
+
+```
+group EBGP-PTT-CE-V4 external
+peer 45.68.79.253 as-number 26162
+peer 45.68.79.253 group EBGP-PTT-CE-V4
+peer 45.68.79.253 description RS1.PTT-CE
+ipv4-family unicast
+ peer EBGP-PTT-CE-V4 enable
+ peer EBGP-PTT-CE-V4 public-as-only
+ peer EBGP-PTT-CE-V4 route-policy AS26162-PTT-CE-V4-IN import
+ peer EBGP-PTT-CE-V4 route-policy AS26162-PTT-CE-V4-OUT export
+ peer 45.68.79.253 enable
+ peer 45.68.79.253 group EBGP-PTT-CE-V4
+```
+
+**Detalhe de VRP que não pode faltar:** um peer nasce habilitado na
+`ipv4-family unicast`, mesmo sendo IPv6. Por isso todo peer/grupo v6 gerado
+leva um `undo peer … enable` na family v4 além do `enable` na v6 — é o que as
+caixas em produção têm (`undo peer EBGP-PTT-SP-V6 enable`) e sem isso o peer
+v6 fica pendurado na family errada.
+
+### Bogons: a lista de `deny` não filtra nada
+
+`if-match ip-prefix X` só casa quando **X permite** a rota. A `BOGONS-V4` do
+template (§2) é escrita toda em `deny`, então ela nunca casa: o `deny node 5`
+que a usa é config morta e os bogons seguem para o node 10, que aceita
+`0.0.0.0/0 less-equal 24` — 10.0.0.0/8 incluído.
+
+As caixas de referência já tinham resolvido isso com uma segunda lista, a
+`BOGONS-V4-IN`, com as mesmas redes em `permit`. É essa forma que a geração
+usa: `_prefix_list_bogons()` reaproveita uma lista de bogons da caixa **se ela
+tiver entradas `permit`** e não permitir a tabela inteira; senão cria
+`BOGONS-V4-IN`/`BOGONS-V6-IN` a partir do §2.
+
+A recusa da lista que "permite tudo" não é teórica: a BOGONS de uma das caixas
+tem `permit 0.0.0.0/0 greater-equal 25 less-equal 32` (prefixo longo demais, que
+é bogon por tamanho). Usá-la num `deny node` derrubaria a sessão inteira, e ela
+também enganava a detecção de full routing — daí `_e_lista_full_routing()`
+exigir `len_min == 0`.
+
+### Downstream: o cliente
+
+Downstream não é circuito de community — para um cliente não se escolhe
+"anunciar ou não o prefixo X". O desenho é o inverso do de um upstream:
+
+- **saída**: o cliente recebe a tabela cheia (`if-match ip-prefix
+  FULL-ROUTING`), `deny node 999` no fim;
+- **entrada**: só passam os prefixos dele. Os blocos informados no formulário
+  viram `PL-DOWNSTREAM-<NOME>-V4/V6` (com `greater-equal <len> less-equal 24`,
+  /48 em IPv6, para o cliente poder desagregar) e é essa lista que a policy de
+  entrada casa.
+
+E o pulo do gato: **as communities de reanúncio entram na policy de ENTRADA.**
+As policies de saída dos upstreams terminam em `deny node 999`, que só deixa
+passar o que tem community de anúncio — sem carimbar as rotas do cliente na
+entrada, elas ficariam presas no equipamento. Por isso o formulário do
+downstream traz a mesma lista de destinos do "originar prefixo": escolher
+"todos os upstreams" ali significa `apply community <asn>:60001 additive` na
+policy de entrada do cliente.
+
+`mapear_downstreams()` descobre os que já existem sem depender de nome: sessão
+que não pertence a nenhum circuito do catálogo **e** cuja policy de saída
+libera a tabela cheia (node `permit` sem `if-match`, ou casando uma lista de
+full routing). iBGP fica de fora. IPv4 e IPv6 do mesmo cliente são agrupados
+pelo nome da policy sem o sufixo de família — as três formas que aparecem nas
+caixas (`-V4-IN`, `-IPv4_out`, `-IPV6-OUT`) caem no mesmo cliente. Nas 8 caixas
+Huawei isso encontrou 11 clientes e 119 slots do template ainda vagos.
+
+### Proteções
+
+- **peer repetido**: IP já configurado no equipamento é recusado (erro de
+  digitação, não intenção);
+- **família errada**: IPv6 informado no campo de IPv4 é recusado;
+- **nome que colide**: subir `ix-05` chamando de "PTT-SP" quando
+  `AS26162-PTT-SP-V4-OUT` já é do `ix-01` faria os nodes do circuito novo
+  entrarem na policy do antigo — `_recusar_colisao_de_nomes()` barra isso, e
+  também o peer-group já em uso (aplicar nele trocaria as policies de uma
+  sessão de IX no ar). Nenhum dos dois apareceria como erro no equipamento;
+- **prefix-list/policy de downstream já existente**: recusada, porque pode
+  pertencer a outra sessão;
+- **subir desabilitada**: o checkbox "subir a sessão já habilitada" (marcado
+  por padrão) controla o `peer … ignore`. Não basta omitir o `enable`: no VRP
+  o peer nasce ativo, então a sessão subiria junto com a config. Desmarcado, a
+  config entra completa e a sessão fica administrativamente parada até o botão
+  Ativar do painel (`undo peer … ignore`) — o mesmo par de comandos que o resto
+  da automação já usa.
+
+Como toda ação desta automação, o preview é editável antes de aplicar e o
+modo trial (`commit trial N`) continua disponível.
+
+### Atualização otimista
+
+Diferente de "gerar config faltante" (que só registra os community-filters),
+aqui o snapshot local é atualizado com o circuito **inteiro** — filtros, nodes
+da policy de saída e as sessões —, porque tudo isso foi gerado por este módulo
+linha a linha. Sem isso o slot recém-criado continuaria aparecendo como vago
+até o próximo backup, e o operador aplicaria tudo de novo.

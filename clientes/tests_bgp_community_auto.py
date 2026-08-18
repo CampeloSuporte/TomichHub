@@ -13,6 +13,8 @@ from django.test import SimpleTestCase
 from clientes.bgp_actions import AcaoBgpNaoSuportada
 from clientes.bgp_community_auto import (
     aplicar_efeito_local,
+    comandos_criar_circuito,
+    comandos_criar_downstream,
     comandos_definir_anuncio,
     comandos_novo_prefixo,
     comandos_provisionar_circuito,
@@ -315,3 +317,253 @@ class EfeitoOtimistaTest(SimpleTestCase):
         self.assertIn('ix-02-export', dados['community_filters'])
         self.assertEqual(dados['community_filters']['ix-02-export'][0]['valores'],
                          [f'{ASN}:60201'])
+
+def _dados_com_cliente():
+    """`dados_base` + uma sessão de cliente no desenho real: policy de saída
+    que libera a tabela cheia e policy de entrada casando a prefix-list dele."""
+    dados = dados_base()
+    dados['prefix_lists'] = {
+        'FULL-ROUTING': [{'acao': 'permit', 'prefixo': '0.0.0.0/0', 'len_min': 0,
+                          'len_max': 24, 'index': 10}],
+        'BOGONS-V4': [{'acao': 'deny', 'prefixo': '10.0.0.0/8', 'len_min': 8,
+                       'len_max': 8, 'index': 10}],
+        'BOGONS-V4-IN': [{'acao': 'permit', 'prefixo': '10.0.0.0/8', 'len_min': 8,
+                          'len_max': 32, 'index': 10}],
+        'PL-DOWNSTREAM-CIANET-V4': [{'acao': 'permit', 'prefixo': '170.83.156.0/22',
+                                     'len_min': 22, 'len_max': 24, 'index': 10}],
+    }
+    dados['policies']['DOWNSTREAM-CIANET-V4-OUT'] = [
+        {'ordem': 10, 'acao': 'accept', 'prefix_lists': ['FULL-ROUTING'], 'prepend': 0,
+         'extra': {'policy': 'DOWNSTREAM-CIANET-V4-OUT', 'node': 10, 'nao_suportado': False}}]
+    dados['policies']['DOWNSTREAM-CIANET-V4-IN'] = [
+        {'ordem': 10, 'acao': 'accept', 'prefix_lists': ['PL-DOWNSTREAM-CIANET-V4'], 'prepend': 0,
+         'extra': {'policy': 'DOWNSTREAM-CIANET-V4-IN', 'node': 10, 'nao_suportado': False}}]
+    dados['community_nodes']['DOWNSTREAM-CIANET-V4-IN'] = [
+        _node('DOWNSTREAM-CIANET-V4-IN', 10, '', communities=[f'{ASN}:60011'])]
+    dados['sessoes'].append(
+        {'nome': '172.18.100.138', 'peer_ip': '172.18.100.138', 'peer_as': '266483',
+         'as_local': '268080', 'policy_in': 'DOWNSTREAM-CIANET-V4-IN',
+         'policy_out': 'DOWNSTREAM-CIANET-V4-OUT', 'habilitada': True, 'descricao': ''})
+    # iBGP: a policy também manda tudo, mas cliente não é
+    dados['policies']['RP-IBGP-OUT'] = [
+        {'ordem': 10, 'acao': 'accept', 'prefix_lists': [], 'prepend': 0,
+         'extra': {'policy': 'RP-IBGP-OUT', 'node': 10, 'nao_suportado': False}}]
+    dados['sessoes'].append(
+        {'nome': '10.64.65.2', 'peer_ip': '10.64.65.2', 'peer_as': '268080',
+         'as_local': '268080', 'policy_in': '', 'policy_out': 'RP-IBGP-OUT',
+         'habilitada': True, 'descricao': ''})
+    return dados
+
+
+class SlotsTest(SimpleTestCase):
+    def setUp(self):
+        self.mapa = montar_mapa(dados_base())
+
+    def test_slot_vago_traz_o_grupo_de_community_do_template(self):
+        vagos = {v['id']: v for v in self.mapa['slots_vagos']}
+        self.assertEqual(vagos['c-02']['grupo'], '502')      # §6: 501-510
+        self.assertEqual(vagos['ix-07']['grupo'], '607')     # §7: 601-610
+        self.assertEqual(vagos['cdn-05']['grupo'], '615')    # §8: 611-615
+
+    def test_slot_ocupado_nao_aparece_como_vago(self):
+        ids = {v['id'] for v in self.mapa['slots_vagos']}
+        self.assertNotIn('c-01', ids)
+        self.assertIn('c-02', ids)
+
+    def test_faixa_do_template(self):
+        por_tipo = {}
+        for v in self.mapa['slots_vagos']:
+            por_tipo[v['tipo']] = por_tipo.get(v['tipo'], 0) + 1
+        self.assertEqual(por_tipo, {'upstream': 9, 'ix': 9, 'cdn': 4})
+
+
+class CriarCircuitoTest(SimpleTestCase):
+    def setUp(self):
+        self.dados = dados_base()
+        self.mapa = montar_mapa(self.dados)
+
+    def _criar(self, cid, **opcoes):
+        base = {'nome': 'TESTE', 'peer_as': '65000',
+                'v4': {'peers': [{'ip': '192.0.2.1'}]}}
+        base.update(opcoes)
+        return comandos_criar_circuito(self.dados, self.mapa, cid, base)
+
+    def test_upstream_novo_sai_com_policy_in_out_e_sessao(self):
+        cmds = self._criar('c-02', nome='BR-DIGITAL', peer_as='14840', local_preference='1000')
+        # community-filters do slot, com o grupo calculado (c-02 → 502)
+        self.assertIn(f'ip community-filter basic c-02-export index 10 permit {ASN}:50201', cmds)
+        # entrada: bogons fora, tabela cheia dentro, community de origem
+        i = cmds.index('route-policy AS14840-BR-DIGITAL-V4-IN deny node 5')
+        self.assertEqual(cmds[i + 1], 'if-match ip-prefix BOGONS-V4-IN')
+        self.assertIn('apply local-preference 1000', cmds)
+        self.assertIn(f'apply community {ASN}:50200 additive', cmds)
+        self.assertIn('route-policy AS14840-BR-DIGITAL-V4-IN deny node 999', cmds)
+        # saída no layout do template
+        self.assertIn('route-policy AS14840-BR-DIGITAL-V4-OUT permit node 11', cmds)
+        self.assertIn('if-match community-filter c-02-export', cmds)
+        # e a sessão
+        self.assertIn('peer 192.0.2.1 as-number 14840', cmds)
+        self.assertIn('peer 192.0.2.1 description EBGP-AS14840-BR-DIGITAL-V4', cmds)
+        self.assertIn('peer 192.0.2.1 route-policy AS14840-BR-DIGITAL-V4-IN import', cmds)
+        self.assertIn('peer 192.0.2.1 route-policy AS14840-BR-DIGITAL-V4-OUT export', cmds)
+        self.assertIn('peer 192.0.2.1 advertise-community', cmds)
+        self.assertEqual(cmds[-1], 'commit')
+
+    def test_ix_novo_usa_peer_group_com_as_policies_no_grupo(self):
+        cmds = self._criar('ix-02', nome='PTT-CE', peer_as='26162',
+                           v4={'peers': [{'ip': '45.68.79.253'}, {'ip': '45.68.79.254'}]})
+        self.assertIn('group EBGP-PTT-CE-V4 external', cmds)
+        self.assertIn('peer 45.68.79.253 group EBGP-PTT-CE-V4', cmds)
+        self.assertIn('peer 45.68.79.253 description RS1.PTT-CE', cmds)
+        self.assertIn('peer 45.68.79.254 description RS2.PTT-CE', cmds)
+        # as policies vão no GRUPO, não no peer — é o que o parser lê de volta
+        self.assertIn('peer EBGP-PTT-CE-V4 route-policy AS26162-PTT-CE-V4-IN import', cmds)
+        self.assertIn('peer EBGP-PTT-CE-V4 public-as-only', cmds)
+        self.assertNotIn('peer 45.68.79.253 route-policy AS26162-PTT-CE-V4-IN import', cmds)
+
+    def test_peer_v6_e_tirado_da_family_v4(self):
+        cmds = self._criar('c-03', v6={'peers': [{'ip': '2001:db8::1'}]})
+        self.assertIn('undo peer 2001:db8::1 enable', cmds)
+        self.assertLess(cmds.index('ipv4-family unicast'), cmds.index('undo peer 2001:db8::1 enable'))
+        self.assertIn('ipv6-family unicast', cmds)
+        self.assertIn('peer 2001:db8::1 enable', cmds)
+
+    def test_node_da_community_global_entra_no_circuito_novo(self):
+        cmds = self._criar('ix-02', nome='PTT-CE', peer_as='26162')
+        self.assertIn('if-match community-filter glob-all-ptts-ixbr', cmds)
+
+    def test_cria_o_filtro_global_do_tipo_quando_a_caixa_nao_tem(self):
+        cmds = self._criar('c-02')   # a caixa de teste não tem glob-all-upstream
+        self.assertIn(f'ip community-filter basic glob-all-upstream index 10 permit {ASN}:60001', cmds)
+
+    def test_subir_desabilitada_usa_ignore_e_nao_a_ausencia_de_enable(self):
+        # No VRP o peer nasce ativo: sem `ignore` ele subiria assim que a
+        # config entrasse. `undo peer … ignore` é o que o botão Ativar faz.
+        cmds = self._criar('c-04', habilitar=False)
+        self.assertIn('peer 192.0.2.1 ignore', cmds)
+        self.assertIn('peer 192.0.2.1 enable', cmds)
+
+    def test_recusa_peer_ja_configurado(self):
+        with self.assertRaises(AcaoBgpNaoSuportada) as ctx:
+            self._criar('c-02', v4={'peers': [{'ip': '10.0.0.1'}]})
+        self.assertIn('Já existe uma sessão', str(ctx.exception))
+
+    def test_recusa_ip_na_familia_errada(self):
+        with self.assertRaises(AcaoBgpNaoSuportada):
+            self._criar('c-02', v6={'peers': [{'ip': '192.0.2.9'}]})
+
+    def test_recusa_sem_peer(self):
+        with self.assertRaises(AcaoBgpNaoSuportada):
+            comandos_criar_circuito(self.dados, self.mapa, 'c-02',
+                                    {'nome': 'X', 'peer_as': '65000'})
+
+    def test_recusa_nome_que_pega_a_policy_de_outro_circuito(self):
+        # "BRD" faria o ix-02 escrever nos nodes do c-01 (AS14840-BRD-V4-OUT)
+        with self.assertRaises(AcaoBgpNaoSuportada) as ctx:
+            self._criar('ix-02', nome='BRD', peer_as='14840')
+        self.assertIn('já é do circuito c-01', str(ctx.exception))
+
+    def test_completar_circuito_existente_nao_recria_o_que_ja_ha(self):
+        cmds = comandos_criar_circuito(self.dados, self.mapa, 'c-01', {
+            'nome': 'BRD', 'peer_as': '14840', 'v4': {'peers': [{'ip': '192.0.2.5'}]},
+            'policy_v4_out': 'AS14840-BRD-V4-OUT', 'policy_v4_in': 'AS14840-BRD-V4-IN',
+        })
+        self.assertFalse([c for c in cmds if c.startswith('ip community-filter basic c-01-')])
+        self.assertFalse([c for c in cmds if c.startswith('route-policy AS14840-BRD-V4-IN')])
+        self.assertIn('peer 192.0.2.5 as-number 14840', cmds)
+
+
+class CriarDownstreamTest(SimpleTestCase):
+    def setUp(self):
+        self.dados = _dados_com_cliente()
+        self.mapa = montar_mapa(self.dados)
+
+    def _criar(self, **opcoes):
+        base = {'nome': 'ACME', 'peer_as': '268999',
+                'v4': {'peers': [{'ip': '192.0.2.20'}], 'prefixos': ['170.84.0.0/22']}}
+        base.update(opcoes)
+        return comandos_criar_downstream(self.dados, self.mapa, base)
+
+    def test_prefixos_do_cliente_viram_a_prefix_list_casada_na_entrada(self):
+        cmds = self._criar()
+        self.assertIn('ip ip-prefix PL-DOWNSTREAM-ACME-V4 index 10 permit 170.84.0.0 22 '
+                      'greater-equal 22 less-equal 24', cmds)
+        i = cmds.index('route-policy DOWNSTREAM-ACME-V4-IN permit node 10')
+        self.assertEqual(cmds[i + 1], 'if-match ip-prefix PL-DOWNSTREAM-ACME-V4')
+        self.assertIn('route-policy DOWNSTREAM-ACME-V4-IN deny node 999', cmds)
+
+    def test_saida_manda_a_tabela_cheia(self):
+        cmds = self._criar()
+        i = cmds.index('route-policy DOWNSTREAM-ACME-V4-OUT permit node 10')
+        self.assertEqual(cmds[i + 1], 'if-match ip-prefix FULL-ROUTING')
+        self.assertIn('route-policy DOWNSTREAM-ACME-V4-OUT deny node 999', cmds)
+
+    def test_communities_de_reanuncio_ficam_na_policy_de_entrada(self):
+        cmds = self._criar(destinos={'c-01': 'export', 'glob-all-ptts-ixbr': 'export'})
+        self.assertIn(f'apply community {ASN}:50101 {ASN}:60011 additive', cmds)
+
+    def test_recusa_destino_global_sem_alcance(self):
+        with self.assertRaises(AcaoBgpNaoSuportada):
+            self._criar(destinos={'glob-all-cdns': 'export'})
+
+    def test_recusa_sem_prefixo_do_cliente(self):
+        with self.assertRaises(AcaoBgpNaoSuportada) as ctx:
+            self._criar(v4={'peers': [{'ip': '192.0.2.21'}], 'prefixos': []})
+        self.assertIn('prefixos', str(ctx.exception).lower())
+
+    def test_recusa_nome_que_colide_com_config_existente(self):
+        with self.assertRaises(AcaoBgpNaoSuportada) as ctx:
+            self._criar(nome='CIANET', v4={'peers': [{'ip': '192.0.2.22'}],
+                                           'prefixos': ['170.85.0.0/22']})
+        self.assertIn('já existe', str(ctx.exception).lower())
+
+    def test_bogon_all_deny_nao_e_reaproveitado(self):
+        # BOGONS-V4 (só `deny`) nunca casa num `if-match`; a lista usada tem
+        # que ser a de `permit`.
+        cmds = self._criar()
+        self.assertIn('if-match ip-prefix BOGONS-V4-IN', cmds)
+        self.assertNotIn('if-match ip-prefix BOGONS-V4', cmds)
+
+
+class DownstreamDescobertaTest(SimpleTestCase):
+    def setUp(self):
+        self.mapa = montar_mapa(_dados_com_cliente())
+
+    def test_encontra_o_cliente_pela_policy_que_libera_tudo(self):
+        self.assertIn('DOWNSTREAM-CIANET', self.mapa['downstreams'])
+
+    def test_ibgp_nao_vira_downstream(self):
+        self.assertEqual(len(self.mapa['downstreams']), 1)
+
+    def test_mostra_prefixos_aceitos_e_para_onde_sao_reanunciados(self):
+        d = self.mapa['downstreams']['DOWNSTREAM-CIANET']
+        self.assertEqual([p['lista'] for p in d['prefixos_aceitos']['v4']],
+                         ['PL-DOWNSTREAM-CIANET-V4'])
+        self.assertEqual(d['destinos'], {'glob-all-ptts-ixbr': 'export'})
+
+
+class CriacaoOtimistaTest(SimpleTestCase):
+    def test_circuito_novo_aparece_completo_no_painel(self):
+        dados = dados_base()
+        aplicar_efeito_local(dados, 'criar_circuito_community', 'ix-02', {
+            'destino': 'ix-02', 'opcoes': {
+                'nome': 'PTT-CE', 'peer_as': '26162', 'grupo': '602',
+                'asn_community': ASN, 'prepend_as': '268080',
+                'v4': {'peers': [{'ip': '45.68.79.253'}]}}})
+        mapa = montar_mapa(dados)
+        c = mapa['circuitos']['ix-02']
+        self.assertEqual(len(c['sessoes']), 1)
+        self.assertEqual(c['faltando'], [])
+        self.assertNotIn('ix-02', {v['id'] for v in mapa['slots_vagos']})
+
+    def test_downstream_novo_aparece_com_os_destinos(self):
+        dados = _dados_com_cliente()
+        aplicar_efeito_local(dados, 'criar_downstream_community', 'ACME', {
+            'opcoes': {'nome': 'ACME', 'peer_as': '268999',
+                       'destinos': {'glob-all-ptts-ixbr': 'export'},
+                       'v4': {'peers': [{'ip': '192.0.2.30'}],
+                              'prefixos': ['170.84.0.0/22']}}})
+        mapa = montar_mapa(dados)
+        d = mapa['downstreams'].get('DOWNSTREAM-ACME')
+        self.assertIsNotNone(d)
+        self.assertEqual(d['destinos'], {'glob-all-ptts-ixbr': 'export'})

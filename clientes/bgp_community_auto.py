@@ -108,13 +108,21 @@ ACOES_ANUNCIO_PADRAO = [a for a in ACOES_DE_ANUNCIO if not a.get('legado')]
 # produção usam as três famílias: `c-NN` (operadora/upstream), `ix-NN` e
 # `cdn-NN`. Nas caixas mais antigas tudo é `c-NN` — inclusive IX (c-81..c-83) —
 # e aí o tipo real vem do glob-* que a policy de saída referencia, não do nome.
+# `slots`/`base_grupo` são a faixa que o template reserva pra cada família
+# (§6/§7/§8): 10 operadoras em 501-510, 10 IX em 601-610 e 5 CDNs em 611-615 —
+# o grupo de community de um slot é `base_grupo + numero`, o que torna `c-02`
+# → 502 uma conta, não um cadastro. `glob_community` é o sufixo da community
+# "anunciar para todos" daquela família (§4).
 TIPOS_CIRCUITO = [
     {'chave': 'upstream', 'prefixo': 'c',   'rotulo': 'Operadora / upstream',
-     'plural': 'Operadoras / upstreams', 'glob_slug': 'all-upstream'},
+     'plural': 'Operadoras / upstreams', 'glob_slug': 'all-upstream',
+     'slots': 10, 'base_grupo': 500, 'glob_community': '60001'},
     {'chave': 'ix',       'prefixo': 'ix',  'rotulo': 'IX / PTT',
-     'plural': 'IX / PTT',               'glob_slug': 'all-ptts-ixbr'},
+     'plural': 'IX / PTT',               'glob_slug': 'all-ptts-ixbr',
+     'slots': 10, 'base_grupo': 600, 'glob_community': '60011'},
     {'chave': 'cdn',      'prefixo': 'cdn', 'rotulo': 'CDN',
-     'plural': 'CDNs',                   'glob_slug': 'all-cdns'},
+     'plural': 'CDNs',                   'glob_slug': 'all-cdns',
+     'slots': 5,  'base_grupo': 610, 'glob_community': '60021'},
 ]
 TIPOS_POR_PREFIXO = {t['prefixo']: t for t in TIPOS_CIRCUITO}
 TIPOS_POR_CHAVE = {t['chave']: t for t in TIPOS_CIRCUITO}
@@ -129,6 +137,14 @@ ROTULOS_GLOBAIS = {
     'all-pni': 'Todos os PNI',
     'all-peerings': 'Todos os peerings',
 }
+
+# Local-preference sugerida ao subir uma sessão, por papel do circuito. Só o
+# IX é fixado pelo template (§11, `apply local-preference 3000`); os demais
+# valores mantêm a ordem que faz sentido operacionalmente — rota de cliente
+# vence a mesma rota aprendida via IX, que vence a via upstream — e são
+# editáveis no modal antes de aplicar.
+LOCAL_PREFERENCE_PADRAO = {'upstream': '1000', 'ix': '3000', 'cdn': '2000',
+                           'downstream': '4000'}
 
 NODE_CATCHALL = 999          # `deny node 999` — bloqueio final da policy OUT
 NODE_GLOBAL = 12             # node do `if-match community-filter glob-all-*`
@@ -725,6 +741,15 @@ def montar_mapa(dados, vendor='huawei'):
          'prefixo': t['prefixo'], 'glob': f'{PREFIXO_DESTINO_GLOBAL}{t["glob_slug"]}'}
         for t in TIPOS_CIRCUITO
     ]
+    # Slots vagos e downstreams: o painel precisa mostrar tanto o que existe
+    # quanto o que ainda falta subir, e as sessões de cliente não passam pelo
+    # catálogo de communities (ver `mapear_downstreams`).
+    mapa['slots_vagos'] = mapear_slots(mapa['circuitos'])
+    mapa['downstreams'] = mapear_downstreams(dados, mapa['circuitos'], mapa['globais'])
+    mapa['padroes'] = {
+        'asn_community': _asn_community_prevalente(mapa['circuitos']),
+        'local_preference': dict(LOCAL_PREFERENCE_PADRAO),
+    }
     mapa['avisos'].extend(validar_mapa(dados, mapa))
     return mapa
 
@@ -1146,6 +1171,60 @@ def _node_livre(ocupados, acao):
     return None
 
 
+def _blocos_policy_out(dados, circuito_id, nome_policy, prepend_as, filtro_global):
+    """
+    Linhas dos nodes que faltam na route-policy de SAÍDA de um circuito: um por
+    ação do catálogo (`<circuito>-export`, `-export-1p`, …), o node da
+    community global do tipo e o `deny node 999` final.
+
+    Emitidos em ordem de NODE (e não na ordem do catálogo) pro preview sair
+    igual ao template padrão — é o texto que o operador revisa antes de
+    confirmar, e ler fora de ordem esconde erro. Nada existente é reemitido.
+    """
+    nodes = dados.get('community_nodes') or {}
+    existentes = {f for n in nodes.get(nome_policy, []) for f in n['community_filters']}
+    nodes_ocupados = {n['node'] for n in nodes.get(nome_policy, [])}
+    nodes_ocupados |= {t['ordem'] for t in (dados.get('policies') or {}).get(nome_policy, [])}
+
+    pendentes = [(f'{circuito_id}-{a["chave"]}', a) for a in ACOES_ANUNCIO_PADRAO]
+    if filtro_global:
+        pendentes.append((filtro_global, {
+            'chave': filtro_global, 'policy': 'permit', 'prepend': 0,
+            'node': NODE_GLOBAL,
+        }))
+    blocos = []
+    for nome_filtro, acao in pendentes:
+        if nome_filtro in existentes:
+            continue
+        node = _node_livre(nodes_ocupados, acao)
+        if node is None:
+            raise AcaoBgpNaoSuportada(
+                f'Não sobrou node livre em "{nome_policy}" para a ação "{acao["chave"]}" — '
+                f'renumere a policy manualmente.'
+            )
+        nodes_ocupados.add(node)
+        if acao['prepend'] and not prepend_as:
+            raise AcaoBgpNaoSuportada(
+                f'A ação "{acao["chave"]}" precisa do ASN de prepend do circuito, '
+                f'que não foi informado nem identificado na config atual.'
+            )
+        linhas = [f'route-policy {nome_policy} {acao["policy"]} node {node}',
+                  f'if-match community-filter {nome_filtro}']
+        if acao['prepend']:
+            linhas.append(
+                f'apply as-path {" ".join([prepend_as] * acao["prepend"])} additive'
+            )
+        if acao.get('apply'):
+            linhas.append(f'apply {acao["apply"]}')
+        linhas.append('quit')
+        blocos.append((node, linhas))
+
+    if NODE_CATCHALL not in nodes_ocupados:
+        blocos.append((NODE_CATCHALL,
+                       [f'route-policy {nome_policy} deny node {NODE_CATCHALL}', 'quit']))
+    return [linha for _, linhas in sorted(blocos, key=lambda b: b[0]) for linha in linhas]
+
+
 _RE_ID_CIRCUITO = re.compile(rf'^({_PREFIXOS_CIRCUITO})-(\d{{2,3}})$')
 
 
@@ -1255,51 +1334,8 @@ def comandos_provisionar_circuito(dados, mapa, circuito_id, opcoes=None):
                     f'para que ela possa ser criada.'
                 )
             nome_policy = f'AS{peer_as}-{nome}-{familia.upper()}-OUT'
-        existentes = {f for n in nodes.get(nome_policy, []) for f in n['community_filters']}
-        nodes_ocupados = {n['node'] for n in nodes.get(nome_policy, [])}
-        nodes_ocupados |= {t['ordem'] for t in (dados.get('policies') or {}).get(nome_policy, [])}
-
-        pendentes = [(f'{circuito_id}-{a["chave"]}', a) for a in ACOES_ANUNCIO_PADRAO]
-        if filtro_global:
-            pendentes.append((filtro_global, {
-                'chave': filtro_global, 'policy': 'permit', 'prepend': 0,
-                'node': NODE_GLOBAL,
-            }))
-        # Os blocos são emitidos em ordem de NODE (e não na ordem do catálogo)
-        # pro preview sair igual ao template padrão — é o texto que o operador
-        # revisa antes de confirmar, e ler fora de ordem esconde erro.
-        blocos = []
-        for nome_filtro, acao in pendentes:
-            if nome_filtro in existentes:
-                continue
-            node = _node_livre(nodes_ocupados, acao)
-            if node is None:
-                raise AcaoBgpNaoSuportada(
-                    f'Não sobrou node livre em "{nome_policy}" para a ação "{acao["chave"]}" — '
-                    f'renumere a policy manualmente.'
-                )
-            nodes_ocupados.add(node)
-            if acao['prepend'] and not prepend_as:
-                raise AcaoBgpNaoSuportada(
-                    f'A ação "{acao["chave"]}" precisa do ASN de prepend do circuito, '
-                    f'que não foi informado nem identificado na config atual.'
-                )
-            linhas = [f'route-policy {nome_policy} {acao["policy"]} node {node}',
-                      f'if-match community-filter {nome_filtro}']
-            if acao['prepend']:
-                linhas.append(
-                    f'apply as-path {" ".join([prepend_as] * acao["prepend"])} additive'
-                )
-            if acao.get('apply'):
-                linhas.append(f'apply {acao["apply"]}')
-            linhas.append('quit')
-            blocos.append((node, linhas))
-
-        if NODE_CATCHALL not in nodes_ocupados:
-            blocos.append((NODE_CATCHALL,
-                           [f'route-policy {nome_policy} deny node {NODE_CATCHALL}', 'quit']))
-        for _, linhas in sorted(blocos, key=lambda b: b[0]):
-            comandos.extend(linhas)
+        comandos.extend(_blocos_policy_out(dados, circuito_id, nome_policy,
+                                           prepend_as, filtro_global))
 
     if not comandos:
         raise AcaoBgpNaoSuportada(
@@ -1308,6 +1344,710 @@ def comandos_provisionar_circuito(dados, mapa, circuito_id, opcoes=None):
         )
     return comandos + ['commit']
 
+
+# ─── Slots do template: o que já existe e o que ainda está vago ──────────────
+
+def slot_padrao(circuito_id):
+    """
+    `c-02` → o que o template reserva pra esse slot: tipo, número e grupo de
+    community. O grupo é uma CONTA (`base_grupo + numero`), não um cadastro —
+    c-02 → 502, ix-07 → 607, cdn-03 → 613 (§6/§7/§8) —, que é o que permite
+    subir um circuito novo sem o operador ter que decorar a numeração.
+
+    Devolve None se o identificador não for do padrão.
+    """
+    m = _RE_ID_CIRCUITO.match(str(circuito_id or ''))
+    if not m:
+        return None
+    tipo = TIPOS_POR_PREFIXO[m.group(1)]
+    numero = int(m.group(2))
+    return {
+        'id': f'{tipo["prefixo"]}-{numero:02d}',
+        'tipo': tipo['chave'], 'numero': numero,
+        'grupo': str(tipo['base_grupo'] + numero),
+        'na_faixa': 1 <= numero <= tipo['slots'],
+    }
+
+
+def mapear_slots(circuitos):
+    """
+    Os slots do template que a caixa ainda NÃO tem configurados.
+
+    O painel precisa mostrar o que falta e não só o que existe: é clicando num
+    slot vago (`c-02`, `ix-04`) que o operador manda subir aquele circuito do
+    zero. Slots já ocupados ficam de fora — quem responde por eles é
+    `mapear_circuitos`.
+    """
+    vagos = []
+    for tipo in TIPOS_CIRCUITO:
+        for numero in range(1, tipo['slots'] + 1):
+            cid = f'{tipo["prefixo"]}-{numero:02d}'
+            if cid in circuitos:
+                continue
+            vagos.append({
+                'id': cid, 'tipo': tipo['chave'], 'tipo_rotulo': tipo['rotulo'],
+                'numero': numero, 'grupo': str(tipo['base_grupo'] + numero),
+                'vago': True,
+            })
+    return vagos
+
+
+def _asn_community_prevalente(circuitos):
+    """ASN usado nas communities DESTA caixa. Não é necessariamente o ASN do
+    `bgp <N>`: as caixas de referência marcam as rotas com 65100/65101 (ASN
+    privado) mesmo anunciando como AS268080. Um circuito novo tem que nascer
+    com o mesmo ASN dos que já existem, senão a community dele não casa filtro
+    nenhum."""
+    votos = {}
+    for c in circuitos.values():
+        if c.get('asn_community'):
+            votos[c['asn_community']] = votos.get(c['asn_community'], 0) + 1
+    return max(votos, key=lambda k: votos[k]) if votos else ASN_COMMUNITY_PADRAO
+
+
+# ─── Downstreams: as sessões de cliente ──────────────────────────────────────
+
+# `DOWNSTREAM-CIANET-V4-IN`, `AS268137-NET-SINI-IPv6_out`,
+# `RP-DOWNSTREAM-GNET-IPV6-OUT` — as três formas aparecem nas caixas reais, e
+# é o nome sem o sufixo de família que junta o IPv4 e o IPv6 do mesmo cliente.
+_RE_POLICY_FAMILIA = re.compile(r'^(.*?)[-_]?(?:IP)?V([46])[-_](IN|OUT)$', re.IGNORECASE)
+
+
+def _permite_tabela_cheia(dados, nome_policy):
+    """
+    A policy de saída libera a tabela cheia?
+
+    É a assinatura de um cliente/downstream: em vez de casar communities de
+    anúncio (que é como esta automação controla o que vai pra cada upstream),
+    ela manda tudo — ou por um node `permit` sem nenhum `if-match`, ou por uma
+    prefix-list de full routing (`0.0.0.0/0 less-equal 24`, `::/0 less-equal
+    48`).
+    """
+    for termo in (dados.get('policies') or {}).get(nome_policy, []):
+        if termo['acao'] != 'accept':
+            continue
+        if not termo['prefix_lists']:
+            return True
+        for nome_pl in termo['prefix_lists']:
+            if _e_lista_full_routing((dados.get('prefix_lists') or {}).get(nome_pl, [])):
+                return True
+    return False
+
+
+def _e_lista_full_routing(entradas):
+    """
+    Prefix-list que representa "a tabela cheia": permite a partir da rota
+    default com desagregação (o `0.0.0.0/0 less-equal 24` do §1).
+
+    O `len_min == 0` é o que separa isso de uma lista de BOGONS — a de uma das
+    caixas em produção tem `permit 0.0.0.0/0 greater-equal 25 less-equal 32`
+    (prefixo longo demais, que é bogon por tamanho) e casaria uma regra que
+    olhasse só o prefixo e o teto.
+    """
+    for e in entradas:
+        if e['acao'] != 'permit':
+            continue
+        if e['prefixo'] in ('0.0.0.0/0', '::/0') and e['len_min'] == 0 and e['len_max'] >= 24:
+            return True
+    return False
+
+
+def mapear_downstreams(dados, circuitos, globais=None):
+    """
+    As sessões de CLIENTE (downstream) atendidas por este equipamento.
+
+    Downstream não é circuito de community: pra um cliente não se escolhe
+    "anunciar ou não o prefixo X" — manda-se a tabela cheia e recebe-se o
+    bloco dele. O que identifica um na config, sem depender de nome, são duas
+    coisas juntas: a sessão não pertence a nenhum circuito do catálogo (a
+    policy de saída dela não casa filtro nenhum) e essa policy libera a tabela
+    cheia (`_permite_tabela_cheia`).
+
+    Sessões iBGP ficam de fora — a policy delas também manda tudo, mas cliente
+    não é.
+
+    IPv4 e IPv6 do mesmo cliente são agrupados pelo nome da policy sem o
+    sufixo de família (`DOWNSTREAM-CIANET-V4-IN` → `DOWNSTREAM-CIANET`).
+
+    O que o painel mostra de cada um vem daqui: as sessões, a prefix-list que
+    define o que ele PODE mandar e — resolvendo as communities que a policy de
+    entrada carimba — para onde os prefixos dele são reanunciados.
+    """
+    globais = globais or {}
+    nodes = dados.get('community_nodes') or {}
+    presos = {s['peer_ip'] for c in circuitos.values() for s in c['sessoes']}
+
+    por_community = {}
+    for cid, c in circuitos.items():
+        for chave, a in c['acoes'].items():
+            por_community.setdefault(a['community'], (cid, chave))
+    for gid, g in globais.items():
+        for chave, a in g['acoes'].items():
+            por_community.setdefault(a['community'], (gid, chave))
+
+    downs = {}
+    for sessao in dados.get('sessoes') or []:
+        policy_out = sessao.get('policy_out') or ''
+        peer_ip = sessao.get('peer_ip', '')
+        if not policy_out or peer_ip in presos:
+            continue
+        if sessao.get('peer_as') and sessao['peer_as'] == sessao.get('as_local'):
+            continue
+        if not _permite_tabela_cheia(dados, policy_out):
+            continue
+
+        m = _RE_POLICY_FAMILIA.match(policy_out)
+        base = m.group(1) if m else policy_out
+        familia = _familia_do_prefixo(peer_ip)
+        d = downs.setdefault(base, {
+            'id': base, 'tipo': 'downstream', 'tipo_rotulo': 'Downstream / cliente',
+            'nome': re.sub(r'^(DOWNSTREAM|AS\d+)-', '', base, flags=re.IGNORECASE) or base,
+            'rotulo': base, 'peer_as': '', 'sessoes': [],
+            'policies': {}, 'prefixos_aceitos': {'v4': [], 'v6': []},
+            'destinos': {}, 'ipv4': False, 'ipv6': False,
+        })
+        d['sessoes'].append({
+            'nome': sessao.get('nome', ''), 'peer_ip': peer_ip,
+            'peer_as': sessao.get('peer_as', ''), 'descricao': sessao.get('descricao', ''),
+            'familia': familia, 'habilitada': sessao.get('habilitada', True),
+            'policy_out': policy_out, 'policy_in': sessao.get('policy_in', ''),
+        })
+        d[('ipv6' if familia == 'v6' else 'ipv4')] = True
+        d['peer_as'] = d['peer_as'] or sessao.get('peer_as', '')
+        d['policies'][f'{familia}_out'] = policy_out
+        if sessao.get('policy_in'):
+            d['policies'][f'{familia}_in'] = sessao['policy_in']
+            # O que o cliente pode mandar: as prefix-lists casadas nos nodes
+            # `permit` da policy de entrada (as de bogon ficam nos `deny`).
+            for termo in (dados.get('policies') or {}).get(sessao['policy_in'], []):
+                if termo['acao'] != 'accept':
+                    continue
+                for nome_pl in termo['prefix_lists']:
+                    entradas = [e['prefixo'] for e in (dados.get('prefix_lists') or {}).get(nome_pl, [])
+                                if e['acao'] == 'permit']
+                    if entradas and nome_pl not in [p['lista'] for p in d['prefixos_aceitos'][familia]]:
+                        d['prefixos_aceitos'][familia].append({'lista': nome_pl, 'prefixos': entradas})
+            # Para onde os prefixos dele são reanunciados: as communities que a
+            # policy de entrada carimba, traduzidas em destino do catálogo.
+            for n in nodes.get(sessao['policy_in'], []):
+                for valor in n['apply_community']:
+                    achado = por_community.get(valor)
+                    if achado:
+                        d['destinos'][achado[0]] = achado[1]
+    return downs
+# ─── Geração: subir um circuito (policies + sessão BGP) do zero ──────────────
+
+# Bogons do §2 na forma que SERVE pra bloquear: `if-match ip-prefix X` só casa
+# quando X **permite** a rota, então uma lista escrita toda em `deny` (como a
+# BOGONS-V4 do template) nunca casa e o `deny node 5` que a usa é config
+# morta. As caixas de referência resolveram isso com uma segunda lista, em
+# `permit` — é essa que esta automação usa e cria quando não existe.
+BOGONS = {
+    'v4': [('0.0.0.0', 8), ('10.0.0.0', 8), ('100.64.0.0', 10), ('127.0.0.0', 8),
+           ('169.254.0.0', 16), ('172.16.0.0', 12), ('192.0.0.0', 24), ('192.0.2.0', 24),
+           ('192.88.99.0', 24), ('192.168.0.0', 16), ('198.18.0.0', 15),
+           ('198.51.100.0', 24), ('203.0.113.0', 24), ('224.0.0.0', 4), ('240.0.0.0', 4)],
+    'v6': [('::', 128), ('::1', 128), ('::ffff:0:0', 96), ('100::', 64), ('2001:2::', 48),
+           ('2001:db8::', 32), ('2001:10::', 28), ('fc00::', 7), ('fe80::', 10), ('ff00::', 8)],
+}
+NOME_BOGONS = {'v4': 'BOGONS-V4-IN', 'v6': 'BOGONS-V6-IN'}
+NOME_FULL_ROUTING = {'v4': 'FULL-ROUTING', 'v6': 'FULL-ROUTING-V6'}
+# Maior prefixo aceito de um peer/cliente. O template §1 usa `less-equal 34`
+# em IPv6, mas as caixas em produção usam 48 — que é o limite do IX.br e o que
+# de fato circula; com 34 quase todo /48 legítimo seria descartado.
+MAIOR_PREFIXO = {'v4': 24, 'v6': 48}
+_CMD_PREFIX_LIST = {'v4': 'ip ip-prefix', 'v6': 'ip ipv6-prefix'}
+_CMD_IF_MATCH = {'v4': 'if-match ip-prefix', 'v6': 'if-match ipv6 address prefix-list'}
+_AF = {'v4': 'ipv4-family unicast', 'v6': 'ipv6-family unicast'}
+_RE_NOME_LIMPO = re.compile(r'[^A-Z0-9-]')
+
+
+def _familia_da_lista(entradas):
+    return 'v6' if any(':' in e.get('prefixo', '') for e in entradas) else 'v4'
+
+
+def _prefix_list_bogons(dados, familia):
+    """(nome, comandos) da prefix-list de bogons usável num node `deny` —
+    reaproveitando a da caixa quando ela já tem uma em `permit`, criando
+    `BOGONS-V4-IN`/`BOGONS-V6-IN` quando não tem. Uma lista só de `deny` não
+    serve (nunca casa) e por isso não é reaproveitada."""
+    for nome, entradas in sorted((dados.get('prefix_lists') or {}).items()):
+        if 'BOGON' not in nome.upper() or _familia_da_lista(entradas) != familia:
+            continue
+        # Uma lista que permite a partir do prefixo 0 casaria QUALQUER rota —
+        # num node `deny` isso não filtra bogon, derruba a sessão inteira.
+        if any(e['acao'] == 'permit' for e in entradas) and not any(
+                e['acao'] == 'permit' and e['len_min'] == 0 for e in entradas):
+            return nome, []
+    nome = NOME_BOGONS[familia]
+    if nome in (dados.get('prefix_lists') or {}):
+        return nome, []
+    teto = 32 if familia == 'v4' else 128
+    comandos = []
+    for i, (rede, tam) in enumerate(BOGONS[familia], start=1):
+        linha = f'{_CMD_PREFIX_LIST[familia]} {nome} index {i * 10} permit {rede} {tam}'
+        if tam < teto:
+            linha += f' greater-equal {tam} less-equal {teto}'
+        comandos.append(linha)
+    return nome, comandos
+
+
+def _prefix_list_full_routing(dados, familia):
+    """(nome, comandos) da prefix-list de "tabela cheia" (§1) — a que a policy
+    de entrada usa pra aceitar rotas do peer e a de saída de um downstream usa
+    pra mandar a tabela inteira."""
+    candidatas = sorted((dados.get('prefix_lists') or {}).items(),
+                        key=lambda kv: ('FULL-ROUTING' not in kv[0].upper(), kv[0]))
+    for nome, entradas in candidatas:
+        if _familia_da_lista(entradas) == familia and _e_lista_full_routing(entradas):
+            return nome, []
+    nome = NOME_FULL_ROUTING[familia]
+    rede = '0.0.0.0 0' if familia == 'v4' else ':: 0'
+    return nome, [f'{_CMD_PREFIX_LIST[familia]} {nome} index 10 permit {rede} '
+                  f'less-equal {MAIOR_PREFIXO[familia]}']
+
+
+def _nome_limpo(valor, campo):
+    nome = _RE_NOME_LIMPO.sub('-', (valor or '').strip().upper().replace(' ', '-')).strip('-')
+    if not nome:
+        raise AcaoBgpNaoSuportada(f'Informe {campo}.')
+    return nome
+
+
+def _validar_peer(dados, peer_ip, familia, ja_usados):
+    """Peer válido, da família certa e ainda não configurado neste
+    equipamento — configurar duas vezes o mesmo peer é erro de digitação, não
+    intenção."""
+    try:
+        ip = ipaddress.ip_address(peer_ip)
+    except ValueError:
+        raise AcaoBgpNaoSuportada(f'IP de peer inválido: "{peer_ip}".')
+    if (6 if ip.version == 6 else 4) != (6 if familia == 'v6' else 4):
+        raise AcaoBgpNaoSuportada(
+            f'O peer "{peer_ip}" não é {familia.upper()} — confira a família em que ele foi informado.'
+        )
+    if peer_ip in ja_usados:
+        raise AcaoBgpNaoSuportada(f'Já existe uma sessão com o peer "{peer_ip}" neste equipamento.')
+    ja_usados.add(peer_ip)
+    return str(ip)
+
+
+def _bloco_policy_in(nome_policy, familia, bogons, full_routing, communities,
+                     local_preference=''):
+    """
+    Policy de ENTRADA no layout do template (§9/§11): bogons fora no node 5,
+    tabela cheia aceita no node 10 — carimbando a community de origem (§17) e,
+    quando informada, a local-preference do tipo de circuito —, `deny node 999`
+    no fim pra nada entrar por engano.
+    """
+    linhas = [f'route-policy {nome_policy} deny node 5',
+              f'{_CMD_IF_MATCH[familia]} {bogons}',
+              'quit',
+              f'route-policy {nome_policy} permit node {NODE_LOCAL}',
+              f'{_CMD_IF_MATCH[familia]} {full_routing}']
+    if local_preference:
+        linhas.append(f'apply local-preference {local_preference}')
+    if communities:
+        linhas.append(f'apply community {" ".join(communities)} additive')
+    linhas += ['quit',
+               f'route-policy {nome_policy} deny node {NODE_CATCHALL}',
+               'quit']
+    return linhas
+
+
+def _bloco_sessao(as_local, familias, peers_por_familia, policies, grupos=None,
+                  public_as_only=False, habilitar=True):
+    """
+    O bloco `bgp <ASN>` de uma sessão nova, no formato das caixas em produção.
+
+    Dois arranjos, conforme o tipo: peer individual (operadora, CDN, cliente)
+    leva as route-policies nele mesmo; IX leva um `group EBGP-<NOME>-V4
+    external` com as policies NO GRUPO e os route servers como membros — que é
+    como o IX.br é configurado e o que o parser lê de volta.
+
+    Detalhe de VRP que não pode faltar: um peer nasce habilitado na
+    `ipv4-family unicast`, mesmo sendo IPv6. Por isso todo peer/grupo v6 leva
+    um `undo peer … enable` na family v4 além do `enable` na v6 — sem isso o
+    peer v6 fica pendurado na family errada.
+    """
+    grupos = grupos or {}
+    comandos = [f'bgp {as_local}']
+    for familia in familias:
+        grupo = grupos.get(familia, '')
+        if grupo:
+            comandos.append(f'group {grupo} external')
+        for peer in peers_por_familia[familia]:
+            comandos.append(f'peer {peer["ip"]} as-number {peer["as"]}')
+            if grupo:
+                comandos.append(f'peer {peer["ip"]} group {grupo}')
+            if peer.get('descricao'):
+                comandos.append(f'peer {peer["ip"]} description {peer["descricao"]}')
+            if not habilitar:
+                # No VRP um peer nasce ATIVO — deixar de emitir `enable` não o
+                # segura. Quem segura é `peer … ignore`, o mesmo comando que o
+                # botão Ativar/Desativar do painel desfaz
+                # (`bgp_actions.comandos_toggle_sessao`).
+                comandos.append(f'peer {peer["ip"]} ignore')
+
+    v6_na_family_v4 = ([grupos.get('v6')] if grupos.get('v6') else
+                       [p['ip'] for p in peers_por_familia.get('v6', [])]) if 'v6' in familias else []
+    if v6_na_family_v4 and 'v4' not in familias:
+        # Sessão só-IPv6: ainda assim é preciso entrar na family v4 pra tirar
+        # de lá o peer que nasceu habilitado nela.
+        comandos.append(_AF['v4'])
+        comandos += [f'undo peer {alvo} enable' for alvo in v6_na_family_v4]
+        comandos.append('quit')
+
+    for familia in familias:
+        comandos.append(_AF[familia])
+        if familia == 'v4':
+            comandos += [f'undo peer {alvo} enable' for alvo in v6_na_family_v4]
+        grupo = grupos.get(familia, '')
+        for nome_alvo in ([grupo] if grupo else [p['ip'] for p in peers_por_familia[familia]]):
+            comandos.append(f'peer {nome_alvo} enable')
+            if public_as_only:
+                comandos.append(f'peer {nome_alvo} public-as-only')
+            comandos.append(f'peer {nome_alvo} route-policy {policies[f"{familia}_in"]} import')
+            comandos.append(f'peer {nome_alvo} route-policy {policies[f"{familia}_out"]} export')
+            comandos.append(f'peer {nome_alvo} advertise-community')
+            comandos.append(f'peer {nome_alvo} advertise-ext-community')
+        if grupo:
+            # Membros do grupo: habilitar e prender ao grupo — as policies já
+            # valem pra todos eles através dele.
+            for peer in peers_por_familia[familia]:
+                comandos.append(f'peer {peer["ip"]} enable')
+                comandos.append(f'peer {peer["ip"]} group {grupo}')
+        comandos.append('quit')
+    comandos.append('quit')
+    return comandos
+def _peers_das_opcoes(dados, opcoes, ja_usados, sufixo_descricao, prefixo_rs=''):
+    """`opcoes['v4']['peers']` → lista validada por família, com a descrição
+    já montada. `prefixo_rs` liga a numeração de route server dos IX
+    (`RS1.PTT-CE`, `RS2.PTT-CE`) — nos demais tipos a descrição é a do peer."""
+    familias, peers = [], {}
+    for familia in ('v4', 'v6'):
+        entradas = ((opcoes.get(familia) or {}).get('peers')) or []
+        lista = []
+        for i, entrada in enumerate(entradas, start=1):
+            ip = (entrada.get('ip') or '').strip()
+            if not ip:
+                continue
+            ip = _validar_peer(dados, ip, familia, ja_usados)
+            descricao = (entrada.get('descricao') or '').strip()
+            if not descricao:
+                if prefixo_rs:
+                    descricao = f'RS{i}.{prefixo_rs}' + ('-V6' if familia == 'v6' else '')
+                else:
+                    descricao = f'{sufixo_descricao}-{familia.upper()}'
+                    if len(entradas) > 1:
+                        descricao += f'-{i}'
+            lista.append({'ip': ip, 'as': (entrada.get('peer_as') or '').strip(),
+                          'descricao': descricao})
+        if lista:
+            familias.append(familia)
+            peers[familia] = lista
+    return familias, peers
+
+
+def _recusar_colisao_de_nomes(dados, circuito_id, policies, grupos_peer):
+    """
+    Recusa reaproveitar por acidente a route-policy ou o peer-group de OUTRO
+    circuito.
+
+    É o erro caro deste formulário: batizar o circuito novo com um nome que já
+    existe (subir `ix-05` chamando de PTT-SP quando `AS26162-PTT-SP-V4-OUT` já
+    é do `ix-01`) faria os nodes do circuito novo entrarem na policy do antigo
+    — e, no caso do peer-group, trocaria as policies de uma sessão de IX que
+    está no ar. Nada disso apareceria como erro no equipamento.
+    """
+    nodes = dados.get('community_nodes') or {}
+    for chave, nome_policy in policies.items():
+        dono = None
+        for n in nodes.get(nome_policy, []):
+            for f in n['community_filters']:
+                m = _RE_FILTRO.match(f)
+                if m:
+                    dono = f'{m.group(1)}-{m.group(2)}'
+                    break
+            if dono:
+                break
+        if dono and dono != circuito_id:
+            raise AcaoBgpNaoSuportada(
+                f'A route-policy "{nome_policy}" já é do circuito {dono} — usar esse nome '
+                f'misturaria os dois. Escolha outro nome para o circuito {circuito_id}.'
+            )
+
+    grupos_em_uso = {s.get('grupo') for s in (dados.get('sessoes') or []) if s.get('grupo')}
+    for familia, grupo in (grupos_peer or {}).items():
+        if grupo in grupos_em_uso:
+            raise AcaoBgpNaoSuportada(
+                f'O peer-group "{grupo}" já existe neste equipamento e tem sessões — '
+                f'aplicar aqui trocaria as route-policies delas. Escolha outro nome.'
+            )
+
+
+def comandos_criar_circuito(dados, mapa, circuito_id, opcoes=None):
+    """
+    Sobe um circuito INTEIRO — o que o operador vê como "clicar num slot vago
+    e preencher a sessão": os community-filters do slot, as route-policies de
+    entrada e de saída no layout do template e a sessão BGP em si.
+
+    Vale para as três famílias do catálogo, mudando só o que a convenção mudaria
+    na mão:
+
+    - operadora (`c-NN`) e CDN (`cdn-NN`): peer individual, policies no peer;
+    - IX (`ix-NN`): `group EBGP-<NOME>-V4 external` com os route servers como
+      membros, `public-as-only` e as policies NO GRUPO — é assim que o IX.br é
+      configurado nas caixas em produção, e é dessa forma que o parser
+      consegue ler a sessão de volta.
+
+    O grupo de community não é perguntado: sai do próprio slot (`c-02` → 502,
+    §6). Nada existente é sobrescrito — o que já estiver configurado é pulado,
+    então a mesma ação serve pra subir do zero ou pra completar um circuito
+    que ficou pela metade.
+    """
+    opcoes = opcoes or {}
+    slot = slot_padrao(circuito_id)
+    if not slot:
+        raise AcaoBgpNaoSuportada(
+            'Identificador de circuito inválido — esperado '
+            f'{", ".join(t["prefixo"] + "-NN" for t in TIPOS_CIRCUITO)}.'
+        )
+    circuito_id = slot['id']
+    tipo = TIPOS_POR_CHAVE[slot['tipo']]
+    circuito = mapa['circuitos'].get(circuito_id)
+
+    as_local = str(opcoes.get('as_local') or mapa.get('as_local') or '').strip()
+    if not as_local:
+        as_local = (dados.get('sessoes') or [{}])[0].get('as_local', '') or dados.get('as_local', '')
+    if not as_local:
+        raise AcaoBgpNaoSuportada('Não foi possível identificar o ASN local (`bgp <ASN>`) deste equipamento.')
+
+    nome = _nome_limpo(opcoes.get('nome') or (circuito or {}).get('nome'),
+                       'o nome do circuito (ex: BR-DIGITAL, PTT-CE, NETFLIX)')
+    peer_as = str(opcoes.get('peer_as') or (circuito or {}).get('peer_as') or '').strip()
+    if not peer_as.isdigit():
+        raise AcaoBgpNaoSuportada('Informe o ASN do outro lado da sessão.')
+    grupo = str(opcoes.get('grupo') or (circuito or {}).get('grupo') or slot['grupo'])
+    asn_community = str(opcoes.get('asn_community') or (circuito or {}).get('asn_community')
+                        or _asn_community_prevalente(mapa['circuitos']))
+    prepend_as = str(opcoes.get('prepend_as') or (circuito or {}).get('prepend_as') or as_local).strip()
+    local_preference = str(opcoes.get('local_preference') or '').strip()
+    if local_preference and not local_preference.isdigit():
+        raise AcaoBgpNaoSuportada('A local-preference tem que ser um número.')
+
+    ja_usados = {s.get('peer_ip') for s in (dados.get('sessoes') or [])}
+    familias, peers = _peers_das_opcoes(
+        dados, opcoes, ja_usados, f'EBGP-AS{peer_as}-{nome}',
+        prefixo_rs=nome if slot['tipo'] == 'ix' else '',
+    )
+    if not familias:
+        raise AcaoBgpNaoSuportada('Informe pelo menos um peer IPv4 ou IPv6 da sessão.')
+    for familia in familias:
+        for peer in peers[familia]:
+            peer['as'] = peer['as'] or peer_as
+
+    # Nomes: os que a caixa já usa pra este circuito têm prioridade sobre a
+    # convenção — completar um circuito não pode criar uma policy paralela.
+    policies = {}
+    for familia in familias:
+        base = f'AS{peer_as}-{nome}-{familia.upper()}'
+        atuais = (circuito or {}).get('policies', {})
+        policies[f'{familia}_in'] = (opcoes.get(f'policy_{familia}_in')
+                                     or atuais.get(f'{familia}_in') or f'{base}-IN')
+        policies[f'{familia}_out'] = (opcoes.get(f'policy_{familia}_out')
+                                      or atuais.get(f'{familia}_out')
+                                      or atuais.get(f'{familia}_out_orfa') or f'{base}-OUT')
+    grupos_peer = {}
+    if slot['tipo'] == 'ix':
+        for familia in familias:
+            grupos_peer[familia] = (opcoes.get(f'grupo_peer_{familia}')
+                                    or f'EBGP-{nome}-{familia.upper()}')
+
+    filtros = dados.get('community_filters') or {}
+    policies_existentes = set(dados.get('community_nodes') or {}) | set(dados.get('policies') or {})
+    _recusar_colisao_de_nomes(dados, circuito_id, policies, grupos_peer)
+    comandos = []
+
+    # 1) prefix-lists de apoio (bogons e tabela cheia), só se faltarem
+    listas = {}
+    for familia in familias:
+        bogons, cmd_bogons = _prefix_list_bogons(dados, familia)
+        full, cmd_full = _prefix_list_full_routing(dados, familia)
+        listas[familia] = {'bogons': bogons, 'full': full}
+        comandos += cmd_bogons + cmd_full
+
+    # 2) community-filters do circuito e o do grupo global do tipo
+    for acao in ACOES_PROVISIONAVEIS:
+        nome_filtro = f'{circuito_id}-{acao["chave"]}'
+        if nome_filtro not in filtros:
+            comandos.append(
+                f'ip community-filter basic {nome_filtro} index 10 permit '
+                f'{community_de(asn_community, grupo, acao["chave"])}'
+            )
+    glob_id = f'{PREFIXO_DESTINO_GLOBAL}{tipo["glob_slug"]}'
+    if glob_id not in filtros:
+        comandos.append(
+            f'ip community-filter basic {glob_id} index 10 permit '
+            f'{asn_community}:{tipo["glob_community"]}'
+        )
+
+    # 3) policies de entrada e saída
+    for familia in familias:
+        nome_in = policies[f'{familia}_in']
+        if nome_in not in policies_existentes:
+            comandos += _bloco_policy_in(
+                nome_in, familia, listas[familia]['bogons'], listas[familia]['full'],
+                [community_de(asn_community, grupo, 'import-rr')],
+                local_preference=local_preference,
+            )
+        comandos += _blocos_policy_out(dados, circuito_id, policies[f'{familia}_out'],
+                                       prepend_as, glob_id)
+
+    # 4) a sessão em si
+    comandos += _bloco_sessao(
+        as_local, familias, peers, policies, grupos=grupos_peer,
+        public_as_only=bool(opcoes.get('public_as_only', slot['tipo'] == 'ix')),
+        habilitar=bool(opcoes.get('habilitar', True)),
+    )
+    return comandos + ['commit']
+
+
+def comandos_criar_downstream(dados, mapa, opcoes=None):
+    """
+    Sobe uma sessão de CLIENTE (downstream) seguindo o mesmo script de uma
+    operadora, com as duas diferenças que definem o papel:
+
+    - na SAÍDA o cliente recebe a tabela cheia (`if-match ip-prefix
+      FULL-ROUTING`), em vez dos nodes de community que filtram o que vai pra
+      um upstream;
+    - na ENTRADA só passam os prefixos DELE: a prefix-list `PL-DOWNSTREAM-
+      <NOME>-V4/V6` é criada com os blocos informados e é ela que a policy de
+      entrada casa. Fora dela, `deny node 999`.
+
+    Os prefixos do cliente ainda precisam ser reanunciados, e é aí que o
+    catálogo de communities entra: as communities dos destinos escolhidos são
+    carimbadas na policy de ENTRADA, então as rotas dele já entram marcadas
+    para os upstreams/IX/CDNs pedidos. Sem isso elas ficariam presas no
+    equipamento — as policies de saída terminam em `deny node 999`, que só
+    deixa passar o que tem community de anúncio.
+    """
+    opcoes = opcoes or {}
+    nome = _nome_limpo(opcoes.get('nome'), 'o nome do cliente (ex: CIANET)')
+    peer_as = str(opcoes.get('peer_as') or '').strip()
+    if not peer_as.isdigit():
+        raise AcaoBgpNaoSuportada('Informe o ASN do cliente.')
+    as_local = str(opcoes.get('as_local') or mapa.get('as_local') or '').strip()
+    if not as_local:
+        as_local = (dados.get('sessoes') or [{}])[0].get('as_local', '') or dados.get('as_local', '')
+    if not as_local:
+        raise AcaoBgpNaoSuportada('Não foi possível identificar o ASN local (`bgp <ASN>`) deste equipamento.')
+    local_preference = str(opcoes.get('local_preference') or '').strip()
+    if local_preference and not local_preference.isdigit():
+        raise AcaoBgpNaoSuportada('A local-preference tem que ser um número.')
+
+    ja_usados = {s.get('peer_ip') for s in (dados.get('sessoes') or [])}
+    familias, peers = _peers_das_opcoes(dados, opcoes, ja_usados, f'EBGP-DOWNSTREAM-{nome}')
+    if not familias:
+        raise AcaoBgpNaoSuportada('Informe pelo menos um peer IPv4 ou IPv6 do cliente.')
+    for familia in familias:
+        for peer in peers[familia]:
+            peer['as'] = peer['as'] or peer_as
+
+    # Communities de reanúncio: mesmas validações de um prefixo local (o
+    # destino tem que existir, ter a ação e — se for global — alcançar
+    # alguém), porque o efeito é exatamente o mesmo.
+    communities = []
+    destinos_escolhidos = {}
+    for destino_id, chave in sorted((opcoes.get('destinos') or {}).items()):
+        if not chave:
+            continue
+        destino = destino_de(mapa, str(destino_id))
+        acao = destino['acoes'].get(chave)
+        if not acao:
+            raise AcaoBgpNaoSuportada(f'{destino_id} não tem community-filter para a ação "{chave}".')
+        if _e_global(destino) and not acao.get('circuitos'):
+            raise AcaoBgpNaoSuportada(
+                f'Nenhuma policy de saída referencia "{acao["filtro"]}" — marcar as rotas do '
+                f'cliente com essa community global não produziria anúncio nenhum.'
+            )
+        if not _e_global(destino) and not destino['sessoes']:
+            raise AcaoBgpNaoSuportada(
+                f'O circuito {destino_id} não tem sessão BGP neste equipamento — '
+                f'não há para onde reanunciar os prefixos do cliente.'
+            )
+        communities.append(acao['community'])
+        destinos_escolhidos[str(destino_id)] = chave
+
+    prefixos_por_familia = {}
+    for familia in familias:
+        crus = ((opcoes.get(familia) or {}).get('prefixos')) or []
+        redes = []
+        for cru in crus:
+            texto = str(cru or '').strip()
+            if not texto:
+                continue
+            try:
+                rede = ipaddress.ip_network(texto, strict=False)
+            except ValueError as e:
+                raise AcaoBgpNaoSuportada(f'Prefixo do cliente inválido ({texto}): {e}')
+            if (6 if rede.version == 6 else 4) != (6 if familia == 'v6' else 4):
+                raise AcaoBgpNaoSuportada(f'O prefixo {texto} não é {familia.upper()}.')
+            redes.append(rede)
+        if not redes:
+            raise AcaoBgpNaoSuportada(
+                f'Informe os prefixos {familia.upper()} que o cliente pode anunciar — é a '
+                f'prefix-list que a policy de entrada vai casar.'
+            )
+        prefixos_por_familia[familia] = redes
+
+    policies_existentes = set(dados.get('community_nodes') or {}) | set(dados.get('policies') or {})
+    listas_existentes = dados.get('prefix_lists') or {}
+    comandos, policies = [], {}
+
+    for familia in familias:
+        bogons, cmd_bogons = _prefix_list_bogons(dados, familia)
+        full, cmd_full = _prefix_list_full_routing(dados, familia)
+        comandos += cmd_bogons + cmd_full
+
+        nome_pl = opcoes.get(f'prefix_list_{familia}') or f'PL-DOWNSTREAM-{nome}-{familia.upper()}'
+        if nome_pl in listas_existentes:
+            raise AcaoBgpNaoSuportada(
+                f'Já existe uma prefix-list chamada "{nome_pl}" — ela pode estar em uso por '
+                f'outra sessão. Escolha outro nome de cliente ou informe a lista a usar.'
+            )
+        for i, rede in enumerate(prefixos_por_familia[familia], start=1):
+            # `greater-equal/less-equal` deixa o cliente desagregar até o
+            # maior prefixo aceito (o /24 e /48 que o resto da internet aceita)
+            # sem precisar de uma entrada por bloco.
+            teto = max(rede.prefixlen, MAIOR_PREFIXO[familia])
+            linha = (f'{_CMD_PREFIX_LIST[familia]} {nome_pl} index {i * 10} permit '
+                     f'{rede.network_address} {rede.prefixlen}')
+            if rede.prefixlen < teto:
+                linha += f' greater-equal {rede.prefixlen} less-equal {teto}'
+            comandos.append(linha)
+
+        base = f'DOWNSTREAM-{nome}-{familia.upper()}'
+        policies[f'{familia}_in'] = opcoes.get(f'policy_{familia}_in') or f'{base}-IN'
+        policies[f'{familia}_out'] = opcoes.get(f'policy_{familia}_out') or f'{base}-OUT'
+        for chave in (f'{familia}_in', f'{familia}_out'):
+            if policies[chave] in policies_existentes:
+                raise AcaoBgpNaoSuportada(
+                    f'Já existe uma route-policy chamada "{policies[chave]}" — '
+                    f'escolha outro nome de cliente.'
+                )
+
+        comandos += _bloco_policy_in(policies[f'{familia}_in'], familia, bogons, nome_pl,
+                                     communities, local_preference=local_preference)
+        comandos += [f'route-policy {policies[f"{familia}_out"]} permit node {NODE_LOCAL}',
+                     f'{_CMD_IF_MATCH[familia]} {full}',
+                     'quit',
+                     f'route-policy {policies[f"{familia}_out"]} deny node {NODE_CATCHALL}',
+                     'quit']
+
+    comandos += _bloco_sessao(as_local, familias, peers, policies,
+                              habilitar=bool(opcoes.get('habilitar', True)))
+    return comandos + ['commit']
 
 # ─── Atualização otimista do painel ──────────────────────────────────────────
 
@@ -1411,3 +2151,145 @@ def aplicar_efeito_local(dados, tipo, alvo, params):
                 'index': 10, 'acao': 'permit',
                 'valores': [community_de(asn, grupo, acao['chave'])],
             }])
+
+    elif tipo in ('criar_circuito_community', 'criar_downstream_community'):
+        # Diferente de `provisionar_circuito` (que só registra os filtros), aqui
+        # dá pra refletir o circuito INTEIRO: os nodes e as sessões foram
+        # gerados por este módulo agora há pouco, então são conhecidos linha a
+        # linha. Sem isso o slot recém-criado continuaria aparecendo como vago
+        # até o próximo backup — e o operador aplicaria tudo de novo.
+        _registrar_criacao_local(dados, tipo, alvo, params)
+
+
+def _registrar_criacao_local(dados, tipo, alvo, params):
+    """Reflete no snapshot uma sessão recém-criada (circuito de community ou
+    downstream). Aproximação otimista, como o resto de `aplicar_efeito_local`:
+    o próximo backup é quem confirma."""
+    opcoes = params.get('opcoes') or {}
+    sessoes = dados.setdefault('sessoes', [])
+    as_local = (sessoes[0].get('as_local') if sessoes else '') or dados.get('as_local', '')
+    peer_as = str(opcoes.get('peer_as') or '')
+    nome = _RE_NOME_LIMPO.sub('-', str(opcoes.get('nome') or '').upper()).strip('-')
+    if not nome or not peer_as:
+        return
+
+    familias = [f for f in ('v4', 'v6') if ((opcoes.get(f) or {}).get('peers'))]
+    if tipo == 'criar_circuito_community':
+        cid = _destino_dos_params(params) or (alvo or '')
+        slot = slot_padrao(cid)
+        if not slot:
+            return
+        grupo = str(opcoes.get('grupo') or slot['grupo'])
+        asn = str(opcoes.get('asn_community') or ASN_COMMUNITY_PADRAO)
+        prepend_as = str(opcoes.get('prepend_as') or as_local or '')
+        tipo_circuito = TIPOS_POR_CHAVE[slot['tipo']]
+        glob_id = f'{PREFIXO_DESTINO_GLOBAL}{tipo_circuito["glob_slug"]}'
+
+        filtros = dados.setdefault('community_filters', {})
+        for acao in ACOES_PROVISIONAVEIS:
+            filtros.setdefault(f'{cid}-{acao["chave"]}', [{
+                'index': 10, 'acao': 'permit',
+                'valores': [community_de(asn, grupo, acao['chave'])],
+            }])
+        filtros.setdefault(glob_id, [{
+            'index': 10, 'acao': 'permit',
+            'valores': [f'{asn}:{tipo_circuito["glob_community"]}'],
+        }])
+
+        nodes = dados.setdefault('community_nodes', {})
+        for familia in familias:
+            base = f'AS{peer_as}-{nome}-{familia.upper()}'
+            nome_out = opcoes.get(f'policy_{familia}_out') or f'{base}-OUT'
+            if nome_out in nodes:
+                continue
+            lista = []
+            for acao in ACOES_ANUNCIO_PADRAO:
+                lista.append({
+                    'policy': nome_out, 'node': acao['node'], 'acao': acao['policy'],
+                    'community_filters': [f'{cid}-{acao["chave"]}'],
+                    'apply_community': [], 'apply_community_extra': (
+                        ['no-export'] if acao.get('apply') else []),
+                    'prefix_lists': [], 'prepend_as': [prepend_as] * acao['prepend'],
+                    'local_preference': None,
+                })
+            lista.append({
+                'policy': nome_out, 'node': NODE_GLOBAL, 'acao': 'permit',
+                'community_filters': [glob_id], 'apply_community': [],
+                'apply_community_extra': [], 'prefix_lists': [],
+                'prepend_as': [], 'local_preference': None,
+            })
+            nodes[nome_out] = sorted(lista, key=lambda n: n['node'])
+            nodes.setdefault(f'{base}-IN', [{
+                'policy': f'{base}-IN', 'node': NODE_LOCAL, 'acao': 'permit',
+                'community_filters': [], 'apply_community': [community_de(asn, grupo, 'import-rr')],
+                'apply_community_extra': [], 'prefix_lists': [], 'prepend_as': [],
+                'local_preference': None,
+            }])
+        prefixo_policy = f'AS{peer_as}-{nome}'
+    else:
+        prefixo_policy = f'DOWNSTREAM-{nome}'
+        policies = dados.setdefault('policies', {})
+        listas = dados.setdefault('prefix_lists', {})
+        for familia in familias:
+            nome_pl = opcoes.get(f'prefix_list_{familia}') or f'PL-DOWNSTREAM-{nome}-{familia.upper()}'
+            entradas = []
+            for cru in ((opcoes.get(familia) or {}).get('prefixos')) or []:
+                try:
+                    rede = ipaddress.ip_network(str(cru).strip(), strict=False)
+                except ValueError:
+                    continue
+                entradas.append({'acao': 'permit', 'prefixo': str(rede), 'index': 10,
+                                 'len_min': rede.prefixlen,
+                                 'len_max': max(rede.prefixlen, MAIOR_PREFIXO[familia])})
+            if entradas:
+                listas.setdefault(nome_pl, entradas)
+            base = f'{prefixo_policy}-{familia.upper()}'
+            policies.setdefault(f'{base}-IN', [{
+                'ordem': NODE_LOCAL, 'prefix_lists': [nome_pl], 'acao': 'accept',
+                'prepend': 0, 'extra': {'policy': f'{base}-IN', 'node': NODE_LOCAL,
+                                        'nao_suportado': False},
+            }])
+            # A policy de saída de um cliente é o que `mapear_downstreams`
+            # procura: um node que libera a tabela cheia.
+            full, _ = _prefix_list_full_routing(dados, familia)
+            policies.setdefault(f'{base}-OUT', [{
+                'ordem': NODE_LOCAL, 'prefix_lists': [full], 'acao': 'accept',
+                'prepend': 0, 'extra': {'policy': f'{base}-OUT', 'node': NODE_LOCAL,
+                                        'nao_suportado': False},
+            }])
+            communities = []
+            for destino_id, chave in sorted((opcoes.get('destinos') or {}).items()):
+                if not chave:
+                    continue
+                try:
+                    destino = destino_de(montar_mapa(dados), str(destino_id))
+                except AcaoBgpNaoSuportada:
+                    continue
+                acao = destino['acoes'].get(chave)
+                if acao:
+                    communities.append(acao['community'])
+            dados.setdefault('community_nodes', {}).setdefault(f'{base}-IN', [{
+                'policy': f'{base}-IN', 'node': NODE_LOCAL, 'acao': 'permit',
+                'community_filters': [], 'apply_community': communities,
+                'apply_community_extra': [], 'prefix_lists': [nome_pl],
+                'prepend_as': [], 'local_preference': None,
+            }])
+
+    ips_existentes = {s.get('peer_ip') for s in sessoes}
+    for familia in familias:
+        base = f'{prefixo_policy}-{familia.upper()}'
+        for peer in ((opcoes.get(familia) or {}).get('peers')) or []:
+            ip = str(peer.get('ip') or '').strip()
+            if not ip or ip in ips_existentes:
+                continue
+            sessoes.append({
+                'peer_ip': ip, 'nome': ip, 'peer_as': peer.get('peer_as') or peer_as,
+                'as_local': as_local, 'equipamento': '', 'grupo': '',
+                'descricao': peer.get('descricao') or '',
+                'habilitada': bool(opcoes.get('habilitar', True)),
+                'policy_in': opcoes.get(f'policy_{familia}_in') or f'{base}-IN',
+                'policy_out': opcoes.get(f'policy_{familia}_out') or f'{base}-OUT',
+                'fake_as': '', 'prepend_as': as_local,
+            })
+            ips_existentes.add(ip)
+
