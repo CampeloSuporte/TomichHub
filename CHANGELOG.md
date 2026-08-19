@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-19 (Wiki: filtro por fabricante dentro da categoria)
+
+### Adicionado
+
+- **Filtro por fabricante dentro da tela de categoria** ([`wiki/views.py`](wiki/views.py) — `listar_por_categoria`,
+  [`wiki/templates/wiki/listar_artigos.html`](wiki/templates/wiki/listar_artigos.html)): o campo
+  `ArtigoWiki.fabricante` já existia, mas só dava pra filtrar por ele na tela de busca geral ou numa URL à
+  parte (`wiki/fabricante/<x>/`), nunca combinado com uma categoria específica. Agora, ao entrar numa
+  categoria (ex. "BGP"), aparece uma barra de pills com os fabricantes que **realmente têm artigo naquela
+  categoria** (ex. MikroTik (2), Huawei (1)) — clicar filtra a lista via `?fabricante=X` no servidor, sem
+  misturar contagem com outras categorias. Sem alteração de modelo/migration — o dado já existia, faltava
+  só a UI e o filtro combinado categoria+fabricante. Cobertura de teste: `wiki/tests.py`
+  (`ListarPorCategoriaFabricanteTest`).
+
+---
+
 ## [Não publicado] — 2026-08-19 (Atendimento: erro de acentuação no gatilho de tarefa)
 
 ### Corrigido

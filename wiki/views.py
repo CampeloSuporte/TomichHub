@@ -2,13 +2,13 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.db import IntegrityError
 from django.utils.text import slugify
 from django.views.decorators.http import require_http_methods
 import markdown
 from .models import ArtigoWiki, CategoriaWiki, TagWiki
-from clientes.decorators import admin_required, ferramenta_instancia_required
+from clientes.decorators import admin_required, ferramenta_instancia_required, wiki_edicao_required
 
 # ============================================
 # VIEWS PRINCIPAIS
@@ -49,7 +49,7 @@ def visualizar_artigo(request, slug):
 
 
 @login_required(login_url='login')
-@admin_required
+@wiki_edicao_required
 def cadastrar_artigo(request):
     """Cadastra novo artigo"""
     if request.method == 'POST':
@@ -102,7 +102,7 @@ def cadastrar_artigo(request):
 
 
 @login_required(login_url='login')
-@admin_required
+@wiki_edicao_required
 def editar_artigo(request, slug):
     """Edita um artigo existente"""
     artigo = get_object_or_404(ArtigoWiki, slug=slug)
@@ -212,15 +212,48 @@ def buscar_wiki(request):
 @login_required(login_url='login')
 @ferramenta_instancia_required('wiki')
 def listar_por_categoria(request, slug):
-    """Lista artigos por categoria"""
+    """Lista artigos por categoria — com filtro adicional por fabricante
+    dentro da própria categoria (ex.: categoria "BGP" + fabricante
+    "MikroTik"). Os fabricantes oferecidos como filtro são só os que
+    realmente têm artigo nesta categoria, não a lista fixa inteira."""
     categoria = get_object_or_404(CategoriaWiki, slug=slug)
-    artigos = ArtigoWiki.objects.filter(categoria=categoria, ativo=True)
+    artigos_categoria = ArtigoWiki.objects.filter(categoria=categoria, ativo=True)
+
+    fabricante_labels = dict(ArtigoWiki.FABRICANTES)
+    contagem_por_fabricante = (
+        artigos_categoria.values('fabricante')
+        .annotate(total=Count('id'))
+        .order_by('fabricante')
+    )
+    fabricantes_disponiveis = [
+        {
+            'valor': item['fabricante'],
+            'label': fabricante_labels.get(item['fabricante'], item['fabricante']),
+            'total': item['total'],
+        }
+        for item in contagem_por_fabricante
+    ]
+
+    fabricante_selecionado = request.GET.get('fabricante', '').strip()
+    artigos = artigos_categoria
+    if fabricante_selecionado:
+        artigos = artigos.filter(fabricante=fabricante_selecionado)
+
+    if fabricante_selecionado:
+        nome_fabricante = fabricante_labels.get(fabricante_selecionado, fabricante_selecionado)
+        empty_msg = f'Nenhum artigo de {nome_fabricante} nesta categoria ainda.'
+    else:
+        empty_msg = 'Nenhum artigo encontrado nesta categoria ainda.'
 
     return render(request, 'wiki/listar_artigos.html', {
         'artigos': artigos,
         'page_title': categoria.nome,
         'page_icon': categoria.icone,
-        'empty_msg': 'Nenhum artigo encontrado nesta categoria ainda.',
+        'empty_msg': empty_msg,
+        'categoria_atual': categoria,
+        'fabricantes_disponiveis': fabricantes_disponiveis,
+        'fabricante_selecionado': fabricante_selecionado,
+        'total_categoria': artigos_categoria.count(),
     })
 
 
@@ -338,7 +371,7 @@ def api_visualizar_artigo(request, slug):
 # ============================================
 
 @login_required(login_url='login')
-@admin_required
+@wiki_edicao_required
 @require_http_methods(["POST"])
 def cadastrar_categoria_ajax(request):
     """Cadastra categoria via AJAX"""

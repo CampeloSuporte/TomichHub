@@ -30,13 +30,29 @@
                 <a href="{% url 'wiki:dashboard' %}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-1"></i> Voltar
                 </a>
-                {% if is_admin_bo %}
+                {% if pode_editar_wiki %}
                 <a href="{% url 'wiki:cadastrar_artigo' %}" class="btn btn-primary">
                     <i class="fas fa-plus me-1"></i> Novo Artigo
                 </a>
                 {% endif %}
             </div>
         </div>
+
+        {% if fabricantes_disponiveis %}
+        <!-- Filtro por fabricante dentro da categoria -->
+        <div class="wiki-fabricante-filtros mb-4">
+            <a href="{% url 'wiki:categoria' categoria_atual.slug %}"
+               class="fab-pill {% if not fabricante_selecionado %}active{% endif %}">
+                Todos <span class="fab-pill-count">{{ total_categoria }}</span>
+            </a>
+            {% for f in fabricantes_disponiveis %}
+            <a href="{% url 'wiki:categoria' categoria_atual.slug %}?fabricante={{ f.valor }}"
+               class="fab-pill {% if fabricante_selecionado == f.valor %}active{% endif %}">
+                <i class="fas fa-microchip me-1"></i>{{ f.label }} <span class="fab-pill-count">{{ f.total }}</span>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
 
         <!-- Info de resultados -->
         <div id="searchResultInfo" style="display:none;" class="mb-3">
@@ -94,10 +110,12 @@
                                 <a href="{% url 'wiki:visualizar_artigo' artigo.slug %}" class="btn btn-sm btn-outline-primary" title="Visualizar">
                                     <i class="fas fa-eye"></i> Ver
                                 </a>
-                                {% if is_admin_bo %}
+                                {% if pode_editar_wiki %}
                                 <a href="{% url 'wiki:editar_artigo' artigo.slug %}" class="btn btn-sm btn-outline-warning" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </a>
+                                {% endif %}
+                                {% if is_admin_bo %}
                                 <form method="post" action="{% url 'wiki:deletar_artigo' artigo.slug %}" class="d-inline" onsubmit="return confirmarDelete(event, '{{ artigo.titulo|escapejs }}', this)">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Deletar">
@@ -183,6 +201,35 @@
     transition: border-color 0.2s, color 0.2s;
 }
 .btn-close-search:hover { border-color: var(--red); color: var(--red); }
+
+.wiki-fabricante-filtros { display: flex; flex-wrap: wrap; gap: 8px; }
+.fab-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: rgba(88,166,255,.06);
+    color: var(--text-light);
+    font-size: 12px;
+    text-decoration: none;
+    transition: border-color .2s, background .2s, color .2s;
+}
+.fab-pill:hover { border-color: var(--cyan); color: var(--cyan); text-decoration: none; }
+.fab-pill.active {
+    background: rgba(63,185,80,.15);
+    border-color: var(--green);
+    color: var(--green);
+    font-weight: 600;
+}
+.fab-pill-count {
+    background: rgba(125,133,144,.2);
+    border-radius: 10px;
+    padding: 0 6px;
+    font-size: 10px;
+}
+.fab-pill.active .fab-pill-count { background: rgba(63,185,80,.25); }
 </style>
 
 <script>
