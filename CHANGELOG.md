@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-19 (Atendimento: tarefa criada pela IA agora usa a mensagem do cliente)
+
+### Corrigido
+
+- **"abrir tarefa" só olhava pro próprio comando, não pro problema relatado** ([`atendimento/tasks.py`](atendimento/tasks.py) —
+  `abrir_tarefa_ia`, `_contexto_conversa`): o comando que dispara a tarefa é quase sempre curto e sem
+  detalhe ("Tomichinho, criar tarefa") — o pedido de verdade está na mensagem do cliente logo antes. A IA
+  só recebia o comando isolado, então o título saía genérico tipo "Criar tarefa para Tomichinho". Agora
+  `abrir_tarefa_ia` manda o histórico recente da conversa (até 12 mensagens) pra IA, com instrução explícita
+  pra montar a tarefa a partir do que o CLIENTE relatou, não do comando em si. Sem IA configurada, o
+  fallback também melhorou: usa a última mensagem do cliente como título em vez do comando vazio. Caso real
+  testado: cliente relatou problema de MTU (pacotes acima de 1442 bytes não passavam) e "Tomichinho, criar
+  tarefa" sozinho não dizia nada — agora a tarefa sai com "Verificar MTU" e a descrição do problema.
+  `responder_tomichinho` foi ajustado pra usar o mesmo helper de histórico (`_contexto_conversa`), sem
+  mudança de comportamento. Cobertura de teste: `atendimento/tests.py` (novos casos em `AbrirTarefaIATaskTest`).
+
+---
+
 ## [Não publicado] — 2026-08-19 (Atendimento: "criar tarefa" não disparava o agente IA)
 
 ### Corrigido

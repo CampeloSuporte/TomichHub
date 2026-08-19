@@ -60,6 +60,23 @@ def _is_time_now(hour_cfg, min_cfg, window=5):
     return min_cfg <= agora.minute < min_cfg + window
 
 
+_ROTULO_SENDER = {
+    'customer': 'Cliente', 'agent': 'Atendente', 'ai': 'Tomichinho',
+    'internal': 'Nota interna', 'system': 'Sistema',
+}
+
+
+def _contexto_conversa(conv, limite=12):
+    """Últimas mensagens da conversa formatadas como "Quem: texto", pra dar
+    à IA o histórico real por trás de um gatilho curto (ex.: "Tomichinho,
+    criar tarefa" não diz nada sozinho — o pedido de verdade está nas
+    mensagens do cliente antes disso)."""
+    historico = list(conv.messages.order_by('-created_at')[:limite])[::-1]
+    linhas = [f"{_ROTULO_SENDER.get(m.sender_type, m.sender_type)}: {m.content}"
+              for m in historico if m.content]
+    return "\n".join(linhas), historico
+
+
 def _resumir_chamado_ia(conv):
     """Resume em poucas palavras o que o cliente quer, a partir das mensagens
     dele no chamado. Retorna None se a IA não estiver configurada ou a
@@ -103,10 +120,7 @@ def responder_tomichinho(conversation_id):
         "Tecnologia. Responda de forma breve, cordial e objetiva às "
         "mensagens do grupo de suporte."
     )
-    historico = list(conv.messages.order_by('-created_at')[:12])[::-1]
-    rotulo = {'customer': 'Cliente', 'agent': 'Atendente', 'ai': 'Tomichinho', 'system': 'Sistema'}
-    linhas = [f"{rotulo.get(m.sender_type, m.sender_type)}: {m.content}" for m in historico if m.content]
-    contexto = "\n".join(linhas)
+    contexto, _historico = _contexto_conversa(conv)
 
     resposta = call_ai(
         system_prompt=system_prompt,
@@ -150,17 +164,28 @@ def abrir_tarefa_ia(conversation_id, texto_comando, is_internal=False):
         logger.info(f"Agente IA: 'abrir tarefa' ignorado, grupo {conv.group_id} sem cliente vinculado")
         return {'skipped': True, 'reason': 'grupo sem cliente vinculado'}
 
+    # O comando que dispara a tarefa é muitas vezes só o gatilho em si
+    # ("Tomichinho, criar tarefa", sem detalhe nenhum) — o pedido de
+    # verdade está nas mensagens do cliente antes dele. Manda o histórico
+    # inteiro pra IA entender o problema relatado, não só o comando.
+    contexto, historico = _contexto_conversa(conv)
+
     resposta = call_ai(
         system_prompt=(
-            "Você extrai pedidos de tarefa a partir de mensagens de um grupo "
-            "de WhatsApp de suporte técnico. Responda só com um JSON no "
-            'formato {"titulo": "...", "descricao": "..."}, sem markdown '
-            "nem texto adicional. Título: até 80 caracteres, direto ao "
-            "ponto. Descrição: pode ficar vazia se a mensagem não tiver "
-            "detalhe além do título."
+            "Você extrai pedidos de tarefa a partir de uma conversa de "
+            "suporte técnico no WhatsApp. Vai receber o histórico recente da "
+            "conversa e, por último, o comando que disparou a criação da "
+            "tarefa. O comando muitas vezes não tem detalhe nenhum (ex.: "
+            '"criar tarefa") — quando for assim, monte a tarefa a partir do '
+            "que o CLIENTE relatou ou pediu no histórico, não do comando em "
+            "si. Responda só com um JSON no formato "
+            '{"titulo": "...", "descricao": "..."}, sem markdown nem texto '
+            "adicional. Título: até 80 caracteres, resume o problema/pedido. "
+            "Descrição: detalha o que o cliente relatou, com contexto "
+            "técnico relevante (números, prazos, o que já foi verificado)."
         ),
-        user_prompt=texto_comando,
-        max_tokens=300,
+        user_prompt=f"Histórico recente da conversa:\n{contexto}\n\nComando que disparou a tarefa: {texto_comando}",
+        max_tokens=400,
     )
     titulo, descricao = '', ''
     if resposta:
@@ -172,9 +197,12 @@ def abrir_tarefa_ia(conversation_id, texto_comando, is_internal=False):
         except Exception as e:
             logger.warning(f"Agente IA: resposta de 'abrir tarefa' não é JSON válido: {e}")
     if not titulo:
-        # IA não configurada ou falhou: usa o próprio texto do pedido como título,
-        # sem depender da IA pra pelo menos registrar a tarefa.
-        titulo = texto_comando.strip()[:200] or 'Tarefa via WhatsApp'
+        # IA não configurada ou falhou: tenta a última mensagem do cliente
+        # como título (mais útil que um comando tipo só "criar tarefa"),
+        # senão usa o próprio texto do comando.
+        ultima_do_cliente = next(
+            (m.content for m in reversed(historico) if m.sender_type == 'customer' and m.content), '')
+        titulo = (ultima_do_cliente or texto_comando).strip()[:200] or 'Tarefa via WhatsApp'
 
     tarefa = Tarefa.objects.create(
         titulo=titulo,

@@ -1304,3 +1304,50 @@ class AbrirTarefaIATaskTest(TestCase):
 
         tarefa = Tarefa.objects.get(id=resultado['tarefa_id'])
         self.assertEqual(tarefa.titulo, 'abrir tarefa: sem IA configurada')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai', return_value='{"titulo": "Verificar MTU", "descricao": "Cliente relata que pacotes acima de 1442 bytes não passam"}')
+    def test_comando_vazio_usa_historico_da_conversa_pra_entender_o_pedido(self, mock_call_ai, mock_client_cls):
+        # Caso real: "Tomichinho, criar tarefa" não diz nada sozinho — o
+        # pedido de verdade estava na mensagem do cliente logo antes.
+        from tarefas.models import Tarefa
+        from atendimento.tasks import abrir_tarefa_ia
+
+        cliente = _criar_cliente_teste()
+        self.group.cliente = cliente
+        self.group.save(update_fields=['cliente'])
+        Message.objects.create(
+            conversation=self.conversation, sender_type='customer',
+            content='Sobre o MTU: pacotes acima de 1442 não estão passando, pode verificar?',
+            external_id='cli-1',
+        )
+
+        resultado = abrir_tarefa_ia(str(self.conversation.id), 'Tomichinho, criar tarefa', True)
+
+        tarefa = Tarefa.objects.get(id=resultado['tarefa_id'])
+        self.assertEqual(tarefa.titulo, 'Verificar MTU')
+        self.assertIn('1442', tarefa.descricao)
+        # O prompt mandado pra IA precisa carregar a mensagem do cliente,
+        # não só o comando vazio.
+        _args, kwargs = mock_call_ai.call_args
+        self.assertIn('1442', kwargs['user_prompt'])
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai', return_value=None)
+    def test_sem_ia_e_sem_detalhe_no_comando_usa_ultima_mensagem_do_cliente(self, mock_call_ai, mock_client_cls):
+        from tarefas.models import Tarefa
+        from atendimento.tasks import abrir_tarefa_ia
+
+        cliente = _criar_cliente_teste()
+        self.group.cliente = cliente
+        self.group.save(update_fields=['cliente'])
+        Message.objects.create(
+            conversation=self.conversation, sender_type='customer',
+            content='O link caiu de novo aqui, pode verificar?',
+            external_id='cli-2',
+        )
+
+        resultado = abrir_tarefa_ia(str(self.conversation.id), 'Tomichinho, criar tarefa', True)
+
+        tarefa = Tarefa.objects.get(id=resultado['tarefa_id'])
+        self.assertEqual(tarefa.titulo, 'O link caiu de novo aqui, pode verificar?')
