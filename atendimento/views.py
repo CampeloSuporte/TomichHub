@@ -2234,9 +2234,38 @@ def api_test_alerta_diario(request):
 @staff_required
 @require_http_methods(["GET"])
 def api_agents_list(request):
-    """Retorna atendentes ativos para o modal de transferência."""
-    from django.contrib.auth.models import User as AuthUser
-    agents = AuthUser.objects.filter(is_active=True, is_staff=True).exclude(id=request.user.id).order_by('first_name', 'username')
+    """Retorna atendentes ativos para o modal de transferência.
+
+    A lista saía de `is_staff=True` cru, sem escopo nenhum: aparecia gente de
+    outra instância e, pior, conta de serviço/sobra de cadastro que nunca
+    atendeu nada (nome vazio, sem e-mail) — o operador via "atendentes que não
+    existem" no modal. Agora vale o escopo de instância de `usuario.perms` e
+    ficam de fora as contas sem identificação e sem histórico no módulo.
+    """
+    from django.db.models import Exists, OuterRef, Q
+    from usuario.perms import colegas_de_instancia, get_role
+
+    # Inclui o próprio usuário: o modal de transferência também é usado para
+    # puxar pra si um chamado que está em andamento com outro atendente —
+    # excluir quem está logado deixava essa opção impossível de aparecer.
+    agents = colegas_de_instancia(request.user).filter(
+        # Todo o módulo de atendimento passa por `staff_required` (is_staff).
+        # Oferecer Consultor/Operador aqui mandaria o chamado pra quem não
+        # consegue nem abrir a tela — o chamado sumiria da fila de todo mundo.
+        is_staff=True,
+    ).annotate(
+        _tem_status=Exists(AgentStatus.objects.filter(user_id=OuterRef('pk'))),
+        _ja_atendeu=Exists(Conversation.objects.filter(assigned_to_id=OuterRef('pk'))),
+    ).filter(
+        # Conta "de verdade": ou já usou o atendimento (tem AgentStatus ou já
+        # ficou com algum chamado), ou pelo menos tem identificação (nome ou
+        # e-mail). Só some quem não tem nada disso — que é exatamente o perfil
+        # da conta criada por engano/serviço.
+        Q(_tem_status=True) | Q(_ja_atendeu=True) |
+        ~Q(email='') | ~Q(first_name='') | ~Q(last_name='')
+    ).order_by('first_name', 'username')
+
+    _ROLE_LABEL = {'admin': 'Supervisor', 'consultor': 'Consultor', 'operador': 'Agente'}
     data = []
     for u in agents:
         try:
@@ -2248,7 +2277,9 @@ def api_agents_list(request):
         data.append({
             'id':      u.id,
             'name':    display,
-            'role':    'Supervisor' if u.is_staff else 'Agente',
+            # Rotulava todo mundo de "Supervisor" — o queryset já era só
+            # is_staff, então o `else 'Agente'` nunca acontecia.
+            'role':    _ROLE_LABEL.get(get_role(u), 'Agente'),
             'status':  status,
             'initials': (u.first_name[:1] + (u.last_name[:1] if u.last_name else '')).upper() or u.username[:2].upper(),
         })

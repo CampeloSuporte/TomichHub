@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-19 (Atendimento: transferência para si mesmo)
+
+### Corrigido
+
+- **Não era possível transferir um chamado em andamento para o próprio usuário** ([`atendimento/views.py`](atendimento/views.py) — `api_agents_list`):
+  o endpoint que alimenta o modal de transferência excluía sempre `request.user` da lista de
+  atendentes (`.exclude(id=request.user.id)`). Isso impedia um cenário legítimo: o chamado está
+  atribuído a um colega e o operador quer puxá-lo para si via "Transferir" — o próprio nome
+  simplesmente não aparecia como opção. O `exclude` foi removido; o usuário logado agora aparece
+  normalmente na lista quando faz parte da instância (via `colegas_de_instancia`).
+
+---
+
 ## [Não publicado] — 2026-08-19 (2FA: tela de configuração travava no primeiro login)
 
 ### Corrigido
@@ -51,6 +64,55 @@ visíveis, ferramentas liberadas e acesso negado a cliente de outra instância. 
 [`docs/PERMISSOES_CONSULTOR.md`](docs/PERMISSOES_CONSULTOR.md).
 
 ---
+
+## [Não publicado] — 2026-08-18 (Páginas de erro próprias no lugar da tela de debug do Django)
+
+### Corrigido
+
+- **O CRM rodava com `DEBUG = True` em produção** ([`crm/settings.py`](crm/settings.py)): qualquer
+  página que falhasse devolvia a tela de debug do Django — o 404 listava todas as rotas do projeto
+  e um 500 mostraria traceback, código-fonte, variáveis locais e as configurações (banco, chaves).
+  Agora `DEBUG = os.environ.get('DJANGO_DEBUG', '0') == '1'`, ou seja, desligado por padrão e
+  religável pontualmente pelo serviço sem editar código.
+
+### Adicionado
+
+- **Telas de erro no visual do CRM** (`templates/400.html`, `403.html`, `403_csrf.html`,
+  `404.html`, `500.html`): mensagem em português, sem detalhe técnico, com botões de voltar e ir
+  para o início. O 500 informa "Erro interno do sistema" e avisa que a falha foi registrada; o
+  `403_csrf` explica sessão expirada e leva de volta ao login. São páginas autocontidas (CSS
+  embutido, sem `extends` nem `{% static %}`), porque o handler de 500 renderiza sem contexto —
+  um template de erro que depende de contexto vira outro erro.
+- **`LOGGING` gravando em `logs/django-erros.log`** ([`crm/settings.py`](crm/settings.py)): com
+  `DEBUG=False` o traceback deixaria de aparecer na tela **e** não iria para lugar nenhum (o
+  handler de console padrão do Django é filtrado por `require_debug_true` e o `mail_admins` não
+  tem e-mail configurado). Agora `django.request`, `clientes` e `atendimento` escrevem em arquivo
+  rotativo (10 MB × 5) e no journal (`journalctl -u gunicorn`).
+
+### Corrigido (robustez)
+
+- **Context processors não quebram mais a própria página de erro**
+  ([`financeiro/context_processors.py`](financeiro/context_processors.py),
+  [`usuario/context_processors.py`](usuario/context_processors.py)): ambos liam `request.user`
+  direto. Quando o Django renderiza 404/403 antes de o `AuthenticationMiddleware` ter posto o
+  atributo, isso estoura `AttributeError` e o usuário recebe um 500 cru no lugar da tela amigável.
+  Passaram a usar `getattr(request, 'user', None)`.
+
+## [Não publicado] — 2026-08-18 (Proxy web: SPA do device não sequestra mais a barra de endereços)
+
+### Corrigido
+
+- **404 do Django ao recarregar a página web de um acesso** ([`clientes/proxy_engine.py`](clientes/proxy_engine.py)):
+  o shim injetado no proxy só reescrevia `history.pushState`/`replaceState` quando a URL começava
+  com `/`. O vue-router monta a URL **absoluta** (`location.protocol + '//' + location.host + base + path`),
+  então nada era reescrito e a barra de endereços saía do proxy: na OLT do acesso 889 (base `/admin/`)
+  virava `https://crm.tomich.com.br/admin/monitor/overview/device_information`. A página seguia
+  funcionando — fetch/XHR continuavam reescritos —, mas um F5 pedia esse caminho ao CRM e caía no
+  `catch_all_view` do admin do Django (*Page not found (404)*). Agora os dois interceptadores usam
+  `_rw()`, que já normaliza string relativa, string absoluta do mesmo origin e objeto `URL`; a URL
+  passa a ser `/clientes/acessos/889/web/443/https/admin/monitor/...` e o F5 volta pelo proxy
+  (o device responde o `index.html` da SPA nessa rota). Mesmo tratamento em `location.assign/replace`,
+  que é o fallback do vue-router quando o `pushState` falha.
 
 ## [Não publicado] — 2026-08-18 (BGP: downstream sem filtro de bogons)
 
@@ -423,6 +485,74 @@ Huawei entram e os 51 ZTE/Datacom/Parks ficam de fora com mensagem explicando �
 - **Campos do painel de propriedades apareciam centralizados**: o `text-align:center` do estado
   vazio vinha inline no `#props-body` e, como o JS só troca o `innerHTML`, continuava valendo
   para os formulários. O estilo passou para a classe `.prop-empty`.
+
+---
+
+## [Não publicado] — 2026-08-14 (Backup barrado em cliente que só tem túnel OpenVPN)
+
+### Corrigido
+
+- **"Este equipamento tem IP privado mas não há proxy SSH ativo" no backup manual**, mesmo com o
+  túnel OpenVPN de pé e o equipamento alcançável. O backend nunca chegava a ser chamado: a
+  pré-checagem no front-end (`executarBackup`, `clientes/templates/listar.html`) detectava IP
+  privado por regex e perguntava a `/clientes/proxies/ativo/` só pela existência de um
+  `ProxyServer` — conceito anterior ao túnel. `realizar_backup()` já cai em `vpn_cobre_ip()` e
+  conecta direto pelo túnel desde sempre.
+- **`proxy_ativo_cliente` passou a responder a pergunta certa**: com `acesso_id`, devolve
+  `privado`, `tem_tunel` e `alcancavel` considerando as duas saídas (proxy SSH **ou** túnel
+  OpenVPN, com conferência da rota real). Sem `acesso_id`, mantém a resposta antiga. O front-end
+  parou de duplicar a regra em regex — que, de quebra, não cobria CGNAT (100.64.0.0/10) nem
+  198.18.0.0/15, faixas que os túneis servem.
+- **Mensagens de erro** de backup, proxy web, OLT PON e monitoramento diziam só "configure um túnel
+  SSH"; agora citam as duas opções e apontam a aba "Túneis".
+
+Validado com backup real da OLT ZTE da TOPNET (`198.18.10.2`, cliente sem nenhum ProxyServer):
+conectou pelo túnel e salvou 49 KB de configuração.
+
+---
+
+## [Não publicado] — 2026-08-14 (WireGuard removido — OpenVPN é o único tipo de VPN)
+
+### Removido
+
+- **VPN WireGuard, por completo.** Dois tipos de VPN para o mesmo fim significavam duas
+  implementações do mesmo roteamento, dois caminhos de fallback em cada consumer e duas fontes de
+  rota disputando a mesma tabela do kernel. O que saiu:
+  - **Modelos** `VPNWireGuard` e `VPNServidorConfig` (migração `0111_remover_wireguard`).
+  - **Código**: `clientes/vpn_manager.py`, as views `vpn_wg_*` e as 7 rotas `/clientes/**/vpn-wg/**`,
+    `_wg_peer_ativo()` e `_vpn_cobre_ip()` em `clientes/consumers.py`, incluindo o source-bind por
+    interface isolada (`ssh -b`), que o OpenVPN não precisa — a rota do kernel já sai pela tun certa.
+  - **Frontend**: seção "VPN WireGuard — MikroTik" da aba Túneis e todo o JS `wg*`.
+  - **Servidor**: interfaces `wg0`–`wg4` (`wg-quick@` parado e desabilitado), `/etc/wireguard/` e
+    `/etc/sudoers.d/crm-wireguard`. Backup em `/root/backup-wireguard-removido-20260814/`.
+- **Impacto assumido**: DS TECH (peer ativo no `wg0`, 17 redes `/16`) e DIONES ficaram sem acesso
+  até criarem o túnel OpenVPN e rodarem o bootstrap no MikroTik.
+
+### Alterado
+
+- **Ping e checagem de DNS pelo servidor** (`clientes/views.py`) usavam handshake de peer WireGuard
+  para decidir se podiam rodar local; passaram a usar `openvpn_tunnel_manager.tunel_conectado()`.
+- **`rota_dev_para()`** mudou de `vpn_manager` para `openvpn_tunnel_manager` (o módulo que sobrou).
+- `sudoers` do OpenVPN ganhou `systemctl reset-failed openvpn-server@server-crm-*`, que o código já
+  chamava desde 13/08 sem ter permissão.
+
+---
+
+## [Não publicado] — 2026-08-14 (Túnel OpenVPN: bootstrap falhava no RouterOS 7.6+)
+
+### Corrigido
+
+- **`cipher=aes256` recusado pelo RouterOS 7.6+** ([`clientes/openvpn_tunnel_manager.py`](clientes/openvpn_tunnel_manager.py)):
+  na 7.6 a MikroTik renomeou os valores do ovpn-client ao acrescentar GCM (`aes256-cbc`,
+  `aes256-gcm`) e `aes256` puro deixou de existir. O `/import` morria com
+  `Script Error: syntax error (line 20 column 109)` — a coluna do cipher — sem sequer tentar
+  conectar (reproduzido no túnel da Conecta ISP, RouterOS 7.21.4). `gerar_setup_rsc()` passou a ler
+  major **e** minor da versão (`_parse_versao_ros`) e emitir `aes256` até a 7.5 e `aes256-cbc` da
+  7.6 em diante; sem versão informada assume 7.6+.
+- **Conflito de redes agora considera a tabela de rotas do kernel**, não só o banco: rotas de peers
+  antigos do `wg0` compartilhado não têm registro em `VPNWireGuard` e escapavam da checagem. Rota
+  órfã (prefixo que nenhum peer WireGuard reivindica) é ignorada de propósito — não entrega tráfego
+  a ninguém e só travaria o operador por resto de configuração antiga.
 
 ---
 
