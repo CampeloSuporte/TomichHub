@@ -527,6 +527,13 @@ class CriarDownstreamTest(SimpleTestCase):
         cmds = self._criar(destinos={'c-01': 'export', 'glob-all-ptts-ixbr': 'export'})
         self.assertIn(f'apply community {ASN}:50101 {ASN}:60011 additive', cmds)
 
+    def test_upstream_continua_com_o_filtro_de_bogons(self):
+        # No upstream o node 10 aceita a tabela cheia — é o node 5 que segura
+        # os bogons. Só o downstream dispensa a lista.
+        cmds = comandos_criar_circuito(self.dados, self.mapa, 'c-02', {
+            'nome': 'X', 'peer_as': '65000', 'v4': {'peers': [{'ip': '192.0.2.40'}]}})
+        self.assertIn('if-match ip-prefix BOGONS-V4-IN', cmds)
+
     def test_recusa_destino_global_sem_alcance(self):
         with self.assertRaises(AcaoBgpNaoSuportada):
             self._criar(destinos={'glob-all-cdns': 'export'})
@@ -542,12 +549,13 @@ class CriarDownstreamTest(SimpleTestCase):
                                            'prefixos': ['170.85.0.0/22']})
         self.assertIn('já existe', str(ctx.exception).lower())
 
-    def test_bogon_all_deny_nao_e_reaproveitado(self):
-        # BOGONS-V4 (só `deny`) nunca casa num `if-match`; a lista usada tem
-        # que ser a de `permit`.
+    def test_nao_gera_lista_de_bogons(self):
+        # A entrada do cliente casa a prefix-list DELE — bogon nenhum chegaria
+        # a esse node, então a lista seria config que nunca casa.
         cmds = self._criar()
-        self.assertIn('if-match ip-prefix BOGONS-V4-IN', cmds)
-        self.assertNotIn('if-match ip-prefix BOGONS-V4', cmds)
+        self.assertFalse([c for c in cmds if 'BOGON' in c.upper()], cmds)
+        i = cmds.index('route-policy DOWNSTREAM-ACME-V4-IN permit node 10')
+        self.assertEqual(cmds[i + 1], 'if-match ip-prefix PL-DOWNSTREAM-ACME-V4')
 
 
 class DownstreamDescobertaTest(SimpleTestCase):

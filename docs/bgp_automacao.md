@@ -1343,6 +1343,13 @@ usa: `_prefix_list_bogons()` reaproveita uma lista de bogons da caixa **se ela
 tiver entradas `permit`** e não permitir a tabela inteira; senão cria
 `BOGONS-V4-IN`/`BOGONS-V6-IN` a partir do §2.
 
+Isso vale para upstream, IX e CDN, onde o node 10 aceita a tabela cheia e é o
+node 5 que segura os bogons. **O downstream não leva filtro de bogons**: lá o
+node 10 casa a prefix-list do próprio cliente (os blocos dele, e só), então
+nenhum bogon teria como chegar — a lista seriam 15 linhas de config que nunca
+casam. Tirá-la encurtou a config de um cliente v4+v6 em 16 a 31 linhas,
+dependendo do que a caixa já tinha.
+
 A recusa da lista que "permite tudo" não é teórica: a BOGONS de uma das caixas
 tem `permit 0.0.0.0/0 greater-equal 25 less-equal 32` (prefixo longo demais, que
 é bogon por tamanho). Usá-la num `deny node` derrubaria a sessão inteira, e ela
@@ -1359,7 +1366,7 @@ Downstream não é circuito de community — para um cliente não se escolhe
 - **entrada**: só passam os prefixos dele. Os blocos informados no formulário
   viram `PL-DOWNSTREAM-<NOME>-V4/V6` (com `greater-equal <len> less-equal 24`,
   /48 em IPv6, para o cliente poder desagregar) e é essa lista que a policy de
-  entrada casa.
+  entrada casa — sem node de bogons, que aqui nunca casaria.
 
 E o pulo do gato: **as communities de reanúncio entram na policy de ENTRADA.**
 As policies de saída dos upstreams terminam em `deny node 999`, que só deixa

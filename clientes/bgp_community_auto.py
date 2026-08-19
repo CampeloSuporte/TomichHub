@@ -1647,19 +1647,27 @@ def _validar_peer(dados, peer_ip, familia, ja_usados):
     return str(ip)
 
 
-def _bloco_policy_in(nome_policy, familia, bogons, full_routing, communities,
+def _bloco_policy_in(nome_policy, familia, bogons, aceita, communities,
                      local_preference=''):
     """
     Policy de ENTRADA no layout do template (§9/§11): bogons fora no node 5,
-    tabela cheia aceita no node 10 — carimbando a community de origem (§17) e,
-    quando informada, a local-preference do tipo de circuito —, `deny node 999`
-    no fim pra nada entrar por engano.
+    o que o peer pode mandar aceito no node 10 — carimbando a community de
+    origem (§17) e, quando informada, a local-preference do tipo de circuito —,
+    `deny node 999` no fim pra nada entrar por engano.
+
+    `bogons` vazio pula o node 5. É o caso do downstream: lá o node 10 casa a
+    prefix-list DO CLIENTE (os blocos dele, e só), então nenhum bogon teria como
+    passar — o filtro seria 15 linhas de config que nunca casam. Num upstream/IX
+    é o contrário: o node 10 aceita a tabela cheia, e é o node 5 que segura os
+    bogons.
     """
-    linhas = [f'route-policy {nome_policy} deny node 5',
-              f'{_CMD_IF_MATCH[familia]} {bogons}',
-              'quit',
-              f'route-policy {nome_policy} permit node {NODE_LOCAL}',
-              f'{_CMD_IF_MATCH[familia]} {full_routing}']
+    linhas = []
+    if bogons:
+        linhas += [f'route-policy {nome_policy} deny node 5',
+                   f'{_CMD_IF_MATCH[familia]} {bogons}',
+                   'quit']
+    linhas += [f'route-policy {nome_policy} permit node {NODE_LOCAL}',
+               f'{_CMD_IF_MATCH[familia]} {aceita}']
     if local_preference:
         linhas.append(f'apply local-preference {local_preference}')
     if communities:
@@ -2041,9 +2049,10 @@ def comandos_criar_downstream(dados, mapa, opcoes=None):
     comandos, policies = [], {}
 
     for familia in familias:
-        bogons, cmd_bogons = _prefix_list_bogons(dados, familia)
+        # Sem lista de bogons aqui: a entrada do cliente casa a prefix-list dele
+        # (só os blocos informados), então bogon nenhum chegaria ao node.
         full, cmd_full = _prefix_list_full_routing(dados, familia)
-        comandos += cmd_bogons + cmd_full
+        comandos += cmd_full
 
         nome_pl = opcoes.get(f'prefix_list_{familia}') or f'PL-DOWNSTREAM-{nome}-{familia.upper()}'
         if nome_pl in listas_existentes:
@@ -2072,7 +2081,7 @@ def comandos_criar_downstream(dados, mapa, opcoes=None):
                     f'escolha outro nome de cliente.'
                 )
 
-        comandos += _bloco_policy_in(policies[f'{familia}_in'], familia, bogons, nome_pl,
+        comandos += _bloco_policy_in(policies[f'{familia}_in'], familia, '', nome_pl,
                                      communities, local_preference=local_preference)
         comandos += [f'route-policy {policies[f"{familia}_out"]} permit node {NODE_LOCAL}',
                      f'{_CMD_IF_MATCH[familia]} {full}',
