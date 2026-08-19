@@ -5,6 +5,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-19 (Instâncias: limpeza do lixo de teste e criação da Principal)
+
+### Corrigido
+
+- **O cadastro de Operador listava seis instâncias onde deveriam existir duas.** Cinco delas
+  eram lixo de um script de verificação rodado contra o banco de produção em 02/08/2026
+  (`I_ea19cb`, `I_1ae493`, `Instancia1_466dee`, `Instancia2_466dee`, `Instancia1_6cb110`), junto
+  com cinco logins (`c_ea19cb`, `c_1ae493`, `cons_466dee`, `op_466dee`, `cons_6cb110`) e dois
+  clientes fake sem nenhum acesso. Removidos, com dump prévio em
+  `backups/lixo_teste_instancias_20260819.json`. Nada no repositório recria esses registros.
+- **A operação do Administrador não existia como instância**: cliente criado por ele sem escolher
+  instância nascia com `instancia = NULL` — 47 clientes e 16 tarefas assim. Além de nunca aparecer
+  no dropdown, isso tornava impossível ter Operador da operação principal:
+  `pode_acessar_cliente` exige, para Consultor/Operador, instância não-nula batendo com a do
+  cliente, então esse operador não enxergaria cliente nenhum. Criada a instância **Principal**,
+  com os 47 clientes e as 16 tarefas migrados e as 18 ferramentas habilitadas.
+
+Administradores seguem fora de qualquer instância (`get_role` trata `is_staff` sem
+`PerfilUsuario` como admin legado) e continuam vendo tudo — 49 clientes visíveis antes e depois.
+Conferido com um Operador simulado na Principal, criado e revertido em transação: 47 clientes
+visíveis, ferramentas liberadas e acesso negado a cliente de outra instância. Detalhes em
+[`docs/PERMISSOES_CONSULTOR.md`](docs/PERMISSOES_CONSULTOR.md).
+
+---
+
 ## [Não publicado] — 2026-08-18 (BGP: downstream sem filtro de bogons)
 
 ### Corrigido
