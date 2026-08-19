@@ -73,6 +73,7 @@ urlpatterns = [
     # Link externo de terminal compartilhado — página pública, SEM login
     path('terminal/link/<uuid:token>/', views.terminal_link_externo, name='terminal_link_externo'),
     path('winbox/<int:acesso_id>/', views.winbox_page, name='winbox_page'),
+    path('rdp/<int:acesso_id>/', views.rdp_page, name='rdp_page'),
     path('webfig-vnc/<int:acesso_id>/', views.webfig_vnc_page, name='webfig_vnc_page'),
 
 
@@ -223,6 +224,7 @@ urlpatterns = [
     path('<int:cliente_id>/topologia/dados/', views.topologia_dados, name='topologia_dados'),
     path('<int:cliente_id>/topologia/salvar/', views.topologia_salvar, name='topologia_salvar'),
     path('<int:cliente_id>/topologia/hosts/', views.topologia_hosts, name='topologia_hosts'),
+    path('<int:cliente_id>/topologia/<int:diagrama_id>/submapa/', views.topologia_criar_submapa, name='topologia_criar_submapa'),
 
     # ── Trocar Senhas em Massa ───────────────────────────────────────────────
     path('trocar-senhas/hosts/', views.trocar_senha_massa_listar_hosts, name='trocar_senha_massa_listar_hosts'),

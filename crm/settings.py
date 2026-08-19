@@ -69,6 +69,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'usuario.middleware.ProtegerAdminMiddleware',
     'usuario.middleware.Forcar2FAMiddleware',
+    'usuario.middleware.AntiCapturaMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

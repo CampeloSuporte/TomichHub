@@ -36,6 +36,68 @@ class Forcar2FAMiddleware:
         return not (device and device.confirmado)
 
 
+_ANTI_CAPTURA_SCRIPT = b"""
+<script>(function(){
+var overlay=null;
+function ensureOverlay(){
+  if(overlay) return overlay;
+  overlay=document.createElement('div');
+  overlay.id='__anticaptura_overlay__';
+  overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:2147483647;display:none;';
+  document.documentElement.appendChild(overlay);
+  return overlay;
+}
+function mostrar(){ ensureOverlay().style.display='block'; }
+function esconder(){ if(overlay) overlay.style.display='none'; }
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden){ mostrar(); } else { esconder(); }
+});
+window.addEventListener('blur', mostrar);
+window.addEventListener('focus', esconder);
+document.addEventListener('keyup', function(e){
+  if(e.key === 'PrintScreen'){
+    mostrar();
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText('').catch(function(){});
+    }
+    setTimeout(esconder, 1500);
+  }
+});
+})();</script>
+"""
+
+
+class AntiCapturaMiddleware:
+    """Escurece a tela quando a janela perde foco/fica oculta (troca de aba,
+    minimizar) ou quando a tecla Print Screen é solta — sem nenhum alerta
+    visível, só a tela preta. Injeta um <script> inline antes de </body> em
+    toda resposta HTML, via middleware, porque o sistema não tem um único
+    base.html: várias telas sensíveis (terminal, winbox/vnc, sala virtual)
+    são HTML standalone que não estendem nenhum template comum.
+
+    É uma mitigação, não um bloqueio garantido: não existe API web para
+    impedir a tecla Print Screen do SO nem para detectar gravadores de tela
+    de terceiros (OBS etc.) — cobre os casos mais comuns de captura casual
+    (Snipping Tool, Win+Shift+S, print e troca de janela durante gravação)."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        content_type = response.get('Content-Type', '')
+        if 'text/html' in content_type and getattr(response, 'streaming', False) is False:
+            try:
+                body = response.content
+                if b'</body>' in body:
+                    response.content = body.replace(b'</body>', _ANTI_CAPTURA_SCRIPT + b'</body>', 1)
+                    if response.get('Content-Length') is not None:
+                        response['Content-Length'] = len(response.content)
+            except Exception:
+                pass
+        return response
+
+
 class ProtegerAdminMiddleware:
     """Bloqueia o Django admin (/admin/) fora do fluxo de login do CRM.
 

@@ -96,6 +96,7 @@ class Acesso(models.Model):
         WINBOX = 'WINBOX', 'Winbox'
         FTP = 'FTP', 'FTP'
         FTPS = 'FTPS', 'FTPS'
+        RDP = 'RDP', 'RDP'
 
     cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='acessos')
     funcao = models.ForeignKey('funcao_equipamento.Funcao_equipamento', on_delete=models.SET_NULL, null=True, blank=True)
@@ -178,6 +179,7 @@ class AcessoSessao(models.Model):
         ('winbox', 'WinBox Web'),
         ('winbox_nativo', 'WinBox Nativo'),
         ('webfig', 'WebFig'),
+        ('rdp', 'RDP Web'),
     ]
     STATUS = [
         ('ativa', 'Ativa'),
@@ -278,6 +280,8 @@ class Documento(models.Model):
 class TopologiaDiagrama(models.Model):
     """Armazena o estado do editor de topologia SVG e/ou XML do draw.io."""
     cliente       = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='diagramas_topologia')
+    pai           = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='submapas',
+                                       verbose_name='Mapa pai', help_text='Se preenchido, este diagrama é um sub-mapa aberto a partir de um nó do mapa pai.')
     nome          = models.CharField(max_length=255, default='Nova Topologia')
     dados_json    = models.TextField(default='{"nodes":[],"links":[]}', verbose_name='Dados do editor')
     drawio_xml    = models.TextField(blank=True, default='', verbose_name='XML draw.io')
