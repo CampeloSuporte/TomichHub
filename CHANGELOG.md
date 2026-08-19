@@ -5,6 +5,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-19 (Atendimento: agente IA "Tomichinho" — resumo, resposta e abertura de tarefa)
+
+### Adicionado
+
+- **Agente IA do atendimento** ([`atendimento/ai.py`](atendimento/ai.py) — novo,
+  [`atendimento/tasks.py`](atendimento/tasks.py), [`atendimento/services.py`](atendimento/services.py)),
+  usando o provedor configurado em Configurações → Integração IA (Claude ou ChatGPT):
+  - **Chamado parado ganha resumo por IA**: `notificar_chamados_abertos` (varredura a cada 10 min, já
+    existente) agora inclui, por chamado sem resposta, um resumo de 1 linha do que o cliente pediu —
+    gerado a partir das últimas mensagens dele. Sem IA configurada ou se a chamada falhar, a notificação
+    sai igual a antes, só sem a linha de resumo (nunca depende da IA pra funcionar). Habilitado agora
+    para o grupo **TOMICH TEC - NOC** (`notif_abertos_enabled`/`notif_abertos_group_id`).
+  - **"tomichinho" na mensagem**: qualquer remetente do grupo (atendente ou cliente) escrevendo
+    "tomichinho" dispara `responder_tomichinho` — a IA lê as últimas mensagens do chamado e responde
+    direto no grupo do WhatsApp (mensagem salva com `sender_type='ai'`).
+  - **"abrir tarefa" na mensagem**: dispara `abrir_tarefa_ia` — a IA extrai título/descrição do pedido e
+    cria uma `Tarefa` (app `tarefas`) vinculada ao Cliente do grupo, sem responsável definido. Sem
+    cliente vinculado ao grupo, a tarefa não é criada (não há onde colocá-la); sem IA configurada, usa o
+    próprio texto da mensagem como título, pra não perder o pedido.
+  - Os dois gatilhos são detectados no `process_webhook` e disparados como tasks Celery (`_disparar_agente_ia`),
+    sem bloquear o webhook nem depender da IA responder a tempo.
+  - Cobertura de teste: `atendimento/tests.py` (`AgenteIACallTest`, `GatilhoAgenteIATest`,
+    `ResponderTomichinhoTaskTest`, `AbrirTarefaIATaskTest`).
+
+---
+
 ## [Não publicado] — 2026-08-19 (Atendimento: ChatGPT como provedor de IA)
 
 ### Adicionado

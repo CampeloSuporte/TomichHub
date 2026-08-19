@@ -175,6 +175,49 @@ def _alertar_atendente_pessoal(conversation, group, attendant_contact, connectio
         logger.warning(f"Falha ao alertar sobre atendente pessoal: {e}")
 
 
+def _disparar_agente_ia(conversation, content) -> None:
+    """Checa gatilhos de texto do agente IA "Tomichinho" numa mensagem recém
+    recebida e dispara a ação correspondente em background (Celery) — nunca
+    bloqueia o webhook nem depende da IA responder a tempo.
+
+    Qualquer remetente aciona (atendente ou cliente): "tomichinho" pede uma
+    resposta da IA no próprio grupo; "abrir tarefa" pede a criação de uma
+    Tarefa vinculada ao cliente do grupo. Os dois podem disparar juntos se a
+    mensagem contiver as duas expressões.
+    """
+    texto = (content or '').lower()
+    if 'tomichinho' in texto:
+        from .tasks import responder_tomichinho
+        responder_tomichinho.delay(str(conversation.id))
+    if 'abrir tarefa' in texto:
+        from .tasks import abrir_tarefa_ia
+        abrir_tarefa_ia.delay(str(conversation.id), content)
+
+
+def _ia_enviar(conversation, group, connection, texto, sender_name='Tomichinho') -> None:
+    """Envia uma resposta do agente IA ao WhatsApp e a salva como mensagem
+    'ai' pra aparecer no chat — mesmo padrão de `_flow_enviar`, mas com o
+    sender_type específico da IA (Message.SENDER_TYPE_CHOICES já prevê 'ai')."""
+    if not texto or not conversation:
+        return
+    import uuid as _uuid
+    msg = Message.objects.create(
+        conversation=conversation,
+        sender_type='ai',
+        sender_name=sender_name,
+        message_type='text',
+        content=texto,
+        external_id='ia_%s' % _uuid.uuid4().hex,
+    )
+    conversation.last_message_at = timezone.now()
+    conversation.save(update_fields=['last_message_at'])
+    try:
+        EvolutionAPIClient(connection).send_text(group.jid, texto)
+    except Exception as e:
+        logger.warning(f"Falha ao enviar resposta do agente IA: {e}")
+    ConversationService._broadcast_msg(conversation, group, msg, inbox=False)
+
+
 # ── SLA (tempo de resposta/resolução) ────────────────────────────────────────
 # Prazos padrão por prioridade, em minutos. Sobrescrevíveis via SystemSetting
 # (chaves 'sla_response_<priority>' / 'sla_resolution_<priority>').
@@ -893,6 +936,7 @@ class ConversationService:
                         conv.last_message_at = now
                         conv.save(update_fields=['last_message_at'])
                         ConversationService._broadcast_msg(conv, group, msg)
+                        _disparar_agente_ia(conv, content)
                     if atendente_pessoal:
                         _alertar_atendente_pessoal(conv, group, atendente_pessoal, connection)
                 # Mensagem do atendente pessoal não deve avançar o fluxo do bot
@@ -918,6 +962,7 @@ class ConversationService:
                     if not conv.assigned_to:
                         _notify_new_open_conversation(conv, connection)
                     ConversationService._broadcast_msg(conv, group, msg)
+                    _disparar_agente_ia(conv, content)
                 if atendente_pessoal:
                     _alertar_atendente_pessoal(conv, group, atendente_pessoal, connection)
                 return {"success": True, "conversation_id": str(conv.id),
@@ -965,6 +1010,7 @@ class ConversationService:
             # assunto/categoria; o que saiu foi o envio automático.
             if not conv.assigned_to:
                 _notify_new_open_conversation(conv, connection)
+            _disparar_agente_ia(conv, content)
             logger.info(f"Chamado aberto na 1ª msg: conversa #{conv.conversation_id}")
 
             return {"success": True, "conversation_id": str(conv.id), "opened": True}

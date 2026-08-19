@@ -945,3 +945,229 @@ class AtualizacaoAutomaticaDaListaTest(TestCase):
         html = self._ajax(reverse('atendimento:inbox') + '?tab=open').content.decode()
 
         self.assertIn('data-conv-id="%s"' % nova.id, html)
+
+
+class ApiAgentsListTest(TestCase):
+    """Modal "Transferir chamado" — quem entra e quem não entra na lista."""
+
+    def setUp(self):
+        self.eu = _criar_agente_staff('lucas')
+        self.client.force_login(self.eu)
+
+    def _nomes(self):
+        resp = self.client.get(reverse('atendimento:api_agents_list'))
+        self.assertEqual(resp.status_code, 200)
+        return [a['name'] for a in json.loads(resp.content)['agents']]
+
+    def test_conta_sem_identificacao_e_sem_historico_fica_de_fora(self):
+        # Sobra de cadastro: is_staff, mas sem nome, sem e-mail, sem
+        # AgentStatus e sem nenhum chamado. Era o "atendente que não existe"
+        # que aparecia no modal.
+        User.objects.create_user(username='adm_466dee', is_staff=True, is_active=True)
+        self.assertNotIn('adm_466dee', self._nomes())
+
+    def test_colega_sem_chamado_mas_com_email_continua_na_lista(self):
+        # Nunca atendeu nada, mas é pessoa de verdade — não pode sumir, senão
+        # ninguém consegue transferir pra ele na primeira vez.
+        User.objects.create_user(
+            username='josefh', email='josefh@example.com', is_staff=True, is_active=True,
+        )
+        self.assertIn('josefh', self._nomes())
+
+    def test_colega_sem_email_mas_com_chamado_continua_na_lista(self):
+        colega = User.objects.create_user(username='nailson', is_staff=True, is_active=True)
+        conv = _criar_conversa()
+        conv.assigned_to = colega
+        conv.save()
+        self.assertIn('nailson', self._nomes())
+
+    def test_nao_lista_o_proprio_usuario_nem_inativo(self):
+        User.objects.create_user(
+            username='desligado', email='x@example.com', is_staff=True, is_active=False,
+        )
+        nomes = self._nomes()
+        self.assertNotIn('lucas', nomes)
+        self.assertNotIn('desligado', nomes)
+
+    def test_nao_lista_quem_nao_acessa_o_modulo(self):
+        # Consultor/Operador têm is_staff=False e o módulo inteiro é
+        # staff_required: transferir pra eles sumiria com o chamado.
+        from usuario.models import Instancia, PerfilUsuario
+        inst = Instancia.objects.create(nome='Marinho')
+        consultor = User.objects.create_user(
+            username='mmarinho', email='m@example.com', is_staff=False, is_active=True,
+        )
+        PerfilUsuario.objects.create(
+            usuario=consultor, role=PerfilUsuario.ROLE_CONSULTOR, instancia=inst,
+        )
+        self.assertNotIn('mmarinho', self._nomes())
+
+
+def _criar_cliente_teste(nome='Cliente IA Teste'):
+    from clientes.models import Cliente
+    suffix = uuid.uuid4().hex[:8]
+    return Cliente.objects.create(
+        nome_empresa=nome, cnpj=f'00.000.000/{suffix[:4]}-00',
+        endereco='Rua Teste, 123', email=f'{suffix}@example.com',
+    )
+
+
+class AgenteIACallTest(TestCase):
+    """atendimento/ai.py: sem chave configurada não pode derrubar quem chama —
+    é sempre None, nunca exceção, pros gatilhos do agente degradarem sozinhos."""
+
+    def test_sem_nenhuma_chave_configurada_retorna_none(self):
+        from atendimento.ai import call_ai
+        self.assertIsNone(call_ai('system', 'user'))
+
+    def test_provider_openai_sem_chave_retorna_none(self):
+        from atendimento.models import SystemSetting
+        from atendimento.ai import call_ai
+        SystemSetting.set('ai_provider', 'openai')
+        self.assertIsNone(call_ai('system', 'user'))
+
+
+class GatilhoAgenteIATest(TestCase):
+    """"tomichinho" e "abrir tarefa" no texto da mensagem disparam as tasks
+    do agente IA — qualquer remetente aciona (inclusive o próprio cliente)."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.group = self.conversation.group
+        self.group.jid = '551930903699-1620661699@g.us'
+        self.group.save(update_fields=['jid'])
+
+    def _webhook(self, texto, msg_id):
+        return ConversationService.process_webhook({
+            'event': 'MESSAGES_UPSERT',
+            'instance': self.group.connection.instance_name,
+            'data': {
+                'key': {'id': msg_id, 'fromMe': False,
+                        'remoteJid': self.group.jid, 'participant': '55279@lid'},
+                'pushName': 'Cliente Teste',
+                'message': {'conversation': texto},
+            },
+        })
+
+    @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
+    @mock.patch('atendimento.tasks.responder_tomichinho.delay')
+    def test_tomichinho_no_texto_dispara_a_task(self, mock_tomichinho, mock_tarefa):
+        self._webhook('Oi tomichinho, tudo bem?', 'M1')
+        mock_tomichinho.assert_called_once_with(str(self.conversation.id))
+        mock_tarefa.assert_not_called()
+
+    @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
+    @mock.patch('atendimento.tasks.responder_tomichinho.delay')
+    def test_abrir_tarefa_no_texto_dispara_a_task(self, mock_tomichinho, mock_tarefa):
+        self._webhook('abrir tarefa: trocar antena amanhã de manhã', 'M2')
+        mock_tarefa.assert_called_once_with(
+            str(self.conversation.id), 'abrir tarefa: trocar antena amanhã de manhã')
+        mock_tomichinho.assert_not_called()
+
+    @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
+    @mock.patch('atendimento.tasks.responder_tomichinho.delay')
+    def test_mensagem_normal_nao_dispara_nada(self, mock_tomichinho, mock_tarefa):
+        self._webhook('Bom dia, o link caiu de novo', 'M3')
+        mock_tomichinho.assert_not_called()
+        mock_tarefa.assert_not_called()
+
+    @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
+    @mock.patch('atendimento.tasks.responder_tomichinho.delay')
+    def test_as_duas_palavras_juntas_disparam_as_duas_tasks(self, mock_tomichinho, mock_tarefa):
+        self._webhook('tomichinho, abrir tarefa pra isso aqui', 'M4')
+        mock_tomichinho.assert_called_once()
+        mock_tarefa.assert_called_once()
+
+
+class ResponderTomichinhoTaskTest(TestCase):
+    """Task que efetivamente lê o histórico e responde no grupo via IA."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.group = self.conversation.group
+        Message.objects.create(
+            conversation=self.conversation, sender_type='customer',
+            content='tomichinho, qual o horário de atendimento de vocês?',
+            external_id='msg-1',
+        )
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai', return_value='Atendemos de seg a sex, 8h às 18h.')
+    def test_responde_e_salva_mensagem_tipo_ia(self, mock_call_ai, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, 'wamid-ia-1')
+        from atendimento.tasks import responder_tomichinho
+
+        resultado = responder_tomichinho(str(self.conversation.id))
+
+        self.assertTrue(resultado['ok'])
+        msg = Message.objects.get(sender_type='ai')
+        self.assertEqual(msg.content, 'Atendemos de seg a sex, 8h às 18h.')
+        self.assertEqual(msg.sender_name, 'Tomichinho')
+        mock_client_cls.return_value.send_text.assert_called_once_with(
+            self.group.jid, 'Atendemos de seg a sex, 8h às 18h.')
+
+    @mock.patch('atendimento.ai.call_ai', return_value=None)
+    def test_sem_ia_configurada_nao_cria_mensagem(self, mock_call_ai):
+        from atendimento.tasks import responder_tomichinho
+
+        antes = Message.objects.count()
+        resultado = responder_tomichinho(str(self.conversation.id))
+
+        self.assertFalse(resultado['ok'])
+        self.assertEqual(Message.objects.count(), antes)
+
+
+class AbrirTarefaIATaskTest(TestCase):
+    """Task que interpreta "abrir tarefa" e cria a Tarefa vinculada ao
+    cliente do grupo do WhatsApp."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.group = self.conversation.group
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch(
+        'atendimento.ai.call_ai',
+        return_value='{"titulo": "Trocar antena do cliente", "descricao": "Antena com sinal fraco, trocar amanhã de manhã"}',
+    )
+    def test_cria_tarefa_vinculada_ao_cliente_do_grupo(self, mock_call_ai, mock_client_cls):
+        from tarefas.models import Tarefa
+        from atendimento.tasks import abrir_tarefa_ia
+
+        cliente = _criar_cliente_teste()
+        self.group.cliente = cliente
+        self.group.save(update_fields=['cliente'])
+
+        resultado = abrir_tarefa_ia(str(self.conversation.id), 'abrir tarefa: antena fraca, trocar amanhã')
+
+        self.assertTrue(resultado['ok'])
+        tarefa = Tarefa.objects.get(id=resultado['tarefa_id'])
+        self.assertEqual(tarefa.titulo, 'Trocar antena do cliente')
+        self.assertEqual(tarefa.cliente, cliente)
+        self.assertEqual(tarefa.responsaveis.count(), 0)
+        mock_client_cls.return_value.send_text.assert_called_once()
+
+    def test_grupo_sem_cliente_vinculado_nao_cria_tarefa(self):
+        from tarefas.models import Tarefa
+        from atendimento.tasks import abrir_tarefa_ia
+
+        antes = Tarefa.objects.count()
+        resultado = abrir_tarefa_ia(str(self.conversation.id), 'abrir tarefa: qualquer coisa')
+
+        self.assertTrue(resultado['skipped'])
+        self.assertEqual(Tarefa.objects.count(), antes)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai', return_value=None)
+    def test_sem_ia_usa_o_proprio_texto_como_titulo(self, mock_call_ai, mock_client_cls):
+        from tarefas.models import Tarefa
+        from atendimento.tasks import abrir_tarefa_ia
+
+        cliente = _criar_cliente_teste()
+        self.group.cliente = cliente
+        self.group.save(update_fields=['cliente'])
+
+        resultado = abrir_tarefa_ia(str(self.conversation.id), 'abrir tarefa: sem IA configurada')
+
+        tarefa = Tarefa.objects.get(id=resultado['tarefa_id'])
+        self.assertEqual(tarefa.titulo, 'abrir tarefa: sem IA configurada')

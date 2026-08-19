@@ -60,6 +60,131 @@ def _is_time_now(hour_cfg, min_cfg, window=5):
     return min_cfg <= agora.minute < min_cfg + window
 
 
+def _resumir_chamado_ia(conv):
+    """Resume em poucas palavras o que o cliente quer, a partir das mensagens
+    dele no chamado. Retorna None se a IA não estiver configurada ou a
+    chamada falhar — a notificação de chamado parado não pode depender da IA
+    pra sair (ela já funciona hoje sem resumo nenhum)."""
+    from .ai import call_ai
+    msgs = list(
+        conv.messages.filter(sender_type='customer').order_by('-created_at')[:6]
+    )[::-1]
+    texto_cliente = "\n".join(m.content for m in msgs if m.content).strip()
+    if not texto_cliente:
+        return None
+    return call_ai(
+        system_prompt=(
+            "Resuma em até 15 palavras, em português, o que o cliente está "
+            "pedindo neste chamado de suporte. Responda só com o resumo, "
+            "sem introdução nem aspas."
+        ),
+        user_prompt=texto_cliente,
+        max_tokens=60,
+    )
+
+
+@shared_task
+def responder_tomichinho(conversation_id):
+    """Gatilho "tomichinho" numa mensagem do chamado: lê o histórico recente
+    e responde no próprio grupo do WhatsApp via IA configurada."""
+    from .models import Conversation, SystemSetting
+    from .services import _ia_enviar
+    from .ai import call_ai
+
+    try:
+        conv = Conversation.objects.select_related('group', 'group__connection').get(id=conversation_id)
+    except Conversation.DoesNotExist:
+        return {'skipped': True, 'reason': 'conversation not found'}
+    if not conv.group or not conv.group.connection:
+        return {'skipped': True, 'reason': 'sem grupo/conexão'}
+
+    system_prompt = SystemSetting.get('ai_system_prompt', '').strip() or (
+        "Você é o Tomichinho, assistente virtual de atendimento da Tomich "
+        "Tecnologia. Responda de forma breve, cordial e objetiva às "
+        "mensagens do grupo de suporte."
+    )
+    historico = list(conv.messages.order_by('-created_at')[:12])[::-1]
+    rotulo = {'customer': 'Cliente', 'agent': 'Atendente', 'ai': 'Tomichinho', 'system': 'Sistema'}
+    linhas = [f"{rotulo.get(m.sender_type, m.sender_type)}: {m.content}" for m in historico if m.content]
+    contexto = "\n".join(linhas)
+
+    resposta = call_ai(
+        system_prompt=system_prompt,
+        user_prompt=f"Histórico recente da conversa:\n{contexto}\n\nResponda à última mensagem do grupo.",
+    )
+    if not resposta:
+        logger.warning(f"Agente IA (tomichinho) sem resposta para conversa {conversation_id} — IA não configurada ou falhou")
+        return {'ok': False}
+
+    _ia_enviar(conv, conv.group, conv.group.connection, resposta)
+    return {'ok': True}
+
+
+@shared_task
+def abrir_tarefa_ia(conversation_id, texto_comando):
+    """Gatilho "abrir tarefa" numa mensagem do chamado: interpreta o pedido
+    via IA e cria uma Tarefa vinculada ao cliente do grupo. Sem cliente
+    vinculado ao grupo, não há onde criar a tarefa — apenas ignora."""
+    import json as _json
+    import re as _re
+    from .models import Conversation
+    from .services import _ia_enviar
+    from .ai import call_ai
+    from tarefas.models import Tarefa
+    from tarefas.services import instancia_da_tarefa
+
+    try:
+        conv = Conversation.objects.select_related('group', 'group__connection', 'group__cliente').get(id=conversation_id)
+    except Conversation.DoesNotExist:
+        return {'skipped': True, 'reason': 'conversation not found'}
+    if not conv.group or not conv.group.connection:
+        return {'skipped': True, 'reason': 'sem grupo/conexão'}
+
+    cliente = conv.group.cliente
+    if not cliente:
+        logger.info(f"Agente IA: 'abrir tarefa' ignorado, grupo {conv.group_id} sem cliente vinculado")
+        return {'skipped': True, 'reason': 'grupo sem cliente vinculado'}
+
+    resposta = call_ai(
+        system_prompt=(
+            "Você extrai pedidos de tarefa a partir de mensagens de um grupo "
+            "de WhatsApp de suporte técnico. Responda só com um JSON no "
+            'formato {"titulo": "...", "descricao": "..."}, sem markdown '
+            "nem texto adicional. Título: até 80 caracteres, direto ao "
+            "ponto. Descrição: pode ficar vazia se a mensagem não tiver "
+            "detalhe além do título."
+        ),
+        user_prompt=texto_comando,
+        max_tokens=300,
+    )
+    titulo, descricao = '', ''
+    if resposta:
+        try:
+            match = _re.search(r'\{.*\}', resposta, _re.S)
+            data = _json.loads(match.group(0) if match else resposta)
+            titulo = (data.get('titulo') or '').strip()[:200]
+            descricao = (data.get('descricao') or '').strip()
+        except Exception as e:
+            logger.warning(f"Agente IA: resposta de 'abrir tarefa' não é JSON válido: {e}")
+    if not titulo:
+        # IA não configurada ou falhou: usa o próprio texto do pedido como título,
+        # sem depender da IA pra pelo menos registrar a tarefa.
+        titulo = texto_comando.strip()[:200] or 'Tarefa via WhatsApp'
+
+    tarefa = Tarefa.objects.create(
+        titulo=titulo,
+        descricao=descricao,
+        cliente=cliente,
+        instancia=instancia_da_tarefa(None, cliente),
+    )
+
+    _ia_enviar(
+        conv, conv.group, conv.group.connection,
+        f"✅ Tarefa aberta: *{titulo}*",
+    )
+    return {'ok': True, 'tarefa_id': tarefa.id}
+
+
 @shared_task
 def notificar_chamados_abertos():
     """A cada 10 min: avisa, UMA ÚNICA VEZ por chamado, sobre chamados sem
@@ -99,6 +224,9 @@ def notificar_chamados_abertos():
     for conv in convs:
         nome = conv.group.name if conv.group else 'Sem grupo'
         linhas.append(f"• *{nome}* — sem resposta há +10 min")
+        resumo = _resumir_chamado_ia(conv)
+        if resumo:
+            linhas.append(f"  _{resumo}_")
     linhas.append("")
     linhas.append("Acessem o sistema para assumir os chamados.")
     texto = "\n".join(linhas)
