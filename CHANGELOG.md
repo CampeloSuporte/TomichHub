@@ -5,20 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
-## [Não publicado] — 2026-08-19 (CRM: remove widget global de conversas)
+## [Não publicado] — 2026-08-19 (CRM: remove widgets globais de conversas)
 
 ### Removido
 
-- **Widget global de conversas** (`templates/base.html`): removidos os ícones flutuantes por
-  conversa (`#gchatBubbles`) e o modal de chat rápido (`#gchatModal`) que apareciam sobre qualquer
-  página do CRM para usuários staff, permitindo responder um atendimento sem entrar no módulo de
-  Atendimento. Decisão do usuário: conversas passam a ser tratadas exclusivamente dentro do módulo
-  de Atendimento (`atendimento/templates/atendimento/base.html`, que é standalone e não foi tocado).
-  O toast de notificação de novo chamado/mensagem (`#globalTicketToasts`) foi mantido — ele já tinha
-  fallback para redirecionar para `/atendimento/conversation/<id>/` quando `window.openGlobalChat`
-  não existisse, então a remoção do widget só faz esse fallback entrar em uso. O badge de não lidos
-  no botão "Atendimento" da barra lateral (`#globalAtendBtn`) também foi mantido, pois é o próprio
-  link de entrada no módulo.
+- **Widgets globais de conversas** (`templates/base.html`), a pedido do usuário — conversas passam
+  a ser tratadas exclusivamente dentro do módulo de Atendimento
+  (`atendimento/templates/atendimento/base.html`, que é standalone e não foi tocado):
+  - Ícones flutuantes por conversa (`#gchatBubbles`) e o modal de chat rápido (`#gchatModal`) que
+    apareciam sobre qualquer página do CRM para usuários staff, permitindo responder um atendimento
+    sem entrar no módulo.
+  - Toast/pop-up de notificação de novo chamado ou mensagem (`#globalTicketToasts`, `showToast`,
+    conexão websocket em `/ws/atendimento/inbox/`) que aparecia no canto da tela em qualquer página.
+  - Removido em duas passadas na mesma sessão: a primeira review deixou o toast de propósito (achava
+    que "ícone de conversas" era só as bolhas+modal), mas o usuário reportou que "os widgets ainda
+    estão aparecendo" — o toast também conta como widget de conversa e foi removido.
+
+  O badge de não lidos no botão "Atendimento" da barra lateral (`#globalAtendBtn`) foi mantido, pois
+  é o próprio link de entrada no módulo, não um widget de conversa — só perdeu a fonte que o
+  alimentava (o toast), então hoje não mostra mais contagem (nenhuma outra rotina escreve nele).
 
 ---
 
