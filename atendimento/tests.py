@@ -1194,6 +1194,23 @@ class GatilhoAgenteIATest(TestCase):
         mock_tomichinho.assert_called_once()
         mock_tarefa.assert_called_once()
 
+    @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
+    @mock.patch('atendimento.tasks.responder_tomichinho.delay')
+    def test_variacoes_do_pedido_de_tarefa_tambem_disparam(self, mock_tomichinho, mock_tarefa):
+        # Caso real relatado: "Tomichinho, criar tarefa" não disparava nada
+        # porque só o literal "abrir tarefa" era reconhecido.
+        for i, texto in enumerate(['Tomichinho, criar tarefa', 'cria uma tarefa pra amanhã',
+                                    'nova tarefa: verificar contrato'], start=1):
+            mock_tarefa.reset_mock()
+            self._webhook(texto, f'VAR{i}')
+            mock_tarefa.assert_called_once_with(str(self.conversation.id), texto)
+
+    @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
+    @mock.patch('atendimento.tasks.responder_tomichinho.delay')
+    def test_mencionar_uma_tarefa_sem_pedir_para_criar_nao_dispara(self, mock_tomichinho, mock_tarefa):
+        self._webhook('essa tarefa já está atrasada, alguém viu?', 'M5')
+        mock_tarefa.assert_not_called()
+
 
 class ResponderTomichinhoTaskTest(TestCase):
     """Task que efetivamente lê o histórico e responde no grupo via IA."""

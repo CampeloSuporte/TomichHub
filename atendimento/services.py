@@ -175,21 +175,37 @@ def _alertar_atendente_pessoal(conversation, group, attendant_contact, connectio
         logger.warning(f"Falha ao alertar sobre atendente pessoal: {e}")
 
 
+_TAREFA_VERBOS = ('abrir', 'abre', 'abra', 'criar', 'crie', 'cria', 'gerar', 'gere', 'gera', 'nova', 'novo')
+
+
+def _pede_abertura_de_tarefa(texto: str) -> bool:
+    """"Abrir tarefa" era a única frase reconhecida — "Tomichinho, criar
+    tarefa" (pedido real de um atendente) não disparava nada, porque não
+    contém esse literal exato. Em vez de uma frase fixa, aceita qualquer
+    mensagem com a palavra "tarefa" perto de um verbo de criação comum
+    (abrir/criar/gerar/nova) — cobre a forma como as pessoas realmente
+    escrevem o pedido, não só uma frase engessada."""
+    if not texto:
+        return False
+    t = texto.lower()
+    return 'tarefa' in t and any(v in t for v in _TAREFA_VERBOS)
+
+
 def _disparar_agente_ia(conversation, content) -> None:
     """Checa gatilhos de texto do agente IA "Tomichinho" numa mensagem recém
     recebida e dispara a ação correspondente em background (Celery) — nunca
     bloqueia o webhook nem depende da IA responder a tempo.
 
     Qualquer remetente aciona (atendente ou cliente): "tomichinho" pede uma
-    resposta da IA no próprio grupo; "abrir tarefa" pede a criação de uma
-    Tarefa vinculada ao cliente do grupo. Os dois podem disparar juntos se a
-    mensagem contiver as duas expressões.
+    resposta da IA no próprio grupo; um pedido de tarefa (ver
+    `_pede_abertura_de_tarefa`) pede a criação de uma Tarefa vinculada ao
+    cliente do grupo. Os dois podem disparar juntos na mesma mensagem.
     """
     texto = (content or '').lower()
     if 'tomichinho' in texto:
         from .tasks import responder_tomichinho
         responder_tomichinho.delay(str(conversation.id))
-    if 'abrir tarefa' in texto:
+    if _pede_abertura_de_tarefa(texto):
         from .tasks import abrir_tarefa_ia
         abrir_tarefa_ia.delay(str(conversation.id), content)
 
@@ -1370,10 +1386,10 @@ class ConversationService:
             })
 
             if is_internal:
-                # Gatilho do agente IA em nota interna: só "abrir tarefa"
+                # Gatilho do agente IA em nota interna: só pedido de tarefa
                 # (não "tomichinho" — resposta da IA a partir de uma nota
                 # interna não pode vazar pro grupo do WhatsApp).
-                if 'abrir tarefa' in text.lower():
+                if _pede_abertura_de_tarefa(text):
                     from .tasks import abrir_tarefa_ia
                     abrir_tarefa_ia.delay(str(conversation.id), text, True)
                 return True, str(msg.id)

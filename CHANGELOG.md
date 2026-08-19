@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-19 (Atendimento: "criar tarefa" não disparava o agente IA)
+
+### Corrigido
+
+- **Gatilho de tarefa só reconhecia o literal "abrir tarefa"** ([`atendimento/services.py`](atendimento/services.py) —
+  `_pede_abertura_de_tarefa`): caso real relatado, "Tomichinho, criar tarefa" não criava tarefa nenhuma
+  porque a mensagem não continha exatamente a frase "abrir tarefa". Trocado por uma checagem mais tolerante
+  (palavra "tarefa" perto de um verbo comum de criação: abrir/criar/gerar/nova), usada tanto no gatilho por
+  WhatsApp quanto por nota interna. "essa tarefa está atrasada" continua não disparando nada.
+
+---
+
 ## [Não publicado] — 2026-08-19 (Atendimento: nota interna vazava pro WhatsApp do cliente)
 
 ### Corrigido
