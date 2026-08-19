@@ -5,6 +5,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-19 (Usuários: Consultor/Operador nasciam sem is_staff e sumiam do atendimento)
+
+### Corrigido
+
+- **CRÍTICO — todo Consultor e Operador criado ou editado ficava trancado fora do atendimento**
+  ([`usuario/views.py`](usuario/views.py) — `cadastrar_usuario`, `editar_usuario`, novo helper
+  `_is_staff_para_role`): `is_staff` só era setado como `True` quando o role era Administrador
+  (`is_staff=(role == PerfilUsuario.ROLE_ADMIN)`) — Consultor e Operador sempre recebiam `is_staff=False`,
+  mesmo sendo back-office de verdade (`perms.is_backoffice`). Como TODO o módulo de atendimento é protegido
+  por `staff_required` (checa `request.user.is_staff` cru), isso significava: nenhum Consultor/Operador
+  conseguia sequer abrir a tela de atendimento, e nenhum aparecia na lista de "atendentes" pra transferir
+  chamado (`api_agents_list` também filtra por `is_staff=True`). Achado ao investigar por que um Operador
+  específico (Guilherme) não aparecia como atendente — na checagem, **100% das contas Consultor/Operador
+  do banco** (4 de 4) estavam com `is_staff=False`, não era um caso isolado.
+  `is_staff` agora é `True` para Admin, Consultor e Operador (só "cliente"/portal fica de fora), tanto na
+  criação quanto na edição. As 4 contas já existentes foram corrigidas diretamente no banco (mesma regra).
+  Cobertura de teste: `usuario/tests.py` (`IsStaffParaRoleTest`, `CadastrarUsuarioIsStaffTest`).
+
+---
+
 ## [Não publicado] — 2026-08-19 (Atendimento: tarefa criada pela IA agora usa a mensagem do cliente)
 
 ### Corrigido
