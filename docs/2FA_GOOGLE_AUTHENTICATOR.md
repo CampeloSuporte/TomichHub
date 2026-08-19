@@ -166,3 +166,44 @@ de `cadastrar_usuario.html`, só quando `usuarios.tem_2fa` é `True`.
 ---
 
 **Última atualização:** 02/08/2026
+
+---
+
+## Tela de configuração travada no primeiro login (corrigido em 2026-08-19)
+
+### O sintoma
+
+No primeiro login o usuário caía na tela de configuração do 2FA com um modal por cima. Ao
+clicar em "Dashboard" para sair dali, a tela ficava escurecida e **nada respondia** — nem os
+botões da barra superior, nem o menu com "Deslogar".
+
+### Por que travava
+
+Três coisas somadas:
+
+1. O aviso era um **modal Bootstrap com `data-bs-backdrop="static"` e `data-bs-keyboard="false"`**
+   — clique fora não fecha, ESC não fecha.
+2. O backdrop desse modal tem `z-index: 1040 !important` (`static/css/style.css`), enquanto a
+   `.top-bar` do sistema tem `z-index: 1000`. Ou seja, **o backdrop cobre a barra inteira**:
+   Dashboard, menu do usuário e o próprio "Deslogar" ficavam atrás dele. Todo clique ali era
+   engolido pelo backdrop, que com `static` não faz nada.
+3. O script reabria o modal a **cada carregamento** da página, e o `Forcar2FAMiddleware` devolve
+   o usuário para essa mesma página a cada tentativa de navegar. O único elemento clicável da
+   tela era o botão do próprio modal — quem clicasse em qualquer outro lugar via só a tela
+   escura, em loop.
+
+### A correção
+
+O modal virou um **aviso inline** no topo do card (`usuario/templates/configurar_2fa.html`): a
+mesma informação, sem overlay, sem backdrop e sem script de auto-abertura. A barra superior
+continua acessível, o formulário fica utilizável de imediato e o aviso traz um link direto para
+`logout`, para quem preferir configurar depois com o celular em mãos.
+
+A obrigatoriedade **não mudou**: o `Forcar2FAMiddleware` continua devolvendo qualquer rota para
+`/auth/2fa/` enquanto o dispositivo não estiver confirmado (§ "Obrigatoriedade"). O que mudou é
+que agora dá para ver a tela, entender o motivo e sair pelo logout, em vez de ficar preso atrás
+de um overlay.
+
+Conferido com um login recém-criado (criado e revertido em transação): `/homegeral` responde
+`302 → /auth/2fa/`, a página renderiza sem `modalObrigatorio2fa`, com o aviso, o QR code, o campo
+de código e o link de logout.

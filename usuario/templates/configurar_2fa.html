@@ -68,33 +68,20 @@
                             </form>
 
                         {% else %}
-                            <div class="modal fade" id="modalObrigatorio2fa" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
-                                <div class="modal-dialog modal-dialog-centered">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title"><i class="fas fa-triangle-exclamation me-2" style="color:#ffaa00"></i>Autenticação em duas etapas obrigatória</h5>
-                                        </div>
-                                        <div class="modal-body">
-                                            <p class="mb-0">Por segurança, toda conta deste sistema precisa ter a
-                                            autenticação em duas etapas ativada. Configure agora escaneando o QR code
-                                            com o app <strong>Google Authenticator</strong> — enquanto não ativar, só
-                                            esta tela fica disponível.</p>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn-register" data-bs-dismiss="modal">
-                                                <i class="fas fa-check me-2"></i>Entendi, vou configurar
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                            {# Aviso INLINE, não modal: o `.modal-backdrop` (z-index 1040)
+                               cobre a top-bar (z-index 1000), então com
+                               `data-bs-backdrop="static"` + `keyboard="false"` o modal
+                               engolia todo clique — Dashboard e até o "Deslogar" ficavam
+                               inalcançáveis, e o script reabria o modal a cada volta do
+                               middleware. A informação não precisa bloquear a tela. #}
+                            <div class="alert alert-warning">
+                                <strong><i class="fas fa-triangle-exclamation me-2" style="color:#ffaa00"></i>Autenticação em duas etapas obrigatória.</strong>
+                                Toda conta deste sistema precisa ter o 2FA ativado. Escaneie o QR code abaixo
+                                com o app <strong>Google Authenticator</strong> e confirme o código —
+                                enquanto não ativar, as outras telas continuam bloqueadas. Se preferir
+                                configurar depois, use <a href="{% url 'logout' %}">Deslogar</a> e entre de novo
+                                quando estiver com o celular em mãos.
                             </div>
-                            {% if not messages %}
-                            <script>
-                                document.addEventListener('DOMContentLoaded', function () {
-                                    new bootstrap.Modal(document.getElementById('modalObrigatorio2fa')).show();
-                                });
-                            </script>
-                            {% endif %}
 
                             <p>Escaneie o QR code abaixo com o app <strong>Google Authenticator</strong>
                                 (ou similar) e digite o código de 6 dígitos gerado pra confirmar.</p>
