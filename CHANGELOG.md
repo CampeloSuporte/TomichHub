@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-19 (Atendimento: erro de acentuação no gatilho de tarefa)
+
+### Corrigido
+
+- **"tarefá" (acento errado) não disparava a criação de tarefa** ([`atendimento/services.py`](atendimento/services.py) —
+  `_normalizar_texto`, `_pede_abertura_de_tarefa`, `_disparar_agente_ia`): caso real, "Tomichinho, criar
+  tarefá de configuração do radius do erp hubsoft." (nota interna) não criou tarefa nenhuma — a comparação
+  era caractere a caractere e "tarefá" ≠ "tarefa". Agora o texto é normalizado (acentos removidos via
+  `unicodedata`) antes de qualquer checagem de gatilho, tanto pra "tomichinho" quanto pro pedido de tarefa
+  — cobre erro de digitação com acento em qualquer uma das palavras-chave. Cobertura de teste:
+  `atendimento/tests.py` (`test_erro_de_acentuacao_em_tarefa_ainda_dispara`,
+  `test_nota_interna_com_acento_errado_em_tarefa_ainda_dispara`).
+
+---
+
 ## [Não publicado] — 2026-08-19 (Usuários: Consultor/Operador nasciam sem is_staff e sumiam do atendimento)
 
 ### Corrigido

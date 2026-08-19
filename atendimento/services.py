@@ -3,6 +3,7 @@ import uuid
 import base64
 import requests
 import logging
+import unicodedata
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 from django.conf import settings
@@ -178,6 +179,15 @@ def _alertar_atendente_pessoal(conversation, group, attendant_contact, connectio
 _TAREFA_VERBOS = ('abrir', 'abre', 'abra', 'criar', 'crie', 'cria', 'gerar', 'gere', 'gera', 'nova', 'novo')
 
 
+def _normalizar_texto(texto: str) -> str:
+    """Remove acentos pra comparação tolerante a erro de digitação — caso
+    real: "Tomichinho, criar tarefá de configuração..." (com acento errado
+    em "tarefa") não batia com o literal "tarefa" e não disparava nada.
+    "tarefá"/"tarefâ"/etc. viram "tarefa" antes de qualquer checagem."""
+    nfkd = unicodedata.normalize('NFKD', texto)
+    return ''.join(c for c in nfkd if not unicodedata.combining(c))
+
+
 def _pede_abertura_de_tarefa(texto: str) -> bool:
     """"Abrir tarefa" era a única frase reconhecida — "Tomichinho, criar
     tarefa" (pedido real de um atendente) não disparava nada, porque não
@@ -187,7 +197,7 @@ def _pede_abertura_de_tarefa(texto: str) -> bool:
     escrevem o pedido, não só uma frase engessada."""
     if not texto:
         return False
-    t = texto.lower()
+    t = _normalizar_texto(texto.lower())
     return 'tarefa' in t and any(v in t for v in _TAREFA_VERBOS)
 
 
@@ -201,7 +211,7 @@ def _disparar_agente_ia(conversation, content) -> None:
     `_pede_abertura_de_tarefa`) pede a criação de uma Tarefa vinculada ao
     cliente do grupo. Os dois podem disparar juntos na mesma mensagem.
     """
-    texto = (content or '').lower()
+    texto = _normalizar_texto((content or '').lower())
     if 'tomichinho' in texto:
         from .tasks import responder_tomichinho
         responder_tomichinho.delay(str(conversation.id))

@@ -640,6 +640,16 @@ class NotaInternaTest(TestCase):
 
     @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
     @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_nota_interna_com_acento_errado_em_tarefa_ainda_dispara(self, mock_client_cls, mock_delay):
+        # Caso real relatado: "Tomichinho, criar tarefá..." (acento errado)
+        # digitado como nota interna não criava a tarefa.
+        texto = 'Tomichinho, criar tarefá de configuração do radius do erp hubsoft.'
+        ConversationService.send_message(self.conversation, texto, self.agent, is_internal=True)
+
+        mock_delay.assert_called_once_with(str(self.conversation.id), texto, True)
+
+    @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
+    @mock.patch('atendimento.services.EvolutionAPIClient')
     def test_nota_interna_sem_abrir_tarefa_nao_dispara_nada(self, mock_client_cls, mock_delay):
         ConversationService.send_message(
             self.conversation, 'só um lembrete qualquer', self.agent, is_internal=True)
@@ -1204,6 +1214,15 @@ class GatilhoAgenteIATest(TestCase):
             mock_tarefa.reset_mock()
             self._webhook(texto, f'VAR{i}')
             mock_tarefa.assert_called_once_with(str(self.conversation.id), texto)
+
+    @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
+    @mock.patch('atendimento.tasks.responder_tomichinho.delay')
+    def test_erro_de_acentuacao_em_tarefa_ainda_dispara(self, mock_tomichinho, mock_tarefa):
+        # Caso real relatado: "criar tarefá" (acento errado) não disparava
+        # nada porque a comparação era exata caractere a caractere.
+        texto = 'Tomichinho, criar tarefá de configuração do radius do erp hubsoft.'
+        self._webhook(texto, 'ACENTO1')
+        mock_tarefa.assert_called_once_with(str(self.conversation.id), texto)
 
     @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
     @mock.patch('atendimento.tasks.responder_tomichinho.delay')
