@@ -836,7 +836,8 @@ def configuracoes(request):
     perm_map_json = _json.dumps({str(k): list(v) for k, v in perm_map.items()})
 
     # Coleta settings em uma única query
-    setting_keys = ['ai_api_key','ai_model','ai_system_prompt',
+    setting_keys = ['ai_provider','ai_api_key','ai_model','ai_system_prompt',
+                    'ai_openai_api_key','ai_openai_model',
                     'daily_alert_enabled','daily_alert_time','daily_alert_group',
                     'notif_abertos_enabled','notif_abertos_group_id','msg_encerramento',
                     'reminder_morning_time','reminder_noon_time',
@@ -860,8 +861,11 @@ def configuracoes(request):
         'connections': connections,
         'attendant_contacts': attendant_contacts,
         'perm_map_json': perm_map_json,
+        'ai_provider': settings_qs.get('ai_provider', 'claude'),
         'ai_key': settings_qs.get('ai_api_key', ''),
         'ai_model': settings_qs.get('ai_model', 'claude-sonnet-4-6'),
+        'ai_openai_key': settings_qs.get('ai_openai_api_key', ''),
+        'ai_openai_model': settings_qs.get('ai_openai_model', 'gpt-4o'),
         'ai_prompt': settings_qs.get('ai_system_prompt', ''),
         'daily_alert_enabled': settings_qs.get('daily_alert_enabled', 'false'),
         'daily_alert_time': settings_qs.get('daily_alert_time', '08:00'),
@@ -1014,19 +1018,22 @@ def api_quick_message_detail(request, msg_id):
 @admin_required
 def api_settings(request):
     if request.method == 'GET':
-        keys = ['ai_api_key', 'ai_model', 'ai_system_prompt',
+        keys = ['ai_provider', 'ai_api_key', 'ai_model', 'ai_system_prompt',
+                'ai_openai_api_key', 'ai_openai_model',
                 'daily_alert_enabled', 'daily_alert_time', 'daily_alert_group']
         data = {}
         for k in keys:
             data[k] = SystemSetting.get(k, '')
-        # Mask secret
+        # Mask secrets
         if data.get('ai_api_key'):
             data['ai_api_key_masked'] = '•' * 20
+        if data.get('ai_openai_api_key'):
+            data['ai_openai_api_key_masked'] = '•' * 20
         return JsonResponse(data)
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            secret_keys = {'ai_api_key'}
+            secret_keys = {'ai_api_key', 'ai_openai_api_key'}
             for k, v in data.items():
                 if k.startswith('_'):
                     continue

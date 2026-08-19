@@ -67,22 +67,54 @@ input:checked + .toggle-slider:before{transform:translateX(18px)}
   <!-- Tab 0: IA -->
   <div class="cfg-panel active" id="panel-0">
     <div class="cfg-section">
-      <h3><i class="fas fa-robot" style="color:var(--active)"></i> Configuração da IA (Claude)</h3>
+      <h3><i class="fas fa-robot" style="color:var(--active)"></i> Configuração da IA</h3>
       <div class="cfg-field">
-        <label>API Key</label>
-        <div style="display:flex;gap:8px">
-          <input type="password" class="cfg-input" id="aiApiKey" value="{{ ai_key }}">
-          <button class="btn-cyber" id="eyeBtn" type="button"><i class="fas fa-eye" id="eyeIcon"></i></button>
-        </div>
-      </div>
-      <div class="cfg-field">
-        <label>Modelo</label>
-        <select class="cfg-select" id="aiModel">
-          <option value="claude-sonnet-4-6"{% if ai_model == 'claude-sonnet-4-6' %} selected{% endif %}>Claude Sonnet 4.6</option>
-          <option value="claude-opus-4-5"{% if ai_model == 'claude-opus-4-5' %} selected{% endif %}>Claude Opus 4.5</option>
-          <option value="claude-haiku-3-5"{% if ai_model == 'claude-haiku-3-5' %} selected{% endif %}>Claude Haiku 3.5</option>
+        <label>Provedor</label>
+        <select class="cfg-select" id="aiProvider">
+          <option value="claude"{% if ai_provider == 'claude' %} selected{% endif %}>Claude (Anthropic)</option>
+          <option value="openai"{% if ai_provider == 'openai' %} selected{% endif %}>ChatGPT (OpenAI)</option>
         </select>
       </div>
+
+      <!-- Campos Claude -->
+      <div id="aiClaudeFields">
+        <div class="cfg-field">
+          <label>API Key (Claude)</label>
+          <div style="display:flex;gap:8px">
+            <input type="password" class="cfg-input" id="aiApiKey" value="{{ ai_key }}">
+            <button class="btn-cyber" id="eyeBtn" type="button"><i class="fas fa-eye" id="eyeIcon"></i></button>
+          </div>
+        </div>
+        <div class="cfg-field">
+          <label>Modelo (Claude)</label>
+          <select class="cfg-select" id="aiModel">
+            <option value="claude-sonnet-4-6"{% if ai_model == 'claude-sonnet-4-6' %} selected{% endif %}>Claude Sonnet 4.6</option>
+            <option value="claude-opus-4-5"{% if ai_model == 'claude-opus-4-5' %} selected{% endif %}>Claude Opus 4.5</option>
+            <option value="claude-haiku-3-5"{% if ai_model == 'claude-haiku-3-5' %} selected{% endif %}>Claude Haiku 3.5</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Campos ChatGPT -->
+      <div id="aiOpenaiFields">
+        <div class="cfg-field">
+          <label>API Key (OpenAI)</label>
+          <div style="display:flex;gap:8px">
+            <input type="password" class="cfg-input" id="aiOpenaiApiKey" value="{{ ai_openai_key }}">
+            <button class="btn-cyber" id="eyeBtnOpenai" type="button"><i class="fas fa-eye" id="eyeIconOpenai"></i></button>
+          </div>
+        </div>
+        <div class="cfg-field">
+          <label>Modelo (ChatGPT)</label>
+          <select class="cfg-select" id="aiOpenaiModel">
+            <option value="gpt-4o"{% if ai_openai_model == 'gpt-4o' %} selected{% endif %}>GPT-4o</option>
+            <option value="gpt-4o-mini"{% if ai_openai_model == 'gpt-4o-mini' %} selected{% endif %}>GPT-4o mini</option>
+            <option value="gpt-4.1"{% if ai_openai_model == 'gpt-4.1' %} selected{% endif %}>GPT-4.1</option>
+            <option value="o3-mini"{% if ai_openai_model == 'o3-mini' %} selected{% endif %}>o3-mini</option>
+          </select>
+        </div>
+      </div>
+
       <div class="cfg-field">
         <label>System Prompt</label>
         <textarea class="cfg-textarea" id="aiPrompt" rows="6">{{ ai_prompt }}</textarea>
@@ -412,9 +444,28 @@ input:checked + .toggle-slider:before{transform:translateX(18px)}
     if(i.type==='password'){i.type='text';ic.className='fas fa-eye-slash';}
     else{i.type='password';ic.className='fas fa-eye';}
   });
+  document.getElementById('eyeBtnOpenai').addEventListener('click',function(){
+    var i=document.getElementById('aiOpenaiApiKey'),ic=document.getElementById('eyeIconOpenai');
+    if(i.type==='password'){i.type='text';ic.className='fas fa-eye-slash';}
+    else{i.type='password';ic.className='fas fa-eye';}
+  });
+  function toggleAiProviderFields(){
+    var provider=document.getElementById('aiProvider').value;
+    document.getElementById('aiClaudeFields').style.display = provider==='claude' ? '' : 'none';
+    document.getElementById('aiOpenaiFields').style.display = provider==='openai' ? '' : 'none';
+  }
+  document.getElementById('aiProvider').addEventListener('change',toggleAiProviderFields);
+  toggleAiProviderFields();
   document.getElementById('btnSaveAi').addEventListener('click',function(){
     var btn=this; setLoading(btn,true);
-    post(URL_SETTINGS,{ai_api_key:document.getElementById('aiApiKey').value,ai_model:document.getElementById('aiModel').value,ai_system_prompt:document.getElementById('aiPrompt').value})
+    post(URL_SETTINGS,{
+      ai_provider:document.getElementById('aiProvider').value,
+      ai_api_key:document.getElementById('aiApiKey').value,
+      ai_model:document.getElementById('aiModel').value,
+      ai_openai_api_key:document.getElementById('aiOpenaiApiKey').value,
+      ai_openai_model:document.getElementById('aiOpenaiModel').value,
+      ai_system_prompt:document.getElementById('aiPrompt').value
+    })
       .then(function(d){fb('aiResult',d.success,d.success?'Configurações salvas!':'Erro: '+(d.error||''));})
       .finally(function(){setLoading(btn,false);});
   });

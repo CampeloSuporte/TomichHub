@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-19 (Atendimento: ChatGPT como provedor de IA)
+
+### Adicionado
+
+- **Tela de Configurações → Integração IA** ([`atendimento/templates/atendimento/configuracoes.html`](atendimento/templates/atendimento/configuracoes.html),
+  [`atendimento/views.py`](atendimento/views.py) — `configuracoes`/`api_settings`) ganhou um seletor de **Provedor**
+  (Claude/Anthropic ou ChatGPT/OpenAI). Antes só existia um campo genérico de API key/modelo, implicitamente
+  fixo em Claude — não dava para cadastrar credenciais OpenAI. Agora Claude e ChatGPT têm API key e modelo
+  próprios, salvos em paralelo (`ai_openai_api_key`, `ai_openai_model`, além de `ai_provider`), e a tela mostra
+  só os campos do provedor selecionado. O System Prompt continua único, compartilhado entre os dois provedores.
+
+---
+
 ## [Não publicado] — 2026-08-19 (Atendimento: transferência para si mesmo)
 
 ### Corrigido
