@@ -172,3 +172,53 @@ renderiza essa lista direto), e todas as views de `wiki/views.py` eram `@admin_r
 **Verificado** com o Consultor `mmarinho` (instância "marinho"): com a ferramenta desligada,
 `/wiki/` e `/wiki/api/buscar/` redirecionam com aviso; ligada, ambas devolvem 200; e
 `/wiki/artigo/novo/` continua bloqueada nos dois casos.
+
+---
+
+## Instância "Principal" — a operação do Administrador virou instância (2026-08-19)
+
+### O sintoma
+
+Ao cadastrar um Operador, o dropdown de instância mostrava **seis** opções onde deveriam
+aparecer duas (a do consultor Marinho e a operação própria do Administrador).
+
+### As duas causas
+
+**1. Lixo de teste no banco de produção.** Cinco instâncias (`I_ea19cb`, `I_1ae493`,
+`Instancia1_466dee`, `Instancia2_466dee`, `Instancia1_6cb110`), cinco logins (`c_ea19cb`,
+`c_1ae493`, `cons_466dee`, `op_466dee`, `cons_6cb110`) e dois clientes (`ClienteA466dee`,
+`ClienteB466dee`, zero acessos, e-mails `@x.com`) criados em 02/08/2026 entre 21:37 e 22:05 por
+um script de verificação rodado contra o banco real — nada no repositório recria isso. Removidos
+em 19/08/2026, com dump em `backups/lixo_teste_instancias_20260819.json`.
+
+**2. A operação do Administrador não existia como `Instancia`.** Cliente criado pelo
+Administrador sem escolher instância nascia com `instancia = NULL` ("da plataforma") — 47
+clientes e 16 tarefas nessa situação. Como `Instancia.objects.filter(ativo=True)` é o que
+alimenta o dropdown, essa operação nunca podia aparecer nele.
+
+O efeito colateral era mais sério que a lista feia: `pode_acessar_cliente` exige, para
+Consultor/Operador, `instancia is not None and cliente.instancia_id == instancia.id`. Um Operador
+criado para a operação do Administrador não enxergaria **nenhum** cliente — ou seja, não havia
+como ter operador da operação principal.
+
+### O que foi feito
+
+Criada a instância **Principal** (id 25), com os 47 clientes e as 16 tarefas de `instancia=NULL`
+migrados para ela e as 18 ferramentas habilitadas. Os Administradores continuam fora de qualquer
+instância: `get_role` trata `is_staff`/`is_superuser` sem `PerfilUsuario` como admin legado, e
+todo escopo (`Cliente.visiveis_para`, `Tarefa.visiveis_para`, `pode_acessar_cliente`)
+curto-circuita em `is_admin` — nenhum deles perdeu visibilidade (49 clientes antes e depois).
+
+Conferido com um Operador simulado na Principal (criado e revertido em transação): 47 clientes
+visíveis, ferramentas liberadas, e `pode_acessar_cliente` negando cliente da instância do
+Marinho.
+
+### O que ficou de fora (decidir depois)
+
+- Cliente novo criado pelo Administrador **continua nascendo com `instancia = NULL`** se ele não
+  escolher nada no formulário — e aí some da vista dos Operadores da Principal. Tornar o campo
+  obrigatório para Administrador, ou fazer a Principal ser o default, resolve; não foi feito
+  porque muda comportamento de cadastro.
+- Três logins com `is_staff=True` do mesmo lote de teste (`adm_466dee`, `adm_6cb110`,
+  `admweb_2211cb`) e um operador órfão (`semperfil_6cb110`) continuam no banco. `is_staff` sem
+  `PerfilUsuario` = **administrador legado**, com acesso a tudo.
