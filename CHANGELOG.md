@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-18 (BGP: downstream sem filtro de bogons)
+
+### Corrigido
+
+- **A sessão de cliente não leva mais a lista de bogons** ([`clientes/bgp_community_auto.py`](clientes/bgp_community_auto.py)):
+  na policy de entrada de um downstream o node 10 casa a prefix-list **do próprio cliente** —
+  os blocos informados no formulário, e só. Bogon nenhum chega até ali, então as 15 linhas de
+  `BOGONS-V4-IN` mais o node que as usava eram config que nunca casa. A config de um cliente
+  v4+v6 caiu de 63 para 47 comandos nas caixas que já tinham a lista pronta, e de 78 para 47
+  nas que ainda precisavam criá-la.
+- O filtro continua onde faz falta: upstream, IX e CDN aceitam a tabela cheia no node 10, e é o
+  `deny node 5` que segura os bogons — com a lista em `permit`, única forma que casa
+  (`if-match ip-prefix` só casa o que a lista permite).
+
+---
+
 ## [Não publicado] — 2026-08-18 (BGP: grade só com circuito no ar, visão geral removida)
 
 ### Alterado
