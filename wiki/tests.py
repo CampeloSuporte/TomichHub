@@ -106,6 +106,29 @@ class WikiPermissaoConsultorTest(TestCase):
         self.assertFalse(ArtigoWiki.objects.filter(pk=self.artigo.pk).exists())
 
 
+class FabricantesGponTest(TestCase):
+    """Vendors de OLT/GPON pedidos pelo usuário precisam estar disponíveis
+    como choice de fabricante do artigo."""
+
+    def test_vendors_de_gpon_estao_nas_choices(self):
+        chaves = dict(ArtigoWiki.FABRICANTES)
+        for esperado in ('ZTE', 'FIBERHOME', 'PARKS', 'VSOL', 'INTELBRAS', 'RAISECOM', 'DATACOM'):
+            self.assertIn(esperado, chaves)
+
+    def test_artigo_com_vendor_de_gpon_aparece_no_filtro_da_categoria(self):
+        categoria = CategoriaWiki.objects.create(nome='GPON', slug='gpon')
+        ArtigoWiki.objects.create(
+            titulo='Config Fiberhome', categoria=categoria,
+            fabricante='FIBERHOME', descricao_curta='x', conteudo='y',
+        )
+        self.client.force_login(_consultor('consultor_gpon', wiki_habilitada=True))
+
+        resp = self.client.get(reverse('wiki:categoria', args=['gpon']))
+
+        por_valor = {f['valor']: f['total'] for f in resp.context['fabricantes_disponiveis']}
+        self.assertEqual(por_valor, {'FIBERHOME': 1})
+
+
 class ListarPorCategoriaFabricanteTest(TestCase):
     """Dentro de uma categoria, filtrar também por fabricante — só os
     fabricantes que realmente têm artigo nesta categoria aparecem como

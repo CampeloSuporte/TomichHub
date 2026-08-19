@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-19 (Wiki: vendors de GPON/OLT nas escolhas de fabricante)
+
+### Adicionado
+
+- **ZTE, Fiberhome, Parks, VSOL, Intelbras e Raisecom** adicionados a `ArtigoWiki.FABRICANTES`
+  ([`wiki/models.py`](wiki/models.py), migração `wiki/migrations/0003_alter_artigowiki_fabricante.py`) —
+  vendors de OLT/GPON pedidos pelo usuário. Escopo intencionalmente restrito à Wiki: o projeto tem mais 3
+  listas de fabricante (`BackupTemplate`, `ScriptCRM`, `AgentKnowledge`), mas nenhuma é "a" lista de GPON —
+  o conceito de OLT/GPON no sistema hoje usa texto livre (`Modelo_equipamento.fabricante`) com
+  reconhecimento heurístico em `clientes/tasks.py`, sem choices fixas; mexer em `BackupTemplate` exigiria
+  também ajustar essa lógica de seleção de template pra não regredir cadastros já existentes — fora do
+  pedido desta vez. Os formulários de cadastro/edição/busca de artigo já iteram sobre `FABRICANTES`
+  genericamente, então os novos vendors aparecem sem mudança de template. Cobertura de teste:
+  `wiki/tests.py` (`FabricantesGponTest`).
+
+---
+
 ## [Não publicado] — 2026-08-19 (Wiki: filtro por fabricante dentro da categoria)
 
 ### Adicionado

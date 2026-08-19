@@ -55,6 +55,15 @@ class ArtigoWiki(models.Model):
         ('HP', 'HP/Aruba'),
         ('DELL', 'Dell'),
         ('DATACOM', 'Datacom'),
+        # Vendors de OLT/GPON — nomes já reconhecidos em outros pontos do
+        # sistema (ex. clientes/tasks.py, mapeamento de template de backup),
+        # aqui só faltavam como choice da Wiki.
+        ('ZTE', 'ZTE'),
+        ('FIBERHOME', 'Fiberhome'),
+        ('PARKS', 'Parks'),
+        ('VSOL', 'VSOL'),
+        ('INTELBRAS', 'Intelbras'),
+        ('RAISECOM', 'Raisecom'),
         ('GENERICO', 'Genérico/Múltiplos'),
     ]
     
