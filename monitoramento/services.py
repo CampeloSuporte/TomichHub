@@ -9,6 +9,7 @@ Compatibilidade:
 import logging
 import time
 import requests
+from django.core.cache import cache
 
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
@@ -17,6 +18,8 @@ requests.packages.urllib3.disable_warnings(
 logger = logging.getLogger(__name__)
 
 _version_cache: dict = {}
+_AUTH_TOKEN_TTL = 600   # 10 min — evita relogar no Zabbix a cada poll de 15s
+_ITEM_META_TTL  = 300   # 5 min — value_type/units de um item raramente mudam
 
 
 # ──────────────────────────────────────────────────────────────
@@ -47,7 +50,10 @@ def _get_zabbix_version(url: str) -> tuple:
 # HTTP / RPC
 # ──────────────────────────────────────────────────────────────
 
-def _rpc(url: str, method: str, params: dict, auth: str = None) -> dict:
+_AUTH_ERROR_MARKERS = ('re-login', 'not authorized', 'session terminated', 'expected another format')
+
+
+def _rpc(url: str, method: str, params: dict, auth: str = None, config=None) -> dict:
     endpoint = f"{url.rstrip('/')}/api_jsonrpc.php"
     payload  = {"jsonrpc": "2.0", "method": method, "params": params, "id": 1}
     headers  = {"Content-Type": "application/json"}
@@ -65,6 +71,12 @@ def _rpc(url: str, method: str, params: dict, auth: str = None) -> dict:
 
     if "error" in data:
         msg = data["error"].get("data") or data["error"].get("message", "Zabbix API Error")
+        # Token cacheado expirou do lado do Zabbix antes do nosso TTL (ex:
+        # sessão derrubada manualmente) — invalida o cache e refaz login uma
+        # vez, em vez de estourar erro pro usuário no meio de um poll de 15s.
+        if config is not None and any(m in msg.lower() for m in _AUTH_ERROR_MARKERS):
+            novo_auth = _get_auth_token(config, force_refresh=True)
+            return _rpc(url, method, params, auth=novo_auth)
         raise Exception(msg)
 
     return data.get("result")
@@ -74,9 +86,15 @@ def _rpc(url: str, method: str, params: dict, auth: str = None) -> dict:
 # AUTENTICAÇÃO
 # ──────────────────────────────────────────────────────────────
 
-def _get_auth_token(config):
+def _get_auth_token(config, force_refresh=False):
     if getattr(config, 'api_token', None):
         return config.api_token
+
+    cache_key = f"zbx_auth_token:{getattr(config, 'id', config.url)}"
+    if not force_refresh:
+        cached = cache.get(cache_key)
+        if cached:
+            return cached
 
     url = config.url.rstrip('/')
     for user_param in ("username", "user"):
@@ -97,7 +115,9 @@ def _get_auth_token(config):
         data = resp.json()
 
         if "result" in data:
-            return data["result"]
+            token = data["result"]
+            cache.set(cache_key, token, _AUTH_TOKEN_TTL)
+            return token
 
         error_data = data.get("error", {}).get("data", "")
         if 'unexpected parameter "user"' in error_data:
@@ -249,30 +269,40 @@ def listar_interfaces(config, host_id: str) -> list:
 # HISTÓRICO DE ITENS
 # ──────────────────────────────────────────────────────────────
 
-def historico_item(config, item_id, hours=1):
+def historico_item(config, item_id, hours=1, limit=300):
     auth = _get_auth_token(config)
     time_from = int(time.time()) - (hours * 3600)
 
-    # Buscar metadados do item
-    item_info = _rpc(config.url, 'item.get', {
-        'itemids': [item_id],
-        'output': ['value_type', 'units', 'name', 'lastvalue', 'lastclock'],
-    }, auth)
+    # Metadados do item (value_type/units) raramente mudam — cacheados
+    # separado do histórico em si, que precisa ser sempre fresco.
+    meta_key = f"zbx_item_meta:{getattr(config, 'id', config.url)}:{item_id}"
+    meta = cache.get(meta_key)
+    if meta is None:
+        item_info = _rpc(config.url, 'item.get', {
+            'itemids': [item_id],
+            'output': ['value_type', 'units', 'name', 'lastvalue', 'lastclock'],
+        }, auth, config=config)
+        meta = {'value_type': 3, 'units': ''}
+        if item_info:
+            meta = {
+                'value_type': int(item_info[0].get('value_type', 3)),
+                'units': item_info[0].get('units', ''),
+            }
+        cache.set(meta_key, meta, _ITEM_META_TTL)
 
-    value_type = 3
-    units = ''
-    if item_info:
-        value_type = int(item_info[0].get('value_type', 3))
-        units = item_info[0].get('units', '')
+    value_type = meta['value_type']
+    units = meta['units']
 
     result = _rpc(config.url, 'history.get', {
         'itemids':   [item_id],
         'history':   value_type,
         'time_from': time_from,
         'sortfield': 'clock',
-        'sortorder': 'ASC',
-        'limit':     1000,
-    }, auth)
+        'sortorder': 'DESC',
+        'limit':     limit,
+    }, auth, config=config)
+    if result:
+        result = list(reversed(result))
 
     if not result:
         return []

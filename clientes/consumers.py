@@ -2319,6 +2319,7 @@ class WinboxConsumer(SSHConsumer):
 # =========================================================
 from .winbox_vnc import WinboxVNCManager
 from .browser_vnc import BrowserVNCManager
+from .rdp_vnc import RdpVNCManager
 
 
 class WinboxVNCConsumer(SSHConsumer):
@@ -2391,10 +2392,11 @@ class WinboxVNCConsumer(SSHConsumer):
             acesso = Acesso.objects.get(id=acesso_id)
             host = acesso.host
 
+            _tipo_sessao = 'webfig' if mode == 'browser' else ('rdp' if mode == 'rdp' else 'winbox')
             self._sessao_auditoria = AcessoSessao.objects.create(
                 acesso=acesso,
                 usuario=getattr(self, '_crm_user', None),
-                tipo=('webfig' if mode == 'browser' else 'winbox'),
+                tipo=_tipo_sessao,
                 ip_origem=(self.scope.get('client') or [None])[0],
             )
             record_path = None
@@ -2415,15 +2417,20 @@ class WinboxVNCConsumer(SSHConsumer):
                 else:
                     # Para Winbox/MikroTik, o WebFig costuma estar na 80 ou 443
                     # Tentamos a 80 por padrão, mas o ideal seria o usuário configurar
-                    porta = 80 
+                    porta = 80
+            elif mode == 'rdp':
+                # RDP usa o campo genérico de porta do acesso (padrão 3389) —
+                # não tem campo dedicado como o winbox, o protocolo 'RDP' já
+                # usa 'porta' no cadastro (ver modal_acessos.html).
+                porta = int(acesso.porta) if acesso.porta else 3389
             else:
                 porta = int(acesso.winbox) if hasattr(acesso, 'winbox') and acesso.winbox else 8291
 
-            
+
             if self.is_private_ip(host):
                 proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
                 if proxy:
-                    msg_tipo = "Navegador" if mode == 'browser' else "Winbox"
+                    msg_tipo = {"browser": "Navegador", "rdp": "RDP"}.get(mode, "Winbox")
                     self.send_json({'type': 'info', 'message': f'🔌 Conectando {msg_tipo} via proxy {proxy.nome}...'})
                     local_port = self._criar_tunel_paramiko(proxy, host, porta)
                     self.send_json({'type': 'info', 'message': f'✅ Túnel estabelecido na porta {local_port}'})
@@ -2467,8 +2474,17 @@ class WinboxVNCConsumer(SSHConsumer):
 
                 self.vnc_manager = BrowserVNCManager(url=url, record_path=record_path, width=vnc_w, height=vnc_h)
 
-
-
+            elif mode == 'rdp':
+                # Inicia Xvfb + xfreerdp + x11vnc
+                self.vnc_manager = RdpVNCManager(
+                    host=target_host,
+                    port=target_port,
+                    user=acesso.usuario,
+                    password=acesso.senha,
+                    width=vnc_w,
+                    height=vnc_h,
+                    record_path=record_path
+                )
 
             else:
                 # Inicia Xvfb + WinBox + x11vnc
@@ -2499,7 +2515,7 @@ class WinboxVNCConsumer(SSHConsumer):
             self.read_thread = threading.Thread(target=self.read_tcp_output, daemon=True)
             self.read_thread.start()
             
-            servico_nome = "WebFig (Navegador)" if mode == 'browser' else "Winbox"
+            servico_nome = {"browser": "WebFig (Navegador)", "rdp": "RDP"}.get(mode, "Winbox")
             self.send_json({'type': 'connected', 'message': f'Ambiente {servico_nome} criado no servidor. Recebendo tela...'})
 
         except Exception as e:

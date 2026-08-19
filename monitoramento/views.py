@@ -137,7 +137,18 @@ def _criar_tunel_zabbix(proxy, zbx_host, zbx_port, timeout=10):
 
 
 def _fechar_tunel(tunel):
-    """Fecha o túnel SSH criado para o Zabbix."""
+    """No-op intencional: túneis Zabbix agora vivem em _tunnel_pool e são
+    reaproveitados entre requisições/pollings (ver _pool_get_or_create_tunnel).
+    Antes, fechar aqui matava o túnel logo após cada request — cada poll de
+    15s do gráfico refazia handshake SSH + login Zabbix do zero. Mantido
+    como no-op (em vez de removido) para não obrigar a mexer no `finally:
+    _fechar_tunel(tunel)` de cada view que já usa esse helper."""
+    pass
+
+
+def _fechar_tunel_real(tunel):
+    """Fecha de fato um túnel — usado só internamente pelo pool, quando o
+    túnel está morto/ocioso demais e precisa ser substituído."""
     if not tunel:
         return
     _, ssh_client, server_sock = tunel
@@ -147,11 +158,50 @@ def _fechar_tunel(tunel):
     except: pass
 
 
+_tunnel_pool = {}
+_tunnel_pool_lock = threading.Lock()
+_TUNNEL_IDLE_TIMEOUT = 300  # 5 min sem uso -> túnel é descartado no próximo acesso
+
+
+def _pool_get_or_create_tunnel(cliente_id, proxy, zbx_host, zbx_port):
+    """Reaproveita o túnel SSH já aberto para este cliente (se ainda vivo,
+    mesmo destino e não ocioso há mais de _TUNNEL_IDLE_TIMEOUT); senão cria
+    um novo. Isso evita abrir uma conexão SSH nova a cada requisição de
+    histórico/status — o maior custo da abertura da aba de Monitoramento
+    quando o Zabbix está atrás de um proxy (IP privado)."""
+    import time as _time
+    with _tunnel_pool_lock:
+        entry = _tunnel_pool.get(cliente_id)
+        if entry:
+            transport = entry['ssh_client'].get_transport()
+            idle = _time.time() - entry['last_used']
+            ainda_valido = (
+                transport is not None and transport.is_active()
+                and entry['zbx_host'] == zbx_host and entry['zbx_port'] == zbx_port
+                and idle < _TUNNEL_IDLE_TIMEOUT
+            )
+            if ainda_valido:
+                entry['last_used'] = _time.time()
+                return entry['local_port'], entry['ssh_client'], entry['server_sock']
+            _fechar_tunel_real((entry['local_port'], entry['ssh_client'], entry['server_sock']))
+            _tunnel_pool.pop(cliente_id, None)
+
+        tunel = _criar_tunel_zabbix(proxy, zbx_host, zbx_port)
+        if not tunel:
+            return None
+        local_port, ssh_client, server_sock = tunel
+        _tunnel_pool[cliente_id] = {
+            'local_port': local_port, 'ssh_client': ssh_client, 'server_sock': server_sock,
+            'last_used': _time.time(), 'zbx_host': zbx_host, 'zbx_port': zbx_port,
+        }
+        return local_port, ssh_client, server_sock
+
+
 def _get_config_com_tunel(config, cliente_id):
     """
-    Se a URL do Zabbix tiver IP privado, cria túnel SSH e retorna
-    (config_modificado, tunel) onde config_modificado aponta para
-    localhost:porta_local.
+    Se a URL do Zabbix tiver IP privado, reaproveita/cria túnel SSH via
+    _pool_get_or_create_tunnel e retorna (config_modificado, tunel) onde
+    config_modificado aponta para localhost:porta_local.
     Caso contrário retorna (config_original, None).
     """
     parsed   = urlparse(config.url)
@@ -182,7 +232,7 @@ def _get_config_com_tunel(config, cliente_id):
             f"para este cliente. Configure na aba 'Túneis SSH'."
         )
 
-    tunel = _criar_tunel_zabbix(proxy, zbx_host, zbx_port)
+    tunel = _pool_get_or_create_tunnel(cliente_id, proxy, zbx_host, zbx_port)
     if not tunel:
         raise Exception(f"Falha ao criar túnel SSH para {zbx_host}:{zbx_port}")
 
@@ -198,6 +248,7 @@ def _get_config_com_tunel(config, cliente_id):
         pass
 
     cfg           = _ConfigProxy()
+    cfg.id        = config.id  # mantém estável p/ cache de token/metadados mesmo com a porta local do túnel mudando
     cfg.url       = nova_url
     cfg.usuario   = config.usuario
     cfg.senha     = config.senha
@@ -394,6 +445,15 @@ def historico_item_zabbix(request):
     if hours not in (1, 3, 6, 12, 24):
         hours = 1
 
+    # O frontend já manda o limit real que o gráfico usa (ex: 60 pontos) —
+    # antes essa view ignorava e sempre buscava até 1000 pontos brutos do
+    # Zabbix a cada poll de 15s. Teto de segurança em 1000.
+    try:
+        limit = int(request.GET.get('limit', 300))
+    except (TypeError, ValueError):
+        limit = 300
+    limit = max(1, min(limit, 1000))
+
     if not _pode_acessar_cliente(request, cliente_id):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
@@ -401,7 +461,7 @@ def historico_item_zabbix(request):
     try:
         config  = ZabbixConfig.objects.get(cliente_id=cliente_id, ativo=True)
         config, tunel = _get_config_com_tunel(config, cliente_id)
-        history = services.historico_item(config, item_id, hours=hours)
+        history = services.historico_item(config, item_id, hours=hours, limit=limit)
         return JsonResponse({'history': history})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

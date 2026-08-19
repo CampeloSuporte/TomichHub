@@ -77,9 +77,14 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
             break;
             
         case 'rdp':
-            urlAcesso = `rdp://${host}:${porta}`;
-            break;
-            
+            // rdp:// depende de um handler de protocolo instalado no SO do
+            // usuário (não existe por padrão em nenhum navegador) — em vez
+            // disso abre o acesso RDP via Web (mesmo padrão do Winbox Web:
+            // servidor roda o cliente RDP num Xvfb e transmite via noVNC).
+            window.open('/clientes/rdp/' + acessoId + '/', 'rdp_' + acessoId,
+                'width=1400,height=800,menubar=no,toolbar=no,location=no,status=no');
+            return;
+
         case 'vnc':
             urlAcesso = `vnc://${host}:${porta}`;
             break;

@@ -476,6 +476,11 @@ body:not(.pal-off) #legend-panel{left:236px}
     <div class="tb-logo"><i class="fas fa-diagram-project"></i></div>
     <div class="tb-brand-txt"><b>Topologia</b><span>Editor de rede</span></div>
   </div>
+  {% if diagrama.pai %}
+  <a class="tb-btn" href="?diagrama={{ diagrama.pai_id }}" data-tip="Voltar para o mapa pai" style="text-decoration:none;display:inline-flex">
+    <i class="fas fa-arrow-left"></i> {{ diagrama.pai.nome }}
+  </a>
+  {% endif %}
   <input id="nome-diagrama" value="{{ diagrama.nome|default:'Nova Topologia' }}" aria-label="Nome do diagrama" data-tip="Nome do diagrama">
   <div class="tb-sep"></div>
   <button class="tb-btn primary" id="btn-salvar" onclick="topo.save()" data-tip="Salvar (Ctrl+S)"><i class="fas fa-floppy-disk"></i> Salvar</button>

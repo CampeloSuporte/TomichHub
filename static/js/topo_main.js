@@ -510,6 +510,53 @@ class TopoEditor {
         this._setDirty();
         e.stopPropagation();
       }
+      return;
+    }
+    // Duplo-clique num node: abre o sub-mapa vinculado (se já existir).
+    const nodeEl = target.closest('.node');
+    if (nodeEl) {
+      const node = this.nodes.find(n => n.id === nodeEl.dataset.id);
+      if (node && node.submap_id) {
+        e.stopPropagation();
+        this._abrirOuCriarSubmapa(node.id);
+      }
+    }
+  }
+
+  // ── Sub-mapas ────────────────────────────────────────────────────────────
+
+  _abrirOuCriarSubmapa(id) {
+    const node = this.nodes.find(n => n.id === id);
+    if (!node) return;
+    if (node.submap_id) {
+      window.location.href = `/clientes/${this.clienteId}/topologia/editor/?diagrama=${node.submap_id}`;
+      return;
+    }
+    const nome = prompt('Nome do sub-mapa:', node.label ? `${node.label} — detalhe` : 'Novo sub-mapa');
+    if (nome === null) return;
+    this._criarSubmapa(id, nome || 'Novo sub-mapa');
+  }
+
+  async _criarSubmapa(nodeId, nome) {
+    if (!this.diagramaId) {
+      await this.save();
+    }
+    if (!this.diagramaId) {
+      this._toast('Salve o mapa antes de criar um sub-mapa', 'error');
+      return;
+    }
+    try {
+      const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      const r = await fetch(`/clientes/${this.clienteId}/topologia/${this.diagramaId}/submapa/`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','X-CSRFToken':csrf},
+        body: JSON.stringify({node_id: nodeId, nome}),
+      });
+      const d = await r.json();
+      if (!d.ok) { this._toast(d.error || 'Erro ao criar sub-mapa', 'error'); return; }
+      window.location.href = `/clientes/${this.clienteId}/topologia/editor/?diagrama=${d.submap_id}`;
+    } catch (e) {
+      this._toast('Erro ao criar sub-mapa: ' + e, 'error');
     }
   }
 
@@ -748,6 +795,10 @@ class TopoEditor {
         ${TOPO_ICONS[def.icon]||''}
       </g>
       ${node.acesso_id ? `<circle class="node-led" cx="${hw-7}" cy="${-hh+7}" r="2.6" fill="#3fb950"/>` : ''}
+      ${node.submap_id ? `<g class="node-submap-badge" transform="translate(${hw-13},${hh-13})" data-tip="Tem sub-mapa">
+          <circle r="9" fill="#0d1117" stroke="${c}" stroke-width="1.5"/>
+          <path d="M-3.5,-3.5 h5 v5 M1.5,-3.5 L-3.5,1.5 M-1,-3.5 h4.5 v4.5" fill="none" stroke="${c}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>` : ''}
       <rect class="node-label-bg" x="${-lblBgW/2}" y="${hh+7}" width="${lblBgW}" height="${lblBgH}" rx="7"/>
       <text x="0" y="${hh+19}" text-anchor="middle" font-size="11" font-weight="600" fill="#e6edf3" font-family="'Segoe UI',sans-serif" letter-spacing=".1">${this._esc(node.label)}</text>
       ${node.ip ? `<text x="0" y="${hh+31}" text-anchor="middle" font-size="9" font-weight="700" fill="${c}" fill-opacity=".85" font-family="'Courier New',monospace">${this._esc(node.ip)}</text>` : ''}
@@ -979,6 +1030,19 @@ class TopoEditor {
     // Fica no topo do painel, antes dos campos de edição: é ação de consulta
     // (o que esse host tem configurado), não propriedade do desenho — e no fim
     // do painel exigia rolar pra descobrir que existe.
+    const submapHtml = node.submap_id ? `
+      <button class="prop-btn" id="btn-submap"
+        style="background:rgba(0,217,255,.12);border-color:var(--cyan);color:var(--cyan);margin:0 0 12px"
+        onclick="topo._abrirOuCriarSubmapa('${id}')"
+        title="Abre o sub-mapa vinculado a este nó">
+        <i class="fas fa-diagram-project"></i> Abrir sub-mapa →
+      </button>` : `
+      <button class="prop-btn" id="btn-submap"
+        onclick="topo._abrirOuCriarSubmapa('${id}')"
+        title="Cria um sub-mapa vazio vinculado a este nó (duplo-clique no nó também abre)">
+        <i class="fas fa-diagram-project"></i> Criar sub-mapa
+      </button>`;
+
     const l2vpnHtml = node.acesso_id ? `
       <button class="prop-btn" id="btn-l2vpn"
         style="background:rgba(188,140,255,.12);border-color:var(--purple);color:var(--purple);margin:0 0 12px"
@@ -1016,6 +1080,7 @@ class TopoEditor {
       </div>
       ${l2vpnHtml}
       ${ponHtml}
+      ${submapHtml}
       <div class="prop-group">
         <label class="prop-label">Nome</label>
         <input class="prop-input" id="pn-label" value="${this._esc(node.label)}">
@@ -2309,7 +2374,7 @@ class TopoEditor {
 
   async save() {
     const nome = document.getElementById('nome-diagrama').value || 'Nova Topologia';
-    const payload = {nome, dados_json: JSON.stringify({nodes:this.nodes, links:this.links})};
+    const payload = {nome, dados_json: JSON.stringify({nodes:this.nodes, links:this.links}), diagrama_id: this.diagramaId};
     const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
     try {
       const r = await fetch(`/clientes/${this.clienteId}/topologia/salvar/`, {

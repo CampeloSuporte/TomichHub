@@ -3963,6 +3963,24 @@ def winbox_page(request, acesso_id):
     
     return render(request, 'winbox.html', context)
 
+@login_required(login_url='login')
+@modulo_habilitado_required('acessos')
+def rdp_page(request, acesso_id):
+    """Renderiza a página de acesso RDP via Web (mesmo padrão do Winbox Web:
+    Xvfb + xfreerdp + x11vnc + noVNC, ver clientes/rdp_vnc.py)."""
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    context = {
+        'acesso': acesso,
+        'vnc_mode': 'rdp',
+    }
+
+    return render(request, 'winbox.html', context)
+
+
 @modulo_habilitado_required('acessos')
 def webfig_vnc_page(request, acesso_id):
     """Renderiza a página WebFig via VNC (Browser no servidor)"""
@@ -6420,13 +6438,24 @@ def _topologia_perm(request, cliente):
     return _perms.pode_acessar_cliente(request.user, cliente)
 
 
+def _resolver_diagrama(request, cliente):
+    """Resolve qual TopologiaDiagrama usar: o `?diagrama=<id>` da querystring
+    (usado para navegar entre mapa raiz e sub-mapas), ou, na ausência dele,
+    o mapa raiz do cliente (pai=NULL) — mesmo comportamento de antes de
+    sub-mapas existirem, pra quem nunca criou um."""
+    diagrama_id = request.GET.get('diagrama')
+    if diagrama_id:
+        return TopologiaDiagrama.objects.filter(cliente=cliente, id=diagrama_id).first()
+    return TopologiaDiagrama.objects.filter(cliente=cliente, pai__isnull=True).first()
+
+
 @login_required(login_url='login')
 @modulo_habilitado_required('topologia')
 def topologia_editor(request, cliente_id):
     cliente = get_object_or_404(Cliente, id=cliente_id)
     if not _topologia_perm(request, cliente):
         return JsonResponse({'error': 'Sem permissao'}, status=403)
-    diagrama = TopologiaDiagrama.objects.filter(cliente=cliente).first()
+    diagrama = _resolver_diagrama(request, cliente)
     return render(request, 'topologia_editor.html', {
         'cliente': cliente,
         'diagrama': diagrama,
@@ -6455,7 +6484,7 @@ def topologia_dados(request, cliente_id):
     cliente = get_object_or_404(Cliente, id=cliente_id)
     if not _topologia_perm(request, cliente):
         return JsonResponse({'error': 'Sem permissao'}, status=403)
-    diagrama = TopologiaDiagrama.objects.filter(cliente=cliente).first()
+    diagrama = _resolver_diagrama(request, cliente)
     if not diagrama:
         return JsonResponse({'nodes': [], 'links': [], 'diagrama_id': None})
     import json as _json
@@ -6466,6 +6495,8 @@ def topologia_dados(request, cliente_id):
     dados['diagrama_id'] = diagrama.id
     dados['nome'] = diagrama.nome
     dados['drawio_xml'] = diagrama.drawio_xml or ''
+    dados['pai_id'] = diagrama.pai_id
+    dados['pai_nome'] = diagrama.pai.nome if diagrama.pai_id else None
     return JsonResponse(dados)
 
 
@@ -6480,10 +6511,17 @@ def topologia_salvar(request, cliente_id):
         body = json.loads(request.body)
     except Exception:
         return JsonResponse({'error': 'Body invalido'}, status=400)
-    diagrama, _ = TopologiaDiagrama.objects.get_or_create(
-        cliente=cliente,
-        defaults={'nome': body.get('nome', 'Nova Topologia')}
-    )
+
+    diagrama_id = body.get('diagrama_id')
+    diagrama = None
+    if diagrama_id:
+        diagrama = TopologiaDiagrama.objects.filter(cliente=cliente, id=diagrama_id).first()
+    if not diagrama:
+        diagrama, _ = TopologiaDiagrama.objects.get_or_create(
+            cliente=cliente,
+            pai=None,
+            defaults={'nome': body.get('nome', 'Nova Topologia')}
+        )
     if 'nome' in body:
         diagrama.nome = body['nome']
     if 'dados_json' in body:
@@ -6493,6 +6531,45 @@ def topologia_salvar(request, cliente_id):
         diagrama.drawio_xml = body['drawio_xml']
     diagrama.save()
     return JsonResponse({'ok': True, 'diagrama_id': diagrama.id, 'nome': diagrama.nome})
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+@modulo_habilitado_required('topologia')
+def topologia_criar_submapa(request, cliente_id, diagrama_id):
+    """Cria um sub-mapa vinculado a um nó do diagrama `diagrama_id` (que vira
+    o mapa pai) e marca o nó com `submap_id` apontando pro novo diagrama."""
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _topologia_perm(request, cliente):
+        return JsonResponse({'error': 'Sem permissao'}, status=403)
+    diagrama_pai = get_object_or_404(TopologiaDiagrama, id=diagrama_id, cliente=cliente)
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'Body invalido'}, status=400)
+
+    node_id = body.get('node_id')
+    if not node_id:
+        return JsonResponse({'error': 'node_id obrigatorio'}, status=400)
+
+    submapa = TopologiaDiagrama.objects.create(
+        cliente=cliente,
+        pai=diagrama_pai,
+        nome=body.get('nome') or 'Novo sub-mapa',
+    )
+
+    try:
+        dados = json.loads(diagrama_pai.dados_json)
+    except Exception:
+        dados = {'nodes': [], 'links': []}
+    for node in dados.get('nodes', []):
+        if node.get('id') == node_id:
+            node['submap_id'] = submapa.id
+            break
+    diagrama_pai.dados_json = json.dumps(dados)
+    diagrama_pai.save(update_fields=['dados_json'])
+
+    return JsonResponse({'ok': True, 'submap_id': submapa.id, 'nome': submapa.nome})
 
 
 @login_required(login_url='login')
