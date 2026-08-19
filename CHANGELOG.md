@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-19 (CRM: remove widget global de conversas)
+
+### Removido
+
+- **Widget global de conversas** (`templates/base.html`): removidos os ícones flutuantes por
+  conversa (`#gchatBubbles`) e o modal de chat rápido (`#gchatModal`) que apareciam sobre qualquer
+  página do CRM para usuários staff, permitindo responder um atendimento sem entrar no módulo de
+  Atendimento. Decisão do usuário: conversas passam a ser tratadas exclusivamente dentro do módulo
+  de Atendimento (`atendimento/templates/atendimento/base.html`, que é standalone e não foi tocado).
+  O toast de notificação de novo chamado/mensagem (`#globalTicketToasts`) foi mantido — ele já tinha
+  fallback para redirecionar para `/atendimento/conversation/<id>/` quando `window.openGlobalChat`
+  não existisse, então a remoção do widget só faz esse fallback entrar em uso. O badge de não lidos
+  no botão "Atendimento" da barra lateral (`#globalAtendBtn`) também foi mantido, pois é o próprio
+  link de entrada no módulo.
+
+---
+
 ## [Não publicado] — 2026-08-19 (Wiki: vendors de GPON/OLT nas escolhas de fabricante)
 
 ### Adicionado
