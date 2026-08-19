@@ -5,6 +5,41 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-19 (Atendimento: nota interna vazava pro WhatsApp do cliente)
+
+### Corrigido
+
+- **CRÍTICO — "Comentário Interno" nunca foi realmente interno**
+  ([`atendimento/services.py`](atendimento/services.py) — `ConversationService.send_message`,
+  [`atendimento/views.py`](atendimento/views.py) — `api_send_message`): o toggle "Comentário Interno" do
+  chat manda `is_internal: true` pro backend desde que a tela existe, mas `api_send_message` nunca lia esse
+  campo — toda mensagem, marcada como nota interna ou não, seguia o mesmo caminho e era enviada de verdade
+  pro grupo do WhatsApp do cliente como se fosse uma resposta normal (`sender_type` sempre `'agent'`).
+  Ou seja: qualquer anotação privada da equipe sobre o cliente (cobrança, reclamação interna, etc.)
+  digitada com o toggle ligado estava sendo entregue ao próprio cliente.
+  `send_message` agora aceita `is_internal` de verdade: quando ligado, salva a mensagem com
+  `sender_type='internal'`, **não** dispara o envio ao WhatsApp, e não conta como primeira resposta
+  (`first_response_at`) nem como atividade recente do chamado (`last_message_at`) — nota interna não é
+  resposta ao cliente, então não pode mascarar um chamado sem atendimento de verdade pra SLA/varredura de
+  "chamado sem resposta". Cobertura de teste: `atendimento/tests.py` (`NotaInternaTest`).
+
+---
+
+## [Não publicado] — 2026-08-19 (Atendimento: agente IA "Tomichinho" também lê nota interna)
+
+### Adicionado
+
+- **Gatilho "abrir tarefa" também funciona em nota interna** ([`atendimento/tasks.py`](atendimento/tasks.py) —
+  `abrir_tarefa_ia`, [`atendimento/services.py`](atendimento/services.py)): além de mensagens recebidas do
+  WhatsApp, uma nota interna contendo "abrir tarefa" agora também dispara a criação da `Tarefa` vinculada
+  ao cliente do grupo. A confirmação ("✅ Tarefa aberta: ...") fica só no CRM como outra nota interna —
+  nunca sai pro WhatsApp, já que a nota que originou o pedido também não saiu. "tomichinho" continua só
+  valendo pra mensagem recebida do WhatsApp: resposta automática a partir de uma nota interna vazaria pro
+  grupo do cliente, então não foi habilitado. Cobertura de teste: `atendimento/tests.py`
+  (`AbrirTarefaIAInternaTest`, casos de nota interna em `NotaInternaTest`).
+
+---
+
 ## [Não publicado] — 2026-08-19 (Atendimento: agente IA "Tomichinho" — resumo, resposta e abertura de tarefa)
 
 ### Adicionado

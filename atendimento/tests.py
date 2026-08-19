@@ -590,6 +590,122 @@ class AutoAtribuicaoAoResponderTest(TestCase):
         self.assertFalse(resp2.json()['newly_assigned'])
 
 
+class NotaInternaTest(TestCase):
+    """Nota interna (toggle "Comentário Interno" do chat) não podia vazar pro
+    WhatsApp do cliente. `is_internal` chegava do front até `api_send_message`
+    e era descartado ali — toda nota "interna" saía pro grupo igual a uma
+    resposta normal, só que sem o cliente saber que era pra ser privada."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.agent = _criar_agente_staff('ana')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_nota_interna_nao_envia_ao_whatsapp(self, mock_client_cls):
+        ok, msg_id = ConversationService.send_message(
+            self.conversation, 'cliente devendo, não fazer visita', self.agent, is_internal=True)
+
+        self.assertTrue(ok)
+        mock_client_cls.return_value.send_text.assert_not_called()
+        msg = Message.objects.get(id=msg_id)
+        self.assertEqual(msg.sender_type, 'internal')
+        self.assertTrue(msg.is_internal)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_nota_interna_nao_conta_como_primeira_resposta(self, mock_client_cls):
+        ConversationService.send_message(
+            self.conversation, 'nota qualquer', self.agent, is_internal=True)
+
+        self.conversation.refresh_from_db()
+        self.assertIsNone(self.conversation.first_response_at)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_mensagem_normal_continua_enviando_ao_whatsapp(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, 'remote-1')
+
+        ConversationService.send_message(self.conversation, 'olá cliente', self.agent)
+
+        mock_client_cls.return_value.send_text.assert_called_once()
+        self.conversation.refresh_from_db()
+        self.assertIsNotNone(self.conversation.first_response_at)
+
+    @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_nota_interna_com_abrir_tarefa_dispara_task(self, mock_client_cls, mock_delay):
+        ConversationService.send_message(
+            self.conversation, 'abrir tarefa: verificar contrato do cliente', self.agent, is_internal=True)
+
+        mock_delay.assert_called_once_with(
+            str(self.conversation.id), 'abrir tarefa: verificar contrato do cliente', True)
+
+    @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_nota_interna_sem_abrir_tarefa_nao_dispara_nada(self, mock_client_cls, mock_delay):
+        ConversationService.send_message(
+            self.conversation, 'só um lembrete qualquer', self.agent, is_internal=True)
+
+        mock_delay.assert_not_called()
+
+    @mock.patch('atendimento.tasks.responder_tomichinho.delay')
+    @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_tomichinho_em_nota_interna_nao_dispara_ia(self, mock_client_cls, mock_tarefa, mock_tomichinho):
+        # "tomichinho" numa nota interna não pode gerar resposta automática
+        # pro WhatsApp — só "abrir tarefa" é tratado em nota interna.
+        ConversationService.send_message(
+            self.conversation, 'tomichinho, o que você acha disso?', self.agent, is_internal=True)
+
+        mock_tomichinho.assert_not_called()
+        mock_tarefa.assert_not_called()
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_api_send_message_com_is_internal_salva_como_nota(self, mock_client_cls):
+        self.client.force_login(self.agent)
+        url = reverse('atendimento:api_send_message', args=[self.conversation.id])
+
+        resp = self.client.post(
+            url, json.dumps({'message': 'nota via API', 'is_internal': True}),
+            content_type='application/json')
+
+        self.assertEqual(resp.status_code, 200)
+        mock_client_cls.return_value.send_text.assert_not_called()
+        msg = Message.objects.get(content='nota via API')
+        self.assertEqual(msg.sender_type, 'internal')
+
+
+class AbrirTarefaIAInternaTest(TestCase):
+    """abrir_tarefa_ia disparada por nota interna: confirmação fica só no
+    CRM, nunca sai pro WhatsApp do cliente."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.group = self.conversation.group
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch(
+        'atendimento.ai.call_ai',
+        return_value='{"titulo": "Verificar contrato", "descricao": ""}',
+    )
+    def test_confirmacao_de_tarefa_interna_nao_vai_ao_whatsapp(self, mock_call_ai, mock_client_cls):
+        from tarefas.models import Tarefa
+        from atendimento.tasks import abrir_tarefa_ia
+
+        cliente = _criar_cliente_teste()
+        self.group.cliente = cliente
+        self.group.save(update_fields=['cliente'])
+
+        resultado = abrir_tarefa_ia(
+            str(self.conversation.id), 'abrir tarefa: verificar contrato', True)
+
+        self.assertTrue(resultado['ok'])
+        tarefa = Tarefa.objects.get(id=resultado['tarefa_id'])
+        self.assertEqual(tarefa.titulo, 'Verificar contrato')
+        mock_client_cls.return_value.send_text.assert_not_called()
+        confirmacao = Message.objects.get(content__startswith='✅ Tarefa aberta')
+        self.assertEqual(confirmacao.sender_type, 'internal')
+        self.assertTrue(confirmacao.is_internal)
+
+
 class ChatRenderTest(TestCase):
     """Renderização dos balões na tela de conversa."""
 

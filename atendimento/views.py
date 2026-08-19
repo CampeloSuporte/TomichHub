@@ -401,6 +401,7 @@ def api_send_message(request, conversation_id):
         conversation = get_object_or_404(Conversation, id=conversation_id)
         data = json.loads(request.body)
         message_text = data.get('message', '').strip()
+        is_internal = bool(data.get('is_internal'))
 
         if not message_text:
             return JsonResponse({'success': False, 'error': 'Mensagem vazia'}, status=400)
@@ -415,7 +416,8 @@ def api_send_message(request, conversation_id):
         success, result = ConversationService.send_message(
             conversation,
             message_text,
-            request.user
+            request.user,
+            is_internal=is_internal,
         )
 
         if success:

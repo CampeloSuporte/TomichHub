@@ -194,27 +194,33 @@ def _disparar_agente_ia(conversation, content) -> None:
         abrir_tarefa_ia.delay(str(conversation.id), content)
 
 
-def _ia_enviar(conversation, group, connection, texto, sender_name='Tomichinho') -> None:
-    """Envia uma resposta do agente IA ao WhatsApp e a salva como mensagem
-    'ai' pra aparecer no chat — mesmo padrão de `_flow_enviar`, mas com o
-    sender_type específico da IA (Message.SENDER_TYPE_CHOICES já prevê 'ai')."""
+def _ia_enviar(conversation, group, connection, texto, sender_name='Tomichinho',
+               sender_type='ai', enviar_whatsapp=True) -> None:
+    """Salva uma mensagem do agente IA e (se `enviar_whatsapp`) manda pro
+    WhatsApp do grupo — mesmo padrão de `_flow_enviar`. Usado tanto pra
+    resposta a "tomichinho"/confirmação de tarefa vinda do WhatsApp
+    (`enviar_whatsapp=True`, sender_type='ai') quanto pra confirmação de
+    tarefa aberta a partir de uma NOTA INTERNA (`enviar_whatsapp=False`,
+    sender_type='internal') — essa última não pode vazar pro cliente."""
     if not texto or not conversation:
         return
     import uuid as _uuid
     msg = Message.objects.create(
         conversation=conversation,
-        sender_type='ai',
+        sender_type=sender_type,
         sender_name=sender_name,
         message_type='text',
         content=texto,
         external_id='ia_%s' % _uuid.uuid4().hex,
+        is_internal=(sender_type == 'internal'),
     )
-    conversation.last_message_at = timezone.now()
-    conversation.save(update_fields=['last_message_at'])
-    try:
-        EvolutionAPIClient(connection).send_text(group.jid, texto)
-    except Exception as e:
-        logger.warning(f"Falha ao enviar resposta do agente IA: {e}")
+    if enviar_whatsapp:
+        conversation.last_message_at = timezone.now()
+        conversation.save(update_fields=['last_message_at'])
+        try:
+            EvolutionAPIClient(connection).send_text(group.jid, texto)
+        except Exception as e:
+            logger.warning(f"Falha ao enviar resposta do agente IA: {e}")
     ConversationService._broadcast_msg(conversation, group, msg, inbox=False)
 
 
@@ -1292,17 +1298,24 @@ class ConversationService:
 
     @staticmethod
     def send_message(conversation: Conversation, text: str,
-                     agent=None) -> Tuple[bool, str]:
-        """Salva a mensagem imediatamente e envia ao WhatsApp em background.
-        Formato enviado: *NomeAgente*\n\nmensagem
+                     agent=None, is_internal=False) -> Tuple[bool, str]:
+        """Salva a mensagem imediatamente. Se `is_internal`, é uma nota
+        interna — fica só no CRM, NUNCA sai pro WhatsApp do cliente (o
+        toggle "Comentário Interno" da tela chegava a esta função sem
+        nenhum efeito: a mensagem sempre ia pro WhatsApp igual a uma
+        resposta normal, vazando nota privada pro cliente). Caso contrário,
+        envia ao WhatsApp em background. Formato enviado: *NomeAgente*\n\nmensagem
         """
         import threading as _threading
 
         try:
             display_name = ConversationService.get_agent_display_name(agent)
+            sender_type = "internal" if is_internal else "agent"
             whatsapp_text = f"*{display_name}*\n\n{text}"
 
             # 0. Quem responde, assume — vale para qualquer caminho de envio
+            # (inclusive nota interna: escrever sobre o chamado já é sinal
+            # de que alguém está cuidando dele).
             auto_assign_on_reply(conversation, agent)
 
             # 1. Salva no DB imediatamente com ID temporário
@@ -1311,22 +1324,29 @@ class ConversationService:
             msg = Message.objects.create(
                 external_id=temp_id,
                 conversation=conversation,
-                sender_type="agent",
+                sender_type=sender_type,
                 sender=agent,
                 sender_name=display_name,
                 message_type="text",
                 content=text,
                 created_at=now,
+                is_internal=is_internal,
             )
 
-            # 2. Atualiza conversa e cria atividade
-            conversation.last_message_at = now
+            # 2. Atualiza conversa e cria atividade. Nota interna não chega
+            # ao cliente, então não conta como resposta nem como atividade
+            # recente pro SLA/varredura de "chamado sem resposta" — só
+            # first_response_at/last_message_at de mensagem que o cliente
+            # de fato recebeu.
+            update_fields = ["status"]
             if conversation.status == "new":
                 conversation.status = "open"
-            update_fields = ["last_message_at", "status"]
-            if not conversation.first_response_at:
-                conversation.first_response_at = now
-                update_fields.append("first_response_at")
+            if not is_internal:
+                conversation.last_message_at = now
+                update_fields.append("last_message_at")
+                if not conversation.first_response_at:
+                    conversation.first_response_at = now
+                    update_fields.append("first_response_at")
             conversation.save(update_fields=update_fields)
             ConversationActivity.objects.create(
                 conversation=conversation,
@@ -1342,12 +1362,21 @@ class ConversationService:
                 "message": {
                     "id": str(msg.id),
                     "content": text,
-                    "sender_type": "agent",
+                    "sender_type": sender_type,
                     "sender_name": display_name,
                     "created_at": local_time.strftime("%H:%M"),
                     "created_at_iso": msg.created_at.isoformat(),
                 },
             })
+
+            if is_internal:
+                # Gatilho do agente IA em nota interna: só "abrir tarefa"
+                # (não "tomichinho" — resposta da IA a partir de uma nota
+                # interna não pode vazar pro grupo do WhatsApp).
+                if 'abrir tarefa' in text.lower():
+                    from .tasks import abrir_tarefa_ia
+                    abrir_tarefa_ia.delay(str(conversation.id), text, True)
+                return True, str(msg.id)
 
             # 4. Envia ao WhatsApp em background — sem bloquear a resposta HTTP
             msg_id = msg.id

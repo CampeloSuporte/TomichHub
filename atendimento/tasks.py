@@ -121,10 +121,15 @@ def responder_tomichinho(conversation_id):
 
 
 @shared_task
-def abrir_tarefa_ia(conversation_id, texto_comando):
-    """Gatilho "abrir tarefa" numa mensagem do chamado: interpreta o pedido
-    via IA e cria uma Tarefa vinculada ao cliente do grupo. Sem cliente
-    vinculado ao grupo, não há onde criar a tarefa — apenas ignora."""
+def abrir_tarefa_ia(conversation_id, texto_comando, is_internal=False):
+    """Gatilho "abrir tarefa" numa mensagem do chamado (recebida do WhatsApp
+    ou digitada como nota interna): interpreta o pedido via IA e cria uma
+    Tarefa vinculada ao cliente do grupo. Sem cliente vinculado ao grupo,
+    não há onde criar a tarefa — apenas ignora.
+
+    Quando `is_internal`, a confirmação fica só no CRM (nota interna) — não
+    pode vazar pro WhatsApp do cliente algo que começou como comentário
+    privado da equipe."""
     import json as _json
     import re as _re
     from .models import Conversation
@@ -178,10 +183,17 @@ def abrir_tarefa_ia(conversation_id, texto_comando):
         instancia=instancia_da_tarefa(None, cliente),
     )
 
-    _ia_enviar(
-        conv, conv.group, conv.group.connection,
-        f"✅ Tarefa aberta: *{titulo}*",
-    )
+    if is_internal:
+        _ia_enviar(
+            conv, conv.group, conv.group.connection,
+            f"✅ Tarefa aberta: *{titulo}*",
+            sender_type='internal', enviar_whatsapp=False,
+        )
+    else:
+        _ia_enviar(
+            conv, conv.group, conv.group.connection,
+            f"✅ Tarefa aberta: *{titulo}*",
+        )
     return {'ok': True, 'tarefa_id': tarefa.id}
 
 
