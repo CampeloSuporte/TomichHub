@@ -5,6 +5,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-19 (2FA: tela de configuração travava no primeiro login)
+
+### Corrigido
+
+- **A tela de configuração do 2FA prendia o usuário atrás de um overlay** ([`usuario/templates/configurar_2fa.html`](usuario/templates/configurar_2fa.html)):
+  no primeiro login o aviso "autenticação em duas etapas obrigatória" era um modal Bootstrap com
+  `data-bs-backdrop="static"` e `data-bs-keyboard="false"` — clique fora não fecha, ESC não fecha.
+  Como o `.modal-backdrop` tem `z-index: 1040 !important` e a `.top-bar` do sistema tem
+  `z-index: 1000`, o backdrop cobria a barra inteira: Dashboard, menu do usuário e o próprio
+  "Deslogar" ficavam atrás dele, e todo clique era engolido. Pior, o script reabria o modal a cada
+  carregamento e o `Forcar2FAMiddleware` devolve o usuário para essa mesma página a cada tentativa
+  de navegar — o resultado era tela escura e nada clicável, em loop.
+- O aviso virou **inline**, no topo do card: mesma informação, sem overlay, sem backdrop e sem
+  auto-abertura. A barra superior volta a responder, o formulário fica utilizável de imediato e o
+  aviso traz um link direto para o logout, para quem preferir configurar depois.
+
+A obrigatoriedade não mudou: o middleware continua devolvendo qualquer rota para `/auth/2fa/`
+enquanto o dispositivo não estiver confirmado. Conferido com um login recém-criado (criado e
+revertido em transação). Detalhes em [`docs/2FA_GOOGLE_AUTHENTICATOR.md`](docs/2FA_GOOGLE_AUTHENTICATOR.md).
+
+---
+
 ## [Não publicado] — 2026-08-19 (Instâncias: limpeza do lixo de teste e criação da Principal)
 
 ### Corrigido
