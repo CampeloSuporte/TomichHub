@@ -5,6 +5,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-18 (BGP: grade só com circuito no ar, visão geral removida)
+
+### Alterado
+
+- **A grade de circuitos mostra só o que está no ar** ([`clientes/templates/bgp_automacao.html`](clientes/templates/bgp_automacao.html)):
+  pedido do operador olhando o painel de uma das caixas — na linha de upstream só o `c-01` tem
+  sessão, mas a grade exibia os 13 circuitos mapeados, 12 deles marcados "sem sessão BGP"; em
+  IX eram 10 cards e nenhuma sessão. Agora fica na grade apenas circuito **com sessão BGP**.
+  Circuito que tem os community-filters mas nenhum peer (config pela metade) e slot do template
+  nunca usado são a mesma coisa para quem opera — "dá pra subir uma sessão aqui" — e ficam os
+  dois atrás do card **＋** de cada família. Naquela caixa a grade caiu de 28 cards para 4.
+- O seletor do formulário lista os dois casos distinguindo-os (`c-02 — 65084:502xx · config
+  pronta, sem sessão` / `c-08 — 65084:508xx · slot livre`); escolher um circuito que já existe
+  traz junto o nome, o ASN remoto e o ASN de prepend dele, e a geração continua emitindo só o
+  que falta.
+
+### Removido
+
+- **Visão geral (matriz prefixo × circuito)**: com 25 circuitos não ficava legível nem como
+  consulta só-leitura. O painel do destino, que já mostra o efeito real prefixo a prefixo,
+  passa a ser o único caminho.
+
+---
+
 ## [Não publicado] — 2026-08-18 (BGP: fake-AS na sessão e painel só com o que está configurado)
 
 ### Adicionado
