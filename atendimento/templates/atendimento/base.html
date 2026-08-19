@@ -1697,6 +1697,20 @@ document.addEventListener('click', function() {
     window.__syncOpenBadges = function() {
         var panel = document.querySelector('.conv-panel');
         if (!panel) return;
+
+        /* "Assumidos" ficava fora desta função: ao resolver/transferir o
+           último chamado assumido, o item era removido da lista mas ninguém
+           recalculava o #badge-mine — sobrava um "1" fantasma sobre uma aba
+           vazia até dar F5. Mesma fonte de verdade das outras abas: conta os
+           itens que restaram na própria lista. */
+        var listaMine = panel.querySelector('#tab-mine');
+        var badgeMine = panel.querySelector('#badge-mine');
+        if (listaMine && badgeMine) {
+            var m = listaMine.querySelectorAll('.conv-item').length;
+            badgeMine.textContent = m;
+            badgeMine.style.display = m > 0 ? '' : 'none';
+        }
+
         /* SÓ a lista de "Abertos" do Inbox serve de fonte. O #convList do
            template base muda de conteúdo conforme a aba do chamado que está
            na tela (pode ser "Assumidos" ou "Em Andamento"), então contá-lo

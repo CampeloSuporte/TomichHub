@@ -443,54 +443,6 @@ class ProxyServer(models.Model):
         ordering = ['-ativo', 'nome']
 
 
-class VPNServidorConfig(models.Model):
-    """Configuração global do servidor WireGuard (singleton)."""
-    servidor_public_key  = models.CharField(max_length=200)
-    servidor_private_key = models.CharField(max_length=200)
-    servidor_endpoint    = models.CharField(max_length=200, help_text='IP ou hostname público do servidor')
-    servidor_porta       = models.IntegerField(default=51820)
-    interface_criada     = models.BooleanField(default=False)
-    criado_em            = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = 'Configuração Servidor VPN'
-
-    def __str__(self):
-        return f'VPN Server — {self.servidor_endpoint}:{self.servidor_porta}'
-
-
-class VPNWireGuard(models.Model):
-    """VPN WireGuard por cliente (MikroTik)."""
-    cliente             = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='vpns_wg')
-    nome                = models.CharField(max_length=100, default='VPN MikroTik')
-    cliente_private_key = models.CharField(max_length=200)
-    cliente_public_key  = models.CharField(max_length=200)
-    preshared_key       = models.CharField(max_length=200, blank=True)
-    vpn_ip              = models.GenericIPAddressField(unique=True)
-    redes_privadas      = models.TextField(blank=True, help_text='Uma rede por linha, ex: 192.168.1.0/24')
-    ativo               = models.BooleanField(default=True)
-    peer_no_servidor    = models.BooleanField(default=False, help_text='Peer adicionado ao wg0')
-    # Interface isolada: cada cliente tem sua própria interface wg com routing table dedicada
-    interface_nome      = models.CharField(max_length=20, blank=True, default='wg0',
-                          help_text='Interface WireGuard (ex: wg1, wg2). wg0=legado compartilhado')
-    servidor_ip_local   = models.CharField(max_length=45, blank=True, default='',
-                          help_text='IP do servidor nesta interface (ex: 10.201.0.1). '
-                                    'Usado como source-bind para routing isolado.')
-    criado_em           = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        verbose_name = 'VPN WireGuard'
-        verbose_name_plural = 'VPNs WireGuard'
-        ordering = ['-criado_em']
-
-    def __str__(self):
-        return f'{self.nome} — {self.cliente.nome_empresa} ({self.vpn_ip})'
-
-    def redes_lista(self):
-        import re
-        return [r.strip() for r in re.split(r'[,\n]+', self.redes_privadas) if r.strip()]
-
-
 def _ovpn_redes_padrao():
     return (
         '100.64.0.0/10\n'
@@ -507,12 +459,12 @@ def _ovpn_token_default():
 
 
 class VPNOpenVPN(models.Model):
-    """Túnel OpenVPN por cliente (MikroTik) — cada túnel roda em sua PRÓPRIA
-    instância de servidor (porta/interface/sub-rede dedicadas), igual ao
-    modelo já usado pelo WireGuard (VPNWireGuard.interface_nome). Isso evita
-    que dois clientes com as mesmas redes "alcançáveis" (o padrão CGNAT+
-    RFC1918) tenham tráfego roteado para o cliente errado quando ambos estão
-    conectados ao mesmo tempo — cada instância só aceita e só serve UM
+    """Túnel OpenVPN por cliente (MikroTik) — único tipo de VPN da CRM desde
+    14/08/2026, quando o WireGuard foi removido. Cada túnel roda em sua
+    PRÓPRIA instância de servidor (porta/interface/sub-rede dedicadas), o que
+    evita que dois clientes com as mesmas redes "alcançáveis" (o padrão
+    CGNAT+RFC1918) tenham tráfego roteado para o cliente errado quando ambos
+    estão conectados ao mesmo tempo — cada instância só aceita e só serve UM
     cliente. Ver clientes/openvpn_tunnel_manager.py."""
     cliente        = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='vpns_ovpn')
     nome           = models.CharField(max_length=100, default='VPN MikroTik')

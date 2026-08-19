@@ -21,6 +21,7 @@ class UsuarioModulo(models.Model):
         ('documentacao', 'Documentação de Rede'),
         ('hotspot', 'Hotspot'),
         ('testes_rede', 'Testes de Rede'),
+        ('tarefas', 'Tarefas'),
     ]
 
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='modulos')
@@ -144,10 +145,13 @@ class InstanciaFerramenta(models.Model):
         ('geoip', 'Geolocalização IP'),
         ('firmware', 'Firmware'),
         # Wiki é base de conhecimento GLOBAL (ArtigoWiki não tem instancia nem
-        # cliente): liberar aqui dá leitura e busca — inclusive a barra lateral
-        # do terminal. Criar/editar/excluir artigo segue só com Administrador,
-        # senão um Consultor editaria conteúdo de todas as instâncias.
-        ('wiki', 'Wiki (leitura)'),
+        # cliente): liberar aqui dá leitura, busca e — desde 14/08/2026 — criar
+        # e editar artigo pro Consultor (ver `usuario.perms.pode_editar_wiki`).
+        # Como a base é global, o artigo que ele edita é o mesmo que as outras
+        # instâncias leem; foi decisão do produto. EXCLUIR artigo continua só
+        # com Administrador, pra manter limitado o estrago possível.
+        ('wiki', 'Wiki'),
+        ('tarefas', 'Tarefas'),
     ]
 
     instancia = models.ForeignKey(Instancia, on_delete=models.CASCADE, related_name='ferramentas')
@@ -212,3 +216,25 @@ class TOTPBackupCode(models.Model):
     class Meta:
         verbose_name = 'Código de Backup 2FA'
         verbose_name_plural = 'Códigos de Backup 2FA'
+
+
+class DispositivoConfiavel(models.Model):
+    """'Confiar neste navegador' — pula a segunda etapa do 2FA por um
+    tempo, no mesmo navegador, sem abrir mão da segurança pra sempre: o
+    token é aleatório e guardado como hash (nunca em texto puro, mesmo
+    padrão de TOTPBackupCode), amarrado a um usuário e com expiração."""
+
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='dispositivos_confiaveis')
+    token_hash = models.CharField(max_length=128)
+    descricao = models.CharField(max_length=255, blank=True, default='')
+    criado_em = models.DateTimeField(auto_now_add=True)
+    expira_em = models.DateTimeField()
+    ultimo_uso_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Dispositivo Confiável (2FA)'
+        verbose_name_plural = 'Dispositivos Confiáveis (2FA)'
+        indexes = [models.Index(fields=['usuario', 'expira_em'])]
+
+    def __str__(self):
+        return f"{self.usuario.username} — {self.descricao or 'dispositivo'} (expira {self.expira_em:%d/%m/%Y})"

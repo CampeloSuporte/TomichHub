@@ -27,6 +27,106 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-19 (Tarefas: aba Kanban na página do cliente, corrige bug de layout)
+
+### Corrigido
+
+- **Aba "Tarefas" aparecia sempre visível, empilhada abaixo da aba "Acessos"**
+  ([`clientes/templates/listar.html`](clientes/templates/listar.html)): a `div#tab-tarefas` nascia
+  com `style="display: {% if ... %}block{% else %}none{% endif %}"` — o mesmo padrão usado pela aba
+  padrão "Acessos" — em vez de `display: none` como as demais abas não-padrão. Resultado: as duas
+  ficavam com `display:block` ao mesmo tempo até o usuário clicar em qualquer aba (o JS
+  `trocarAba()` já escondia/mostrava corretamente, só a div nascia errada). Corrigido para nascer
+  oculta, igual às outras abas.
+- **Causa por trás do bug ter sobrevivido a deploy, refresh forçado e aba anônima**: em produção
+  `DEBUG=False` e o `TEMPLATES` deste projeto não define `loaders` explicitamente — o Django então
+  ativa sozinho o `django.template.loaders.cached.Loader`, que guarda cada template compilado em
+  memória por processo. Os workers do `gunicorn` já estavam de pé havia horas (de antes da correção
+  no arquivo), então continuavam servindo a versão antiga mesmo com o `.html` já corrigido em disco —
+  confirmado batendo direto no socket do gunicorn com uma sessão real antes/depois do
+  `systemctl restart gunicorn`. **Mudança em template só entra em produção depois de reiniciar o
+  `gunicorn`** (Daphne não serve estas páginas — só `/ws/` e o proxy web de acessos).
+
+### Adicionado
+
+- **Aba "Tarefas" (Kanban) na página do cliente** (`clientes/templates/listar.html`, API em
+  [`tarefas/views.py`](tarefas/views.py) — `tarefas_kanban_json`, `tarefa_kanban_criar`,
+  `tarefa_kanban_mover`, `tarefa_kanban_editar`, `tarefa_kanban_excluir`,
+  [`tarefas/urls.py`](tarefas/urls.py)): colunas Atrasada/Pendente/Em Andamento/Concluída/Cancelada
+  com drag-and-drop (SortableJS) escopadas ao cliente da página — tarefa com prazo vencido cai
+  sozinha em "Atrasada". Aba controlada pelo módulo `tarefas` em `InstanciaFerramenta`/
+  `UsuarioModulo` (migrações `usuario/0007`, `usuario/0009` — adicionam a choice `tarefas`).
+- **Tarefa passa a aceitar múltiplos responsáveis** ([`tarefas/models.py`](tarefas/models.py)):
+  `Tarefa.assigned_to` (FK) virou `Tarefa.responsaveis` (M2M). Migração de dados
+  (`tarefas/migrations/0002_...`, editada à mão) copia cada `assigned_to` existente para
+  `responsaveis` antes de remover o campo antigo, com reversão best-effort (guarda só o primeiro
+  responsável por ordem de id, já que o FK antigo não suportava múltiplos). Todo lugar que lia
+  `assigned_to` foi ajustado: `home/views.py` (`_contexto_tarefas`, quadro geral),
+  `tarefas/templates/tarefas/_linha.html` e `_painel.html`, `tarefas/admin.py`.
+- **Quem pode ser escolhido como responsável** ([`tarefas/services.py`](tarefas/services.py) —
+  `usuarios_atribuiveis`, agora recebe `cliente` em vez de `instancia`): Administradores reais do
+  sistema (excluindo contas sem e-mail — sobra de instância de teste), atendentes
+  (Consultor/Operador) da instância do cliente, e usuários de portal vinculados a esse cliente
+  (principal + adicionais), para o próprio cliente poder participar do vínculo. Nova
+  `usuario.perms.colegas_de_instancia` dá a mesma base (back-office da instância) para outros
+  seletores futuros de "atendente" (ex. transferir chamado).
+
+---
+
+## [Não publicado] — 2026-08-17/19 (Diversos: 2FA dispositivo confiável, Wiki editável pelo Consultor, sessão de 7 dias, backup em massa, VLAN de switch, Zabbix com IP público bloqueado)
+
+### Adicionado
+
+- **2FA: "confiar neste navegador por 30 dias"** ([`usuario/totp.py`](usuario/totp.py) —
+  `criar_dispositivo_confiavel`/`verificar_dispositivo_confiavel`, model `DispositivoConfiavel` em
+  [`usuario/models.py`](usuario/models.py), migração `usuario/0008_dispositivoconfiavel`,
+  checkbox em [`templates/verificar_2fa.html`](templates/verificar_2fa.html)): marcando a opção na
+  verificação do código, um token aleatório é gerado e só o hash (mesmo padrão dos backup codes) vai
+  pro banco — o valor original existe só o suficiente pra virar cookie, nunca é persistido.
+  Pula o pedido de código nas próximas vezes nesse navegador até expirar ou o dispositivo ser
+  revogado.
+- **Wiki: Consultor pode criar/editar artigo** (`usuario/perms.py` — `pode_editar_wiki`,
+  `clientes/decorators.py` — `wiki_edicao_required`): antes só quem tinha `is_admin_bo` via os
+  botões de criar/editar nas 3 telas da Wiki (`buscar.html`, `dashboard.html`,
+  `visualizar_artigo.html`). Agora Consultor também vê os botões se a ferramenta `wiki` estiver
+  liberada pra instância dele — Operador e portal do cliente final continuam só leitura. Deletar
+  artigo segue exclusivo do Administrador (a Wiki é uma base global, sem `instancia`/`cliente` no
+  model — o artigo que um Consultor edita é o mesmo que todas as instâncias leem).
+- **Backup em massa de hosts** (`clientes/views.py` — `listar_acessos_backup_habilitado`,
+  `listar_acessos_sem_backup`, `configurar_backup_massa`, rotas em
+  [`clientes/urls.py`](clientes/urls.py)): tela pra ver de uma vez quais acessos já têm backup
+  automático habilitado e quais não têm, e ligar/desligar em lote em vez de host por host.
+- **Backup de VLANs de switch por cliente** (`clientes/views.py` — `l2vpn_switches_cliente`,
+  `vlans_switches_cliente`, `vlans_backup_acesso`, extensão de
+  [`clientes/l2vpn_parser.py`](clientes/l2vpn_parser.py)): lista os switches do cliente e guarda um
+  snapshot das VLANs configuradas em cada um, no mesmo espírito do inventário de portas PON já
+  existente pra OLT.
+
+### Corrigido
+
+- **Zabbix com IP público, mas só acessível de dentro da rede do cliente**
+  (`monitoramento/views.py` — `_responde_como_zabbix`, `_get_config_com_tunel`): antes, IP público
+  do Zabbix = sempre conexão direta, sem tentar o túnel SSH do proxy. Caso real: DS TECH
+  (186.235.160.21) tem IP público mas o acesso externo à API é bloqueado — de fora cai num redirect
+  do Apache pro site institucional, e o gráfico de Monitoramento simplesmente não teve dado nenhum.
+  Agora, se a conexão direta não responder como Zabbix de verdade (`apiinfo.version` sem `result` no
+  JSON) e o cliente tiver um proxy SSH cadastrado, cai pro túnel automaticamente.
+- **Sessão expirava em 1h no meio de navegação longa** ([`crm/settings.py`](crm/settings.py) —
+  `SESSION_COOKIE_AGE`): 1 hora era curto demais pra sessões mais longas dentro do proxy web de
+  acessos, por exemplo. Ampliado pra 7 dias de inatividade (o timer renova a cada request,
+  `SESSION_SAVE_EVERY_REQUEST=True`).
+- **Badge "Assumidos" ficava com contagem fantasma** (`atendimento/templates/atendimento/base.html`
+  — `window.__syncOpenBadges`): ao resolver ou transferir o último chamado assumido, o item saía da
+  lista mas nada recalculava o `#badge-mine` — sobrava um "1" sobre uma aba vazia até dar F5. Passou
+  a contar os itens que restaram na própria lista, igual às outras abas. O SPA do Inbox
+  (`_chat_content.html`) tinha o mesmo problema pra `.inbox-tab-list` — corrigido junto.
+- **Login perdia o destino após erro** ([`templates/login.html`](templates/login.html)):
+  formulário não reenviava o parâmetro `next`, então um erro de senha ou token expirado no
+  login jogava o usuário pro dashboard em vez de voltar pra página que ele tentou acessar
+  originalmente. Adicionado `<input type="hidden" name="next">`.
+
+---
+
 ## [Não publicado] — 2026-08-19 (Wiki: vendors de GPON/OLT nas escolhas de fabricante)
 
 ### Adicionado

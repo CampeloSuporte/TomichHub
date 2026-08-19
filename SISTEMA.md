@@ -41,7 +41,7 @@ O CRM Tomich é uma aplicação web Django voltada para provedores de internet q
 
 - Gerenciamento de clientes e seus equipamentos de rede
 - Acesso remoto via terminal SSH/Telnet diretamente no navegador
-- Gerenciamento de VPNs (OpenVPN e WireGuard)
+- Gerenciamento de VPNs (OpenVPN)
 - IPAM nativo (VLANs, prefixos, sub-redes, IPs, túneis VPN)
 - Validação RPKI e atualização de registros IRR no TC (NIC.br)
 - Backup automatizado de configurações de equipamentos
@@ -178,8 +178,7 @@ Ver [Sessão 16](#sessão-16--multi-tenant-consultor-e-operador) para o desenho 
 | Modelo | Descrição |
 |---|---|
 | `ArquivoVPN` | Arquivos de configuração VPN (OpenVPN, WireGuard) |
-| `VPNServidorConfig` | Configuração global do servidor WireGuard (singleton) |
-| `VPNWireGuard` | Configuração WireGuard por cliente |
+| `VPNOpenVPN` | Túnel OpenVPN por cliente (instância dedicada) |
 | `OpenVPNConfig` | Configuração servidor OpenVPN no MikroTik |
 | `OpenVPNUsuario` | Usuários/peers OpenVPN |
 
@@ -281,10 +280,10 @@ Ver [Sessão 16](#sessão-16--multi-tenant-consultor-e-operador) para o desenho 
 - Geração de certificados e scripts de instalação
 - Gestão de usuários/peers com download de configs
 
-**WireGuard:**
-- Configuração do servidor (IP, porta, DNS)
-- Geração automática de script de configuração por peer
-- QR Code para dispositivos móveis
+**Túnel OpenVPN por cliente (CRM como servidor):**
+- Instância systemd dedicada por túnel (porta, `tun-crm-N` e `/29` próprios)
+- PKI própria e bootstrap de um comando no MikroTik
+- WireGuard removido em 14/08/2026 (ver `docs/vpn_wireguard.md`)
 
 ### RPKI / IRR
 

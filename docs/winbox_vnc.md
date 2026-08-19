@@ -220,12 +220,13 @@ sessão nunca chegava a subir o Xvfb/WinBox, mesmo com o IP do equipamento perfe
 pelo servidor.
 
 **Causa:** `get_active_proxy()` (`clientes/consumers.py`) levanta exceção sempre que não existe um
-`ProxyServer` (túnel SSH) ativo pro cliente — sem checar se o IP privado já está coberto por uma
-VPN WireGuard/OpenVPN ativa do próprio cliente, cuja rota já existe no kernel via a interface da
-VPN (mesmo mecanismo que `proxy_web_acesso` — o proxy HTTP, ver `docs/proxy_web_acessos.md` — já
-usava via `vpn_cobre_ip`). Clientes que dependem só de VPN (sem SSH proxy cadastrado) — ex:
-Conecta ISP, com `VPNWireGuard` ativa cobrindo `10.0.0.0/8` e nenhum `ProxyServer` — não
-conseguiam abrir WinBox Web nem WebFig via VNC de jeito nenhum.
+`ProxyServer` (túnel SSH) ativo pro cliente — sem checar se o IP privado já está coberto por um
+túnel do próprio cliente, cuja rota já existe no kernel via a interface da VPN (mesmo mecanismo que
+`proxy_web_acesso` — o proxy HTTP, ver `docs/proxy_web_acessos.md` — já usava via `vpn_cobre_ip`).
+Clientes que dependem só de VPN (sem SSH proxy cadastrado) — na época, o Conecta ISP com uma VPN
+WireGuard cobrindo `10.0.0.0/8` e nenhum `ProxyServer` — não conseguiam abrir WinBox Web nem WebFig
+via VNC de jeito nenhum. (O WireGuard foi removido em 14/08/2026; hoje o mesmo fallback vale para o
+túnel OpenVPN.)
 
 **Fix:** `WinboxVNCConsumer.conectar_vnc()` (modo `winbox`/`browser`, WinBox via VNC) e
 `conectar_winbox()` (modo `winbox_nativo`, TCP passthrough direto) agora: buscam `ProxyServer`

@@ -85,6 +85,54 @@ def pode_acessar_cliente(user, cliente):
     return cliente_do_usuario.id == cliente.id
 
 
+def pode_editar_wiki(user):
+    """Quem pode CRIAR/EDITAR artigo da Wiki.
+
+    Administrador sempre; Consultor se a Wiki estiver liberada pra instância
+    dele. Operador e portal do cliente final continuam só com leitura.
+
+    Atenção: a Wiki é uma base GLOBAL (`ArtigoWiki` não tem instancia nem
+    cliente), então o artigo que um Consultor edita é o mesmo que todas as
+    outras instâncias leem. Excluir artigo segue exclusivo do Administrador.
+    """
+    if is_admin(user):
+        return True
+    if is_consultor(user):
+        return ferramenta_habilitada(user, 'wiki')
+    return False
+
+
+def colegas_de_instancia(user):
+    """Usuários de back-office que dividem a instância de `user` — base para
+    listas de "atendentes" (transferir chamado, atribuir tarefa).
+
+    Administrador enxerga todo o back-office; Consultor e Operador só a
+    própria instância. Portal do cliente final não entra em lista nenhuma.
+
+    Diferente de `usuarios_gerenciaveis_por`: aqui o Operador também recebe
+    resultado (ele não gerencia ninguém, mas precisa transferir chamado pros
+    colegas) e logins de portal nunca aparecem (não atendem chamado).
+    """
+    from django.contrib.auth.models import User
+    from django.db.models import Q
+
+    if is_admin(user):
+        # Admin legado (is_staff sem PerfilUsuario) + qualquer conta com
+        # perfil de back-office. Portal do cliente final fica de fora por
+        # não ter nem is_staff nem PerfilUsuario.
+        return User.objects.filter(is_active=True).filter(
+            Q(is_staff=True) | Q(perfil__isnull=False)
+        ).distinct()
+
+    if is_consultor(user) or is_operador(user):
+        instancia = get_instancia(user)
+        if not instancia:
+            return User.objects.none()
+        return User.objects.filter(is_active=True, perfil__instancia=instancia)
+
+    return User.objects.none()
+
+
 def usuarios_gerenciaveis_por(user):
     from django.contrib.auth.models import User
     from django.db.models import Q

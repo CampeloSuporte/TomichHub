@@ -19,7 +19,7 @@ Django (proxy_web_acesso, clientes/views.py)
    ↕ ProxyEngine (clientes/proxy_engine.py)
    ├── IP público → requests direto ao equipamento
    └── IP privado → túnel SSH (ProxyServer do cliente) OU rota direta se
-                     uma VPN WireGuard/OpenVPN do cliente já cobre o IP
+                     um túnel OpenVPN do cliente já cobre o IP
                      (vpn_cobre_ip, views.py)
 Equipamento (interface web nativa)
 ```
@@ -41,14 +41,14 @@ sempre quente (com múltiplos workers Gunicorn cada um teria que aquecer o próp
 
 ## Acesso Direto via VPN (sem ProxyServer SSH)
 
-Clientes que só têm uma VPN WireGuard/OpenVPN própria (sem `ProxyServer` SSH cadastrado) também
+Clientes que só têm um túnel OpenVPN próprio (sem `ProxyServer` SSH cadastrado) também
 funcionam: `vpn_cobre_ip(cliente, host)` (`clientes/views.py`) confere se o IP do equipamento cai
 dentro de alguma rede roteada por uma VPN ativa do cliente — nesse caso a rota já existe no kernel
 via a interface da VPN, e a conexão é feita direto, sem túnel SSH.
 
 Desde 13/08/2026 não basta a rede estar **declarada** em `redes_privadas`: `vpn_cobre_ip` também
-confere, via `ip route get` (`vpn_manager.rota_dev_para`), se o `dev` real da rota é a interface
-daquele túnel (`wgN` / `tun-crm-N`). A tabela de rotas do kernel é única e roteia por destino, então
+confere, via `ip route get` (`openvpn_tunnel_manager.rota_dev_para`), se o `dev` real da rota é a
+interface daquele túnel (`tun-crm-N`). A tabela de rotas do kernel é única e roteia por destino, então
 quando dois clientes declaram a mesma faixa ampla só uma rota vale — sem essa conferência o proxy
 "tinha certeza" de alcançar o equipamento e entrava na rede do **outro** cliente. Não batendo, a
 função retorna `False` e o chamador cai no `ProxyServer` SSH, que é o caminho correto. Se o

@@ -202,6 +202,27 @@ def ferramenta_instancia_required(ferramenta_key):
     return decorator
 
 
+def wiki_edicao_required(view_func):
+    """
+    Criar/editar artigo da Wiki: Administrador e Consultor (com a ferramenta
+    'wiki' liberada pra instância). Operador e portal do cliente final
+    continuam só com leitura — ver `usuario.perms.pode_editar_wiki`.
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('login')
+
+        from usuario.perms import pode_editar_wiki
+        if not pode_editar_wiki(request.user):
+            messages.error(request, 'Você não possui permissão para editar a Wiki.')
+            return redirect('wiki:dashboard')
+
+        return view_func(request, *args, **kwargs)
+
+    return wrapper
+
+
 def cliente_can_view_cliente(view_func):
     """
     Decorador que verifica se o usuário logado pode visualizar dados de um

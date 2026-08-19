@@ -17,7 +17,7 @@ Centraliza acesso remoto a equipamentos, IPAM, VPN, backups, RPKI/IRR, financeir
   - [Hotspot MikroTik](#hotspot-mikrotik)
   - [Backups Automatizados](#backups-automatizados)
   - [IPAM Nativo](#ipam-nativo)
-  - [VPN — WireGuard e OpenVPN](#vpn--wireguard-e-openvpn)
+  - [VPN — OpenVPN](#vpn--openvpn)
   - [RPKI e IRR](#rpki-e-irr)
   - [Scripts de Automação](#scripts-de-automação)
   - [Monitor de Tráfego](#monitor-de-tráfego)
@@ -44,7 +44,7 @@ O TomichHub é uma plataforma NOC desenvolvida em Django com foco em provedores 
 - Acesso remoto SSH/Telnet/Winbox diretamente no navegador
 - IPAM nativo (VLANs, prefixos, IPs, túneis VPN)
 - Automação de backups de configurações de equipamentos
-- Gestão e automação de VPNs (WireGuard e OpenVPN)
+- Gestão e automação de VPNs OpenVPN
 - Validação e atualização de RPKI/IRR junto ao NIC.br
 - Monitor de tráfego em tempo real via Zabbix com múltiplas abas
 - Módulo financeiro completo (faturas, contratos, LOA, WhatsApp, PIX)
@@ -186,15 +186,17 @@ Recursos adicionais:
 - Integração opcional com **PHP IPAM** e **NetBox** via túnel SSH
 - Agrupamento automático de blocos /24 pai
 
-### VPN — WireGuard e OpenVPN
+### VPN — OpenVPN
 
-**WireGuard:**
-- Configuração do servidor global (IP, porta, DNS, chaves)
-- Geração automática de script de configuração por peer/cliente
-- QR Code para conexão rápida em dispositivos móveis
-- Interface compatível com MikroTik e Linux
+> O WireGuard foi removido em 14/08/2026 — ver [docs/vpn_wireguard.md](docs/vpn_wireguard.md).
 
-**OpenVPN:**
+**Túnel OpenVPN (CRM é o servidor, MikroTik do cliente é o client):**
+- Instância dedicada por túnel (porta, interface `tun-crm-N` e `/29` próprios)
+- PKI própria da CRM e bootstrap de um comando no MikroTik
+- Validação de conflito de redes entre clientes
+- Detalhes em [docs/tunel_openvpn_mikrotik.md](docs/tunel_openvpn_mikrotik.md)
+
+**OpenVPN Server no MikroTik do cliente (acesso remoto do NOC):**
 - Configuração automática do servidor no MikroTik via Netmiko
 - Geração de certificados CA, server e cliente
 - Scripts de instalação para Windows, Linux e Android
@@ -494,7 +496,7 @@ sudo -u postgres psql crm_db < backup_20260101.sql
 │   ├── ipam_views.py             # IPAM nativo
 │   ├── firmware_views.py         # Gerenciador de arquivos/firmware
 │   ├── script_views.py           # Scripts de automação
-│   ├── vpn_manager.py            # Lógica WireGuard e OpenVPN
+│   ├── openvpn_tunnel_manager.py # Túnel OpenVPN por cliente (PKI + instâncias)
 │   ├── proxy_engine.py           # Proxy HTTP para equipamentos
 │   ├── winbox_vnc.py             # WinBox via VNC
 │   ├── consumers.py              # WebSocket (terminal SSH/Telnet)

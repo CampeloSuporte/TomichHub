@@ -96,7 +96,7 @@ diferentes na mesma aba antes desta feature existir:
 | Módulo (`modulo_key`) | Aba na UI | O que cobre |
 |---|---|---|
 | `vpn` | VPN | Upload de arquivo `ArquivoVPN` + config OpenVPN (`openvpn_*`) |
-| `tuneis` | Túneis SSH | Proxies SSH (`ProxyServer`) + VPN WireGuard (`vpn_wg_*`) + Túnel OpenVPN (`vpn_ovpn_*`) |
+| `tuneis` | Túneis SSH | Proxies SSH (`ProxyServer`) + Túnel OpenVPN (`vpn_ovpn_*`) |
 | `rpki_irr` | RPKI/IRR | Blocos de IP + validação RPKI/IRR + config IRR (`irr_*`) |
 | `documentacao` | Documentação de Rede | IPAM nativo (`ipam_views.py`) |
 

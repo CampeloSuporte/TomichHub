@@ -2,6 +2,36 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 42 — 14/08/2026: WireGuard removido — OpenVPN é o único tipo de VPN
+
+**O que mudou?**
+- 🗑️ **VPN WireGuard removida por completo**: modelos (`VPNWireGuard`, `VPNServidorConfig`,
+  migração `0111_remover_wireguard`), `clientes/vpn_manager.py`, views `vpn_wg_*` e suas 7 rotas,
+  a seção da aba Túneis com todo o JS `wg*`, e no servidor as interfaces `wg0`–`wg4`,
+  `/etc/wireguard/` e `/etc/sudoers.d/crm-wireguard` (backup em
+  `/root/backup-wireguard-removido-20260814/`).
+- 🧹 **Fallback de IP privado ficou com um caminho só**: `_wg_peer_ativo()` e `_vpn_cobre_ip()`
+  saíram dos consumers junto com o source-bind por interface isolada (`ssh -b`) — o OpenVPN não
+  precisa dele, a rota do kernel já sai pela `tun-crm-N` certa (conferida em `_rota_confere`).
+- 🔁 **Ping e checagem de DNS pelo servidor** decidiam rodar local pelo handshake do peer
+  WireGuard; passaram a usar `openvpn_tunnel_manager.tunel_conectado()`.
+- ⚠️ **Impacto assumido**: DS TECH (peer ativo no `wg0` com 17 redes `/16` e tráfego real) e
+  DIONES ficaram sem acesso até criarem o túnel OpenVPN e rodarem o bootstrap no MikroTik.
+- 🐛 **Bootstrap falhava no RouterOS 7.6+**: `cipher=aes256` deixou de existir quando a MikroTik
+  renomeou os valores do ovpn-client (`aes256-cbc`/`aes256-gcm`) — o `/import` do túnel da Conecta
+  ISP (7.21.4) morria com `syntax error (line 20 column 109)`. `gerar_setup_rsc()` passou a ler
+  major **e** minor da versão.
+- 🐛 **Conflito de redes** passou a considerar também a tabela de rotas do kernel, não só o banco.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[vpn_wireguard.md](vpn_wireguard.md)** | Reescrito como registro histórico: o que saiu, por quê e quem ficou sem acesso |
+| **[tunel_openvpn_mikrotik.md](tunel_openvpn_mikrotik.md)** | Parâmetros do bootstrap por versão do RouterOS; correções de 14/08 |
+
+---
+
 ### Sessão 41 — 13/08/2026: Túnel OpenVPN (MikroTik) — tráfego interno não passava
 
 **O que foi corrigido?**
@@ -1151,11 +1181,10 @@ apaga** logins já salvos indevidamente — isso precisa ser removido manualment
   - Geração de PDF
   - Agendamento
 
-- **[vpn_wireguard.md](vpn_wireguard.md)** — VPN WireGuard por cliente
-  - Arquitetura wg0 legado vs. interfaces isoladas (wg5+)
-  - Incidente Conecta ISP (rotas compartilhadas apagadas) e correção
-  - Limitação de faixas amplas idênticas entre clientes
-  - Diagnóstico rápido de roteamento
+- **[vpn_wireguard.md](vpn_wireguard.md)** — ⚠️ REMOVIDO em 14/08/2026 (registro histórico)
+  - O que saiu (modelos, código, frontend, interfaces do servidor)
+  - Por que, e quem ficou sem acesso até migrar
+  - Substituído por [tunel_openvpn_mikrotik.md](tunel_openvpn_mikrotik.md)
 
 - **[tunel_openvpn_mikrotik.md](tunel_openvpn_mikrotik.md)** — Túnel OpenVPN (CRM servidor, MikroTik cliente)
   - Instância systemd dedicada por túnel (porta, `tun-crm-N`, `/29`, CCD, PKI)

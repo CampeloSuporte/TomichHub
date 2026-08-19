@@ -8,6 +8,26 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="{% static 'css/css_login.css' %}" rel="stylesheet">
+    <style>
+        .lembrar-dispositivo {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin: -6px 0 18px;
+            font-size: 12.5px;
+            line-height: 1.4;
+            color: var(--muted, #7d8590);
+            cursor: pointer;
+            user-select: none;
+        }
+        .lembrar-dispositivo input[type="checkbox"] {
+            margin-top: 2px;
+            accent-color: var(--accent, #58a6ff);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .lembrar-dispositivo span { cursor: pointer; }
+    </style>
 </head>
 <body>
 
@@ -88,6 +108,11 @@
                         <div class="field-line"></div>
                     </div>
                 </div>
+
+                <label class="lembrar-dispositivo">
+                    <input type="checkbox" name="lembrar_dispositivo" checked>
+                    <span>Confiar neste navegador por 30 dias — não pedir código de novo aqui</span>
+                </label>
 
                 <button type="submit" class="btn-login">
                     ⟶ &nbsp; CONFIRMAR

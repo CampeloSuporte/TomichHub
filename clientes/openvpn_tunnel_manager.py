@@ -4,22 +4,23 @@ Gerencia a PKI própria da CRM (CA + certificados por cliente), uma instância
 de servidor OpenVPN DEDICADA por túnel (porta/interface/sub-rede próprias),
 e a geração do script/one-liner de bootstrap para o MikroTik.
 
-Arquitetura (mesmo modelo já usado pelo WireGuard — ver vpn_manager.py e
-VPNWireGuard.interface_nome): cada túnel roda em sua PRÓPRIA instância
-systemd (openvpn-server@server-crm-N), com sua própria porta TCP e seu
-próprio /30. Isolamento é por processo, não por certificado compartilhado
-num daemon único — cada instância só aceita a UMA conexão daquele cliente
-(via client-config-dir + ccd-exclusive, com um único arquivo CCD).
+É o único tipo de VPN da CRM desde 14/08/2026, quando o WireGuard foi
+removido por completo (código, modelos e interfaces do servidor).
+
+Arquitetura: cada túnel roda em sua PRÓPRIA instância systemd
+(openvpn-server@server-crm-N), com sua própria porta TCP e seu próprio /29.
+Isolamento é por processo, não por certificado compartilhado num daemon
+único — cada instância só aceita a UMA conexão daquele cliente (via
+client-config-dir + ccd-exclusive, com um único arquivo CCD).
 
 IMPORTANTE — o que isso resolve e o que NÃO resolve:
 Isso elimina a classe de bug em que apagar/editar o túnel de um cliente
-afeta outro (mesmo incidente que motivou a isolação por interface no WG).
-NÃO elimina o problema de dois clientes DIFERENTES terem, ao mesmo tempo,
-a MESMA rede "alcançável" declarada (ex: ambos com 172.16.0.0/12 no CGNAT
-padrão) — isso é uma limitação de roteamento IP por destino (o kernel só
-pode mandar um pacote destinado a um IP específico para UM lugar), não uma
-limitação de arquitetura de túnel. O próprio WireGuard já documenta essa
-mesma limitação em vpn_manager.py (adicionar_peer_isolado).
+afeta outro. NÃO elimina o problema de dois clientes DIFERENTES terem, ao
+mesmo tempo, a MESMA rede "alcançável" declarada (ex: ambos com
+172.16.0.0/12 no CGNAT padrão) — isso é uma limitação de roteamento IP por
+destino (o kernel só pode mandar um pacote destinado a um IP específico
+para UM lugar), não uma limitação de arquitetura de túnel. Daí a checagem
+em `redes_em_conflito` e a conferência do `dev` real em `vpn_cobre_ip`.
 """
 import ipaddress
 import logging
@@ -70,6 +71,44 @@ def _cidr_to_route(cidr):
     return str(net.network_address), str(net.netmask)
 
 
+def rota_dev_para(host):
+    """
+    Interface que o kernel REALMENTE usa para alcançar `host` ('tun-crm-1',
+    'eth0'…), ou None se não der para determinar.
+
+    Necessário porque declarar uma rede em `redes_privadas` não garante que a
+    rota do kernel aponte para aquele túnel: quando dois clientes declaram a
+    mesma faixa ampla (10.0.0.0/8 etc.), o kernel roteia por destino e só uma
+    das rotas vale — a outra vira uma promessa falsa que joga o tráfego no
+    túnel do cliente errado.
+    """
+    try:
+        r = subprocess.run(['ip', 'route', 'get', str(host)],
+                           capture_output=True, text=True, timeout=5)
+        if r.returncode != 0:
+            return None
+        partes = r.stdout.split()
+        if 'dev' in partes:
+            return partes[partes.index('dev') + 1]
+    except Exception as e:
+        logger.debug(f'rota_dev_para({host}) falhou: {e}')
+    return None
+
+
+def tunel_conectado(vpn):
+    """O MikroTik daquele túnel está de fato conectado agora? Confere se o IP
+    do cliente no /29 responde."""
+    if not vpn.vpn_ip:
+        return False
+    try:
+        r = subprocess.run(['ping', '-c', '1', '-W', '2', str(vpn.vpn_ip)],
+                           capture_output=True, text=True, timeout=5)
+        return r.returncode == 0
+    except Exception as e:
+        logger.debug(f'tunel_conectado({vpn.vpn_ip}) falhou: {e}')
+        return False
+
+
 def dev_tun(vpn):
     """Nome da interface tun da instância deste túnel ('server-crm-3' →
     'tun-crm-3'). É o `dev` que aparece no `ip route get` quando a rota
@@ -77,11 +116,39 @@ def dev_tun(vpn):
     return (vpn.interface_nome or '').replace('server-crm-', 'tun-crm-')
 
 
+def _rotas_kernel():
+    """{prefixo: [devs]} das rotas IPv4 já instaladas (fora a default). O mesmo
+    prefixo pode aparecer em mais de uma interface — é exatamente o estado que
+    esta checagem existe para evitar."""
+    rotas = {}
+    try:
+        r = subprocess.run(['ip', '-4', 'route', 'show'],
+                           capture_output=True, text=True, timeout=5)
+        if r.returncode != 0:
+            return rotas
+        for linha in r.stdout.splitlines():
+            partes = linha.split()
+            if not partes or partes[0] == 'default' or 'dev' not in partes:
+                continue
+            prefixo = partes[0] if '/' in partes[0] else f'{partes[0]}/32'
+            try:
+                ipaddress.ip_network(prefixo, strict=False)
+            except ValueError:
+                continue
+            dev = partes[partes.index('dev') + 1]
+            devs = rotas.setdefault(prefixo, [])
+            if dev not in devs:
+                devs.append(dev)
+    except Exception as e:
+        logger.debug(f'_rotas_kernel falhou: {e}')
+    return rotas
+
+
 def redes_em_conflito(redes, excluir_vpn_id=None):
     """
     Retorna [(rede_pedida, rede_do_outro, rótulo_do_outro), ...] para toda
-    rede IDÊNTICA a uma já declarada por OUTRO túnel OpenVPN ativo ou por uma
-    VPN WireGuard ativa.
+    rede IDÊNTICA a uma já declarada por OUTRO túnel OpenVPN ativo, ou já
+    presente na tabela de rotas do kernel por outra interface.
 
     Por que isso é obrigatório: a rota vive no kernel, que é único e roteia por
     DESTINO. Duas instâncias declarando 10.0.0.0/8 instalam duas rotas para o
@@ -90,8 +157,7 @@ def redes_em_conflito(redes, excluir_vpn_id=None):
     tenta entregar em um IP igual na rede dele). Foi exatamente o que
     aconteceu em produção: os dois túneis ativos declaravam as 5 faixas
     padrão, o 198.18.10.2 da TOPNET saía pelo tun da INFORTECLINE e nenhum
-    dos dois funcionava. Mesma classe de incidente que motivou
-    `_outro_peer_usa_rede` no WireGuard (vpn_manager.py).
+    dos dois funcionava.
 
     Prefixos de tamanhos diferentes (um /24 dentro do /8 de outro cliente) NÃO
     entram aqui: o kernel casa o mais específico primeiro, então o resultado é
@@ -101,7 +167,7 @@ def redes_em_conflito(redes, excluir_vpn_id=None):
     arquivo, e é coberta em tempo de conexão pelo `dev` real da rota
     (`vpn_cobre_ip`, views.py).
     """
-    from .models import VPNWireGuard, VPNOpenVPN
+    from .models import VPNOpenVPN
 
     alvos = []
     for rede in redes:
@@ -116,11 +182,17 @@ def redes_em_conflito(redes, excluir_vpn_id=None):
         rotulo = f'túnel OpenVPN "{outro.nome}" ({outro.cliente.nome_empresa})'
         for r in outro.redes_lista():
             existentes.append((r, rotulo))
-    wg_qs = VPNWireGuard.objects.filter(ativo=True, peer_no_servidor=True)
-    for outro in wg_qs.select_related('cliente'):
-        rotulo = f'VPN WireGuard "{outro.nome}" ({outro.cliente.nome_empresa})'
-        for r in outro.redes_lista():
-            existentes.append((r, rotulo))
+    # Rotas que já estão no kernel mas não saem de nenhum registro do banco —
+    # rota posta na mão, resto de configuração antiga etc. Foi assim que
+    # 198.18.1.0/24 (Conecta ISP) passou batido pela checagem só-de-banco.
+    dev_proprio = ''
+    if excluir_vpn_id:
+        proprio = VPNOpenVPN.objects.filter(id=excluir_vpn_id).first()
+        dev_proprio = dev_tun(proprio) if proprio else ''
+    for prefixo, devs in _rotas_kernel().items():
+        for dev in devs:
+            if dev and dev != dev_proprio:
+                existentes.append((prefixo, f'rota já existente no kernel via {dev}'))
 
     conflitos = []
     for rede_str, alvo in alvos:
@@ -357,9 +429,8 @@ def gerar_common_name(cliente):
 
 def alocar_proxima_instancia():
     """
-    Acha o próximo N livre (checando o banco), retorna
-    (interface_nome, porta, subnet_n). Mesmo padrão de
-    vpn_manager.alocar_proxima_interface(), adaptado pro OpenVPN.
+    Acha o próximo N livre (checando o banco e o que sobrou em disco) e
+    retorna (interface_nome, porta, subnet_n).
     """
     from .models import VPNOpenVPN
     usados_db = set(
@@ -572,6 +643,17 @@ def gerar_oneliner_bootstrap(token, request=None):
     )
 
 
+def _parse_versao_ros(ros_version):
+    """'7.21.4' → (7, 21); '6.49.10 (long-term)' → (6, 49). Sem versão
+    (fetch antigo, sem ?v=) assume 7.6+, que é o RouterOS instalado hoje na
+    esmagadora maioria dos clientes."""
+    import re
+    m = re.match(r'\s*(\d+)(?:\.(\d+))?', ros_version or '')
+    if not m:
+        return 7, 6
+    return int(m.group(1)), int(m.group(2) or 0)
+
+
 def gerar_setup_rsc(vpn, ros_version=''):
     """Script RouterOS completo, servido no endpoint público /get_setup.rsc.
     Busca os 3 arquivos de certificado (endpoints-irmãos, mesmo token),
@@ -583,8 +665,17 @@ def gerar_setup_rsc(vpn, ros_version=''):
     com autenticação só por certificado (senão dá "missing value(s) of
     argument(s) user"). "protocol=tcp" só existe no RouterOS 7+ — no ROS6 é
     implícito e o parâmetro nem existe (por isso lido de ?v=$version).
-    "cipher=aes256 auth=sha1" é a combinação comprovada compatível com ROS6
-    (validada ao vivo — ROS6 não aceita auth=sha256, nem tls-crypt).
+    "auth=sha1" é a combinação comprovada compatível com ROS6 (validada ao
+    vivo — ROS6 não aceita auth=sha256, nem tls-crypt).
+
+    O nome do cipher MUDOU no RouterOS 7.6, quando a MikroTik acrescentou GCM
+    ao ovpn-client: até lá era "aes256", de 7.6 em diante é "aes256-cbc"
+    (aes256 puro deixou de existir). Mandar o nome errado nem chega a tentar
+    conectar — o /import morre com "syntax error" na coluna do cipher, que foi
+    o que aconteceu ao configurar o túnel da Conecta ISP num RouterOS 7.21.4.
+    O servidor aceita os dois lados (`cipher AES-256-CBC` +
+    `data-ciphers AES-256-GCM:AES-256-CBC`), então basta escolher o nome que
+    aquela versão entende.
 
     NAT (in-interface=ovpn-crm → masquerade): o CRM alcança a rede interna
     do cliente através do túnel, mas o roteador do CLIENTE geralmente não
@@ -594,12 +685,10 @@ def gerar_setup_rsc(vpn, ros_version=''):
     como o próprio roteador do cliente (masquerade, não um IP fixo), a
     resposta do equipamento interno volta para um IP que a rede do cliente
     já sabe rotear (o próprio roteador), sem tocar em nada além deste
-    roteador. Mesmo padrão já usado no túnel WireGuard."""
-    try:
-        ros_major = int(ros_version.split('.')[0]) if ros_version else 7
-    except ValueError:
-        ros_major = 7
+    roteador."""
+    ros_major, ros_minor = _parse_versao_ros(ros_version)
     protocolo_param = ' protocol=tcp' if ros_major >= 7 else ''
+    cipher = 'aes256-cbc' if (ros_major, ros_minor) >= (7, 6) else 'aes256'
 
     base = f'https://{OVPN_ENDPOINT_HOST}/clientes/tunel-ovpn/setup/{vpn.token}'
     return f"""# =============================================================
@@ -621,7 +710,7 @@ def gerar_setup_rsc(vpn, ros_version=''):
 /certificate import file-name=crm-ovpn-client.crt passphrase="" name=crm-ovpn-client
 /certificate import file-name=crm-ovpn-client.key passphrase="" name=crm-ovpn-client
 
-/interface ovpn-client add name=ovpn-crm connect-to={OVPN_ENDPOINT_HOST} port={vpn.porta}{protocolo_param} mode=ip cipher=aes256 auth=sha1 user={vpn.common_name} certificate=[/certificate find where name~"crm-ovpn-client" and private-key=yes] verify-server-certificate=no add-default-route=no comment="CRM Tomich VPN"
+/interface ovpn-client add name=ovpn-crm connect-to={OVPN_ENDPOINT_HOST} port={vpn.porta}{protocolo_param} mode=ip cipher={cipher} auth=sha1 user={vpn.common_name} certificate=[/certificate find where name~"crm-ovpn-client" and private-key=yes] verify-server-certificate=no add-default-route=no comment="CRM Tomich VPN"
 
 /ip firewall nat add chain=srcnat src-address={_subnet_for(vpn.subnet_n)} action=masquerade comment="CRM-OVPN-masq"
 

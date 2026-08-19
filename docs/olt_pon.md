@@ -142,7 +142,7 @@ troca de `MA5800-X7#` para `MA5800-X7(config-if-gpon-0/1)#` conforme o modo — 
 já roda todo dia nestes 18 equipamentos, então é o caminho provado.
 
 A conexão respeita IP privado do mesmo jeito que o backup: ProxyServer ativo do
-cliente vira túnel SSH; sem proxy, confere se uma VPN WireGuard cobre o host;
+cliente vira túnel SSH; sem proxy, confere se um túnel OpenVPN cobre o host;
 sem nenhum dos dois, recusa com mensagem em vez de tentar e travar.
 
 ## Detecção: só OLT Huawei

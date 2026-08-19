@@ -28,7 +28,7 @@
                         <i class="fas fa-search me-1"></i> Buscar
                     </button>
                 </div>
-                {% if is_admin_bo %}
+                {% if pode_editar_wiki %}
                 <a href="{% url 'wiki:cadastrar_artigo' %}" class="btn btn-primary">
                     <i class="fas fa-plus me-1"></i> Novo Artigo
                 </a>
@@ -151,10 +151,12 @@
                                         <a href="{% url 'wiki:visualizar_artigo' artigo.slug %}" class="btn btn-sm btn-outline-primary" title="Visualizar">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        {% if is_admin_bo %}
+                                        {% if pode_editar_wiki %}
                                         <a href="{% url 'wiki:editar_artigo' artigo.slug %}" class="btn btn-sm btn-outline-warning" title="Editar">
                                             <i class="fas fa-edit"></i>
                                         </a>
+                                        {% endif %}
+                                        {% if is_admin_bo %}
                                         <form method="post" action="{% url 'wiki:deletar_artigo' artigo.slug %}" class="d-inline" onsubmit="return confirmarDelete(event, '{{ artigo.titulo|escapejs }}', this)">
                                             {% csrf_token %}
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Deletar">

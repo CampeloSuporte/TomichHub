@@ -197,38 +197,76 @@ def _pool_get_or_create_tunnel(cliente_id, proxy, zbx_host, zbx_port):
         return local_port, ssh_client, server_sock
 
 
+def _responde_como_zabbix(url: str, timeout: float = 6) -> bool:
+    """Sonda rápida (nunca lança exceção) se `url` responde como API Zabbix
+    de verdade — usada só pra decidir o fallback de IP público em
+    `_get_config_com_tunel`. `apiinfo.version` não exige autenticação, então
+    basta isso pra distinguir a API real de outra coisa respondendo no
+    mesmo endereço (ex: um redirect HTML do Apache, que não tem "result")."""
+    import requests as _requests
+    try:
+        resp = _requests.post(
+            f"{url.rstrip('/')}/api_jsonrpc.php",
+            json={"jsonrpc": "2.0", "method": "apiinfo.version", "params": {}, "id": 1},
+            headers={"Content-Type": "application/json"},
+            timeout=timeout,
+            verify=False,
+        )
+        return "result" in resp.json()
+    except Exception:
+        return False
+
+
 def _get_config_com_tunel(config, cliente_id):
     """
-    Se a URL do Zabbix tiver IP privado, reaproveita/cria túnel SSH via
-    _pool_get_or_create_tunnel e retorna (config_modificado, tunel) onde
-    config_modificado aponta para localhost:porta_local.
-    Caso contrário retorna (config_original, None).
+    Decide entre falar direto com a URL do Zabbix ou por túnel SSH via o
+    proxy já cadastrado do cliente:
+    - IP privado (RFC-1918): túnel é obrigatório.
+    - IP público: tenta direto primeiro; só cai pro túnel se a conexão
+      direta não responder como Zabbix de verdade e houver proxy SSH ativo.
+      Cobre o caso de um Zabbix com IP público cujo acesso externo é
+      bloqueado pela rede do cliente e só responde de dentro da própria LAN
+      (achado real: DS TECH, 186.235.160.21 — de fora cai num redirect do
+      Apache pro site institucional; de dentro, via proxy SSH, a API
+      funciona normal).
+
+    O túnel em si é reaproveitado entre requisições via _pool_get_or_create_tunnel
+    (evita reabrir SSH a cada poll de 15s do gráfico de Monitoramento).
+
+    Retorna (config_modificado, tunel) onde config_modificado aponta para
+    localhost:porta_local quando o túnel é usado; senão (config_original,
+    None).
     """
     parsed   = urlparse(config.url)
     zbx_host = parsed.hostname
     zbx_port = parsed.port or (443 if parsed.scheme == 'https' else 80)
 
-    if not _is_private_ip(zbx_host):
+    ip_privado = _is_private_ip(zbx_host)
+    if not ip_privado and _responde_como_zabbix(config.url):
         return config, None
 
-    # IP privado — precisa de túnel
     proxy = ProxyServer.objects.filter(
         cliente_id=cliente_id, ativo=True
     ).first()
 
     if not proxy:
-        # Verificar se VPN WireGuard cobre este IP (fallback sem túnel SSH)
-        try:
-            from clientes.views import vpn_cobre_ip
-            from clientes.models import Cliente as _Cliente
-            _cli = _Cliente.objects.get(id=cliente_id)
-            if vpn_cobre_ip(_cli, zbx_host):
-                logger.info(f"[ZBX] WireGuard VPN cobre {zbx_host} — conectando diretamente")
-                return config, None
-        except Exception as _e:
-            logger.debug(f"[ZBX] vpn_cobre_ip check falhou: {_e}")
+        if ip_privado:
+            # Verificar se um túnel OpenVPN cobre este IP (fallback sem túnel SSH)
+            try:
+                from clientes.views import vpn_cobre_ip
+                from clientes.models import Cliente as _Cliente
+                _cli = _Cliente.objects.get(id=cliente_id)
+                if vpn_cobre_ip(_cli, zbx_host):
+                    logger.info(f"[ZBX] Túnel OpenVPN cobre {zbx_host} — conectando diretamente")
+                    return config, None
+            except Exception as _e:
+                logger.debug(f"[ZBX] vpn_cobre_ip check falhou: {_e}")
+            raise Exception(
+                f"Zabbix tem IP privado ({zbx_host}) mas não há proxy SSH ativo nem "
+                f"túnel OpenVPN cobrindo esse IP. Configure na aba 'Túneis'."
+            )
         raise Exception(
-            f"Zabbix tem IP privado ({zbx_host}) mas não há proxy SSH ativo "
+            f"Zabbix ({zbx_host}) não respondeu direto e não há proxy SSH ativo "
             f"para este cliente. Configure na aba 'Túneis SSH'."
         )
 

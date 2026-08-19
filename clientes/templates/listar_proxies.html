@@ -66,7 +66,7 @@
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Senha</span>
-                                <span class="info-value copyable" onclick="copiarTexto('{{ proxy.senha }}')">{{ proxy.senha }}</span>
+                                <span class="info-value copyable senha-mascarada" title="Clique para mostrar" onclick="toggleSenha(this, '{{ proxy.senha|escapejs }}')">••••••••</span>
                             </div>
                             <div class="info-row">
                                 <span class="info-label">Cadastrado em</span>
@@ -319,6 +319,19 @@ function toggleProxyStatus(proxyId) {
         .catch(error => {
             showError('ERRO', 'Erro ao alterar status do proxy.', 5000);
         });
+}
+
+// Mostrar/ocultar senha ao clicar (mascarada por padrão)
+function toggleSenha(el, senha) {
+    const revelado = el.classList.toggle('senha-revelada');
+    if (revelado) {
+        el.textContent = senha;
+        el.title = 'Clique para ocultar';
+        copiarTexto(senha);
+    } else {
+        el.textContent = '••••••••';
+        el.title = 'Clique para mostrar';
+    }
 }
 
 // Copiar texto

@@ -702,9 +702,9 @@ if 'HTTP_CSRFPREVENTIONTOKEN' in request.META:
 
 ### Monitoramento: "Zabbix tem IP privado mas não há proxy SSH ativo"
 
-**Situação:** O cliente usa WireGuard VPN (sem túnel SSH) e o Zabbix está na rede privada do cliente.
+**Situação:** O cliente usa túnel OpenVPN (sem túnel SSH) e o Zabbix está na rede privada do cliente.
 
-**Solução:** Verifique se a `VPNWireGuard` do cliente está configurada com `peer_no_servidor=True` e com as redes corretas (`redes_lista()`). A partir da Sessão 9, o sistema verifica automaticamente o WireGuard antes de exigir túnel SSH.
+**Solução:** Verifique se o `VPNOpenVPN` do cliente está ativo, com certificado emitido e com as redes corretas (`redes_lista()`), e se `ip route get <ip do zabbix>` sai pela `tun-crm-N` daquele túnel — `vpn_cobre_ip` só dispensa o túnel SSH quando a rota real bate.
 
 ---
 

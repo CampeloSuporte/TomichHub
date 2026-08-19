@@ -388,8 +388,8 @@ def executar(acesso, comandos):
                     host, porta)
                 host, porta = tunel['local_host'], tunel['local_port']
             elif not vpn_cobre_ip(acesso.cliente, acesso.host):
-                return ('IP privado sem proxy SSH ativo e sem VPN cobrindo o host — '
-                        'configure um túnel na aba "Túneis SSH".'), 'erro'
+                return ('IP privado sem proxy SSH ativo e sem túnel OpenVPN cobrindo o host — '
+                        'configure um dos dois na aba "Túneis".'), 'erro'
 
         client = paramiko.SSHClient()
         client.set_missing_host_key_policy(paramiko.AutoAddPolicy())

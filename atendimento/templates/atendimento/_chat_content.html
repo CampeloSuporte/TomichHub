@@ -1661,6 +1661,16 @@
                     /* Remove a bolha flutuante "assumida" desta conversa */
                     var myBubble = document.querySelector('#gchatBubbles [data-conv-id="' + CONV_ID + '"]');
                     if (myBubble) myBubble.remove();
+                    /* Painel do Inbox na tela (navegação SPA): não existe
+                       #convList, então o bloco abaixo não roda e quem limpa a
+                       lista é o evento de WebSocket. Se ele se perder, o
+                       chamado resolvido ficava em "Assumidos" e o badge
+                       continuava contando — tira daqui também e recalcula. */
+                    document.querySelectorAll('.inbox-tab-list .conv-item[data-conv-id="' + CONV_ID + '"]').forEach(function(el) {
+                        el.remove();
+                    });
+                    if (typeof window.__syncOpenBadges === 'function') window.__syncOpenBadges();
+
                     var activeItem = document.querySelector('#convList .conv-item.active');
                     if (activeItem) {
                         activeItem.style.transition = 'opacity 0.25s, transform 0.25s';

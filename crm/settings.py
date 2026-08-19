@@ -19,7 +19,12 @@ MEDIA_ROOT = BASE_DIR / 'media'
 SECRET_KEY = 'django-insecure-)41v!4g-#@=9-&-fa*=g%t0ex-$%2srvjg#-lzyvx+%y9ei#ja'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Em produção fica False: com True o Django devolve a própria página de erro
+# (traceback, variáveis de ambiente, lista completa de rotas). Com False ele
+# renderiza templates/{400,403,403_csrf,404,500}.html e grava o traceback em
+# logs/django-erros.log (ver LOGGING no fim deste arquivo).
+# Para depurar pontualmente: exportar DJANGO_DEBUG=1 no serviço e reiniciar.
+DEBUG = os.environ.get('DJANGO_DEBUG', '0') == '1'
 
 ALLOWED_HOSTS = ['*']
 
@@ -230,8 +235,9 @@ CACHES = {
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
 
-# ── Sessão: expira em 4 horas de inatividade ──
-SESSION_COOKIE_AGE = 1 * 60 * 60        # 3600 segundos
+# ── Sessão: expira em 7 dias de inatividade (era 1h — deslogava no meio de
+# qualquer navegação mais longa, ex. dentro do proxy web de acessos) ──
+SESSION_COOKIE_AGE = 7 * 24 * 60 * 60   # 604800 segundos
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # mantém entre abas/reaberturas até o limite
 SESSION_SAVE_EVERY_REQUEST = True        # renova o timer a cada request (sliding window)
 # ✅ FORÇAR timezone local em todos os DateTimeFields
@@ -245,3 +251,67 @@ USE_L10N = True
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
 LOGIN_URL = '/auth/login/'
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Logging
+# ──────────────────────────────────────────────────────────────────────────────
+# Com DEBUG=False o Django deixa de mostrar o traceback na tela — o usuário vê
+# templates/500.html. Sem esta configuração o traceback também não iria para
+# lugar nenhum (o handler de console padrão é filtrado por require_debug_true e
+# o mail_admins não tem ADMINS/e-mail configurado), ou seja, o erro sumiria.
+# Aqui ele vai para logs/django-erros.log e para o journal do serviço
+# (journalctl -u gunicorn / -u daphne / -u celery).
+LOG_DIR = BASE_DIR / 'logs'
+LOG_DIR.mkdir(exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'completo': {
+            'format': '[{asctime}] {levelname} {name} {process:d} — {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'arquivo_erros': {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOG_DIR / 'django-erros.log'),
+            'maxBytes': 10 * 1024 * 1024,   # 10 MB por arquivo
+            'backupCount': 5,               # mantém ~50 MB de histórico
+            'formatter': 'completo',
+            'encoding': 'utf-8',
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'completo',
+        },
+    },
+    'loggers': {
+        # 500 e exceções não tratadas (inclui o traceback completo)
+        'django.request': {
+            'handlers': ['arquivo_erros', 'console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        # Apps do CRM que já usam logging.getLogger(__name__)
+        'clientes': {
+            'handlers': ['arquivo_erros', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'atendimento': {
+            'handlers': ['arquivo_erros', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}

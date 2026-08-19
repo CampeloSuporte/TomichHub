@@ -2,7 +2,8 @@
 
 ## O que é
 
-Terceiro tipo de túnel da aba **Túneis** do cliente (ao lado do Proxy SSH e da VPN WireGuard).
+Único tipo de VPN da CRM desde 14/08/2026, ao lado do Proxy SSH na aba **Túneis** do cliente
+(o WireGuard foi removido — ver [vpn_wireguard.md](vpn_wireguard.md)).
 Aqui **a CRM é o servidor** OpenVPN e o **MikroTik do cliente é o client** — o oposto do módulo
 "OpenVPN — Configuração automatizada em MikroTik" (`openvpn_manager.py`), que configura o roteador
 do cliente como servidor para o NOC discar.
@@ -17,8 +18,7 @@ views `vpn_ovpn_*` em [`clientes/views.py`](../clientes/views.py) · modelo `VPN
 
 ## Arquitetura
 
-Cada túnel roda em **uma instância systemd dedicada** — mesmo modelo das interfaces isoladas do
-WireGuard (`VPNWireGuard.interface_nome`):
+Cada túnel roda em **uma instância systemd dedicada**:
 
 | Item | Valor |
 |------|-------|
@@ -68,14 +68,14 @@ Por isso:
 - O modal de criação sugere as **`/24` dos acessos privados já cadastrados** do cliente
   (`sugerir_redes`), em vez das faixas CGNAT+RFC1918.
 - `redes_em_conflito()` recusa criar/editar um túnel com rede **idêntica** à de outro túnel
-  OpenVPN ou VPN WireGuard ativa, dizendo qual cliente já usa aquela rede.
+  OpenVPN ativo ou já presente na tabela de rotas do kernel, dizendo de quem ela é.
 - Prefixos de tamanhos diferentes (um `/24` dentro do `/8` de outro cliente) são permitidos: o
   kernel casa o mais específico primeiro, o resultado é determinístico.
 - Em tempo de conexão, `vpn_cobre_ip` (views) e `_rota_confere` (consumers) conferem o `dev` real
   da rota antes de usar o caminho direto — ver [proxy_web_acessos.md](proxy_web_acessos.md).
 
 Sobreposição de espaço de endereço entre clientes continua sendo limitação de roteamento IP, não
-de arquitetura de túnel — a mesma já documentada no WireGuard (`vpn_manager.adicionar_peer_isolado`).
+de arquitetura de túnel: o kernel só pode mandar um pacote destinado a um IP para UM lugar.
 
 ---
 
@@ -91,11 +91,47 @@ ping -c2 10.91.0.10                                   # IP do cliente no /29
 
 | Sintoma | Causa provável |
 |---------|----------------|
+| `/import` morre com `Script Error: syntax error` na linha da `ovpn-client` | nome de parâmetro que não existe naquela versão do RouterOS — conferir `?v=` no log do nginx |
 | Túnel `running`, ping do `/29` OK, rede interna morta | falta `iroute` no CCD |
-| `ip route get` sai por outra `tun-crm-*`/`wgN` | rede ampla colidindo com outro cliente |
+| `ip route get` sai por outra `tun-crm-*` | rede ampla colidindo com outro cliente |
 | Proxy cai em "Nenhum proxy SSH ativo" | `vpn_cobre_ip` recusou: rota não é daquele túnel |
+| Tela barra a ação citando proxy SSH, mas o túnel está de pé | pré-checagem de front-end perguntando só por `ProxyServer` — usar `/clientes/proxies/ativo/?acesso_id=N`, que responde `alcancavel` |
 | Unit em loop de restart | `.conf` inexistente — `systemctl disable --now` + `reset-failed` |
 | `IP packet with unknown IP version=0 seen` no log | ruído do keepalive do RouterOS, inofensivo |
+
+---
+
+## O script de bootstrap depende da versão do RouterOS
+
+O one-liner manda `?v=$version` e `gerar_setup_rsc()` monta o script para aquela versão. O que muda:
+
+| Parâmetro | ROS 6 | ROS 7.0–7.5 | ROS 7.6+ |
+|-----------|-------|-------------|----------|
+| `protocol=tcp` | não existe (TCP é implícito) | sim | sim |
+| `cipher=` | `aes256` | `aes256` | `aes256-cbc` (a MikroTik renomeou ao acrescentar GCM) |
+| `auth=` | `sha1` (não aceita sha256) | `sha1` | `sha1` |
+
+Errar o nome do parâmetro **não** vira falha de conexão: o `/import` morre antes, com
+`Script Error: syntax error (line N column C)` — a coluna aponta o valor recusado. Para saber a
+versão que o roteador mandou:
+
+```bash
+grep get_setup.rsc /var/log/nginx/*access*.log | tail -3   # "...get_setup.rsc?v=7.21.4"
+```
+
+---
+
+## Corrigido em 14/08/2026
+
+`cipher=aes256` era emitido para qualquer RouterOS 7. Em 7.6 a MikroTik renomeou os valores do
+ovpn-client (`aes256-cbc`/`aes256-gcm`) e `aes256` puro deixou de existir — o `/import` do túnel da
+Conecta ISP (RouterOS 7.21.4) morria com `syntax error (line 20 column 109)`, exatamente na coluna
+do cipher. `gerar_setup_rsc()` passou a ler major **e** minor (`_parse_versao_ros`) e emitir o nome
+que aquela versão entende. Sem versão informada, assume 7.6+.
+
+A validação de conflito de redes passou a olhar também a **tabela de rotas do kernel**, não só o
+banco — rota posta na mão ou resto de configuração antiga não tem registro no banco e escapava da
+checagem.
 
 ---
 

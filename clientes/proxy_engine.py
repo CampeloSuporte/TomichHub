@@ -1202,12 +1202,15 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
     _fixProp(HTMLLinkElement.prototype,'href');
     _fixProp(HTMLAnchorElement.prototype,'href');
   }})();
+  // Mesmo caso do pushState: o fallback do vue-router quando pushState falha é
+  // location.replace(<URL absoluta>), que sem _rw() sairia do contexto do proxy.
   ['assign','replace'].forEach(function(fn){{
     var o=window.location[fn].bind(window.location);
     window.location[fn]=function(u){{
       if(_isSchemeSwapNoop(u))return;
-      if(u&&u.startsWith('/')&&!u.startsWith(B))u=B+u;
-      return o(u);
+      var f=_rw(u);
+      if(f&&typeof f==='object'&&f.href)f=f.href;
+      return o(f);
     }};
   }});
   // Intercepta new WebSocket para roteá-lo pelo proxy SSH do CRM.
@@ -1259,11 +1262,17 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
   // React Router / Vue Router usam history.pushState e history.replaceState.
   // Sem interceptar, a navegação SPA muda a URL para a raiz do CRM (ex: https://crm/),
   // saindo do contexto do proxy.
+  // O vue-router monta a URL como absoluta
+  // (location.protocol+'//'+location.host+base+path), então checar só
+  // startsWith('/') não pega nada — a barra de endereços virava
+  // https://crm/<base do device>/<rota> e um F5 caía no 404 do Django.
+  // _rw() normaliza string relativa, string absoluta do mesmo origin e URL.
   ['pushState','replaceState'].forEach(function(fn){{
     var o=history[fn].bind(history);
     history[fn]=function(st,ti,u){{
-      if(typeof u==='string'&&u.startsWith('/')&&!u.startsWith(B))u=B+u;
-      return o(st,ti,u);
+      var f=_rw(u);
+      if(f&&typeof f==='object'&&f.href)f=f.href;
+      return o(st,ti,f);
     }};
   }});
   function _fixAction(f){{

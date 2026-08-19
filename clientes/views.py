@@ -1985,14 +1985,14 @@ def realizar_backup(acesso, usuario=None):
 
             proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
             if not proxy:
-                # Verificar se VPN WireGuard ativa cobre este IP
+                # Verificar se um túnel OpenVPN ativo cobre este IP
                 if vpn_cobre_ip(acesso.cliente, acesso.host):
-                    print(f"✅ VPN WireGuard cobre {acesso.host} — conectando diretamente")
+                    print(f"✅ Túnel OpenVPN cobre {acesso.host} — conectando diretamente")
                     # host_conexao e porta_conexao já apontam para o host diretamente via VPN
                 else:
                     raise Exception(
-                        "IP privado sem proxy SSH ativo. "
-                        "Configure um túnel SSH na aba 'Túneis SSH'."
+                        "IP privado sem proxy SSH ativo e sem túnel OpenVPN cobrindo o host. "
+                        "Configure um dos dois na aba 'Túneis'."
                     )
             else:
                 print(f"✅ Proxy encontrado: {proxy.nome}")
@@ -3299,9 +3299,9 @@ def _vpn_declara_ip(vpn, host_ip):
 
 
 def vpn_cobre_ip(cliente, host):
-    """Verifica se existe VPN WireGuard OU túnel OpenVPN (aba Túneis) desse
-    cliente que realmente entregue o IP do host — nesse caso a conexão pode
-    ser feita direto, sem SSH tunnel.
+    """Verifica se existe túnel OpenVPN (aba Túneis) desse cliente que
+    realmente entregue o IP do host — nesse caso a conexão pode ser feita
+    direto, sem SSH tunnel.
 
     Declarar a rede em `redes_privadas` não basta: a rota é do kernel, que é
     único e roteia por DESTINO. Se dois clientes declaram a mesma faixa ampla
@@ -3313,15 +3313,11 @@ def vpn_cobre_ip(cliente, host):
     correto."""
     try:
         import ipaddress as _ipa
-        from .models import VPNWireGuard, VPNOpenVPN
-        from . import vpn_manager as _vpnm
+        from .models import VPNOpenVPN
         from . import openvpn_tunnel_manager as _ovpnm
         host_ip = _ipa.ip_address(host)
 
-        candidatos = []   # (vpn, dev_esperado)
-        for vpn in VPNWireGuard.objects.filter(cliente=cliente, ativo=True, peer_no_servidor=True):
-            if _vpn_declara_ip(vpn, host_ip):
-                candidatos.append((vpn, vpn.interface_nome or _vpnm.WG_INTERFACE))
+        candidatos = []   # (tunel, dev_esperado)
         for tunel in VPNOpenVPN.objects.filter(cliente=cliente, ativo=True, cert_emitido=True):
             if _vpn_declara_ip(tunel, host_ip):
                 candidatos.append((tunel, _ovpnm.dev_tun(tunel)))
@@ -3329,7 +3325,7 @@ def vpn_cobre_ip(cliente, host):
         if not candidatos:
             return False
 
-        dev_real = _vpnm.rota_dev_para(host)
+        dev_real = _ovpnm.rota_dev_para(host)
         if not dev_real:
             # Sem conseguir consultar o kernel, mantém o comportamento antigo
             # (confia na declaração) em vez de derrubar acesso que funcionava.
@@ -3340,7 +3336,7 @@ def vpn_cobre_ip(cliente, host):
                 return True
 
         logger.warning(
-            f'⚠️ VPN de {cliente.nome_empresa} declara {host}, mas a rota do kernel sai por '
+            f'⚠️ Túnel de {cliente.nome_empresa} declara {host}, mas a rota do kernel sai por '
             f'"{dev_real}" (esperado {[d for _, d in candidatos]}) — provável colisão de faixa '
             f'ampla com outro cliente. Tratando como NÃO coberto para não cair na rede errada.'
         )
@@ -3768,6 +3764,7 @@ def download_backup(request, backup_id):
 def deletar_backup(request, backup_id):
     """Deleta backup"""
     if request.method == 'POST':
+        cliente_id = None
         try:
             backup = get_object_or_404(BackupLog, id=backup_id)
 
@@ -3777,10 +3774,11 @@ def deletar_backup(request, backup_id):
 
             cliente_id = backup.cliente.id
 
-            # Deletar arquivo
-            arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
-            if os.path.exists(arquivo_path):
-                os.remove(arquivo_path)
+            # Deletar arquivo (backups com erro não geram arquivo: arquivo_path fica vazio)
+            if backup.arquivo_path:
+                arquivo_path = os.path.join(settings.MEDIA_ROOT, backup.arquivo_path)
+                if os.path.isfile(arquivo_path):
+                    os.remove(arquivo_path)
 
             # Deletar registro
             backup.delete()
@@ -3790,7 +3788,7 @@ def deletar_backup(request, backup_id):
 
         except Exception as e:
             messages.error(request, f'Erro: {str(e)}')
-            return redirect('listar_clientes')
+            return redirect(reverse('listar_clientes') + (f'?id={cliente_id}' if cliente_id else ''))
 
     return redirect('listar_clientes')
 
@@ -3809,6 +3807,98 @@ def buscar_templates_backup(request):
             'descricao': t.descricao or ''
         } for t in templates]
     })
+
+
+@login_required(login_url='login')
+@modulo_habilitado_required('backups')
+def listar_acessos_backup_habilitado(request):
+    """Acessos com backup habilitado de um cliente (JSON) — usado pelo
+    modal 'Backup em Massa'."""
+    cliente_id = request.GET.get('cliente')
+    if not cliente_id:
+        return JsonResponse({'error': 'Cliente não especificado'}, status=400)
+
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    acessos = Acesso.objects.filter(cliente=cliente, backup_habilitado=True).order_by('tipo')
+    return JsonResponse({
+        'acessos': [{'id': a.id, 'tipo': a.tipo, 'host': a.host, 'backup_habilitado': True} for a in acessos]
+    })
+
+
+@login_required(login_url='login')
+@modulo_habilitado_required('backups')
+def listar_acessos_sem_backup(request):
+    """Acessos SSH do cliente sem backup habilitado (JSON) — base do botão
+    'Listar hosts sem template e backups habilitados', pra configurar
+    template/habilitar/automático em massa numa tela só."""
+    cliente_id = request.GET.get('cliente')
+    if not cliente_id:
+        return JsonResponse({'error': 'Cliente não especificado'}, status=400)
+
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    acessos = Acesso.objects.filter(
+        cliente=cliente, protocolo='SSH', backup_habilitado=False
+    ).select_related('backup_template').order_by('tipo')
+
+    return JsonResponse({
+        'acessos': [{
+            'id': a.id,
+            'tipo': a.tipo,
+            'host': a.host,
+            'backup_template_id': a.backup_template_id or '',
+            'backup_automatico': a.backup_automatico,
+        } for a in acessos]
+    })
+
+
+@login_required(login_url='login')
+@modulo_habilitado_required('backups')
+@require_http_methods(['POST'])
+def configurar_backup_massa(request):
+    """Aplica habilitar/template/backup automático em massa — usado pelo
+    botão 'Listar hosts sem template e backups habilitados'.
+
+    body: {"itens": [{"acesso_id": int, "habilitado": bool, "automatico": bool,
+                       "template_id": int|null}, ...]}
+    """
+    try:
+        itens = json.loads(request.body).get('itens', [])
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    atualizados = 0
+    erros = []
+    for item in itens:
+        acesso = Acesso.objects.select_related('cliente').filter(id=item.get('acesso_id')).first()
+        if not acesso:
+            erros.append(f"Acesso {item.get('acesso_id')} não encontrado")
+            continue
+        if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+            erros.append(f'Sem permissão para {acesso.tipo}')
+            continue
+
+        habilitado = bool(item.get('habilitado'))
+        automatico = bool(item.get('automatico'))
+        template_id = item.get('template_id') or None
+
+        if habilitado and not template_id:
+            erros.append(f'{acesso.tipo}: selecione um template para habilitar o backup')
+            continue
+
+        acesso.backup_habilitado = habilitado
+        acesso.backup_automatico = automatico
+        acesso.backup_template_id = template_id
+        acesso.save(update_fields=['backup_habilitado', 'backup_automatico', 'backup_template'])
+        atualizados += 1
+
+    return JsonResponse({'success': True, 'atualizados': atualizados, 'erros': erros})
+
 
 @login_required(login_url='login')
 @modulo_habilitado_required('backups')
@@ -4007,18 +4097,48 @@ def webfig_vnc_page(request, acesso_id):
 @login_required(login_url='login')
 @modulo_habilitado_required('tuneis')
 def proxy_ativo_cliente(request):
-    """Indica se o cliente tem um ProxyServer SSH ativo — usado para validar
-    backup/acesso a equipamentos com IP privado antes de tentar a operação."""
+    """Indica se dá para alcançar o equipamento antes de tentar a operação
+    (backup, etc).
+
+    Com `acesso_id`, responde a pergunta certa — "esse host é alcançável?" —
+    considerando as DUAS saídas que o backend usa para IP privado: o
+    ProxyServer SSH e o túnel OpenVPN do cliente. Sem isso a tela barrava o
+    backup de quem só tem túnel, dizendo para configurar um proxy SSH, mesmo
+    com o equipamento perfeitamente alcançável (e o backend, que já checa
+    `vpn_cobre_ip`, nunca chegava a ser chamado).
+
+    Sem `acesso_id`, mantém a resposta antiga (só a existência do proxy)."""
     cliente_id = request.GET.get('cliente_id')
-    if not cliente_id:
-        return JsonResponse({'tem_proxy_ativo': False})
+    acesso_id  = request.GET.get('acesso_id')
+    if not cliente_id and not acesso_id:
+        return JsonResponse({'tem_proxy_ativo': False, 'alcancavel': False})
+
+    acesso = None
+    if acesso_id:
+        acesso = Acesso.objects.filter(id=acesso_id).select_related('cliente').first()
+        if acesso:
+            cliente_id = acesso.cliente_id
 
     proxy = ProxyServer.objects.filter(cliente_id=cliente_id, ativo=True).first()
-    return JsonResponse({
+    resposta = {
         'tem_proxy_ativo': bool(proxy),
         'nome': proxy.nome if proxy else None,
         'host': proxy.host if proxy else None,
-    })
+    }
+
+    if acesso:
+        host = (acesso.host or '').split(':')[0]
+        privado = is_private_ip(host)
+        tem_tunel = bool(privado and not proxy and vpn_cobre_ip(acesso.cliente, host))
+        resposta.update({
+            'host_equipamento': host,
+            'privado':   privado,
+            'tem_tunel': tem_tunel,
+            # Público não precisa de caminho; privado precisa de proxy OU túnel.
+            'alcancavel': (not privado) or bool(proxy) or tem_tunel,
+        })
+
+    return JsonResponse(resposta)
 
 
 @login_required(login_url='login')
@@ -4052,7 +4172,7 @@ def ping_acesso(request, acesso_id):
 
             if not proxy:
                 if vpn_cobre_ip(acesso.cliente, host):
-                    print(f"✅ VPN WireGuard cobre {host} — ping direto via VPN")
+                    print(f"✅ Túnel OpenVPN cobre {host} — ping direto pelo túnel")
                     resultado = ping_direto(host)
                 else:
                     return JsonResponse({
@@ -5757,14 +5877,14 @@ def teste_rede_cliente(request, cliente_id):
     proxy = ProxyServer.objects.filter(cliente=cliente, ativo=True).first()
     usar_vpn_local = False
     if not proxy:
-        from .models import VPNWireGuard
-        from . import vpn_manager as _wgm
-        vpns_ativas = VPNWireGuard.objects.filter(cliente=cliente, ativo=True, peer_no_servidor=True)
-        if vpns_ativas.exists():
-            peers = _wgm.get_peers_status()
-            usar_vpn_local = any(
-                peers.get(v.cliente_public_key, {}).get('conectado') for v in vpns_ativas
-            )
+        # Sem proxy SSH, ainda dá para rodar local se um túnel OpenVPN do
+        # cliente estiver conectado — a rota já existe no kernel.
+        from .models import VPNOpenVPN
+        from . import openvpn_tunnel_manager as _ovpnm
+        usar_vpn_local = any(
+            _ovpnm.tunel_conectado(t)
+            for t in VPNOpenVPN.objects.filter(cliente=cliente, ativo=True, cert_emitido=True)
+        )
         if not usar_vpn_local:
             return JsonResponse({'error': 'Nenhum proxy SSH ativo configurado para este cliente.'}, status=400)
 
@@ -5868,7 +5988,7 @@ def teste_rede_cliente(request, cliente_id):
     ordem = {d: i for i, d in enumerate(todos_destinos)}
     resultados.sort(key=lambda r: ordem.get(r['destino'], 99))
 
-    proxy_info = {'nome': proxy.nome, 'host': proxy.host} if proxy else {'nome': 'VPN WireGuard (local)', 'host': 'servidor CRM'}
+    proxy_info = {'nome': proxy.nome, 'host': proxy.host} if proxy else {'nome': 'Túnel OpenVPN (local)', 'host': 'servidor CRM'}
     return JsonResponse({
         'ok':        True,
         'proxy':     proxy_info,
@@ -6056,14 +6176,12 @@ def teste_dns_cliente(request, cliente_id):
     proxy = ProxyServer.objects.filter(cliente=cliente, ativo=True).first()
     usar_vpn_local_dns = False
     if not proxy:
-        from .models import VPNWireGuard
-        from . import vpn_manager as _wgm
-        vpns_ativas = VPNWireGuard.objects.filter(cliente=cliente, ativo=True, peer_no_servidor=True)
-        if vpns_ativas.exists():
-            peers = _wgm.get_peers_status()
-            usar_vpn_local_dns = any(
-                peers.get(v.cliente_public_key, {}).get('conectado') for v in vpns_ativas
-            )
+        from .models import VPNOpenVPN
+        from . import openvpn_tunnel_manager as _ovpnm
+        usar_vpn_local_dns = any(
+            _ovpnm.tunel_conectado(t)
+            for t in VPNOpenVPN.objects.filter(cliente=cliente, ativo=True, cert_emitido=True)
+        )
         if not usar_vpn_local_dns:
             return JsonResponse({'error': 'Nenhum proxy SSH ativo configurado para este cliente.'}, status=400)
 
@@ -6167,7 +6285,7 @@ def teste_dns_cliente(request, cliente_id):
         consistente_geral = len(conjuntos) == 1
         status_geral      = 'ok' if consistente_geral else 'inconsistente'
 
-    proxy_info_dns = {'nome': proxy.nome, 'host': proxy.host} if proxy else {'nome': 'VPN WireGuard (local)', 'host': 'servidor CRM'}
+    proxy_info_dns = {'nome': proxy.nome, 'host': proxy.host} if proxy else {'nome': 'Túnel OpenVPN (local)', 'host': 'servidor CRM'}
     return JsonResponse({
         'ok':               True,
         'dominio':          dominio,
@@ -6221,15 +6339,38 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
     if not path: path = '/'
     if not path.startswith('/'): path = '/' + path
 
-    qs = request.GET.urlencode()
-    full_path = path + ('?' + qs if qs else '')
-
+    # ── Separar hostname puro de um path fixo eventualmente embutido em
+    # acesso.host (ex: cadastrado como "198.18.1.13/zabbix" em vez de só
+    # o IP). Sem isso, ProxyEngine.is_private_ip() recebe uma string que
+    # não é um IP válido, falha silenciosamente (retorna False) e o
+    # acesso deixa de passar pelo túnel SSH quando deveria — além de
+    # gerar uma target_url inválida (a porta acaba colada dentro do path).
     target_host = acesso.host.strip()
+    base_path = ''
     try:
         if '://' in target_host:
-            target_host = _up(target_host).hostname
+            parsed_host = _up(target_host)
+            target_host = parsed_host.hostname
+            base_path = parsed_host.path.rstrip('/')
+        elif '/' in target_host:
+            target_host, _, rest = target_host.partition('/')
+            rest = rest.strip('/')
+            if rest:
+                base_path = '/' + rest
     except Exception:
         pass
+
+    # Reinjeta o path fixo na requisição, exceto quando ele já veio embutido
+    # no path atual (o que acontece nas navegações seguintes, já que os links
+    # devolvidos pelo próprio dispositivo já incluem esse prefixo).
+    if base_path:
+        bp = base_path.strip('/')
+        p_no_slash = path.lstrip('/')
+        if p_no_slash != bp and not p_no_slash.startswith(bp + '/'):
+            path = base_path + path
+
+    qs = request.GET.urlencode()
+    full_path = path + ('?' + qs if qs else '')
 
     proxy_base = f'/clientes/acessos/{acesso_id}/web/{porta_web}/{scheme}'
     target_url = f"{scheme}://{target_host}:{porta_web}{full_path}"
@@ -6244,8 +6385,9 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
             else:
                 return HttpResponse(
                     ProxyEngine.get_error_page(
-                        f'IP privado (<code>{target_host}</code>) sem proxy SSH ativo.<br>'
-                        f'Configure um túnel SSH para este cliente.'
+                        f'IP privado (<code>{target_host}</code>) sem proxy SSH ativo e sem '
+                        f'túnel OpenVPN cobrindo esse IP.<br>'
+                        f'Configure um dos dois na aba "Túneis" deste cliente.'
                     ),
                     content_type='text/html', status=400
                 )
@@ -6820,7 +6962,7 @@ def _interface_subinterface(nome):
 # ─── L2VPN (VSI/VPLS, VPWS, L2VC) na topologia ────────────────────────────────
 
 from django.core.cache import cache
-from .l2vpn_parser import parse_l2vpn, extrair_ips_identidade, extrair_ldp, resumo_por_tipo
+from .l2vpn_parser import parse_l2vpn, extrair_ips_identidade, extrair_ldp, resumo_por_tipo, extrair_vlans
 from .l2vpn_actions import (
     L2vpnNaoSuportado,
     VENDORS_SUPORTADOS as _L2VPN_VENDORS,
@@ -7162,6 +7304,119 @@ def l2vpn_clonar_acesso(request, acesso_id):
     })
 
 
+def _acesso_eh_switch(acesso):
+    """Mesmo critério (palavras-chave em função/tipo) que `topologia_hosts`
+    usa pra desenhar um host como switch_l2/switch_l3 — reaproveitado aqui
+    pra que a listagem de 'switches' da sub-aba L2VPN bata com o que o
+    operador já vê no editor de topologia."""
+    funcao_nome = ((acesso.funcao.descricao or '') if acesso.funcao else '').lower()
+    tipo_lower = (acesso.tipo or '').lower()
+    palavras = ['switch l3', 'sw-l3', 'camada 3', 'switch', 'sw-', 'catalyst', 'nexus']
+    return any(p in funcao_nome or p in tipo_lower for p in palavras)
+
+
+@login_required(login_url='login')
+@require_http_methods(['GET'])
+@modulo_habilitado_required('acessos')
+def l2vpn_switches_cliente(request, cliente_id):
+    """Switches do cliente com um resumo (contagem por tipo) dos serviços
+    L2VPN documentados no backup mais recente de cada um — base da sub-aba
+    'L2VPN' em Documentação de Rede. O detalhe de cada switch reaproveita
+    `l2vpn_backup_acesso` (mesma origem de dados do modal da Topologia)."""
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    acessos = Acesso.objects.filter(cliente=cliente).select_related('funcao')
+    switches = []
+    for acesso in acessos:
+        if not _acesso_eh_switch(acesso):
+            continue
+        servicos, log = _l2vpn_servicos_do_acesso(acesso)
+        switches.append({
+            'acesso_id': acesso.id,
+            'nome': acesso.tipo,
+            'host': acesso.host,
+            'tem_backup': log is not None,
+            'data_backup': (
+                log.data_backup.astimezone(timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M')
+                if log else None
+            ),
+            'resumo': resumo_por_tipo(servicos),
+        })
+    switches.sort(key=lambda s: s['resumo']['total'], reverse=True)
+    return JsonResponse({'switches': switches, 'total': len(switches)})
+
+
+_VLANS_CACHE_VERSAO = 1  # sobe junto com qualquer mudança em extrair_vlans
+
+
+def _vlans_do_acesso(acesso):
+    """(vlans, BackupLog) do backup mais recente do acesso — mesmo cache por
+    id de BackupLog do L2VPN (o conteúdo de um backup não muda)."""
+    recentes = _backups_recentes(acesso, limite=1)
+    if not recentes:
+        return [], None
+    log, caminho = recentes[0]
+    chave = f'vlans:v{_VLANS_CACHE_VERSAO}:{log.id}'
+    vlans = cache.get(chave)
+    if vlans is None:
+        vlans = extrair_vlans(_ler_backup(caminho))
+        cache.set(chave, vlans, _L2VPN_CACHE_TTL)
+    return vlans, log
+
+
+@login_required(login_url='login')
+@require_http_methods(['GET'])
+@modulo_habilitado_required('acessos')
+def vlans_switches_cliente(request, cliente_id):
+    """Switches do cliente com a contagem de VLANs configuradas em cada um —
+    base da sub-aba 'VLANs por Switch' em Documentação de Rede."""
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    acessos = Acesso.objects.filter(cliente=cliente).select_related('funcao')
+    switches = []
+    for acesso in acessos:
+        if not _acesso_eh_switch(acesso):
+            continue
+        vlans, log = _vlans_do_acesso(acesso)
+        switches.append({
+            'acesso_id': acesso.id,
+            'nome': acesso.tipo,
+            'host': acesso.host,
+            'tem_backup': log is not None,
+            'data_backup': (
+                log.data_backup.astimezone(timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M')
+                if log else None
+            ),
+            'total_vlans': len(vlans),
+        })
+    switches.sort(key=lambda s: s['total_vlans'], reverse=True)
+    return JsonResponse({'switches': switches, 'total': len(switches)})
+
+
+@login_required(login_url='login')
+@require_http_methods(['GET'])
+@modulo_habilitado_required('acessos')
+def vlans_backup_acesso(request, acesso_id):
+    """VLANs configuradas no switch, extraídas do backup mais recente."""
+    acesso = get_object_or_404(Acesso.objects.select_related('cliente'), id=acesso_id)
+    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    vlans, log = _vlans_do_acesso(acesso)
+    if log is None:
+        return JsonResponse({'tem_backup': False, 'vlans': []})
+
+    return JsonResponse({
+        'tem_backup': True,
+        'vlans': vlans,
+        'data_backup': log.data_backup.astimezone(timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M'),
+    })
+
+
 # ─── Portas PON de OLT Huawei (MA5600T/MA5800) ────────────────────────────────
 
 from .olt_pon import (
@@ -7362,225 +7617,7 @@ def _exec_migration_topologia(request):
         return HttpResponse(f'Erro: {e}', status=500)
 
 
-# =============================================================================
-# VPN WireGuard
-# =============================================================================
-from .models import VPNWireGuard, VPNServidorConfig
-from . import vpn_manager as wgm
 import json as _json
-
-def _get_servidor_config():
-    """Retorna config do servidor, criando se não existir."""
-    cfg = VPNServidorConfig.objects.first()
-    if not cfg:
-        priv, pub = wgm.gerar_par_chaves()
-        cfg = VPNServidorConfig.objects.create(
-            servidor_private_key=priv,
-            servidor_public_key=pub,
-            servidor_endpoint='179.48.68.73',
-            servidor_porta=51820,
-        )
-    return cfg
-
-
-@login_required
-@require_http_methods(["GET"])
-@modulo_habilitado_required('tuneis')
-def vpn_wg_listar(request, cliente_id):
-    cliente = get_object_or_404(Cliente, id=cliente_id)
-    vpns    = VPNWireGuard.objects.filter(cliente=cliente)
-    cfg     = _get_servidor_config()
-
-    # Status em tempo real
-    peers_status = {}
-    try:
-        peers_status = wgm.get_peers_status()
-    except Exception:
-        pass
-
-    vpns_data = []
-    for v in vpns:
-        st = peers_status.get(v.cliente_public_key, {})
-        vpns_data.append({
-            'id':             v.id,
-            'nome':           v.nome,
-            'vpn_ip':         v.vpn_ip,
-            'redes':          v.redes_lista(),
-            'ativo':          v.ativo,
-            'peer_no_servidor': v.peer_no_servidor,
-            'conectado':      st.get('conectado', False),
-            'last_handshake': st.get('last_handshake', 0),
-            'rx':             wgm.formatar_bytes(st.get('rx_bytes', 0)),
-            'tx':             wgm.formatar_bytes(st.get('tx_bytes', 0)),
-            'criado_em':      v.criado_em.strftime('%d/%m/%Y %H:%M'),
-        })
-
-    return JsonResponse({'vpns': vpns_data, 'servidor_endpoint': cfg.servidor_endpoint})
-
-
-@login_required
-@require_http_methods(["POST"])
-@modulo_habilitado_required('tuneis')
-def vpn_wg_criar(request, cliente_id):
-    """
-    Cria uma VPN WireGuard em uma interface ISOLADA dedicada (wg5, wg6, ...)
-    — cada cliente tem sua própria interface/porta/sub-rede, nunca
-    compartilhando rotas de kernel com outro cliente. Isso evita a classe de
-    bug em que excluir a VPN de UM cliente apagava rotas de OUTRO (incidente
-    Conecta ISP, 2026-06-14 — ver docs/vpn_wireguard.md).
-    """
-    cliente = get_object_or_404(Cliente, id=cliente_id)
-    try:
-        body = _json.loads(request.body)
-        nome          = body.get('nome', 'VPN MikroTik').strip() or 'VPN MikroTik'
-        redes_raw     = body.get('redes_privadas', '').strip()
-
-        cfg           = _get_servidor_config()
-        priv, pub     = wgm.gerar_par_chaves()
-        psk           = wgm.gerar_preshared_key()
-
-        interface, porta, subnet_n = wgm.alocar_proxima_interface()
-        vpn_ip            = f'10.{subnet_n}.0.2'
-        servidor_ip_local = f'10.{subnet_n}.0.1'
-
-        vpn = VPNWireGuard.objects.create(
-            cliente=cliente,
-            nome=nome,
-            cliente_private_key=priv,
-            cliente_public_key=pub,
-            preshared_key=psk,
-            vpn_ip=vpn_ip,
-            redes_privadas=redes_raw,
-            ativo=True,
-            interface_nome=interface,
-            servidor_ip_local=servidor_ip_local,
-        )
-
-        # Criar interface dedicada e adicionar o peer só nela
-        try:
-            wgm.criar_interface_isolada(interface, porta, subnet_n, cfg.servidor_private_key)
-            wgm.adicionar_peer_isolado(interface, pub, psk, vpn_ip, vpn.redes_lista())
-            vpn.peer_no_servidor = True
-            vpn.save()
-        except Exception as e:
-            logger.warning(f'Peer não adicionado em {interface}: {e}')
-
-        return JsonResponse({'ok': True, 'vpn_id': vpn.id, 'vpn_ip': vpn_ip})
-
-    except Exception as e:
-        logger.error(f'vpn_wg_criar: {e}')
-        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
-
-
-@login_required
-@require_http_methods(["GET"])
-@modulo_habilitado_required('tuneis')
-def vpn_wg_script(request, vpn_id):
-    vpn = get_object_or_404(VPNWireGuard, id=vpn_id)
-    cfg = _get_servidor_config()
-    script = wgm.gerar_script_mikrotik(vpn, cfg)
-    return JsonResponse({'ok': True, 'script': script, 'nome': vpn.nome})
-
-
-@login_required
-@require_http_methods(["POST"])
-@modulo_habilitado_required('tuneis')
-def vpn_wg_deletar(request, vpn_id):
-    vpn = get_object_or_404(VPNWireGuard, id=vpn_id)
-    try:
-        if vpn.peer_no_servidor:
-            if wgm.vpn_e_isolada(vpn.vpn_ip):
-                wgm.remover_interface_isolada(vpn.interface_nome)
-            else:
-                wgm.remover_peer(vpn.cliente_public_key, vpn.redes_lista())
-                wgm.salvar_config_persistente()
-        vpn.delete()
-        return JsonResponse({'ok': True})
-    except Exception as e:
-        logger.error(f'vpn_wg_deletar: {e}')
-        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
-
-
-@login_required
-@require_http_methods(["GET"])
-@modulo_habilitado_required('tuneis')
-def vpn_wg_status(request, cliente_id):
-    vpns = VPNWireGuard.objects.filter(cliente_id=cliente_id, ativo=True)
-    peers = {}
-    try:
-        peers = wgm.get_peers_status()
-    except Exception:
-        pass
-
-    result = []
-    for v in vpns:
-        st = peers.get(v.cliente_public_key, {})
-        result.append({
-            'id':        v.id,
-            'vpn_ip':    v.vpn_ip,
-            'conectado': st.get('conectado', False),
-            'last_handshake': st.get('last_handshake', 0),
-        })
-    return JsonResponse({'vpns': result})
-
-
-@login_required
-@require_http_methods(["POST"])
-@modulo_habilitado_required('tuneis')
-def vpn_wg_reativar_peer(request, vpn_id):
-    """Re-adiciona peer ao servidor (útil após reboot ou falha pontual)."""
-    vpn = get_object_or_404(VPNWireGuard, id=vpn_id)
-    cfg = _get_servidor_config()
-    try:
-        if wgm.vpn_e_isolada(vpn.vpn_ip):
-            porta    = wgm.ISOLATED_BASE_PORT + (wgm.interface_subnet_n(vpn.interface_nome) - wgm.ISOLATED_SUBNET_BASE)
-            subnet_n = wgm.interface_subnet_n(vpn.interface_nome)
-            wgm.criar_interface_isolada(vpn.interface_nome, porta, subnet_n, cfg.servidor_private_key)
-            wgm.adicionar_peer_isolado(vpn.interface_nome, vpn.cliente_public_key,
-                                       vpn.preshared_key, vpn.vpn_ip, vpn.redes_lista())
-        else:
-            wgm.adicionar_peer(vpn.cliente_public_key, vpn.preshared_key,
-                               vpn.vpn_ip, vpn.redes_lista())
-            wgm.salvar_config_persistente()
-        vpn.peer_no_servidor = True
-        vpn.save()
-        return JsonResponse({'ok': True})
-    except Exception as e:
-        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
-
-
-@login_required
-@require_http_methods(["POST"])
-@modulo_habilitado_required('tuneis')
-def vpn_wg_editar(request, vpn_id):
-    """Atualiza nome e redes privadas de uma VPN WireGuard."""
-    vpn = get_object_or_404(VPNWireGuard, id=vpn_id)
-    try:
-        body = _json.loads(request.body)
-        nome_novo   = body.get('nome', '').strip() or vpn.nome
-        redes_novas = body.get('redes_privadas', '').strip()
-
-        redes_antigas = vpn.redes_lista()
-
-        vpn.nome           = nome_novo
-        vpn.redes_privadas = redes_novas
-        vpn.save()
-
-        if vpn.peer_no_servidor:
-            # Remover rotas antigas e re-adicionar peer com novas redes
-            if wgm.vpn_e_isolada(vpn.vpn_ip):
-                wgm.adicionar_peer_isolado(vpn.interface_nome, vpn.cliente_public_key,
-                                           vpn.preshared_key, vpn.vpn_ip, vpn.redes_lista())
-            else:
-                wgm.remover_peer(vpn.cliente_public_key, redes_antigas)
-                wgm.adicionar_peer(vpn.cliente_public_key, vpn.preshared_key,
-                                   vpn.vpn_ip, vpn.redes_lista())
-                wgm.salvar_config_persistente()
-
-        return JsonResponse({'ok': True})
-    except Exception as e:
-        logger.error(f'vpn_wg_editar: {e}')
-        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -7588,7 +7625,7 @@ def vpn_wg_editar(request, vpn_id):
 # NÃO CONFUNDIR com a seção "OpenVPN — Configuração automatizada em MikroTik"
 # logo abaixo: aquela configura o MikroTik do CLIENTE como servidor OpenVPN
 # para acesso remoto do NOC; esta aqui é o terceiro tipo de túnel da aba
-# Túneis (ao lado de SSH e WireGuard) — a CRM É o servidor, o MikroTik do
+# Túneis (ao lado do proxy SSH) — a CRM É o servidor, o MikroTik do
 # cliente é o client, com rota isolada nativamente via client-config-dir.
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -7646,10 +7683,9 @@ def _ovpn_erro_conflito(redes_raw, excluir_vpn_id=None):
 def vpn_ovpn_criar(request, cliente_id):
     """
     Cria um túnel OpenVPN em uma instância DEDICADA (porta/interface/sub-rede
-    próprias) — mesmo padrão isolado já usado pelo WireGuard
-    (VPNWireGuard.interface_nome). Evita que dois clientes com as mesmas
-    redes "alcançáveis" (o padrão CGNAT+RFC1918) tenham tráfego roteado pro
-    cliente errado quando ambos estão conectados ao mesmo tempo.
+    próprias). Evita que dois clientes com as mesmas redes "alcançáveis" (o
+    padrão CGNAT+RFC1918) tenham tráfego roteado pro cliente errado quando
+    ambos estão conectados ao mesmo tempo.
     """
     cliente = get_object_or_404(Cliente, id=cliente_id)
     try:

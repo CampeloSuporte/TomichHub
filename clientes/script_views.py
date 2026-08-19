@@ -117,7 +117,7 @@ DEVICE_TYPES = {
 def _conectar_script(acesso, fabricante: str):
     """
     Cria conexão netmiko para execução de script.
-    Lida com IP privado via ProxyServer ou WireGuard.
+    Lida com IP privado via ProxyServer ou túnel OpenVPN.
     Retorna (ConnectHandler, tunel_ou_None).
     """
     import ipaddress as _ipa
@@ -203,10 +203,10 @@ def _conectar_script(acesso, fabricante: str):
             tunel_ssh = (ssh, server_sock)
 
         elif vpn_cobre_ip(acesso.cliente, host):
-            pass  # conecta diretamente via WireGuard
+            pass  # conecta diretamente pelo túnel OpenVPN
         else:
             raise Exception(
-                f"IP privado ({host}) sem proxy SSH ou VPN WireGuard configurado para este cliente."
+                f"IP privado ({host}) sem proxy SSH ou túnel OpenVPN configurado para este cliente."
             )
 
     device = {

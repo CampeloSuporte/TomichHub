@@ -4,6 +4,7 @@ Suporta RouterOS v6 e v7.
 """
 import io
 import os
+import re
 import time
 import secrets
 import string
@@ -135,21 +136,45 @@ def _gerar_mac():
     return ':'.join(f'{b:02X}' for b in mac)
 
 
-def comandos_ros7(cfg):
-    """RouterOS v7 — /interface ovpn-server server add."""
+def _cmd_ovpn_server_lista(cfg):
+    """`/interface ovpn-server server` como LISTA (`add`) — suporte a
+    múltiplas instâncias, que só existe em builds recentes do v7 (não achamos
+    um número de versão fixo confiável; ver `_ovpn_server_suporta_lista`,
+    que detecta isso direto no equipamento em vez de assumir pela versão)."""
     porta  = cfg['porta']
     nome   = cfg['nome_vpn']
     mac    = _gerar_mac()
-    cmds   = _cmds_base(cfg)
-    # Remove todas as instâncias anteriores (evita conflito de porta/protocolo)
-    cmds.append(f'/interface ovpn-server server remove [find]')
-    cmds.append(
+    return [
+        # Remove todas as instâncias anteriores (evita conflito de porta/protocolo)
+        f'/interface ovpn-server server remove [find]',
         f'/interface ovpn-server server add name={nome} port={porta} '
         f'auth=sha1 cipher=aes256-cbc disabled=no mac-address={mac} '
         f'certificate=Servidor-OPEN default-profile=OPEN_VPN '
-        f'require-client-certificate=yes'
-    )
-    return cmds
+        f'require-client-certificate=yes',
+    ]
+
+
+def _cmd_ovpn_server_singleton_v7(cfg):
+    """`/interface ovpn-server server` como objeto único (`set`) — é o que a
+    MAIORIA dos builds v7 ainda usa (o suporte a múltiplas instâncias é
+    recente). Mesma sintaxe do v6, mas com o nome de cipher que o v7 exige:
+    `aes256` puro dá "syntax error" a partir de um certo 7.x — mesmo
+    problema já visto do lado cliente do túnel OpenVPN (RouterOS renomeou
+    pra `aes256-cbc`/`aes256-gcm`)."""
+    porta = cfg['porta']
+    return [
+        f'__PTY__/interface ovpn-server server set enabled=yes port={porta} '
+        f'auth=sha1 cipher=aes256-cbc '
+        f'certificate=Servidor-OPEN default-profile=OPEN_VPN '
+        f'require-client-certificate=yes',
+    ]
+
+
+def comandos_ros7(cfg):
+    """RouterOS v7 — base comum; o comando final (lista vs. objeto único) é
+    decidido depois de conectar, em `executar_config_openvpn`, porque
+    depende de sondar o equipamento (`_ovpn_server_suporta_lista`)."""
+    return _cmds_base(cfg)
 
 
 def comandos_ros6(cfg):
@@ -178,6 +203,40 @@ def _exec(client, cmd, timeout=60):
         return out, err
     except Exception as e:
         return '', str(e)
+
+
+# RouterOS devolve a recusa pela mesma saída normal do comando (não por um
+# canal de erro separado) — por isso o loop de execução precisa varrer o
+# texto, e não só confiar em `err`/exceção. Achado real: `/interface
+# ovpn-server server add ...` foi gravado como sucesso mesmo respondendo
+# "bad command name add" (a lista de instâncias só existe em builds
+# recentes do v7 — a maioria ainda usa objeto único).
+_ERRO_MIKROTIK_RE = re.compile(
+    r'^\s*(?:script error|syntax error|bad command|expected end of command|'
+    r'no such item|failure:|input does not match any value)',
+    re.IGNORECASE)
+
+
+def _erro_mikrotik(texto):
+    """Primeira linha de erro reconhecida na saída, ou '' se o comando foi
+    aceito (inclui um `remove [find ...]` que não achou nada — isso é
+    no-op silencioso em menus de lista, não erro)."""
+    if not texto:
+        return ''
+    for linha in texto.splitlines():
+        if _ERRO_MIKROTIK_RE.match(linha):
+            return linha.strip()
+    return ''
+
+
+def _ovpn_server_suporta_lista(client):
+    """`/interface ovpn-server server` virou uma LISTA (suporta `add`,
+    múltiplas instâncias) só em builds recentes do v7 — a maioria ainda
+    trata como objeto único (só `set`), igual ao v6. Em vez de travar num
+    número de versão (que pode mudar), sonda o próprio equipamento: `print
+    count-only` só é um comando válido em menus de lista."""
+    out, err = _exec(client, '/interface ovpn-server server print count-only', timeout=15)
+    return not _erro_mikrotik(out) and not _erro_mikrotik(err)
 
 
 def _exec_pty(client, cmd, timeout=60):
@@ -379,6 +438,9 @@ def executar_config_openvpn(config_id):
         }
 
         cmds = comandos_ros7(cfg) if config.ros_version == '7' else comandos_ros6(cfg)
+        # v7: o comando final (`add` em lista vs `set` em objeto único)
+        # depende de sondar o equipamento — só dá pra decidir depois de
+        # conectar (ver bloco após `client.connect`, abaixo).
 
         # ── Conectar via SSH ──────────────────────────────────────────────
         host_conexao  = acesso.host
@@ -386,7 +448,7 @@ def executar_config_openvpn(config_id):
 
         if is_private_ip(acesso.host):
             if vpn_cobre_ip(acesso.cliente, acesso.host):
-                pass  # Alcançável via WireGuard — conecta direto
+                pass  # Alcançável pelo túnel OpenVPN — conecta direto
             else:
                 proxy = ProxyServer.objects.filter(
                     cliente=acesso.cliente, ativo=True
@@ -417,6 +479,14 @@ def executar_config_openvpn(config_id):
         client.get_transport().set_keepalive(10)
         logger.info(f'OpenVPN [{config_id}]: SSH conectado a {acesso.host}')
 
+        if config.ros_version == '7':
+            usa_lista = _ovpn_server_suporta_lista(client)
+            cmds += _cmd_ovpn_server_lista(cfg) if usa_lista else _cmd_ovpn_server_singleton_v7(cfg)
+            logger.info(
+                f'OpenVPN [{config_id}]: /interface ovpn-server server '
+                f'{"suporta lista (add)" if usa_lista else "é objeto único (set)"}'
+            )
+
         # ── Executar comandos ─────────────────────────────────────────────
         logs = []
         for cmd in cmds:
@@ -428,13 +498,27 @@ def executar_config_openvpn(config_id):
             if cmd.startswith('__PTY__'):
                 real_cmd = cmd[7:]
                 out, err = _exec_pty(client, real_cmd, timeout=90)
-                linha = f'$ {real_cmd}\n{out}\n{("ERR: " + err) if err else ""}\n'
             else:
+                real_cmd = cmd
                 out, err = _exec(client, cmd, timeout=90)
-                linha = f'$ {cmd}\n{out}\n{("ERR: " + err) if err else ""}\n'
 
+            linha = f'$ {real_cmd}\n{out}\n{("ERR: " + err) if err else ""}\n'
             logs.append(linha)
-            logger.info(f'OpenVPN [{config_id}]: {cmd[:80]} → {out[:80]}')
+            logger.info(f'OpenVPN [{config_id}]: {real_cmd[:80]} → {out[:80]}')
+
+            # O MikroTik devolve recusa pela saída normal do comando, não por
+            # um canal de erro separado — por isso checa `out` e `err`, não só
+            # exceção. Achado real: `/interface ovpn-server server add` foi
+            # gravado como "Concluído" mesmo respondendo "bad command name
+            # add" (a lista de instâncias só existe em builds recentes do v7).
+            erro = _erro_mikrotik(out) or _erro_mikrotik(err)
+            if erro:
+                config.logs     = '\n'.join(logs)
+                config.status   = 'erro'
+                config.erro_msg = f'Comando recusado pelo MikroTik: {erro}'
+                config.save(update_fields=['logs', 'status', 'erro_msg'])
+                logger.error(f'OpenVPN [{config_id}]: comando recusado — {erro}')
+                return
 
         config.logs = '\n'.join(logs)
         config.save(update_fields=['logs'])

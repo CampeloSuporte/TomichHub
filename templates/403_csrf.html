@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sessão expirada — CRM NOC</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+     display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:44px 40px;
+      max-width:560px;width:100%;text-align:center;box-shadow:0 8px 32px #0006}
+.icon{font-size:54px;line-height:1;margin-bottom:18px}
+.cod{display:inline-block;background:#21262d;border:1px solid #30363d;border-radius:999px;
+     padding:3px 12px;font-size:.75rem;letter-spacing:.08em;color:#8b949e;margin-bottom:14px}
+h1{font-size:1.5rem;margin-bottom:14px}
+p{color:#8b949e;line-height:1.7;font-size:.95rem}
+p+p{margin-top:10px}
+code{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;color:#79c0ff;
+     word-break:break-all}
+.acoes{margin-top:26px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+a.btn,button.btn{display:inline-block;border-radius:8px;padding:10px 20px;font-size:.9rem;
+     text-decoration:none;cursor:pointer;border:1px solid #30363d;background:#21262d;color:#e6edf3;
+     font-family:inherit}
+a.btn:hover,button.btn:hover{background:#30363d}
+a.btn.primario{background:#1f6feb;border-color:#1f6feb;color:#fff}
+a.btn.primario:hover{background:#388bfd}
+h1{color:#ffaa00}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">&#8987;</div>
+    <div class="cod">ERRO 403</div>
+    <h1>Sessão expirada</h1>
+    <p>Sua sessão expirou ou a página ficou aberta tempo demais, então o envio foi recusado por segurança.</p>
+    <p>Entre novamente e refaça a operação.</p>
+    <div class="acoes">
+      <a class="btn primario" href="/auth/login/">Entrar novamente</a>
+    </div>
+  </div>
+</body>
+</html>

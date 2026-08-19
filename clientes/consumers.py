@@ -227,32 +227,6 @@ class _TerminalSessionRegistry:
 _terminal_sessions = _TerminalSessionRegistry()
 
 
-def _wg_peer_ativo(interface_nome: str) -> bool:
-    """
-    Retorna True se a interface WireGuard tem ao menos um peer com
-    handshake recente (< 3 minutos). Usado para detectar se o cliente
-    já migrou para a interface isolada antes de usar source-bind routing.
-    """
-    import subprocess, time
-    try:
-        r = subprocess.run(
-            ['wg', 'show', interface_nome, 'latest-handshakes'],
-            capture_output=True, text=True, timeout=2
-        )
-        if r.returncode != 0:
-            return False
-        agora = time.time()
-        for linha in r.stdout.strip().splitlines():
-            partes = linha.split()
-            if len(partes) >= 2:
-                ts = int(partes[1])
-                if ts > 0 and (agora - ts) < 180:
-                    return True
-        return False
-    except Exception:
-        return False
-
-
 def _rota_confere(host: str, dev_esperado: str) -> bool:
     """
     A rota que o kernel usa para `host` sai mesmo pela interface desse túnel?
@@ -266,8 +240,8 @@ def _rota_confere(host: str, dev_esperado: str) -> bool:
     """
     if not dev_esperado:
         return True
-    from . import vpn_manager as _vpnm
-    dev_real = _vpnm.rota_dev_para(host)
+    from . import openvpn_tunnel_manager as _ovpnm
+    dev_real = _ovpnm.rota_dev_para(host)
     if not dev_real:
         return True
     if dev_real == dev_esperado:
@@ -277,6 +251,30 @@ def _rota_confere(host: str, dev_esperado: str) -> bool:
         f'"{dev_real}" — colisão de faixa com outro cliente; ignorando esse túnel.'
     )
     return False
+
+
+def _tunel_ovpn_cobre(cliente, host):
+    """
+    Túnel OpenVPN ativo desse cliente que entrega o IP do host, ou None.
+    Confere a rota real (`_rota_confere`) — declarar a rede não basta.
+    """
+    try:
+        import ipaddress as _ipa
+        from .models import VPNOpenVPN
+        from . import openvpn_tunnel_manager as _ovpnm
+
+        host_ip = _ipa.ip_address(host)
+        for tunel in VPNOpenVPN.objects.filter(cliente=cliente, ativo=True, cert_emitido=True):
+            for rede_str in tunel.redes_lista():
+                try:
+                    if host_ip in _ipa.ip_network(rede_str, strict=False):
+                        if _rota_confere(host, _ovpnm.dev_tun(tunel)):
+                            return tunel
+                except ValueError:
+                    pass
+    except Exception as e:
+        logger.warning(f"⚠️ Erro ao verificar túnel OpenVPN: {e}")
+    return None
 
 
 def _pty_req_with_modes(shell, term='vt100', width=80, height=24):
@@ -639,63 +637,18 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             except Exception as e:
                 logger.debug(f"setwinsize (pexpect) falhou: {e}")
 
-    def _vpn_cobre_ip(self, cliente, host):
-        """
-        Verifica se existe VPN WireGuard com peer configurado que cobre o IP do host.
-        Retorna o objeto VPNWireGuard (com servidor_ip_local) ou None.
-        Compatível com código legado que compara com True via `if _vpn_cobre_ip(...)`.
-        """
-        try:
-            import ipaddress as _ipa
-            from .models import VPNWireGuard
-            from . import vpn_manager as _vpnm
-
-            vpns = VPNWireGuard.objects.filter(cliente=cliente, ativo=True, peer_no_servidor=True)
-            host_ip = _ipa.ip_address(host)
-
-            for vpn in vpns:
-                for rede_str in vpn.redes_lista():
-                    try:
-                        if host_ip in _ipa.ip_network(rede_str, strict=False):
-                            if not _rota_confere(host, vpn.interface_nome or _vpnm.WG_INTERFACE):
-                                continue
-                            logger.info(f"✅ VPN WG cobre {host} via {vpn.nome} (if={vpn.interface_nome} src={vpn.servidor_ip_local})")
-                            return vpn   # objeto truthy — compatível com `if vpn:`
-                    except ValueError:
-                        pass
-        except Exception as e:
-            logger.warning(f"⚠️ Erro ao verificar VPN: {e}")
-        return None
-
     def _tunel_ovpn_cobre_ip(self, cliente, host):
         """
-        Verifica se existe túnel OpenVPN (aba Túneis) que cobre o IP do host.
-        Cada túnel roda em uma instância dedicada com sua própria interface
-        (tun-crm-N) e a rota do cliente é instalada por ela, então não precisa
-        de source-bind — basta a rota do kernel apontar para a tun DESTE
-        túnel, o que `_rota_confere` valida (ver vpn_cobre_ip em views.py).
+        Túnel OpenVPN (aba Túneis) que cobre o IP do host, ou None. Cada
+        túnel roda em instância dedicada com sua própria interface
+        (tun-crm-N) e instala a rota do cliente, então não precisa de
+        source-bind — basta a rota do kernel apontar para a tun DESTE túnel,
+        o que `_rota_confere` valida (ver vpn_cobre_ip em views.py).
         """
-        try:
-            import ipaddress as _ipa
-            from .models import VPNOpenVPN
-            from . import openvpn_tunnel_manager as _ovpnm
-
-            tuneis = VPNOpenVPN.objects.filter(cliente=cliente, ativo=True, cert_emitido=True)
-            host_ip = _ipa.ip_address(host)
-
-            for tunel in tuneis:
-                for rede_str in tunel.redes_lista():
-                    try:
-                        if host_ip in _ipa.ip_network(rede_str, strict=False):
-                            if not _rota_confere(host, _ovpnm.dev_tun(tunel)):
-                                continue
-                            logger.info(f"✅ Túnel OpenVPN cobre {host} via {tunel.nome}")
-                            return tunel
-                    except ValueError:
-                        pass
-        except Exception as e:
-            logger.warning(f"⚠️ Erro ao verificar túnel OpenVPN: {e}")
-        return None
+        tunel = _tunel_ovpn_cobre(cliente, host)
+        if tunel:
+            logger.info(f"✅ Túnel OpenVPN cobre {host} via {tunel.nome}")
+        return tunel
 
     # =========================================================
     # Terminal compartilhado (opt-in)
@@ -960,29 +913,12 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             is_cgnat   = getattr(acesso, 'tipo', '') == 'CGNAT'
 
             if is_private:
-                # IP privado: VPN WireGuard, túnel OpenVPN ou proxy
-                vpn = self._vpn_cobre_ip(acesso.cliente, acesso.host)
-                tunel_ovpn = None if vpn else self._tunel_ovpn_cobre_ip(acesso.cliente, acesso.host)
-                if vpn:
-                    # Usa source bind da interface isolada SOMENTE se ela tiver
-                    # handshake ativo (cliente já migrou). Caso contrário, usa
-                    # wg0 via rota default (legado) sem source bind.
-                    iface = vpn.interface_nome or 'wg0'
-                    isolada_ativa = (
-                        iface not in ('wg0', '') and
-                        vpn.servidor_ip_local and
-                        _wg_peer_ativo(iface)
-                    )
-                    src_ip = vpn.servidor_ip_local if isolada_ativa else None
-                    modo = f'{iface} isolada' if isolada_ativa else 'wg0 legado'
-                    self.send_json({'type': 'info', 'message': f'🔒 Conectando via VPN WireGuard ({modo})...'})
-                    if protocol == 'ssh':
-                        self.connect_ssh(acesso, source_ip=src_ip)
-                    else:
-                        self.connect_telnet(acesso)
-                elif tunel_ovpn:
-                    # Servidor único compartilhado — rota já correta no kernel
-                    # via iroute do cliente, sem precisar de source-bind.
+                # IP privado: túnel OpenVPN do cliente ou proxy SSH
+                tunel_ovpn = self._tunel_ovpn_cobre_ip(acesso.cliente, acesso.host)
+                if tunel_ovpn:
+                    # Instância dedicada por cliente — a rota do kernel já sai
+                    # pela tun certa (conferida em `_rota_confere`), sem
+                    # precisar de source-bind.
                     self.send_json({'type': 'info', 'message': f'🔒 Conectando via Túnel OpenVPN ({tunel_ovpn.nome})...'})
                     if protocol == 'ssh':
                         self.connect_ssh(acesso)
@@ -2267,8 +2203,8 @@ class WinboxConsumer(SSHConsumer):
                     target_host = '127.0.0.1'
                     target_port = local_port
                 else:
-                    # Cliente só-VPN (sem ProxyServer SSH) — rota já existe no
-                    # kernel via WireGuard/OpenVPN. Ver mesmo fallback em
+                    # Cliente só-túnel (sem ProxyServer SSH) — a rota já
+                    # existe no kernel via OpenVPN. Ver mesmo fallback em
                     # conectar_vnc() acima.
                     from .views import vpn_cobre_ip
                     if not vpn_cobre_ip(acesso.cliente, host):
@@ -2437,9 +2373,9 @@ class WinboxVNCConsumer(SSHConsumer):
                     target_host = '127.0.0.1'
                     target_port = local_port
                 else:
-                    # Sem ProxyServer SSH ativo — clientes que só têm VPN
-                    # WireGuard/OpenVPN (rota já existe no kernel via interface
-                    # própria) conseguem conexão direta, sem túnel. Mesmo
+                    # Sem ProxyServer SSH ativo — clientes que só têm túnel
+                    # OpenVPN (rota já existe no kernel via interface própria)
+                    # conseguem conexão direta, sem proxy. Mesmo
                     # fallback usado por proxy_web_acesso (views.py) pro proxy
                     # HTTP; sem isso o Winbox Web falhava com "Nenhum proxy SSH
                     # ativo" pra qualquer cliente só-VPN, mesmo com o IP
@@ -3050,36 +2986,12 @@ def platform_ssh_exec(acesso, comando: str, timeout: int = 25) -> str:
         except ValueError:
             return False
 
-    # Roteamento: IP privado → VPN isolada (source bind) ou proxy; público → direto
+    # Roteamento: IP privado → túnel OpenVPN do cliente ou proxy; público → direto
     if _is_private(acesso.host):
-        # Verifica VPN isolada por interface primeiro
-        from .models import VPNWireGuard
-        vpn = None
-        try:
-            host_ip = _ip.ip_address(acesso.host)
-            for v in VPNWireGuard.objects.filter(cliente=acesso.cliente, ativo=True, peer_no_servidor=True):
-                for r in v.redes_lista():
-                    try:
-                        if host_ip in _ip.ip_network(r, strict=False):
-                            vpn = v
-                            break
-                    except ValueError:
-                        pass
-                if vpn:
-                    break
-        except Exception:
-            pass
-
-        iface = vpn.interface_nome if vpn else 'wg0'
-        isolada_ativa = (
-            vpn and vpn.servidor_ip_local and
-            iface not in ('wg0', '') and
-            _wg_peer_ativo(iface)
-        )
-        if isolada_ativa:
-            # Interface isolada com handshake ativo: source bind para routing table correto
-            src = vpn.servidor_ip_local
-            cmd_line = f"ssh -b {src} {_SSH_FLAGS} -p {acesso.porta} {acesso.usuario}@{acesso.host}"
+        if _tunel_ovpn_cobre(acesso.cliente, acesso.host):
+            # Rota já existe no kernel pela tun daquele cliente — direto, sem
+            # proxy e sem source bind.
+            cmd_line = f"ssh {_SSH_FLAGS} -p {acesso.porta} {acesso.usuario}@{acesso.host}"
             return _pexpect_exec(cmd_line, acesso.senha, comando, is_huawei, timeout)
 
         proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
