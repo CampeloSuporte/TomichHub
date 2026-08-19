@@ -169,8 +169,8 @@
 
     /* Automação de anúncios por community (Huawei) */
     /* Ocupa a largura toda da tela em vez do `max-width: 1100px` centralizado
-       do `.conteudo`: são até 25 circuitos + grupos globais, e a visão de
-       matriz não cabe em 1100px. */
+       do `.conteudo`: são até 25 circuitos + grupos globais + downstreams em
+       cards lado a lado. */
     #painelCommunity { max-width: none; margin: 0; padding: 20px 20px 0; }
     .ca-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 16px; }
     .ca-head {
@@ -282,27 +282,6 @@
     .ca-tabela td.ca-efeito { white-space: nowrap; }
     .ca-vazio { color: #7d8590; font-size: 11.5px; padding: 14px 2px; }
 
-    /* Visão de matriz (só leitura — quem edita é o painel do destino) */
-    .ca-matriz { overflow-x: auto; }
-    .ca-matriz table { width: 100%; border-collapse: collapse; font-size: 11px; }
-    .ca-matriz th, .ca-matriz td {
-        padding: 5px 8px; border-bottom: 1px solid #21262d; text-align: left; white-space: nowrap;
-    }
-    .ca-matriz th { color: #7d8590; font-weight: 600; text-transform: uppercase; font-size: 10px; }
-    /* Coluna do prefixo fica fixa: com muitos circuitos a matriz rola na
-       horizontal, e sem isso o operador perde de vista QUAL prefixo é a linha. */
-    .ca-matriz th:first-child, .ca-matriz td.ca-prefixo {
-        position: sticky; left: 0; z-index: 1; background: #161b22;
-        border-right: 1px solid #30363d;
-    }
-    .ca-matriz td.ca-prefixo { font-family: 'Cascadia Code', monospace; color: #e6edf3; }
-    .ca-matriz td.ca-prefixo small { color: #7d8590; display: block; font-family: inherit; }
-    .ca-matriz td.cel { text-align: center; color: #484f58; cursor: pointer; }
-    .ca-matriz td.cel.on { color: #6fdd85; }
-    .ca-matriz td.cel.glob { color: #58a6ff; }
-    .ca-matriz td.cel.bloq { color: #ff8080; }
-    .ca-matriz td.cel:hover { background: #11171f; }
-
     .ca-avisos { display: none; padding: 0 16px 12px; }
     .ca-avisos.aberto { display: block; }
     .ca-aviso {
@@ -405,8 +384,9 @@
 <!-- Automação de anúncios por community: só aparece quando a caixa tem
      community-filters no padrão `c-NN`/`ix-NN`/`cdn-NN` + ação (ver
      bgp_community_auto.py). A navegação é em dois passos: escolher o DESTINO
-     (circuito ou grupo global) e, dentro dele, como cada prefixo é anunciado —
-     em vez de despejar a matriz prefixo × todos-os-circuitos de uma vez. -->
+     (circuito com sessão no ar ou grupo global) e, dentro dele, como cada
+     prefixo é anunciado. O que ainda não tem sessão fica atrás do ＋ de cada
+     família, que abre o formulário de subir sessão. -->
 <div class="conteudo" id="painelCommunity" style="display:none; padding-bottom:0;">
     <div class="ca-card">
         <div class="ca-head">
@@ -416,7 +396,6 @@
             </div>
             <div class="ca-head-acoes">
                 <button class="btn" onclick="caAbrirNovoPrefixo()" title="Passa a originar um prefixo novo já com a intenção de anúncio definida">＋ Originar prefixo</button>
-                <button class="btn" id="caBtnVisao" onclick="caAlternarVisao()" title="Alterna entre o painel do destino e a visão geral prefixo × circuito">⊞ Visão geral</button>
                 <button class="btn" id="caBtnAvisos" onclick="caToggleAvisos()" style="display:none;"></button>
             </div>
         </div>
@@ -424,7 +403,6 @@
         <div class="ca-corpo">
             <div id="caDestinosLista"></div>
             <div id="caDetalhe"></div>
-            <div class="ca-matriz" id="caMatriz" style="display:none;"></div>
         </div>
     </div>
 </div>
@@ -507,7 +485,7 @@
         <div class="cs2-grid">
             <div class="cs2-campo" id="caSessaoSlotWrap" style="display:none;">
                 <label for="caSessaoSlot">Circuito disponível</label>
-                <select id="caSessaoSlot" onchange="caSessaoAtualizarResumo()"></select>
+                <select id="caSessaoSlot" onchange="caSessaoTrocarSlot()"></select>
                 <span class="dica">é o slot que define o grupo de community</span>
             </div>
             <div class="cs2-campo">
@@ -1139,7 +1117,6 @@ function fecharModal() {
 // continua disponível, mas só pra leitura — quem edita é o painel do destino.
 let CA_MAPA = null;
 let CA_DESTINO = null;                                   // id do destino aberto
-let CA_VISAO = 'painel';                                 // 'painel' | 'matriz'
 let CA_FILTRO = { busca: '', familia: '', somente: false };
 
 async function carregarCommunityAuto() {
@@ -1189,16 +1166,21 @@ function caRotuloAcao(chave) {
 /** Destinos agrupados por tipo, na ordem do catálogo: operadoras, IX, CDNs e,
  *  por último, os grupos globais que realmente alcançam algum circuito. */
 function caGrupos() {
+    // Na grade fica só o que está NO AR: circuito com sessão BGP. Circuito que
+    // tem community-filter mas nenhum peer (config pela metade, comum nestas
+    // caixas) e slot que o template prevê e ninguém usou são a mesma coisa do
+    // ponto de vista de quem opera — "dá pra subir uma sessão aqui" — e ficam
+    // os dois atrás do botão "＋" de cada família.
     const porTipo = {};
-    Object.values(CA_MAPA.circuitos).forEach(c => {
-        (porTipo[c.tipo] = porTipo[c.tipo] || []).push(c);
-    });
-    // Os slots livres NÃO entram na grade: o painel mostra só o que está
-    // configurado. Eles ficam atrás do botão "adicionar" de cada família.
     const livresPorTipo = {};
+    Object.values(CA_MAPA.circuitos).forEach(c => {
+        const destino = c.sessoes.length ? porTipo : livresPorTipo;
+        (destino[c.tipo] = destino[c.tipo] || []).push(c);
+    });
     (CA_MAPA.slots_vagos || []).forEach(v => {
         (livresPorTipo[v.tipo] = livresPorTipo[v.tipo] || []).push(v);
     });
+    Object.values(livresPorTipo).forEach(lista => lista.sort((a, b) => a.id.localeCompare(b.id)));
     const grupos = (CA_MAPA.tipos || [])
         .filter(t => porTipo[t.chave] || livresPorTipo[t.chave])
         .map(t => ({
@@ -1290,11 +1272,7 @@ function caRenderizar() {
             <div class="ca-destinos-grid">${g.itens.map(caCardDestino).join('')}${caCardAdicionar(g)}</div>
         </div>`).join('');
 
-    const emMatriz = CA_VISAO === 'matriz';
-    document.getElementById('caBtnVisao').textContent = emMatriz ? '◧ Painel do destino' : '⊞ Visão geral';
-    document.getElementById('caDetalhe').style.display = emMatriz ? 'none' : '';
-    document.getElementById('caMatriz').style.display = emMatriz ? '' : 'none';
-    if (emMatriz) caRenderMatriz(); else caRenderDetalhe();
+    caRenderDetalhe();
 }
 
 function caCardDestino(d) {
@@ -1374,28 +1352,24 @@ function caCardAdicionar(g) {
     }
     if (!g.livres || !g.livres.length) return '';
     const rotulo = { upstream: 'operadora', ix: 'IX', cdn: 'CDN' }[g.chave] || g.chave;
+    const comConfig = g.livres.filter(v => !v.vago).length;
     return `
     <button type="button" class="ca-destino-card vago" onclick="caAbrirSessao('', '${escapeHtml(g.chave)}')"
-            title="Slots livres: ${escapeHtml(g.livres.map(v => v.id).join(', '))}">
+            title="Disponíveis: ${escapeHtml(g.livres.map(v => v.id).join(', '))}">
         <div class="cd-topo"><span class="cd-id">＋</span><span class="cd-nome">adicionar ${escapeHtml(rotulo)}</span></div>
-        <div class="cd-meta">${g.livres.length} slot(s) livre(s) — a partir de <code>${escapeHtml(g.livres[0].id)}</code></div>
+        <div class="cd-meta">${g.livres.length} disponível(is)${
+            comConfig ? ` · ${comConfig} já com config, sem sessão` : ''}</div>
         <div class="cd-meta"><span class="ca-pill info">＋ subir sessão</span></div>
     </button>`;
 }
 
 function caSelecionar(id) {
-    CA_DESTINO = (CA_DESTINO === id && CA_VISAO === 'painel') ? null : id;
-    CA_VISAO = 'painel';
+    CA_DESTINO = CA_DESTINO === id ? null : id;
     CA_FILTRO = { busca: '', familia: '', somente: false };
     caRenderizar();
     if (CA_DESTINO) {
         document.getElementById('caDetalhe').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
-}
-
-function caAlternarVisao() {
-    CA_VISAO = CA_VISAO === 'matriz' ? 'painel' : 'matriz';
-    caRenderizar();
 }
 
 function caToggleAvisos() {
@@ -1651,57 +1625,6 @@ function caDefinirAcao(linhaIdx, destinoId, selectEl) {
         `${linha.prefixo} → ${nome}: ${rotulo}`);
 }
 
-// ── Visão geral (só leitura) ───────────────────────────────────────────────
-function caRenderMatriz() {
-    const alvo = document.getElementById('caMatriz');
-    const circuitos = Object.values(CA_MAPA.circuitos)
-        .filter(c => c.sessoes.length)
-        .sort((a, b) => a.id.localeCompare(b.id));
-    const anuncios = CA_MAPA.anuncios || [];
-    if (!circuitos.length) {
-        alvo.innerHTML = '<div class="ca-vazio">Nenhum circuito tem sessão BGP vinculada — nada a anunciar por aqui ainda.</div>';
-        return;
-    }
-    if (!anuncios.length) {
-        alvo.innerHTML = '<div class="ca-vazio">Nenhum prefixo originado por `network` neste equipamento.</div>';
-        return;
-    }
-
-    const cabecalho = circuitos.map(c =>
-        `<th title="${escapeHtml(c.asn_community)}:${escapeHtml(c.grupo)}xx">${escapeHtml(c.id)}<br>${escapeHtml(c.nome || '')}</th>`
-    ).join('');
-
-    const linhas = anuncios.map(l => {
-        const celulas = circuitos.map(c => {
-            const ef = l.efetivo[c.id];
-            let classe = 'cel', texto = '·', titulo = 'não anunciado';
-            if (ef && !ef.anuncia) {
-                classe += ' bloq'; texto = '⊘'; titulo = `bloqueado por ${ef.filtro}`;
-            } else if (ef) {
-                classe += ef.filtro.startsWith('glob-') ? ' glob' : ' on';
-                texto = ef.prepend ? '●' + ef.prepend : '●';
-                titulo = `${ef.filtro} (node ${ef.node})${ef.prepend ? ' · ' + ef.prepend + ' prepend(s)' : ''}`;
-            }
-            return `<td class="${classe}" title="${escapeHtml(titulo)}"
-                        onclick="caSelecionar('${escapeHtml(c.id)}')">${texto}</td>`;
-        }).join('');
-        return `
-        <tr>
-            <td class="ca-prefixo">${escapeHtml(l.prefixo)}
-                <small>${escapeHtml(l.route_policy || 'sem route-policy local')}</small>
-            </td>
-            ${celulas}
-        </tr>`;
-    }).join('');
-
-    alvo.innerHTML = `
-        <table>
-            <thead><tr><th>Prefixo originado</th>${cabecalho}</tr></thead>
-            <tbody>${linhas}</tbody>
-        </table>
-        <div class="ca-vazio">● anunciado · ●N com N prepends · <span style="color:#58a6ff">azul</span> = por community global · ⊘ bloqueado. Clique numa coluna para abrir o painel daquele circuito.</div>`;
-}
-
 // ── Originar prefixo novo ──────────────────────────────────────────────────
 function caAbrirNovoPrefixo() {
     document.getElementById('caPrefixoInput').value = '';
@@ -1840,18 +1763,21 @@ function caAbrirSessao(destinoId, tipoNovo) {
     const tipo = destinoId ? slot.tipo : (tipoNovo || 'downstream');
     CA_SESSAO = { destino: destinoId || '', tipo, circuito };
 
-    // Modo "adicionar": o slot ainda não foi escolhido — a lista de livres
-    // daquela família vira o primeiro campo do formulário.
-    const livres = (CA_MAPA.slots_vagos || []).filter(v => v.tipo === tipo);
+    // Modo "adicionar": o circuito ainda não foi escolhido — a lista do que dá
+    // pra subir naquela família vira o primeiro campo do formulário.
+    const disponiveis = caDisponiveis(tipo);
     const escolhendoSlot = !destinoId && tipo !== 'downstream';
     document.getElementById('caSessaoSlotWrap').style.display = escolhendoSlot ? '' : 'none';
     if (escolhendoSlot) {
-        if (!livres.length) return;
-        document.getElementById('caSessaoSlot').innerHTML = livres.map(v =>
-            `<option value="${escapeHtml(v.id)}">${escapeHtml(v.id)} — community ${
-                escapeHtml((CA_MAPA.padroes || {}).asn_community || '')}:${escapeHtml(v.grupo)}xx</option>`
+        if (!disponiveis.length) return;
+        const asn = (CA_MAPA.padroes || {}).asn_community || '';
+        document.getElementById('caSessaoSlot').innerHTML = disponiveis.map(v =>
+            `<option value="${escapeHtml(v.id)}">${escapeHtml(v.id)} — ${escapeHtml(asn)}:${
+                escapeHtml(v.grupo)}xx${v.vago ? ' · slot livre'
+                    : ' · config pronta' + (v.nome ? ' (' + escapeHtml(v.nome) + ')' : '') + ', sem sessão'}</option>`
         ).join('');
-        CA_SESSAO.destino = livres[0].id;
+        CA_SESSAO.destino = disponiveis[0].id;
+        CA_SESSAO.circuito = CA_MAPA.circuitos[disponiveis[0].id] || null;
     }
 
     const texto = CA_TIPO_TEXTO[tipo] || CA_TIPO_TEXTO.upstream;
@@ -1892,6 +1818,33 @@ function caAbrirSessao(destinoId, tipoNovo) {
     caSessaoAtualizarResumo();
     document.getElementById('caSessaoOverlay').classList.add('aberto');
     document.getElementById('caSessaoNome').focus();
+}
+
+/** O que dá pra subir numa família: circuito que tem config mas nenhum peer
+ *  (config pela metade) e slot do template ainda não usado — os dois casos
+ *  levam ao mesmo formulário, e o backend emite só o que faltar em cada um. */
+function caDisponiveis(tipo) {
+    const semSessao = Object.values(CA_MAPA.circuitos)
+        .filter(c => c.tipo === tipo && !c.sessoes.length);
+    const vagos = (CA_MAPA.slots_vagos || []).filter(v => v.tipo === tipo);
+    return semSessao.concat(vagos).sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/** Trocar o circuito no seletor troca também o que vem dele: nome, ASN remoto
+ *  e ASN de prepend já configurados (quando é um circuito pela metade). */
+function caSessaoTrocarSlot() {
+    if (!CA_SESSAO) return;
+    const id = document.getElementById('caSessaoSlot').value;
+    CA_SESSAO.destino = id;
+    CA_SESSAO.circuito = CA_MAPA.circuitos[id] || null;
+    const c = CA_SESSAO.circuito;
+    document.getElementById('caSessaoNome').value = (c && c.nome) || '';
+    document.getElementById('caSessaoPeerAs').value = (c && c.peer_as) || '';
+    if (!document.getElementById('caSessaoFakeOn').checked) {
+        document.getElementById('caSessaoPrepend').value =
+            (c && c.prepend_as) || CA_MAPA.as_local || '';
+    }
+    caSessaoAtualizarResumo();
 }
 
 /** O prepend só faz sentido repetindo o ASN que o peer enxerga: com fake-AS

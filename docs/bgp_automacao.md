@@ -1211,10 +1211,9 @@ uma parede de seletores. Agora são **dois passos**:
    "só os que vão para cá", o efeito real de cada um e o seletor de como anunciar (agrupado em
    Anúncio / Com prepend / Especiais, só com as ações que aquele destino tem).
 
-A matriz continua disponível no botão **⊞ Visão geral**, agora só leitura: `●` anunciado, `●N`
-com N prepends, azul quando quem decide é a community global, `⊘` bloqueado; clicar numa coluna
-abre o painel daquele circuito. Toda mudança continua passando pelo mesmo modal de
-preview/edição/trial.
+A matriz sobreviveu por um tempo num botão "⊞ Visão geral", só leitura, e foi **removida em
+18/08/2026** a pedido do operador: com 25 circuitos ela não ficava legível nem como consulta.
+Toda mudança continua passando pelo mesmo modal de preview/edição/trial.
 
 ### Validado em 2026-08-18
 
@@ -1257,12 +1256,19 @@ cada slot é uma **conta**, não um cadastro:
 | `cdn-NN`  | cdn-01 … cdn-05  | `610 + NN` (611-615) | `<asn>:60021`   |
 
 `slot_padrao('c-02')` devolve `{tipo: upstream, numero: 2, grupo: '502'}` e
-`mapear_slots()` devolve os que a caixa ainda não tem. Esses slots **não**
-aparecem na grade: o painel lista só o que está configurado, e cada família
-termina num card "＋ adicionar" que abre o formulário com a lista de livres
-num seletor (`c-04 — community 65100:504xx`). Uma caixa com 6 upstreams e
-nenhum IX mostra 6 cards e dois botões de adicionar, em vez de 25 cards em que
-19 são buracos. O
+`mapear_slots()` devolve os que a caixa ainda não tem.
+
+Na grade fica só o que está **no ar** — circuito com sessão BGP. Circuito que
+tem os community-filters mas nenhum peer (config pela metade, o caso mais comum
+nestas caixas) e slot nunca usado são a mesma coisa para quem opera — "dá pra
+subir uma sessão aqui" — e ficam os dois atrás do card **＋** de cada família,
+que abre o formulário com essa lista num seletor (`c-02 — 65084:502xx · config
+pronta, sem sessão` / `c-08 — 65084:508xx · slot livre`). Escolher um circuito
+que já existe traz junto o nome, o ASN remoto e o ASN de prepend dele, e a
+geração emite só o que faltar.
+
+Numa das caixas isso levou a grade de 28 cards (24 deles sem sessão) para 4
+cards e três botões. O
 ASN da community não é perguntado: sai de `_asn_community_prevalente()`, a
 maioria entre os circuitos já configurados (nas caixas de referência é 65100
 ou 65101 — ASN privado, diferente do ASN do `bgp <N>`).
