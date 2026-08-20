@@ -34,6 +34,7 @@ class RdpVNCManager:
         self.recording = False
         self._stop_lock = threading.Lock()
         self._stopped = False
+        self._rdp_stderr = []
 
     @staticmethod
     def _wait_for_socket(path, timeout=3.0, interval=0.02):
@@ -115,22 +116,41 @@ class RdpVNCManager:
                 "Execute: apt-get install freerdp3-x11 (ou freerdp2-x11)."
             )
 
+        # NÃO force "/sec:..." aqui. Windows Server com NLA obrigatório (padrão
+        # desde o 2012) recusa TLS puro com HYBRID_REQUIRED_BY_SERVER, o
+        # xfreerdp morre em ~100 ms e o usuário só vê a tela preta do Xvfb.
+        # Sem o flag, o FreeRDP negocia sozinho (NLA → TLS → RDP legado) e
+        # atende tanto servidor novo quanto servidor antigo sem NLA.
         rdp_cmd = [
             rdp_bin,
             f"/v:{self.host}:{self.port}",
             f"/u:{self.user}",
             f"/p:{self.password}",
             "/cert:ignore",
-            "/sec:tls",
             "/dynamic-resolution",
             "/f",
         ]
         try:
-            p_rdp = subprocess.Popen(rdp_cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            p_rdp = subprocess.Popen(rdp_cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
             self.processes.append(p_rdp)
         except FileNotFoundError:
             self.stop()
             raise Exception(f"Binário do cliente RDP ({rdp_bin}) sumiu antes de iniciar.")
+
+        # Lê o stderr do xfreerdp num thread — sem isso o pipe enche e trava o
+        # cliente, e o motivo real de uma falha se perderia (era DEVNULL antes).
+        threading.Thread(target=self._drenar_stderr, args=(p_rdp,), daemon=True).start()
+
+        # Falha de RDP (NLA, senha errada, porta fechada) mata o processo em
+        # menos de 1 s. Espera curta pra transformar isso em erro na tela do
+        # usuário em vez de VNC conectado mostrando preto pra sempre.
+        deadline = time.time() + 2.0
+        while time.time() < deadline:
+            if p_rdp.poll() is not None:
+                motivo = self._motivo_falha_rdp()
+                self.stop()
+                raise Exception(motivo)
+            time.sleep(0.05)
 
         # 5. Gravação opcional (auditoria) — mesmo padrão do WinboxVNCManager.
         if self.record_path:
@@ -141,6 +161,55 @@ class RdpVNCManager:
                 logger.warning("ffmpeg não encontrado — gravação de tela desabilitada para esta sessão.")
 
         return self.vnc_port
+
+    def _drenar_stderr(self, proc, max_linhas=40):
+        """Consome o stderr do xfreerdp guardando só as últimas linhas."""
+        try:
+            for linha in iter(proc.stderr.readline, b""):
+                texto = linha.decode("utf-8", "replace").rstrip()
+                if not texto:
+                    continue
+                self._rdp_stderr.append(texto)
+                del self._rdp_stderr[:-max_linhas]
+                if "[ERROR]" in texto:
+                    logger.error(f"[xfreerdp {self.host}] {texto}")
+        except Exception:
+            pass
+        finally:
+            try:
+                proc.stderr.close()
+            except Exception:
+                pass
+
+    # Trechos do stderr do FreeRDP → mensagem que faz sentido pra quem opera.
+    _FALHAS_RDP = (
+        ("HYBRID_REQUIRED_BY_SERVER", "O servidor exige NLA e a negociação falhou — confira usuário, senha e domínio do acesso."),
+        ("ERRCONNECT_LOGON_FAILURE", "Usuário ou senha inválidos no servidor RDP."),
+        ("ERRCONNECT_ACCOUNT_LOCKED_OUT", "Conta bloqueada no servidor RDP."),
+        ("ERRCONNECT_ACCOUNT_EXPIRED", "Conta expirada no servidor RDP."),
+        ("ERRCONNECT_PASSWORD_EXPIRED", "Senha expirada no servidor RDP — troque a senha antes de conectar."),
+        ("ERRCONNECT_PASSWORD_MUST_CHANGE", "O servidor exige troca de senha neste primeiro acesso."),
+        ("ERRCONNECT_CONNECT_TRANSPORT_FAILED", "Não foi possível abrir a conexão TCP até o host RDP."),
+        ("ERRCONNECT_CONNECT_FAILED", "Não foi possível abrir a conexão TCP até o host RDP."),
+        ("ERRCONNECT_SECURITY_NEGO_CONNECT_FAILED", "Falha na negociação de segurança com o servidor RDP."),
+        ("ERRINFO_LOGOFF_BY_USER", "A sessão foi encerrada no servidor."),
+    )
+
+    def _motivo_falha_rdp(self):
+        """Traduz o stderr do xfreerdp na causa provável da tela preta."""
+        # Dá um instante pro thread de leitura terminar de drenar o pipe.
+        time.sleep(0.2)
+        stderr = "\n".join(self._rdp_stderr)
+        for marcador, msg in self._FALHAS_RDP:
+            if marcador in stderr:
+                return f"RDP {self.host}:{self.port} — {msg}"
+
+        ultimo_erro = next(
+            (l for l in reversed(self._rdp_stderr) if "[ERROR]" in l),
+            "",
+        )
+        detalhe = ultimo_erro.split("] - ")[-1] if ultimo_erro else "sem detalhes no log do cliente RDP"
+        return f"O cliente RDP encerrou antes de exibir a tela ({self.host}:{self.port}) — {detalhe}"
 
     def _start_recording(self, env):
         time.sleep(1.5)

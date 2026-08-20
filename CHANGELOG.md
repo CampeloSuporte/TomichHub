@@ -20,6 +20,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   - Backend (`clientes/rdp_vnc.py` + `VncConsumer` em modo `rdp`, com túnel via ProxyServer para
     IP privado) já estava pronto; só faltava o front chegar nele.
 
+- **RDP abria só tela preta**: o `RdpVNCManager` forçava `/sec:tls` no `xfreerdp`, e Windows Server
+  com NLA obrigatório recusa TLS puro (`HYBRID_REQUIRED_BY_SERVER`). O cliente RDP morria em ~100 ms
+  enquanto Xvfb e x11vnc seguiam de pé — o noVNC transmitia um display vazio.
+  - Sem `/sec:...`, o FreeRDP negocia sozinho (NLA → TLS → RDP legado), atendendo servidor novo e
+    antigo.
+  - O stderr do `xfreerdp` deixou de ir pra `DEVNULL`: é lido num thread e vai pro log do daphne.
+  - Se o cliente RDP morrer nos 2 s iniciais, o erro é traduzido ("Usuário ou senha inválidos",
+    "O servidor exige NLA…", "Não foi possível abrir a conexão TCP…") e aparece na tela do usuário,
+    em vez de tela preta silenciosa.
+
 ---
 
 ## [Não publicado] — 2026-08-20 (Atendimento: marcar alguém do grupo com "@" no chat)

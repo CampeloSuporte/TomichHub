@@ -270,6 +270,34 @@ janela própria, no mesmo padrão do WinBox Web.
 > Ao mexer nesse fluxo, edite **`static/js/terminal_tab_manager.js`** — é o arquivo realmente
 > servido (`STATIC_ROOT` é o próprio `static/`) e o único incluído por `clientes/templates/listar.html`.
 
+### RDP abria só tela preta (`/sec:tls` forçado) — Corrigido em 20/08/2026
+
+Depois que o botão passou a abrir `/clientes/rdp/<id>/`, a sessão subia mas o noVNC mostrava
+**tela preta**: o `RdpVNCManager` chamava o `xfreerdp` com `/sec:tls`, e Windows Server com NLA
+obrigatório (padrão desde o 2012) recusa TLS puro:
+
+```
+[WARN][com.freerdp.core.nego] - Error: HYBRID_REQUIRED_BY_SERVER [0x00000005]
+[ERROR][com.freerdp.core] - ERRCONNECT_SECURITY_NEGO_CONNECT_FAILED [0x0002000C]
+```
+
+O `xfreerdp` morria em ~100 ms, mas Xvfb e x11vnc continuavam de pé — o browser conectava no VNC
+e transmitia fielmente um display vazio.
+
+Correção em `clientes/rdp_vnc.py`:
+
+- **Sem `/sec:...`**: o FreeRDP negocia sozinho (NLA → TLS → RDP legado), servindo tanto servidor
+  novo quanto servidor antigo sem NLA. Não reintroduza o flag.
+- **stderr do `xfreerdp` deixou de ir para `DEVNULL`**: é lido num thread (`_drenar_stderr`), fica
+  no log do daphne e alimenta o diagnóstico. Também evita o pipe encher e travar o cliente.
+- **Falha vira erro na tela, não tela preta**: `start()` espera até 2 s; se o cliente RDP morreu
+  nesse intervalo, `_motivo_falha_rdp()` traduz o stderr ("Usuário ou senha inválidos", "O servidor
+  exige NLA…", "Não foi possível abrir a conexão TCP…") e a exceção sobe pro `VncConsumer`, que
+  manda a mensagem pro browser.
+
+Erros de Kerberos (`krb5_parse_name … default realm`) e `fuse: device not found` aparecem no log
+mesmo em sessão saudável — o FreeRDP cai pra NTLM e segue; não são causa de falha.
+
 ---
 
 ## Modos Suportados
