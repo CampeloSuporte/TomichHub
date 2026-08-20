@@ -5,6 +5,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-20 (Clientes: botão "Listar Chamados" na aba Tarefas)
+
+### Adicionado
+
+- **Botão "Listar Chamados"** na aba Tarefas da página do cliente (`clientes/templates/listar.html`),
+  ao lado de "Nova Tarefa": abre um modal com o histórico de chamados daquele cliente no módulo de
+  Atendimento, no mesmo formato da tela `/atendimento/historico/` (protocolo, grupo, status,
+  categoria, agente, criado em, última mensagem). Clicar numa linha abre o chamado em
+  `/atendimento/conversation/<id>/`, em nova aba. Busca no cliente por protocolo, grupo, agente,
+  categoria, status e resolução.
+- **API `GET /atendimento/api/cliente/<cliente_id>/conversations/`**
+  (`atendimento.views.api_cliente_conversations`): busca os chamados por `Conversation.cliente`
+  **ou** `group.cliente` — chamados antigos, abertos antes de o grupo do WhatsApp ser vinculado ao
+  cliente, ficaram sem `Conversation.cliente` e o histórico apareceria pela metade. Exclui o status
+  `pre` (buffer de pré-abertura), marca chamado em tarefa como `T-N` e devolve a resolução junto.
+  Protegida por `@staff_required` + `pode_acessar_cliente` (403 para staff de outra instância); o
+  botão só é renderizado para `request.user.is_staff`, já que o destino do clique é staff-only.
+
+### Testes
+
+- `ChamadosDoClienteAPITest` — lista com resolução e URL do chamado, vínculo só pelo grupo, `pre`
+  fora da lista, acesso negado a quem não é staff. Suíte do módulo: 103 testes, OK.
+
+### Documentação
+
+- `docs/ATENDIMENTO.md` — seção "Listar Chamados na aba Tarefas do cliente (20/08/2026)".
+
+---
+
 ## [Não publicado] — 2026-08-20 (Atendimento: agente IA encerra o chamado com a resolução)
 
 ### Adicionado

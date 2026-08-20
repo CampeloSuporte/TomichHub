@@ -1045,9 +1045,16 @@
             <div style="font-size:13px;color:var(--text-muted);">
                 <i class="fas fa-hand-pointer me-1"></i> Arraste os cartões entre as colunas para mudar o status. Tarefas com prazo vencido caem automaticamente em "Atrasada".
             </div>
-            <button class="btn btn-sm btn-primary" onclick="abrirModalNovaTarefaKanban()">
-                <i class="fas fa-plus me-1"></i> Nova Tarefa
-            </button>
+            <div class="d-flex gap-2">
+                {% if request.user.is_staff %}
+                <button class="btn btn-sm btn-outline-secondary" onclick="abrirModalChamadosCliente()">
+                    <i class="fas fa-headset me-1"></i> Listar Chamados
+                </button>
+                {% endif %}
+                <button class="btn btn-sm btn-primary" onclick="abrirModalNovaTarefaKanban()">
+                    <i class="fas fa-plus me-1"></i> Nova Tarefa
+                </button>
+            </div>
         </div>
 
         <div class="kanban-board" id="kanbanBoard">
@@ -1087,6 +1094,49 @@
                 <div class="kanban-cards" id="kanban-cards-cancelada"></div>
             </div>
         </div>
+
+        {% if request.user.is_staff %}
+        <!-- Modal Chamados do cliente (histórico do módulo de Atendimento) -->
+        <style>
+            .chamados-table { width:100%; border-collapse:collapse; font-size:12px; }
+            .chamados-table th { text-align:left; padding:9px 10px; font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:2px solid var(--border); background:rgba(255,255,255,.02); white-space:nowrap; position:sticky; top:0; z-index:1; }
+            .chamados-table td { padding:10px; border-bottom:1px solid rgba(255,255,255,.05); color:var(--text-light); vertical-align:middle; }
+            .chamados-table tbody tr { cursor:pointer; transition:background .12s; }
+            .chamados-table tbody tr:hover td { background:rgba(255,255,255,.03); }
+            .chamado-protocolo { color:var(--accent-cyan); font-weight:600; white-space:nowrap; }
+            .chamado-status { font-size:10px; font-weight:600; padding:2px 8px; border-radius:6px; border:1px solid transparent; white-space:nowrap; }
+            .chamado-status-new { background:rgba(245,158,11,.14); color:#f59e0b; border-color:rgba(245,158,11,.35); }
+            .chamado-status-open { background:rgba(14,165,233,.14); color:#38bdf8; border-color:rgba(14,165,233,.35); }
+            .chamado-status-pending { background:rgba(233,30,140,.14); color:#f472b6; border-color:rgba(233,30,140,.35); }
+            .chamado-status-resolved { background:rgba(63,185,80,.14); color:var(--primary-green); border-color:rgba(63,185,80,.35); }
+            .chamado-status-closed { background:rgba(125,133,144,.14); color:var(--text-muted); border-color:var(--border); }
+            .chamado-resolucao { color:var(--text-muted); font-size:11px; margin-top:3px; display:block; max-width:420px; }
+        </style>
+        <div id="modalChamadosCliente" class="modal-overlay" style="display:none;">
+            <div class="modal-acesso" style="max-width:1020px;">
+                <div class="modal-header-acesso">
+                    <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Chamados do Cliente</h2>
+                    <button class="btn-close-modal" onclick="fecharModalKanban('modalChamadosCliente')"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="modal-body-acesso">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div style="font-size:12px;color:var(--text-muted);">
+                            <i class="fas fa-arrow-up-right-from-square me-1"></i> Clique em um chamado para abri-lo no módulo de Atendimento.
+                        </div>
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="text" id="chamadosBusca" class="form-control form-control-sm" style="min-width:230px;"
+                                   placeholder="Buscar protocolo, grupo, agente..." autocomplete="off"
+                                   oninput="renderChamadosCliente()">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="carregarChamadosCliente()" title="Atualizar">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="chamadosClienteLista" style="max-height:60vh;overflow:auto;"></div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Modal Nova Tarefa -->
         <div id="modalNovaTarefaKanban" class="modal-overlay" style="display:none;">
@@ -9036,6 +9086,76 @@ function getCsrfToken(){
                 renderKanban();
                 uiToast('Erro de rede ao mover tarefa.', 'erro');
             });
+    }
+
+    /* ─────── Chamados do cliente (histórico do módulo de Atendimento) ─────── */
+    let _chamadosCliente = null;   // null = ainda não buscou
+
+    function abrirModalChamadosCliente() {
+        document.getElementById('modalChamadosCliente').style.display = 'flex';
+        if (_chamadosCliente === null) carregarChamadosCliente();
+    }
+
+    function carregarChamadosCliente() {
+        const box = document.getElementById('chamadosClienteLista');
+        box.innerHTML = '<div class="text-center py-4" style="color:var(--text-muted);"><i class="fas fa-spinner fa-spin me-2"></i>Carregando chamados...</div>';
+        fetch(`/atendimento/api/cliente/${KANBAN_CLIENTE_ID}/conversations/`)
+            .then(r => {
+                // Sessão expirada vira 302 pro login e o .json() estoura com
+                // erro genérico — avisa o que realmente aconteceu.
+                if (r.redirected || r.status === 403) throw new Error('sem-acesso');
+                return r.json();
+            })
+            .then(data => {
+                _chamadosCliente = data.chamados || [];
+                renderChamadosCliente();
+            })
+            .catch(err => {
+                box.innerHTML = `<div class="text-center py-4" style="color:var(--error-red);">${err && err.message === 'sem-acesso'
+                    ? 'Sem permissão para ver os chamados deste cliente (ou sessão expirada).'
+                    : 'Erro ao carregar os chamados.'}</div>`;
+            });
+    }
+
+    function renderChamadosCliente() {
+        const box = document.getElementById('chamadosClienteLista');
+        const termo = (document.getElementById('chamadosBusca').value || '').trim().toLowerCase();
+        const lista = (_chamadosCliente || []).filter(c => !termo || [
+            c.protocolo, c.grupo, c.agente, c.categoria, c.status_label, c.resolucao,
+        ].join(' ').toLowerCase().includes(termo));
+
+        if (!lista.length) {
+            box.innerHTML = `<div class="text-center py-4" style="color:var(--text-muted);">
+                <i class="fas fa-headset d-block mb-2" style="font-size:32px;opacity:.3;"></i>
+                ${termo ? 'Nenhum chamado encontrado para esta busca.' : 'Este cliente ainda não tem chamados no Atendimento.'}
+            </div>`;
+            return;
+        }
+
+        const linhas = lista.map(c => `
+            <tr onclick="window.open('${c.url}', '_blank')" title="Abrir no módulo de Atendimento">
+                <td class="chamado-protocolo">${_escapeHtmlKanban(c.protocolo)}</td>
+                <td>${_escapeHtmlKanban(c.grupo)}
+                    ${c.resolucao ? `<span class="chamado-resolucao"><i class="fas fa-clipboard-check me-1"></i>${_escapeHtmlKanban(c.resolucao)}</span>` : ''}
+                </td>
+                <td><span class="chamado-status chamado-status-${c.status}">${_escapeHtmlKanban(c.status_label)}</span></td>
+                <td>${c.categoria ? _escapeHtmlKanban(c.categoria) : '<span style="color:var(--text-muted);">—</span>'}</td>
+                <td>${c.agente ? _escapeHtmlKanban(c.agente) : '<span style="color:var(--text-muted);">Sem responsável</span>'}</td>
+                <td style="white-space:nowrap;">${c.criado_em}</td>
+                <td style="white-space:nowrap;">${c.ultima_msg || '<span style="color:var(--text-muted);">—</span>'}</td>
+            </tr>`).join('');
+
+        box.innerHTML = `
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">${lista.length} chamado(s)</div>
+            <table class="chamados-table">
+                <thead>
+                    <tr>
+                        <th>Protocolo</th><th>Grupo</th><th>Status</th>
+                        <th>Categoria</th><th>Agente</th><th>Criado em</th><th>Última msg</th>
+                    </tr>
+                </thead>
+                <tbody>${linhas}</tbody>
+            </table>`;
     }
 
     function abrirModalNovaTarefaKanban() {

@@ -1150,3 +1150,29 @@ chamado exatamente do mesmo jeito.
 **Testes:** `GatilhoFechamentoIATest` (gatilhos e não-gatilhos, incluindo negação e nota interna) e
 `FecharChamadoIATaskTest` (resolução da IA gravada, prompt recebendo a resposta do atendente,
 pedido interno sem `send_text`, fallback sem IA, chamado já encerrado, marco com protocolo).
+
+---
+
+## 🧾 "Listar Chamados" na aba Tarefas do cliente (20/08/2026)
+
+A aba **Tarefas** da página do cliente (`clientes/templates/listar.html`) ganhou o botão **Listar
+Chamados**, ao lado de "Nova Tarefa". Ele abre um modal com o histórico de chamados daquele cliente
+no módulo de Atendimento, no mesmo formato da tela `/atendimento/historico/` (protocolo, grupo,
+status, categoria, agente, criado em, última mensagem) — clicar em uma linha abre o chamado em
+`/atendimento/conversation/<id>/`, em nova aba.
+
+- **API:** `GET /atendimento/api/cliente/<cliente_id>/conversations/`
+  (`atendimento.views.api_cliente_conversations`).
+- **Vínculo:** busca por `Conversation.cliente` **ou** `group.cliente`. Chamados antigos, abertos
+  antes de o grupo do WhatsApp ser vinculado ao cliente, ficaram sem `Conversation.cliente` — sem os
+  dois lados o histórico aparece pela metade.
+- **Status `pre`** (buffer de pré-abertura, chamado que ainda não abriu) fica de fora, como na caixa
+  de entrada. Chamados em tarefa aparecem com o protocolo `T-N`, e a resolução, quando existe, vem
+  como segunda linha embaixo do grupo.
+- **Permissão:** `@staff_required` + `pode_acessar_cliente` — o módulo de Atendimento é staff-only e
+  a lista leva pra dentro dele, então o botão só é renderizado para `request.user.is_staff` e a API
+  responde 403 para staff de outra instância. Limite de 300 chamados por consulta; a busca do modal
+  filtra no cliente (protocolo, grupo, agente, categoria, status, resolução).
+
+**Testes:** `ChamadosDoClienteAPITest` — lista com resolução e URL do chamado, vínculo só pelo grupo,
+`pre` fora da lista e acesso negado a quem não é staff.

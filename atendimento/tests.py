@@ -1583,3 +1583,62 @@ class FecharChamadoIATaskTest(TestCase):
 
         marco = Message.objects.get(sender_type='system')
         self.assertIn(f'#{self.conversation.conversation_id}', marco.content)
+
+
+class ChamadosDoClienteAPITest(TestCase):
+    """API que alimenta o botão "Listar Chamados" da aba Tarefas na página do
+    cliente."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.group = self.conversation.group
+        self.agent = _criar_agente_staff('carla')
+        self.cliente = _criar_cliente_teste('Cliente Chamados')
+        self.conversation.cliente = self.cliente
+        self.conversation.status = 'resolved'
+        self.conversation.resolution = 'Trocado o SFP da porta 3'
+        self.conversation.assigned_to = self.agent
+        self.conversation.save(update_fields=['cliente', 'status', 'resolution', 'assigned_to'])
+        self.url = reverse('atendimento:api_cliente_conversations', args=[self.cliente.id])
+
+    def test_lista_chamados_do_cliente(self):
+        self.client.force_login(self.agent)
+
+        resp = self.client.get(self.url)
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data['total'], 1)
+        chamado = data['chamados'][0]
+        self.assertEqual(chamado['protocolo'], f'#{self.conversation.conversation_id}')
+        self.assertEqual(chamado['status_label'], 'Resolvido')
+        self.assertEqual(chamado['resolucao'], 'Trocado o SFP da porta 3')
+        self.assertEqual(chamado['url'], f'/atendimento/conversation/{self.conversation.id}/')
+
+    def test_chamado_vinculado_so_pelo_grupo_tambem_aparece(self):
+        # Chamado antigo, aberto antes de o grupo ser vinculado ao cliente:
+        # `Conversation.cliente` fica vazio e o vínculo existe só no grupo.
+        self.conversation.cliente = None
+        self.conversation.save(update_fields=['cliente'])
+        self.group.cliente = self.cliente
+        self.group.save(update_fields=['cliente'])
+        self.client.force_login(self.agent)
+
+        resp = self.client.get(self.url)
+
+        self.assertEqual(resp.json()['total'], 1)
+
+    def test_chamado_em_pre_abertura_nao_aparece(self):
+        self.conversation.status = 'pre'
+        self.conversation.save(update_fields=['status'])
+        self.client.force_login(self.agent)
+
+        self.assertEqual(self.client.get(self.url).json()['total'], 0)
+
+    def test_nao_staff_nao_acessa(self):
+        comum = User.objects.create_user(username='cliente_portal', password='x')
+        self.client.force_login(comum)
+
+        resp = self.client.get(self.url)
+
+        self.assertEqual(resp.status_code, 302)

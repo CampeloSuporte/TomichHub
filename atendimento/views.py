@@ -670,6 +670,60 @@ def api_search_conversations(request):
 
 
 @staff_required
+@require_http_methods(["GET"])
+def api_cliente_conversations(request, cliente_id):
+    """Histórico de chamados de um cliente — usado pelo botão "Listar
+    Chamados" da aba Tarefas na página do cliente (`clientes/listar.html`),
+    que abre o chamado no módulo de Atendimento.
+
+    O vínculo do chamado com o cliente pode estar na própria conversa
+    (`Conversation.cliente`) ou só no grupo do WhatsApp (`group.cliente`) —
+    chamados antigos, abertos antes de o grupo ser vinculado, ficaram sem
+    `Conversation.cliente`. Buscar pelos dois é o que faz o histórico
+    aparecer inteiro.
+    """
+    from usuario.perms import pode_acessar_cliente
+
+    cliente = get_object_or_404(Cliente, pk=cliente_id)
+    if not pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'success': False, 'error': 'Sem permissão para este cliente.'}, status=403)
+
+    # 'pre' é o buffer de pré-abertura (chamado que ainda não abriu) — não é
+    # histórico, não aparece nem na caixa de entrada.
+    qs = (Conversation.objects
+          .filter(Q(cliente=cliente) | Q(group__cliente=cliente))
+          .exclude(status='pre')
+          .select_related('group', 'assigned_to', 'category')
+          .order_by(F('last_message_at').desc(nulls_last=True), '-created_at')
+          .distinct()[:300])
+
+    def _fmt(dt):
+        return timezone.localtime(dt).strftime('%d/%m/%Y %H:%M') if dt else ''
+
+    chamados = [{
+        'id': str(c.id),
+        'protocolo': f'T-{c.conversation_id}' if c.is_task_conv else f'#{c.conversation_id}',
+        'grupo': c.group.name if c.group else '—',
+        'status': c.status,
+        'status_label': c.get_status_display(),
+        'categoria': c.category.name if c.category else '',
+        'agente': (c.assigned_to.get_full_name() or c.assigned_to.username) if c.assigned_to else '',
+        'criado_em': _fmt(c.created_at),
+        'ultima_msg': _fmt(c.last_message_at),
+        'fechado_em': _fmt(c.closed_at),
+        'resolucao': c.resolution or '',
+        'url': f'/atendimento/conversation/{c.id}/',
+    } for c in qs]
+
+    return JsonResponse({
+        'success': True,
+        'cliente_nome': cliente.nome_empresa,
+        'total': len(chamados),
+        'chamados': chamados,
+    })
+
+
+@staff_required
 @require_http_methods(["POST"])
 def api_merge_conversation(request, conversation_id):
     """Mescla esta conversa (origem, duplicada) em outra (destino): move
