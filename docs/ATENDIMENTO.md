@@ -1182,10 +1182,35 @@ responsável, datas e a resolução em destaque.
   `sender_type='internal'` — é conversa da equipe sobre o chamado, não algo que o cliente deva ler.
   O chamado também precisa ser mesmo daquele cliente (404 caso contrário), senão um id de conversa
   viraria porta de entrada pro histórico de outro cliente.
-- Limite de 300 chamados por consulta e 1000 mensagens por chamado; a busca do modal filtra no
-  cliente (protocolo, grupo, agente, categoria, status, resolução).
+- Limite de 300 chamados por consulta e 1000 mensagens por chamado. Quando o filtro devolve mais que
+  isso, a lista avisa que está mostrando os 300 mais recentes e sugere refinar o período.
+
+### Filtros (todos no servidor, combináveis)
+
+| Campo | O que faz |
+|---|---|
+| Busca | protocolo (aceita `#123` / `T-123`), grupo, responsável, categoria, assunto e **texto da resolução** |
+| Status | "Em aberto" (new/open/pending), "Encerrados" (resolved/closed) ou um status específico |
+| Responsável | um agente ou "Sem responsável" |
+| Categoria | uma categoria ou "Sem categoria" |
+| Período | `date_from`/`date_to` + **`date_field`**: abertura, última mensagem ou encerramento |
+| Atalhos | chips Hoje / 7 dias / 30 dias / Este mês / Este ano |
+
+O `date_field` existe porque "chamados de julho" quer dizer coisas diferentes dependendo de quem
+pergunta — quem abriu no mês não é quem fechou no mês. Os selects de responsável e categoria são
+montados só com o que aquele cliente realmente tem (a lista do sistema inteiro seria ruído), e são
+preenchidos uma única vez: recriá-los a cada filtro apagaria a seleção em curso.
+
+Filtrar no servidor (e não na lista já carregada) é o que faz o filtro valer pro histórico inteiro,
+não só pelos 300 chamados que couberam na tela. A busca tem debounce de 350ms.
+
+Acima da tabela há um resumo do **conjunto filtrado** — Chamados, Em aberto, Encerrados e tempo médio
+de resolução (`closed_at - created_at`, formatado como `2d 4h` / `3h 12min`). Os três primeiros são
+clicáveis e aplicam o status correspondente.
 
 **Testes:** `ChamadosDoClienteAPITest` (lista com resolução, vínculo só pelo grupo, `pre` fora da
-lista, usuário do portal vendo os próprios chamados, 403 para quem não tem vínculo) e
+lista, usuário do portal vendo os próprios chamados, 403 para quem não tem vínculo),
 `ChamadoDetalheDoClienteAPITest` (staff vê a nota interna, cliente do portal não vê, chamado de
-outro cliente dá 404).
+outro cliente dá 404) e `ChamadosDoClienteFiltrosTest` (período por abertura vs. encerramento,
+status agrupado, responsável, busca por `#protocolo` e por texto da resolução, resumo acompanhando o
+filtro, opções só com os responsáveis do cliente).

@@ -1715,3 +1715,95 @@ class ChamadoDetalheDoClienteAPITest(TestCase):
                       args=[outro.id, self.conversation.id])
 
         self.assertEqual(self.client.get(url).status_code, 404)
+
+
+class ChamadosDoClienteFiltrosTest(TestCase):
+    """Filtros do modal "Listar Chamados" — rodam no servidor para valer pro
+    histórico inteiro, não só pelos chamados já carregados na tela."""
+
+    def setUp(self):
+        from datetime import timedelta as _td
+        self.agent = _criar_agente_staff('elis')
+        self.outro = _criar_agente_staff('fabio')
+        self.cliente = _criar_cliente_teste('Cliente Filtros')
+
+        self.antigo = _criar_conversa()          # aberto há 40 dias, encerrado
+        self.antigo.cliente = self.cliente
+        self.antigo.status = 'resolved'
+        self.antigo.assigned_to = self.agent
+        self.antigo.resolution = 'Trocado o cabo de fibra'
+        self.antigo.closed_at = timezone.now() - _td(days=39)
+        self.antigo.save()
+        Conversation.objects.filter(pk=self.antigo.pk).update(
+            created_at=timezone.now() - _td(days=40))
+
+        self.recente = _criar_conversa()         # aberto hoje, em andamento
+        self.recente.cliente = self.cliente
+        self.recente.status = 'open'
+        self.recente.assigned_to = self.outro
+        self.recente.save()
+
+        self.url = reverse('atendimento:api_cliente_conversations', args=[self.cliente.id])
+        self.client.force_login(self.agent)
+
+    def _protocolos(self, **params):
+        data = self.client.get(self.url, params).json()
+        return [c['protocolo'] for c in data['chamados']], data
+
+    def test_periodo_por_data_de_abertura(self):
+        hoje = timezone.localdate().isoformat()
+
+        protocolos, data = self._protocolos(date_from=hoje, date_to=hoje)
+
+        self.assertEqual(protocolos, [f'#{self.recente.conversation_id}'])
+        self.assertEqual(data['total'], 1)
+
+    def test_periodo_por_data_de_encerramento_pega_outro_conjunto(self):
+        # Mesma janela, campo de data diferente: o chamado aberto hoje não foi
+        # encerrado, então some — é o motivo de `date_field` existir.
+        hoje = timezone.localdate().isoformat()
+
+        protocolos, _ = self._protocolos(date_field='fechado', date_from=hoje, date_to=hoje)
+
+        self.assertEqual(protocolos, [])
+
+    def test_filtro_por_status_agrupado(self):
+        abertos, _ = self._protocolos(status='abertos')
+        encerrados, _ = self._protocolos(status='encerrados')
+
+        self.assertEqual(abertos, [f'#{self.recente.conversation_id}'])
+        self.assertEqual(encerrados, [f'#{self.antigo.conversation_id}'])
+
+    def test_filtro_por_responsavel(self):
+        protocolos, _ = self._protocolos(agente=str(self.agent.id))
+
+        self.assertEqual(protocolos, [f'#{self.antigo.conversation_id}'])
+
+    def test_busca_por_protocolo_com_prefixo(self):
+        # Na tela o protocolo aparece como "#123" — buscar exatamente o que
+        # está escrito precisa funcionar.
+        protocolos, _ = self._protocolos(q=f'#{self.antigo.conversation_id}')
+
+        self.assertEqual(protocolos, [f'#{self.antigo.conversation_id}'])
+
+    def test_busca_pelo_texto_da_resolucao(self):
+        protocolos, _ = self._protocolos(q='cabo de fibra')
+
+        self.assertEqual(protocolos, [f'#{self.antigo.conversation_id}'])
+
+    def test_resumo_acompanha_o_filtro(self):
+        _, tudo = self._protocolos()
+        _, so_abertos = self._protocolos(status='abertos')
+
+        self.assertEqual(tudo['resumo']['total'], 2)
+        self.assertEqual(tudo['resumo']['abertos'], 1)
+        self.assertEqual(tudo['resumo']['encerrados'], 1)
+        self.assertTrue(tudo['resumo']['tempo_medio'])   # 1 dia entre abrir e fechar
+        self.assertEqual(so_abertos['resumo']['total'], 1)
+        self.assertEqual(so_abertos['resumo']['tempo_medio'], '')
+
+    def test_opcoes_trazem_somente_os_responsaveis_do_cliente(self):
+        _, data = self._protocolos()
+
+        nomes = {a['nome'] for a in data['opcoes']['agentes']}
+        self.assertEqual(nomes, {self.agent.username, self.outro.username})

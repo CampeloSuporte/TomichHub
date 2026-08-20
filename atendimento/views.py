@@ -669,6 +669,21 @@ def api_search_conversations(request):
     ]})
 
 
+def _duracao_humana(delta):
+    """timedelta → "2d 4h" / "3h 12m" / "45min". Vazio quando não há o que
+    medir (nenhum chamado encerrado no filtro)."""
+    if not delta:
+        return ''
+    total_min = int(delta.total_seconds() // 60)
+    if total_min < 60:
+        return f'{total_min}min'
+    horas, minutos = divmod(total_min, 60)
+    if horas < 24:
+        return f'{horas}h {minutos}min' if minutos else f'{horas}h'
+    dias, horas = divmod(horas, 24)
+    return f'{dias}d {horas}h' if horas else f'{dias}d'
+
+
 def _cliente_do_request(request, cliente_id):
     """Cliente da URL + checagem de acesso, para as APIs de chamado usadas
     FORA do módulo de Atendimento (aba Tarefas da página do cliente).
@@ -711,15 +726,96 @@ def api_cliente_conversations(request, cliente_id):
     Chamados" da aba Tarefas na página do cliente (`clientes/listar.html`).
     O chamado é aberto num modal ali mesmo, sem sair do CRM
     (`api_cliente_conversation_detail`).
+
+    Filtros (todos opcionais, combináveis): `q` (protocolo, grupo, agente,
+    categoria, assunto ou texto da resolução), `status`, `agente`,
+    `categoria`, `date_from`/`date_to` e `date_field` — a data filtrada pode
+    ser a de abertura, a da última mensagem ou a de encerramento, porque
+    "chamados de julho" quer dizer coisas diferentes dependendo de quem
+    pergunta (quem abriu vs. quem fechou no mês).
+
+    Filtrar no servidor (e não na lista já carregada) é o que faz o filtro
+    valer pro histórico inteiro do cliente, não só pelos primeiros 300
+    chamados que couberam na tela.
     """
+    from django.db.models import Avg, DurationField, ExpressionWrapper
+
     cliente, erro = _cliente_do_request(request, cliente_id)
     if erro:
         return erro
 
-    qs = (_conversas_do_cliente(cliente)
-          .select_related('group', 'assigned_to', 'category')
-          .order_by(F('last_message_at').desc(nulls_last=True), '-created_at')
-          .distinct()[:300])
+    base = _conversas_do_cliente(cliente).select_related('group', 'assigned_to', 'category')
+
+    # Opções dos selects: só o que este cliente realmente tem — lista de
+    # agentes/categorias do sistema inteiro aqui seria ruído.
+    agentes_opts = sorted(
+        {(c.assigned_to_id, c.assigned_to.get_full_name() or c.assigned_to.username)
+         for c in base if c.assigned_to_id},
+        key=lambda x: x[1].lower(),
+    )
+    categorias_opts = sorted(
+        {(c.category_id, c.category.name) for c in base if c.category_id},
+        key=lambda x: x[1].lower(),
+    )
+
+    qs = base
+    q = (request.GET.get('q') or '').strip()
+    if q:
+        # "#123" e "T-123" são como o protocolo aparece na tela; no banco é só
+        # o número — sem tirar o prefixo, buscar pelo que está escrito na
+        # coluna Protocolo não acha nada.
+        numero = q.lstrip('#').lstrip('tT').lstrip('-').strip()
+        filtro = (Q(group__name__icontains=q) | Q(assigned_to__first_name__icontains=q)
+                  | Q(assigned_to__username__icontains=q) | Q(category__name__icontains=q)
+                  | Q(subject__icontains=q) | Q(resolution__icontains=q))
+        if numero.isdigit():
+            filtro |= Q(conversation_id=int(numero))
+        qs = qs.filter(filtro)
+
+    status = (request.GET.get('status') or '').strip()
+    if status == 'abertos':
+        qs = qs.filter(status__in=['new', 'open', 'pending'])
+    elif status == 'encerrados':
+        qs = qs.filter(status__in=['resolved', 'closed'])
+    elif status:
+        qs = qs.filter(status=status)
+
+    agente = (request.GET.get('agente') or '').strip()
+    if agente == 'sem':
+        qs = qs.filter(assigned_to__isnull=True)
+    elif agente.isdigit():
+        qs = qs.filter(assigned_to_id=int(agente))
+
+    categoria = (request.GET.get('categoria') or '').strip()
+    if categoria == 'sem':
+        qs = qs.filter(category__isnull=True)
+    elif categoria.isdigit():
+        qs = qs.filter(category_id=int(categoria))
+
+    campo_data = {
+        'criado': 'created_at', 'ultima': 'last_message_at', 'fechado': 'closed_at',
+    }.get((request.GET.get('date_field') or 'criado').strip(), 'created_at')
+    date_from = (request.GET.get('date_from') or '').strip()
+    date_to = (request.GET.get('date_to') or '').strip()
+    if date_from:
+        qs = qs.filter(**{f'{campo_data}__date__gte': date_from})
+    if date_to:
+        qs = qs.filter(**{f'{campo_data}__date__lte': date_to})
+
+    qs = qs.order_by(F('last_message_at').desc(nulls_last=True), '-created_at').distinct()
+
+    # Resumo do que está filtrado (não do histórico todo): é o número que o
+    # usuário está olhando na tela.
+    total = qs.count()
+    abertos = qs.filter(status__in=['new', 'open', 'pending']).count()
+    encerrados = qs.filter(status__in=['resolved', 'closed']).count()
+    media = (qs.filter(closed_at__isnull=False)
+               .annotate(dur=ExpressionWrapper(F('closed_at') - F('created_at'),
+                                               output_field=DurationField()))
+               .aggregate(m=Avg('dur'))['m'])
+
+    LIMITE = 300
+    pagina = list(qs[:LIMITE])
 
     def _fmt(dt):
         return timezone.localtime(dt).strftime('%d/%m/%Y %H:%M') if dt else ''
@@ -737,12 +833,25 @@ def api_cliente_conversations(request, cliente_id):
         'fechado_em': _fmt(c.closed_at),
         'resolucao': c.resolution or '',
         'url': f'/atendimento/conversation/{c.id}/',
-    } for c in qs]
+    } for c in pagina]
 
     return JsonResponse({
         'success': True,
         'cliente_nome': cliente.nome_empresa,
-        'total': len(chamados),
+        'total': total,
+        'exibidos': len(chamados),
+        'limite': LIMITE,
+        'resumo': {
+            'total': total,
+            'abertos': abertos,
+            'encerrados': encerrados,
+            'tempo_medio': _duracao_humana(media),
+        },
+        'opcoes': {
+            'status': [{'valor': v, 'label': l} for v, l in Conversation.STATUS_CHOICES if v != 'pre'],
+            'agentes': [{'id': i, 'nome': n} for i, n in agentes_opts],
+            'categorias': [{'id': i, 'nome': n} for i, n in categorias_opts],
+        },
         'chamados': chamados,
     })
 

@@ -5,6 +5,42 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-20 (Clientes: filtros no "Listar Chamados")
+
+### Adicionado
+
+- **Barra de filtros no modal de chamados** da aba Tarefas, tudo aplicado no servidor (vale pro
+  histórico inteiro do cliente, não só pelos 300 chamados já carregados):
+  - **Busca** por protocolo — aceitando o `#123`/`T-123` como aparece na tela, não só o número —,
+    grupo, responsável, categoria, assunto e **texto da resolução**; com debounce de 350ms.
+  - **Status** ("Em aberto" = new/open/pending, "Encerrados" = resolved/closed, ou um status
+    específico), **Responsável** (incluindo "Sem responsável") e **Categoria** (incluindo "Sem
+    categoria"). Os selects são montados só com o que aquele cliente tem, e uma única vez —
+    recriá-los a cada filtro apagaria a seleção em curso.
+  - **Período** com `date_from`/`date_to` e um seletor de **qual data filtrar**: abertura, última
+    mensagem ou encerramento. "Chamados de julho" quer dizer coisas diferentes dependendo de quem
+    pergunta — quem abriu no mês não é quem fechou no mês.
+  - **Atalhos de período**: Hoje, 7 dias, 30 dias, Este mês, Este ano. A data é montada em horário
+    local (não `toISOString()`, que à noite no UTC-3 jogaria o "hoje" pro dia seguinte).
+- **Resumo do conjunto filtrado** acima da tabela: Chamados, Em aberto, Encerrados e **tempo médio de
+  resolução** (`closed_at - created_at`, formatado `2d 4h` / `3h 12min` por `_duracao_humana`). Os
+  três primeiros são clicáveis e aplicam o status correspondente.
+- Coluna **Encerrado em** na tabela e aviso quando o resultado passa de 300 chamados ("mostrando os
+  300 mais recentes — refine o período").
+
+### Testes
+
+- `ChamadosDoClienteFiltrosTest` — período por abertura vs. encerramento (mesma janela, conjuntos
+  diferentes), status agrupado, responsável, busca por `#protocolo` e por texto da resolução, resumo
+  acompanhando o filtro e opções trazendo só os responsáveis daquele cliente. Suíte do módulo: 115
+  testes, OK.
+
+### Documentação
+
+- `docs/ATENDIMENTO.md` — tabela de filtros na seção "Listar Chamados".
+
+---
+
 ## [Não publicado] — 2026-08-20 (Clientes: chamado abre dentro do CRM, sem ir pro Atendimento)
 
 ### Alterado

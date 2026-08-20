@@ -1108,6 +1108,18 @@
             .chamado-status-resolved { background:rgba(63,185,80,.14); color:var(--primary-green); border-color:rgba(63,185,80,.35); }
             .chamado-status-closed { background:rgba(125,133,144,.14); color:var(--text-muted); border-color:var(--border); }
             .chamado-resolucao { color:var(--text-muted); font-size:11px; margin-top:3px; display:block; max-width:420px; }
+            .chamados-filtros { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+            .chamados-filtros-linha { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+            .chamados-chips { display:flex; gap:6px; flex-wrap:wrap; }
+            .chamado-chip { background:var(--dark-bg); border:1px solid var(--border); color:var(--text-muted); font-size:11px; padding:3px 10px; border-radius:20px; transition:all .15s; }
+            .chamado-chip:hover { border-color:var(--accent-cyan); color:var(--accent-cyan); }
+            .chamado-chip.ativo { background:rgba(88,166,255,.14); border-color:rgba(88,166,255,.5); color:var(--accent-cyan); }
+            .chamados-resumo { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+            .chamado-kpi { flex:1 1 130px; background:var(--dark-bg); border:1px solid var(--border); border-radius:8px; padding:8px 12px; cursor:pointer; transition:border-color .15s; }
+            .chamado-kpi.sem-clique { cursor:default; }
+            .chamado-kpi:not(.sem-clique):hover { border-color:var(--accent-cyan); }
+            .chamado-kpi-valor { font-size:18px; font-weight:600; color:var(--text-light); line-height:1.2; }
+            .chamado-kpi-label { font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; }
 
             /* Conversa do chamado (somente leitura) — mesma leitura do chat do
                módulo de Atendimento: cliente à esquerda, equipe à direita. */
@@ -1133,20 +1145,57 @@
                     <button class="btn-close-modal" onclick="fecharModalKanban('modalChamadosCliente')"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body-acesso">
-                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                        <div style="font-size:12px;color:var(--text-muted);">
-                            <i class="fas fa-comments me-1"></i> Clique em um chamado para ver a conversa completa aqui mesmo.
+                    <div class="chamados-filtros">
+                        <div class="chamados-filtros-linha">
+                            <input type="text" id="chamadosBusca" class="form-control form-control-sm" style="flex:2 1 250px;min-width:200px;"
+                                   placeholder="Buscar protocolo, grupo, agente, categoria, resolução..." autocomplete="off"
+                                   oninput="agendarBuscaChamados()">
+                            <select id="chamadosStatus" class="form-select form-select-sm" style="flex:1 1 130px;" onchange="carregarChamadosCliente()">
+                                <option value="">Todos os status</option>
+                                <option value="abertos">Em aberto</option>
+                                <option value="encerrados">Encerrados</option>
+                            </select>
+                            <select id="chamadosAgente" class="form-select form-select-sm" style="flex:1 1 150px;" onchange="carregarChamadosCliente()">
+                                <option value="">Todos os responsáveis</option>
+                            </select>
+                            <select id="chamadosCategoria" class="form-select form-select-sm" style="flex:1 1 140px;" onchange="carregarChamadosCliente()">
+                                <option value="">Todas as categorias</option>
+                            </select>
                         </div>
-                        <div class="d-flex gap-2 align-items-center">
-                            <input type="text" id="chamadosBusca" class="form-control form-control-sm" style="min-width:230px;"
-                                   placeholder="Buscar protocolo, grupo, agente..." autocomplete="off"
-                                   oninput="renderChamadosCliente()">
+                        <div class="chamados-filtros-linha">
+                            <select id="chamadosCampoData" class="form-select form-select-sm" style="flex:0 1 175px;" onchange="carregarChamadosCliente()"
+                                    title="Qual data o período filtra">
+                                <option value="criado">Data de abertura</option>
+                                <option value="ultima">Última mensagem</option>
+                                <option value="fechado">Data de encerramento</option>
+                            </select>
+                            <input type="date" id="chamadosDataDe" class="form-control form-control-sm" style="flex:0 1 150px;"
+                                   onchange="datasChamadosAlteradas()" title="De">
+                            <span style="color:var(--text-muted);font-size:12px;">até</span>
+                            <input type="date" id="chamadosDataAte" class="form-control form-control-sm" style="flex:0 1 150px;"
+                                   onchange="datasChamadosAlteradas()" title="Até">
+                            <div class="chamados-chips">
+                                <button type="button" class="chamado-chip" onclick="periodoChamados(0, this)">Hoje</button>
+                                <button type="button" class="chamado-chip" onclick="periodoChamados(7, this)">7 dias</button>
+                                <button type="button" class="chamado-chip" onclick="periodoChamados(30, this)">30 dias</button>
+                                <button type="button" class="chamado-chip" onclick="periodoChamados('mes', this)">Este mês</button>
+                                <button type="button" class="chamado-chip" onclick="periodoChamados('ano', this)">Este ano</button>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary ms-auto" onclick="limparFiltrosChamados()" title="Limpar filtros">
+                                <i class="fas fa-eraser"></i>
+                            </button>
                             <button class="btn btn-sm btn-outline-secondary" onclick="carregarChamadosCliente()" title="Atualizar">
                                 <i class="fas fa-sync-alt"></i>
                             </button>
                         </div>
                     </div>
-                    <div id="chamadosClienteLista" style="max-height:60vh;overflow:auto;"></div>
+
+                    <div id="chamadosResumo" class="chamados-resumo"></div>
+
+                    <div style="font-size:11.5px;color:var(--text-muted);margin-bottom:8px;">
+                        <i class="fas fa-comments me-1"></i> Clique em um chamado para ver a conversa completa aqui mesmo.
+                    </div>
+                    <div id="chamadosClienteLista" style="max-height:52vh;overflow:auto;"></div>
                 </div>
             </div>
         </div>
@@ -9116,17 +9165,81 @@ function getCsrfToken(){
     }
 
     /* ─────── Chamados do cliente (histórico do módulo de Atendimento) ─────── */
-    let _chamadosCliente = null;   // null = ainda não buscou
+    let _chamadosCliente = null;     // null = ainda não buscou
+    let _chamadosBuscaTimer = null;
+    let _chamadosOpcoesCarregadas = false;
 
     function abrirModalChamadosCliente() {
         document.getElementById('modalChamadosCliente').style.display = 'flex';
         if (_chamadosCliente === null) carregarChamadosCliente();
     }
 
+    function _chamadosFiltros() {
+        const v = id => (document.getElementById(id).value || '').trim();
+        return {
+            q: v('chamadosBusca'),
+            status: v('chamadosStatus'),
+            agente: v('chamadosAgente'),
+            categoria: v('chamadosCategoria'),
+            date_field: v('chamadosCampoData'),
+            date_from: v('chamadosDataDe'),
+            date_to: v('chamadosDataAte'),
+        };
+    }
+
+    // Digitar dispara consulta no servidor (o filtro precisa valer pro
+    // histórico inteiro, não só pelos 300 já carregados) — com debounce pra
+    // não mandar uma requisição por tecla.
+    function agendarBuscaChamados() {
+        clearTimeout(_chamadosBuscaTimer);
+        _chamadosBuscaTimer = setTimeout(carregarChamadosCliente, 350);
+    }
+
+    function _limparChipsChamados() {
+        document.querySelectorAll('#modalChamadosCliente .chamado-chip').forEach(b => b.classList.remove('ativo'));
+    }
+
+    function periodoChamados(qtd, botao) {
+        // Data local, não toISOString() do horário UTC: à noite (UTC-3) o
+        // "hoje" viraria o dia seguinte e o atalho traria o período errado.
+        const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const hoje = new Date();
+        let de;
+        if (qtd === 'mes') de = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        else if (qtd === 'ano') de = new Date(hoje.getFullYear(), 0, 1);
+        else { de = new Date(hoje); de.setDate(de.getDate() - qtd); }
+
+        document.getElementById('chamadosDataDe').value = iso(de);
+        document.getElementById('chamadosDataAte').value = iso(hoje);
+        _limparChipsChamados();
+        if (botao) botao.classList.add('ativo');
+        carregarChamadosCliente();
+    }
+
+    function datasChamadosAlteradas() {
+        // Data escolhida na mão não é mais nenhum dos atalhos.
+        _limparChipsChamados();
+        carregarChamadosCliente();
+    }
+
+    function filtrarChamadosPorStatus(valor) {
+        document.getElementById('chamadosStatus').value = valor;
+        carregarChamadosCliente();
+    }
+
+    function limparFiltrosChamados() {
+        ['chamadosBusca', 'chamadosStatus', 'chamadosAgente', 'chamadosCategoria',
+         'chamadosDataDe', 'chamadosDataAte'].forEach(id => { document.getElementById(id).value = ''; });
+        document.getElementById('chamadosCampoData').value = 'criado';
+        _limparChipsChamados();
+        carregarChamadosCliente();
+    }
+
     function carregarChamadosCliente() {
         const box = document.getElementById('chamadosClienteLista');
         box.innerHTML = '<div class="text-center py-4" style="color:var(--text-muted);"><i class="fas fa-spinner fa-spin me-2"></i>Carregando chamados...</div>';
-        fetch(`/atendimento/api/cliente/${KANBAN_CLIENTE_ID}/conversations/`)
+        const params = new URLSearchParams(_chamadosFiltros());
+        fetch(`/atendimento/api/cliente/${KANBAN_CLIENTE_ID}/conversations/?${params}`)
             .then(r => {
                 // Sessão expirada vira 302 pro login e o .json() estoura com
                 // erro genérico — avisa o que realmente aconteceu.
@@ -9135,7 +9248,9 @@ function getCsrfToken(){
             })
             .then(data => {
                 _chamadosCliente = data.chamados || [];
-                renderChamadosCliente();
+                preencherOpcoesChamados(data.opcoes || {});
+                renderResumoChamados(data);
+                renderChamadosCliente(data);
             })
             .catch(err => {
                 box.innerHTML = `<div class="text-center py-4" style="color:var(--error-red);">${err && err.message === 'sem-acesso'
@@ -9144,17 +9259,56 @@ function getCsrfToken(){
             });
     }
 
-    function renderChamadosCliente() {
+    function preencherOpcoesChamados(opcoes) {
+        // Só na primeira carga: as opções vêm do histórico completo do
+        // cliente, e recriar os <select> a cada filtro perderia a seleção
+        // atual (o filtro se apagaria sozinho ao ser aplicado).
+        if (_chamadosOpcoesCarregadas) return;
+        _chamadosOpcoesCarregadas = true;
+
+        const selStatus = document.getElementById('chamadosStatus');
+        (opcoes.status || []).forEach(o => {
+            selStatus.insertAdjacentHTML('beforeend',
+                `<option value="${o.valor}">${_escapeHtmlKanban(o.label)}</option>`);
+        });
+        const selAgente = document.getElementById('chamadosAgente');
+        selAgente.insertAdjacentHTML('beforeend', '<option value="sem">Sem responsável</option>');
+        (opcoes.agentes || []).forEach(a => {
+            selAgente.insertAdjacentHTML('beforeend',
+                `<option value="${a.id}">${_escapeHtmlKanban(a.nome)}</option>`);
+        });
+        const selCat = document.getElementById('chamadosCategoria');
+        selCat.insertAdjacentHTML('beforeend', '<option value="sem">Sem categoria</option>');
+        (opcoes.categorias || []).forEach(c => {
+            selCat.insertAdjacentHTML('beforeend',
+                `<option value="${c.id}">${_escapeHtmlKanban(c.nome)}</option>`);
+        });
+    }
+
+    function renderResumoChamados(data) {
+        const r = data.resumo || {};
+        const kpi = (valor, label, onclick) => `
+            <div class="chamado-kpi ${onclick ? '' : 'sem-clique'}" ${onclick ? `onclick="${onclick}"` : ''}>
+                <div class="chamado-kpi-valor">${valor}</div>
+                <div class="chamado-kpi-label">${label}</div>
+            </div>`;
+        document.getElementById('chamadosResumo').innerHTML =
+            kpi(r.total || 0, 'Chamados', "filtrarChamadosPorStatus('')") +
+            kpi(r.abertos || 0, 'Em aberto', "filtrarChamadosPorStatus('abertos')") +
+            kpi(r.encerrados || 0, 'Encerrados', "filtrarChamadosPorStatus('encerrados')") +
+            kpi(r.tempo_medio || '—', 'Tempo médio', '');
+    }
+
+    function renderChamadosCliente(data) {
         const box = document.getElementById('chamadosClienteLista');
-        const termo = (document.getElementById('chamadosBusca').value || '').trim().toLowerCase();
-        const lista = (_chamadosCliente || []).filter(c => !termo || [
-            c.protocolo, c.grupo, c.agente, c.categoria, c.status_label, c.resolucao,
-        ].join(' ').toLowerCase().includes(termo));
+        const lista = _chamadosCliente || [];
+        const total = (data && data.total) || lista.length;
+        const temFiltro = Object.values(_chamadosFiltros()).some(v => v && v !== 'criado');
 
         if (!lista.length) {
             box.innerHTML = `<div class="text-center py-4" style="color:var(--text-muted);">
                 <i class="fas fa-headset d-block mb-2" style="font-size:32px;opacity:.3;"></i>
-                ${termo ? 'Nenhum chamado encontrado para esta busca.' : 'Este cliente ainda não tem chamados no Atendimento.'}
+                ${temFiltro ? 'Nenhum chamado para estes filtros.' : 'Este cliente ainda não tem chamados no Atendimento.'}
             </div>`;
             return;
         }
@@ -9170,15 +9324,21 @@ function getCsrfToken(){
                 <td>${c.agente ? _escapeHtmlKanban(c.agente) : '<span style="color:var(--text-muted);">Sem responsável</span>'}</td>
                 <td style="white-space:nowrap;">${c.criado_em}</td>
                 <td style="white-space:nowrap;">${c.ultima_msg || '<span style="color:var(--text-muted);">—</span>'}</td>
+                <td style="white-space:nowrap;">${c.fechado_em || '<span style="color:var(--text-muted);">—</span>'}</td>
             </tr>`).join('');
 
+        const truncado = data && data.exibidos < data.total;
         box.innerHTML = `
-            <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">${lista.length} chamado(s)</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+                ${lista.length} de ${total} chamado(s)
+                ${truncado ? `<span style="color:#d29922;"><i class="fas fa-triangle-exclamation ms-1 me-1"></i>mostrando os ${data.limite} mais recentes — refine o período para ver o resto</span>` : ''}
+            </div>
             <table class="chamados-table">
                 <thead>
                     <tr>
                         <th>Protocolo</th><th>Grupo</th><th>Status</th>
-                        <th>Categoria</th><th>Agente</th><th>Criado em</th><th>Última msg</th>
+                        <th>Categoria</th><th>Agente</th><th>Criado em</th>
+                        <th>Última msg</th><th>Encerrado em</th>
                     </tr>
                 </thead>
                 <tbody>${linhas}</tbody>
