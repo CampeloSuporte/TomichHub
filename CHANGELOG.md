@@ -39,12 +39,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   não é disparada — a confirmação da própria IA já avisa o grupo, e duas mensagens seguidas só
   poluiriam a conversa.
 
+- **Gatilhos do agente IA na caixa normal do chat** — `ConversationService.send_message` só olhava
+  os gatilhos quando a mensagem era **nota interna**: "Tomichinho fechar atendimento" (ou "criar
+  tarefa") digitado na caixa de resposta do chat não fazia nada, funcionava só se a mesma frase
+  viesse do WhatsApp. O novo `_disparar_acoes_ia()` centraliza as AÇÕES (abrir tarefa / fechar
+  chamado) e roda nos três caminhos: webhook, caixa normal do chat e comentário interno. A resposta
+  conversacional a "tomichinho" continua só no grupo do WhatsApp — no que o atendente manda pela
+  plataforma ela viraria mais uma mensagem pro cliente.
+- Chamado já `resolved`/`closed` não chega a enfileirar `fechar_chamado_ia` (a task já descartava,
+  agora nem dispara): a "Mensagem de encerramento" das configurações ("Finalizamos seu
+  atendimento...") sai por `send_message` logo após o fechamento e casava com o gatilho.
+
 ### Testes
 
-- `GatilhoFechamentoIATest` (gatilhos e não-gatilhos, negação, nota interna) e
+- `GatilhoFechamentoIATest` (gatilhos e não-gatilhos, negação, nota interna, caixa normal do chat,
+  mensagem de encerramento não realimentando o gatilho) e
   `FecharChamadoIATaskTest` (resolução da IA gravada no chamado, prompt recebendo a resposta do
   atendente, pedido interno sem `send_text`, fallback sem IA, chamado já encerrado, marco com
-  protocolo). Suíte do módulo: 95 testes, OK.
+  protocolo). Suíte do módulo: 99 testes, OK.
 
 ### Documentação
 

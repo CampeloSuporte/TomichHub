@@ -1089,8 +1089,20 @@ Verificado que os mesmos testes falham no código anterior (2 chamadas de `send_
 ## 🤖 Agente IA fecha o chamado com a resolução (20/08/2026)
 
 O agente "Tomichinho" já lia as mensagens do chamado e abria tarefa; agora também **encerra o
-chamado escrevendo a resolução**. Vale nos dois canais em que os gatilhos já funcionavam: mensagem
-no grupo do WhatsApp e **comentário interno** digitado no CRM.
+chamado escrevendo a resolução**. Vale nos três caminhos por onde uma mensagem entra no chamado:
+
+| Onde escrever | Exemplo | O que acontece |
+|---|---|---|
+| Grupo do WhatsApp | "Tomichinho fechar atendimento" | fecha + confirma no grupo |
+| Caixa normal do chat (plataforma) | "Tomichinho fechar atendimento" | fecha + confirma no grupo |
+| Comentário interno | "fechar atendimento" | fecha + confirma **só no CRM** |
+
+O caminho da caixa normal do chat era um buraco: `ConversationService.send_message` só olhava os
+gatilhos quando a mensagem era nota interna, então o pedido digitado na caixa de resposta não fazia
+nada (funcionava só se a mesma frase viesse do WhatsApp). Hoje os dois passam por
+`_disparar_acoes_ia()`, que dispara **as ações** (abrir tarefa / fechar chamado). A resposta
+conversacional a "tomichinho" continua exclusiva do grupo — senão toda menção ao agente numa
+mensagem do atendente viraria mais uma mensagem para o cliente.
 
 ### Gatilho
 
@@ -1122,6 +1134,10 @@ que abrir uma tarefa a mais:
 4. Confirma no mesmo canal do pedido: `✅ Chamado #N encerrado. 📝 Resolução: ...` — no grupo, se o
    pedido veio do WhatsApp; **só no CRM** (nota interna, `is_internal=True`), se veio de comentário
    interno. Nada que começou privado vaza para o cliente.
+
+Chamado já `resolved`/`closed` nem chega a enfileirar a task — o que também evita que a "Mensagem
+de encerramento" das configurações ("Finalizamos seu atendimento..."), que sai por `send_message`
+logo depois do fechamento, realimente o gatilho.
 
 **Degradação:** sem IA configurada (ou se a chamada falhar), o chamado fecha do mesmo jeito — o
 pedido foi explícito — usando a última resposta do atendente como resolução. Chamado já

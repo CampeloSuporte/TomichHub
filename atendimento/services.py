@@ -233,6 +233,34 @@ def _pede_fechamento_de_chamado(texto: str) -> bool:
     return not _FECHAR_NEGADO.search(t)
 
 
+def _disparar_acoes_ia(conversation, content, is_internal=False) -> None:
+    """Gatilhos de AÇÃO do agente IA: abrir tarefa e fechar o chamado com a
+    resolução. Rodam em background (Celery) — nunca bloqueiam o envio nem
+    dependem da IA responder a tempo.
+
+    Vale para os três caminhos em que uma mensagem entra no chamado:
+    recebida do WhatsApp (`_disparar_agente_ia`), digitada na caixa normal
+    do chat pela plataforma e digitada como comentário interno. Os dois
+    últimos passam por `ConversationService.send_message`, que antes só
+    olhava os gatilhos em nota interna — "Tomichinho fechar atendimento"
+    escrito na caixa normal do chat não fazia nada.
+
+    `is_internal` segue pra task: o que começou como comentário privado da
+    equipe não pode gerar resposta no WhatsApp do cliente.
+    """
+    texto = _normalizar_texto((content or '').lower())
+    if _pede_abertura_de_tarefa(texto):
+        from .tasks import abrir_tarefa_ia
+        abrir_tarefa_ia.delay(str(conversation.id), content, is_internal)
+    # Chamado já encerrado não reabre nem refaz resolução — e a própria
+    # "Mensagem de encerramento" das configurações ("Finalizamos seu
+    # atendimento...") passa por aqui depois do fechamento, então sem esta
+    # guarda ela enfileiraria uma task só pra ser descartada lá dentro.
+    if _pede_fechamento_de_chamado(texto) and conversation.status not in ('resolved', 'closed'):
+        from .tasks import fechar_chamado_ia
+        fechar_chamado_ia.delay(str(conversation.id), content, is_internal)
+
+
 def _disparar_agente_ia(conversation, content) -> None:
     """Checa gatilhos de texto do agente IA "Tomichinho" numa mensagem recém
     recebida e dispara a ação correspondente em background (Celery) — nunca
@@ -245,16 +273,10 @@ def _disparar_agente_ia(conversation, content) -> None:
     `_pede_fechamento_de_chamado`) encerra o chamado com a resolução
     redigida pela IA. Podem disparar juntos na mesma mensagem.
     """
-    texto = _normalizar_texto((content or '').lower())
-    if 'tomichinho' in texto:
+    if 'tomichinho' in _normalizar_texto((content or '').lower()):
         from .tasks import responder_tomichinho
         responder_tomichinho.delay(str(conversation.id))
-    if _pede_abertura_de_tarefa(texto):
-        from .tasks import abrir_tarefa_ia
-        abrir_tarefa_ia.delay(str(conversation.id), content)
-    if _pede_fechamento_de_chamado(texto):
-        from .tasks import fechar_chamado_ia
-        fechar_chamado_ia.delay(str(conversation.id), content)
+    _disparar_acoes_ia(conversation, content)
 
 
 def _ia_enviar(conversation, group, connection, texto, sender_name='Tomichinho',
@@ -1506,17 +1528,15 @@ class ConversationService:
                 },
             })
 
+            # Gatilhos de ação do agente IA no que o atendente escreveu pela
+            # plataforma — valem na caixa normal do chat e no comentário
+            # interno ("Tomichinho fechar atendimento" nos dois lugares).
+            # Só as AÇÕES: a resposta conversacional a "tomichinho" continua
+            # sendo coisa do grupo do WhatsApp, senão toda menção ao agente
+            # numa mensagem do atendente viraria mais uma mensagem pro cliente.
+            _disparar_acoes_ia(conversation, text, is_internal)
+
             if is_internal:
-                # Gatilho do agente IA em nota interna: pedido de tarefa e
-                # pedido de fechamento (não "tomichinho" — resposta da IA a
-                # partir de uma nota interna não pode vazar pro grupo do
-                # WhatsApp).
-                if _pede_abertura_de_tarefa(text):
-                    from .tasks import abrir_tarefa_ia
-                    abrir_tarefa_ia.delay(str(conversation.id), text, True)
-                if _pede_fechamento_de_chamado(text):
-                    from .tasks import fechar_chamado_ia
-                    fechar_chamado_ia.delay(str(conversation.id), text, True)
                 return True, str(msg.id)
 
             # 4. Envia ao WhatsApp em background — sem bloquear a resposta HTTP
