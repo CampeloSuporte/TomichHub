@@ -1370,3 +1370,168 @@ class AbrirTarefaIATaskTest(TestCase):
 
         tarefa = Tarefa.objects.get(id=resultado['tarefa_id'])
         self.assertEqual(tarefa.titulo, 'O link caiu de novo aqui, pode verificar?')
+
+
+class GatilhoFechamentoIATest(TestCase):
+    """Pedido de fechamento no texto da mensagem dispara `fechar_chamado_ia`."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.group = self.conversation.group
+        self.group.jid = '551930903699-1620661700@g.us'
+        self.group.save(update_fields=['jid'])
+        self.agent = _criar_agente_staff('bia')
+
+    def _webhook(self, texto, msg_id):
+        return ConversationService.process_webhook({
+            'event': 'MESSAGES_UPSERT',
+            'instance': self.group.connection.instance_name,
+            'data': {
+                'key': {'id': msg_id, 'fromMe': False,
+                        'remoteJid': self.group.jid, 'participant': '55279@lid'},
+                'pushName': 'Cliente Teste',
+                'message': {'conversation': texto},
+            },
+        })
+
+    @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
+    def test_variacoes_do_pedido_de_fechamento_disparam(self, mock_fechar):
+        for i, texto in enumerate(['pode fechar o chamado', 'Tomichinho, encerrar o atendimento',
+                                   'finalizar chamado por favor', 'ticket resolvido, pode encerrar'],
+                                  start=1):
+            mock_fechar.reset_mock()
+            self._webhook(texto, f'FEC{i}')
+            mock_fechar.assert_called_once_with(str(self.conversation.id), texto)
+
+    @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
+    def test_pedido_negado_nao_dispara(self, mock_fechar):
+        # "não pode fechar o chamado ainda" pede o oposto — fechar aqui
+        # seria o pior erro possível do agente.
+        for i, texto in enumerate(['não pode fechar o chamado ainda',
+                                   'não vamos encerrar esse atendimento hoje'], start=1):
+            self._webhook(texto, f'NEG{i}')
+        mock_fechar.assert_not_called()
+
+    @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
+    def test_chamado_nao_resolvido_nao_dispara(self, mock_fechar):
+        self._webhook('o chamado ainda não está resolvido', 'FEC-N4')
+        mock_fechar.assert_not_called()
+
+    @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
+    def test_mensagem_normal_nao_fecha_chamado(self, mock_fechar):
+        self._webhook('bom dia, o link caiu de novo', 'FEC-N1')
+        mock_fechar.assert_not_called()
+
+    @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
+    def test_fechar_sem_dizer_chamado_nao_dispara(self, mock_fechar):
+        # "pode fechar" solto (ex.: falando de uma porta, de um contrato) não
+        # pode encerrar o atendimento de ninguém.
+        self._webhook('pode fechar a porta do rack quando terminar', 'FEC-N2')
+        mock_fechar.assert_not_called()
+
+    @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
+    @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
+    def test_fechar_tarefa_nao_fecha_chamado(self, mock_fechar, mock_tarefa):
+        self._webhook('fechar a tarefa da antena', 'FEC-N3')
+        mock_fechar.assert_not_called()
+
+    @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_nota_interna_com_pedido_de_fechamento_dispara_como_interna(self, mock_client_cls, mock_fechar):
+        ConversationService.send_message(
+            self.conversation, 'pode encerrar o chamado, resolvido', self.agent, is_internal=True)
+
+        mock_fechar.assert_called_once_with(
+            str(self.conversation.id), 'pode encerrar o chamado, resolvido', True)
+
+
+class FecharChamadoIATaskTest(TestCase):
+    """Task que redige a resolução via IA e encerra o chamado."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.group = self.conversation.group
+        self.conversation.status = 'open'
+        self.conversation.save(update_fields=['status'])
+        Message.objects.create(
+            conversation=self.conversation, sender_type='customer',
+            content='O link caiu de novo aqui', external_id='cli-f1')
+        Message.objects.create(
+            conversation=self.conversation, sender_type='agent',
+            content='Troquei o SFP da porta 3 da OLT, link estabilizado.',
+            external_id='ag-f1')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch(
+        'atendimento.ai.call_ai',
+        return_value='{"resolucao": "Cliente relatou queda do link; SFP da porta 3 da OLT trocado, link estabilizado."}',
+    )
+    def test_fecha_com_resolucao_da_ia_e_confirma_no_grupo(self, mock_call_ai, mock_client_cls):
+        from atendimento.tasks import fechar_chamado_ia
+        mock_client_cls.return_value.send_text.return_value = (True, 'wamid-f1')
+
+        resultado = fechar_chamado_ia(str(self.conversation.id), 'pode fechar o chamado')
+
+        self.assertTrue(resultado['ok'])
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.status, 'resolved')
+        self.assertIsNotNone(self.conversation.closed_at)
+        self.assertIn('SFP da porta 3', self.conversation.resolution)
+        # A resposta do atendente precisa chegar à IA — é dela que sai a resolução.
+        _args, kwargs = mock_call_ai.call_args
+        self.assertIn('Troquei o SFP', kwargs['user_prompt'])
+        confirmacao = Message.objects.get(sender_type='ai')
+        self.assertIn('Resolução', confirmacao.content)
+        mock_client_cls.return_value.send_text.assert_called_once()
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai', return_value='{"resolucao": "Resolvido."}')
+    def test_pedido_em_nota_interna_nao_vaza_pro_whatsapp(self, mock_call_ai, mock_client_cls):
+        from atendimento.tasks import fechar_chamado_ia
+
+        fechar_chamado_ia(str(self.conversation.id), 'pode encerrar o chamado', True)
+
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.status, 'resolved')
+        mock_client_cls.return_value.send_text.assert_not_called()
+        confirmacao = Message.objects.get(content__startswith='✅ Chamado #')
+        self.assertEqual(confirmacao.sender_type, 'internal')
+        self.assertTrue(confirmacao.is_internal)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai', return_value=None)
+    def test_sem_ia_fecha_com_a_ultima_resposta_do_atendente(self, mock_call_ai, mock_client_cls):
+        from atendimento.tasks import fechar_chamado_ia
+
+        fechar_chamado_ia(str(self.conversation.id), 'pode fechar o chamado')
+
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.status, 'resolved')
+        self.assertEqual(
+            self.conversation.resolution,
+            'Troquei o SFP da porta 3 da OLT, link estabilizado.')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai')
+    def test_chamado_ja_encerrado_nao_e_fechado_de_novo(self, mock_call_ai, mock_client_cls):
+        from atendimento.tasks import fechar_chamado_ia
+        self.conversation.status = 'resolved'
+        self.conversation.resolution = 'Resolução original'
+        self.conversation.save(update_fields=['status', 'resolution'])
+
+        resultado = fechar_chamado_ia(str(self.conversation.id), 'fechar chamado')
+
+        self.assertTrue(resultado['skipped'])
+        mock_call_ai.assert_not_called()
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.resolution, 'Resolução original')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai', return_value='{"resolucao": "Resolvido."}')
+    def test_marco_de_conclusao_com_protocolo_fica_no_historico(self, mock_call_ai, mock_client_cls):
+        from atendimento.tasks import fechar_chamado_ia
+
+        fechar_chamado_ia(str(self.conversation.id), 'pode fechar o chamado')
+
+        marco = Message.objects.get(sender_type='system')
+        self.assertIn(f'#{self.conversation.conversation_id}', marco.content)

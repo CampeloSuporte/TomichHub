@@ -578,69 +578,30 @@ def api_update_conversation(request, conversation_id):
 
         # Atualiza status
         if 'status' in data:
-            old_status = conversation.status
-            conversation.status = data['status']
-            if data['status'] in ['resolved', 'closed']:
-                conversation.closed_at = timezone.now()
-            if 'resolution' in data and data['resolution']:
-                conversation.resolution = data['resolution'].strip()
-            conversation.save()
-
-            ConversationActivity.objects.create(
-                conversation=conversation,
-                actor=request.user,
-                action='status_changed',
-                old_value=old_status,
-                new_value=data['status']
-            )
-
-            # Notifica a caixa de entrada em tempo real ANTES de qualquer I/O
-            # externo (WhatsApp) — a conversa some das listas (bolhas
-            # "assumidas", sidebar, abas) sem esperar a Evolution API responder.
-            if data['status'] in ['resolved', 'closed']:
-                try:
-                    from .services import _ws_send_inbox
-                    _ws_send_inbox({
-                        'type': 'conversation_status',
-                        'conversation_id': str(conversation.id),
-                        'status': conversation.status,
-                        'assigned_to_id': conversation.assigned_to_id,
-                    })
-                except Exception as _e:
-                    logger.warning(f"Falha ao notificar inbox (status): {_e}")
-
-            # Envia mensagem de encerramento ao resolver/fechar
-            if data['status'] in ['resolved', 'closed']:
-                closing_msg = SystemSetting.get('msg_encerramento', '').strip()
-                if closing_msg:
-                    try:
-                        ConversationService.send_message(conversation, closing_msg, request.user)
-                    except Exception as _e:
-                        logger.warning(f"Falha ao enviar msg de encerramento: {_e}")
-
-                # Marco de conclusão com o número do protocolo: fica SÓ no
-                # histórico interno da conversa — o grupo do cliente não recebe
-                # nada. Antes isso ia pro WhatsApp via EvolutionAPI (numa thread
-                # em background) e só era gravado se o envio desse certo; hoje é
-                # gravação direta, sem I/O externo e sem depender da API estar
-                # de pé. Quem quiser avisar o cliente no fechamento usa a
-                # "Mensagem de encerramento" das configurações, acima.
-                import uuid as _uuid
-                texto_conclusao = (
-                    f"✅ Chamado concluído!\n"
-                    f"📋 Protocolo: #{conversation.conversation_id}"
+            novo_status = data['status']
+            if novo_status in ['resolved', 'closed']:
+                # Fechamento passa pelo serviço compartilhado — o mesmo
+                # caminho usado pelo agente IA (fechar_chamado_ia).
+                from .services import finalizar_conversa
+                finalizar_conversa(
+                    conversation,
+                    resolution=(data.get('resolution') or '').strip() or None,
+                    actor=request.user,
+                    status=novo_status,
                 )
-                try:
-                    msg_conclusao = Message.objects.create(
-                        conversation=conversation, sender_type='system',
-                        sender_name='Sistema', message_type='text', content=texto_conclusao,
-                        external_id=f'concluido_{_uuid.uuid4().hex}',
-                    )
-                    # Sem WS a linha só apareceria ao recarregar a conversa.
-                    from .services import ConversationService as _CS
-                    _CS._broadcast_msg(conversation, conversation.group, msg_conclusao, inbox=False)
-                except Exception as _e:
-                    logger.warning(f"Falha ao registrar conclusão (conv {conversation.id}): {_e}")
+            else:
+                old_status = conversation.status
+                conversation.status = novo_status
+                if 'resolution' in data and data['resolution']:
+                    conversation.resolution = data['resolution'].strip()
+                conversation.save()
+                ConversationActivity.objects.create(
+                    conversation=conversation,
+                    actor=request.user,
+                    action='status_changed',
+                    old_value=old_status,
+                    new_value=novo_status
+                )
 
         # Atualiza atribuição
         if 'assigned_to' in data:

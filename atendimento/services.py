@@ -3,6 +3,7 @@ import uuid
 import base64
 import requests
 import logging
+import re as _re
 import unicodedata
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
@@ -201,6 +202,37 @@ def _pede_abertura_de_tarefa(texto: str) -> bool:
     return 'tarefa' in t and any(v in t for v in _TAREFA_VERBOS)
 
 
+_FECHAR_VERBOS = ('fechar', 'feche', 'fecha', 'encerrar', 'encerre', 'encerra',
+                  'finalizar', 'finalize', 'finaliza', 'concluir', 'conclua', 'conclui')
+_FECHAR_ALVOS = ('chamado', 'atendimento', 'ticket', 'protocolo')
+# "nao pode fechar o chamado ainda", "nao vamos encerrar o atendimento": a
+# negação até 3 palavras antes do verbo inverte o pedido — fechar aqui seria
+# o oposto do que foi dito.
+_FECHAR_NEGADO = _re.compile(
+    r'\bnao\b(?:\s+\S+){0,3}\s+(?:%s)' % '|'.join(_FECHAR_VERBOS))
+
+
+def _pede_fechamento_de_chamado(texto: str) -> bool:
+    """Mesma ideia de `_pede_abertura_de_tarefa`, mas para o encerramento:
+    aceita qualquer mensagem com uma palavra que nomeie o chamado
+    (chamado/atendimento/ticket/protocolo) perto de um verbo de fechamento
+    (fechar/encerrar/finalizar/concluir).
+
+    É de propósito mais exigente que o gatilho de tarefa — fechar o chamado
+    errado é bem mais caro que abrir uma tarefa a mais. Por isso pede o alvo
+    explícito (um "pode fechar" solto, falando de outra coisa, não encerra
+    nada; "fechar a tarefa" também não), só aceita verbo de ação (não o
+    adjetivo em "o chamado ainda não está resolvido") e ignora o pedido
+    negado.
+    """
+    if not texto:
+        return False
+    t = _normalizar_texto(texto.lower())
+    if not (any(a in t for a in _FECHAR_ALVOS) and any(v in t for v in _FECHAR_VERBOS)):
+        return False
+    return not _FECHAR_NEGADO.search(t)
+
+
 def _disparar_agente_ia(conversation, content) -> None:
     """Checa gatilhos de texto do agente IA "Tomichinho" numa mensagem recém
     recebida e dispara a ação correspondente em background (Celery) — nunca
@@ -209,7 +241,9 @@ def _disparar_agente_ia(conversation, content) -> None:
     Qualquer remetente aciona (atendente ou cliente): "tomichinho" pede uma
     resposta da IA no próprio grupo; um pedido de tarefa (ver
     `_pede_abertura_de_tarefa`) pede a criação de uma Tarefa vinculada ao
-    cliente do grupo. Os dois podem disparar juntos na mesma mensagem.
+    cliente do grupo; um pedido de fechamento (ver
+    `_pede_fechamento_de_chamado`) encerra o chamado com a resolução
+    redigida pela IA. Podem disparar juntos na mesma mensagem.
     """
     texto = _normalizar_texto((content or '').lower())
     if 'tomichinho' in texto:
@@ -218,6 +252,9 @@ def _disparar_agente_ia(conversation, content) -> None:
     if _pede_abertura_de_tarefa(texto):
         from .tasks import abrir_tarefa_ia
         abrir_tarefa_ia.delay(str(conversation.id), content)
+    if _pede_fechamento_de_chamado(texto):
+        from .tasks import fechar_chamado_ia
+        fechar_chamado_ia.delay(str(conversation.id), content)
 
 
 def _ia_enviar(conversation, group, connection, texto, sender_name='Tomichinho',
@@ -248,6 +285,80 @@ def _ia_enviar(conversation, group, connection, texto, sender_name='Tomichinho',
         except Exception as e:
             logger.warning(f"Falha ao enviar resposta do agente IA: {e}")
     ConversationService._broadcast_msg(conversation, group, msg, inbox=False)
+
+
+def finalizar_conversa(conversation, resolution=None, actor=None,
+                       status='resolved', enviar_encerramento=True) -> None:
+    """Encerra um chamado: grava status/resolução, registra a atividade,
+    avisa a caixa de entrada por WebSocket, (opcionalmente) manda a mensagem
+    de encerramento configurada ao cliente e deixa o marco de conclusão com o
+    protocolo no histórico interno.
+
+    Existe para que a tela (`api_update_conversation`) e o agente IA
+    (`fechar_chamado_ia`) fechem chamado exatamente do mesmo jeito — antes
+    isso vivia só dentro da view.
+
+    `enviar_encerramento=False` é o caso do fechamento pedido em nota
+    interna: nada pode sair pro WhatsApp do cliente.
+    """
+    from .models import SystemSetting
+
+    old_status = conversation.status
+    conversation.status = status
+    conversation.closed_at = timezone.now()
+    campos = ['status', 'closed_at']
+    if resolution:
+        conversation.resolution = resolution.strip()
+        campos.append('resolution')
+    conversation.save(update_fields=campos)
+
+    ConversationActivity.objects.create(
+        conversation=conversation, actor=actor, action='status_changed',
+        old_value=old_status, new_value=status,
+    )
+
+    # Notifica a caixa de entrada em tempo real ANTES de qualquer I/O externo
+    # (WhatsApp) — a conversa some das listas (bolhas "assumidas", sidebar,
+    # abas) sem esperar a Evolution API responder.
+    try:
+        _ws_send_inbox({
+            'type': 'conversation_status',
+            'conversation_id': str(conversation.id),
+            'status': conversation.status,
+            'assigned_to_id': conversation.assigned_to_id,
+        })
+    except Exception as _e:
+        logger.warning(f"Falha ao notificar inbox (status): {_e}")
+
+    if enviar_encerramento:
+        closing_msg = SystemSetting.get('msg_encerramento', '').strip()
+        if closing_msg:
+            try:
+                ConversationService.send_message(conversation, closing_msg, actor)
+            except Exception as _e:
+                logger.warning(f"Falha ao enviar msg de encerramento: {_e}")
+
+    # Marco de conclusão com o número do protocolo: fica SÓ no histórico
+    # interno da conversa — o grupo do cliente não recebe nada. Antes isso ia
+    # pro WhatsApp via EvolutionAPI (numa thread em background) e só era
+    # gravado se o envio desse certo; hoje é gravação direta, sem I/O externo
+    # e sem depender da API estar de pé. Quem quiser avisar o cliente no
+    # fechamento usa a "Mensagem de encerramento" das configurações.
+    texto_conclusao = (
+        f"✅ Chamado concluído!\n"
+        f"📋 Protocolo: #{conversation.conversation_id}"
+    )
+    try:
+        msg_conclusao = Message.objects.create(
+            conversation=conversation, sender_type='system',
+            sender_name='Sistema', message_type='text', content=texto_conclusao,
+            external_id=f'concluido_{uuid.uuid4().hex}',
+        )
+        # Sem WS a linha só apareceria ao recarregar a conversa.
+        ConversationService._broadcast_msg(
+            conversation, conversation.group, msg_conclusao, inbox=False)
+    except Exception as _e:
+        logger.warning(f"Falha ao registrar conclusão (conv {conversation.id}): {_e}")
 
 
 # ── SLA (tempo de resposta/resolução) ────────────────────────────────────────
@@ -1396,12 +1507,16 @@ class ConversationService:
             })
 
             if is_internal:
-                # Gatilho do agente IA em nota interna: só pedido de tarefa
-                # (não "tomichinho" — resposta da IA a partir de uma nota
-                # interna não pode vazar pro grupo do WhatsApp).
+                # Gatilho do agente IA em nota interna: pedido de tarefa e
+                # pedido de fechamento (não "tomichinho" — resposta da IA a
+                # partir de uma nota interna não pode vazar pro grupo do
+                # WhatsApp).
                 if _pede_abertura_de_tarefa(text):
                     from .tasks import abrir_tarefa_ia
                     abrir_tarefa_ia.delay(str(conversation.id), text, True)
+                if _pede_fechamento_de_chamado(text):
+                    from .tasks import fechar_chamado_ia
+                    fechar_chamado_ia.delay(str(conversation.id), text, True)
                 return True, str(msg.id)
 
             # 4. Envia ao WhatsApp em background — sem bloquear a resposta HTTP

@@ -5,6 +5,53 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-20 (Atendimento: agente IA encerra o chamado com a resolução)
+
+### Adicionado
+
+- **Fechamento de chamado pelo agente IA** — o "Tomichinho" já abria tarefa a partir da mensagem;
+  agora também **encerra o chamado escrevendo a resolução**, tanto por mensagem no grupo do WhatsApp
+  quanto por comentário interno no CRM:
+  - Gatilho `_pede_fechamento_de_chamado` (`atendimento/services.py`): exige alvo
+    (`chamado`/`atendimento`/`ticket`/`protocolo`) **e** verbo de fechamento
+    (`fechar`/`encerrar`/`finalizar`/`concluir` e flexões), tolerante a acento errado. É mais
+    exigente que o gatilho de tarefa de propósito — fechar chamado errado custa caro: "pode fechar a
+    porta do rack" (sem alvo), "fechar a tarefa" (outro alvo), "o chamado ainda não está resolvido"
+    (adjetivo, não verbo) e "não pode fechar o chamado ainda" (`_FECHAR_NEGADO`) não disparam.
+  - Task `fechar_chamado_ia` (`atendimento/tasks.py`): lê as últimas 30 mensagens do chamado e pede à
+    IA um JSON `{"resolucao": "..."}` orientado a usar **principalmente as respostas do atendente e
+    as notas internas** (o que foi verificado e feito), com as mensagens do cliente servindo só para
+    descrever o problema — e sem inventar o que não está no histórico.
+  - Confirmação `✅ Chamado #N encerrado. 📝 Resolução: ...` sai no mesmo canal do pedido: no grupo,
+    se veio do WhatsApp; só como nota interna, se veio de comentário interno (nada que começou
+    privado vaza pro cliente).
+  - Sem IA configurada ou com falha na chamada, o chamado fecha do mesmo jeito (o pedido foi
+    explícito) usando a última resposta do atendente como resolução. Chamado já `resolved`/`closed`
+    é ignorado — repetir o pedido não sobrescreve a resolução anterior.
+
+### Alterado
+
+- **`services.finalizar_conversa()`** — o encerramento (status, `closed_at`, resolução, atividade
+  `status_changed`, aviso da caixa de entrada por WebSocket, mensagem de encerramento configurada e
+  marco "✅ Chamado concluído! 📋 Protocolo #N" no histórico interno) saiu de dentro de
+  `views.api_update_conversation` e virou serviço. A view passou a chamá-lo, então tela e agente IA
+  fecham chamado exatamente do mesmo jeito. No caminho da IA a mensagem de encerramento configurada
+  não é disparada — a confirmação da própria IA já avisa o grupo, e duas mensagens seguidas só
+  poluiriam a conversa.
+
+### Testes
+
+- `GatilhoFechamentoIATest` (gatilhos e não-gatilhos, negação, nota interna) e
+  `FecharChamadoIATaskTest` (resolução da IA gravada no chamado, prompt recebendo a resposta do
+  atendente, pedido interno sem `send_text`, fallback sem IA, chamado já encerrado, marco com
+  protocolo). Suíte do módulo: 95 testes, OK.
+
+### Documentação
+
+- `docs/ATENDIMENTO.md` — seção "Agente IA fecha o chamado com a resolução (20/08/2026)".
+
+---
+
 ## [Não publicado] — 2026-08-19 (CRM: remove widgets globais de conversas)
 
 ### Removido

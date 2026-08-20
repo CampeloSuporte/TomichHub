@@ -226,6 +226,99 @@ def abrir_tarefa_ia(conversation_id, texto_comando, is_internal=False):
 
 
 @shared_task
+def fechar_chamado_ia(conversation_id, texto_comando, is_internal=False):
+    """Gatilho de fechamento ("fechar chamado", "pode encerrar o atendimento"
+    …) numa mensagem do chamado (vinda do WhatsApp ou digitada como nota
+    interna): a IA lê o histórico, redige a RESOLUÇÃO a partir do que o
+    atendente de fato respondeu/fez e encerra o chamado com ela.
+
+    Se a IA não estiver configurada ou falhar, o chamado fecha do mesmo
+    jeito (o pedido foi explícito) com a última resposta do atendente como
+    resolução — nunca deixa um pedido de fechamento sem efeito.
+
+    Quando `is_internal`, nada sai pro WhatsApp: nem a confirmação, nem a
+    mensagem de encerramento — o pedido começou como comentário privado da
+    equipe.
+    """
+    import json as _json
+    import re as _re
+    from .models import Conversation
+    from .services import _ia_enviar, finalizar_conversa
+    from .ai import call_ai
+
+    try:
+        conv = Conversation.objects.select_related('group', 'group__connection').get(id=conversation_id)
+    except Conversation.DoesNotExist:
+        return {'skipped': True, 'reason': 'conversation not found'}
+    if not conv.group or not conv.group.connection:
+        return {'skipped': True, 'reason': 'sem grupo/conexão'}
+    if conv.status in ('resolved', 'closed'):
+        return {'skipped': True, 'reason': 'chamado já encerrado'}
+
+    # Histórico mais longo que o da abertura de tarefa: a resolução sai do
+    # que foi feito ao longo do atendimento, não da última mensagem.
+    contexto, historico = _contexto_conversa(conv, limite=30)
+
+    resposta = call_ai(
+        system_prompt=(
+            "Você redige a RESOLUÇÃO de um chamado de suporte técnico que "
+            "está sendo encerrado. Vai receber o histórico da conversa "
+            "(cada linha marcada com quem falou: Cliente, Atendente, Nota "
+            "interna, Tomichinho ou Sistema) e o comando que pediu o "
+            "fechamento. Baseie-se PRINCIPALMENTE nas mensagens do "
+            "Atendente e nas Notas internas — é o que foi verificado e "
+            "feito para resolver; use as mensagens do Cliente só para "
+            "descrever o problema original. Responda só com um JSON no "
+            'formato {"resolucao": "..."}, sem markdown nem texto '
+            "adicional. A resolução deve ser um parágrafo em português, de "
+            "até 600 caracteres, dizendo o que o cliente relatou, a causa "
+            "identificada e o que foi feito para resolver (com dados "
+            "técnicos relevantes: equipamento, porta, contrato, número de "
+            "protocolo). Não invente nada que não esteja no histórico; se o "
+            "histórico não disser como foi resolvido, descreva apenas o que "
+            "consta."
+        ),
+        user_prompt=f"Histórico da conversa:\n{contexto}\n\nComando que pediu o fechamento: {texto_comando}",
+        max_tokens=500,
+    )
+    resolucao = ''
+    if resposta:
+        try:
+            match = _re.search(r'\{.*\}', resposta, _re.S)
+            data = _json.loads(match.group(0) if match else resposta)
+            resolucao = (data.get('resolucao') or '').strip()
+        except Exception as e:
+            logger.warning(f"Agente IA: resposta de fechamento não é JSON válido: {e}")
+            # Texto solto ainda serve como resolução — melhor que fechar vazio.
+            resolucao = resposta.strip()
+    if not resolucao:
+        ultima_do_atendente = next(
+            (m.content for m in reversed(historico)
+             if m.sender_type in ('agent', 'internal') and m.content), '')
+        resolucao = (ultima_do_atendente or texto_comando).strip() or 'Chamado encerrado.'
+
+    finalizar_conversa(
+        conv, resolution=resolucao, actor=conv.assigned_to, status='resolved',
+        # A confirmação abaixo já avisa o grupo do fechamento; a mensagem de
+        # encerramento configurada sairia logo em seguida, duplicando aviso.
+        enviar_encerramento=False,
+    )
+
+    texto_confirmacao = (
+        f"✅ Chamado #{conv.conversation_id} encerrado.\n"
+        f"📝 *Resolução:* {resolucao}"
+    )
+    if is_internal:
+        _ia_enviar(
+            conv, conv.group, conv.group.connection, texto_confirmacao,
+            sender_type='internal', enviar_whatsapp=False,
+        )
+    else:
+        _ia_enviar(conv, conv.group, conv.group.connection, texto_confirmacao)
+    return {'ok': True, 'conversation_id': str(conv.id), 'resolucao': resolucao}
+
+
+@shared_task
 def notificar_chamados_abertos():
     """A cada 10 min: avisa, UMA ÚNICA VEZ por chamado, sobre chamados sem
     atendente há mais de 10 min. Envia uma só mensagem consolidada ao grupo

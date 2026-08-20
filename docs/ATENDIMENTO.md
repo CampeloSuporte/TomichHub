@@ -1083,3 +1083,54 @@ então `_processar_passo_fluxo`/`_finalizar_fluxo` já eram caminhos inalcançá
 **Testes:** `AutoAtendimentoNaoPoluiGrupoTest` — com um fluxo universal ativo, uma primeira
 mensagem de grupo não gera nenhuma chamada de `send_text` nem balão `sender_type='system'`.
 Verificado que os mesmos testes falham no código anterior (2 chamadas de `send_text`).
+
+---
+
+## 🤖 Agente IA fecha o chamado com a resolução (20/08/2026)
+
+O agente "Tomichinho" já lia as mensagens do chamado e abria tarefa; agora também **encerra o
+chamado escrevendo a resolução**. Vale nos dois canais em que os gatilhos já funcionavam: mensagem
+no grupo do WhatsApp e **comentário interno** digitado no CRM.
+
+### Gatilho
+
+`atendimento/services.py` → `_pede_fechamento_de_chamado()`: a mensagem precisa citar o alvo
+(`chamado`, `atendimento`, `ticket`, `protocolo`) **e** um verbo de fechamento (`fechar`, `encerrar`,
+`finalizar`, `concluir` e suas flexões). Acento errado não atrapalha (`_normalizar_texto`).
+
+Ele é de propósito mais exigente que o gatilho de tarefa — fechar o chamado errado custa mais caro
+que abrir uma tarefa a mais:
+
+| Mensagem | Fecha? | Por quê |
+|---|---|---|
+| "pode fechar o chamado" / "Tomichinho, encerrar o atendimento" | ✅ | alvo + verbo |
+| "pode fechar a porta do rack" | ❌ | sem alvo — "fechar" solto não encerra nada |
+| "fechar a tarefa da antena" | ❌ | fala de tarefa, não de chamado |
+| "o chamado ainda não está resolvido" | ❌ | "resolvido" é adjetivo, não é verbo de fechamento |
+| "não pode fechar o chamado ainda" | ❌ | pedido negado (`_FECHAR_NEGADO`) |
+
+### O que a IA faz (`atendimento/tasks.py` → `fechar_chamado_ia`)
+
+1. Lê as **últimas 30 mensagens** do chamado (mais que o gatilho de tarefa: a resolução sai do
+   atendimento inteiro, não da última linha).
+2. Pede à IA configurada um JSON `{"resolucao": "..."}` — o prompt manda usar **principalmente as
+   mensagens do Atendente e as notas internas** (o que foi verificado e feito), usando as do cliente
+   só para descrever o problema original, e proíbe inventar o que não está no histórico.
+3. Encerra via `services.finalizar_conversa()`: `status='resolved'`, `closed_at`, `resolution`,
+   atividade `status_changed`, aviso da caixa de entrada por WebSocket e marco
+   "✅ Chamado concluído! 📋 Protocolo #N" no histórico interno.
+4. Confirma no mesmo canal do pedido: `✅ Chamado #N encerrado. 📝 Resolução: ...` — no grupo, se o
+   pedido veio do WhatsApp; **só no CRM** (nota interna, `is_internal=True`), se veio de comentário
+   interno. Nada que começou privado vaza para o cliente.
+
+**Degradação:** sem IA configurada (ou se a chamada falhar), o chamado fecha do mesmo jeito — o
+pedido foi explícito — usando a última resposta do atendente como resolução. Chamado já
+`resolved`/`closed` é ignorado, então repetir o pedido não sobrescreve a resolução anterior.
+
+`finalizar_conversa()` nasceu deste trabalho: o fechamento vivia dentro de
+`views.api_update_conversation` e a view passou a chamar o mesmo serviço, então tela e IA encerram
+chamado exatamente do mesmo jeito.
+
+**Testes:** `GatilhoFechamentoIATest` (gatilhos e não-gatilhos, incluindo negação e nota interna) e
+`FecharChamadoIATaskTest` (resolução da IA gravada, prompt recebendo a resposta do atendente,
+pedido interno sem `send_text`, fallback sem IA, chamado já encerrado, marco com protocolo).
