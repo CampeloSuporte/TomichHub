@@ -402,6 +402,8 @@ def api_send_message(request, conversation_id):
         data = json.loads(request.body)
         message_text = data.get('message', '').strip()
         is_internal = bool(data.get('is_internal'))
+        # Contatos marcados com "@" no chat: [{'nome','phone'}]
+        mentions = data.get('mentions') or []
 
         if not message_text:
             return JsonResponse({'success': False, 'error': 'Mensagem vazia'}, status=400)
@@ -418,6 +420,7 @@ def api_send_message(request, conversation_id):
             message_text,
             request.user,
             is_internal=is_internal,
+            mentions=mentions,
         )
 
         if success:
@@ -641,6 +644,35 @@ def api_update_conversation(request, conversation_id):
             'success': False,
             'error': str(e)
         }, status=400)
+
+
+@staff_required
+@require_http_methods(["GET"])
+def api_conversation_participants(request, conversation_id):
+    """Participantes do grupo do WhatsApp, para o autocomplete do "@" no chat.
+
+    Vem da Evolution (o CRM não guarda a lista do grupo) e fica 5 min em
+    cache: sem isso, cada "@" digitado viraria uma chamada HTTP externa no
+    meio da conversa. `?refresh=1` força a releitura, para quando alguém
+    acabou de entrar no grupo.
+    """
+    from django.core.cache import cache
+
+    conversation = get_object_or_404(Conversation, id=conversation_id)
+    group = conversation.group
+    if not group or not group.connection or not group.jid:
+        return JsonResponse({'success': True, 'participantes': []})
+
+    chave = f'grp_participantes_{group.id}'
+    participantes = None if request.GET.get('refresh') else cache.get(chave)
+    if participantes is None:
+        participantes = EvolutionAPIClient(group.connection).get_group_participants_info(group.jid)
+        # Guarda mesmo quando vem vazio (grupo sem retorno da Evolution),
+        # senão toda tecla "@" tentaria de novo uma chamada que já falhou —
+        # só que por bem menos tempo, para se recuperar sozinho.
+        cache.set(chave, participantes, 300 if participantes else 60)
+
+    return JsonResponse({'success': True, 'participantes': participantes})
 
 
 @staff_required

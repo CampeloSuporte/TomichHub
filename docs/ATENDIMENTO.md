@@ -1228,3 +1228,46 @@ filtro, opções só com os responsáveis do cliente).
 - Bônus da mesma leva: `<th>` com `position:sticky` precisa de **fundo sólido**
   (`var(--card-bg)`), não `rgba(...)` translúcido — senão as linhas passam por baixo e se leem
   através dos títulos ao rolar.
+
+
+---
+
+## 📣 Marcar alguém do grupo com "@" no chat (20/08/2026)
+
+No compositor do chat (`atendimento/templates/atendimento/_chat_content.html`), digitar **`@`**
+abre a lista de participantes do grupo do WhatsApp. Escolhendo um (clique, ou setas + Enter/Tab), o
+nome entra no texto como `@João Silva`; ao enviar, a pessoa recebe a **notificação de menção** no
+WhatsApp, com o nome destacado na mensagem.
+
+### Como funciona
+
+| Camada | O quê |
+|---|---|
+| `EvolutionAPIClient.get_group_participants_info()` | participantes com nome — lê `phoneNumber`/`id`/`jid` e `name`/`pushName`/`notify`, que variam entre versões da Evolution; sem nome, o número vira o rótulo |
+| `GET /atendimento/api/conversation/<id>/participants/` | alimenta o autocomplete; cache de 5 min por grupo (`?refresh=1` força releitura) |
+| `services.aplicar_mencoes()` | troca `@Nome` por `@<número>` no texto que vai pro WhatsApp e devolve os números |
+| `ConversationService.send_message(..., mentions=[{nome, phone}])` | salva o texto legível no CRM e envia com `mentioned` pra Evolution |
+
+**Por que nome no CRM e número no WhatsApp:** o WhatsApp só destaca a menção quando o corpo da
+mensagem traz `@<número>` batendo com o `mentioned` do envio. Guardar isso no histórico deixaria o
+chat do CRM cheio de números; então o CRM fica com `@João Silva` e só o texto que sai pro grupo
+carrega o número — mesma coisa que o WhatsApp Web faz.
+
+### Detalhes de comportamento
+
+- **Nota interna não menciona ninguém:** no modo "Comentário Interno" a lista nem abre (nada sai
+  pro grupo, então não há quem notificar).
+- **`@` no meio de palavra não abre a lista** — `fulano@empresa.com` digitado numa frase não é
+  pedido de menção; só `@` que começa palavra.
+- **Apagou, não marca:** vão como menção apenas os nomes que continuam escritos na mensagem na hora
+  do envio.
+- **Nome mais longo primeiro** na substituição: com "João" e "João Silva" no mesmo grupo, trocar o
+  curto antes deixaria `@5511... Silva` na frase.
+- Escolha por `mousedown` (não `click`): o clique chegaria depois do `blur` do textarea, quando a
+  posição do cursor já se perdeu. Setas/Enter/Esc são capturados antes do handler de envio, senão
+  Enter mandaria a mensagem em vez de escolher o contato.
+
+**Testes:** `MencaoNoChatTest` — substituição nome→número (inclusive a ordem por tamanho), texto
+intacto sem menção, envio guardando o nome no CRM e mandando o número com `mentions`, nota interna
+sem `send_text`, API repassando as menções e o endpoint de participantes servindo do cache na
+segunda chamada.

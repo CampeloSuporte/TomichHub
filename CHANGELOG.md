@@ -5,6 +5,42 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-20 (Atendimento: marcar alguém do grupo com "@" no chat)
+
+### Adicionado
+
+- **Menção com "@" no compositor do chat**: digitar `@` abre a lista de participantes do grupo do
+  WhatsApp (clique ou setas + Enter/Tab para escolher). O nome entra no texto como `@João Silva` e a
+  pessoa recebe a notificação de menção no WhatsApp.
+  - `EvolutionAPIClient.get_group_participants_info()` — participantes **com nome**, lendo
+    `phoneNumber`/`id`/`jid` e `name`/`pushName`/`notify` (variam entre versões da Evolution); sem
+    nome, o número vira o rótulo.
+  - `GET /atendimento/api/conversation/<id>/participants/` — alimenta o autocomplete, com cache de
+    5 min por grupo (`?refresh=1` força releitura). Sem cache, cada `@` digitado viraria uma chamada
+    HTTP externa no meio da conversa.
+  - `services.aplicar_mencoes()` + `ConversationService.send_message(..., mentions=[{nome, phone}])`:
+    **o CRM guarda `@João Silva`, o WhatsApp recebe `@<número>`** — é o número no corpo, batendo com
+    o `mentioned` do envio, que faz o WhatsApp destacar a menção e notificar; guardar isso no
+    histórico encheria o chat do CRM de números.
+  - Nome mais longo primeiro na substituição: com "João" e "João Silva" no mesmo grupo, trocar o
+    curto antes deixaria `@5511... Silva` na frase.
+  - Nota interna não menciona ninguém (a lista nem abre — nada sai pro grupo); `@` no meio de
+    palavra não abre a lista (`fulano@empresa.com` não é pedido de menção); e só vai como menção o
+    nome que continua escrito na mensagem na hora do envio.
+
+### Testes
+
+- `MencaoNoChatTest` — substituição nome→número e a ordem por tamanho, texto intacto sem menção,
+  envio guardando o nome no CRM e mandando o número em `mentions`, nota interna sem `send_text`, API
+  repassando as menções, endpoint de participantes servindo do cache na segunda chamada. Suíte do
+  módulo: 122 testes, OK.
+
+### Documentação
+
+- `docs/ATENDIMENTO.md` — seção "Marcar alguém do grupo com @ no chat".
+
+---
+
 ## [Não publicado] — 2026-08-20 (Correção: modal do chamado não abria; cabeçalho da tabela sobrepondo)
 
 ### Corrigido

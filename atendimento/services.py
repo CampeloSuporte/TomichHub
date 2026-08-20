@@ -279,6 +279,35 @@ def _disparar_agente_ia(conversation, content) -> None:
     _disparar_acoes_ia(conversation, content)
 
 
+def aplicar_mencoes(texto, mentions):
+    """Prepara o texto que vai pro WhatsApp a partir do que o atendente
+    escreveu com "@" no chat.
+
+    No CRM a mensagem fica legível ("@João Silva, confere aí?"), mas o
+    WhatsApp só destaca a menção quando o corpo traz "@<número>" batendo com
+    o `mentioned` do envio — então aqui o nome é trocado pelo número. Devolve
+    (texto_para_whatsapp, [números]).
+
+    `mentions` é uma lista de {'nome', 'phone'} vinda do autocomplete: são os
+    pares que o próprio atendente escolheu, não um palpite sobre o texto.
+    """
+    if not mentions:
+        return texto, []
+    numeros = []
+    # Nomes mais longos primeiro: com "João" e "João Silva" na mesma conversa,
+    # trocar o curto antes deixaria "@5511... Silva" no meio da frase.
+    for m in sorted(mentions, key=lambda m: len(m.get('nome') or ''), reverse=True):
+        nome = (m.get('nome') or '').strip()
+        phone = _re.sub(r'\D', '', str(m.get('phone') or ''))
+        if not phone:
+            continue
+        if nome and f'@{nome}' in texto:
+            texto = texto.replace(f'@{nome}', f'@{phone}')
+        if phone not in numeros:
+            numeros.append(phone)
+    return texto, numeros
+
+
 def _ia_enviar(conversation, group, connection, texto, sender_name='Tomichinho',
                sender_type='ai', enviar_whatsapp=True) -> None:
     """Salva uma mensagem do agente IA e (se `enviar_whatsapp`) manda pro
@@ -696,6 +725,37 @@ class EvolutionAPIClient:
         except Exception as e:
             logger.warning(f"Erro ao buscar participantes do grupo {group_jid}: {e}")
         return []
+
+    def get_group_participants_info(self, group_jid: str) -> List[Dict]:
+        """Participantes do grupo com nome, para o "@" do chat marcar gente
+        pelo nome em vez do número cru.
+
+        A Evolution não é consistente no nome dos campos entre versões
+        (`phoneNumber`/`id`/`jid`, `name`/`pushName`/`notify`), então lê todos
+        e usa o primeiro que vier. Sem nome nenhum, o próprio número serve de
+        rótulo — melhor que uma linha vazia na lista.
+        """
+        try:
+            r = self._get(f"/group/participants/{self.instance}", params={"groupJid": group_jid})
+            if not r.ok:
+                return []
+            itens = []
+            for p in r.json().get("participants", []):
+                bruto = p.get("phoneNumber") or p.get("id") or p.get("jid") or ""
+                phone = bruto.split("@")[0].split(":")[0].strip()
+                if not phone:
+                    continue
+                nome = (p.get("name") or p.get("pushName") or p.get("notify")
+                        or p.get("verifiedName") or "").strip()
+                itens.append({
+                    "phone": phone,
+                    "nome": nome or phone,
+                    "admin": bool(p.get("admin")),
+                })
+            return itens
+        except Exception as e:
+            logger.warning(f"Erro ao buscar participantes (com nome) do grupo {group_jid}: {e}")
+            return []
 
     def send_text(self, jid: str, text: str, mentions: List[str] = None,
                   everyone: bool = False) -> Tuple[bool, str]:
@@ -1457,20 +1517,26 @@ class ConversationService:
 
     @staticmethod
     def send_message(conversation: Conversation, text: str,
-                     agent=None, is_internal=False) -> Tuple[bool, str]:
+                     agent=None, is_internal=False, mentions=None) -> Tuple[bool, str]:
         """Salva a mensagem imediatamente. Se `is_internal`, é uma nota
         interna — fica só no CRM, NUNCA sai pro WhatsApp do cliente (o
         toggle "Comentário Interno" da tela chegava a esta função sem
         nenhum efeito: a mensagem sempre ia pro WhatsApp igual a uma
         resposta normal, vazando nota privada pro cliente). Caso contrário,
         envia ao WhatsApp em background. Formato enviado: *NomeAgente*\n\nmensagem
+
+        `mentions` são os contatos marcados com "@" no chat (lista de
+        {'nome','phone'}): o CRM guarda o texto legível com o nome e o
+        WhatsApp recebe o número, que é o que faz a menção destacar e
+        notificar a pessoa. Nota interna ignora — não sai nada pro grupo.
         """
         import threading as _threading
 
         try:
             display_name = ConversationService.get_agent_display_name(agent)
             sender_type = "internal" if is_internal else "agent"
-            whatsapp_text = f"*{display_name}*\n\n{text}"
+            texto_wa, numeros_mencionados = aplicar_mencoes(text, mentions)
+            whatsapp_text = f"*{display_name}*\n\n{texto_wa}"
 
             # 0. Quem responde, assume — vale para qualquer caminho de envio
             # (inclusive nota interna: escrever sobre o chamado já é sinal
@@ -1547,7 +1613,8 @@ class ConversationService:
             def _send_bg():
                 try:
                     client = EvolutionAPIClient(group_connection)
-                    ok, remote_id = client.send_text(group_jid, whatsapp_text)
+                    ok, remote_id = client.send_text(
+                        group_jid, whatsapp_text, mentions=numeros_mencionados or None)
                     if ok and remote_id:
                         Message.objects.filter(id=msg_id).update(external_id=remote_id)
                     elif not ok:

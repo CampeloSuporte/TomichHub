@@ -1807,3 +1807,99 @@ class ChamadosDoClienteFiltrosTest(TestCase):
 
         nomes = {a['nome'] for a in data['opcoes']['agentes']}
         self.assertEqual(nomes, {self.agent.username, self.outro.username})
+
+
+class MencaoNoChatTest(TestCase):
+    """Marcar participante do grupo com "@" no chat: o CRM guarda o nome, o
+    WhatsApp recebe o número (é o que destaca a menção e notifica)."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.agent = _criar_agente_staff('gil')
+
+    def test_aplicar_mencoes_troca_nome_pelo_numero(self):
+        from atendimento.services import aplicar_mencoes
+
+        texto, numeros = aplicar_mencoes(
+            '@João Silva, confere aí?', [{'nome': 'João Silva', 'phone': '5511999998888'}])
+
+        self.assertEqual(texto, '@5511999998888, confere aí?')
+        self.assertEqual(numeros, ['5511999998888'])
+
+    def test_nome_mais_longo_primeiro(self):
+        # Com "João" e "João Silva" no mesmo grupo, trocar o curto antes
+        # deixaria "@5511... Silva" no meio da frase.
+        from atendimento.services import aplicar_mencoes
+
+        texto, numeros = aplicar_mencoes(
+            'oi @João Silva e @João',
+            [{'nome': 'João', 'phone': '5511111111111'},
+             {'nome': 'João Silva', 'phone': '5522222222222'}])
+
+        self.assertEqual(texto, 'oi @5522222222222 e @5511111111111')
+        self.assertEqual(set(numeros), {'5511111111111', '5522222222222'})
+
+    def test_sem_mencoes_texto_intacto(self):
+        from atendimento.services import aplicar_mencoes
+
+        texto, numeros = aplicar_mencoes('mensagem normal', [])
+
+        self.assertEqual(texto, 'mensagem normal')
+        self.assertEqual(numeros, [])
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_envio_manda_numero_ao_whatsapp_e_guarda_nome_no_crm(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, 'wamid-men-1')
+
+        ok, msg_id = ConversationService.send_message(
+            self.conversation, '@João Silva pode confirmar?', self.agent,
+            mentions=[{'nome': 'João Silva', 'phone': '5511999998888'}])
+
+        self.assertTrue(ok)
+        # No CRM a mensagem continua legível, com o nome.
+        self.assertEqual(Message.objects.get(id=msg_id).content, '@João Silva pode confirmar?')
+        args, kwargs = mock_client_cls.return_value.send_text.call_args
+        self.assertIn('@5511999998888', args[1])
+        self.assertEqual(kwargs['mentions'], ['5511999998888'])
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_nota_interna_com_mencao_nao_vai_ao_whatsapp(self, mock_client_cls):
+        ConversationService.send_message(
+            self.conversation, '@João Silva olha isso', self.agent, is_internal=True,
+            mentions=[{'nome': 'João Silva', 'phone': '5511999998888'}])
+
+        mock_client_cls.return_value.send_text.assert_not_called()
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_api_send_message_repassa_as_mencoes(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, 'wamid-men-2')
+        self.client.force_login(self.agent)
+        url = reverse('atendimento:api_send_message', args=[self.conversation.id])
+
+        resp = self.client.post(url, json.dumps({
+            'message': 'bom dia @Maria',
+            'mentions': [{'nome': 'Maria', 'phone': '5511777776666'}],
+        }), content_type='application/json')
+
+        self.assertEqual(resp.status_code, 200)
+        _args, kwargs = mock_client_cls.return_value.send_text.call_args
+        self.assertEqual(kwargs['mentions'], ['5511777776666'])
+
+    # A view importa EvolutionAPIClient direto no módulo (`from .services
+    # import ...`), então o mock precisa apontar pra `atendimento.views`.
+    @mock.patch('atendimento.views.EvolutionAPIClient')
+    def test_api_participantes_lista_o_grupo(self, mock_client_cls):
+        from django.core.cache import cache
+        cache.clear()
+        mock_client_cls.return_value.get_group_participants_info.return_value = [
+            {'phone': '5511999998888', 'nome': 'João Silva', 'admin': True},
+        ]
+        self.client.force_login(self.agent)
+        url = reverse('atendimento:api_conversation_participants', args=[self.conversation.id])
+
+        data = self.client.get(url).json()
+
+        self.assertEqual(data['participantes'][0]['nome'], 'João Silva')
+        # Segunda chamada sai do cache — não bate de novo na Evolution.
+        self.client.get(url)
+        self.assertEqual(mock_client_cls.return_value.get_group_participants_info.call_count, 1)

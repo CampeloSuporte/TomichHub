@@ -371,6 +371,12 @@
             </button>
         </div>
 
+        <!-- Autocomplete do "@" (marcar participante do grupo) -->
+        <div class="mention-box" id="mentionBox" style="display:none;">
+            <div class="mention-head"><i class="fas fa-at"></i> Marcar no grupo</div>
+            <div id="mentionList"></div>
+        </div>
+
         <!-- Linha de input -->
         <div class="chat-input-row">
             <button class="chat-icon-btn" id="attachBtn" onclick="chatApp.toggleAttachMenu()" title="Anexar">
@@ -1184,6 +1190,33 @@
 }
 .hosts-empty i { font-size: 24px; opacity: 0.15; display: block; margin-bottom: 8px; }
 
+/* Autocomplete de menção ("@" no chat) — flutua acima da linha de input,
+   sem empurrar o layout do compositor. */
+.mention-box {
+    position: absolute; bottom: 100%; left: 14px; right: 14px; margin-bottom: 6px;
+    background: #161d30; border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 -6px 24px rgba(0,0,0,.45); max-height: 240px; overflow-y: auto; z-index: 40;
+}
+.mention-head {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted);
+    padding: 7px 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0;
+    background: #161d30;
+}
+.mention-item {
+    display: flex; align-items: center; gap: 9px; padding: 8px 12px; cursor: pointer;
+    font-size: 12.5px; color: var(--text); border-bottom: 1px solid rgba(255,255,255,.03);
+}
+.mention-item:last-child { border-bottom: none; }
+.mention-item:hover, .mention-item.active { background: rgba(88,166,255,.12); }
+.mention-avatar {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    background: linear-gradient(135deg,#0ea5e9,#6366f1); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600;
+}
+.mention-nome { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mention-phone { font-size: 10.5px; color: var(--muted); flex-shrink: 0; }
+.mention-vazio { padding: 12px; font-size: 12px; color: var(--muted); text-align: center; }
+
 /* Botão "voltar pra lista" — só existe no mobile (ver base.html, padrão
    lista↔chat de tela única); no desktop lista e chat ficam lado a lado. */
 .chat-back-btn {
@@ -1207,6 +1240,7 @@
     var API_MSG   = '{% url "atendimento:api_send_message" conversation.id %}';
     var API_MEDIA = '{% url "atendimento:api_send_media" conversation.id %}';
     var API_UPD   = '{% url "atendimento:api_update_conversation" conversation.id %}';
+    var API_PART  = '{% url "atendimento:api_conversation_participants" conversation.id %}';
 
     var msgInput  = document.getElementById('msgInput');
     var sendBtn   = document.getElementById('sendBtn');
@@ -1261,6 +1295,7 @@
     /* ── Modo WhatsApp / Interno ── */
     function setMode(mode) {
         isInternal = (mode === 'internal');
+        if (isInternal && typeof fecharMention === 'function') fecharMention();
         document.getElementById('tabWa').classList.toggle('active', !isInternal);
         document.getElementById('tabInt').classList.toggle('active', isInternal);
         document.getElementById('tabSchedule').classList.toggle('disabled', isInternal);
@@ -1516,6 +1551,139 @@
         scrollBottom();
     }
 
+    /* ── Menção "@" (marcar participante do grupo) ──────────────────────
+       O CRM guarda o texto legível ("@João Silva"); ao enviar, o backend
+       troca o nome pelo número e passa `mentioned` pra Evolution — é isso
+       que faz o WhatsApp destacar a menção e notificar a pessoa. */
+    var mentionBox   = document.getElementById('mentionBox');
+    var mentionList  = document.getElementById('mentionList');
+    var _participantes = null;      /* null = ainda não buscou */
+    var _mencoesUsadas = {};        /* nome escolhido -> telefone */
+    var _mentionAtivo  = -1;        /* item destacado pelas setas */
+    var _mentionInicio = -1;        /* posição do "@" que abriu a lista */
+    var _mentionFiltrados = [];
+
+    function carregarParticipantes() {
+        if (_participantes !== null) return Promise.resolve(_participantes);
+        return fetch(API_PART)
+            .then(function(r){ return r.json(); })
+            .then(function(d){ _participantes = d.participantes || []; return _participantes; })
+            .catch(function(){ _participantes = []; return _participantes; });
+    }
+
+    function fecharMention() {
+        mentionBox.style.display = 'none';
+        _mentionInicio = -1; _mentionAtivo = -1; _mentionFiltrados = [];
+    }
+
+    /* Só abre em "@" que começa palavra: um e-mail digitado no meio da frase
+       (fulano@empresa.com) não deve virar lista de menção. */
+    function _termoDeMencao() {
+        var pos = msgInput.selectionStart;
+        var antes = msgInput.value.slice(0, pos);
+        var at = antes.lastIndexOf('@');
+        if (at === -1) return null;
+        if (at > 0 && !/[\s\n]/.test(antes.charAt(at - 1))) return null;
+        var termo = antes.slice(at + 1);
+        if (/[\n]/.test(termo)) return null;
+        return { inicio: at, termo: termo };
+    }
+
+    function atualizarMention() {
+        if (isInternal) { fecharMention(); return; }   /* nota interna não vai pro grupo */
+        var alvo = _termoDeMencao();
+        if (!alvo) { fecharMention(); return; }
+
+        carregarParticipantes().then(function(lista) {
+            /* O usuário pode ter continuado digitando enquanto a lista vinha. */
+            var atual = _termoDeMencao();
+            if (!atual) { fecharMention(); return; }
+            var termo = atual.termo.toLowerCase();
+            _mentionInicio = atual.inicio;
+            _mentionFiltrados = lista.filter(function(p) {
+                return !termo || (p.nome || '').toLowerCase().indexOf(termo) !== -1
+                    || (p.phone || '').indexOf(termo) !== -1;
+            }).slice(0, 30);
+            renderMention();
+        });
+    }
+
+    function renderMention() {
+        if (!_mentionFiltrados.length) {
+            mentionList.innerHTML = '<div class="mention-vazio">' +
+                (_participantes && _participantes.length
+                    ? 'Ninguém com esse nome no grupo.'
+                    : 'Não foi possível ler os participantes deste grupo.') + '</div>';
+            mentionBox.style.display = 'block';
+            return;
+        }
+        if (_mentionAtivo < 0 || _mentionAtivo >= _mentionFiltrados.length) _mentionAtivo = 0;
+        mentionList.innerHTML = _mentionFiltrados.map(function(p, i) {
+            var inicial = (p.nome || p.phone || '?').trim().charAt(0).toUpperCase();
+            return '<div class="mention-item' + (i === _mentionAtivo ? ' active' : '') + '" data-i="' + i + '">' +
+                   '<div class="mention-avatar">' + escapeHTML(inicial) + '</div>' +
+                   '<div class="mention-nome">' + escapeHTML(p.nome || p.phone) + '</div>' +
+                   '<div class="mention-phone">' + escapeHTML(p.phone) + '</div>' +
+                   '</div>';
+        }).join('');
+        Array.prototype.forEach.call(mentionList.querySelectorAll('.mention-item'), function(el) {
+            /* mousedown, não click: o click chegaria depois do blur do textarea
+               e a posição do cursor já teria se perdido. */
+            el.addEventListener('mousedown', function(ev) {
+                ev.preventDefault();
+                escolherMention(parseInt(el.dataset.i, 10));
+            });
+        });
+        mentionBox.style.display = 'block';
+    }
+
+    function escolherMention(i) {
+        var p = _mentionFiltrados[i];
+        if (!p || _mentionInicio < 0) { fecharMention(); return; }
+        var nome = p.nome || p.phone;
+        var pos = msgInput.selectionStart;
+        var antes = msgInput.value.slice(0, _mentionInicio);
+        var depois = msgInput.value.slice(pos);
+        msgInput.value = antes + '@' + nome + ' ' + depois;
+        var cursor = (antes + '@' + nome + ' ').length;
+        msgInput.setSelectionRange(cursor, cursor);
+        _mencoesUsadas[nome] = p.phone;
+        fecharMention();
+        msgInput.focus();
+        msgInput.dispatchEvent(new Event('input'));
+    }
+
+    /* Só vão como menção os nomes que continuam escritos na mensagem — se o
+       atendente apagou o "@Fulano" depois de escolher, ninguém é notificado. */
+    function mencoesDoTexto(texto) {
+        return Object.keys(_mencoesUsadas)
+            .filter(function(nome) { return texto.indexOf('@' + nome) !== -1; })
+            .map(function(nome) { return { nome: nome, phone: _mencoesUsadas[nome] }; });
+    }
+
+    msgInput.addEventListener('input', atualizarMention);
+    msgInput.addEventListener('click', atualizarMention);
+    msgInput.addEventListener('blur', function() { setTimeout(fecharMention, 120); });
+
+    /* Setas/Enter/Esc navegam a lista antes de qualquer outro handler do
+       textarea — senão Enter enviaria a mensagem em vez de escolher. */
+    msgInput.addEventListener('keydown', function(e) {
+        if (mentionBox.style.display === 'none') return;
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault(); e.stopImmediatePropagation();
+            _mentionAtivo += (e.key === 'ArrowDown' ? 1 : -1);
+            if (_mentionAtivo < 0) _mentionAtivo = _mentionFiltrados.length - 1;
+            if (_mentionAtivo >= _mentionFiltrados.length) _mentionAtivo = 0;
+            renderMention();
+        } else if ((e.key === 'Enter' || e.key === 'Tab') && _mentionFiltrados.length) {
+            e.preventDefault(); e.stopImmediatePropagation();
+            escolherMention(_mentionAtivo);
+        } else if (e.key === 'Escape') {
+            e.preventDefault(); e.stopImmediatePropagation();
+            fecharMention();
+        }
+    }, true);
+
     /* ── Enviar mensagem ── */
     function doSend() {
         /* Bloqueia se já enviando ou se há mídia pendente (evitar envio duplo) */
@@ -1529,7 +1697,7 @@
 
         fetch(API_MSG, {
             method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-            body:JSON.stringify({message:text, is_internal:isInternal})
+            body:JSON.stringify({message:text, is_internal:isInternal, mentions:mencoesDoTexto(text)})
         }).then(function(r){ return r.json(); }).then(function(d){
             if (d.success) {
                 /* WebSocket já renderizou — se não, renderiza aqui como fallback */
