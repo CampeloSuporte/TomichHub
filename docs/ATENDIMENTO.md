@@ -1214,3 +1214,17 @@ lista, usuário do portal vendo os próprios chamados, 403 para quem não tem v�
 outro cliente dá 404) e `ChamadosDoClienteFiltrosTest` (período por abertura vs. encerramento,
 status agrupado, responsável, busca por `#protocolo` e por texto da resolução, resumo acompanhando o
 filtro, opções só com os responsáveis do cliente).
+
+
+### Duas armadilhas de UI que apareceram aqui (e valem pra qualquer modal do CRM)
+
+- **Modal dentro de modal precisa de `z-index` acima de 9999.** `.modal-overlay`
+  (`static/css/style.css`) já é `z-index:9999`; o modal do chamado tinha nascido com `2000` inline e
+  abria *atrás* do overlay preto da lista — o clique parecia não fazer nada. Hoje é `10050`.
+- **Modal que nasce dentro de uma aba deve subir pro `<body>` ao abrir.** Basta um ancestral com
+  `transform`/`filter` para ele virar o containing block de um `position:fixed`, prendendo o modal
+  dentro do outro. `abrirChamadoDetalhe()` faz o `appendChild(document.body)` na abertura, mesmo
+  padrão do `ovpnAbrirModal()`.
+- Bônus da mesma leva: `<th>` com `position:sticky` precisa de **fundo sólido**
+  (`var(--card-bg)`), não `rgba(...)` translúcido — senão as linhas passam por baixo e se leem
+  através dos títulos ao rolar.
