@@ -33,6 +33,16 @@ def _criar_conversa():
     return Conversation.objects.create(group=group)
 
 
+def _criar_usuario_portal(username='cliente_portal'):
+    """Usuário do portal do cliente (não staff). Precisa de TOTP confirmado
+    como qualquer outro: o Forcar2FAMiddleware manda todo mundo pro
+    /configurar-2fa/ antes da view, e o teste veria só um 302."""
+    from usuario.models import TOTPDevice
+    user = User.objects.create_user(username=username, password='x', is_active=True)
+    TOTPDevice.objects.create(usuario=user, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+    return user
+
+
 def _criar_agente_staff(username='ana'):
     # Forcar2FAMiddleware redireciona qualquer staff sem TOTPDevice confirmado
     # pra tela de configuração de 2FA; sem isso o POST cai em 302 antes da view.
@@ -1635,10 +1645,73 @@ class ChamadosDoClienteAPITest(TestCase):
 
         self.assertEqual(self.client.get(self.url).json()['total'], 0)
 
-    def test_nao_staff_nao_acessa(self):
-        comum = User.objects.create_user(username='cliente_portal', password='x')
-        self.client.force_login(comum)
+    def test_usuario_do_portal_ve_os_chamados_do_proprio_cliente(self):
+        # O cliente valida os próprios chamados por esta tela — não é
+        # staff-only.
+        portal = _criar_usuario_portal()
+        self.cliente.usuario = portal
+        self.cliente.save(update_fields=['usuario'])
+        self.client.force_login(portal)
 
         resp = self.client.get(self.url)
 
-        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['total'], 1)
+
+    def test_usuario_sem_vinculo_com_o_cliente_recebe_403(self):
+        estranho = _criar_usuario_portal('de_fora')
+        self.client.force_login(estranho)
+
+        self.assertEqual(self.client.get(self.url).status_code, 403)
+
+
+class ChamadoDetalheDoClienteAPITest(TestCase):
+    """Conversa do chamado aberta no modal da página do cliente (sem sair do
+    CRM)."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.agent = _criar_agente_staff('davi')
+        self.cliente = _criar_cliente_teste('Cliente Detalhe')
+        self.conversation.cliente = self.cliente
+        self.conversation.resolution = 'SFP trocado'
+        self.conversation.save(update_fields=['cliente', 'resolution'])
+        Message.objects.create(
+            conversation=self.conversation, sender_type='customer',
+            content='o link caiu', external_id='det-1')
+        Message.objects.create(
+            conversation=self.conversation, sender_type='internal',
+            content='cliente devendo, não fazer visita', is_internal=True,
+            external_id='det-2')
+        self.url = reverse('atendimento:api_cliente_conversation_detail',
+                           args=[self.cliente.id, self.conversation.id])
+
+    def test_staff_ve_a_conversa_inteira_com_nota_interna(self):
+        self.client.force_login(self.agent)
+
+        data = self.client.get(self.url).json()
+
+        self.assertEqual(data['chamado']['resolucao'], 'SFP trocado')
+        conteudos = [m['content'] for m in data['mensagens']]
+        self.assertIn('o link caiu', conteudos)
+        self.assertIn('cliente devendo, não fazer visita', conteudos)
+
+    def test_cliente_do_portal_nao_ve_nota_interna(self):
+        portal = _criar_usuario_portal('portal_det')
+        self.cliente.usuario = portal
+        self.cliente.save(update_fields=['usuario'])
+        self.client.force_login(portal)
+
+        data = self.client.get(self.url).json()
+
+        conteudos = [m['content'] for m in data['mensagens']]
+        self.assertIn('o link caiu', conteudos)
+        self.assertNotIn('cliente devendo, não fazer visita', conteudos)
+
+    def test_chamado_de_outro_cliente_nao_abre_por_esta_rota(self):
+        outro = _criar_cliente_teste('Outro Cliente')
+        self.client.force_login(self.agent)
+        url = reverse('atendimento:api_cliente_conversation_detail',
+                      args=[outro.id, self.conversation.id])
+
+        self.assertEqual(self.client.get(url).status_code, 404)

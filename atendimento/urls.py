@@ -37,6 +37,7 @@ urlpatterns = [
     path('api/conversation/<uuid:conversation_id>/merge/', views.api_merge_conversation, name='api_merge_conversation'),
     path('api/conversations/search/', views.api_search_conversations, name='api_search_conversations'),
     path('api/cliente/<int:cliente_id>/conversations/', views.api_cliente_conversations, name='api_cliente_conversations'),
+    path('api/cliente/<int:cliente_id>/conversations/<uuid:conversation_id>/', views.api_cliente_conversation_detail, name='api_cliente_conversation_detail'),
     path('api/group/<int:group_id>/link/', views.api_link_group, name='api_link_group'),
 
     # APIs novas — Tags

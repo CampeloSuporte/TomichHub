@@ -1158,21 +1158,34 @@ pedido interno sem `send_text`, fallback sem IA, chamado já encerrado, marco co
 A aba **Tarefas** da página do cliente (`clientes/templates/listar.html`) ganhou o botão **Listar
 Chamados**, ao lado de "Nova Tarefa". Ele abre um modal com o histórico de chamados daquele cliente
 no módulo de Atendimento, no mesmo formato da tela `/atendimento/historico/` (protocolo, grupo,
-status, categoria, agente, criado em, última mensagem) — clicar em uma linha abre o chamado em
-`/atendimento/conversation/<id>/`, em nova aba.
+status, categoria, agente, criado em, última mensagem). Clicar em uma linha abre a **conversa
+completa num segundo modal, dentro do próprio CRM** — ninguém é mandado pro módulo de Atendimento.
 
-- **API:** `GET /atendimento/api/cliente/<cliente_id>/conversations/`
-  (`atendimento.views.api_cliente_conversations`).
+O chat do modal é somente leitura, com a mesma leitura do módulo: cliente à esquerda, equipe à
+direita, separador por dia, imagem/áudio/vídeo/anexo renderizados, e o cabeçalho com status,
+responsável, datas e a resolução em destaque.
+
+- **APIs:** `GET /atendimento/api/cliente/<cliente_id>/conversations/` (lista) e
+  `GET /atendimento/api/cliente/<cliente_id>/conversations/<conversation_id>/` (um chamado:
+  cabeçalho + mensagens), em `atendimento/views.py`.
 - **Vínculo:** busca por `Conversation.cliente` **ou** `group.cliente`. Chamados antigos, abertos
   antes de o grupo do WhatsApp ser vinculado ao cliente, ficaram sem `Conversation.cliente` — sem os
   dois lados o histórico aparece pela metade.
 - **Status `pre`** (buffer de pré-abertura, chamado que ainda não abriu) fica de fora, como na caixa
   de entrada. Chamados em tarefa aparecem com o protocolo `T-N`, e a resolução, quando existe, vem
   como segunda linha embaixo do grupo.
-- **Permissão:** `@staff_required` + `pode_acessar_cliente` — o módulo de Atendimento é staff-only e
-  a lista leva pra dentro dele, então o botão só é renderizado para `request.user.is_staff` e a API
-  responde 403 para staff de outra instância. Limite de 300 chamados por consulta; a busca do modal
-  filtra no cliente (protocolo, grupo, agente, categoria, status, resolução).
+- **Permissão:** `@login_required` + `pode_acessar_cliente` (helper `_cliente_do_request`), **não**
+  `staff_required` — o próprio cliente, logado no portal, acompanha e valida os chamados dele por
+  aqui. Quem não tem vínculo com o cliente leva 403. Como a conversa abre dentro do CRM, o
+  staff-only do módulo de Atendimento deixou de ser um limite.
+- **Nota interna nunca sai para quem não é staff:** a API do detalhe filtra `is_internal` /
+  `sender_type='internal'` — é conversa da equipe sobre o chamado, não algo que o cliente deva ler.
+  O chamado também precisa ser mesmo daquele cliente (404 caso contrário), senão um id de conversa
+  viraria porta de entrada pro histórico de outro cliente.
+- Limite de 300 chamados por consulta e 1000 mensagens por chamado; a busca do modal filtra no
+  cliente (protocolo, grupo, agente, categoria, status, resolução).
 
-**Testes:** `ChamadosDoClienteAPITest` — lista com resolução e URL do chamado, vínculo só pelo grupo,
-`pre` fora da lista e acesso negado a quem não é staff.
+**Testes:** `ChamadosDoClienteAPITest` (lista com resolução, vínculo só pelo grupo, `pre` fora da
+lista, usuário do portal vendo os próprios chamados, 403 para quem não tem vínculo) e
+`ChamadoDetalheDoClienteAPITest` (staff vê a nota interna, cliente do portal não vê, chamado de
+outro cliente dá 404).

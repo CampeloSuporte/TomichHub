@@ -5,6 +5,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-20 (Clientes: chamado abre dentro do CRM, sem ir pro Atendimento)
+
+### Alterado
+
+- **Clicar no chamado abre a conversa num modal do próprio CRM**, na página do cliente — antes
+  abria `/atendimento/conversation/<id>/` em outra aba. Chat somente leitura com a mesma leitura do
+  módulo (cliente à esquerda, equipe à direita, separador por dia, imagem/áudio/vídeo/anexo), com
+  status, responsável, datas e resolução no cabeçalho.
+- **A lista de chamados deixou de ser staff-only** (`@staff_required` → `@login_required` +
+  `pode_acessar_cliente`, no helper `_cliente_do_request`): o próprio cliente, logado no portal,
+  acompanha e valida os chamados dele por essa tela. Quem não tem vínculo com o cliente leva 403, e
+  o botão voltou a ser renderizado para todo mundo que enxerga a aba Tarefas.
+
+### Adicionado
+
+- **API `GET /atendimento/api/cliente/<cliente_id>/conversations/<conversation_id>/`**
+  (`api_cliente_conversation_detail`): cabeçalho do chamado + mensagens, somente leitura.
+  **Nota interna não sai para quem não é staff** (filtra `is_internal`/`sender_type='internal'`) —
+  é conversa da equipe sobre o chamado, não algo que o cliente deva ler. O chamado precisa pertencer
+  ao cliente da URL (404 caso contrário), senão um id de conversa viraria porta de entrada pro
+  histórico de outro cliente. Teto de 1000 mensagens por chamado.
+
+### Testes
+
+- `ChamadoDetalheDoClienteAPITest` (staff vê nota interna, cliente do portal não vê, chamado de
+  outro cliente dá 404) e dois casos novos em `ChamadosDoClienteAPITest` (usuário do portal vendo os
+  próprios chamados, 403 para quem não tem vínculo). Suíte do módulo: 107 testes, OK.
+
+---
+
 ## [Não publicado] — 2026-08-20 (Clientes: botão "Listar Chamados" na aba Tarefas)
 
 ### Adicionado

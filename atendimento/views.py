@@ -669,30 +669,54 @@ def api_search_conversations(request):
     ]})
 
 
-@staff_required
-@require_http_methods(["GET"])
-def api_cliente_conversations(request, cliente_id):
-    """Histórico de chamados de um cliente — usado pelo botão "Listar
-    Chamados" da aba Tarefas na página do cliente (`clientes/listar.html`),
-    que abre o chamado no módulo de Atendimento.
+def _cliente_do_request(request, cliente_id):
+    """Cliente da URL + checagem de acesso, para as APIs de chamado usadas
+    FORA do módulo de Atendimento (aba Tarefas da página do cliente).
 
-    O vínculo do chamado com o cliente pode estar na própria conversa
-    (`Conversation.cliente`) ou só no grupo do WhatsApp (`group.cliente`) —
-    chamados antigos, abertos antes de o grupo ser vinculado, ficaram sem
-    `Conversation.cliente`. Buscar pelos dois é o que faz o histórico
-    aparecer inteiro.
+    Aqui não vale `staff_required`: o próprio cliente, logado no portal,
+    acompanha e valida os chamados dele por essa tela. Quem manda é
+    `pode_acessar_cliente` — admin, consultor/operador da instância do
+    cliente, ou o usuário do portal vinculado a ele.
+
+    Retorna (cliente, None) ou (None, JsonResponse de erro).
     """
     from usuario.perms import pode_acessar_cliente
 
     cliente = get_object_or_404(Cliente, pk=cliente_id)
     if not pode_acessar_cliente(request.user, cliente):
-        return JsonResponse({'success': False, 'error': 'Sem permissão para este cliente.'}, status=403)
+        return None, JsonResponse(
+            {'success': False, 'error': 'Sem permissão para este cliente.'}, status=403)
+    return cliente, None
 
-    # 'pre' é o buffer de pré-abertura (chamado que ainda não abriu) — não é
-    # histórico, não aparece nem na caixa de entrada.
-    qs = (Conversation.objects
-          .filter(Q(cliente=cliente) | Q(group__cliente=cliente))
-          .exclude(status='pre')
+
+def _conversas_do_cliente(cliente):
+    """Chamados de um cliente. O vínculo pode estar na própria conversa
+    (`Conversation.cliente`) ou só no grupo do WhatsApp (`group.cliente`) —
+    chamados antigos, abertos antes de o grupo ser vinculado, ficaram sem
+    `Conversation.cliente`. Buscar pelos dois é o que faz o histórico
+    aparecer inteiro.
+
+    'pre' é o buffer de pré-abertura (chamado que ainda não abriu) — não é
+    histórico, não aparece nem na caixa de entrada.
+    """
+    return (Conversation.objects
+            .filter(Q(cliente=cliente) | Q(group__cliente=cliente))
+            .exclude(status='pre'))
+
+
+@login_required
+@require_http_methods(["GET"])
+def api_cliente_conversations(request, cliente_id):
+    """Histórico de chamados de um cliente — usado pelo botão "Listar
+    Chamados" da aba Tarefas na página do cliente (`clientes/listar.html`).
+    O chamado é aberto num modal ali mesmo, sem sair do CRM
+    (`api_cliente_conversation_detail`).
+    """
+    cliente, erro = _cliente_do_request(request, cliente_id)
+    if erro:
+        return erro
+
+    qs = (_conversas_do_cliente(cliente)
           .select_related('group', 'assigned_to', 'category')
           .order_by(F('last_message_at').desc(nulls_last=True), '-created_at')
           .distinct()[:300])
@@ -720,6 +744,64 @@ def api_cliente_conversations(request, cliente_id):
         'cliente_nome': cliente.nome_empresa,
         'total': len(chamados),
         'chamados': chamados,
+    })
+
+
+@login_required
+@require_http_methods(["GET"])
+def api_cliente_conversation_detail(request, cliente_id, conversation_id):
+    """Um chamado do cliente (cabeçalho + mensagens) para o modal da aba
+    Tarefas — o chamado abre dentro do CRM, sem mandar ninguém pro módulo de
+    Atendimento.
+
+    Somente leitura. A conversa precisa ser mesmo daquele cliente (senão
+    qualquer id de chamado viraria uma porta de entrada pro histórico de
+    outro cliente), e **nota interna não sai para quem não é staff**: é
+    conversa da equipe sobre o chamado, não algo que o cliente deva ler.
+    """
+    cliente, erro = _cliente_do_request(request, cliente_id)
+    if erro:
+        return erro
+
+    conv = get_object_or_404(
+        _conversas_do_cliente(cliente).select_related('group', 'assigned_to', 'category'),
+        id=conversation_id,
+    )
+
+    msgs = Message.objects.filter(conversation=conv).order_by('created_at').select_related('sender')
+    if not request.user.is_staff:
+        msgs = msgs.exclude(Q(is_internal=True) | Q(sender_type='internal'))
+
+    def _fmt(dt):
+        return timezone.localtime(dt).strftime('%d/%m/%Y %H:%M') if dt else ''
+
+    return JsonResponse({
+        'success': True,
+        'chamado': {
+            'id': str(conv.id),
+            'protocolo': f'T-{conv.conversation_id}' if conv.is_task_conv else f'#{conv.conversation_id}',
+            'grupo': conv.group.name if conv.group else '—',
+            'assunto': conv.subject or conv.title or '',
+            'status': conv.status,
+            'status_label': conv.get_status_display(),
+            'prioridade_label': conv.get_priority_display(),
+            'categoria': conv.category.name if conv.category else '',
+            'agente': (conv.assigned_to.get_full_name() or conv.assigned_to.username) if conv.assigned_to else '',
+            'criado_em': _fmt(conv.created_at),
+            'fechado_em': _fmt(conv.closed_at),
+            'resolucao': conv.resolution or '',
+        },
+        'mensagens': [{
+            'id': str(m.id),
+            'sender_type': m.sender_type,
+            'sender_name': m.sender_name or (m.sender.get_full_name() or m.sender.username if m.sender else ''),
+            'content': m.content,
+            'message_type': m.message_type,
+            'attachment_url': m.attachment_url or '',
+            'is_internal': m.is_internal or m.sender_type == 'internal',
+            'data': timezone.localtime(m.created_at).strftime('%d/%m/%Y'),
+            'hora': timezone.localtime(m.created_at).strftime('%H:%M'),
+        } for m in msgs[:1000]],
     })
 
 
