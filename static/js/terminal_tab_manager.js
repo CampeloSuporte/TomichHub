@@ -143,6 +143,20 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
         return;
     }
     
+    // ✅ PARA RDP - ABRIR ACESSO REMOTO VIA WEB (Xvfb + xfreerdp + x11vnc + noVNC)
+    // Sem isso o RDP caía no fluxo de terminal abaixo e o CRM tentava abrir SSH.
+    if (proto === 'RDP') {
+        console.log('🖥️ Protocolo RDP detectado');
+        const rdpUrl = `/clientes/rdp/${acessoId}/`;
+        const opcoes = 'width=1400,height=800,menubar=no,toolbar=no,location=no,status=no';
+        window.open(rdpUrl, `RDP_${acessoId}`, opcoes);
+
+        if (typeof showSuccess === 'function') {
+            showSuccess('RDP ABERTO', `Abrindo área de trabalho remota de ${host}`, 3000);
+        }
+        return;
+    }
+
     // ✅ PARA SSH, TELNET, ETC - ABRIR TERMINAL
     console.log('🖥️ Protocolo de terminal detectado:', proto);
     

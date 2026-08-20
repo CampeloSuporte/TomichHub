@@ -252,6 +252,24 @@ métodos de `clientes/consumers.py` — Terminal SSH (`connect_ssh_via_proxy`), 
 ainda porque cada um usa o objeto `proxy` de um jeito diferente (não é o mesmo copy-paste simples),
 precisam de mais cuidado e teste por protocolo.
 
+### Acesso RDP abria terminal SSH em vez da área de trabalho — Corrigido em 20/08/2026
+
+Clicar em "Acessar" num acesso com protocolo **RDP** (ex.: `SRV-AGRONELORE`) abria
+`/clientes/terminal/?cliente=<id>` e o CRM tentava conectar por SSH — nunca chegava no
+`/clientes/rdp/<id>/`.
+
+Causa: existem duas implementações de `acessarEquipamento()` no projeto, e a que a listagem de
+clientes carrega é a de `static/js/terminal_tab_manager.js` — que tratava `HTTP/HTTPS` e `WINBOX`,
+mas **não** `RDP`; qualquer outro protocolo caía no ramo final "SSH, Telnet, etc" e ia para o
+terminal. (A outra, `static/js/acessar_equipamento.js`, já tinha o caso RDP, mas nenhum template a
+inclui — é código morto.)
+
+Correção: ramo explícito para `RDP` em `terminal_tab_manager.js`, abrindo `/clientes/rdp/<id>/` em
+janela própria, no mesmo padrão do WinBox Web.
+
+> Ao mexer nesse fluxo, edite **`static/js/terminal_tab_manager.js`** — é o arquivo realmente
+> servido (`STATIC_ROOT` é o próprio `static/`) e o único incluído por `clientes/templates/listar.html`.
+
 ---
 
 ## Modos Suportados
@@ -260,6 +278,7 @@ precisam de mais cuidado e teste por protocolo.
 |------|-----|-----------|
 | `winbox` | `/clientes/winbox/<id>/` | WinBox 4 nativo via VNC |
 | `browser` | `/clientes/webfig/<id>/` | Navegador web apontando para WebFig/HTTP |
+| `rdp` | `/clientes/rdp/<id>/` | Área de trabalho remota (xfreerdp) via VNC |
 
 ---
 
@@ -284,5 +303,5 @@ sudo -u www-data env -i HOME=/var/www PATH=/usr/local/sbin:/usr/local/bin:/usr/s
 
 ---
 
-**Última atualização:** 04/08/2026  
+**Última atualização:** 20/08/2026  
 **Autor:** CampeloSuporte

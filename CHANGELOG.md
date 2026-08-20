@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-20 (Acessos: RDP abria terminal SSH)
+
+### Corrigido
+
+- **Acesso RDP abria o terminal SSH**: clicar em "Acessar" num acesso com protocolo `RDP` levava
+  para `/clientes/terminal/?cliente=<id>` e o CRM tentava conectar por SSH, em vez de abrir a área
+  de trabalho remota em `/clientes/rdp/<id>/`.
+  - `static/js/terminal_tab_manager.js` — a implementação de `acessarEquipamento()` que a listagem
+    de clientes realmente carrega tratava `HTTP/HTTPS` e `WINBOX`, mas não `RDP`; todo protocolo
+    não previsto caía no ramo final "SSH, Telnet, etc". Agora há ramo explícito para `RDP`.
+  - O caso `RDP` que existia em `static/js/acessar_equipamento.js` nunca rodava — nenhum template
+    inclui esse arquivo.
+  - Backend (`clientes/rdp_vnc.py` + `VncConsumer` em modo `rdp`, com túnel via ProxyServer para
+    IP privado) já estava pronto; só faltava o front chegar nele.
+
+---
+
 ## [Não publicado] — 2026-08-20 (Atendimento: marcar alguém do grupo com "@" no chat)
 
 ### Adicionado
