@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-20 (Correção: modal do chamado não abria; cabeçalho da tabela sobrepondo)
+
+### Corrigido
+
+- **Clicar no chamado não abria nada.** O modal de detalhe foi criado com `z-index:2000` inline, mas
+  `.modal-overlay` já é `z-index:9999` no `static/css/style.css` — o modal abria *atrás* do modal da
+  lista, escondido pelo overlay preto. Passou a `10050`. Ele também é movido para o `<body>` ao
+  abrir: nascendo dentro da aba Tarefas, qualquer ancestral com `transform`/`filter` viraria o
+  containing block do `position:fixed` e o prenderia dentro do outro modal.
+- **Cabeçalho da tabela por cima dos chamados ao rolar.** O `<th>` é `position:sticky` mas tinha
+  fundo translúcido (`rgba(255,255,255,.02)`), então as linhas apareciam por baixo dos títulos.
+  Agora usa `var(--card-bg)` sólido, `z-index:2` e uma linha de separação.
+
+---
+
 ## [Não publicado] — 2026-08-20 (Clientes: filtros no "Listar Chamados")
 
 ### Adicionado

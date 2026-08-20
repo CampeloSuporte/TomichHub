@@ -1096,7 +1096,7 @@
         <!-- Modal Chamados do cliente (histórico do módulo de Atendimento) -->
         <style>
             .chamados-table { width:100%; border-collapse:collapse; font-size:12px; }
-            .chamados-table th { text-align:left; padding:9px 10px; font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:2px solid var(--border); background:rgba(255,255,255,.02); white-space:nowrap; position:sticky; top:0; z-index:1; }
+            .chamados-table th { text-align:left; padding:9px 10px; font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.4px; border-bottom:2px solid var(--border); background:var(--card-bg); white-space:nowrap; position:sticky; top:0; z-index:2; box-shadow:0 1px 0 var(--border); }
             .chamados-table td { padding:10px; border-bottom:1px solid rgba(255,255,255,.05); color:var(--text-light); vertical-align:middle; }
             .chamados-table tbody tr { cursor:pointer; transition:background .12s; }
             .chamados-table tbody tr:hover td { background:rgba(255,255,255,.03); }
@@ -1201,7 +1201,7 @@
         </div>
 
         <!-- Modal de UM chamado: conversa aberta aqui dentro, sem sair do CRM -->
-        <div id="modalChamadoDetalhe" class="modal-overlay" style="display:none;z-index:2000;">
+        <div id="modalChamadoDetalhe" class="modal-overlay" style="display:none;z-index:10050;">
             <div class="modal-acesso" style="max-width:860px;">
                 <div class="modal-header-acesso">
                     <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> <span id="chamadoDetTitulo">Chamado</span></h2>
@@ -9347,6 +9347,10 @@ function getCsrfToken(){
 
     function abrirChamadoDetalhe(convId) {
         const modal = document.getElementById('modalChamadoDetalhe');
+        // Sobe o modal pro <body>: como ele nasce dentro da aba Tarefas,
+        // qualquer ancestral com transform/filter viraria o containing block
+        // do position:fixed e o modal apareceria preso dentro do outro.
+        if (modal.parentElement !== document.body) document.body.appendChild(modal);
         const box = document.getElementById('chamadoDetMensagens');
         document.getElementById('chamadoDetTitulo').textContent = 'Chamado';
         document.getElementById('chamadoDetInfo').innerHTML = '';
