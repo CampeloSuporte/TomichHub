@@ -6,7 +6,7 @@ do cliente) e escopo de instância. Decorators e views do núcleo (clientes,
 monitoramento, ipam, hotspot, bgp, scripts) devem checar permissão através
 destas funções em vez de `request.user.is_staff` cru.
 """
-from .models import PerfilUsuario, InstanciaFerramenta, ferramenta_habilitada as _ferramenta_habilitada
+from .models import Instancia, PerfilUsuario, InstanciaFerramenta, ferramenta_habilitada as _ferramenta_habilitada
 
 
 def get_perfil(user):
@@ -50,6 +50,37 @@ def is_backoffice(user):
 def get_instancia(user):
     perfil = get_perfil(user)
     return perfil.instancia if perfil else None
+
+
+def instancia_principal():
+    """A operação própria do Administrador (`Instancia.principal`), ou None.
+
+    Não é uma revenda: é o Administrador operando com Operadores próprios.
+    Serve para os módulos que são exclusivos da plataforma, hoje o
+    Atendimento. Ver a migração `usuario.0011_marcar_instancia_principal`.
+    """
+    return Instancia.objects.filter(principal=True, ativo=True).first()
+
+
+def pode_acessar_atendimento(user):
+    """Quem entra no módulo de Atendimento.
+
+    Regra do produto: o Atendimento é **exclusivo da instância principal**.
+    Administrador sempre; Consultor/Operador só se a instância deles for a
+    principal. Consultor de revenda não entra — nem as telas, nem as APIs,
+    nem os WebSockets.
+
+    Isso NÃO sai de `is_staff`: Consultor e Operador também têm
+    `is_staff=True` (é o que libera Scripts de Automação e o WebSocket de
+    firmware, entre outros), então `is_staff` deixaria o módulo aberto para
+    todas as revendas.
+    """
+    if not is_backoffice(user):
+        return False
+    if is_admin(user):
+        return True
+    instancia = get_instancia(user)
+    return bool(instancia and instancia.principal and instancia.ativo)
 
 
 def pode_gerenciar_usuarios(user):

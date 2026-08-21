@@ -177,8 +177,8 @@
                 </div>
                 {% endif %}
 
-                <!-- Atendimento — todo o back-office; as views escopam por instância -->
-                {% if is_backoffice_bo %}
+                <!-- Atendimento — exclusivo da instância principal -->
+                {% if pode_atendimento_bo %}
                 <a href="{% url 'atendimento:dashboard' %}" class="btn btn-sm" id="globalAtendBtn" style="position:relative;">
                     <i class="fas fa-headset me-1"></i> Atendimento
                 </a>

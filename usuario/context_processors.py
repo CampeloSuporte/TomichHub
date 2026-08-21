@@ -9,7 +9,7 @@ def perfil_context(request):
         return {
             'is_admin_bo': False, 'is_consultor_bo': False, 'is_operador_bo': False,
             'is_backoffice_bo': False, 'ferramentas_habilitadas': {},
-            'pode_editar_wiki': False,
+            'pode_editar_wiki': False, 'pode_atendimento_bo': False,
         }
     ferramentas = perms.ferramentas_habilitadas_dict_para(user)
     is_admin = perms.is_admin(user)
@@ -19,6 +19,9 @@ def perfil_context(request):
         'is_consultor_bo': is_consultor,
         'is_operador_bo': perms.is_operador(user),
         'is_backoffice_bo': perms.is_backoffice(user),
+        # Atendimento é exclusivo da instância principal — ver
+        # perms.pode_acessar_atendimento.
+        'pode_atendimento_bo': perms.pode_acessar_atendimento(user),
         # Botões de criar/editar artigo da Wiki. Reaproveita `ferramentas`
         # (já calculado acima) em vez de chamar perms.pode_editar_wiki, que
         # refaria a consulta de InstanciaFerramenta em toda requisição.

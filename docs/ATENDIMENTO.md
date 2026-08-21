@@ -1271,3 +1271,67 @@ carrega o número — mesma coisa que o WhatsApp Web faz.
 intacto sem menção, envio guardando o nome no CRM e mandando o número com `mentions`, nota interna
 sem `send_text`, API repassando as menções e o endpoint de participantes servindo do cache na
 segunda chamada.
+
+---
+
+## Quem entra no módulo (2026-08-21)
+
+O Atendimento é **exclusivo da instância principal** — a operação própria do Administrador. Não é
+um módulo de revenda: Consultor e Operador de outra instância não entram, nem tela, nem API, nem
+WebSocket.
+
+**A regra vive em `usuario.perms.pode_acessar_atendimento`:**
+
+```
+Administrador                          → entra
+Consultor/Operador da instância com
+  Instancia.principal = True           → entra
+Consultor/Operador de qualquer outra   → não entra
+Login do portal do cliente final       → não entra
+```
+
+`Instancia.principal` é um booleano no modelo (migrações `usuario.0010` e `0011`). A migração de
+dados marca a instância chamada "Principal", criada em 19/08/2026 para receber os clientes que
+estavam com `instancia = NULL` (ver `docs/PERMISSOES_CONSULTOR.md`). **Se nenhuma instância
+estiver marcada** — instalação nova, banco de teste — o módulo fica só com o Administrador; ele
+nunca cai aberto por falta de configuração.
+
+### Por que não é `is_staff`
+
+`staff_required` checava `request.user.is_staff` cru. Isso funcionou enquanto só o Administrador
+era `is_staff`, mas `_is_staff_para_role` passou a criar Consultor e Operador com `is_staff=True`
+— coisa de que eles **precisam** para outras features (Scripts de Automação em
+`clientes/script_views.py` e o WebSocket de firmware em `clientes/consumers.py`). Com isso o
+módulo inteiro ficou aberto para todas as revendas. Não dá para "resolver" tirando o `is_staff`
+deles: quebraria scripts e firmware. Quem decide é o papel + a instância.
+
+### Onde o gate está aplicado
+
+- **HTTP**: `atendimento.views.staff_required` (toda tela e API do módulo). Configuração de
+  plataforma — conexões WhatsApp, permissões, settings — continua um degrau acima, no
+  `admin_required`, exclusivo do Administrador.
+- **WebSocket**: `atendimento/consumers.py` (`ConversationConsumer`, `InboxConsumer`,
+  `VirtualRoomConsumer`) via `_pode_atendimento`. Antes checavam só `is_authenticated`: qualquer
+  conta logada — inclusive login de portal — assinava `atendimento_inbox` e recebia em tempo real
+  toda mensagem que passasse pelo módulo, mesmo sem conseguir abrir a tela.
+- **Menu**: `templates/base.html` usa `pode_atendimento_bo` (context processor de `usuario`).
+
+Dois endpoints estavam sem gate nenhum do módulo e foram corrigidos junto: as sete APIs de
+**kanban** (só `@login_required` — qualquer conta logada lia e escrevia nos quadros) e
+`api_tags_list`, que **não tinha decorator algum**.
+
+### O que continua fora do gate, de propósito
+
+`api_cliente_conversations` e `api_cliente_conversation_detail` — são o botão "Listar Chamados" da
+página do cliente no CRM (`clientes/listar.html`), não o módulo. Já passam por
+`pode_acessar_cliente`, então cada um só alcança os próprios clientes. `webhook_evolution` é
+webhook público por natureza (`csrf_exempt`, validado pela instância da Evolution).
+
+### Escopo dos dados dentro do módulo
+
+`atendimento/scope.py` continua valendo e não virou redundante: o Operador da instância principal
+vê os clientes/conversas/grupos **dela**, não os de uma revenda, e os guardas por id
+(`pode_ver_conversation` / `pode_ver_group`) seguem fechando os IDOR.
+
+**Regressão:** `atendimento.tests.AtendimentoExclusivoDaPrincipalTest` (8 testes) e
+`EscopoDeDadosNoAtendimentoTest` (8 testes).

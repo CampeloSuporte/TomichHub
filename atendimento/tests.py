@@ -1905,99 +1905,210 @@ class MencaoNoChatTest(TestCase):
         self.assertEqual(mock_client_cls.return_value.get_group_participants_info.call_count, 1)
 
 
-class IsolamentoInstanciaTest(TestCase):
-    """Consultor/Operador só enxergam o que é da própria instância.
+def _dar_2fa(user):
+    """`Forcar2FAMiddleware` redireciona quem não tem TOTP confirmado — sem
+    isso todo request do teste vira 302 e as asserções passariam à toa
+    (corpo vazio "não contém" o dado alheio)."""
+    from usuario.models import TOTPDevice
+    TOTPDevice.objects.create(usuario=user, secret='A' * 32, confirmado=True)
+    return user
 
-    Regressão da falha em que o Consultor via os clientes das outras
-    instâncias: `is_staff` virou True para Consultor/Operador (para liberar
-    o atendimento), mas os `admin_required`/querysets do módulo continuavam
-    tratando `is_staff` como "é o Administrador" e nada era filtrado.
+
+class AtendimentoExclusivoDaPrincipalTest(TestCase):
+    """O módulo de Atendimento é exclusivo da instância principal (a operação
+    própria do Administrador). Consultor/Operador de revenda não entram — nem
+    tela, nem API, nem WebSocket.
+
+    Regressão de duas falhas: (1) `staff_required` checava `is_staff`, que
+    passou a ser True também para Consultor/Operador, abrindo o módulo para
+    todas as revendas; (2) as APIs de kanban e `api_tags_list` não tinham
+    nem o gate do módulo — `api_tags_list` não tinha decorator nenhum.
     """
-
-    @staticmethod
-    def _com_2fa(user):
-        """`Forcar2FAMiddleware` redireciona quem não tem TOTP confirmado —
-        sem isso todo request do teste vira 302 e as asserções passariam à
-        toa (corpo vazio "não contém" o cliente alheio)."""
-        from usuario.models import TOTPDevice
-        TOTPDevice.objects.create(usuario=user, secret='A' * 32, confirmado=True)
-        return user
 
     def setUp(self):
         from usuario.models import Instancia, PerfilUsuario
 
-        self.inst_a = Instancia.objects.create(nome='Instância A')
-        self.inst_b = Instancia.objects.create(nome='Instância B')
+        self.principal = Instancia.objects.create(nome='Principal', principal=True)
+        self.revenda = Instancia.objects.create(nome='Revenda X')
 
-        self.consultor = User.objects.create_user(
-            username='consultor_a', email='ca@example.com', password='x',
+        def cria(username, role, instancia):
+            u = User.objects.create_user(
+                username=username, email=f'{username}@example.com', password='x',
+                is_staff=True, is_active=True,
+            )
+            PerfilUsuario.objects.create(usuario=u, role=role, instancia=instancia)
+            _dar_2fa(u)
+            return u
+
+        self.consultor = cria('consultor_revenda', PerfilUsuario.ROLE_CONSULTOR, self.revenda)
+        self.operador_revenda = cria('operador_revenda', PerfilUsuario.ROLE_OPERADOR, self.revenda)
+        self.operador_principal = cria('operador_principal', PerfilUsuario.ROLE_OPERADOR, self.principal)
+        self.admin = _dar_2fa(User.objects.create_user(
+            username='admin_plataforma', email='ap@example.com', password='x',
+            is_staff=True, is_superuser=True, is_active=True,
+        ))
+        self.portal = _dar_2fa(User.objects.create_user(
+            username='login_portal', email='lp@example.com', password='x',
+            is_staff=False, is_active=True,
+        ))
+
+    ROTAS = [
+        'atendimento:dashboard', 'atendimento:inbox', 'atendimento:grupos',
+        'atendimento:empresas', 'atendimento:historico', 'atendimento:relatorios',
+        'atendimento:kanban', 'atendimento:tarefas', 'atendimento:auto_atendimento',
+        'atendimento:sala_virtual',
+    ]
+
+    def test_consultor_de_revenda_nao_abre_nenhuma_tela(self):
+        self.client.force_login(self.consultor)
+        for nome in self.ROTAS:
+            with self.subTest(rota=nome):
+                r = self.client.get(reverse(nome))
+                self.assertEqual(r.status_code, 302)
+                self.assertIn('instancia', r['Location'])
+
+    def test_operador_de_revenda_tambem_nao_entra(self):
+        self.client.force_login(self.operador_revenda)
+        r = self.client.get(reverse('atendimento:inbox'))
+        self.assertEqual(r.status_code, 302)
+
+    def test_operador_da_principal_entra(self):
+        self.client.force_login(self.operador_principal)
+        for nome in self.ROTAS:
+            with self.subTest(rota=nome):
+                self.assertEqual(self.client.get(reverse(nome)).status_code, 200)
+
+    def test_administrador_entra(self):
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get(reverse('atendimento:dashboard')).status_code, 200)
+
+    def test_apis_de_kanban_e_tags_exigem_o_modulo(self):
+        # Eram `@login_required` (kanban) e sem decorator nenhum (tags).
+        self.client.force_login(self.consultor)
+        self.assertEqual(self.client.get(reverse('atendimento:api_kanban_boards')).status_code, 302)
+        self.assertEqual(self.client.get(reverse('atendimento:api_tags_list')).status_code, 302)
+
+        self.client.force_login(self.operador_principal)
+        self.assertEqual(self.client.get(reverse('atendimento:api_kanban_boards')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('atendimento:api_tags_list')).status_code, 200)
+
+    def test_login_de_portal_nao_entra(self):
+        self.client.force_login(self.portal)
+        self.assertNotEqual(self.client.get(reverse('atendimento:inbox')).status_code, 200)
+
+    def test_websocket_do_inbox_usa_a_mesma_regra_da_porta_http(self):
+        # Os consumers chamam `perms.pode_acessar_atendimento` (envelopado em
+        # `_pode_atendimento` só para sair do contexto async). Antes checavam
+        # apenas `is_authenticated`: qualquer conta logada assinava
+        # `atendimento_inbox` e recebia toda mensagem em tempo real.
+        from atendimento import consumers
+        from usuario.perms import pode_acessar_atendimento
+
+        self.assertTrue(hasattr(consumers, '_pode_atendimento'))
+        self.assertTrue(pode_acessar_atendimento(self.admin))
+        self.assertTrue(pode_acessar_atendimento(self.operador_principal))
+        self.assertFalse(pode_acessar_atendimento(self.consultor))
+        self.assertFalse(pode_acessar_atendimento(self.operador_revenda))
+        self.assertFalse(pode_acessar_atendimento(self.portal))
+
+    def test_sem_instancia_principal_cadastrada_so_o_administrador_entra(self):
+        # Banco sem `principal=True` (instalação nova): o módulo não pode
+        # cair aberto pra revenda por falta de configuração.
+        self.principal.principal = False
+        self.principal.save(update_fields=['principal'])
+
+        self.client.force_login(self.operador_principal)
+        self.assertEqual(self.client.get(reverse('atendimento:inbox')).status_code, 302)
+
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get(reverse('atendimento:inbox')).status_code, 200)
+
+
+class EscopoDeDadosNoAtendimentoTest(TestCase):
+    """Mesmo dentro do módulo (instância principal), o queryset é escopado:
+    a instância principal não vê os dados de uma revenda.
+
+    Antes desta correção o módulo listava `Cliente.objects.all()` e buscava
+    conversa/grupo por id sem checar dono — o que virava vazamento assim que
+    qualquer outra instância existisse.
+    """
+
+    def setUp(self):
+        from usuario.models import Instancia, PerfilUsuario
+
+        self.principal = Instancia.objects.create(nome='Principal', principal=True)
+        self.revenda = Instancia.objects.create(nome='Revenda X')
+
+        self.operador = User.objects.create_user(
+            username='op_principal', email='op@example.com', password='x',
             is_staff=True, is_active=True,
         )
         PerfilUsuario.objects.create(
-            usuario=self.consultor, role=PerfilUsuario.ROLE_CONSULTOR, instancia=self.inst_a,
+            usuario=self.operador, role=PerfilUsuario.ROLE_OPERADOR, instancia=self.principal,
         )
-        self._com_2fa(self.consultor)
-        self.admin = self._com_2fa(User.objects.create_user(
+        _dar_2fa(self.operador)
+
+        self.admin = _dar_2fa(User.objects.create_user(
             username='admin_plataforma', email='ap@example.com', password='x',
             is_staff=True, is_superuser=True, is_active=True,
         ))
 
-        self.cliente_a = _criar_cliente_teste('CLIENTE DA INSTANCIA A')
-        self.cliente_a.instancia = self.inst_a
-        self.cliente_a.save(update_fields=['instancia'])
+        self.cliente_principal = _criar_cliente_teste('CLIENTE DA PRINCIPAL')
+        self.cliente_principal.instancia = self.principal
+        self.cliente_principal.save(update_fields=['instancia'])
 
-        self.cliente_b = _criar_cliente_teste('CLIENTE DA INSTANCIA B')
-        self.cliente_b.instancia = self.inst_b
-        self.cliente_b.save(update_fields=['instancia'])
+        self.cliente_revenda = _criar_cliente_teste('CLIENTE DA REVENDA')
+        self.cliente_revenda.instancia = self.revenda
+        self.cliente_revenda.save(update_fields=['instancia'])
 
-        self.conv_b = _criar_conversa()
-        self.conv_b.cliente = self.cliente_b
-        self.conv_b.save(update_fields=['cliente'])
-        self.grupo_b = self.conv_b.group
-        self.grupo_b.cliente = self.cliente_b
-        self.grupo_b.save(update_fields=['cliente'])
+        self.conv_revenda = _criar_conversa()
+        self.conv_revenda.cliente = self.cliente_revenda
+        self.conv_revenda.save(update_fields=['cliente'])
+        self.grupo_revenda = self.conv_revenda.group
+        self.grupo_revenda.cliente = self.cliente_revenda
+        self.grupo_revenda.save(update_fields=['cliente'])
 
-    def test_tela_de_grupos_nao_mostra_cliente_de_outra_instancia(self):
-        self.client.force_login(self.consultor)
+    def test_grupos_nao_mostra_cliente_de_outra_instancia(self):
+        self.client.force_login(self.operador)
         html = self.client.get(reverse('atendimento:grupos')).content.decode()
-        self.assertNotIn('CLIENTE DA INSTANCIA B', html)
-        self.assertIn('CLIENTE DA INSTANCIA A', html)
+        self.assertNotIn('CLIENTE DA REVENDA', html)
+        self.assertIn('CLIENTE DA PRINCIPAL', html)
 
-    def test_tela_de_empresas_nao_mostra_cliente_de_outra_instancia(self):
-        self.client.force_login(self.consultor)
+    def test_empresas_nao_mostra_cliente_de_outra_instancia(self):
+        self.client.force_login(self.operador)
         html = self.client.get(reverse('atendimento:empresas')).content.decode()
-        self.assertNotIn('CLIENTE DA INSTANCIA B', html)
+        self.assertNotIn('CLIENTE DA REVENDA', html)
 
     def test_historico_nao_mostra_conversa_de_outra_instancia(self):
-        self.client.force_login(self.consultor)
+        self.client.force_login(self.operador)
         html = self.client.get(reverse('atendimento:historico')).content.decode()
-        self.assertNotIn('CLIENTE DA INSTANCIA B', html)
+        self.assertNotIn('CLIENTE DA REVENDA', html)
 
     def test_abrir_conversa_de_outra_instancia_da_403(self):
-        self.client.force_login(self.consultor)
+        self.client.force_login(self.operador)
         r = self.client.get(
-            reverse('atendimento:conversation_detail', args=[self.conv_b.id]))
+            reverse('atendimento:conversation_detail', args=[self.conv_revenda.id]))
         self.assertEqual(r.status_code, 403)
 
     def test_hosts_da_conversa_de_outra_instancia_da_403(self):
-        self.client.force_login(self.consultor)
+        self.client.force_login(self.operador)
         r = self.client.get(
-            reverse('atendimento:api_conversation_hosts', args=[self.conv_b.id]))
+            reverse('atendimento:api_conversation_hosts', args=[self.conv_revenda.id]))
         self.assertEqual(r.status_code, 403)
 
     def test_vincular_grupo_de_outra_instancia_da_403(self):
-        self.client.force_login(self.consultor)
+        self.client.force_login(self.operador)
         r = self.client.post(
-            reverse('atendimento:api_link_group', args=[self.grupo_b.id]),
-            data=json.dumps({'cliente_id': self.cliente_a.id}),
+            reverse('atendimento:api_link_group', args=[self.grupo_revenda.id]),
+            data=json.dumps({'cliente_id': self.cliente_principal.id}),
             content_type='application/json',
         )
         self.assertEqual(r.status_code, 403)
-        self.grupo_b.refresh_from_db()
-        self.assertEqual(self.grupo_b.cliente_id, self.cliente_b.id)
+        self.grupo_revenda.refresh_from_db()
+        self.assertEqual(self.grupo_revenda.cliente_id, self.cliente_revenda.id)
 
     def test_configuracoes_da_plataforma_sao_so_do_administrador(self):
-        self.client.force_login(self.consultor)
+        self.client.force_login(self.operador)
         self.assertEqual(
             self.client.get(reverse('atendimento:settings_connections')).status_code, 403)
 
@@ -2008,5 +2119,5 @@ class IsolamentoInstanciaTest(TestCase):
     def test_administrador_continua_vendo_tudo(self):
         self.client.force_login(self.admin)
         html = self.client.get(reverse('atendimento:empresas')).content.decode()
-        self.assertIn('CLIENTE DA INSTANCIA A', html)
-        self.assertIn('CLIENTE DA INSTANCIA B', html)
+        self.assertIn('CLIENTE DA PRINCIPAL', html)
+        self.assertIn('CLIENTE DA REVENDA', html)

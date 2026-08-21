@@ -57,6 +57,15 @@ class Instancia(models.Model):
 
     nome = models.CharField(max_length=255)
     ativo = models.BooleanField(default=True)
+    principal = models.BooleanField(
+        default=False,
+        verbose_name='Instância principal',
+        help_text=(
+            'Marca a operação própria do Administrador (não uma revenda). '
+            'Só ela tem acesso aos módulos exclusivos da plataforma — hoje, '
+            'o Atendimento. Deve existir no máximo uma.'
+        ),
+    )
     criado_em = models.DateTimeField(auto_now_add=True)
     criado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='instancias_criadas')
 

@@ -5,6 +5,44 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-21 (Atendimento passa a ser exclusivo da instância principal)
+
+### Alterado
+
+- **O módulo de Atendimento é exclusivo da instância principal** — a operação própria do
+  Administrador. Consultor e Operador de revenda não entram mais: nem tela, nem API, nem
+  WebSocket. Antes o módulo escopava os dados por instância; agora a porta é fechada antes disso.
+  - `Instancia.principal` (novo campo, migrações `usuario.0010` e `0011`) marca essa operação. A
+    migração de dados marca a instância "Principal". Sem nenhuma marcada, o módulo fica só com o
+    Administrador — nunca cai aberto por falta de configuração.
+  - Regra em `usuario.perms.pode_acessar_atendimento`, usada por
+    `atendimento.views.staff_required`, pelos três consumers de `atendimento/consumers.py` e pelo
+    menu (`pode_atendimento_bo`).
+  - Não dá pra resolver tirando o `is_staff` de Consultor/Operador: eles precisam dele para os
+    Scripts de Automação e para o WebSocket de firmware.
+
+### Corrigido
+
+- **WebSockets do atendimento sem autorização**: `ConversationConsumer`, `InboxConsumer` e
+  `VirtualRoomConsumer` checavam só `is_authenticated`. Qualquer conta logada — inclusive login de
+  portal do cliente final — assinava `atendimento_inbox` e recebia em tempo real toda mensagem que
+  passasse pelo módulo, mesmo sem conseguir abrir a tela.
+- **`api_tags_list` não tinha decorator nenhum** — leitura e criação de tag abertas.
+- **As sete APIs de kanban** tinham só `@login_required`: qualquer conta logada lia e escrevia nos
+  quadros.
+- `sala_virtual` estava com `@login_required`; é tela do módulo, passou pro mesmo gate.
+
+**Regressão:** `atendimento.tests.AtendimentoExclusivoDaPrincipalTest` (8 testes) e
+`EscopoDeDadosNoAtendimentoTest` (8 testes, reescrita da anterior).
+
+**Arquivos:** `usuario/models.py`, `usuario/perms.py`, `usuario/context_processors.py`,
+`usuario/migrations/0010_instancia_principal.py`,
+`usuario/migrations/0011_marcar_instancia_principal.py`, `atendimento/views.py`,
+`atendimento/consumers.py`, `templates/base.html`, `atendimento/tests.py`,
+`docs/ATENDIMENTO.md`.
+
+---
+
 ## [Não publicado] — 2026-08-21 (Segurança: Consultor via os clientes das outras instâncias)
 
 ### Corrigido

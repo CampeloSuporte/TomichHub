@@ -14,16 +14,32 @@ def _is_staff(user):
     return user.is_active and user.is_staff
 
 def staff_required(view_func):
-    """Permite acesso apenas a administradores e funcionários (is_staff).
-    Redireciona clientes e usuários comuns para a página inicial."""
+    """Porta de entrada do módulo de Atendimento.
+
+    O Atendimento é **exclusivo da instância principal** (a operação própria
+    do Administrador): entram o Administrador e os Operadores dela. Consultor
+    de revenda não entra — nem tela, nem API, nem WebSocket.
+
+    Antes checava `request.user.is_staff` cru. Isso deixou de servir quando
+    Consultor e Operador passaram a ser criados com `is_staff=True` (o que
+    eles precisam para Scripts de Automação e para o WebSocket de firmware):
+    o módulo inteiro ficou aberto para todas as revendas. Quem decide agora é
+    `perms.pode_acessar_atendimento`.
+    """
     from functools import wraps
     from django.conf import settings as _settings
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
+        from usuario.perms import pode_acessar_atendimento, is_backoffice, is_admin
         if not request.user.is_authenticated:
             login_url = getattr(_settings, 'LOGIN_URL', '/auth/login/')
             return redirect(f'{login_url}?next={request.path}')
-        if not request.user.is_staff:
+        if not pode_acessar_atendimento(request.user):
+            # Consultor/Operador de revenda: o dashboard deles é o da
+            # instância. Mandar pro `quadro_geral` (que hoje é só do
+            # Administrador) só empurraria o redirect adiante.
+            if is_backoffice(request.user) and not is_admin(request.user):
+                return redirect('quadro_instancia')
             return redirect('quadro_geral')
         return view_func(request, *args, **kwargs)
     return wrapper
@@ -1160,7 +1176,6 @@ def configuracoes(request):
 # ─── Tags ───
 
 @staff_required
-
 @login_required
 @require_http_methods(["POST", "DELETE"])
 def api_conversation_tags(request, conversation_id, tag_id=None):
@@ -1188,6 +1203,7 @@ def api_conversation_tags(request, conversation_id, tag_id=None):
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@staff_required
 def api_tags_list(request):
     if request.method == 'GET':
         tags = list(Tag.objects.values('id', 'name', 'color'))
@@ -1460,6 +1476,7 @@ def kanban(request):
     return render(request, 'atendimento/kanban.html', context)
 
 
+@staff_required
 @login_required
 def api_kanban_boards(request):
     if request.method == 'GET':
@@ -1499,6 +1516,7 @@ def api_kanban_boards(request):
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@staff_required
 @login_required
 def api_kanban_board_detail(request, board_id):
     board = get_object_or_404(KanbanBoard, id=board_id)
@@ -1516,6 +1534,7 @@ def api_kanban_board_detail(request, board_id):
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@staff_required
 @login_required
 def api_kanban_columns(request, board_id):
     board = get_object_or_404(KanbanBoard, id=board_id)
@@ -1535,6 +1554,7 @@ def api_kanban_columns(request, board_id):
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@staff_required
 @login_required
 def api_kanban_column_detail(request, board_id, column_id):
     col = get_object_or_404(KanbanColumn, id=column_id, board_id=board_id)
@@ -1553,6 +1573,7 @@ def api_kanban_column_detail(request, board_id, column_id):
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@staff_required
 @login_required
 def api_kanban_cards(request, board_id, column_id):
     col = get_object_or_404(KanbanColumn, id=column_id, board_id=board_id)
@@ -1581,6 +1602,7 @@ def api_kanban_cards(request, board_id, column_id):
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@staff_required
 @login_required
 def api_kanban_card_detail(request, board_id, column_id, card_id):
     card = get_object_or_404(KanbanCard, id=card_id, column_id=column_id, column__board_id=board_id)
@@ -1603,6 +1625,7 @@ def api_kanban_card_detail(request, board_id, column_id, card_id):
     return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 
+@staff_required
 @login_required
 @require_http_methods(["POST"])
 def api_kanban_move_card(request, card_id):
@@ -2697,7 +2720,7 @@ def api_display_name(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
-@login_required
+@staff_required
 def sala_virtual(request):
     from .services import build_ice_servers
     display_name = request.user.get_full_name() or request.user.username

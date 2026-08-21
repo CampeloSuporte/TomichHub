@@ -3,6 +3,20 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 
 
+@database_sync_to_async
+def _pode_atendimento(user):
+    """Mesma regra da porta HTTP (`atendimento.views.staff_required`): o
+    módulo é exclusivo da instância principal.
+
+    Sem isso os consumers checavam só `is_authenticated` — qualquer conta
+    logada, inclusive login de portal de cliente e Consultor de revenda,
+    conseguia assinar `atendimento_inbox` e receber em tempo real toda
+    mensagem que passasse pelo módulo, mesmo sem conseguir abrir a tela.
+    """
+    from usuario.perms import pode_acessar_atendimento
+    return pode_acessar_atendimento(user)
+
+
 class ConversationConsumer(AsyncWebsocketConsumer):
     """
     WebSocket para tempo real na conversa.
@@ -11,7 +25,7 @@ class ConversationConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
-        if not self.scope["user"].is_authenticated:
+        if not await _pode_atendimento(self.scope["user"]):
             await self.close()
             return
 
@@ -39,7 +53,7 @@ class InboxConsumer(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
-        if not self.scope["user"].is_authenticated:
+        if not await _pode_atendimento(self.scope["user"]):
             await self.close()
             return
 
@@ -66,7 +80,7 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
         user = self.scope["user"]
-        if not user.is_authenticated:
+        if not await _pode_atendimento(user):
             await self.close()
             return
 
