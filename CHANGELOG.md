@@ -5,6 +5,43 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-20 (Agent NOC: Zabbix via API — histórico e gráficos)
+
+### Adicionado
+
+- **O Agent NOC agora consulta o Zabbix do cliente e responde com gráfico**: perguntas de
+  histórico ("me traga o histórico do tráfego do link da Wirelink", "sinal óptico antes e depois
+  do rompimento") deixaram de depender de SSH — quem guarda o passado é o Zabbix.
+  - `zabbix_buscar_item(host, item)` — acha hosts e itens monitorados; o termo do item casa em
+    **nome e key** do item, então buscar pela descrição da interface ("painera", "wirelink") basta.
+    Sem achar, lista o que existe naquele host em vez de responder "não encontrei".
+  - `zabbix_historico(itemids, periodo|inicio+fim, marcador, titulo)` — até **4 itens no mesmo
+    gráfico**, com mín/méd/máx/último e amostras da janela, e o **PNG enviado ao usuário**
+    (mídia no WhatsApp, `<img>` no chat do terminal web).
+  - `marcador` desenha linha vermelha tracejada na hora do evento — é o "antes e depois do
+    rompimento" com as duas pontas do enlace no mesmo gráfico.
+- **Sem cadastro novo**: o Zabbix sai do `ZabbixConfig` do cliente ou, na falta dele, de um
+  **acesso HTTP/HTTPS com "zabbix" no tipo** (usuário/senha do próprio acesso). A URL tolera os
+  formatos reais de cadastro (`ip:porta/zabbix`, `ip/zabbix/`, `ip` + porta) e o acesso passa pelo
+  **mesmo túnel SSH do ProxyServer** que a aba Monitoramento usa quando o Zabbix está em IP privado.
+  A combinação que respondeu fica em cache por 30 min.
+- **`monitoramento/chart.py`** — gráfico de série temporal em PNG com Pillow (sem matplotlib):
+  eixo Y formatado pela unidade do item (`4.05 Gbps`, `-23.87 dBm`), horas no fuso do Django e
+  legenda com mín/méd/máx por série.
+- **`historico_janela()`** em `monitoramento/services.py` — janela absoluta com fallback automático
+  entre `history.get` e `trend.get` (médias horárias), então evento de dias atrás ainda tem gráfico
+  mesmo com o histórico bruto já expirado. Contadores de octetos viram taxa em bps.
+
+**Validado ao vivo** (Startnet Provedor, Zabbix em IP privado via túnel SSH): "@noc me traga o
+histórico do tráfego das últimas 3 horas do link paineiras no switch brasnorte" → o agent buscou os
+itens da `100GE0/0/4(LINK-PAINEIRAS)`, trouxe os números das duas direções e enviou o gráfico.
+
+**Arquivos:** `monitoramento/agent_zabbix.py` (novo), `monitoramento/chart.py` (novo),
+`monitoramento/services.py`, `home/agent_engine.py`, `home/views.py`,
+`clientes/templates/terminal.html`, `docs/agent_noc.md`, `docs/monitoramento.md`, `AGENT_NOC.md`.
+
+---
+
 ## [Não publicado] — 2026-08-20 (Acessos: RDP abria terminal SSH)
 
 ### Corrigido

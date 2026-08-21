@@ -231,6 +231,23 @@ Clientes só acessam o dashboard do próprio cliente. Admins/operadores acessam 
 
 ## Histórico de Alterações
 
+### 2026-08-20 — Camada Zabbix reutilizada pelo Agent NOC
+
+O Agent NOC passou a consultar o Zabbix do cliente para responder perguntas de histórico
+(tráfego, sinal óptico, CPU) e devolver gráficos. Ele **não** tem uma configuração própria:
+usa `ZabbixConfig` ou, na falta dela, um acesso HTTP/HTTPS do cliente com "zabbix" no tipo,
+e passa pelo mesmo `_get_config_com_tunel()` (túnel SSH via ProxyServer) desta aba.
+
+**Adicionado em `monitoramento/services.py`:**
+- `buscar_hosts(config, busca)` / `buscar_itens(config, host_busca, item_busca)` — busca textual
+  de hosts e itens (casa em `name` e `key_`).
+- `historico_janela(config, item_id, ts_from, ts_till)` — histórico em janela absoluta, com
+  fallback automático `history.get` ↔ `trend.get` e reamostragem por bucket.
+
+**Novos módulos:** `monitoramento/agent_zabbix.py` (descoberta do Zabbix + tools do agent) e
+`monitoramento/chart.py` (gráfico PNG com Pillow). Ver [agent_noc.md](agent_noc.md).
+
+
 ### 2026-06-13 — Sistema de Abas
 
 **Problema:** Dashboard de monitoramento tinha lista plana de gráficos sem organização.

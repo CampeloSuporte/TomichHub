@@ -2861,6 +2861,11 @@
                     _agentAddMsg('agent', msg.content || '');
                     break;
 
+                case 'agent_image':
+                    _agentRemThinking();
+                    _agentAddImagem(msg);
+                    break;
+
                 case 'awaiting_approval':
                     _agentRemThinking();
                     _pendingApprovalKey = msg.tool_call_key;
@@ -2975,6 +2980,20 @@
             const el   = document.createElement('div');
             el.className = `agent-msg ${tipo}`;
             el.textContent = conteudo;
+            msgs.appendChild(el);
+            _agentScrollBottom();
+        }
+
+        function _agentAddImagem(msg) {
+            const msgs = document.getElementById('agentMsgs');
+            const el   = document.createElement('div');
+            el.className = 'agent-msg agent';
+            const mime = msg.mimetype || 'image/png';
+            el.innerHTML =
+                (msg.caption ? `<div style="margin-bottom:6px">${_escHtml(msg.caption)}</div>` : '') +
+                `<a href="data:${mime};base64,${msg.b64}" target="_blank" rel="noopener">` +
+                `<img src="data:${mime};base64,${msg.b64}" alt="gráfico" ` +
+                `style="max-width:100%;border-radius:6px;display:block"></a>`;
             msgs.appendChild(el);
             _agentScrollBottom();
         }

@@ -568,6 +568,87 @@ TOOLS_DEFINITION: list[dict] = [
         },
     },
     {
+        "name": "zabbix_buscar_item",
+        "description": (
+            "Procura hosts e itens monitorados no Zabbix do cliente (o Zabbix é lido do acesso "
+            "cadastrado do cliente — tipo 'Zabbix', protocolo HTTP/HTTPS). "
+            "Use SEMPRE antes de zabbix_historico, para descobrir o itemid. "
+            "Ex: host='juina', item='painera' encontra os itens da interface com descrição PAINERA "
+            "no switch de Juína. Sem nenhum parâmetro, lista os hosts monitorados."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "host": {
+                    "type": "string",
+                    "description": "Texto parcial do host no Zabbix (ex: 'juina', 'sw painera', 'olt central').",
+                },
+                "item": {
+                    "type": "string",
+                    "description": (
+                        "Termos do item — descrição da interface e/ou métrica. "
+                        "Ex: 'painera', 'wirelink bits received', 'rx power', 'tráfego'. "
+                        "O primeiro termo vai para a busca da API; os demais filtram o resultado."
+                    ),
+                },
+                "cliente_nome": {
+                    "type": "string",
+                    "description": "Nome (parcial) do cliente — usar apenas em modo de acesso global.",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "zabbix_historico",
+        "description": (
+            "Traz o histórico de itens do Zabbix (até 4 itemids no mesmo gráfico) e ENVIA "
+            "automaticamente ao usuário um gráfico PNG do período. Retorna mínimo/médio/máximo/último "
+            "e amostras ao longo da janela. Use para 'histórico de tráfego do link X', 'sinal óptico "
+            "antes e depois do rompimento', 'como estava a CPU ontem à noite'. "
+            "Quando o histórico bruto já expirou, cai automaticamente nas médias horárias (trends)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "itemids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "IDs dos itens (obtidos com zabbix_buscar_item). Máx 4 — todos no mesmo gráfico.",
+                },
+                "periodo": {
+                    "type": "string",
+                    "description": "Duração da janela: '30m', '6h', '2d', '1w'. Padrão '6h'. Ignorado se inicio e fim forem informados.",
+                },
+                "inicio": {
+                    "type": "string",
+                    "description": "Início absoluto: 'AAAA-MM-DD HH:MM' ou 'DD/MM/AAAA HH:MM'. Use para janelas em torno de um evento.",
+                },
+                "fim": {
+                    "type": "string",
+                    "description": "Fim absoluto (mesmo formato do inicio) ou 'agora'.",
+                },
+                "marcador": {
+                    "type": "string",
+                    "description": "Momento de referência marcado com linha vermelha tracejada no gráfico (ex: hora do rompimento).",
+                },
+                "titulo": {
+                    "type": "string",
+                    "description": "Título do gráfico (ex: 'Sinal óptico Juína ↔ Painera').",
+                },
+                "grafico": {
+                    "type": "boolean",
+                    "description": "Gerar e enviar o gráfico PNG. Padrão: true.",
+                },
+                "cliente_nome": {
+                    "type": "string",
+                    "description": "Nome (parcial) do cliente — usar apenas em modo de acesso global.",
+                },
+            },
+            "required": ["itemids"],
+        },
+    },
+    {
         "name": "fetch_host_config",
         "description": (
             "Coleta a configuração completa de um host via SSH (display current-configuration ou equivalente) "
@@ -718,6 +799,51 @@ TOOLS_OPENAI: list[dict] = [
                     },
                 },
                 "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "zabbix_buscar_item",
+            "description": (
+                "Procura hosts e itens monitorados no Zabbix do cliente (lido do acesso cadastrado, "
+                "tipo 'Zabbix', protocolo HTTP/HTTPS). Use antes de zabbix_historico para achar o itemid. "
+                "Sem parâmetros, lista os hosts monitorados."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "host": {"type": "string", "description": "Texto parcial do host no Zabbix"},
+                    "item": {"type": "string", "description": "Termos do item (descrição da interface e/ou métrica)"},
+                    "cliente_nome": {"type": "string", "description": "Nome parcial do cliente (modo global)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "zabbix_historico",
+            "description": (
+                "Histórico de itens do Zabbix (até 4 itemids) com envio automático de gráfico PNG ao usuário. "
+                "Retorna mínimo/médio/máximo/último e amostras da janela."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "itemids":  {"type": "array", "items": {"type": "string"},
+                                 "description": "IDs dos itens (de zabbix_buscar_item). Máx 4."},
+                    "periodo":  {"type": "string", "description": "'30m', '6h', '2d', '1w' — padrão '6h'"},
+                    "inicio":   {"type": "string", "description": "Início absoluto 'AAAA-MM-DD HH:MM'"},
+                    "fim":      {"type": "string", "description": "Fim absoluto ou 'agora'"},
+                    "marcador": {"type": "string", "description": "Momento marcado no gráfico (ex: rompimento)"},
+                    "titulo":   {"type": "string", "description": "Título do gráfico"},
+                    "grafico":  {"type": "boolean", "description": "Gerar/enviar o PNG (padrão true)"},
+                    "cliente_nome": {"type": "string", "description": "Nome parcial do cliente (modo global)"},
+                },
+                "required": ["itemids"],
             },
         },
     },
@@ -993,6 +1119,7 @@ class AgentNOCEngine:
                 AgentKnowledge.objects.filter(ativo=True, cliente__isnull=True)
                 .order_by('fabricante', 'titulo')[:50]
             )
+            zabbix_acessos  = []
             hosts_header    = "## Hosts disponíveis — TODOS OS CLIENTES DA PLATAFORMA"
             hosts_descricao = "Hosts organizados por cliente. Use o ID do host ao executar comandos."
             cliente_info    = "**Global NOC** (acesso a todos os clientes)"
@@ -1013,6 +1140,12 @@ class AgentNOCEngine:
                 )
             )
             hosts_lines = '\n'.join(_host_line(a) for a in acessos) or '  (nenhum host cadastrado)'
+
+            zabbix_acessos = [
+                a for a in acessos
+                if 'zabbix' in (a.tipo or '').lower()
+                and (a.protocolo or '').upper() in ('HTTP', 'HTTPS')
+            ]
 
             fabricantes_hosts = set()
             for a in acessos:
@@ -1107,6 +1240,58 @@ class AgentNOCEngine:
             canal_instrucao = "Canal WhatsApp nível OPERACIONAL: execute automaticamente leitura E configurações não-destrutivas (add/set/enable/disable de IPs, rotas, interfaces, filas, etc.)."
         else:  # admin
             canal_instrucao = "Canal WhatsApp nível ADMIN: execute QUALQUER comando automaticamente, exceto reboot/format/erase/factory reset que são destrutivos."
+
+        # ── Zabbix do cliente (consultado via API pelas tools) ────
+        if zabbix_acessos:
+            zbx_lista = ', '.join(f'"{a.tipo}" ({a.host})' for a in zabbix_acessos[:3])
+            zabbix_status = f"✅ Cadastrado neste cliente: {zbx_lista}"
+        elif is_global:
+            zabbix_status = ("Depende do cliente — informe `cliente_nome` nas tools do Zabbix. "
+                             "Se o cliente não tiver acesso Zabbix cadastrado, a tool avisa.")
+        else:
+            zabbix_status = ("❌ Nenhum acesso com \"Zabbix\" no tipo (HTTP/HTTPS) cadastrado para este "
+                             "cliente — não há histórico disponível; use os comandos do equipamento.")
+
+        zabbix_section = f"""
+
+## Zabbix — histórico e gráficos (tools `zabbix_buscar_item` e `zabbix_historico`)
+
+{zabbix_status}
+
+O equipamento só mostra o **agora**. Sempre que a pergunta envolver **histórico, período,
+comparação antes/depois, "ontem", "na hora do rompimento", "pico", "média"** — a resposta vem do
+**Zabbix**, não de SSH.
+
+**Fluxo obrigatório (2 passos):**
+1. `zabbix_buscar_item(host=<equipamento>, item=<descrição/métrica>)` → devolve os `itemid`.
+   - O `host` é o nome no Zabbix (ex: "juina", "sw-painera", "borda").
+   - O `item` casa em nome **e** key do item: use a descrição da interface e/ou a métrica.
+     Ex: `item="wirelink bits received"`, `item="painera rx power"`, `item="uplink bits sent"`.
+   - Sem parâmetros, lista todos os hosts monitorados. Sem achar o item, ele lista o que existe
+     naquele host — leia a lista e escolha o `itemid` certo em vez de desistir.
+2. `zabbix_historico(itemids=[...], ...)` → resumo numérico + **gráfico PNG enviado automaticamente
+   ao usuário**. Nunca diga "não consigo gerar gráfico": essa tool gera e envia.
+
+**Como escolher o período:**
+- Pergunta genérica de histórico → `periodo="6h"` (ou "24h", "7d" conforme o pedido).
+- Evento com hora conhecida (rompimento, queda, reclamação) → `inicio` e `fim` absolutos cobrindo
+  **antes e depois** do evento, mais `marcador` com a hora do evento (linha vermelha no gráfico).
+  Ex: rompimento às 14h20 de 19/08 → `inicio="2026-08-19 12:00"`, `fim="2026-08-19 17:00"`,
+  `marcador="2026-08-19 14:20"`.
+- Até 4 itemids entram no mesmo gráfico — use isso para comparar as duas pontas de um enlace
+  (ex: sinal óptico do lado A e do lado B) ou entrada+saída de tráfego.
+
+**Termos usuais dos itens no Zabbix:**
+- Tráfego: "Bits received" / "Bits sent" (entrada/saída, em bps — contadores já são convertidos)
+- Sinal óptico: "rx power", "tx power", "Optical", "DDM", unidade dBm
+- Interfaces são nomeadas pela descrição do equipamento — buscar pela descrição ("painera",
+  "wirelink") costuma bastar.
+
+**Ao responder:** cite mínimo/médio/máximo/último com as unidades que a tool devolveu, compare os
+períodos antes e depois quando houver `marcador`, e interprete (ex: queda de -18 dBm para -40 dBm =
+fibra rompida; tráfego caindo a zero = enlace fora). O gráfico já foi enviado — não descreva a
+imagem, analise os números.
+"""
 
         notas_cliente_section = ''
         if not is_global and notas_cliente:
@@ -1349,6 +1534,8 @@ Use um único `execute_command` com as linhas separadas por `\n`. NÃO use `comm
 Exemplos reais:
 - `system-view\ninterface XGigabitEthernet0/0/1\nundo shutdown\nreturn`
 - `system-view\ninterface GigabitEthernet0/0/1\nip address 10.0.0.1 255.255.255.0\nreturn`
+
+{zabbix_section}
 
 ## Regras de execução
 {canal_instrucao}
@@ -2096,6 +2283,99 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
 
     # ── Dispatcher de tools ───────────────────────────────────────
 
+    # ── Zabbix (via acesso do cliente) ────────────────────────────
+
+    async def _zabbix_cliente_id(self, cliente_nome: str = '') -> tuple:
+        """
+        Descobre em qual cliente consultar o Zabbix.
+        Retorna (cliente_id, nome) ou (None, mensagem de erro).
+        """
+        from clientes.models import Cliente
+        sessao = await self._get_sessao()
+
+        if cliente_nome:
+            clientes = await sync_to_async(list)(
+                Cliente.objects.filter(nome_empresa__icontains=cliente_nome)[:5]
+            )
+            if not clientes:
+                return None, f"Nenhum cliente com nome parecido com '{cliente_nome}'."
+            if len(clientes) > 1 and not sessao.cliente_id:
+                nomes = ', '.join(c.nome_empresa for c in clientes)
+                return None, f"Mais de um cliente casa com '{cliente_nome}': {nomes}. Seja específico."
+            # Sessão de cliente: só pode consultar o próprio Zabbix
+            if sessao.cliente_id:
+                if not any(c.id == sessao.cliente_id for c in clientes):
+                    return None, "Você só pode consultar o Zabbix do cliente desta sessão."
+                return sessao.cliente_id, sessao.cliente.nome_empresa
+            return clientes[0].id, clientes[0].nome_empresa
+
+        if sessao.cliente_id:
+            return sessao.cliente_id, sessao.cliente.nome_empresa
+
+        return None, ("Sessão global sem cliente definido — informe cliente_nome para dizer "
+                      "de qual cliente é o Zabbix.")
+
+    async def _tool_zabbix_buscar_item(self, host: str = '', item: str = '',
+                                       cliente_nome: str = '') -> str:
+        from monitoramento import agent_zabbix
+
+        cliente_id, nome = await self._zabbix_cliente_id(cliente_nome)
+        if not cliente_id:
+            return f"❌ {nome}"
+
+        try:
+            texto = await sync_to_async(agent_zabbix.buscar_itens_texto)(
+                cliente_id, host or '', item or ''
+            )
+        except agent_zabbix.ZabbixIndisponivel as exc:
+            return f"❌ Zabbix de {nome}: {exc}"
+        except Exception as exc:
+            logger.warning('zabbix_buscar_item falhou: %s', exc)
+            return f"❌ Erro ao consultar o Zabbix de {nome}: {exc}"
+
+        await self._registrar_log(
+            'system', f"zabbix_buscar_item host={host!r} item={item!r} → {len(texto)} chars"
+        )
+        return _noc_truncar(texto, 3000)
+
+    async def _tool_zabbix_historico(self, itemids: list, periodo: str = '6h',
+                                     inicio: str = '', fim: str = '',
+                                     marcador: str = '', titulo: str = '',
+                                     grafico: bool = True,
+                                     cliente_nome: str = '') -> str:
+        from monitoramento import agent_zabbix
+
+        cliente_id, nome = await self._zabbix_cliente_id(cliente_nome)
+        if not cliente_id:
+            return f"❌ {nome}"
+
+        try:
+            resultado = await sync_to_async(agent_zabbix.historico_itens)(
+                cliente_id, itemids, periodo or '6h', inicio or '', fim or '',
+                titulo or '', marcador or '', bool(grafico),
+            )
+        except agent_zabbix.ZabbixIndisponivel as exc:
+            return f"❌ Zabbix de {nome}: {exc}"
+        except Exception as exc:
+            logger.warning('zabbix_historico falhou: %s', exc)
+            return f"❌ Erro ao buscar histórico no Zabbix de {nome}: {exc}"
+
+        png = resultado.get('png')
+        if png:
+            import base64
+            await self.notify_cb({
+                'type':     'agent_image',
+                'b64':      base64.b64encode(png).decode(),
+                'mimetype': 'image/png',
+                'filename': 'zabbix.png',
+                'caption':  resultado.get('legenda', ''),
+            })
+            await self._registrar_log(
+                'system', f"zabbix_historico: gráfico enviado ({len(png)} bytes) — {resultado.get('legenda','')}"
+            )
+
+        return _noc_truncar(resultado.get('texto', ''), 3000)
+
     async def _dispatch_tool(self, tool_name: str, tool_input: dict) -> str:
         if tool_name == 'execute_command':
             return await self._tool_execute_command(
@@ -2129,6 +2409,30 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
         elif tool_name == 'get_terminal_output':
             return await self._tool_get_terminal_output(
                 int(tool_input.get('linhas', 200))
+            )
+        elif tool_name == 'zabbix_buscar_item':
+            return await self._tool_zabbix_buscar_item(
+                tool_input.get('host', ''),
+                tool_input.get('item', ''),
+                tool_input.get('cliente_nome', ''),
+            )
+        elif tool_name == 'zabbix_historico':
+            # O modelo às vezes manda "75464,75557" em vez de lista
+            ids_raw = tool_input.get('itemids') or []
+            if isinstance(ids_raw, str):
+                ids_raw = [i.strip() for i in ids_raw.replace(';', ',').split(',') if i.strip()]
+            graf = tool_input.get('grafico', True)
+            if isinstance(graf, str):
+                graf = graf.strip().lower() not in ('false', '0', 'nao', 'não')
+            return await self._tool_zabbix_historico(
+                ids_raw,
+                tool_input.get('periodo', '6h'),
+                tool_input.get('inicio', ''),
+                tool_input.get('fim', ''),
+                tool_input.get('marcador', ''),
+                tool_input.get('titulo', ''),
+                graf,
+                tool_input.get('cliente_nome', ''),
             )
         elif tool_name == 'fetch_host_config':
             return await self._tool_fetch_host_config(
@@ -2386,6 +2690,28 @@ async def _evolution_send(evo_config, jid: str, texto: str, tentativas: int = 3)
         except Exception:
             raise
     raise ultimo_exc
+
+
+async def _evolution_send_media(evo_config, jid: str, media_b64: str,
+                                filename: str = 'grafico.png', caption: str = '',
+                                mediatype: str = 'image') -> dict:
+    """Envia imagem/arquivo via Evolution API (usado para os gráficos do Zabbix)."""
+    import httpx
+    url = f"{evo_config.url.rstrip('/')}/message/sendMedia/{evo_config.instance_name}"
+    headers = {"apikey": evo_config.api_key, "Content-Type": "application/json"}
+    # Mesmo payload do envio de mídia do Atendimento (ConversationService.send_media),
+    # que já roda em produção nesta instância da Evolution.
+    payload = {
+        "number":    jid,
+        "mediatype": mediatype,
+        "media":     media_b64,
+        "fileName":  filename,
+        "caption":   caption or "",
+    }
+    async with httpx.AsyncClient(timeout=60) as client:
+        resp = await client.post(url, json=payload, headers=headers)
+        resp.raise_for_status()
+        return resp.json()
 
 
 def models_uso_increment():

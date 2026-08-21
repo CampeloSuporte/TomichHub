@@ -2,6 +2,30 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 44 — 20/08/2026: Agent NOC lê o Zabbix do cliente (histórico + gráfico)
+
+**O que foi implementado?**
+- 📈 **Histórico de verdade**: o agent responde "me traga o histórico do tráfego do link X" e
+  "como estava o sinal óptico antes e depois do rompimento" consultando a **API do Zabbix do
+  cliente**, e envia um **gráfico PNG** junto (mídia no WhatsApp, imagem no chat do terminal).
+- 🔎 **Duas tools novas**: `zabbix_buscar_item` (acha host/item pela descrição da interface, ex:
+  "painera", "wirelink") e `zabbix_historico` (até 4 itens no mesmo gráfico, com mín/méd/máx e
+  linha vermelha marcando a hora do evento).
+- 🔌 **Zero cadastro novo**: usa o `ZabbixConfig` do cliente ou o **acesso HTTP/HTTPS com "zabbix"
+  no tipo** que já existe, incluindo o túnel SSH do ProxyServer quando o Zabbix está em IP privado.
+- 🕰️ **`history` ↔ `trends`**: janela de dias atrás continua tendo gráfico mesmo com o histórico
+  bruto expirado.
+- ✅ **Validado ao vivo** na Startnet Provedor (Zabbix atrás de túnel SSH).
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[agent_noc.md](agent_noc.md)** | Seção "Zabbix via API — histórico e gráficos": descoberta do Zabbix, tools, history×trends, renderização do PNG e entrega da imagem |
+| **[monitoramento.md](monitoramento.md)** | Histórico de alterações: funções novas em `services.py` reutilizadas pelo agent |
+
+---
+
 ### Sessão 43 — 20/08/2026: Fix — Acesso RDP (abria terminal SSH, depois só tela preta)
 
 **O que foi corrigido?**

@@ -464,3 +464,271 @@ def listar_itens(config, host_id: str, busca: str = '') -> list:
 
     result.sort(key=_sort)
     return result
+
+# ──────────────────────────────────────────────────────────────
+# BUSCA DE ITENS (usada pelo Agent NOC)
+# ──────────────────────────────────────────────────────────────
+
+def _rate_de_contador(pontos: list, value_type: int, units: str) -> tuple:
+    """Converte contador acumulativo (bytes) em taxa (bps). Mesma regra do
+    gráfico da aba Monitoramento — ver historico_item().
+    Retorna (pontos, convertido)."""
+    units_lower = (units or '').lower()
+    if any(u in units_lower for u in ('bps', 'pps', 'b/s', 'bit')):
+        return pontos, False
+    if value_type == 3 and units_lower in ('b', 'bytes') and len(pontos) >= 2:
+        taxa = []
+        for i in range(1, len(pontos)):
+            dt = pontos[i]['t'] - pontos[i - 1]['t']
+            if dt <= 0:
+                continue
+            delta = pontos[i]['v'] - pontos[i - 1]['v']
+            if delta < 0:      # contador reiniciou (reboot)
+                continue
+            taxa.append({'t': pontos[i]['t'], 'v': (delta * 8) / dt})
+        return taxa, True
+    return pontos, False
+
+
+def buscar_hosts(config, busca: str = '', limit: int = 30) -> list:
+    """Hosts monitorados que casam com `busca` (nome visível ou host técnico)."""
+    auth   = _get_auth_token(config)
+    params = {'output': ['hostid', 'host', 'name', 'status'], 'limit': limit}
+    if busca:
+        params['search']      = {'name': busca, 'host': busca}
+        params['searchByAny'] = True
+    hosts = _rpc(config.url, 'host.get', params, auth, config=config)
+    return [
+        {'hostid': h['hostid'], 'host': h['host'], 'name': h.get('name', h['host'])}
+        for h in hosts
+    ]
+
+
+def buscar_itens(config, host_busca: str = '', item_busca: str = '',
+                 limit: int = 40) -> list:
+    """
+    Procura itens do Zabbix por texto livre.
+
+    host_busca : filtra os hosts (ex: 'juina', 'switch painera'). Vazio = todos.
+    item_busca : termo(s) do item — casa em `name` ou `key_` (ex: 'painera',
+                 'tráfego', 'rx power'). Múltiplos termos: o primeiro vai para
+                 a API, os demais filtram em Python (a API não faz AND entre
+                 campos diferentes).
+
+    Retorna [{'itemid', 'name', 'key_', 'units', 'value_type', 'lastvalue',
+              'lastclock', 'hostid', 'hostname'}]
+    """
+    auth = _get_auth_token(config)
+
+    hostids = None
+    hostmap = {}
+    if host_busca:
+        hosts = buscar_hosts(config, host_busca, limit=30)
+        if not hosts:
+            return []
+        hostids = [h['hostid'] for h in hosts]
+        hostmap = {h['hostid']: h['name'] for h in hosts}
+
+    termos = [t for t in (item_busca or '').split() if len(t) >= 2]
+    params = {
+        'output':       ['itemid', 'name', 'key_', 'units', 'value_type',
+                         'lastvalue', 'lastclock'],
+        'filter':       {'status': '0'},
+        'selectHosts':  ['hostid', 'name'],
+        'limit':        2000 if termos else 300,
+    }
+    if hostids:
+        params['hostids'] = hostids
+
+    itens = []
+    if termos:
+        for campo in ('name', 'key_'):
+            p = dict(params)
+            p['search'] = {campo: termos[0]}
+            try:
+                itens = _rpc(config.url, 'item.get', p, auth, config=config)
+            except Exception as exc:
+                logger.warning('item.get (%s) falhou: %s', campo, exc)
+                itens = []
+            if itens:
+                break
+    else:
+        itens = _rpc(config.url, 'item.get', params, auth, config=config)
+
+    # Termos restantes filtram em Python (AND), casando em name OU key_
+    for termo in termos[1:]:
+        t = termo.lower()
+        itens = [
+            i for i in itens
+            if t in i.get('name', '').lower() or t in i.get('key_', '').lower()
+        ]
+
+    resultado = []
+    for i in itens:
+        hosts_do_item = i.get('hosts') or []
+        hid  = hosts_do_item[0]['hostid'] if hosts_do_item else ''
+        hnom = hosts_do_item[0].get('name', '') if hosts_do_item else hostmap.get(hid, '')
+        resultado.append({
+            'itemid':     i['itemid'],
+            'name':       i.get('name', ''),
+            'key_':       i.get('key_', ''),
+            'units':      i.get('units', ''),
+            'value_type': int(i.get('value_type', 3)),
+            'lastvalue':  i.get('lastvalue', ''),
+            'lastclock':  int(i.get('lastclock') or 0),
+            'hostid':     hid,
+            'hostname':   hnom,
+        })
+
+    # Ranking: item coletando > item com descrição de interface preenchida >
+    # item com valor diferente de zero > nome curto (mais específico).
+    def _rank(r):
+        tem_desc = 1 if '()' in r['name'] else 0
+        try:
+            zero = 0 if float(r['lastvalue']) != 0 else 1
+        except (TypeError, ValueError):
+            zero = 0
+        return (0 if r['lastclock'] else 1, tem_desc, zero, len(r['name']))
+
+    resultado.sort(key=_rank)
+    return resultado[:limit]
+
+
+# ──────────────────────────────────────────────────────────────
+# HISTÓRICO EM JANELA ABSOLUTA (history + fallback trends)
+# ──────────────────────────────────────────────────────────────
+
+def _downsample(pontos: list, max_pontos: int) -> list:
+    if len(pontos) <= max_pontos or max_pontos < 2:
+        return pontos
+    bucket = len(pontos) / max_pontos
+    saida  = []
+    for i in range(max_pontos):
+        ini = int(i * bucket)
+        fim = max(int((i + 1) * bucket), ini + 1)
+        fatia = pontos[ini:fim]
+        if not fatia:
+            continue
+        saida.append({
+            't': fatia[len(fatia) // 2]['t'],
+            'v': sum(p['v'] for p in fatia) / len(fatia),
+        })
+    return saida
+
+
+def historico_janela(config, item_id, ts_from: int, ts_till: int,
+                     max_pontos: int = 300) -> dict:
+    """
+    Histórico de um item numa janela absoluta (epoch → epoch).
+
+    Diferente de historico_item(), aceita início/fim arbitrários e cai
+    automaticamente em `trends` (médias horárias, retidas por muito mais tempo
+    no Zabbix) quando o `history` já expirou — que é o caso de perguntas do
+    tipo "como estava o sinal antes do rompimento de ontem".
+
+    Retorna {'itemid', 'name', 'units', 'value_type', 'fonte', 'pontos',
+             'stats': {'min','avg','max','ultimo','ultimo_t','n'}}
+    """
+    auth = _get_auth_token(config)
+
+    info = _rpc(config.url, 'item.get', {
+        'itemids': [item_id],
+        'output':  ['name', 'key_', 'units', 'value_type'],
+        'selectHosts': ['name'],
+    }, auth, config=config)
+    if not info:
+        raise Exception(f'Item {item_id} não encontrado no Zabbix')
+
+    meta       = info[0]
+    value_type = int(meta.get('value_type', 3))
+    units      = meta.get('units', '')
+    nome       = meta.get('name', '')
+    hosts_meta = meta.get('hosts') or []
+    hostname   = hosts_meta[0].get('name', '') if hosts_meta else ''
+
+    if value_type not in (0, 3):
+        raise Exception(
+            f'Item "{nome}" é do tipo texto/log — não tem histórico numérico para gráfico.'
+        )
+
+    janela   = max(int(ts_till) - int(ts_from), 60)
+    # Janela longa: trends primeiro (mais barato e sobrevive à expiração do history)
+    preferir_trends = janela > 3 * 86400
+    fontes = ['trends', 'history'] if preferir_trends else ['history', 'trends']
+
+    pontos = []
+    fonte  = ''
+    for f in fontes:
+        try:
+            if f == 'history':
+                bruto = _rpc(config.url, 'history.get', {
+                    'itemids':   [item_id],
+                    'history':   value_type,
+                    'time_from': int(ts_from),
+                    'time_till': int(ts_till),
+                    'sortfield': 'clock',
+                    'sortorder': 'ASC',
+                    'limit':     20000,
+                }, auth, config=config)
+                pontos = [{'t': int(p['clock']), 'v': float(p['value'])} for p in bruto]
+            else:
+                bruto = _rpc(config.url, 'trend.get', {
+                    'itemids':   [item_id],
+                    'time_from': int(ts_from),
+                    'time_till': int(ts_till),
+                    'limit':     20000,
+                }, auth, config=config)
+                pontos = [
+                    {'t': int(p['clock']), 'v': float(p['value_avg']),
+                     'min': float(p['value_min']), 'max': float(p['value_max'])}
+                    for p in bruto
+                ]
+                pontos.sort(key=lambda p: p['t'])
+        except Exception as exc:
+            logger.warning('%s.get do item %s falhou: %s', f, item_id, exc)
+            pontos = []
+        if pontos:
+            fonte = f
+            break
+
+    if not pontos:
+        return {
+            'itemid': str(item_id), 'name': nome, 'hostname': hostname,
+            'units': units, 'value_type': value_type, 'fonte': '',
+            'pontos': [], 'stats': {},
+        }
+
+    pontos, convertido = _rate_de_contador(pontos, value_type, units)
+    if convertido:
+        units = 'bps'
+    if not pontos:
+        return {
+            'itemid': str(item_id), 'name': nome, 'hostname': hostname,
+            'units': units, 'value_type': value_type, 'fonte': fonte,
+            'pontos': [], 'stats': {},
+        }
+    if pontos and any('min' in p for p in pontos):
+        v_min = min(p.get('min', p['v']) for p in pontos)
+        v_max = max(p.get('max', p['v']) for p in pontos)
+    else:
+        v_min = min(p['v'] for p in pontos)
+        v_max = max(p['v'] for p in pontos)
+    v_avg   = sum(p['v'] for p in pontos) / len(pontos)
+    ultimo  = pontos[-1]
+    total_n = len(pontos)
+
+    pontos = _downsample([{'t': p['t'], 'v': p['v']} for p in pontos], max_pontos)
+
+    return {
+        'itemid':     str(item_id),
+        'name':       nome,
+        'hostname':   hostname,
+        'units':      units,
+        'value_type': value_type,
+        'fonte':      fonte,
+        'pontos':     pontos,
+        'stats': {
+            'min': v_min, 'avg': v_avg, 'max': v_max,
+            'ultimo': ultimo['v'], 'ultimo_t': ultimo['t'], 'n': total_n,
+        },
+    }

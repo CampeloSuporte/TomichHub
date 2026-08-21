@@ -270,3 +270,83 @@ inteira **antes** de salvar a API Key.
 - JS (`salvarClaude`, `salvarOpenAI`, `salvarEvolution`): adicionado tratamento de
   erro visível (toast) para qualquer falha de rede/HTTP, evitando que uma falha de
   salvamento passe silenciosamente sem feedback ao usuário.
+
+---
+
+## Zabbix via API — histórico e gráficos — Adicionado em 2026-08-20
+
+**Arquivos:** `monitoramento/agent_zabbix.py`, `monitoramento/chart.py`,
+`monitoramento/services.py`, `home/agent_engine.py`, `home/views.py`,
+`clientes/templates/terminal.html`
+
+### Motivação
+
+O equipamento só responde sobre o **agora**. Perguntas do tipo "como estava o tráfego
+do link da Wirelink hoje à tarde?" ou "qual era o sinal óptico antes do rompimento?"
+não têm resposta via SSH — quem guarda isso é o **Zabbix do cliente**. O agent passou a
+consultar esse Zabbix pela API JSON-RPC e a devolver, além dos números, um **gráfico
+PNG** do período.
+
+### De onde vem o Zabbix
+
+Não há cadastro novo: o agent usa o que já existe.
+
+1. `ZabbixConfig` do cliente (aba Monitoramento), se houver;
+2. senão, qualquer **acesso do cliente** com "zabbix" no tipo e protocolo `HTTP`/`HTTPS`
+   — usuário e senha do próprio acesso.
+
+A URL é montada tolerando os formatos reais de cadastro
+(`187.84.126.249:3032/zabbix`, `172.31.100.14/zabbix/`, `45.169.153.145` + porta): a
+porta do cadastro só entra quando o host ainda não traz uma, e quando não há path a
+variante `…/zabbix` também é testada. Cada candidato passa por
+`_get_config_com_tunel()` — **o mesmo túnel SSH via ProxyServer que a aba Monitoramento
+usa** — e só é aceito depois de responder `apiinfo.version` e autenticar. A combinação
+que funcionou fica em cache por 30 min (`zbx_agent_cfg:<cliente_id>`), então a segunda
+pergunta não repete a descoberta.
+
+### Tools do agent
+
+| Tool | O que faz |
+|---|---|
+| `zabbix_buscar_item(host, item, cliente_nome)` | Acha hosts e itens monitorados. `host` casa no nome do host no Zabbix; `item` casa em **nome e key** do item. Sem parâmetros, lista os hosts. Sem achar o item, lista o que existe naquele host em vez de devolver "não encontrei". |
+| `zabbix_historico(itemids, periodo, inicio, fim, marcador, titulo, grafico, cliente_nome)` | Até **4 itens no mesmo gráfico**. Devolve mín/méd/máx/último + amostras ao longo da janela e **envia o PNG ao usuário**. |
+
+Janela: `periodo` relativo (`30m`, `6h`, `2d`, `1w` — padrão `6h`) ou `inicio`/`fim`
+absolutos (`AAAA-MM-DD HH:MM`, `DD/MM/AAAA HH:MM`, `agora`). `marcador` desenha uma
+**linha vermelha tracejada** na hora do evento — é o que atende "antes e depois do
+rompimento".
+
+### history × trends
+
+`historico_janela()` busca `history.get` para janelas curtas e `trend.get` (médias
+horárias, retidas por muito mais tempo) para janelas acima de 3 dias — e cai de uma
+fonte para a outra automaticamente quando a primeira volta vazia. Contadores de octetos
+(`value_type=3`, unidade `B`) viram taxa em **bps** com a mesma regra do gráfico da aba
+Monitoramento; séries acima de 320 pontos são reamostradas por média de bucket.
+
+### Gráfico (PNG)
+
+`monitoramento/chart.py` desenha com **Pillow** (já no `requirements.txt`) — sem
+matplotlib/numpy. Fundo claro, grade, eixo Y formatado pela unidade do item
+(`4.05 Gbps`, `-23.87 dBm`, `72%`), horas no fuso do Django (não no do sistema) e
+legenda com mín/méd/máx por série, quebrada em linhas **antes** de a altura do PNG ser
+fixada (senão a segunda linha saía cortada).
+
+### Entrega da imagem
+
+A tool emite `{'type': 'agent_image', 'b64': …, 'caption': …}` no `notify_cb`:
+
+- **WhatsApp** (`_processar_wa_webhook`): as imagens são acumuladas e enviadas por
+  `_evolution_send_media()` (`/message/sendMedia/`) logo depois da resposta em texto —
+  mesmo payload do envio de mídia do Atendimento, que já roda em produção.
+- **Terminal web** (`AgentNOCConsumer`): `notify_cb` é o próprio `_send_json`, e o chat
+  renderiza `case 'agent_image'` como `<img src="data:image/png;base64,…">` clicável.
+
+### Validado ao vivo
+
+Startnet Provedor (Zabbix em `198.18.1.13/zabbix`, IP privado → túnel SSH pelo
+ProxyServer): "@noc me traga o histórico do tráfego das últimas 3 horas do link paineiras
+no switch brasnorte" → o agent chamou `zabbix_buscar_item(host='brasnorte',
+item='paineiras bits')`, escolheu os itemids de `Bits received`/`Bits sent` da
+`100GE0/0/4(LINK-PAINEIRAS)`, chamou `zabbix_historico` e respondeu com a análise do pico
+noturno + o PNG das duas curvas.

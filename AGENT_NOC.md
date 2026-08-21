@@ -412,9 +412,44 @@ tools = [
             },
             "required": ["acesso_id"]
         }
+    },
+    {
+        "name": "zabbix_buscar_item",
+        "description": "Procura hosts e itens no Zabbix do cliente (lido do acesso cadastrado tipo 'Zabbix', HTTP/HTTPS)",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "host": {"type": "string", "description": "Texto parcial do host no Zabbix"},
+                "item": {"type": "string", "description": "Termos do item — casa em nome e key (ex: 'painera rx power')"},
+                "cliente_nome": {"type": "string", "description": "Somente em sessão de acesso global"}
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "zabbix_historico",
+        "description": "Histórico de até 4 itens do Zabbix + gráfico PNG enviado ao usuário",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "itemids":  {"type": "array", "items": {"type": "string"}},
+                "periodo":  {"type": "string", "description": "'30m', '6h', '2d', '1w' — padrão '6h'"},
+                "inicio":   {"type": "string", "description": "Início absoluto (janela em torno de um evento)"},
+                "fim":      {"type": "string", "description": "Fim absoluto ou 'agora'"},
+                "marcador": {"type": "string", "description": "Hora do evento — linha vermelha no gráfico"},
+                "titulo":   {"type": "string"},
+                "grafico":  {"type": "boolean", "default": True}
+            },
+            "required": ["itemids"]
+        }
     }
 ]
 ```
+
+> **Zabbix:** as duas tools acima leem o Zabbix do próprio cliente (`ZabbixConfig` ou acesso
+> HTTP/HTTPS com "zabbix" no tipo), passando pelo túnel SSH do ProxyServer quando o Zabbix está em
+> IP privado. O gráfico é renderizado com Pillow (`monitoramento/chart.py`) e entregue como mídia no
+> WhatsApp ou `<img>` no chat do terminal. Detalhes em [docs/agent_noc.md](docs/agent_noc.md).
 
 #### Tools — formato OpenAI (Function Calling)
 

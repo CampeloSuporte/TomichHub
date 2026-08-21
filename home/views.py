@@ -2917,7 +2917,7 @@ async def _processar_wa_mensagem_async(grupo, sender_jid: str, mensagem: str):
     from asgiref.sync import sync_to_async
     from django.utils import timezone
     from datetime import timedelta
-    from home.agent_engine import AgentNOCEngine, _evolution_send
+    from home.agent_engine import AgentNOCEngine, _evolution_send, _evolution_send_media
 
     # Buscar ou criar sessão WhatsApp
     config = await sync_to_async(AgentConfig.get)()
@@ -2993,10 +2993,15 @@ async def _processar_wa_mensagem_async(grupo, sender_jid: str, mensagem: str):
         return False
 
     respostas_wa = []
+    imagens_wa   = []
 
     async def notify_wa(msg):
         if msg.get('type') == 'agent_message':
             respostas_wa.append(msg.get('content', ''))
+        elif msg.get('type') == 'agent_image' and msg.get('b64'):
+            # Gráficos gerados pelas tools (ex: histórico do Zabbix) — enviados
+            # como mídia depois da resposta em texto.
+            imagens_wa.append(msg)
 
     engine = AgentNOCEngine(
         sessao_id=sessao.id,
@@ -3019,6 +3024,16 @@ async def _processar_wa_mensagem_async(grupo, sender_jid: str, mensagem: str):
                 logger.warning(f"[WA-SEND] OK status={result.get('status','?') if isinstance(result,dict) else result}")
             else:
                 logger.warning("[WA-SEND] texto_resp vazio")
+            for img in imagens_wa:
+                try:
+                    await _evolution_send_media(
+                        evo_config, grupo.jid, img['b64'],
+                        filename=img.get('filename', 'grafico.png'),
+                        caption=img.get('caption', ''),
+                    )
+                    logger.warning(f"[WA-SEND] imagem enviada ({len(img['b64'])} b64 chars)")
+                except Exception as exc_img:
+                    logger.warning(f"[WA-SEND] falha ao enviar imagem: {exc_img}")
     except Exception as exc:
         import traceback
         logger.warning(f"[WA-SEND] ERRO: {exc}\n{traceback.format_exc()}")
