@@ -847,6 +847,24 @@ sempre pequeno (1 a 14) — o risco de explosão é só do lado recebido.
 | Mikrotik v6 | `/routing bgp peer print detail where name="{nome}"` (`prefix-count=`) | `/routing bgp advertisements print peer="{nome}"` | `/ip route print where received-from="{nome}"` |
 | Mikrotik v7 | `/routing bgp session print detail where name="{nome}"` (`prefix-count=`) | `/routing bgp advertisements print where peer="{nome}"` | `/ip route print where gateway={ip} bgp=yes` |
 
+#### Sessão IPv6 — comando muda de address-family (corrigido em 2026-08-21)
+
+A tabela acima é a árvore **IPv4**. Quando o `peer_ip` da sessão é v6 (`_sessao_e_v6`), quase todo
+fabricante precisa de outro comando — antes disso a consulta de sessão v6 voltava sempre
+`Anunciados (0) / Recebidos (0)` mesmo com a sessão estabelecida e anunciando (bug real: acesso 20,
+`BDR-DNO`, sessão `RS1.PTT-CE-V6`, que anuncia 4 prefixos e o painel mostrava zero):
+
+| Fabricante | O que muda quando o peer é IPv6 |
+|---|---|
+| Huawei | `display bgp **ipv6** routing-table peer {ip} advertised-routes\|received-routes` e `display bgp **ipv6** peer {ip} verbose` — sem o `ipv6` o VRP consulta/valida contra a ipv4-family |
+| Cisco/Datacom | `show **bgp ipv6 unicast** neighbors {ip} ...` no lugar de `show ip bgp neighbors {ip} ...` (inclusive no fallback `routes` e na contagem) |
+| Juniper | nada — `show route advertising-protocol/receive-protocol bgp {ip}` e `show bgp neighbor {ip}` inferem a family pelo endereço do peer |
+| Mikrotik (v6 e v7) | rota aprendida de peer v6 não está em `/ip route` e sim em `/ipv6 route` — o lado ANUNCIADO (`/routing bgp advertisements`) é o mesmo, filtra por nome do peer |
+
+Confirmado ao vivo em 2026-08-21 nos três fabricantes com sessão v6 nesta base: Huawei acesso 20
+(4 prefixos anunciados, batendo com `Advertised total routes: 4` do próprio equipamento), Cisco acesso
+887 (`2804:57B0:EFF0::/44` anunciado, `::/0` recebido) e Mikrotik acesso 390 (4 prefixos anunciados).
+
 **Cisco — fallback de `received-routes`:** sem `soft-reconfiguration inbound` configurado no peer, o
 comando erra com `% Inbound soft reconfiguration not enabled` (confirmado ao vivo, acesso 887) — nesse
 caso usa `show ip bgp neighbors {ip} routes` como fallback (mostra o equivalente PÓS-política, o que
@@ -864,6 +882,10 @@ viabilizar a consulta).
 **`_extrair_prefixos(texto)`** (`bgp_actions.py`) — extrai só os prefixos CIDR do texto bruto, igual pra
 todos os 4 fabricantes: regex genérica `\d{1,3}(\.\d{1,3}){3}/\d{1,2}` funciona porque em toda saída real
 testada o prefixo é o único token da linha no formato IP/máscara (next-hop/gateway aparecem sem barra).
+Pro IPv6 são duas formas a mais: CIDR v6 (`2804:57b0::/34`, `::/0` — candidato pela regex `_CIDR6_RE` e
+confirmado com `ipaddress.IPv6Network`, mais confiável que cobrir toda abreviação `::` na regex) e o par
+`Network : X   PrefixLen : N` do Huawei, que **não** imprime o prefixo v6 em CIDR (`_NETWORK_PREFIXLEN_RE`
+— confirmado ao vivo no acesso 20; era a segunda causa da consulta v6 voltar vazia).
 **Bug real pego testando:** Cisco imprime a rota padrão como `0.0.0.0` **sem `/0`** (diferente de todo
 outro prefixo da mesma tabela, que sempre tem máscara) — a regex genérica não pegava. Corrigido com
 `_DEFAULT_ROUTE_RE`, que exige `0.0.0.0` como PRIMEIRO campo da linha (só flags de status antes) seguido

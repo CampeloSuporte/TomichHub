@@ -5,6 +5,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-21 (BGP: validar anúncios funciona em sessão IPv6)
+
+### Corrigido
+
+- **"Validar anúncios" em sessão IPv6 voltava sempre `Anunciados (0) / Recebidos (0)`**, mesmo com
+  a sessão estabelecida e anunciando de verdade (caso real: acesso 20, `BDR-DNO`, sessão
+  `RS1.PTT-CE-V6` — o próprio equipamento reporta `Advertised total routes: 4` e o painel mostrava
+  zero). Duas causas, ambas confirmadas ao vivo no equipamento:
+  - Os comandos de consulta eram só da árvore **IPv4**. `comandos_validar_anuncios` /
+    `comando_contar_recebidos` agora trocam de address-family quando o `peer_ip` é v6
+    (`_sessao_e_v6`): Huawei usa `display bgp ipv6 routing-table peer X ...` e `display bgp ipv6
+    peer X verbose`; Cisco/Datacom usam `show bgp ipv6 unicast neighbors X ...` (inclusive no
+    fallback `routes`); Mikrotik lê os recebidos de `/ipv6 route` no lugar de `/ip route`. Juniper
+    não muda — infere a family pelo endereço do peer.
+  - `_extrair_prefixos` só reconhecia CIDR IPv4. Agora também extrai CIDR IPv6 (validando o
+    candidato com `ipaddress.IPv6Network`) e o par `Network : X   PrefixLen : N` do Huawei, que
+    **não** imprime o prefixo v6 em CIDR.
+  - Validado ao vivo nos três fabricantes com sessão v6 nesta base: Huawei acesso 20 (4 prefixos),
+    Cisco acesso 887 (`2804:57B0:EFF0::/44` anunciado, `::/0` recebido) e Mikrotik acesso 390
+    (4 prefixos). Sessões IPv4 seguem com exatamente os mesmos comandos de antes.
+  - `clientes/tests_bgp_validar_v6.py` (10 testes) cobre os comandos por fabricante/família e o
+    parser de prefixos.
+
+---
+
 ## [Não publicado] — 2026-08-21 (BGP: route-policy local vazia volta a ser editável)
 
 ### Corrigido

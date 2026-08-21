@@ -1097,23 +1097,63 @@ _CIDR_RE = re.compile(r'\b(\d{1,3}(?:\.\d{1,3}){3}/\d{1,2})\b')
 # aparece como next-hop de rota local (ex: "45.169.6.0/24  0.0.0.0  ...",
 # onde "0.0.0.0" vem DEPOIS do prefixo de verdade, não no início da linha).
 _DEFAULT_ROUTE_RE = re.compile(r'^\s*[*>sdhirSmbfxatcLV]{0,4}\s+0\.0\.0\.0\s+\d', re.MULTILINE)
+# Candidato a CIDR IPv6 ("2804:57b0::/34", "::/0"): pega qualquer token de
+# hex+":" seguido de "/máscara" e confirma com o módulo ipaddress (mais
+# confiável que tentar cobrir todas as formas de abreviação "::" na regex).
+# O lookbehind evita cortar o meio de um endereço maior; "=" e espaço antes
+# são aceitos (Mikrotik imprime "dst-address=2804::/32").
+_CIDR6_RE = re.compile(r'(?<![0-9A-Za-z:.])([0-9A-Fa-f:]{2,}/\d{1,3})')
+# Huawei NÃO imprime o prefixo IPv6 em CIDR: a saída de
+# `display bgp ipv6 routing-table peer X advertised-routes` traz o par
+# "Network : 2804:57B0::   PrefixLen : 34" em linhas separadas do NextHop
+# (confirmado ao vivo no acesso 20, sessão RS1.PTT-CE-V6). Sem esta regex a
+# consulta v6 do Huawei sempre voltava vazia.
+_NETWORK_PREFIXLEN_RE = re.compile(
+    r'Network\s*:\s*([0-9A-Fa-f:.]+)\s+PrefixLen\s*:\s*(\d{1,3})'
+)
+
+
+def _cidr6_valido(cidr):
+    try:
+        ipaddress.IPv6Network(cidr, strict=False)
+        return True
+    except ValueError:
+        return False
 
 
 def _extrair_prefixos(texto):
-    """Extrai só os prefixos CIDR (ex: 45.169.6.0/24) do texto bruto do
-    comando — funciona igual pros 4 fabricantes porque em toda saída real
-    testada (Huawei/Cisco/Juniper/Mikrotik) o prefixo é sempre o único
-    token no formato IP/máscara da linha; next-hop/gateway aparecem sem
-    a barra e não batem com a regex. Complementa com _DEFAULT_ROUTE_RE pro
-    caso do Cisco (ver comentário acima)."""
+    """Extrai só os prefixos (ex: 45.169.6.0/24, 2804:57b0::/34) do texto
+    bruto do comando — funciona igual pros 4 fabricantes porque em toda
+    saída real testada (Huawei/Cisco/Juniper/Mikrotik) o prefixo é sempre o
+    único token no formato IP/máscara da linha; next-hop/gateway aparecem
+    sem a barra e não batem com a regex. Complementa com _DEFAULT_ROUTE_RE
+    pro caso do Cisco e com _NETWORK_PREFIXLEN_RE pro IPv6 do Huawei (ver
+    comentários acima)."""
+    texto = texto or ''
     vistos = []
-    if _DEFAULT_ROUTE_RE.search(texto or ''):
-        vistos.append('0.0.0.0/0')
-    for m in _CIDR_RE.finditer(texto or ''):
-        p = m.group(1)
+
+    def _add(p):
         if p not in vistos:
             vistos.append(p)
+
+    if _DEFAULT_ROUTE_RE.search(texto):
+        _add('0.0.0.0/0')
+    for m in _NETWORK_PREFIXLEN_RE.finditer(texto):
+        _add(f'{m.group(1)}/{m.group(2)}')
+    for m in _CIDR_RE.finditer(texto):
+        _add(m.group(1))
+    for m in _CIDR6_RE.finditer(texto):
+        if _cidr6_valido(m.group(1)):
+            _add(m.group(1))
     return vistos
+
+
+def _sessao_e_v6(sessao):
+    """A sessão é IPv6? O peer_ip decide (não existe sessão BGP com peer v4
+    trocando family v6 nesta base). Muda o comando de consulta em quase
+    todo fabricante: a árvore de comandos IPv4 ou erra o parse, ou responde
+    a tabela errada, quando o peer é v6."""
+    return ':' in (sessao.get('peer_ip') or '')
 
 
 def _int_ou_none(m):
@@ -1144,14 +1184,20 @@ def comando_contar_recebidos(vendor, dados, sessao):
     if not peer_ip:
         raise AcaoBgpNaoSuportada('IP do peer não identificado nessa sessão — não dá pra consultar.')
 
+    eh_v6 = _sessao_e_v6(sessao)
+
     if vendor == 'huawei':
+        # `display bgp peer X verbose` só enxerga a ipv4-family: com peer v6
+        # o VRP responde "Error: Wrong parameter found" e a contagem some.
+        af = 'ipv6 ' if eh_v6 else ''
         return (
-            f'display bgp peer {peer_ip} verbose',
+            f'display bgp {af}peer {peer_ip} verbose',
             lambda t: _int_ou_none(re.search(r'Received total routes:\s*(\d+)', t)),
         )
     if vendor in ('cisco', 'datacom'):
+        base = f'show bgp ipv6 unicast neighbors {peer_ip}' if eh_v6 else f'show ip bgp neighbors {peer_ip}'
         return (
-            f'show ip bgp neighbors {peer_ip} | include Prefixes Current',
+            f'{base} | include Prefixes Current',
             lambda t: _int_ou_none(re.search(r'Prefixes Current:\s*\d+\s+(\d+)', t)),
         )
     if vendor == 'juniper':
@@ -1180,22 +1226,30 @@ def comandos_validar_anuncios(vendor, dados, sessao):
     if not peer_ip:
         raise AcaoBgpNaoSuportada('IP do peer não identificado nessa sessão — não dá pra consultar.')
 
+    eh_v6 = _sessao_e_v6(sessao)
+
     if vendor == 'huawei':
+        # Sem o "ipv6" a tabela consultada é a da ipv4-family — com peer v6
+        # o VRP recusa o comando e a consulta voltava sempre vazia.
+        af = 'ipv6 ' if eh_v6 else ''
         return {
-            'anunciados': f'display bgp routing-table peer {peer_ip} advertised-routes',
-            'recebidos': f'display bgp routing-table peer {peer_ip} received-routes',
+            'anunciados': f'display bgp {af}routing-table peer {peer_ip} advertised-routes',
+            'recebidos': f'display bgp {af}routing-table peer {peer_ip} received-routes',
             'recebidos_fallback': None,
         }
     if vendor in ('cisco', 'datacom'):
+        # "show ip bgp" é a árvore IPv4; peer v6 exige a address-family
+        # explícita ("show bgp ipv6 unicast ...").
+        base = f'show bgp ipv6 unicast neighbors {peer_ip}' if eh_v6 else f'show ip bgp neighbors {peer_ip}'
         return {
-            'anunciados': f'show ip bgp neighbors {peer_ip} advertised-routes',
-            'recebidos': f'show ip bgp neighbors {peer_ip} received-routes',
+            'anunciados': f'{base} advertised-routes',
+            'recebidos': f'{base} received-routes',
             # Sem "soft-reconfiguration inbound" configurado no peer,
             # "received-routes" erra com "% Inbound soft reconfiguration
             # not enabled" (confirmado ao vivo) — "routes" mostra o
             # equivalente pós-política (o que realmente entrou na RIB
             # local), sem precisar dessa config extra no equipamento.
-            'recebidos_fallback': f'show ip bgp neighbors {peer_ip} routes',
+            'recebidos_fallback': f'{base} routes',
         }
     if vendor == 'juniper':
         return {
@@ -1205,6 +1259,9 @@ def comandos_validar_anuncios(vendor, dados, sessao):
         }
     if vendor == 'mikrotik':
         versao = dados.get('versao_routeros', 6)
+        # Rota aprendida de peer v6 não aparece em /ip route — é outra
+        # tabela (/ipv6 route), nas duas versões do RouterOS.
+        tabela = 'ipv6' if eh_v6 else 'ip'
         if versao == 7:
             return {
                 # v7 não guarda mais "recebido de qual peer" no /ip route
@@ -1213,12 +1270,12 @@ def comandos_validar_anuncios(vendor, dados, sessao):
                 # rota (= endereço remoto do peer) como proxy, já que é o
                 # próprio peer_ip da sessão.
                 'anunciados': f'/routing bgp advertisements print where peer="{nome}"',
-                'recebidos': f'/ip route print where gateway={peer_ip} bgp=yes',
+                'recebidos': f'/{tabela} route print where gateway={peer_ip} bgp=yes',
                 'recebidos_fallback': None,
             }
         return {
             'anunciados': f'/routing bgp advertisements print peer="{nome}"',
-            'recebidos': f'/ip route print where received-from="{nome}"',
+            'recebidos': f'/{tabela} route print where received-from="{nome}"',
             'recebidos_fallback': None,
         }
     raise AcaoBgpNaoSuportada(f'Validar anúncios não suportado para {vendor} ainda.')
