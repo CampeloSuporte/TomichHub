@@ -3,11 +3,11 @@ from django.contrib import messages
 from .models import Funcao_equipamento
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404
-from clientes.decorators import admin_required 
+from clientes.decorators import backoffice_required
 
 
 @login_required(login_url='login')
-@admin_required 
+@backoffice_required
 def cadastrar_funcao(request):
     if request.method == 'POST':
         descricao = request.POST.get('descricao', '').strip()
@@ -31,14 +31,14 @@ def cadastrar_funcao(request):
     return redirect('listar_funcoes')
 
 @login_required(login_url='login')
-@admin_required 
+@backoffice_required
 def listar_funcoes(request):
     funcao_equipamentos = Funcao_equipamento.objects.all()
     return render(request, 'listar_funcao.html', {'funcao_equipamentos': funcao_equipamentos})
 
 
 @login_required(login_url='login')
-@admin_required 
+@backoffice_required
 def editar_funcao(request):
     if request.method == 'POST':
         id = request.POST.get('id')

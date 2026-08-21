@@ -1259,7 +1259,7 @@ body {
                 <i class="fas fa-chevron-right nav-item-arrow"></i>
             </a>
 
-            {% if request.user.is_staff %}
+            {% if is_admin_bo %}
             <div class="nav-section-label">Sistema</div>
             <a href="{% url 'atendimento:settings_connections' %}" class="nav-item {% if request.resolver_match.url_name == 'settings_connections' or request.resolver_match.url_name == 'settings_groups' %}active{% endif %}">
                 <i class="fas fa-plug nav-item-icon"></i>
@@ -1289,7 +1289,7 @@ body {
                     </div>
                     <div class="user-info">
                         <h5>{{ request.user.get_full_name|default:request.user.username }}</h5>
-                        <span>{% if request.user.is_superuser %}Administrador{% elif request.user.is_staff %}Supervisor{% else %}Agente{% endif %}</span>
+                        <span>{% if is_admin_bo %}Administrador{% elif is_consultor_bo %}Consultor{% elif is_operador_bo %}Operador{% else %}Agente{% endif %}</span>
                     </div>
                     <div class="user-actions">
                         <a href="#" class="user-action-btn" id="btnToggleSom" onclick="toggleSomAlertas(event)" title="Ativar/desativar alertas sonoros">

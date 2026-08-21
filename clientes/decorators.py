@@ -14,17 +14,17 @@ def cliente_login_required(view_func):
     Decorador que verifica se o usuário é um cliente.
     Redireciona para a página de acessos do cliente.
 
-    Cliente = is_staff=False E vinculado a um Cliente
+    Cliente = login do portal (sem PerfilUsuario) E vinculado a um Cliente
     """
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
 
-        # ✅ CORRIGIDO: Verificar is_staff
-        if request.user.is_staff or request.user.is_superuser:
+        from usuario.perms import is_backoffice, is_admin
+        if is_backoffice(request.user):
             messages.error(request, 'Apenas clientes podem acessar esta página.')
-            return redirect('quadro_geral')
+            return redirect('quadro_geral' if is_admin(request.user) else 'quadro_instancia')
 
         # Verificar se o usuário é um cliente
         try:
@@ -40,19 +40,32 @@ def cliente_login_required(view_func):
 def admin_required(view_func):
     """
     Decorador que verifica se o usuário é o Administrador da plataforma.
-    Apenas usuários com is_staff=True têm acesso — Consultor/Operador têm
-    is_staff=False (ver usuario.perms), então ficam de fora automaticamente.
+
+    Checa o PAPEL (`perms.is_admin`), não `is_staff`. Consultor e Operador
+    também têm `is_staff=True` — é o que libera o módulo de atendimento
+    (`staff_required`) e o que os coloca na lista de atendentes —, então
+    `is_staff` NÃO distingue Administrador de back-office e usá-lo aqui
+    abria todas as telas globais (quadro geral, relatório de backups,
+    Agent NOC, configurações) para Consultor/Operador, vazando clientes de
+    outras instâncias.
+
     Use `backoffice_required` para views do núcleo que Consultor/Operador
-    também devem acessar.
+    também devem acessar — sempre com o queryset escopado por
+    `Cliente.objects.visiveis_para`.
     """
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
 
-        # ✅ CORRIGIDO: Verificar is_staff corretamente
-        if not request.user.is_staff:
+        from usuario.perms import is_admin, is_backoffice
+        if not is_admin(request.user):
             messages.error(request, 'Você não possui permissão para acessar esta página.')
+            # Consultor/Operador estão logados e são da equipe: mandar pro
+            # login seria um beco sem saída (ficariam presos num loop de
+            # "já estou logado"). Vão pro dashboard da própria instância.
+            if is_backoffice(request.user):
+                return redirect('quadro_instancia')
             return redirect('login')
 
         return view_func(request, *args, **kwargs)
@@ -78,18 +91,18 @@ def superuser_required(view_func):
 
 def cliente_or_admin_required(view_func):
     """
-    Decorador que verifica se o usuário é cliente ou admin.
-    Ambos podem acessar, mas com permissões diferentes.
-
-    ✅ CORRIGIDO: Usa is_staff para distinguir
+    Decorador que verifica se o usuário é do back-office ou do portal.
+    Ambos podem acessar, mas com permissões diferentes — a view é que faz
+    o escopo por instância (`Cliente.objects.visiveis_para`).
     """
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
 
-        # Se for admin (is_staff=True), permite tudo
-        if request.user.is_staff or request.user.is_superuser:
+        # Equipe (Administrador, Consultor, Operador) passa direto
+        from usuario.perms import is_backoffice
+        if is_backoffice(request.user):
             return view_func(request, *args, **kwargs)
 
         # Se for cliente (is_staff=False), verifica se está vinculado

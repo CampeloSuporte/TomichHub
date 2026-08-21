@@ -97,7 +97,7 @@
                     </ul>
                 </div>
 
-                {% if request.user.is_staff %}
+                {% if is_admin_bo %}
                 <div class="dropdown">
                     <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                         <i class="fas fa-tools me-1"></i> Ferramentas
@@ -152,7 +152,7 @@
                 </div>
                 {% endif %}
 
-                {% if not request.user.is_staff and is_backoffice_bo and ferramentas_menu_bo_visivel %}
+                {% if not is_admin_bo and is_backoffice_bo and ferramentas_menu_bo_visivel %}
                 <div class="dropdown">
                     <button class="btn btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                         <i class="fas fa-tools me-1"></i> Ferramentas
@@ -177,8 +177,8 @@
                 </div>
                 {% endif %}
 
-                <!-- Atendimento — somente para administradores e funcionários -->
-                {% if request.user.is_staff %}
+                <!-- Atendimento — todo o back-office; as views escopam por instância -->
+                {% if is_backoffice_bo %}
                 <a href="{% url 'atendimento:dashboard' %}" class="btn btn-sm" id="globalAtendBtn" style="position:relative;">
                     <i class="fas fa-headset me-1"></i> Atendimento
                 </a>

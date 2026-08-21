@@ -1903,3 +1903,110 @@ class MencaoNoChatTest(TestCase):
         # Segunda chamada sai do cache — não bate de novo na Evolution.
         self.client.get(url)
         self.assertEqual(mock_client_cls.return_value.get_group_participants_info.call_count, 1)
+
+
+class IsolamentoInstanciaTest(TestCase):
+    """Consultor/Operador só enxergam o que é da própria instância.
+
+    Regressão da falha em que o Consultor via os clientes das outras
+    instâncias: `is_staff` virou True para Consultor/Operador (para liberar
+    o atendimento), mas os `admin_required`/querysets do módulo continuavam
+    tratando `is_staff` como "é o Administrador" e nada era filtrado.
+    """
+
+    @staticmethod
+    def _com_2fa(user):
+        """`Forcar2FAMiddleware` redireciona quem não tem TOTP confirmado —
+        sem isso todo request do teste vira 302 e as asserções passariam à
+        toa (corpo vazio "não contém" o cliente alheio)."""
+        from usuario.models import TOTPDevice
+        TOTPDevice.objects.create(usuario=user, secret='A' * 32, confirmado=True)
+        return user
+
+    def setUp(self):
+        from usuario.models import Instancia, PerfilUsuario
+
+        self.inst_a = Instancia.objects.create(nome='Instância A')
+        self.inst_b = Instancia.objects.create(nome='Instância B')
+
+        self.consultor = User.objects.create_user(
+            username='consultor_a', email='ca@example.com', password='x',
+            is_staff=True, is_active=True,
+        )
+        PerfilUsuario.objects.create(
+            usuario=self.consultor, role=PerfilUsuario.ROLE_CONSULTOR, instancia=self.inst_a,
+        )
+        self._com_2fa(self.consultor)
+        self.admin = self._com_2fa(User.objects.create_user(
+            username='admin_plataforma', email='ap@example.com', password='x',
+            is_staff=True, is_superuser=True, is_active=True,
+        ))
+
+        self.cliente_a = _criar_cliente_teste('CLIENTE DA INSTANCIA A')
+        self.cliente_a.instancia = self.inst_a
+        self.cliente_a.save(update_fields=['instancia'])
+
+        self.cliente_b = _criar_cliente_teste('CLIENTE DA INSTANCIA B')
+        self.cliente_b.instancia = self.inst_b
+        self.cliente_b.save(update_fields=['instancia'])
+
+        self.conv_b = _criar_conversa()
+        self.conv_b.cliente = self.cliente_b
+        self.conv_b.save(update_fields=['cliente'])
+        self.grupo_b = self.conv_b.group
+        self.grupo_b.cliente = self.cliente_b
+        self.grupo_b.save(update_fields=['cliente'])
+
+    def test_tela_de_grupos_nao_mostra_cliente_de_outra_instancia(self):
+        self.client.force_login(self.consultor)
+        html = self.client.get(reverse('atendimento:grupos')).content.decode()
+        self.assertNotIn('CLIENTE DA INSTANCIA B', html)
+        self.assertIn('CLIENTE DA INSTANCIA A', html)
+
+    def test_tela_de_empresas_nao_mostra_cliente_de_outra_instancia(self):
+        self.client.force_login(self.consultor)
+        html = self.client.get(reverse('atendimento:empresas')).content.decode()
+        self.assertNotIn('CLIENTE DA INSTANCIA B', html)
+
+    def test_historico_nao_mostra_conversa_de_outra_instancia(self):
+        self.client.force_login(self.consultor)
+        html = self.client.get(reverse('atendimento:historico')).content.decode()
+        self.assertNotIn('CLIENTE DA INSTANCIA B', html)
+
+    def test_abrir_conversa_de_outra_instancia_da_403(self):
+        self.client.force_login(self.consultor)
+        r = self.client.get(
+            reverse('atendimento:conversation_detail', args=[self.conv_b.id]))
+        self.assertEqual(r.status_code, 403)
+
+    def test_hosts_da_conversa_de_outra_instancia_da_403(self):
+        self.client.force_login(self.consultor)
+        r = self.client.get(
+            reverse('atendimento:api_conversation_hosts', args=[self.conv_b.id]))
+        self.assertEqual(r.status_code, 403)
+
+    def test_vincular_grupo_de_outra_instancia_da_403(self):
+        self.client.force_login(self.consultor)
+        r = self.client.post(
+            reverse('atendimento:api_link_group', args=[self.grupo_b.id]),
+            data=json.dumps({'cliente_id': self.cliente_a.id}),
+            content_type='application/json',
+        )
+        self.assertEqual(r.status_code, 403)
+        self.grupo_b.refresh_from_db()
+        self.assertEqual(self.grupo_b.cliente_id, self.cliente_b.id)
+
+    def test_configuracoes_da_plataforma_sao_so_do_administrador(self):
+        self.client.force_login(self.consultor)
+        self.assertEqual(
+            self.client.get(reverse('atendimento:settings_connections')).status_code, 403)
+
+        self.client.force_login(self.admin)
+        self.assertEqual(
+            self.client.get(reverse('atendimento:settings_connections')).status_code, 200)
+
+    def test_administrador_continua_vendo_tudo(self):
+        self.client.force_login(self.admin)
+        html = self.client.get(reverse('atendimento:empresas')).content.decode()
+        self.assertIn('CLIENTE DA INSTANCIA A', html)
+        self.assertIn('CLIENTE DA INSTANCIA B', html)

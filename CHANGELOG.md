@@ -5,6 +5,50 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-21 (Segurança: Consultor via os clientes das outras instâncias)
+
+### Corrigido
+
+- **Falha de isolamento entre instâncias.** O Consultor `mmarinho` (2 clientes) enxergava os 47
+  clientes da instância Principal. Causa: `is_staff` passou a ser `True` também para
+  Consultor/Operador (necessário para o módulo de atendimento), mas `admin_required` continuou
+  usando `is_staff` como se fosse "é o Administrador" — abrindo todas as telas globais, que
+  listam `Cliente.objects.all()` sem escopo. Crawl autenticado nas 795 rotas encontrou **21
+  rotas** devolvendo cliente de outra instância; hoje são **0**, para Consultor e Operador, sem
+  nenhuma mudança de acesso para o Administrador.
+  - `admin_required` (em `clientes/decorators.py` e o alias de `atendimento/views.py`) passou a
+    checar o papel via `usuario.perms.is_admin`. `cliente_login_required` e
+    `cliente_or_admin_required` usam `is_backoffice` em vez de `is_staff`.
+  - Menus de plataforma nos templates saíram de `request.user.is_staff` para `is_admin_bo`.
+  - **`atendimento/scope.py` (novo)**: `clientes_visiveis`, `conversations_visiveis`,
+    `groups_visiveis`, `pode_ver_conversation`, `pode_ver_group` — aplicados em todas as
+    listagens do atendimento, mais **10 guardas em conversas e 4 em grupos** que fecharam os
+    IDOR por id na URL (enviar mensagem, mesclar, agendar, taguear, e `api_conversation_hosts`,
+    que entregava os hosts do cliente de qualquer instância).
+  - Telas que são operação legítima do Consultor viraram `backoffice_required` **com queryset
+    escopado**: relatório de backups, chamados por status, config de backup por acesso (agora
+    valida `pode_acessar_cliente`), catálogos de modelo/função e as correções de GeoIP
+    (dono = `solicitante`).
+  - Seletores de usuário (`conversation_detail`, `tarefas`, `kanban`) saíram de
+    `User.objects.filter(is_active=True)` para `perms.colegas_de_instancia` — o kanban listava
+    até os logins de portal dos clientes alheios.
+  - **Financeiro**: `api_painel_blocos_ip`, `listar_contratos_aluguel` e `assinatura_locador`
+    tinham só `@login_required` — qualquer autenticado listava os aluguéis de IP de todos os
+    clientes. Passaram a `@acesso_financeiro_restrito`.
+
+**Regressão:** `atendimento.tests.IsolamentoInstanciaTest` (8 testes; 6 falham se o escopo for
+desligado). Suíte completa: 272 testes OK.
+
+**Arquivos:** `atendimento/scope.py` (novo), `atendimento/views.py`, `clientes/decorators.py`,
+`home/views.py`, `financeiro/views.py`, `modelo_equipamento/views.py`,
+`funcao_equipamento/views.py`, `templates/base.html`,
+`atendimento/templates/atendimento/{base,dashboard}.html`, `home/templates/geo_consulta.html`,
+`atendimento/tests.py`, `docs/PERMISSOES_CONSULTOR.md`.
+
+Detalhes em `docs/PERMISSOES_CONSULTOR.md`.
+
+---
+
 ## [Não publicado] — 2026-08-20 (Agent NOC: Zabbix via API — histórico e gráficos)
 
 ### Adicionado

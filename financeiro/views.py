@@ -3006,6 +3006,7 @@ def download_contrato_assinado(request, token):
 
 
 @login_required
+@acesso_financeiro_restrito
 def listar_contratos_aluguel(request, aluguel_id):
     """Lista contratos de um aluguel (para o painel admin)."""
     aluguel   = get_object_or_404(AluguelIPv4, id=aluguel_id)
@@ -3030,6 +3031,7 @@ def listar_contratos_aluguel(request, aluguel_id):
 
 
 @login_required
+@acesso_financeiro_restrito
 def assinatura_locador(request):
     """GET: retorna assinatura salva. POST: salva nova assinatura."""
     cfg = ConfiguracaoFinanceira.objects.first()
@@ -3054,6 +3056,7 @@ def assinatura_locador(request):
 
 
 @login_required
+@acesso_financeiro_restrito
 def api_painel_blocos_ip(request):
     """Retorna todos os aluguéis de IP (todos os status) com dados de faturas por bloco."""
     status_filtro = request.GET.get('status', '')

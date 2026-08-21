@@ -67,7 +67,7 @@
             <a href="{% url 'atendimento:inbox' %}" class="btn-cyber" style="font-size:12px;">
                 <i class="fas fa-inbox"></i> Caixa de Entrada
             </a>
-            {% if request.user.is_staff %}
+            {% if is_admin_bo %}
             <a href="{% url 'atendimento:settings_connections' %}" class="btn-cyber secondary" style="font-size:12px;">
                 <i class="fas fa-cog"></i> Config
             </a>

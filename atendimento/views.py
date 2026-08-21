@@ -28,10 +28,15 @@ def staff_required(view_func):
         return view_func(request, *args, **kwargs)
     return wrapper
 
-# Alias para retrocompatibilidade com views de admin
+# Views de configuração da plataforma (conexões WhatsApp, permissões,
+# settings globais) — restritas ao Administrador. Checa o PAPEL e não
+# `is_staff`, porque Consultor/Operador também são is_staff (é o que os
+# libera no `staff_required` acima) e não podem configurar a plataforma
+# nem ver as listas globais dessas telas.
 def admin_required(view_func):
     def wrapper(request, *args, **kwargs):
-        if not request.user.is_staff:
+        from usuario.perms import is_admin
+        if not is_admin(request.user):
             return HttpResponseForbidden("Acesso restrito a administradores")
         return view_func(request, *args, **kwargs)
     return login_required(wrapper)
@@ -42,6 +47,10 @@ from .models import (
     Task, TaskConversation, AttendantContact, ScheduledMessage,
 )
 from .services import EvolutionAPIClient, ConversationService
+from .scope import (
+    clientes_visiveis, conversations_visiveis, groups_visiveis,
+    pode_ver_conversation, pode_ver_group,
+)
 from clientes.models import Cliente
 
 logger = logging.getLogger(__name__)
@@ -66,7 +75,7 @@ def _marcar_mensagens_lidas(conversation):
 
 def _base_ctx(request):
     """Contexto comum a todas as views do atendimento (sidebar + badges)."""
-    active = Conversation.objects.filter(
+    active = conversations_visiveis(request.user).filter(
         status__in=['new', 'open', 'pending']
     ).select_related('group', 'cliente', 'assigned_to').prefetch_related('tags').annotate(
         unread_count=Count('messages', filter=Q(messages__sender_type='customer', messages__is_read=False))
@@ -93,24 +102,26 @@ def _base_ctx(request):
 @staff_required
 def dashboard(request):
     """Dashboard principal do atendimento"""
-    # Estatísticas
+    # Estatísticas — sempre sobre as conversas que o usuário pode ver
+    # (Administrador: todas; Consultor/Operador: só a própria instância).
+    convs = conversations_visiveis(request.user)
     stats = {
-        'total_conversations': Conversation.objects.count(),
-        'open_conversations': Conversation.objects.filter(status__in=['new', 'open']).count(),
-        'pending_conversations': Conversation.objects.filter(status='pending').count(),
-        'resolved_conversations': Conversation.objects.filter(status='resolved').count(),
-        'total_messages': Message.objects.count(),
+        'total_conversations': convs.count(),
+        'open_conversations': convs.filter(status__in=['new', 'open']).count(),
+        'pending_conversations': convs.filter(status='pending').count(),
+        'resolved_conversations': convs.filter(status='resolved').count(),
+        'total_messages': Message.objects.filter(conversation__in=convs).count(),
         'online_agents': AgentStatus.objects.filter(status='online').count(),
         'active_connections': WhatsAppConnection.objects.filter(is_active=True).count(),
     }
 
     # Conversas recentes
-    recent_conversations = Conversation.objects.select_related(
+    recent_conversations = convs.select_related(
         'group', 'cliente', 'assigned_to'
     ).order_by('-last_message_at')[:10]
 
     # Conversas por status
-    conversations_by_status = Conversation.objects.values('status').annotate(count=Count('id'))
+    conversations_by_status = convs.values('status').annotate(count=Count('id'))
 
     context = {
         **_base_ctx(request),
@@ -127,7 +138,7 @@ def inbox(request):
     active_tab = request.GET.get('tab', 'open')
     search = request.GET.get('search', '')
 
-    base_qs = Conversation.objects.select_related('group', 'cliente', 'assigned_to').prefetch_related('tags').annotate(
+    base_qs = conversations_visiveis(request.user).select_related('group', 'cliente', 'assigned_to').prefetch_related('tags').annotate(
         unread_count=Count('messages', filter=Q(messages__sender_type='customer', messages__is_read=False))
     )
 
@@ -162,6 +173,8 @@ def inbox(request):
 def conversation_detail(request, conversation_id):
     """Detalhes de uma conversa"""
     conversation = get_object_or_404(Conversation, id=conversation_id)
+    if not pode_ver_conversation(request.user, conversation):
+        return HttpResponseForbidden('Conversa de outra instância.')
 
     # Atribui conversa ao agente se não estiver atribuída
     if not conversation.assigned_to and request.method == 'POST':
@@ -194,7 +207,7 @@ def conversation_detail(request, conversation_id):
         sidebar_active_tab = 'ongoing'
 
     # Filtra as conversas do sidebar de acordo com a aba ativa
-    _qs = Conversation.objects.select_related('group', 'cliente', 'assigned_to').prefetch_related('tags').annotate(
+    _qs = conversations_visiveis(request.user).select_related('group', 'cliente', 'assigned_to').prefetch_related('tags').annotate(
         unread_count=Count('messages', filter=Q(messages__sender_type='customer', messages__is_read=False))
     ).filter(
         status__in=['new', 'open', 'pending']
@@ -212,7 +225,8 @@ def conversation_detail(request, conversation_id):
     conv_tasks = list(Task.objects.filter(
         task_conversations__conversation=conversation
     ).select_related('assigned_to').order_by('-created_at'))
-    agents_list = AuthUser.objects.filter(is_active=True, is_staff=True).order_by('first_name', 'username')
+    from usuario.perms import colegas_de_instancia
+    agents_list = colegas_de_instancia(request.user).filter(is_staff=True).order_by('first_name', 'username')
     scheduled_count = conversation.scheduled_messages.filter(status='pending').count()
 
     context = {
@@ -243,7 +257,7 @@ def settings_connections(request):
     context = {
         **_base_ctx(request),
         'connections': connections,
-        'total_groups': ContactGroup.objects.count(),
+        'total_groups': groups_visiveis(request.user).count(),
     }
     return render(request, 'atendimento/settings_connections.html', context)
 
@@ -254,7 +268,7 @@ def settings_groups(request):
     connection_id = request.GET.get('connection')
     search = request.GET.get('search', '')
 
-    groups = ContactGroup.objects.select_related('connection', 'cliente')
+    groups = groups_visiveis(request.user).select_related('connection', 'cliente')
 
     if connection_id:
         groups = groups.filter(connection_id=connection_id)
@@ -269,7 +283,7 @@ def settings_groups(request):
         **_base_ctx(request),
         'groups': groups,
         'connections': WhatsAppConnection.objects.all(),
-        'clientes': Cliente.objects.all().order_by('nome_empresa'),
+        'clientes': clientes_visiveis(request.user).order_by('nome_empresa'),
     }
     return render(request, 'atendimento/settings_groups.html', context)
 
@@ -399,6 +413,8 @@ def api_send_message(request, conversation_id):
     """Envia mensagem em uma conversa"""
     try:
         conversation = get_object_or_404(Conversation, id=conversation_id)
+        if not pode_ver_conversation(request.user, conversation):
+            return JsonResponse({'success': False, 'error': 'Conversa de outra instância.'}, status=403)
         data = json.loads(request.body)
         message_text = data.get('message', '').strip()
         is_internal = bool(data.get('is_internal'))
@@ -449,6 +465,8 @@ def api_send_media(request, conversation_id):
     """Envia mídia (imagem, documento, áudio) em uma conversa"""
     try:
         conversation = get_object_or_404(Conversation, id=conversation_id)
+        if not pode_ver_conversation(request.user, conversation):
+            return JsonResponse({'success': False, 'error': 'Conversa de outra instância.'}, status=403)
         data = json.loads(request.body)
 
         media_base64 = data.get('mediaBase64', '').strip()
@@ -488,6 +506,8 @@ def api_send_media(request, conversation_id):
 def api_schedule_message(request, conversation_id):
     """Cria (POST) ou lista pendentes (GET) mensagens agendadas de uma conversa."""
     conversation = get_object_or_404(Conversation, id=conversation_id)
+    if not pode_ver_conversation(request.user, conversation):
+        return JsonResponse({'success': False, 'error': 'Conversa de outra instância.'}, status=403)
 
     if request.method == 'GET':
         pending = conversation.scheduled_messages.filter(status='pending').order_by('scheduled_for')
@@ -577,6 +597,8 @@ def api_update_conversation(request, conversation_id):
     """Atualiza informações da conversa"""
     try:
         conversation = get_object_or_404(Conversation, id=conversation_id)
+        if not pode_ver_conversation(request.user, conversation):
+            return JsonResponse({'success': False, 'error': 'Conversa de outra instância.'}, status=403)
         data = json.loads(request.body)
 
         # Atualiza status
@@ -659,6 +681,8 @@ def api_conversation_participants(request, conversation_id):
     from django.core.cache import cache
 
     conversation = get_object_or_404(Conversation, id=conversation_id)
+    if not pode_ver_conversation(request.user, conversation):
+        return JsonResponse({'success': False, 'error': 'Conversa de outra instância.'}, status=403)
     group = conversation.group
     if not group or not group.connection or not group.jid:
         return JsonResponse({'success': True, 'participantes': []})
@@ -682,7 +706,7 @@ def api_search_conversations(request):
     usado para escolher o destino ao mesclar chamados duplicados."""
     q = request.GET.get('q', '').strip()
     exclude_id = request.GET.get('exclude_id', '')
-    qs = Conversation.objects.filter(
+    qs = conversations_visiveis(request.user).filter(
         status__in=['new', 'open', 'pending'], is_task_conv=False,
     ).select_related('group', 'cliente')
     if exclude_id:
@@ -954,6 +978,8 @@ def api_merge_conversation(request, conversation_id):
     (merged_into) — o histórico não se perde, só some da caixa de entrada."""
     try:
         source = get_object_or_404(Conversation, id=conversation_id)
+        if not pode_ver_conversation(request.user, source):
+            return JsonResponse({'success': False, 'error': 'Conversa de outra instância.'}, status=403)
         data = json.loads(request.body)
         target_id = data.get('target_id')
         if not target_id:
@@ -961,6 +987,8 @@ def api_merge_conversation(request, conversation_id):
         if str(target_id) == str(source.id):
             return JsonResponse({'success': False, 'error': 'Não é possível mesclar um chamado com ele mesmo'}, status=400)
         target = get_object_or_404(Conversation, id=target_id)
+        if not pode_ver_conversation(request.user, target):
+            return JsonResponse({'success': False, 'error': 'Conversa de outra instância.'}, status=403)
 
         moved = Message.objects.filter(conversation=source).update(conversation=target)
 
@@ -1002,12 +1030,19 @@ def api_merge_conversation(request, conversation_id):
 def api_link_group(request, group_id):
     """Vincula grupo a cliente"""
     try:
+        # Vincular exige poder ver os DOIS lados: o grupo e o cliente. Sem
+        # isso um Consultor puxava um grupo de outra instância pra si (ou
+        # jogava o próprio grupo pra um cliente alheio).
         group = get_object_or_404(ContactGroup, id=group_id)
+        if not pode_ver_group(request.user, group):
+            return JsonResponse({'success': False, 'error': 'Grupo de outra instância.'}, status=403)
         data = json.loads(request.body)
         cliente_id = data.get('cliente_id')
 
         if cliente_id:
-            cliente = Cliente.objects.get(id=cliente_id)
+            cliente = clientes_visiveis(request.user).filter(id=cliente_id).first()
+            if cliente is None:
+                return JsonResponse({'success': False, 'error': 'Cliente inválido para o seu escopo.'}, status=403)
             group.cliente = cliente
             group.save()
 
@@ -1131,6 +1166,8 @@ def configuracoes(request):
 def api_conversation_tags(request, conversation_id, tag_id=None):
     """Adiciona (POST) ou remove (DELETE) uma tag de uma conversa."""
     conversation = get_object_or_404(Conversation, id=conversation_id)
+    if not pode_ver_conversation(request.user, conversation):
+        return JsonResponse({'success': False, 'error': 'Conversa de outra instância.'}, status=403)
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -1330,7 +1367,7 @@ def empresas(request):
     from clientes.models import Cliente as CRMCliente
     search = request.GET.get('search', '').strip()
 
-    qs = CRMCliente.objects.annotate(
+    qs = clientes_visiveis(request.user).annotate(
         group_count=Count('contactgroup', distinct=True),
         conv_count=Count('conversation', distinct=True),
     ).order_by('nome_empresa')
@@ -1412,8 +1449,9 @@ def api_empresa_detail(request, empresa_id):
 @staff_required
 @login_required
 def kanban(request):
+    from usuario.perms import colegas_de_instancia
     boards = KanbanBoard.objects.all()
-    users = User.objects.filter(is_active=True)
+    users = colegas_de_instancia(request.user)
     context = {
         **_base_ctx(request),
         'boards': boards,
@@ -1585,7 +1623,7 @@ def api_kanban_move_card(request, card_id):
 @staff_required
 def auto_atendimento(request):
     flows = ChatFlow.objects.all()
-    groups = ContactGroup.objects.select_related('connection').order_by('name')
+    groups = groups_visiveis(request.user).select_related('connection').order_by('name')
 
     # Quais grupos recebem auto atendimento de fato hoje (mesma lógica de
     # ConversationService._flow_do_grupo): um fluxo ativo com group_ids vazio
@@ -1708,7 +1746,7 @@ def relatorio_pdf(request):
     if not cliente_id:
         return HttpResponse('Selecione uma empresa para gerar o relatório.', status=400)
 
-    cliente = get_object_or_404(CRMCliente, id=cliente_id)
+    cliente = get_object_or_404(clientes_visiveis(request.user), id=cliente_id)
 
     qs = Conversation.objects.filter(
         Q(cliente=cliente) | Q(group__cliente=cliente),
@@ -1955,7 +1993,7 @@ def relatorios(request):
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
 
-    qs = Conversation.objects.all()
+    qs = conversations_visiveis(request.user)
     if date_from:
         qs = qs.filter(created_at__date__gte=date_from)
     if date_to:
@@ -2016,7 +2054,7 @@ def relatorios(request):
     )
     total_for_pct = total or 1
 
-    recent_resolved = Conversation.objects.filter(
+    recent_resolved = conversations_visiveis(request.user).filter(
         status__in=['resolved', 'closed']
     ).select_related('group', 'cliente', 'assigned_to', 'category').order_by('-closed_at')[:20]
 
@@ -2024,7 +2062,7 @@ def relatorios(request):
     import datetime as _dt
 
     anos_disponiveis = list(
-        Conversation.objects.filter(closed_at__isnull=False)
+        conversations_visiveis(request.user).filter(closed_at__isnull=False)
         .annotate(ano=ExtractYear('closed_at'))
         .values_list('ano', flat=True)
         .distinct()
@@ -2033,7 +2071,7 @@ def relatorios(request):
 
     # Todos os clientes cadastrados no CRM — para o seletor do PDF
     from clientes.models import Cliente as CRMCliente
-    clientes_disponiveis = CRMCliente.objects.all().order_by('nome_empresa')
+    clientes_disponiveis = clientes_visiveis(request.user).order_by('nome_empresa')
 
     context = {
         **_base_ctx(request),
@@ -2068,7 +2106,7 @@ def historico(request):
     date_from = request.GET.get('date_from', '')
     date_to = request.GET.get('date_to', '')
 
-    qs = Conversation.objects.select_related('group', 'cliente', 'assigned_to', 'category').order_by('-created_at')
+    qs = conversations_visiveis(request.user).select_related('group', 'cliente', 'assigned_to', 'category').order_by('-created_at')
 
     if status_filter:
         qs = qs.filter(status=status_filter)
@@ -2107,7 +2145,7 @@ def grupos(request):
     connection_id = request.GET.get('connection', '')
     search = request.GET.get('search', '')
 
-    groups = ContactGroup.objects.select_related('connection', 'company', 'cliente').order_by('name')
+    groups = groups_visiveis(request.user).select_related('connection', 'company', 'cliente').order_by('name')
     if connection_id:
         groups = groups.filter(connection_id=connection_id)
     if search:
@@ -2119,7 +2157,7 @@ def grupos(request):
         'groups': groups,
         'connections': WhatsAppConnection.objects.all(),
         'companies': Company.objects.all().order_by('name'),
-        'clientes': CRMCliente.objects.all().order_by('nome_empresa'),
+        'clientes': clientes_visiveis(request.user).order_by('nome_empresa'),
         'connection_filter': connection_id,
         'search': search,
     }
@@ -2130,6 +2168,8 @@ def grupos(request):
 @require_http_methods(["POST"])
 def api_group_toggle_ai(request, group_id):
     group = get_object_or_404(ContactGroup, id=group_id)
+    if not pode_ver_group(request.user, group):
+        return JsonResponse({'success': False, 'error': 'Grupo de outra instância.'}, status=403)
     try:
         group.ai_enabled = not group.ai_enabled
         group.save()
@@ -2144,6 +2184,8 @@ def api_group_toggle_auto_atendimento(request, group_id):
     """Remove/readiciona um grupo do auto atendimento — opt-out explícito que
     vale inclusive contra um fluxo universal (group_ids vazio) ativo."""
     group = get_object_or_404(ContactGroup, id=group_id)
+    if not pode_ver_group(request.user, group):
+        return JsonResponse({'success': False, 'error': 'Grupo de outra instância.'}, status=403)
     try:
         group.auto_atendimento_excluido = not group.auto_atendimento_excluido
         group.save(update_fields=['auto_atendimento_excluido'])
@@ -2156,6 +2198,8 @@ def api_group_toggle_auto_atendimento(request, group_id):
 @require_http_methods(["POST"])
 def api_group_set_company(request, group_id):
     group = get_object_or_404(ContactGroup, id=group_id)
+    if not pode_ver_group(request.user, group):
+        return JsonResponse({'success': False, 'error': 'Grupo de outra instância.'}, status=403)
     try:
         data = json.loads(request.body)
         company_id = data.get('company_id')
@@ -2174,6 +2218,8 @@ def api_group_set_company(request, group_id):
 def api_conversation_messages(request, conversation_id):
     """Retorna mensagens novas de uma conversa (polling fallback do WebSocket)."""
     conversation = get_object_or_404(Conversation, id=conversation_id)
+    if not pode_ver_conversation(request.user, conversation):
+        return JsonResponse({'error': 'Conversa de outra instância.'}, status=403)
     after_ts = request.GET.get('after_ts', '')
     try:
         import datetime as _dt
@@ -2289,12 +2335,16 @@ def api_auto_vincular(request):
                     sub_score += 1
         return sub_score
 
-    clientes = list(CRMCliente.objects.all())
+    # Escopo: o auto-vínculo só pode enxergar os clientes da própria
+    # instância e só pode mexer em grupo livre ou já dela — senão um
+    # Consultor rodando "vincular automático" reatribuía os grupos das
+    # outras instâncias para os clientes dele.
+    clientes = list(clientes_visiveis(request.user))
 
     if force:
-        groups = list(ContactGroup.objects.all().select_related('connection', 'cliente'))
+        groups = list(groups_visiveis(request.user).select_related('connection', 'cliente'))
     else:
-        groups = list(ContactGroup.objects.filter(cliente__isnull=True).select_related('connection'))
+        groups = list(groups_visiveis(request.user).filter(cliente__isnull=True).select_related('connection'))
 
     linked = []
     for grupo in groups:
@@ -2337,11 +2387,13 @@ def api_auto_vincular(request):
 @staff_required
 def api_cliente_grupos(request, cliente_id):
     """Lista e atualiza grupos vinculados a um cliente do CRM"""
-    from clientes.models import Cliente as CRMCliente
-    cliente = get_object_or_404(CRMCliente, id=cliente_id)
+    cliente = get_object_or_404(clientes_visiveis(request.user), id=cliente_id)
 
     if request.method == 'GET':
-        all_groups = ContactGroup.objects.select_related('connection', 'cliente').order_by('connection__name', 'name')
+        # `groups_visiveis` já corta os grupos de outras instâncias — sem
+        # isso o campo `linked_to_name` entregava o nome do cliente alheio
+        # dono de cada grupo.
+        all_groups = groups_visiveis(request.user).select_related('connection', 'cliente').order_by('connection__name', 'name')
         data = []
         for g in all_groups:
             linked_to_this = (g.cliente_id == cliente_id)
@@ -2368,8 +2420,12 @@ def api_cliente_grupos(request, cliente_id):
             # Remove vínculo dos grupos atualmente ligados a este cliente
             ContactGroup.objects.filter(cliente_id=cliente_id).update(cliente=None)
 
-            # Vincula os grupos selecionados
+            # Vincula os grupos selecionados — restrito ao que o usuário
+            # pode ver, senão os ids do POST alcançavam grupo de qualquer
+            # instância.
             if group_ids:
+                permitidos = groups_visiveis(request.user).filter(id__in=group_ids)
+                group_ids = list(permitidos.values_list('id', flat=True))
                 ContactGroup.objects.filter(id__in=group_ids).update(cliente=cliente)
 
             return JsonResponse({
@@ -2396,6 +2452,8 @@ def api_conversation_hosts(request, conversation_id):
         Conversation.objects.select_related('group__cliente', 'cliente'),
         id=conversation_id,
     )
+    if not pode_ver_conversation(request.user, conversation):
+        return JsonResponse({'hosts': [], 'cliente': None, 'error': 'Conversa de outra instância.'}, status=403)
     # Vínculo vivo: grupo → cliente (reflete edições recentes do usuário)
     cliente = (
         conversation.group.cliente
@@ -2538,7 +2596,7 @@ def api_agents_list(request):
 def api_groups_json(request):
     """Lista grupos/contatos para o modal Iniciar Conversa."""
     q = request.GET.get('q', '').strip()
-    qs = ContactGroup.objects.select_related('connection', 'cliente').order_by('name')
+    qs = groups_visiveis(request.user).select_related('connection', 'cliente').order_by('name')
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(connection__name__icontains=q))
     qs = qs[:60]
@@ -2561,6 +2619,8 @@ def api_start_conversation_by_group(request):
             return JsonResponse({'success': False, 'error': 'group_id obrigatório'}, status=400)
 
         group = get_object_or_404(ContactGroup, id=group_id)
+        if not pode_ver_group(request.user, group):
+            return JsonResponse({'success': False, 'error': 'Grupo de outra instância.'}, status=403)
 
         now = timezone.now()
 
@@ -2655,7 +2715,8 @@ def sala_virtual(request):
 def tarefas(request):
     """Página principal de tarefas"""
     from django.contrib.auth.models import User as AuthUser
-    agents = AuthUser.objects.filter(is_active=True, is_staff=True).order_by('first_name', 'username')
+    from usuario.perms import colegas_de_instancia
+    agents = colegas_de_instancia(request.user).filter(is_staff=True).order_by('first_name', 'username')
     context = {
         **_base_ctx(request),
         'agents': agents,
@@ -2739,6 +2800,8 @@ def api_task_detail(request, task_id):
 def api_task_conversation(request, task_id, conversation_id):
     task = get_object_or_404(Task, id=task_id)
     conv = get_object_or_404(Conversation, id=conversation_id)
+    if not pode_ver_conversation(request.user, conv):
+        return JsonResponse({'success': False, 'error': 'Conversa de outra instância.'}, status=403)
 
     if request.method == 'POST':
         tc, created = TaskConversation.objects.get_or_create(
@@ -2763,6 +2826,8 @@ def api_task_conversation(request, task_id, conversation_id):
 def api_task_add_conversation_by_conv(request, conversation_id):
     """Adiciona a conversa a uma tarefa existente ou cria nova — chamado pelo menu de contexto."""
     conv = get_object_or_404(Conversation, id=conversation_id)
+    if not pode_ver_conversation(request.user, conv):
+        return JsonResponse({'success': False, 'error': 'Conversa de outra instância.'}, status=403)
     data = json.loads(request.body)
     task_id = data.get('task_id')
     if task_id:

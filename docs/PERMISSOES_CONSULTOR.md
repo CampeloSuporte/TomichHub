@@ -222,3 +222,115 @@ Marinho.
 - Três logins com `is_staff=True` do mesmo lote de teste (`adm_466dee`, `adm_6cb110`,
   `admweb_2211cb`) e um operador órfão (`semperfil_6cb110`) continuam no banco. `is_staff` sem
   `PerfilUsuario` = **administrador legado**, com acesso a tudo.
+
+---
+
+## Consultor enxergava os clientes das outras instâncias (2026-08-21)
+
+### O sintoma
+
+O Consultor `mmarinho` (instância "marinho", **2 clientes**) via os **47 clientes** da instância
+Principal — no quadro geral, no módulo de atendimento, no Agent NOC e no relatório de backups.
+
+### A causa: `is_staff` deixou de significar "Administrador"
+
+Duas mudanças corretas, isoladamente, se combinaram numa falha de isolamento:
+
+1. `_is_staff_para_role` (em `usuario/views.py`) passou a criar Consultor e Operador com
+   `is_staff=True`. Isso foi de propósito: o módulo de atendimento inteiro é `staff_required`, e
+   sem `is_staff` nenhum Consultor conseguia atender nem aparecia como atendente.
+2. Só que `admin_required` — tanto o de `clientes/decorators.py` quanto o alias local de
+   `atendimento/views.py` — continuou testando `request.user.is_staff` como se fosse "é o
+   Administrador da plataforma". O próprio docstring afirmava "Consultor/Operador têm
+   `is_staff=False`", o que deixou de ser verdade.
+
+Resultado: **toda view `@admin_required` virou pública para Consultor/Operador** — e essas são
+justamente as telas globais, que listam `Cliente.objects.all()` sem escopo nenhum. O mesmo valia
+para os menus do `templates/base.html`, gateados por `{% if request.user.is_staff %}`.
+
+Levantado com um crawl autenticado como `mmarinho` nas 795 rotas: **21 rotas** devolviam nome de
+cliente de outra instância.
+
+### O que foi corrigido
+
+**1. O papel volta a ser a fonte da verdade (`usuario.perms.is_admin`)**
+
+- `clientes/decorators.py`: `admin_required` checa `is_admin`; Consultor/Operador vão pro
+  `quadro_instancia` (mandar pra tela de login prenderia num loop de "já estou logado").
+  `cliente_login_required` e `cliente_or_admin_required` passaram a usar `is_backoffice` em vez
+  de `is_staff` para separar equipe do portal.
+- `atendimento/views.py`: o alias local `admin_required` também passou a checar `is_admin`.
+  `staff_required` continua como está — ele significa "back-office", que é o correto para o
+  módulo; quem filtra os dados agora é o escopo abaixo.
+- `templates/base.html`, `atendimento/base.html` e `atendimento/dashboard.html`: os menus de
+  plataforma (Ferramentas, Agent NOC, seção "Sistema" do atendimento) saíram de
+  `request.user.is_staff` para `is_admin_bo`.
+
+**2. Escopo por instância onde o Consultor deve continuar entrando**
+
+Bloquear não bastava: várias telas são operação legítima do Consultor sobre os próprios clientes.
+Essas passaram a `backoffice_required` **com queryset escopado**:
+
+| View | O que mudou |
+|---|---|
+| `home.relatorio_backups` | `BackupLog` filtrado por `Cliente.objects.visiveis_para`; o `?cliente=` também |
+| `home.listar_chamados_por_status` | `Chamado` filtrado pelos clientes visíveis |
+| `home.backup_acesso_config` | valida `pode_acessar_cliente(acesso.cliente)` — o `acesso_id` da URL alcançava qualquer host |
+| `modelo_equipamento` / `funcao_equipamento` | catálogos globais sem dado de cliente; Consultor precisa deles para cadastrar acesso |
+| `home.geo_*` (correção/histórico) | `ferramenta_instancia_required('geoip')` + `_correcoes_geoip_visiveis` (dono = `solicitante`) |
+
+Continuam exclusivas do Administrador: `quadro_geral`, `agent_grupos`, `agent_knowledge`,
+`agent_config`, `backup_config`, `backup_template_*` e o cadastro de **Blocos do Geofeed**
+(`GeofeedBloco` é tabela global, sem dono por instância — o card sumiu da tela para não quebrar).
+
+**3. Módulo de atendimento: `atendimento/scope.py` (novo)**
+
+`clientes_visiveis`, `conversations_visiveis`, `groups_visiveis`, `pode_ver_conversation` e
+`pode_ver_group`. Aplicados em `_base_ctx` (sidebar/badges), dashboard, inbox, histórico,
+relatórios, empresas, grupos, auto-atendimento, kanban, PDF e nas APIs. Além das listagens, **10
+guardas em conversas e 4 em grupos** fecharam os IDOR por id na URL — enviar mensagem, mesclar,
+agendar, taguear, ler mensagens no polling e, o mais sério, `api_conversation_hosts`, que
+devolvia os hosts (`Acesso`) do cliente de qualquer instância.
+
+Regra de escopo: conversa pertence à instância por `Conversation.cliente` **ou** por
+`group.cliente` (chamado antigo pode ter só o vínculo do grupo). Grupo de WhatsApp **ainda sem
+cliente** é a única exceção — continua visível e vinculável por qualquer back-office, senão o
+Consultor não conseguiria cadastrar os próprios grupos. Grupo já vinculado a outra instância
+nunca aparece nem pode ser alterado (inclusive no "vincular automático", que reatribuía os
+grupos alheios).
+
+**4. Listas de usuários**
+
+`conversation_detail`, `tarefas` e `kanban` traziam `User.objects.filter(is_active=True)` cru —
+o seletor de responsável do kanban listava até os logins de portal dos clientes das outras
+instâncias. Agora saem de `perms.colegas_de_instancia`.
+
+**5. Financeiro**
+
+`api_painel_blocos_ip`, `listar_contratos_aluguel` e `assinatura_locador` estavam só com
+`@login_required` — qualquer usuário autenticado (inclusive login de portal) listava os aluguéis
+de IP de todos os clientes com os dados de fatura. Passaram a `@acesso_financeiro_restrito`.
+
+### Verificação
+
+Crawl autenticado nas 795 rotas, antes e depois:
+
+| Perfil | Rotas vazando antes | Depois |
+|---|---|---|
+| Consultor (`mmarinho`) | 21 | 0 |
+| Operador (`testemarinho`) | 21 | 0 |
+| Administrador (`lucas`) | — | **0 mudanças** de status em nenhuma rota |
+
+Regressão automatizada em `atendimento.tests.IsolamentoInstanciaTest` (8 testes) — conferido que
+**6 deles falham** se o escopo for desligado, para não virarem teste vazio.
+
+### O que ficou de fora
+
+- **Auditoria completa do módulo Financeiro.** Ele tem trava própria por lista de IDs
+  (`USUARIOS_FINANCEIRO = [1, 2]`), então o Consultor já não entra nas telas principais. Mas
+  outros ~25 endpoints só têm `@login_required` + `if not request.user.is_staff` inline — que
+  hoje deixa Consultor/Operador passar. Alguns são usados pelo portal do cliente final, então
+  cada um precisa ser decidido caso a caso.
+- **Os "administradores legados"** (`is_staff=True` sem `PerfilUsuario`: `adm_466dee`,
+  `adm_6cb110`, `admweb_2211cb`) continuam com acesso total por `get_role`. São sobra do lote de
+  teste citado na seção anterior — enquanto existirem, são contas de Administrador de fato.

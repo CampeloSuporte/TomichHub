@@ -221,11 +221,17 @@ def quadro_instancia(request):
 
 
 @login_required(login_url='login')
-@admin_required
+@backoffice_required
 def relatorio_backups(request):
+    """Relatório de backups — Administrador vê a plataforma inteira;
+    Consultor/Operador só os clientes da própria instância (o filtro por
+    cliente também é validado contra esse escopo, senão bastava trocar o
+    ?cliente= na URL pra ler o backup de outra instância)."""
     from django.core.paginator import Paginator
 
-    qs = BackupLog.objects.select_related('acesso', 'cliente', 'template').order_by('-data_backup')
+    clientes_permitidos = Cliente.objects.visiveis_para(request.user)
+    qs = BackupLog.objects.filter(cliente__in=clientes_permitidos) \
+        .select_related('acesso', 'cliente', 'template').order_by('-data_backup')
 
     # Filtros
     cliente_id  = request.GET.get('cliente')
@@ -252,7 +258,7 @@ def relatorio_backups(request):
     page = request.GET.get('page', 1)
     backups = paginator.get_page(page)
 
-    clientes = Cliente.objects.order_by('nome_empresa')
+    clientes = clientes_permitidos.order_by('nome_empresa')
     status_choices = [('SUCESSO', 'Sucesso'), ('ERRO', 'Erro'), ('PARCIAL', 'Parcial'), ('SEM_MUDANCAS', 'Sem Mudanças')]
 
     # Resumo
@@ -278,10 +284,13 @@ def relatorio_backups(request):
 
 
 @login_required(login_url='login')
-@admin_required
+@backoffice_required
 def listar_chamados_por_status(request, status):
-    """Lista chamados filtrados por status"""
-    chamados = Chamado.objects.filter(status=status).select_related(
+    """Lista chamados filtrados por status — escopado aos clientes visíveis
+    (Consultor/Operador só a própria instância)."""
+    chamados = Chamado.objects.filter(
+        status=status, cliente__in=Cliente.objects.visiveis_para(request.user)
+    ).select_related(
         'cliente', 'categoria', 'responsavel', 'criado_por'
     ).prefetch_related('comentarios').order_by('-data_criacao')
     
@@ -820,6 +829,22 @@ def _geo_regiao_iso(pais, regiao):
     return r
 
 
+def _correcoes_geoip_visiveis(user):
+    """Correções de geolocalização que `user` pode ver/mexer.
+
+    `CorrecaoGeoIP` não tem cliente nem instância — o dono é quem pediu
+    (`solicitante`). Administrador vê tudo; Consultor/Operador só o que
+    saiu da própria instância (ele e os colegas), senão o histórico da
+    ferramenta mostrava os prefixos e e-mails de contato das outras.
+    """
+    from clientes.models import CorrecaoGeoIP
+    from usuario.perms import is_admin, colegas_de_instancia
+    qs = CorrecaoGeoIP.objects.all()
+    if is_admin(user):
+        return qs
+    return qs.filter(solicitante__in=colegas_de_instancia(user))
+
+
 @login_required(login_url='login')
 @ferramenta_instancia_required('geoip')
 def geo_consulta(request):
@@ -1065,7 +1090,7 @@ def geo_consulta_buscar(request):
 
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('geoip')
 def geo_atualizar(request):
     """Gera Geofeed RFC 8805, envia formulario MaxMind e e-mails para RIRs."""
     if request.method != 'POST':
@@ -1486,12 +1511,10 @@ def geo_blocos_excluir(request, bloco_id):
 # ── Histórico de correções ────────────────────────────────────────────────────
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('geoip')
 def geo_historico(request):
     """Retorna o histórico de solicitações de correção como JSON."""
-    from clientes.models import CorrecaoGeoIP
-
-    qs = CorrecaoGeoIP.objects.select_related('solicitante').order_by('-data_envio')[:50]
+    qs = _correcoes_geoip_visiveis(request.user).select_related('solicitante').order_by('-data_envio')[:50]
     registros = []
     for c in qs:
         registros.append({
@@ -1520,7 +1543,7 @@ def geo_historico(request):
 # ── Verificar resposta IMAP dos RIRs ─────────────────────────────────────────
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('geoip')
 def geo_verificar_resposta(request, correcao_id):
     """
     Verifica via IMAP se algum RIR respondeu ao e-mail de correção enviado.
@@ -1533,7 +1556,7 @@ def geo_verificar_resposta(request, correcao_id):
     from email.header import decode_header
     from clientes.models import CorrecaoGeoIP, ConfiguracaoSistema
 
-    correcao = CorrecaoGeoIP.objects.filter(id=correcao_id).first()
+    correcao = _correcoes_geoip_visiveis(request.user).filter(id=correcao_id).first()
     if not correcao:
         return JsonResponse({'ok': False, 'erro': 'Registro não encontrado'}, status=404)
 
@@ -1669,7 +1692,7 @@ def geo_verificar_resposta(request, correcao_id):
 # ── Verificar se a correção foi aplicada nos bancos ──────────────────────────
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('geoip')
 def geo_verificar_aplicacao(request, correcao_id):
     """
     Re-consulta todos os bancos de geolocalização e compara os resultados
@@ -1681,7 +1704,7 @@ def geo_verificar_aplicacao(request, correcao_id):
     from datetime import datetime as dt
     from clientes.models import CorrecaoGeoIP
 
-    correcao = CorrecaoGeoIP.objects.filter(id=correcao_id).first()
+    correcao = _correcoes_geoip_visiveis(request.user).filter(id=correcao_id).first()
     if not correcao:
         return JsonResponse({'ok': False, 'erro': 'Registro não encontrado'}, status=404)
 
@@ -1827,7 +1850,7 @@ def geo_verificar_aplicacao(request, correcao_id):
 # ── Confirma e-mail MaxMind via IMAP ─────────────────────────────────────────
 
 @login_required(login_url='login')
-@admin_required
+@ferramenta_instancia_required('geoip')
 def geo_confirmar_maxmind(request, correcao_id):
     """
     Busca via IMAP o e-mail de confirmação enviado pelo MaxMind
@@ -1840,7 +1863,7 @@ def geo_confirmar_maxmind(request, correcao_id):
     import requests as req_lib
     from clientes.models import CorrecaoGeoIP, ConfiguracaoSistema
 
-    correcao = CorrecaoGeoIP.objects.filter(id=correcao_id).first()
+    correcao = _correcoes_geoip_visiveis(request.user).filter(id=correcao_id).first()
     if not correcao:
         return JsonResponse({'ok': False, 'erro': 'Registro não encontrado'}, status=404)
 
@@ -2038,12 +2061,19 @@ def backup_template_deletar(request, template_id):
 
 
 @login_required(login_url='login')
-@admin_required
+@backoffice_required
 @require_http_methods(['POST'])
 def backup_acesso_config(request, acesso_id):
-    """Atualiza backup_habilitado, backup_template e backup_automatico de um Acesso."""
+    """Atualiza backup_habilitado, backup_template e backup_automatico de um Acesso.
+
+    Consultor/Operador podem configurar o backup dos próprios hosts, mas só
+    dos clientes da instância deles — sem a checagem abaixo o acesso_id da
+    URL alcançava qualquer host da plataforma."""
     try:
         acesso = get_object_or_404(Acesso, id=acesso_id)
+        from usuario.perms import pode_acessar_cliente
+        if not pode_acessar_cliente(request.user, acesso.cliente):
+            return JsonResponse({'ok': False, 'erro': 'Sem permissão para este acesso.'}, status=403)
         data = json.loads(request.body)
         acesso.backup_habilitado = bool(data.get('backup_habilitado', False))
         acesso.backup_automatico = bool(data.get('backup_automatico', False))

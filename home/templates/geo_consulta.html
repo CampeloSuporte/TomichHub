@@ -181,7 +181,11 @@
       </div>
     </div>
 
-    <!-- ── Blocos do Geofeed (múltiplos blocos/localizações) ────────────── -->
+    <!-- ── Blocos do Geofeed (múltiplos blocos/localizações) ─────────────
+         Tabela global da plataforma (sem dono por instância): só o
+         Administrador cadastra/edita. Consultor/Operador seguem usando a
+         consulta, a correção e o histórico da própria instância. -->
+    {% if is_admin_bo %}
     <div class="card mb-4" id="geo-blocos-card">
       <div class="card-body">
         <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
@@ -219,6 +223,7 @@
         </div>
       </div>
     </div>
+    {% endif %}
 
     <!-- ── Histórico de Correções ─────────────────────────────────────── -->
     <div class="card mb-4" id="geo-historico-card">
@@ -1477,7 +1482,7 @@ window.addEventListener('DOMContentLoaded', () => geoBuscar());
 window.addEventListener('DOMContentLoaded', () => geoCarregarHistorico());
 
 // Carrega blocos do Geofeed ao abrir a página
-window.addEventListener('DOMContentLoaded', () => geoBlocosCarregar());
+{% if is_admin_bo %}window.addEventListener('DOMContentLoaded', () => geoBlocosCarregar());{% endif %}
 </script>
 
 {% endblock %}
