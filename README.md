@@ -285,6 +285,7 @@ Assistente de inteligência artificial integrado ao CRM:
 - Grupos de discussão com múltiplos participantes
 - Integração com WhatsApp via Evolution API
 - **API Key Claude individual por grupo WhatsApp** — cada cliente consome os próprios créditos Anthropic; o agent fica em silêncio em grupos sem chave configurada
+- **Consulta o Zabbix do cliente e responde com gráfico** — perguntas de histórico ("me traga o histórico do tráfego do link da Wirelink", "sinal óptico antes e depois do rompimento") são respondidas pela API do Zabbix, com PNG enviado no WhatsApp ou no chat do terminal. Pré-requisitos em [Configuração Inicial → Zabbix](#3-zabbix-por-cliente)
 - Controle de consumo de tokens com custo estimado em USD e BRL
 - Histórico de conversas e relatórios de uso
 
@@ -430,6 +431,39 @@ Necessário para envio de e-mails (IRR, notificações) e confirmação automát
 - URL base do Zabbix (sem `/api_jsonrpc.php`)
 - Token de API (Zabbix 5.4+) ou usuário/senha
 - Botão "Auto-preencher" detecta automaticamente se houver host "zabbix" nos acessos
+
+#### O que é preciso para o Agent NOC consultar o Zabbix
+
+O agent usa o mesmo Zabbix da aba Monitoramento — não há cadastro separado. Ele resolve nesta
+ordem: **configuração Zabbix do cliente** (a única que aceita token de API) e, na falta dela,
+**um acesso do cliente**:
+
+| Requisito | Detalhe |
+|---|---|
+| **Cadastro** | Acesso com **"zabbix" no tipo** (case-insensitive) e protocolo **`HTTP`/`HTTPS`** — acesso `ZABBIX - SSH` é o servidor, não a API, e é ignorado |
+| **Endereço** | `host` + `porta` do frontend web. Os formatos usados na prática funcionam: `ip:porta/zabbix`, `ip/zabbix/` e `ip` + porta (nesse caso a raiz e `/zabbix` são testadas) |
+| **Credenciais** | Usuário e senha da interface web preenchidos no acesso; o usuário precisa ter **API access habilitado na Role** (Zabbix 6+) e permissão de leitura nos host groups que se quer consultar |
+| **Rota** | IP público que responde de fora → direto. **IP privado (RFC-1918)** ou público bloqueado externamente → exige **ProxyServer SSH ativo** do cliente (aba Túneis SSH) ou túnel OpenVPN cobrindo o IP; o túnel é aberto e reaproveitado automaticamente |
+| **Itens** | Item habilitado e coletando. Janela curta usa `history`; evento de dias atrás cai automaticamente em `trends` (médias horárias) — o item precisa ter trends habilitado |
+| **Chave da IA** | WhatsApp: grupo vinculado ao cliente, ativo, com **API Key Claude própria**, e a mensagem começando com `@noc`. Terminal web: usa a chave global em Sistema → Configurações → Agent NOC |
+
+Quando algo falta, a ferramenta devolve o motivo em texto (ex: "Zabbix tem IP privado mas não há
+proxy SSH ativo") e o agent explica na resposta, em vez de falhar em silêncio.
+
+Teste rápido pela shell:
+
+```bash
+cd /opt/crm && ./venv/bin/python -c "
+import os, django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE','crm.settings'); django.setup()
+from monitoramento import agent_zabbix as az
+from clientes.models import Cliente
+c = Cliente.objects.filter(nome_empresa__icontains='NOME DO CLIENTE').first()
+print(az.resolver_config(c.id).url)
+"
+```
+
+Detalhes de implementação em [docs/agent_noc.md](docs/agent_noc.md) — seção "Zabbix via API".
 
 ### 4. Hotspot (por cliente com hotspot)
 
