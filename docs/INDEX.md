@@ -2,6 +2,35 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 43 — 20/08/2026: Fix — Acesso RDP (abria terminal SSH, depois só tela preta)
+
+**O que foi corrigido?**
+- 🐛 **Clicar em "Acessar" num acesso RDP abria o terminal SSH**: das duas implementações de
+  `acessarEquipamento()` no projeto, a que a listagem de clientes carrega
+  (`static/js/terminal_tab_manager.js`) tratava `HTTP/HTTPS` e `WINBOX`, mas não `RDP` — todo
+  protocolo não previsto caía no ramo final "SSH, Telnet, etc" e ia parar em
+  `/clientes/terminal/?cliente=<id>`. O caso `RDP` que existe em `static/js/acessar_equipamento.js`
+  nunca rodou: nenhum template inclui esse arquivo.
+- 🐛 **Depois disso, o RDP abria mas só mostrava tela preta**: o `RdpVNCManager` forçava `/sec:tls`
+  no `xfreerdp`, e Windows Server com NLA obrigatório (padrão desde o 2012) recusa TLS puro
+  (`HYBRID_REQUIRED_BY_SERVER`). O cliente RDP morria em ~100 ms enquanto Xvfb e x11vnc seguiam de
+  pé — o noVNC transmitia com fidelidade um display vazio. Sem o flag, o FreeRDP negocia sozinho
+  (NLA → TLS → RDP legado) e atende servidor novo e antigo.
+- 🔍 **Falha silenciosa virou erro na tela**: o stderr do `xfreerdp` ia para `DEVNULL`; agora é lido
+  num thread e registrado no log do daphne, e a morte do cliente RDP nos 2 s iniciais é traduzida
+  ("Usuário ou senha inválidos", "O servidor exige NLA…", "Não foi possível abrir a conexão TCP…")
+  e enviada ao browser em vez de tela preta.
+- ✅ **Validado ao vivo** no `SRV-AGRONELORE` (Grupo Agronelore) via túnel do ProxyServer, com
+  captura da tela do display confirmando a área de trabalho do Windows renderizando.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[winbox_vnc.md](winbox_vnc.md)** | Modo `rdp` na tabela de modos; seções "Acesso RDP abria terminal SSH" e "RDP abria só tela preta (`/sec:tls` forçado)" |
+
+---
+
 ### Sessão 42 — 14/08/2026: WireGuard removido — OpenVPN é o único tipo de VPN
 
 **O que mudou?**
@@ -1192,10 +1221,11 @@ apaga** logins já salvos indevidamente — isso precisa ser removido manualment
   - Escolha das redes, validação de conflito e conferência do `dev` real da rota
   - Diagnóstico rápido e correções de 13/08/2026
 
-- **[winbox_vnc.md](winbox_vnc.md)** — WinBox Web via VNC no browser
+- **[winbox_vnc.md](winbox_vnc.md)** — WinBox Web via VNC no browser (e o acesso RDP, mesmo padrão)
   - Arquitetura Xvfb + Openbox + x11vnc + noVNC
   - Fluxo de inicialização
-  - Problemas conhecidos (ncache, resizeSession, width/height)
+  - Modos `winbox`, `browser` e `rdp`
+  - Problemas conhecidos (ncache, resizeSession, width/height, `/sec:tls` × NLA no RDP)
   - Como testar manualmente
 
 - **[frontend_acessos.md](frontend_acessos.md)** — Gerenciamento de acessos
@@ -1439,6 +1469,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 20/08/2026 | Acessos: fix do RDP — botão "Acessar" abria o terminal SSH (`terminal_tab_manager.js` não tratava o protocolo `RDP`) e, depois disso, a sessão subia só com tela preta porque o `xfreerdp` era chamado com `/sec:tls` e o Windows Server exige NLA; stderr do cliente RDP passou a ser logado e a falha vira mensagem na tela | winbox_vnc.md |
 | 20/08/2026 | Clientes: botão "Listar Chamados" na aba Tarefas — histórico de chamados do cliente com a conversa abrindo em modal **dentro do CRM** (o próprio cliente valida os chamados dele: `login_required` + `pode_acessar_cliente`, nota interna nunca sai pra quem não é staff); filtros no servidor por busca/status/responsável/categoria e período com escolha de qual data filtrar (abertura, última msg ou encerramento), atalhos de período e resumo com tempo médio de resolução | ATENDIMENTO.md |
 | 20/08/2026 | Atendimento: agente IA "Tomichinho" passa a **encerrar o chamado escrevendo a resolução** a partir do que o atendente respondeu (gatilho no grupo do WhatsApp, na caixa normal do chat e em comentário interno); `services.finalizar_conversa()` unifica o fechamento da tela e o da IA | ATENDIMENTO.md |
 | 12/08/2026 | RPKI/IRR: fix "Erro ao carregar blocos IP" — era sessão expirada (`@login_required` responde 302 para `/auth/login/`, o `fetch` segue e o `response.json()` estoura no HTML do login); painel agora mostra "Fazer Login" em vez de retry inútil. Junto: 403 deixou de virar "Nenhum bloco cadastrado" e os polls de 4s do AmpScan/RotaLoop param quando a sessão cai. Documentado também o `_force_single_session` (todo login derruba as outras sessões da mesma conta) | RPKI_IRR.md |

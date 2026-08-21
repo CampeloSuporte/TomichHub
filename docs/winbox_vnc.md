@@ -4,6 +4,9 @@
 
 Sistema que permite abrir o **WinBox 4** (cliente MikroTik) diretamente no browser, sem instalar nada no computador do usuário.
 
+O mesmo padrão serve o **WebFig** (navegador no servidor) e o **acesso RDP** (área de trabalho
+remota via `xfreerdp`) — muda só o binário executado dentro do Xvfb. Ver "Modos Suportados".
+
 Funciona criando um ambiente X11 isolado no servidor (Xvfb + Openbox + x11vnc) e transmitindo a tela via noVNC (WebSocket → VNC).
 
 ---
@@ -297,6 +300,9 @@ Correção em `clientes/rdp_vnc.py`:
 
 Erros de Kerberos (`krb5_parse_name … default realm`) e `fuse: device not found` aparecem no log
 mesmo em sessão saudável — o FreeRDP cai pra NTLM e segue; não são causa de falha.
+
+Validado em produção em 20/08/2026 no `SRV-AGRONELORE` (Grupo Agronelore, 192.168.0.1:3389 pelo
+túnel do ProxyServer): área de trabalho do Windows renderizando no noVNC.
 
 ---
 
