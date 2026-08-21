@@ -39,6 +39,14 @@
                     data-status="{{ t.status }}">
                 Editar
             </button>
+            <form method="post" action="{% url 'tarefa_excluir' t.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.path }}">
+                <button type="button" class="btn-tarefa btn-tarefa-danger"
+                        onclick="uiConfirm({titulo:'Excluir Tarefa', msg:'Tem certeza que deseja excluir: {{ t.titulo|escapejs }}?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'}).then(ok => { if (ok) this.closest('form').submit() })">
+                    Excluir
+                </button>
+            </form>
         </div>
     </td>
 </tr>

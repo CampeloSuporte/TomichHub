@@ -5,6 +5,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-21 (Excluir tarefa pelo painel do dashboard)
+
+### Adicionado
+
+- **Botão "Excluir" nas tarefas do painel do dashboard** (`quadro_geral` e
+  `quadro_instancia`), com confirmação. Antes o painel só tinha "Assumir" e "Editar": a
+  única exclusão existente era a do kanban da página do cliente
+  (`tarefa_kanban_excluir`), que lista tarefa **por cliente** — então uma tarefa de
+  plataforma (`cliente = NULL`, criada pelo modal "Nova Tarefa" sem escolher cliente)
+  não aparecia em kanban nenhum e ficava impossível de excluir por qualquer caminho.
+  - `tarefas.views.tarefa_excluir` (`POST /tarefas/<id>/excluir/`): `backoffice_required`
+    + `require_POST`, escopo por `Tarefa.objects.visiveis_para` — **404** (não 403) fora
+    da instância, pra não revelar que a tarefa existe do outro lado. A checagem não passa
+    por `pode_acessar_cliente`, que é justamente o que permite excluir a tarefa sem
+    cliente.
+
+**Regressão:** `tarefas.tests.ExcluirTarefaTest` (7 testes). Suíte completa: 287 OK.
+
+**Arquivos:** `tarefas/views.py`, `tarefas/urls.py`, `tarefas/tests.py`,
+`tarefas/templates/tarefas/_linha.html`, `tarefas/templates/tarefas/_painel.html`,
+`docs/TAREFAS.md`.
+
+---
+
 ## [Não publicado] — 2026-08-21 (Atendimento passa a ser exclusivo da instância principal)
 
 ### Alterado

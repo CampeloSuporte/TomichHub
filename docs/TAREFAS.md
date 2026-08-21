@@ -41,6 +41,7 @@ Seções do painel:
 - **Minhas Tarefas** — atribuídas ao usuário logado.
 - **Não Assumidas** — sem responsável, com botão "Assumir".
 - Modal "Nova Tarefa" e modal "Editar Tarefa" (reaproveitado por todas as linhas via `data-*` attributes + JS) — sem página dedicada, tudo dentro do próprio painel.
+- Botão **Excluir** em cada linha, com confirmação via `uiConfirm` (definido em `templates/base.html`).
 
 ## 🔌 Endpoints (`/tarefas/...`)
 
@@ -50,6 +51,7 @@ Seções do painel:
 | `<id>/editar/` | POST | Atualiza título/descrição/cliente/prazo/prioridade/status/responsável (form completo do modal "Editar") |
 | `<id>/assumir/` | POST | Auto-atribuição de um clique; se estava pendente, vira "Em Andamento" |
 | `<id>/status/` | POST | Mudança rápida de status sem abrir modal |
+| `<id>/excluir/` | POST | Exclui a tarefa (botão "Excluir" da linha) |
 | `<id>/usuarios/` | GET (JSON) | Lista de usuários elegíveis pro seletor "Responsável", escopada à instância da tarefa |
 
 Todas as views (exceto `usuarios/`, que é GET) fazem `redirect` de volta pra `next` (ou `HTTP_REFERER`) — sem API JSON para as ações de escrita, mesmo padrão de formulário simples usado no `financeiro/dashboard.html`.
@@ -87,3 +89,34 @@ inteira em vez de simplesmente cair no `default:"—"` esperado.
 sem garantir antes que `a.b` não é `None` — o filtro não protege contra isso. Mesmo
 padrão latente corrigido em `wiki/visualizar_artigo.html` (ver
 [WIKI_ARTIGOS.md](WIKI_ARTIGOS.md#correção--mesmo-crash-latente-em-criado_por-2026-08-06)).
+
+
+---
+
+## Exclusão de tarefa pelo painel (2026-08-21)
+
+Antes só dava pra excluir tarefa pelo **kanban da página do cliente**
+(`tarefa_kanban_excluir`, aba "Tarefas" de `clientes/listar.html`). O painel do
+dashboard tinha "Assumir" e "Editar", mas nenhuma forma de apagar — e o kanban não
+cobria o buraco, porque ele lista tarefa **por cliente**: uma tarefa de plataforma
+(`cliente = NULL`, criada pelo modal "Nova Tarefa" sem escolher cliente) não aparecia
+em kanban nenhum e ficava impossível de excluir por qualquer caminho.
+
+`tarefas.views.tarefa_excluir` fecha isso:
+
+- `@backoffice_required` + `@require_POST`. O painel só é renderizado pro back-office
+  (`quadro_geral` / `quadro_instancia`); e exigir POST evita que prefetch de link do
+  navegador apague tarefa.
+- Escopo por `_get_tarefa_no_escopo` → `Tarefa.objects.visiveis_para(user)`, que dá
+  **404** (não 403) fora da instância: não revela que a tarefa existe do outro lado.
+- A checagem **não** passa por `pode_acessar_cliente`, ao contrário do
+  `tarefa_kanban_excluir` — é justamente o que permitiria excluir a tarefa sem cliente.
+  Quem escopa é o manager.
+- Regra de quem pode: back-office exclui qualquer tarefa que enxerga, mesma semântica
+  já usada no kanban (lá o portal do cliente final só apaga o que ele mesmo criou; aqui
+  o portal nem chega, o painel é de back-office).
+
+`tarefas/tests.py::ExcluirTarefaTest` cobre: Consultor exclui da própria instância,
+exclui tarefa sem cliente, **não** exclui de outra instância (404), Administrador
+exclui de qualquer uma, login de portal não exclui, GET devolve 405 e o botão aparece
+no painel.

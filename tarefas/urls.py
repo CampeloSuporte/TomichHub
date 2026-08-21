@@ -6,6 +6,7 @@ urlpatterns = [
     path('<int:tarefa_id>/editar/', views.tarefa_editar, name='tarefa_editar'),
     path('<int:tarefa_id>/assumir/', views.tarefa_assumir, name='tarefa_assumir'),
     path('<int:tarefa_id>/status/', views.tarefa_status, name='tarefa_status'),
+    path('<int:tarefa_id>/excluir/', views.tarefa_excluir, name='tarefa_excluir'),
     path('<int:tarefa_id>/usuarios/', views.tarefa_usuarios_json, name='tarefa_usuarios_json'),
 
     # Kanban (aba "Tarefas" na página do cliente — clientes/templates/listar.html)

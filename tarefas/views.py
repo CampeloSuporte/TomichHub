@@ -164,6 +164,26 @@ def tarefa_status(request, tarefa_id):
 
 @login_required(login_url='login')
 @backoffice_required
+@require_POST
+def tarefa_excluir(request, tarefa_id):
+    """Exclui uma tarefa a partir do painel do dashboard.
+
+    Escopo por `_get_tarefa_no_escopo` (404 fora da instância, sem revelar
+    que a tarefa existe). Mesma regra do kanban da página do cliente
+    (`tarefa_kanban_excluir`): back-office exclui qualquer tarefa que
+    enxerga. A diferença é que aqui a tarefa pode não ter cliente — a de
+    plataforma, que o kanban nem lista —, então a checagem não pode passar
+    por `pode_acessar_cliente`.
+    """
+    tarefa = _get_tarefa_no_escopo(request, tarefa_id)
+    titulo = tarefa.titulo
+    tarefa.delete()
+    messages.success(request, f'Tarefa "{titulo}" excluída.')
+    return redirect(_next_url(request))
+
+
+@login_required(login_url='login')
+@backoffice_required
 def tarefa_usuarios_json(request, tarefa_id):
     """Lista de usuários elegíveis pro seletor 'Responsáveis' (múltiplos)
     do modal de edição — escopado ao cliente da própria tarefa."""
