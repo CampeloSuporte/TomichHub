@@ -29,6 +29,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   - Se o cliente RDP morrer nos 2 s iniciais, o erro é traduzido ("Usuário ou senha inválidos",
     "O servidor exige NLA…", "Não foi possível abrir a conexão TCP…") e aparece na tela do usuário,
     em vez de tela preta silenciosa.
+  - Linhas que o FreeRDP marca como `[ERROR]` mas ocorrem em sessão saudável (Kerberos sem realm)
+    ou no encerramento normal (`fsig_term_handler`, `ERRCONNECT_CONNECT_CANCELLED`) vão pro log em
+    DEBUG — no log do daphne, `ERROR` de `xfreerdp` é falha de verdade.
 
 ---
 

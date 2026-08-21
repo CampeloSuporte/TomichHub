@@ -298,8 +298,11 @@ Correção em `clientes/rdp_vnc.py`:
   exige NLA…", "Não foi possível abrir a conexão TCP…") e a exceção sobe pro `VncConsumer`, que
   manda a mensagem pro browser.
 
-Erros de Kerberos (`krb5_parse_name … default realm`) e `fuse: device not found` aparecem no log
-mesmo em sessão saudável — o FreeRDP cai pra NTLM e segue; não são causa de falha.
+Erros de Kerberos (`krb5_parse_name … default realm`) e `fuse: device not found` aparecem mesmo em
+sessão saudável — o FreeRDP cai pra NTLM e segue; não são causa de falha. Junto com o encerramento
+normal (`fsig_term_handler`, `ERRCONNECT_CONNECT_CANCELLED`), eles vão pro log em **DEBUG**
+(`_ERROS_BENIGNOS_RDP`); no log do daphne, `ERROR` de `xfreerdp` é falha de verdade. Toda linha
+continua guardada em memória e alimentando o diagnóstico, independente do nível de log.
 
 Validado em produção em 20/08/2026 no `SRV-AGRONELORE` (Grupo Agronelore, 192.168.0.1:3389 pelo
 túnel do ProxyServer): área de trabalho do Windows renderizando no noVNC.

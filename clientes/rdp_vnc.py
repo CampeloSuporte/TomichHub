@@ -162,6 +162,17 @@ class RdpVNCManager:
 
         return self.vnc_port
 
+    # Linhas que o FreeRDP marca como [ERROR] mas que aparecem em sessão
+    # saudável — vão pro log em DEBUG pra não poluir o log do daphne com erro
+    # que não é erro. Kerberos: sem realm configurado ele cai pra NTLM e
+    # conecta; os dois últimos são o próprio encerramento da sessão.
+    _ERROS_BENIGNOS_RDP = (
+        "kerberos_AcquireCredentialsHandle",
+        "krb5_parse_name",
+        "fsig_term_handler",
+        "ERRCONNECT_CONNECT_CANCELLED",
+    )
+
     def _drenar_stderr(self, proc, max_linhas=40):
         """Consome o stderr do xfreerdp guardando só as últimas linhas."""
         try:
@@ -171,8 +182,14 @@ class RdpVNCManager:
                     continue
                 self._rdp_stderr.append(texto)
                 del self._rdp_stderr[:-max_linhas]
-                if "[ERROR]" in texto:
-                    logger.error(f"[xfreerdp {self.host}] {texto}")
+                if "[ERROR]" not in texto:
+                    continue
+                benigno = (
+                    self._stopped
+                    or any(m in texto for m in self._ERROS_BENIGNOS_RDP)
+                )
+                nivel = logger.debug if benigno else logger.error
+                nivel(f"[xfreerdp {self.host}] {texto}")
         except Exception:
             pass
         finally:
