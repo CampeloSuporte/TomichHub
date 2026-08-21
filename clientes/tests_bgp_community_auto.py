@@ -600,3 +600,71 @@ class CriacaoOtimistaTest(SimpleTestCase):
         d = mapa['downstreams'].get('DOWNSTREAM-ACME')
         self.assertIsNotNone(d)
         self.assertEqual(d['destinos'], {'glob-all-ptts-ixbr': 'export'})
+
+
+class PolicyLocalVaziaTest(SimpleTestCase):
+    """Route-policy local que existe na caixa mas está CRUA — `route-policy X
+    permit node 10` sem `apply community` nenhum, como as RT-BGP-LOCAL-*-34 do
+    ASN 268080 (achado real em 21/08/2026). O parser só guarda em
+    `community_nodes` os nós que mexem com community, então essas policies só
+    aparecem em `policies` — e o painel as marcava como "não encontrada"."""
+
+    def _dados_com_policy_vazia(self, termos=None):
+        dados = dados_base()
+        dados['networks'].append({
+            'prefixo': '45.169.9.0/24', 'route_policy': 'RT-BGP-LOCAL-09-24',
+            'familia': 'v4', 'ip': '45.169.9.0', 'mascara': '255.255.255.0',
+        })
+        dados['policies']['RT-BGP-LOCAL-09-24'] = termos if termos is not None else [
+            {'ordem': 10, 'acao': 'accept', 'prefix_lists': [], 'prepend': 0,
+             'extra': {'policy': 'RT-BGP-LOCAL-09-24', 'node': 10, 'nao_suportado': False}},
+        ]
+        return dados
+
+    def _linha(self, mapa):
+        return next(l for l in mapa['anuncios'] if l['prefixo'] == '45.169.9.0/24')
+
+    def test_policy_vazia_e_editavel_sem_intencao_nenhuma(self):
+        linha = self._linha(montar_mapa(self._dados_com_policy_vazia()))
+        self.assertTrue(linha['editavel'], linha['avisos'])
+        self.assertEqual(linha['node'], 10)
+        self.assertEqual(linha['destinos'], {})
+        self.assertEqual(linha['avisos'], [])
+
+    def test_primeiro_anuncio_nao_manda_undo_de_community_inexistente(self):
+        dados = self._dados_com_policy_vazia()
+        mapa = montar_mapa(dados)
+        comandos = comandos_definir_anuncio(
+            dados, mapa, '45.169.9.0/24', 'glob-all-ptts-ixbr', 'export')
+        self.assertEqual(comandos, [
+            'route-policy RT-BGP-LOCAL-09-24 permit node 10',
+            f'apply community {ASN}:60011 additive',
+            'quit',
+            'commit',
+        ])
+
+    def test_efeito_otimista_cria_o_node_no_painel(self):
+        dados = self._dados_com_policy_vazia()
+        aplicar_efeito_local(dados, 'anuncio_community', '45.169.9.0/24', {
+            'destino': 'glob-all-ptts-ixbr', 'acao': 'export',
+            'route_policy': 'RT-BGP-LOCAL-09-24'})
+        linha = self._linha(montar_mapa(dados))
+        self.assertEqual(linha['globais'], {'glob-all-ptts-ixbr': 'export'})
+
+    def test_policy_com_mais_de_um_node_continua_fora_da_automacao(self):
+        dados = self._dados_com_policy_vazia(termos=[
+            {'ordem': 10, 'acao': 'accept', 'prefix_lists': ['PL-X'], 'prepend': 0,
+             'extra': {'policy': 'RT-BGP-LOCAL-09-24', 'node': 10, 'nao_suportado': False}},
+            {'ordem': 20, 'acao': 'reject', 'prefix_lists': [], 'prepend': 0,
+             'extra': {'policy': 'RT-BGP-LOCAL-09-24', 'node': 20, 'nao_suportado': False}},
+        ])
+        linha = self._linha(montar_mapa(dados))
+        self.assertFalse(linha['editavel'])
+        self.assertIn('não tem um node único e vazio', linha['avisos'][0])
+
+    def test_policy_que_nao_existe_em_lugar_nenhum_segue_com_aviso_proprio(self):
+        dados = self._dados_com_policy_vazia(termos=[])
+        del dados['policies']['RT-BGP-LOCAL-09-24']
+        linha = self._linha(montar_mapa(dados))
+        self.assertFalse(linha['editavel'])
+        self.assertIn('não foi encontrada', linha['avisos'][0])

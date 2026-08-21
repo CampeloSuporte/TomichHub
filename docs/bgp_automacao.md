@@ -1057,6 +1057,16 @@ a automação por community precisa exatamente do que a simulação joga fora.
   resolvidas em `{circuito: ação}`. Communities fora do catálogo (ex: `65100:10091`, convenções
   próprias do cliente) ficam em `communities_extras` e são **reemitidas intactas** em qualquer
   reescrita.
+- **Route-policy local vazia continua editável**: `route-policy RT-BGP-LOCAL-57B0-34 permit node 10`
+  sem `apply community` nenhum (policy criada junto com o `network` e nunca preenchida) só aparece
+  em `policies`, não em `community_nodes` — o parser guarda ali apenas os nós que mexem com
+  community. O prefixo caía como não editável com o aviso errado de "route-policy não encontrada"
+  (achado real na borda do AS268080: 7 dos 12 prefixos, entre eles todos os `/34` de IPv6). Hoje
+  `_node_local_vazio` adota esse node — é o caso mais seguro que existe, não há community pra
+  preservar nem `if-match` que possa deixar de casar. Só quando a policy tem **um único** node,
+  `permit`, sem `if-match` e sem `apply as-path`; mais de um node vira aviso próprio ("não tem um
+  node único e vazio"), e policy que não existe em lugar nenhum segue com o aviso de "não
+  encontrada".
 
 ### Validações (§16 da especificação) — `validar_mapa`
 
@@ -1078,7 +1088,9 @@ config pré-existente.
 **Por que `undo apply community` + `apply community …`:** no VRP um `apply community` repetido no
 mesmo node SOMA à lista já configurada — sem o `undo` não haveria como remover uma community. Como
 o Huawei desta automação usa config candidata + `commit` (ver `_PRECISA_COMMIT`), as duas linhas
-viram uma alteração atômica: o prefixo nunca fica um instante sem communities na config em vigor.
+viram uma alteração atômica: o prefixo nunca fica um instante sem communities na config em vigor. O
+`undo` é omitido quando o node ainda não tem community nenhuma (policy local vazia): o VRP recusa o
+undo de um atributo inexistente e abortaria a sessão antes do `apply`.
 
 **Nunca edita objeto compartilhado:** a mudança é sempre na route-policy LOCAL do prefixo (que só
 serve àquele `network`), nunca na policy de uma sessão nem numa prefix-list — mesmo princípio já

@@ -5,6 +5,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-21 (BGP: route-policy local vazia volta a ser editável)
+
+### Corrigido
+
+- **Prefixos com route-policy local ainda "crua" apareciam como não editáveis** no painel de
+  automação BGP, com o aviso errado *"a route-policy X referenciada pelo network não foi
+  encontrada"* — quando ela existe na caixa, só está **vazia** (`route-policy RT-BGP-LOCAL-57B0-34
+  permit node 10`, sem `apply community` nenhum). `parse_huawei` guarda em `community_nodes`
+  apenas os nós que mexem com community, então essas policies só chegavam ao mapa via `policies`
+  e o seletor "Anunciar como" ficava desabilitado. Na borda do AS268080 (JMA) isso travava 7 dos
+  12 prefixos originados, incluindo todos os `/34` de IPv6.
+  - `bgp_community_auto._node_local_vazio` adota o node vazio — o caso mais seguro de editar que
+    existe (não há community pra preservar nem `if-match` que possa deixar de casar). Só quando a
+    policy tem **um único** node, `permit`, sem `if-match` e sem `apply as-path`.
+  - `_comandos_reescrever_intencao` omite o `undo apply community` quando o node não tem nenhuma
+    community configurada: o VRP recusa o undo de um atributo inexistente e a sessão abortaria
+    antes do `apply`.
+  - `aplicar_efeito_local` cria o node em `community_nodes` no primeiro anúncio, senão o painel
+    seguiria mostrando "não anunciado" até o backup seguinte mesmo com o comando já aplicado.
+  - Aviso novo e específico pra policy local que existe mas **não** é adotável (mais de um node,
+    ou node com `if-match`): *"não tem um node único e vazio onde a automação possa carimbar
+    community com segurança"*.
+
+**Regressão:** `clientes.tests_bgp_community_auto.PolicyLocalVaziaTest` (5 testes). Suítes BGP: 70 OK.
+
+**Arquivos:** `clientes/bgp_community_auto.py`, `clientes/tests_bgp_community_auto.py`,
+`docs/bgp_automacao.md`.
+
+---
+
 ## [Não publicado] — 2026-08-21 (Excluir tarefa pelo painel do dashboard)
 
 ### Adicionado

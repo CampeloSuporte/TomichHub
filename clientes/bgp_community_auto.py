@@ -598,6 +598,37 @@ def _efeito_no_circuito(circuito, familia, filtros_marcados):
     }
 
 
+def _node_local_vazio(dados, rp):
+    """Nó adotável de uma route-policy local que existe no equipamento mas
+    está VAZIA (`route-policy X permit node 10` sem `apply` nem `if-match`).
+
+    O parser guarda em `community_nodes` só os nós que mexem com community
+    (ver `backup_parser.parse_huawei`), então uma policy local ainda "crua" —
+    criada junto com o `network` e nunca preenchida — não aparece por lá e o
+    prefixo caía como não editável, com o aviso errado de "não foi
+    encontrada". Ela é o caso MAIS seguro de editar que existe: não há
+    community pra preservar nem `if-match` que possa deixar de casar.
+
+    Só adota quando a policy tem UM único node, `permit`, sem `if-match` e sem
+    `apply as-path` — qualquer coisa além disso volta `None` pra automação não
+    escrever community num node que talvez nem seja o que aquele prefixo
+    percorre. Devolve um node no mesmo formato de `community_nodes`.
+    """
+    termos = (dados.get('policies') or {}).get(rp) or []
+    if len(termos) != 1:
+        return None
+    termo = termos[0]
+    if (termo.get('acao') != 'accept' or termo.get('prefix_lists')
+            or termo.get('prepend') or termo.get('extra', {}).get('nao_suportado')):
+        return None
+    return {
+        'policy': rp, 'node': termo.get('extra', {}).get('node', NODE_LOCAL),
+        'acao': 'permit', 'community_filters': [], 'apply_community': [],
+        'apply_community_extra': [], 'prefix_lists': [],
+        'prepend_as': [], 'local_preference': None,
+    }
+
+
 def mapear_anuncios(dados, circuitos, globais=None):
     """
     Monta a matriz prefixo × destino → ação em vigor, a partir das communities
@@ -667,8 +698,17 @@ def mapear_anuncios(dados, circuitos, globais=None):
                     continue
                 extras.append(valor)
             extras.extend(node_local['apply_community_extra'])
+        elif rp and _node_local_vazio(dados, rp) is not None:
+            # Policy local existente, porém ainda sem nenhuma community: node
+            # editável, intenção vazia (o prefixo hoje não vai pra lugar nenhum).
+            node_local = _node_local_vazio(dados, rp)
         elif rp and lista:
             avisos_linha.append(f'A policy local "{rp}" existe mas não aplica nenhuma community.')
+        elif rp and rp in (dados.get('policies') or {}):
+            avisos_linha.append(
+                f'A policy local "{rp}" existe, mas não tem um node único e vazio onde a '
+                f'automação possa carimbar community com segurança — ajuste manualmente.'
+            )
         elif rp:
             avisos_linha.append(f'A route-policy "{rp}" referenciada pelo network não foi encontrada.')
 
@@ -1032,8 +1072,12 @@ def _comandos_reescrever_intencao(mapa, linha, destinos, globais_sel):
     extras = [v for v in linha['communities_extras'] if _RE_COMMUNITY.match(v)]
     palavras = [v for v in linha['communities_extras'] if not _RE_COMMUNITY.match(v)]
 
-    comandos = [f'route-policy {linha["route_policy"]} permit node {linha["node"]}',
-                'undo apply community']
+    comandos = [f'route-policy {linha["route_policy"]} permit node {linha["node"]}']
+    # `undo apply community` só faz sentido quando há o que desfazer: num node
+    # ainda vazio (policy local criada e nunca preenchida) o VRP recusa o undo
+    # de um atributo inexistente e a sessão inteira aborta antes do `apply`.
+    if linha['destinos'] or linha['globais'] or linha['communities_extras']:
+        comandos.append('undo apply community')
     if valores or extras or palavras:
         comandos.append(_linha_apply_community(valores + extras, palavras))
     comandos += ['quit', 'commit']
@@ -2130,7 +2174,14 @@ def aplicar_efeito_local(dados, tipo, alvo, params):
         alvo = next((n for n in nodes.get(linha['route_policy'], [])
                      if n['node'] == linha['node']), None)
         if alvo is None:
-            return
+            # Policy local que existia vazia (só em `policies`, sem nenhum
+            # `apply community`): o node passa a existir em `community_nodes`
+            # agora, senão o painel ficaria mostrando "não anunciado" até o
+            # próximo backup mesmo com o comando já aplicado na caixa.
+            if _node_local_vazio(dados, linha['route_policy']) is None:
+                return
+            alvo = _node_local_vazio(dados, linha['route_policy'])
+            nodes.setdefault(linha['route_policy'], []).append(alvo)
         # Troca a community DESTE destino (todas as ações dele saem, a
         # escolhida entra) e não toca em mais nada da linha.
         antigas = {a['community'] for a in destino['acoes'].values()}
