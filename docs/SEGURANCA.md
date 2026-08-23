@@ -296,7 +296,7 @@ esse tráfego que não para.
 
 ## Testes
 
-`seguranca/tests.py` — 14 testes:
+`seguranca/tests.py` — 21 testes:
 
 - 3 senhas erradas bloqueiam a conta, com ~5 minutos restantes;
 - **a senha certa é recusada durante o bloqueio** (o teste que impede a regressão mais
@@ -308,7 +308,10 @@ esse tráfego que não para.
 - desbloqueio manual zera o contador (senão a próxima falha trancaria de novo);
 - SQLi na query string e no POST urlencoded são bloqueados; path traversal também;
 - **texto legítimo passa** (`O'Brien Telecom`, `select-fibra`, `update de contrato`);
-- multipart não é inspecionado; modo observação não bloqueia.
+- multipart não é inspecionado; modo observação não bloqueia;
+- **escopo por papel**: Operador não entra; Consultor entra mas sem jails nem eventos de
+  injeção, só vê tentativas da própria instância, desbloqueia conta da própria instância e leva
+  403 ao tentar desbloquear conta de outra instância ou mexer no fail2ban.
 
 ```bash
 cd /opt/crm && venv/bin/python manage.py test seguranca

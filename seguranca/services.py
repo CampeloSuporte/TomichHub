@@ -91,8 +91,11 @@ def _user_agent(request):
     return (request.META.get('HTTP_USER_AGENT') or '')[:300]
 
 
-def _ip_valido(ip):
-    """GenericIPAddressField recusa lixo; um XFF forjado não pode derrubar o
+def ip_valido(ip):
+    """Devolve o IP se for válido, senão None.
+
+    GenericIPAddressField recusa lixo, e o valor vem de cabeçalho que o
+    cliente controla (X-Forwarded-For) — um XFF forjado não pode derrubar o
     login com ValidationError."""
     if not ip:
         return None
@@ -108,7 +111,7 @@ def _ip_valido(ip):
 def registrar_tentativa(request, username, motivo, sucesso=False, usuario=None):
     """Grava a linha de auditoria. Nunca levanta exceção: log de segurança que
     derruba o login é pior que log perdido."""
-    ip = _ip_valido(get_client_ip(request))
+    ip = ip_valido(get_client_ip(request))
     try:
         return TentativaLogin.objects.create(
             username=(username or '')[:150],
@@ -162,7 +165,7 @@ def verificar_bloqueio(request, username):
     chaves = []
     if username:
         chaves.append((BloqueioLogin.TIPO_CONTA, username[:150]))
-    ip = _ip_valido(get_client_ip(request))
+    ip = ip_valido(get_client_ip(request))
     if ip:
         chaves.append((BloqueioLogin.TIPO_IP, ip))
     if not chaves:
@@ -191,7 +194,7 @@ def registrar_falha(request, username, motivo=TentativaLogin.MOTIVO_SENHA_INVALI
     quem cuida desse caso é o contador por IP (e o fail2ban).
     """
     agora = timezone.now()
-    ip = _ip_valido(get_client_ip(request))
+    ip = ip_valido(get_client_ip(request))
     usuario = User.objects.filter(username=username).first() if username else None
 
     registrar_tentativa(request, username, motivo, sucesso=False, usuario=usuario)
@@ -256,7 +259,7 @@ def registrar_sucesso(request, user):
     registrar_tentativa(
         request, user.username, TentativaLogin.MOTIVO_SUCESSO, sucesso=True, usuario=user,
     )
-    ip = _ip_valido(get_client_ip(request))
+    ip = ip_valido(get_client_ip(request))
     chaves = [(BloqueioLogin.TIPO_CONTA, user.username[:150])]
     if ip:
         chaves.append((BloqueioLogin.TIPO_IP, ip))
@@ -284,7 +287,7 @@ def desbloquear(bloqueio, por_usuario=None, request=None):
               else AcaoSeguranca.ACAO_DESBLOQUEIO_IP),
         alvo=bloqueio.chave,
         usuario=por_usuario,
-        ip_origem=_ip_valido(get_client_ip(request)),
+        ip_origem=ip_valido(get_client_ip(request)),
     )
     return bloqueio
 
@@ -292,7 +295,7 @@ def desbloquear(bloqueio, por_usuario=None, request=None):
 def registrar_acao(acao, alvo, usuario=None, detalhe='', request=None):
     return AcaoSeguranca.objects.create(
         acao=acao, alvo=alvo[:150], detalhe=detalhe[:300], usuario=usuario,
-        ip_origem=_ip_valido(get_client_ip(request)),
+        ip_origem=ip_valido(get_client_ip(request)),
     )
 
 
