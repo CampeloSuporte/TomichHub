@@ -229,7 +229,7 @@ def fail2ban_desbanir(request):
 
     ip = (request.POST.get('ip') or '').strip()
     jail = (request.POST.get('jail') or '').strip() or None
-    if not services._ip_valido(ip):
+    if not services.ip_valido(ip):
         return JsonResponse({'ok': False, 'erro': 'IP inválido.'}, status=400)
 
     ok, saida = fail2ban.desbanir(ip, jail)
@@ -254,7 +254,7 @@ def fail2ban_banir(request):
 
     ip = (request.POST.get('ip') or '').strip()
     jail = (request.POST.get('jail') or fail2ban.JAIL_SSH).strip()
-    if not services._ip_valido(ip):
+    if not services.ip_valido(ip):
         return JsonResponse({'ok': False, 'erro': 'IP inválido.'}, status=400)
 
     ok, saida = fail2ban.banir(ip, jail)

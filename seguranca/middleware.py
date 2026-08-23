@@ -185,7 +185,7 @@ class ProtecaoInjecaoMiddleware:
     # ── resposta e registro ──────────────────────────────────────────────
     def _registrar(self, request, deteccao):
         from .models import EventoSeguranca
-        from .services import _ip_valido, get_client_ip
+        from .services import get_client_ip, ip_valido
 
         usuario = getattr(request, 'user', None)
         if usuario is not None and not getattr(usuario, 'is_authenticated', False):
@@ -199,7 +199,7 @@ class ProtecaoInjecaoMiddleware:
                 payload=deteccao.get('payload', ''),
                 caminho=(request.path or '')[:500],
                 metodo=request.method or '',
-                ip=_ip_valido(get_client_ip(request)),
+                ip=ip_valido(get_client_ip(request)),
                 user_agent=(request.META.get('HTTP_USER_AGENT') or '')[:300],
                 usuario=usuario,
                 bloqueado=self.bloquear,

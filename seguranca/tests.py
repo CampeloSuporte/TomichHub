@@ -172,3 +172,95 @@ class ProtecaoInjecaoTests(TestCase):
         from seguranca.middleware import ProtecaoInjecaoMiddleware
         mw = ProtecaoInjecaoMiddleware(lambda r: None)
         self.assertFalse(mw.bloquear)
+
+
+class PermissoesPainelTests(TestCase):
+    """O painel expõe dados de segurança do servidor inteiro — o escopo por
+    papel é a parte que não pode regredir em silêncio."""
+
+    def setUp(self):
+        from usuario.models import Instancia, PerfilUsuario
+
+        self.inst_a = Instancia.objects.create(nome='Revenda A')
+        self.inst_b = Instancia.objects.create(nome='Revenda B')
+
+        self.admin = self._criar('admin1', PerfilUsuario.ROLE_ADMIN, None)
+        self.consultor = self._criar('consultor_a', PerfilUsuario.ROLE_CONSULTOR, self.inst_a)
+        self.operador_a = self._criar('operador_a', PerfilUsuario.ROLE_OPERADOR, self.inst_a)
+        self.operador_b = self._criar('operador_b', PerfilUsuario.ROLE_OPERADOR, self.inst_b)
+
+    def _criar(self, username, role, instancia):
+        from usuario.models import PerfilUsuario, TOTPDevice
+
+        user = User.objects.create_user(username=username, password='x', is_staff=True)
+        PerfilUsuario.objects.create(usuario=user, role=role, instancia=instancia)
+        # O Forcar2FAMiddleware manda qualquer conta sem 2FA confirmado pra
+        # tela de configuração — sem isso nenhum GET do painel chegaria na view.
+        TOTPDevice.objects.create(usuario=user, secret='A' * 16, confirmado=True)
+        return user
+
+    def _get_painel(self, user):
+        c = Client()
+        c.force_login(user)
+        return c.get('/seguranca/')
+
+    def test_admin_ve_o_painel_completo(self):
+        resp = self._get_painel(self.admin)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.context['is_admin_seguranca'])
+
+    def test_operador_nao_entra(self):
+        resp = self._get_painel(self.operador_a)
+        self.assertEqual(resp.status_code, 302)
+
+    def test_consultor_entra_sem_os_blocos_de_servidor(self):
+        """Fail2ban e eventos de injeção são do servidor inteiro, não de uma
+        instância — Consultor não pode ver nem mexer."""
+        resp = self._get_painel(self.consultor)
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.context['is_admin_seguranca'])
+        self.assertEqual(resp.context['jails'], [])
+        self.assertEqual(resp.context['eventos'], [])
+
+    def test_consultor_so_ve_tentativas_da_propria_instancia(self):
+        for username in ('operador_a', 'operador_b'):
+            TentativaLogin.objects.create(
+                username=username, motivo=TentativaLogin.MOTIVO_SENHA_INVALIDA, ip='203.0.113.1',
+            )
+        resp = self._get_painel(self.consultor)
+        vistos = {t.username for t in resp.context['tentativas']}
+        self.assertIn('operador_a', vistos)
+        self.assertNotIn('operador_b', vistos)
+
+    def test_consultor_nao_desbloqueia_conta_de_outra_instancia(self):
+        bloqueio = BloqueioLogin.objects.create(
+            tipo=BloqueioLogin.TIPO_CONTA, chave='operador_b', falhas=3,
+            bloqueado_ate=timezone.now() + timezone.timedelta(minutes=5),
+        )
+        c = Client()
+        c.force_login(self.consultor)
+        resp = c.post('/seguranca/desbloquear/', {'id': bloqueio.id})
+
+        self.assertEqual(resp.status_code, 403)
+        bloqueio.refresh_from_db()
+        self.assertTrue(bloqueio.ativo)
+
+    def test_consultor_nao_mexe_no_fail2ban(self):
+        c = Client()
+        c.force_login(self.consultor)
+        resp = c.post('/seguranca/fail2ban/desbanir/', {'ip': '203.0.113.5'})
+        self.assertEqual(resp.status_code, 403)
+
+    def test_consultor_desbloqueia_conta_da_propria_instancia(self):
+        bloqueio = BloqueioLogin.objects.create(
+            tipo=BloqueioLogin.TIPO_CONTA, chave='operador_a', falhas=3,
+            bloqueado_ate=timezone.now() + timezone.timedelta(minutes=5),
+        )
+        c = Client()
+        c.force_login(self.consultor)
+        resp = c.post('/seguranca/desbloquear/', {'id': bloqueio.id})
+
+        self.assertEqual(resp.status_code, 200)
+        bloqueio.refresh_from_db()
+        self.assertFalse(bloqueio.ativo)
+        self.assertEqual(bloqueio.falhas, 0)

@@ -74,9 +74,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   caminho — sem o logout ela ficaria autenticada e o `GET` de `/auth/login/` mandaria de volta
   para a mesma função, em laço infinito de redirect.
 
-**Regressão:** `seguranca/tests.py` (14 testes), incluindo o caso que impede a regressão mais
-perigosa — a senha certa continuar sendo recusada durante o bloqueio — e o de falso positivo
-(`O'Brien Telecom`, `select-fibra`, `update de contrato` passam). Suíte existente:
+**Regressão:** `seguranca/tests.py` (21 testes), incluindo o caso que impede a regressão mais
+perigosa — a senha certa continuar sendo recusada durante o bloqueio —, o de falso positivo
+(`O'Brien Telecom`, `select-fibra`, `update de contrato` passam) e o escopo por papel (Consultor
+leva 403 ao tentar desbloquear conta de outra instância ou mexer no fail2ban). Suíte existente:
 288 testes OK (`usuario clientes atendimento tarefas financeiro`).
 
 **Arquivos:** `seguranca/` (app novo), `usuario/views.py`, `crm/settings.py`, `crm/urls.py`,
