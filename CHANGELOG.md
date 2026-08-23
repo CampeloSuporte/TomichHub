@@ -5,6 +5,87 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-23 (Segurança: proteção contra invasão)
+
+### Adicionado
+
+- **Bloqueio por tentativa de login** (`seguranca/services.py`, chamado por `usuario/views.py`).
+  Errar a senha **3 vezes tranca a conta por 5 minutos**; 10 falhas trancam o **IP** por 15
+  minutos (o robô que testa 500 usernames inventados nunca acumularia 3 falhas no mesmo
+  username). Decisões que valem registrar:
+  - A verificação roda **antes do `authenticate()`** — durante o bloqueio nem a senha certa
+    entra. Se passasse, o bloqueio só atrasaria quem já errou, não seguraria um ataque de
+    dicionário que acerta na tentativa seguinte.
+  - Janela deslizante de 15 min: falhas antigas não somam (senão dois erros em janeiro mais um
+    em março trancariam a conta). Login certo zera o contador; bloqueio expirado recomeça do zero.
+  - **O 2FA entrou no mesmo contador.** O `2fa_tentativas` da sessão que já existia só derrubava
+    aquela sessão — trocar de aba zerava, e código de 6 dígitos é adivinhável por força bruta.
+  - Usuário inexistente **não** cria linha de bloqueio de conta (evita encher a tabela); captcha
+    do Turnstile reprovado **não** conta (o widget falha sozinho por rede/extensão, e trancar a
+    conta por isso puniria quem nem chegou a errar a senha).
+  - Mensagem na tela continua genérica (não confirma se o usuário existe); a partir da 2ª falha
+    informa quantas tentativas restam.
+- **Fail2ban instalado e configurado**, com duas jails: `sshd` e `crm-login` (alimentada por
+  `/var/log/crm/auth.log`, escrito pelo logger `seguranca.auth`). Ban progressivo para
+  reincidente (1h → 2h → … → 1 semana). Duas armadilhas resolvidas na configuração:
+  - **o SSH deste servidor está na porta 22002**, então sem `port = 22002` a regra de firewall
+    iria para a porta errada e não bloquearia nada;
+  - **no Ubuntu o backend padrão do fail2ban é `systemd`**, e com ele a jail ignora `logpath` em
+    silêncio (status mostra `Journal matches` em vez de `File list`); `crm-login` exige
+    `backend = auto`.
+  - O sudoers (`/etc/sudoers.d/crm-fail2ban`) libera **só** `ping|status|set … banip|unbanip|unban`
+    para o `www-data` — `NOPASSWD` no binário solto seria escalada a root, porque
+    `fail2ban-client set <jail> action …` executa shell.
+  - Os banimentos **não** são espelhados em tabela: a fonte da verdade é o `fail2ban-client`, que
+    é quem fala com o firewall. Um espelho mentiria se alguém mexesse no fail2ban por fora.
+- **Filtro de injeção** (`seguranca/middleware.py`): SQL injection, path traversal e XSS refletido
+  barrados na query string, no caminho e no POST urlencoded, antes de sessão/auth. Auditoria
+  confirmou que o projeto **não monta SQL com string** (os dois `cursor.execute` existentes são
+  literais fixos) — o middleware é cinto de segurança contra regressão futura e, principalmente,
+  dá **visibilidade**: sem ele uma varredura de `sqlmap` não deixaria rastro nenhum.
+  - Multipart e JSON ficam de fora **de propósito**: ler o corpo no middleware o consome antes da
+    view (100 MB de upload de firmware processados no middleware, e nenhuma view poderia trocar
+    os upload handlers depois).
+  - Contra falso positivo: assinaturas específicas (a palavra "select" sozinha não dispara),
+    prefixos isentos (`/wiki/`, `/atendimento/`, `/clientes/scripts/`, `/clientes/terminal/`…),
+    campos de texto livre isentos em qualquer rota, e modo observação
+    (`SEGURANCA_INJECAO_BLOQUEAR=0`).
+- **Painel Sistema → Segurança** (`/seguranca/`), cinco abas: Bloqueios (com contagem regressiva,
+  **Liberar** e **Liberar todos**), Tentativas de login (filtros por usuário/IP/resultado/período
+  e ranking de IPs), SSH/Fail2ban (jails, blacklist, liberar, banir manual, histórico do
+  `/var/log/fail2ban.log`), Injeção/SQLi e Auditoria.
+  - **Administrador** vê tudo; **Consultor** vê e destrava só as contas que já gerencia
+    (`perms.usuarios_gerenciaveis_por`) — bloqueio por IP, fail2ban e eventos de injeção são do
+    servidor inteiro, não de uma instância. Operador e portal do cliente não entram.
+  - Todo desbloqueio/banimento grava `AcaoSeguranca` com autor e IP de origem: desbloquear é
+    exatamente a ação que um invasor com sessão roubada ia querer usar.
+- **Endurecimento**: `SECURE_PROXY_SSL_HEADER` (sem ele o Django achava que toda requisição era
+  `http` atrás do nginx, e `request.is_secure()` mentia), `SECURE_CONTENT_TYPE_NOSNIFF`,
+  `SECURE_REFERRER_POLICY`, `SESSION_COOKIE_HTTPONLY`, `SameSite=Lax`. Cookies `secure` ficam
+  atrás de `SEGURANCA_COOKIES_HTTPS=1` porque o servidor ainda atende em `http://` no IP bruto.
+- Task Celery `seguranca.limpar_registros` (diária, 03:40) poda tentativas/eventos além de 90
+  dias — a tabela cresce com tráfego de robô, que é justamente o que não para.
+
+### Corrigido
+
+- **Login de conta sem Cliente vinculado dava erro 500** em vez da mensagem "sua conta não possui
+  acesso ao sistema": `usuario.views.redirect_user_by_role` chamava `messages.error(None, …)`, e
+  `add_message` levanta `TypeError` com `None`. Agora recebe o `request` e desloga a conta nesse
+  caminho — sem o logout ela ficaria autenticada e o `GET` de `/auth/login/` mandaria de volta
+  para a mesma função, em laço infinito de redirect.
+
+**Regressão:** `seguranca/tests.py` (14 testes), incluindo o caso que impede a regressão mais
+perigosa — a senha certa continuar sendo recusada durante o bloqueio — e o de falso positivo
+(`O'Brien Telecom`, `select-fibra`, `update de contrato` passam). Suíte existente:
+288 testes OK (`usuario clientes atendimento tarefas financeiro`).
+
+**Arquivos:** `seguranca/` (app novo), `usuario/views.py`, `crm/settings.py`, `crm/urls.py`,
+`crm/celery.py`, `templates/base.html`, `docs/SEGURANCA.md`, `docs/INDEX.md`.
+**Servidor:** `/etc/fail2ban/jail.d/crm.local`, `/etc/fail2ban/filter.d/crm-login.conf`,
+`/etc/sudoers.d/crm-fail2ban`, `/etc/logrotate.d/crm-seguranca`, `/etc/logrotate.d/fail2ban`.
+
+---
+
 ## [Não publicado] — 2026-08-21 (BGP: validar anúncios funciona em sessão IPv6)
 
 ### Corrigido

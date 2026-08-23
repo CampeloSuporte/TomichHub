@@ -1,0 +1,639 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+.seg-page {
+    --cy: #58a6ff; --gr: #3fb950; --or: #d29922; --rd: #f85149; --pu: #bc8cff;
+    --bg: #0d1117; --bg2: #161b22; --bg3: #1c2128; --muted: #7d8590;
+    --linha: rgba(88,166,255,0.15);
+    background: var(--bg);
+    min-height: 100vh;
+    padding: 1.5rem;
+    font-family: 'Inter', sans-serif;
+    color: #c9d1d9;
+}
+.seg-title { font-size: 1.4rem; color: var(--cy); letter-spacing: 3px; text-transform: uppercase; margin: 0; }
+.seg-subtitle { color: var(--muted); font-size: .75rem; letter-spacing: 2px; }
+
+/* Cartões do topo */
+.seg-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .8rem; margin: 1.2rem 0; }
+.seg-card {
+    background: var(--bg2); border: 1px solid var(--linha); border-radius: 8px;
+    padding: .9rem 1rem; display: flex; flex-direction: column; gap: .2rem;
+}
+.seg-card .n { font-size: 1.7rem; font-weight: 600; line-height: 1; }
+.seg-card .l { font-size: .68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
+.seg-card .h { font-size: .68rem; color: var(--muted); }
+
+/* Abas */
+.seg-tabs { display: flex; gap: .4rem; flex-wrap: wrap; border-bottom: 1px solid var(--linha); margin-bottom: 1rem; }
+.seg-tab {
+    background: transparent; border: none; border-bottom: 2px solid transparent;
+    color: var(--muted); padding: .5rem .9rem; font-size: .8rem; cursor: pointer;
+    letter-spacing: 1px; text-transform: uppercase;
+}
+.seg-tab:hover { color: var(--cy); }
+.seg-tab.ativa { color: var(--cy); border-bottom-color: var(--cy); }
+.seg-pane { display: none; }
+.seg-pane.ativa { display: block; }
+
+/* Cartão de bloco */
+.seg-box { background: var(--bg2); border: 1px solid var(--linha); border-radius: 8px; margin-bottom: 1.2rem; overflow: hidden; }
+.seg-box-head {
+    padding: .7rem 1rem; border-bottom: 1px solid var(--linha);
+    display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap;
+}
+.seg-box-head h2 { font-size: .82rem; margin: 0; color: var(--cy); letter-spacing: 1.5px; text-transform: uppercase; }
+.seg-box-body { padding: 1rem; }
+
+/* Tabelas */
+.seg-tabela-wrap { overflow-x: auto; }
+table.seg-tabela { width: 100%; border-collapse: collapse; font-size: .78rem; }
+table.seg-tabela th {
+    text-align: left; padding: .5rem .7rem; color: var(--muted); font-weight: 500;
+    text-transform: uppercase; font-size: .65rem; letter-spacing: 1px;
+    border-bottom: 1px solid var(--linha); white-space: nowrap;
+}
+table.seg-tabela td { padding: .45rem .7rem; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+table.seg-tabela tr:hover td { background: rgba(88,166,255,.04); }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+/* Etiquetas */
+.tag { display: inline-block; padding: .12rem .5rem; border-radius: 20px; font-size: .66rem; letter-spacing: .5px; white-space: nowrap; }
+.tag-ok  { background: rgba(63,185,80,.12);  color: var(--gr); border: 1px solid rgba(63,185,80,.3); }
+.tag-err { background: rgba(248,81,73,.12);  color: var(--rd); border: 1px solid rgba(248,81,73,.3); }
+.tag-warn{ background: rgba(210,153,34,.12); color: var(--or); border: 1px solid rgba(210,153,34,.3); }
+.tag-info{ background: rgba(88,166,255,.12); color: var(--cy); border: 1px solid rgba(88,166,255,.3); }
+.tag-pu  { background: rgba(188,140,255,.12);color: var(--pu); border: 1px solid rgba(188,140,255,.3); }
+
+/* Botões */
+.seg-btn {
+    background: rgba(88,166,255,.1); border: 1px solid rgba(88,166,255,.3); color: var(--cy);
+    border-radius: 4px; padding: .28rem .7rem; font-size: .72rem; cursor: pointer;
+    font-family: inherit; letter-spacing: .5px; transition: background .15s;
+}
+.seg-btn:hover { background: rgba(88,166,255,.22); }
+.seg-btn-ok { background: rgba(63,185,80,.1); border-color: rgba(63,185,80,.35); color: var(--gr); }
+.seg-btn-ok:hover { background: rgba(63,185,80,.22); }
+.seg-btn-rd { background: rgba(248,81,73,.1); border-color: rgba(248,81,73,.35); color: var(--rd); }
+.seg-btn-rd:hover { background: rgba(248,81,73,.22); }
+.seg-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Filtros */
+.seg-filtros { display: flex; flex-wrap: wrap; gap: .7rem; align-items: flex-end; }
+.seg-filtro { display: flex; flex-direction: column; gap: .22rem; }
+.seg-filtro label { font-size: .63rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; }
+.seg-filtro input, .seg-filtro select {
+    background: #030a14; border: 1px solid rgba(88,166,255,.2); border-radius: 4px;
+    color: var(--cy); padding: .32rem .55rem; font-size: .78rem; font-family: inherit;
+    outline: none; min-width: 140px;
+}
+.seg-filtro input:focus, .seg-filtro select:focus { border-color: rgba(88,166,255,.5); }
+
+.seg-vazio { color: var(--muted); font-size: .8rem; padding: 1.2rem; text-align: center; }
+.seg-nota { color: var(--muted); font-size: .72rem; line-height: 1.5; }
+.seg-aviso {
+    background: rgba(210,153,34,.08); border: 1px solid rgba(210,153,34,.3);
+    color: var(--or); border-radius: 6px; padding: .7rem 1rem; font-size: .78rem; margin-bottom: 1rem;
+}
+.contagem { font-variant-numeric: tabular-nums; }
+</style>
+
+<div class="seg-page">
+
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div>
+            <h1 class="seg-title"><i class="fas fa-shield-halved me-2"></i>Segurança</h1>
+            <div class="seg-subtitle">Tentativas de acesso, bloqueios e proteção contra invasão</div>
+        </div>
+        <div class="seg-nota text-end">
+            Conta bloqueada após <strong>{{ config.max_tentativas }}</strong> falhas por
+            <strong>{{ config.minutos }} min</strong><br>
+            IP bloqueado após <strong>{{ config.max_tentativas_ip }}</strong> falhas por
+            <strong>{{ config.minutos_ip }} min</strong>
+        </div>
+    </div>
+
+    <!-- ── Cartões ─────────────────────────────────────────────────── -->
+    <div class="seg-cards">
+        <div class="seg-card">
+            <span class="n" style="color:var(--rd)">{{ falhas_24h }}</span>
+            <span class="l">Falhas de login (24h)</span>
+        </div>
+        <div class="seg-card">
+            <span class="n" style="color:var(--gr)">{{ sucessos_24h }}</span>
+            <span class="l">Logins bem-sucedidos (24h)</span>
+        </div>
+        <div class="seg-card">
+            <span class="n" style="color:var(--or)">{{ qtd_bloqueios_ativos }}</span>
+            <span class="l">Bloqueios ativos agora</span>
+        </div>
+        {% if is_admin_seguranca %}
+        <div class="seg-card">
+            <span class="n" style="color:var(--pu)">{{ total_banidos }}</span>
+            <span class="l">IPs banidos (fail2ban)</span>
+        </div>
+        <div class="seg-card">
+            <span class="n" style="color:var(--cy)">{{ eventos_24h }}</span>
+            <span class="l">Injeções barradas (24h)</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ── Abas ────────────────────────────────────────────────────── -->
+    <div class="seg-tabs">
+        <button class="seg-tab ativa" data-pane="pane-bloqueios">
+            <i class="fas fa-user-lock me-1"></i> Bloqueios
+        </button>
+        <button class="seg-tab" data-pane="pane-tentativas">
+            <i class="fas fa-right-to-bracket me-1"></i> Tentativas de login
+        </button>
+        {% if is_admin_seguranca %}
+        <button class="seg-tab" data-pane="pane-ssh">
+            <i class="fas fa-terminal me-1"></i> SSH / Fail2ban
+        </button>
+        <button class="seg-tab" data-pane="pane-injecao">
+            <i class="fas fa-syringe me-1"></i> Injeção / SQLi
+        </button>
+        <button class="seg-tab" data-pane="pane-auditoria">
+            <i class="fas fa-clipboard-list me-1"></i> Auditoria
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- ══ BLOQUEIOS ═════════════════════════════════════════════════ -->
+    <div class="seg-pane ativa" id="pane-bloqueios">
+        <div class="seg-box">
+            <div class="seg-box-head">
+                <h2>Bloqueados agora <span class="tag tag-err contagem">{{ qtd_bloqueios_ativos }}</span></h2>
+                {% if bloqueios_ativos %}
+                <button class="seg-btn seg-btn-ok" id="btnLiberarTodos">
+                    <i class="fas fa-unlock me-1"></i> Liberar todos
+                </button>
+                {% endif %}
+            </div>
+            <div class="seg-tabela-wrap">
+                {% if bloqueios_ativos %}
+                <table class="seg-tabela">
+                    <thead>
+                        <tr>
+                            <th>Tipo</th><th>Conta / IP</th><th>Falhas</th>
+                            <th>Último IP</th><th>Libera em</th><th>Bloqueios totais</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in bloqueios_ativos %}
+                        <tr data-id="{{ b.id }}">
+                            <td>
+                                {% if b.tipo == 'conta' %}
+                                    <span class="tag tag-warn"><i class="fas fa-user me-1"></i>Conta</span>
+                                {% else %}
+                                    <span class="tag tag-pu"><i class="fas fa-network-wired me-1"></i>IP</span>
+                                {% endif %}
+                            </td>
+                            <td class="mono">{{ b.chave }}</td>
+                            <td class="contagem">{{ b.falhas }}</td>
+                            <td class="mono">{{ b.ultimo_ip|default:"—" }}</td>
+                            <td class="mono" data-restante="{{ b.segundos_restantes }}">
+                                {{ b.bloqueado_ate|date:"d/m H:i:s" }}
+                            </td>
+                            <td class="contagem">{{ b.total_bloqueios }}</td>
+                            <td>
+                                <button class="seg-btn seg-btn-ok btn-liberar" data-id="{{ b.id }}">
+                                    <i class="fas fa-unlock me-1"></i> Liberar
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="seg-vazio"><i class="fas fa-circle-check me-1" style="color:var(--gr)"></i> Nenhuma conta ou IP bloqueado no momento.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="seg-box">
+            <div class="seg-box-head"><h2>Histórico recente de falhas (7 dias)</h2></div>
+            <div class="seg-tabela-wrap">
+                {% if bloqueios_recentes %}
+                <table class="seg-tabela">
+                    <thead>
+                        <tr><th>Tipo</th><th>Conta / IP</th><th>Falhas na janela</th><th>Último IP</th>
+                            <th>Última falha</th><th>Já bloqueado</th><th>Liberado por</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for b in bloqueios_recentes %}
+                        <tr>
+                            <td>{% if b.tipo == 'conta' %}<span class="tag tag-info">Conta</span>{% else %}<span class="tag tag-pu">IP</span>{% endif %}</td>
+                            <td class="mono">{{ b.chave }}</td>
+                            <td class="contagem">{{ b.falhas }}</td>
+                            <td class="mono">{{ b.ultimo_ip|default:"—" }}</td>
+                            <td class="mono">{{ b.ultima_falha_em|date:"d/m/Y H:i" }}</td>
+                            <td class="contagem">{{ b.total_bloqueios }}×</td>
+                            <td>{% if b.desbloqueado_por %}{{ b.desbloqueado_por.username }} ({{ b.desbloqueado_em|date:"d/m H:i" }}){% else %}—{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="seg-vazio">Nenhuma falha registrada nos últimos 7 dias.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ TENTATIVAS ════════════════════════════════════════════════ -->
+    <div class="seg-pane" id="pane-tentativas">
+        <div class="seg-box">
+            <div class="seg-box-head">
+                <form method="get" class="seg-filtros w-100">
+                    <input type="hidden" name="aba" value="tentativas">
+                    <div class="seg-filtro">
+                        <label>Usuário</label>
+                        <input type="text" name="usuario" value="{{ filtros.usuario }}" placeholder="username">
+                    </div>
+                    <div class="seg-filtro">
+                        <label>IP</label>
+                        <input type="text" name="ip" value="{{ filtros.ip }}" placeholder="200.1.">
+                    </div>
+                    <div class="seg-filtro">
+                        <label>Resultado</label>
+                        <select name="resultado">
+                            <option value="">Todos</option>
+                            <option value="falha" {% if filtros.resultado == 'falha' %}selected{% endif %}>Só falhas</option>
+                            <option value="sucesso" {% if filtros.resultado == 'sucesso' %}selected{% endif %}>Só sucessos</option>
+                        </select>
+                    </div>
+                    <div class="seg-filtro">
+                        <label>Período</label>
+                        <select name="periodo">
+                            <option value="24h" {% if filtros.periodo == '24h' %}selected{% endif %}>Últimas 24h</option>
+                            <option value="7d" {% if filtros.periodo == '7d' %}selected{% endif %}>7 dias</option>
+                            <option value="30d" {% if filtros.periodo == '30d' %}selected{% endif %}>30 dias</option>
+                            <option value="tudo" {% if filtros.periodo == 'tudo' %}selected{% endif %}>Tudo</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="seg-btn"><i class="fas fa-filter me-1"></i> Filtrar</button>
+                    <a href="{% url 'seguranca_dashboard' %}?aba=tentativas" class="seg-btn" style="text-decoration:none;">Limpar</a>
+                </form>
+            </div>
+            <div class="seg-tabela-wrap">
+                {% if tentativas %}
+                <table class="seg-tabela">
+                    <thead>
+                        <tr><th>Data/hora</th><th>Usuário</th><th>IP</th><th>Resultado</th><th>Motivo</th><th>Navegador</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for t in tentativas %}
+                        <tr>
+                            <td class="mono">{{ t.criado_em|date:"d/m/Y H:i:s" }}</td>
+                            <td class="mono">{{ t.username|default:"—" }}</td>
+                            <td class="mono">{{ t.ip|default:"—" }}</td>
+                            <td>
+                                {% if t.sucesso %}<span class="tag tag-ok">OK</span>
+                                {% else %}<span class="tag tag-err">FALHA</span>{% endif %}
+                            </td>
+                            <td>{{ t.get_motivo_display }}</td>
+                            <td class="seg-nota" style="max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                                title="{{ t.user_agent }}">{{ t.user_agent|default:"—" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="seg-vazio">Nenhuma tentativa no período/filtro selecionado.</div>
+                {% endif %}
+            </div>
+            {% if tentativas|length >= limite_tentativas %}
+            <div class="seg-box-body seg-nota">
+                Exibindo as {{ limite_tentativas }} mais recentes — refine o filtro para ver o resto.
+            </div>
+            {% endif %}
+        </div>
+
+        {% if is_admin_seguranca and top_ips %}
+        <div class="seg-box">
+            <div class="seg-box-head"><h2>IPs com mais falhas (7 dias)</h2></div>
+            <div class="seg-tabela-wrap">
+                <table class="seg-tabela">
+                    <thead><tr><th>IP</th><th>Falhas</th><th></th></tr></thead>
+                    <tbody>
+                        {% for item in top_ips %}
+                        <tr>
+                            <td class="mono">{{ item.ip }}</td>
+                            <td class="contagem">{{ item.total }}</td>
+                            <td>
+                                <button class="seg-btn seg-btn-rd btn-banir" data-ip="{{ item.ip }}">
+                                    <i class="fas fa-ban me-1"></i> Banir no fail2ban
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if is_admin_seguranca %}
+    <!-- ══ SSH / FAIL2BAN ════════════════════════════════════════════ -->
+    <div class="seg-pane" id="pane-ssh">
+        {% if not fail2ban_ok %}
+        <div class="seg-aviso">
+            <i class="fas fa-triangle-exclamation me-1"></i>
+            <strong>Fail2ban indisponível.</strong> {{ fail2ban_erro }}
+        </div>
+        {% endif %}
+
+        <div class="seg-box">
+            <div class="seg-box-head"><h2>Jails ativas</h2></div>
+            <div class="seg-tabela-wrap">
+                {% if jails %}
+                <table class="seg-tabela">
+                    <thead><tr><th>Jail</th><th>Falhas agora</th><th>Falhas total</th>
+                        <th>Banidos agora</th><th>Banidos total</th><th>Log monitorado</th></tr></thead>
+                    <tbody>
+                        {% for j in jails %}
+                        <tr>
+                            <td><span class="tag tag-info mono">{{ j.jail }}</span></td>
+                            <td class="contagem">{{ j.falhas_atuais }}</td>
+                            <td class="contagem">{{ j.falhas_total }}</td>
+                            <td class="contagem" style="color:var(--rd)">{{ j.banidos_atuais }}</td>
+                            <td class="contagem">{{ j.banidos_total }}</td>
+                            <td class="mono seg-nota">{{ j.arquivos|default:"—" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="seg-vazio">Nenhuma jail para exibir.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="seg-box">
+            <div class="seg-box-head">
+                <h2>Blacklist — IPs banidos <span class="tag tag-err contagem">{{ total_banidos }}</span></h2>
+                <form id="formBanir" class="d-flex gap-2 align-items-center">
+                    <input type="text" id="inputBanirIp" placeholder="IP para banir" class="mono"
+                           style="background:#030a14;border:1px solid rgba(248,81,73,.3);border-radius:4px;color:var(--rd);padding:.3rem .55rem;font-size:.78rem;">
+                    <select id="selectBanirJail" style="background:#030a14;border:1px solid rgba(88,166,255,.2);border-radius:4px;color:var(--cy);padding:.3rem .5rem;font-size:.78rem;">
+                        {% for j in jails %}<option value="{{ j.jail }}">{{ j.jail }}</option>{% endfor %}
+                    </select>
+                    <button type="submit" class="seg-btn seg-btn-rd"><i class="fas fa-ban me-1"></i> Banir</button>
+                </form>
+            </div>
+            <div class="seg-tabela-wrap">
+                {% if banidos %}
+                <table class="seg-tabela">
+                    <thead><tr><th>IP</th><th>Jails</th><th></th></tr></thead>
+                    <tbody>
+                        {% for b in banidos %}
+                        <tr>
+                            <td class="mono">{{ b.ip }}</td>
+                            <td>{% for j in b.jails %}<span class="tag tag-warn mono me-1">{{ j }}</span>{% endfor %}</td>
+                            <td>
+                                <button class="seg-btn seg-btn-ok btn-desbanir" data-ip="{{ b.ip }}">
+                                    <i class="fas fa-unlock me-1"></i> Liberar
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="seg-vazio"><i class="fas fa-circle-check me-1" style="color:var(--gr)"></i> Nenhum IP banido no momento.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="seg-box">
+            <div class="seg-box-head"><h2>Histórico do fail2ban</h2></div>
+            <div class="seg-tabela-wrap" style="max-height:420px; overflow-y:auto;">
+                {% if historico_fail2ban %}
+                <table class="seg-tabela">
+                    <thead><tr><th>Data/hora</th><th>Jail</th><th>Ação</th><th>IP</th></tr></thead>
+                    <tbody>
+                        {% for h in historico_fail2ban %}
+                        <tr>
+                            <td class="mono">{{ h.data }}</td>
+                            <td class="mono">{{ h.jail }}</td>
+                            <td>
+                                {% if h.acao == 'Unban' %}<span class="tag tag-ok">Liberado</span>
+                                {% else %}<span class="tag tag-err">Banido</span>{% endif %}
+                            </td>
+                            <td class="mono">{{ h.ip }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="seg-vazio">Sem histórico legível em /var/log/fail2ban.log.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ INJEÇÃO ═══════════════════════════════════════════════════ -->
+    <div class="seg-pane" id="pane-injecao">
+        <div class="seg-box">
+            <div class="seg-box-head">
+                <h2>Requisições barradas — SQL injection, path traversal e XSS (7 dias)</h2>
+            </div>
+            <div class="seg-tabela-wrap">
+                {% if eventos %}
+                <table class="seg-tabela">
+                    <thead><tr><th>Data/hora</th><th>Tipo</th><th>Assinatura</th><th>IP</th>
+                        <th>Rota</th><th>Campo</th><th>Trecho</th><th>Ação</th></tr></thead>
+                    <tbody>
+                        {% for e in eventos %}
+                        <tr>
+                            <td class="mono">{{ e.criado_em|date:"d/m/Y H:i:s" }}</td>
+                            <td>
+                                {% if e.tipo == 'sql_injection' %}<span class="tag tag-err">SQL Injection</span>
+                                {% elif e.tipo == 'path_traversal' %}<span class="tag tag-warn">Path Traversal</span>
+                                {% else %}<span class="tag tag-pu">XSS</span>{% endif %}
+                            </td>
+                            <td class="mono seg-nota">{{ e.assinatura }}</td>
+                            <td class="mono">{{ e.ip|default:"—" }}</td>
+                            <td class="mono seg-nota" style="max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                                title="{{ e.metodo }} {{ e.caminho }}">{{ e.metodo }} {{ e.caminho }}</td>
+                            <td class="mono seg-nota">{{ e.campo|default:"—" }}</td>
+                            <td class="mono seg-nota" style="max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                                title="{{ e.payload }}">{{ e.payload }}</td>
+                            <td>{% if e.bloqueado %}<span class="tag tag-err">Bloqueada</span>{% else %}<span class="tag tag-warn">Só registrada</span>{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="seg-vazio"><i class="fas fa-circle-check me-1" style="color:var(--gr)"></i> Nenhuma tentativa de injeção nos últimos 7 dias.</div>
+                {% endif %}
+            </div>
+            <div class="seg-box-body seg-nota">
+                As consultas do sistema usam o ORM do Django (sempre parametrizado), então uma injeção
+                não chegaria ao banco mesmo sem este filtro. Ele existe para <em>barrar antes</em> e,
+                principalmente, para dar visibilidade: sem ele uma varredura de <span class="mono">sqlmap</span>
+                não deixaria rastro nenhum.
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ AUDITORIA ═════════════════════════════════════════════════ -->
+    <div class="seg-pane" id="pane-auditoria">
+        <div class="seg-box">
+            <div class="seg-box-head"><h2>Ações executadas neste painel</h2></div>
+            <div class="seg-tabela-wrap">
+                {% if acoes %}
+                <table class="seg-tabela">
+                    <thead><tr><th>Data/hora</th><th>Ação</th><th>Alvo</th><th>Detalhe</th><th>Por</th><th>De (IP)</th></tr></thead>
+                    <tbody>
+                        {% for a in acoes %}
+                        <tr>
+                            <td class="mono">{{ a.criado_em|date:"d/m/Y H:i:s" }}</td>
+                            <td>{{ a.get_acao_display }}</td>
+                            <td class="mono">{{ a.alvo }}</td>
+                            <td class="seg-nota">{{ a.detalhe|default:"—" }}</td>
+                            <td>{{ a.usuario.username|default:"sistema" }}</td>
+                            <td class="mono">{{ a.ip_origem|default:"—" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="seg-vazio">Nenhuma ação registrada ainda.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+(function () {
+    // ── Abas ─────────────────────────────────────────────────────────
+    const tabs = document.querySelectorAll('.seg-tab');
+    const panes = document.querySelectorAll('.seg-pane');
+
+    function abrir(paneId) {
+        tabs.forEach(t => t.classList.toggle('ativa', t.dataset.pane === paneId));
+        panes.forEach(p => p.classList.toggle('ativa', p.id === paneId));
+    }
+    tabs.forEach(t => t.addEventListener('click', () => {
+        abrir(t.dataset.pane);
+        // Guarda a aba na URL pra o filtro de tentativas (que faz GET) voltar nela.
+        const url = new URL(window.location);
+        url.searchParams.set('aba', t.dataset.pane.replace('pane-', ''));
+        history.replaceState(null, '', url);
+    }));
+
+    const abaInicial = new URLSearchParams(window.location.search).get('aba');
+    if (abaInicial && document.getElementById('pane-' + abaInicial)) abrir('pane-' + abaInicial);
+
+    // ── CSRF ─────────────────────────────────────────────────────────
+    function getCookie(nome) {
+        const m = document.cookie.match('(^|;)\\s*' + nome + '\\s*=\\s*([^;]+)');
+        return m ? m.pop() : '';
+    }
+
+    async function post(url, dados) {
+        const body = new URLSearchParams(dados);
+        const resp = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body,
+        });
+        // Sessão expirada vira 302 pro login e o json() estoura — trata antes.
+        if (resp.redirected || resp.status === 401) {
+            alert('Sua sessão expirou. Faça login novamente.');
+            window.location.reload();
+            return null;
+        }
+        let dadosResp = {};
+        try { dadosResp = await resp.json(); } catch (e) { dadosResp = {erro: 'Resposta inesperada do servidor.'}; }
+        return dadosResp;
+    }
+
+    function ligar(seletor, handler) {
+        document.querySelectorAll(seletor).forEach(el => el.addEventListener('click', handler));
+    }
+
+    // ── Liberar bloqueio de login ────────────────────────────────────
+    ligar('.btn-liberar', async function () {
+        const btn = this;
+        btn.disabled = true;
+        const r = await post("{% url 'seguranca_desbloquear' %}", {id: btn.dataset.id});
+        if (!r) return;
+        if (r.ok) { window.location.reload(); }
+        else { alert(r.erro || 'Falha ao liberar.'); btn.disabled = false; }
+    });
+
+    const btnTodos = document.getElementById('btnLiberarTodos');
+    if (btnTodos) btnTodos.addEventListener('click', async function () {
+        if (!confirm('Liberar TODAS as contas e IPs bloqueados agora?')) return;
+        btnTodos.disabled = true;
+        const r = await post("{% url 'seguranca_desbloquear_todos' %}", {});
+        if (!r) return;
+        if (r.ok) { window.location.reload(); }
+        else { alert(r.erro || 'Falha ao liberar.'); btnTodos.disabled = false; }
+    });
+
+    {% if is_admin_seguranca %}
+    // ── Fail2ban ─────────────────────────────────────────────────────
+    ligar('.btn-desbanir', async function () {
+        const btn = this;
+        if (!confirm('Remover ' + btn.dataset.ip + ' da blacklist do fail2ban?')) return;
+        btn.disabled = true;
+        const r = await post("{% url 'seguranca_fail2ban_desbanir' %}", {ip: btn.dataset.ip});
+        if (!r) return;
+        if (r.ok) { window.location.reload(); }
+        else { alert(r.erro || 'Falha ao liberar o IP.'); btn.disabled = false; }
+    });
+
+    ligar('.btn-banir', async function () {
+        const btn = this;
+        if (!confirm('Banir ' + btn.dataset.ip + ' no fail2ban?')) return;
+        btn.disabled = true;
+        const r = await post("{% url 'seguranca_fail2ban_banir' %}", {ip: btn.dataset.ip});
+        if (!r) return;
+        alert(r.ok ? r.mensagem : (r.erro || 'Falha ao banir.'));
+        if (r.ok) window.location.reload(); else btn.disabled = false;
+    });
+
+    const formBanir = document.getElementById('formBanir');
+    if (formBanir) formBanir.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const ip = document.getElementById('inputBanirIp').value.trim();
+        const jail = document.getElementById('selectBanirJail').value;
+        if (!ip) return;
+        if (!confirm('Banir ' + ip + ' na jail ' + jail + '?')) return;
+        const r = await post("{% url 'seguranca_fail2ban_banir' %}", {ip: ip, jail: jail});
+        if (!r) return;
+        alert(r.ok ? r.mensagem : (r.erro || 'Falha ao banir.'));
+        if (r.ok) window.location.reload();
+    });
+    {% endif %}
+
+    // ── Contagem regressiva dos bloqueios ativos ─────────────────────
+    const celulas = document.querySelectorAll('[data-restante]');
+    if (celulas.length) {
+        setInterval(function () {
+            celulas.forEach(function (td) {
+                let s = parseInt(td.dataset.restante || '0', 10) - 1;
+                td.dataset.restante = s;
+                if (s <= 0) { td.innerHTML = '<span class="tag tag-ok">liberado</span>'; return; }
+                const m = Math.floor(s / 60);
+                td.textContent = (m > 0 ? m + 'm ' : '') + (s % 60) + 's';
+            });
+        }, 1000);
+    }
+})();
+</script>
+{% endblock %}
