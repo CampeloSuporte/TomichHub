@@ -26,6 +26,7 @@ Centraliza acesso remoto a equipamentos, IPAM, VPN, backups, RPKI/IRR, financeir
   - [Agent NOC (IA)](#agent-noc-ia)
   - [Wiki](#wiki)
   - [Ferramentas de Rede](#ferramentas-de-rede)
+  - [Segurança](#segurança)
 - [Integrações Externas](#integrações-externas)
 - [Instalação](#instalação)
 - [Configuração Inicial](#configuração-inicial)
@@ -322,6 +323,32 @@ Base de conhecimento interna:
 - Sistema de compartilhamento com links temporários em 10 formatos:
   HTTP, HTTPS, FTP, SFTP, TFTP, Cisco TFTP, MikroTik, Huawei TFTP, wget, curl
 - Limite de upload: 2 GB
+
+### Segurança
+
+Proteção contra invasão em três camadas, todas visíveis no painel **Sistema → Segurança**:
+
+**Bloqueio por tentativa de login:**
+- 3 senhas erradas trancam a **conta** por 5 minutos; 10 falhas trancam o **IP** por 15 minutos
+- A verificação roda antes do `authenticate()` — durante o bloqueio nem a senha certa entra
+- O 2FA usa o mesmo contador (o contador de sessão anterior zerava ao trocar de aba)
+- Janela deslizante de 15 min; login certo zera o contador
+
+**Fail2ban (blacklist no firewall):**
+- Jails `sshd` e `crm-login`, esta última alimentada pelo log de falhas do próprio CRM
+- Ban progressivo para reincidente (1h → 2h → … → 1 semana)
+- Liberar e banir IP direto pelo painel, sem terminal
+
+**Filtro de injeção:**
+- Barra SQL injection, path traversal e XSS refletido na query string, no caminho e no POST
+- Assinaturas específicas e isenções por rota e por campo, para não bloquear o texto livre do CRM
+- Modo observação (`SEGURANCA_INJECAO_BLOQUEAR=0`) para checar falso positivo antes de ligar
+
+**Painel:** tentativas de login com filtros, bloqueios com botão liberar, blacklist do fail2ban,
+eventos de injeção e auditoria de quem liberou o quê. Administrador vê tudo; Consultor vê e
+destrava só as contas da própria instância.
+
+Documentação completa: [docs/SEGURANCA.md](docs/SEGURANCA.md)
 
 ---
 

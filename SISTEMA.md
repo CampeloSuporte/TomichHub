@@ -137,6 +137,12 @@ Registro e autenticação de usuários, e o sistema de papéis multi-tenant (Adm
 
 **URLs principais:** `/auth/`
 
+### `seguranca` — Proteção contra invasão
+
+Bloqueio por força bruta no login (3 senhas erradas trancam a conta por 5 min; 10 falhas trancam o IP por 15 min), ponte com o **fail2ban** (jails `sshd` e `crm-login`), middleware que barra SQL injection / path traversal / XSS, e o painel **Sistema → Segurança**. A checagem de bloqueio roda antes do `authenticate()` — durante o bloqueio nem a senha certa entra. Ver [docs/SEGURANCA.md](docs/SEGURANCA.md).
+
+**URLs principais:** `/seguranca/`
+
 ### `funcao_equipamento` e `modelo_equipamento`
 
 Cadastro de funções (Roteador, Switch, Firewall, OLT...) e modelos de equipamentos.
@@ -154,6 +160,17 @@ Cadastro de funções (Roteador, Switch, Firewall, OLT...) e modelos de equipame
 | `InstanciaFerramenta` | Ferramentas do núcleo liberadas pelo Administrador para a Instancia (default desabilitado) |
 
 Ver [Sessão 16](#sessão-16--multi-tenant-consultor-e-operador) para o desenho completo.
+
+### Segurança (app `seguranca`)
+
+| Modelo | Descrição |
+|---|---|
+| `TentativaLogin` | Log append-only de toda tentativa de autenticação (sucesso e falha), com usuário, IP, motivo e navegador |
+| `BloqueioLogin` | Contador de falhas + janela de bloqueio, por conta (`tipo='conta'`) ou por IP (`tipo='ip'`) |
+| `EventoSeguranca` | Requisição barrada pelo filtro de injeção: tipo, assinatura, rota, campo e trecho do payload |
+| `AcaoSeguranca` | Auditoria do painel — quem desbloqueou/baniu o quê, quando e de qual IP |
+
+Os banimentos do fail2ban **não** têm modelo: a fonte da verdade é o `fail2ban-client`, porque é ele que fala com o firewall. Ver [docs/SEGURANCA.md](docs/SEGURANCA.md).
 
 ### Clientes e Infraestrutura
 
@@ -420,6 +437,7 @@ Ver [Sessão 16](#sessão-16--multi-tenant-consultor-e-operador) para o desenho 
 | `celerybeat.service` | Agendador de tarefas |
 | `redis.service` | Broker + cache |
 | `postgresql.service` | Banco de dados |
+| `fail2ban.service` | Blacklist de IP no firewall — jails `sshd` (porta **22002**, não a 22) e `crm-login` |
 
 ### Diretório de mídia
 
@@ -443,6 +461,17 @@ Configuradas em `crm/settings.py`:
 - `CACHES` — Redis `redis://127.0.0.1:6379/1`
 - `CHANNEL_LAYERS` — In-memory (WebSocket)
 - `MEDIA_ROOT` — `/opt/crm/media/`
+- `SEGURANCA_*` — limites do bloqueio de login e do filtro de injeção (ver [docs/SEGURANCA.md](docs/SEGURANCA.md))
+
+### Arquivos de configuração fora do repositório
+
+| Caminho | Função |
+|---|---|
+| `/etc/fail2ban/jail.d/crm.local` | Jails `sshd` e `crm-login` |
+| `/etc/fail2ban/filter.d/crm-login.conf` | Filtro do log de login do CRM — o formato da linha é um contrato com `seguranca/services.py` |
+| `/etc/sudoers.d/crm-fail2ban` | Deixa o `www-data` chamar só os verbos do `fail2ban-client` usados pelo painel |
+| `/etc/logrotate.d/crm-seguranca` | Rotação de `/var/log/crm/auth.log` |
+| `/var/log/crm/auth.log` | Uma linha por falha de login, lida pela jail `crm-login` |
 
 ---
 

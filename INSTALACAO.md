@@ -19,9 +19,10 @@
 11. [Nginx](#11-nginx)
 12. [SSL com Let's Encrypt](#12-ssl-com-lets-encrypt)
 13. [Criar Superusuário](#13-criar-superusuário)
-14. [Verificação Final](#14-verificação-final)
-15. [Comandos Úteis do Dia a Dia](#15-comandos-úteis-do-dia-a-dia)
-16. [Troubleshooting](#troubleshooting)
+14. [Fail2ban (proteção contra invasão)](#14-fail2ban-proteção-contra-invasão)
+15. [Verificação Final](#15-verificação-final)
+16. [Comandos Úteis do Dia a Dia](#16-comandos-úteis-do-dia-a-dia)
+17. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -65,10 +66,13 @@ sudo apt install -y \
     sshpass \
     expect \
     novnc \
+    fail2ban \
     sudo
 ```
 
 > **Nota:** O Python 3.12 é obrigatório. Verifique com `python3.12 --version`.
+
+> **Nota:** O `fail2ban` só entra em ação depois de configurado — ver seção [14 — Fail2ban](#14-fail2ban-proteção-contra-invasão).
 
 > **Nota:** O pacote `novnc` é necessário para o acesso via WinBox/VNC no navegador. Após instalar, copie os arquivos para os estáticos do projeto (ver seção [9 — Arquivos Estáticos e Mídia](#9-arquivos-estáticos-e-mídia)).
 
@@ -477,11 +481,152 @@ python manage.py createsuperuser
 
 ---
 
-## 14. Verificação Final
+## 14. Fail2ban (proteção contra invasão)
+
+O CRM já bloqueia a conta depois de 3 senhas erradas (ver
+[docs/SEGURANCA.md](docs/SEGURANCA.md)), mas isso protege só a aplicação. O fail2ban é o que
+tira o atacante da porta, no firewall.
+
+### 14.1 Instalar
+
+```bash
+sudo apt install -y fail2ban
+```
+
+### 14.2 Diretório do log que o CRM escreve
+
+```bash
+sudo install -d -o www-data -g adm -m 0755 /var/log/crm
+```
+
+O Django escreve `/var/log/crm/auth.log` (uma linha por falha de login). Se o diretório não
+existir, `crm/settings.py` cai automaticamente em `/opt/crm/logs/auth.log` — o sistema não
+quebra, mas a jail abaixo não encontra o arquivo.
+
+### 14.3 Filtro do login do CRM
+
+`/etc/fail2ban/filter.d/crm-login.conf`:
+
+```ini
+[Definition]
+failregex = ^\s*LOGIN FAILED user=<F-USER>\S*</F-USER> ip=<HOST> reason=\S+\s*$
+ignoreregex =
+datepattern = ^%%Y-%%m-%%d %%H:%%M:%%S
+journalmatch =
+```
+
+> O formato da linha é um **contrato** com `seguranca/services.py::_log_fail2ban`. Mudar de um
+> lado exige mudar do outro. Conferir com:
+> `fail2ban-regex /var/log/crm/auth.log /etc/fail2ban/filter.d/crm-login.conf`
+
+### 14.4 Jails
+
+`/etc/fail2ban/jail.d/crm.local`:
+
+```ini
+[DEFAULT]
+# Ajuste para os IPs deste servidor e da sua rede interna. Se o escritório tem
+# IP fixo, acrescente-o aqui — é o seguro contra se trancar do lado de fora.
+ignoreip = 127.0.0.1/8 ::1 SEU.IP.PUBLICO 10.0.0.0/8
+bantime  = 1h
+findtime = 10m
+maxretry = 5
+bantime.increment = true
+bantime.factor    = 2
+bantime.maxtime   = 1w
+
+[sshd]
+enabled  = true
+# ⚠️ Use a porta REAL do seu SSH. Com a porta errada o fail2ban cria a regra de
+# firewall no lugar errado e não bloqueia nada.
+port     = 22
+mode     = normal
+maxretry = 5
+
+[crm-login]
+enabled  = true
+filter   = crm-login
+port     = http,https
+logpath  = /var/log/crm/auth.log
+# ⚠️ OBRIGATÓRIO: no Ubuntu o backend padrão do fail2ban é `systemd`, e com ele
+# a jail ignora `logpath` em SILÊNCIO (o status mostra "Journal matches" em vez
+# de "File list" e nada nunca é banido).
+backend  = auto
+maxretry = 10
+findtime = 15m
+```
+
+### 14.5 Permitir que o painel converse com o fail2ban
+
+O gunicorn roda como `www-data` e o `fail2ban-client` só responde a root.
+`/etc/sudoers.d/crm-fail2ban` (modo **0440**):
+
+```
+Cmnd_Alias CRM_F2B = /usr/bin/fail2ban-client ping, \
+                     /usr/bin/fail2ban-client status, \
+                     /usr/bin/fail2ban-client status [a-z0-9-]*, \
+                     /usr/bin/fail2ban-client set [a-z0-9-]* banip *, \
+                     /usr/bin/fail2ban-client set [a-z0-9-]* unbanip *, \
+                     /usr/bin/fail2ban-client unban *
+
+www-data ALL=(root) NOPASSWD: CRM_F2B
+```
+
+```bash
+sudo chmod 0440 /etc/sudoers.d/crm-fail2ban
+sudo visudo -c -f /etc/sudoers.d/crm-fail2ban
+```
+
+> **Não** libere `NOPASSWD: /usr/bin/fail2ban-client` solto: esse binário aceita
+> `set <jail> action ...`, que executa comando de shell como root — seria transformar qualquer
+> falha na aplicação web em root no servidor.
+
+### 14.6 Deixar o painel ler o histórico
+
+O painel monta o histórico de banimentos lendo `/var/log/fail2ban.log`, e o `www-data` não
+pertence ao grupo `adm`:
+
+```bash
+sudo chmod 644 /var/log/fail2ban.log
+# e trocar "create 640 root adm" por "create 644 root adm" em /etc/logrotate.d/fail2ban
+```
+
+### 14.7 Rotação do log do CRM
+
+`/etc/logrotate.d/crm-seguranca`:
+
+```
+/var/log/crm/*.log {
+    weekly
+    rotate 8
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    su www-data adm
+    create 0640 www-data adm
+}
+```
+
+### 14.8 Subir e conferir
+
+```bash
+sudo systemctl enable --now fail2ban
+sudo systemctl restart fail2ban
+
+fail2ban-client status
+fail2ban-client status sshd
+fail2ban-client status crm-login   # deve mostrar "File list: /var/log/crm/auth.log"
+```
+
+---
+
+## 15. Verificação Final
 
 ```bash
 # Todos os serviços rodando?
-sudo systemctl is-active gunicorn daphne celery redis postgresql nginx
+sudo systemctl is-active gunicorn daphne celery redis postgresql nginx fail2ban
 
 # Logs em tempo real
 sudo journalctl -u gunicorn -f
@@ -497,7 +642,7 @@ Acesse no navegador: `https://seu.dominio.com.br`
 
 ---
 
-## 15. Comandos Úteis do Dia a Dia
+## 16. Comandos Úteis do Dia a Dia
 
 ### Reiniciar serviços após atualização de código
 
