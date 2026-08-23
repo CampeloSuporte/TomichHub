@@ -98,6 +98,12 @@ app.conf.beat_schedule = {
         'task': 'financeiro.tasks.enviar_alertas_whatsapp',
         'schedule': crontab(hour=8, minute=30, day_of_week='1-5'),
     },
+    # Poda tentativas de login / eventos de injeção fora da retenção — a
+    # tabela cresce com tráfego de robô, que é justamente o que não para.
+    'seguranca-limpar-registros': {
+        'task': 'seguranca.limpar_registros',
+        'schedule': crontab(hour=3, minute=40),
+    },
     'rotaloop-verificar-clientes-agendado': {
         # Testa loop de roteamento em todos os clientes com blocos IP a
         # cada 2 dias. Sem revezamento de grupo (diferente do AmpScan) —

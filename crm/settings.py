@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'monitoramento.apps.MonitoramentoConfig',
     'atendimento',
     'tarefas',
+    'seguranca',
 ]
 
 REST_FRAMEWORK = {
@@ -68,6 +69,9 @@ REST_FRAMEWORK = {
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    # Filtro de injeção (SQLi/path traversal/XSS) — antes de sessão e auth,
+    # pra descartar a requisição sem custo de banco. Ver seguranca/middleware.py.
+    'seguranca.middleware.ProtecaoInjecaoMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -315,3 +319,99 @@ LOGGING = {
         },
     },
 }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Segurança — força bruta no login, fail2ban e filtro de injeção
+# ──────────────────────────────────────────────────────────────────────────────
+# Documentação completa: docs/SEGURANCA.md
+
+# Bloqueio de CONTA: errou a senha N vezes, tranca por M minutos.
+SEGURANCA_MAX_TENTATIVAS = int(os.environ.get('SEGURANCA_MAX_TENTATIVAS', 3))
+SEGURANCA_BLOQUEIO_MINUTOS = int(os.environ.get('SEGURANCA_BLOQUEIO_MINUTOS', 5))
+
+# Bloqueio por IP: mais folgado, porque um IP legítimo pode ser o NAT de um
+# escritório inteiro. Cobre o robô que varre usernames inexistentes, caso em
+# que a conta não serve de chave.
+SEGURANCA_MAX_TENTATIVAS_IP = int(os.environ.get('SEGURANCA_MAX_TENTATIVAS_IP', 10))
+SEGURANCA_BLOQUEIO_IP_MINUTOS = int(os.environ.get('SEGURANCA_BLOQUEIO_IP_MINUTOS', 15))
+
+# Janela deslizante: falhas mais antigas que isso não somam para o bloqueio.
+SEGURANCA_JANELA_MINUTOS = int(os.environ.get('SEGURANCA_JANELA_MINUTOS', 15))
+
+# Retenção do log de tentativas/eventos (task Celery seguranca.limpar_registros).
+SEGURANCA_RETENCAO_DIAS = int(os.environ.get('SEGURANCA_RETENCAO_DIAS', 90))
+
+# Filtro de injeção. `BLOQUEAR=False` = modo observação (registra e deixa passar),
+# útil pra checar falso positivo antes de ligar de vez numa rota nova.
+SEGURANCA_INJECAO_ATIVO = os.environ.get('SEGURANCA_INJECAO_ATIVO', '1') == '1'
+SEGURANCA_INJECAO_BLOQUEAR = os.environ.get('SEGURANCA_INJECAO_BLOQUEAR', '1') == '1'
+
+# Arquivo lido pelo fail2ban (jail `crm-login`). Caminho fixo em produção pra
+# casar com /etc/fail2ban/jail.d/crm.local; cai em BASE_DIR/logs quando
+# /var/log/crm não existe (worktree, máquina de dev).
+def _caminho_auth_log():
+    preferido = os.environ.get('SEGURANCA_AUTH_LOG', '/var/log/crm/auth.log')
+    pasta = os.path.dirname(preferido)
+    if os.path.isdir(pasta) and os.access(pasta, os.W_OK):
+        return preferido
+    return str(LOG_DIR / 'auth.log')
+
+
+SEGURANCA_AUTH_LOG = _caminho_auth_log()
+
+# Binário e log do fail2ban (o painel lê o histórico direto do arquivo).
+FAIL2BAN_CLIENT = os.environ.get('FAIL2BAN_CLIENT', '/usr/bin/fail2ban-client')
+FAIL2BAN_LOG = os.environ.get('FAIL2BAN_LOG', '/var/log/fail2ban.log')
+
+# Handler dedicado: uma linha por falha de login, formato consumido pelo
+# filtro /etc/fail2ban/filter.d/crm-login.conf. Mudar o formato aqui exige
+# mudar o regex lá.
+LOGGING['formatters']['auth_fail2ban'] = {
+    'format': '{asctime} {message}',
+    'datefmt': '%Y-%m-%d %H:%M:%S',
+    'style': '{',
+}
+LOGGING['handlers']['auth_fail2ban'] = {
+    'level': 'WARNING',
+    'class': 'logging.handlers.RotatingFileHandler',
+    'filename': SEGURANCA_AUTH_LOG,
+    'maxBytes': 10 * 1024 * 1024,
+    'backupCount': 3,
+    'formatter': 'auth_fail2ban',
+    'encoding': 'utf-8',
+    # delay=True: o arquivo só é aberto na primeira falha de login. Sem isso,
+    # um processo sem permissão de escrita (ex.: manage.py rodado por outro
+    # usuário) quebraria no import do settings.
+    'delay': True,
+}
+LOGGING['loggers']['seguranca.auth'] = {
+    'handlers': ['auth_fail2ban'],
+    'level': 'WARNING',
+    'propagate': False,
+}
+LOGGING['loggers']['seguranca'] = {
+    'handlers': ['arquivo_erros', 'console'],
+    'level': 'INFO',
+    'propagate': False,
+}
+
+# ── Cabeçalhos e cookies ──────────────────────────────────────────────────────
+# O nginx termina o TLS e repassa X-Forwarded-Proto; sem esta linha o Django
+# acha que toda requisição é http e `request.is_secure()` mente (o que afeta,
+# entre outras coisas, o flag `secure` do cookie de dispositivo confiável do 2FA).
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+# CSRF_COOKIE_HTTPONLY fica False de propósito: o JS do CRM lê o cookie
+# csrftoken pra montar o header X-CSRFToken nos fetch().
+
+# Cookies só por HTTPS: desligado por padrão porque o servidor ainda atende em
+# http:// no IP bruto (45.235.72.10) e ligar isso derrubaria o login por lá.
+# Ative com SEGURANCA_COOKIES_HTTPS=1 quando todo acesso for por domínio TLS.
+if os.environ.get('SEGURANCA_COOKIES_HTTPS', '0') == '1':
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True

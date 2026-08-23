@@ -82,6 +82,12 @@
                             <i class="fas fa-chart-line me-2" style="color:#00c864"></i>Financeiro
                         </a></li>
                         {% endif %}
+                        {% if is_admin_bo or is_consultor_bo %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'seguranca_dashboard' %}">
+                            <i class="fas fa-shield-halved me-2" style="color:#f85149"></i>Segurança
+                        </a></li>
+                        {% endif %}
                         {% if request.user.is_superuser %}
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{% url 'configuracoes_sistema' %}">

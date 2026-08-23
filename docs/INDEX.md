@@ -2,6 +2,28 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 45 — 23/08/2026: Proteção contra invasão (bloqueio de login, fail2ban, SQL injection)
+
+**O que foi implementado?**
+- 🔒 **Bloqueio por tentativa de login**: 3 senhas erradas trancam a **conta** por 5 minutos;
+  10 falhas trancam o **IP** por 15 minutos. A checagem vem antes do `authenticate()`, então
+  nem a senha certa entra durante o bloqueio. O 2FA usa o mesmo contador.
+- 🚫 **Fail2ban**: instalado e configurado com duas jails — `sshd` (porta 22002, não a 22) e
+  `crm-login`, alimentada por `/var/log/crm/auth.log`. Ban progressivo para reincidente.
+- 💉 **Filtro de injeção**: middleware que barra SQL injection, path traversal e XSS refletido
+  na query string e no POST, com isenções para os campos de texto livre do CRM.
+- 📊 **Painel Sistema → Segurança**: tentativas, bloqueios (com botão liberar), blacklist do
+  fail2ban (liberar/banir), eventos de injeção e auditoria de quem liberou o quê.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[SEGURANCA.md](SEGURANCA.md)** | As três camadas, configuração, armadilhas do fail2ban, escopo por papel e operação |
+| **[PERMISSOES_CONSULTOR.md](PERMISSOES_CONSULTOR.md)** | Escopo do Consultor no painel de Segurança |
+
+---
+
 ### Sessão 44 — 20/08/2026: Agent NOC lê o Zabbix do cliente (histórico + gráfico)
 
 **O que foi implementado?**

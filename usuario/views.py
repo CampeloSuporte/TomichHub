@@ -17,6 +17,8 @@ from clientes.models import Cliente
 from .models import UsuarioModulo, modulos_habilitados_dict, Instancia, PerfilUsuario, InstanciaFerramenta, ferramentas_habilitadas_dict, TOTPDevice, PortalUsuarioInstancia
 from . import perms
 from . import totp as totp_lib
+from seguranca import services as seguranca
+from seguranca.models import TentativaLogin
 
 TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
 
@@ -35,6 +37,28 @@ def _verificar_turnstile(request):
         return resp.json().get('success', False)
     except requests.RequestException:
         return False
+
+
+def _mensagem_bloqueio(bloqueio):
+    """Texto mostrado a quem esbarrou no bloqueio por força bruta. Fala o
+    tempo que falta em vez de 'tente mais tarde': sem o número, o usuário
+    legítimo fica recarregando a tela e ligando pro suporte."""
+    segundos = bloqueio.segundos_restantes
+    minutos = max(1, -(-segundos // 60))  # arredonda pra cima
+    if bloqueio.tipo == 'ip':
+        return (f'Muitas tentativas de acesso a partir do seu endereço. '
+                f'Tente novamente em {minutos} minuto(s).')
+    return (f'Conta temporariamente bloqueada por excesso de tentativas de senha. '
+            f'Tente novamente em {minutos} minuto(s) ou peça o desbloqueio ao administrador.')
+
+
+def _tela_login(request, next_url='', erro=None):
+    if erro:
+        messages.error(request, erro)
+    return render(request, 'login.html', {
+        'turnstile_site_key': settings.TURNSTILE_SITE_KEY,
+        'next': next_url,
+    })
 
 
 def _is_staff_para_role(role):
@@ -302,7 +326,7 @@ def _redirect_pos_login(request, user, next_url=None):
     destino = _next_seguro(request, next_url)
     if destino:
         return redirect(destino)
-    return redirect_user_by_role(user)
+    return redirect_user_by_role(user, request)
 
 
 def login(request):
@@ -313,7 +337,7 @@ def login(request):
     if request.method == 'GET':
         # Se já está logado, redireciona para o dashboard apropriado
         if request.user.is_authenticated:
-            return redirect_user_by_role(request.user)
+            return redirect_user_by_role(request.user, request)
 
         return render(request, 'login.html', {
             'turnstile_site_key': settings.TURNSTILE_SITE_KEY,
@@ -322,16 +346,25 @@ def login(request):
 
     else:
         next_url = request.POST.get('next', '')
+        username = (request.POST.get('username') or '').strip()
+        password = request.POST.get('password')
+
+        # Proteção contra força bruta ANTES de qualquer verificação de senha:
+        # enquanto durar o bloqueio nem a senha certa entra, senão o castigo
+        # só atrasaria quem já errou — não quem acertasse na 4ª tentativa de
+        # um ataque de dicionário. Ver seguranca/services.py.
+        bloqueio = seguranca.verificar_bloqueio(request, username)
+        if bloqueio:
+            seguranca.registrar_tentativa(request, username, TentativaLogin.MOTIVO_BLOQUEADO)
+            return _tela_login(request, next_url, _mensagem_bloqueio(bloqueio))
 
         if not _verificar_turnstile(request):
-            messages.error(request, "Verificação de segurança falhou. Tente novamente.")
-            return render(request, 'login.html', {
-                'turnstile_site_key': settings.TURNSTILE_SITE_KEY,
-                'next': next_url,
-            })
+            # Captcha reprovado NÃO conta pro bloqueio: o widget do Cloudflare
+            # falha sozinho de vez em quando (rede, extensão do navegador), e
+            # trancar a conta por isso puniria quem nem chegou a errar a senha.
+            seguranca.registrar_tentativa(request, username, TentativaLogin.MOTIVO_CAPTCHA)
+            return _tela_login(request, next_url, 'Verificação de segurança falhou. Tente novamente.')
 
-        username = request.POST.get('username')
-        password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
@@ -344,6 +377,7 @@ def login(request):
                 usuario_confiavel = totp_lib.verificar_dispositivo_confiavel(cookie_valor) if cookie_valor else None
                 if usuario_confiavel and usuario_confiavel.id == user.id:
                     auth_login(request, user)
+                    seguranca.registrar_sucesso(request, user)
                     tipo_usuario = _TIPO_LABELS.get(perms.get_role(user), 'Cliente')
                     messages.success(request, f"Login realizado com sucesso. Bem-vindo, {tipo_usuario}!")
                     return _redirect_pos_login(request, user)
@@ -359,6 +393,7 @@ def login(request):
                 return redirect('verificar_2fa')
 
             auth_login(request, user)
+            seguranca.registrar_sucesso(request, user)
 
             tipo_usuario = _TIPO_LABELS.get(perms.get_role(user), 'Cliente')
             messages.success(request, f"Login realizado com sucesso. Bem-vindo, {tipo_usuario}!")
@@ -367,7 +402,27 @@ def login(request):
             # ele estava, se a sessão caducou no meio de uma navegação)
             return _redirect_pos_login(request, user, next_url)
         else:
-            messages.error(request, "Usuário ou senha inválidos.")
+            # authenticate() devolve None tanto pra senha errada quanto pra
+            # conta inativa/inexistente — separar os três só no registro
+            # interno; a mensagem na tela continua genérica de propósito, pra
+            # não confirmar ao atacante que o usuário existe.
+            existente = User.objects.filter(username=username).first() if username else None
+            if existente is None:
+                motivo = TentativaLogin.MOTIVO_USUARIO_INEXISTENTE
+            elif not existente.is_active:
+                motivo = TentativaLogin.MOTIVO_USUARIO_INATIVO
+            else:
+                motivo = TentativaLogin.MOTIVO_SENHA_INVALIDA
+
+            bloqueio, restantes = seguranca.registrar_falha(request, username, motivo)
+            if bloqueio:
+                erro = _mensagem_bloqueio(bloqueio)
+            elif existente is not None and 0 < restantes <= 2:
+                erro = f'Usuário ou senha inválidos. Resta(m) {restantes} tentativa(s) antes do bloqueio temporário.'
+            else:
+                erro = 'Usuário ou senha inválidos.'
+
+            messages.error(request, erro)
             if next_url:
                 return redirect(f"{reverse('login')}?{urlencode({'next': next_url})}")
             return redirect('login')
@@ -390,6 +445,7 @@ def verificar_2fa(request):
             request.session.pop('2fa_tentativas', None)
             next_url = request.session.pop('2fa_next', None)
             auth_login(request, user)
+            seguranca.registrar_sucesso(request, user)
 
             tipo_usuario = _TIPO_LABELS.get(perms.get_role(user), 'Cliente')
             messages.success(request, f"Login realizado com sucesso. Bem-vindo, {tipo_usuario}!")
@@ -405,6 +461,14 @@ def verificar_2fa(request):
                 )
             return response
 
+        # O contador da sessão (abaixo) só derruba ESTA sessão; o contador
+        # persistente é o que tranca a conta de verdade — trocar de aba não
+        # zera. Código de 6 dígitos é adivinhável por força bruta se ninguém
+        # estiver contando.
+        seguranca.registrar_falha(
+            request, user.username if user else '', TentativaLogin.MOTIVO_2FA_INVALIDO,
+        )
+
         tentativas = request.session.get('2fa_tentativas', 0) + 1
         if tentativas >= 5:
             request.session.pop('2fa_user_id', None)
@@ -419,7 +483,17 @@ def verificar_2fa(request):
     return render(request, 'verificar_2fa.html')
 
 
-def redirect_user_by_role(user):
+def redirect_user_by_role(user, request=None):
+    """Destino pós-login conforme o papel.
+
+    `request` é opcional só por compatibilidade com chamadas antigas: sem ele
+    não dá pra enfileirar mensagem. Antes esta função chamava
+    `messages.error(None, ...)`, que levanta TypeError — ou seja, um login de
+    conta sem Cliente vinculado virava erro 500 em vez da mensagem
+    "sua conta não possui acesso". O `auth_logout` no caminho de erro
+    também é necessário: sem ele a conta fica autenticada, e o GET de
+    /auth/login/ manda de volta pra cá — laço infinito de redirect.
+    """
     role = perms.get_role(user)
     if role == PerfilUsuario.ROLE_ADMIN:
         return redirect('quadro_geral')
@@ -427,10 +501,12 @@ def redirect_user_by_role(user):
         return redirect('quadro_instancia')
 
     try:
-        cliente = Cliente.objects.get_by_usuario_vinculado(user)
-        return redirect('cliente_dashboard')  # ← ALTERADO
+        Cliente.objects.get_by_usuario_vinculado(user)
+        return redirect('cliente_dashboard')
     except Cliente.DoesNotExist:
-        messages.error(None, 'Sua conta não possui acesso ao sistema.')
+        if request is not None:
+            auth_logout(request)
+            messages.error(request, 'Sua conta não possui acesso ao sistema.')
         return redirect('login')
 
 
