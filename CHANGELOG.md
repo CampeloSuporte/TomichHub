@@ -5,6 +5,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-24 (Proxy web: Grafana e URLs com porta)
+
+### Corrigido
+
+- **Grafana aberto pelo proxy caía no "Page not found" dele mesmo**
+  (`clientes/proxy_engine.py` → `_rewrite_grafana_bootdata`). O front do Grafana descobre o
+  sub-caminho em que está servido pelo `appSubUrl` do bootdata embutido no HTML; instalado na
+  raiz ele manda `""`, o router tenta casar o caminho inteiro do proxy
+  (`/clientes/acessos/1301/web/3000/http/login`) e renderiza o 404 interno — com **tudo 200**
+  no log do nginx, o que fazia o sintoma parecer erro do CRM. Agora o `appSubUrl` é reescrito
+  para o `proxy_base`, o que conserta de uma vez o router, o prefixo das chamadas de API e o
+  `__webpack_public_path__` dos chunks. Verificado ao vivo (harness local + chromium headless):
+  a tela de login aparece e o login abre o dashboard, sem requisição falhando.
+- **URL absoluta do device com porta explícita virava caminho quebrado**
+  (`clientes/proxy_engine.py` → `_rewrite_urls_absolutas`). A reescrita só conhecia `:80`,
+  `:443` e host sem porta: `http://198.18.1.13:3000/d/abc` saía como
+  `/clientes/acessos/1301/web/3000/http:3000/d/abc` (404 do Django) em qualquer device de porta
+  alta — Grafana 3000, Proxmox 8006, Zabbix 8080. Agora a porta é lida junto com o host: igual à
+  proxyada → `proxy_base`; explícita e diferente → a base daquela porta (o link continua dentro
+  do proxy); sem porta → `proxy_base`, porque muito firmware se anuncia sem porta mesmo servindo
+  numa porta alta. A view passa `target_port` para a reescrita.
+- Testes novos em `clientes/tests_proxy_web.py` (8 casos). Detalhes em
+  [docs/proxy_web_acessos.md](docs/proxy_web_acessos.md).
+
+---
+
 ## [Não publicado] — 2026-08-24 (Topologia: importação agrupada por função)
 
 ### Alterado

@@ -6513,7 +6513,8 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
 
         if 'text/html' in content_type or 'text/css' in content_type:
             content = engine.rewrite_content(content, content_type, proxy_base, target_host,
-                                             cookie_prefix=cookie_prefix)
+                                             cookie_prefix=cookie_prefix,
+                                             target_port=porta_web)
             if 'text/html' in content_type:
                 content_type = 'text/html; charset=utf-8'
 

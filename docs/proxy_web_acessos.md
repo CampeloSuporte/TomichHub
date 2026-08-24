@@ -107,6 +107,67 @@ parou de se repetir.
 
 ---
 
+### Grafana abre no "Page not found" dele mesmo — Corrigido em 24/08/2026
+
+**Sintoma:** `/clientes/acessos/<id>/web/3000/http/login` carrega o Grafana, mas a tela é a
+página **"Page not found — We're looking but can't seem to find this page"** do próprio
+Grafana. No log do nginx **tudo responde 200** (HTML, CSS, chunks JS, fontes), o que faz
+parecer erro do CRM; a pista é o `grot-not-found.svg` sendo baixado — é a ilustração do 404
+do Grafana, ou seja, quem decidiu que a rota não existe foi o front dele.
+
+**Diagnóstico:** o Grafana é uma SPA que descobre em que sub-caminho está servida pelo
+`appSubUrl` do bootdata embutido no HTML (`window.grafanaBootData.settings`). Instalado na
+raiz — o padrão, e o caso aqui — ele manda `"appSubUrl":""`. O router então tenta casar o
+caminho **inteiro** do proxy (`/clientes/acessos/1301/web/3000/http/login`) com as rotas dele,
+não acha nenhuma e renderiza o 404 interno. O backend do Grafana nunca viu problema nenhum:
+ele recebeu `/login` e respondeu 200.
+
+**Fix (`ProxyEngine._rewrite_grafana_bootdata`):** quando o HTML tem `grafanaBootData`, o
+`appSubUrl` é reescrito para o `proxy_base`. Um único campo resolve as três pontas:
+
+| Uso do `appSubUrl` no front do Grafana | Efeito da reescrita |
+|---|---|
+| `basename` do router | rota vira `/login`, `/d/<uid>`, etc. — casa de novo |
+| prefixo das chamadas de API | `proxy_base + /api/...`, que o proxy entrega como `/api/...` |
+| `__webpack_public_path__` | chunks lazy vêm de `proxy_base + /public/build/` |
+
+O `proxy_base` nunca termina em `/` (é `.../web/<porta>/<scheme>`), que é exatamente o formato
+que o Grafana espera. Páginas sem `grafanaBootData` não são tocadas.
+
+**Confirmado ao vivo** com um harness local que replica a view sem autenticação + chromium
+headless: antes, "Page not found - Grafana"; depois, a tela de login, e o login com as
+credenciais do acesso abre o dashboard (`Home - Dashboards - Grafana`) sem nenhuma requisição
+falhando. Zabbix no mesmo host (porta 80, path `/zabbix`) foi testado junto, antes e depois,
+pra garantir que a mudança não mexeu em quem já funcionava.
+
+---
+
+### Porta órfã em URL absoluta do device — Corrigido em 24/08/2026
+
+**Sintoma:** link do próprio equipamento apontando pra ele mesmo com porta explícita
+(`http://198.18.1.13:3000/d/abc`) virava `/clientes/acessos/1301/web/3000/http:3000/d/abc` —
+404 do Django, sem nenhuma pista de por quê.
+
+**Causa:** a reescrita de URL absoluta trocava `http://<host>` pelo `proxy_base` testando só
+os sufixos `:80`, `:443` e vazio. Numa porta alta (Grafana 3000, Proxmox 8006, Zabbix 8080) a
+troca casava pelo host "pelado" e deixava o `:3000` grudado no meio do caminho.
+
+**Fix (`ProxyEngine._rewrite_urls_absolutas`):** a porta passa a ser lida junto com o host, por
+regex, e o destino sai conforme o caso:
+
+| URL no HTML do device | Vira |
+|---|---|
+| porta igual à que está sendo proxyada | `proxy_base` |
+| porta explícita **diferente** (ex: `:8006` num acesso na 3000) | `.../web/8006/<scheme>` — segue dentro do proxy, na base daquela porta |
+| **sem** porta (`http://198.18.1.13/x`) | `proxy_base` — a porta que já está funcionando |
+
+O último caso é deliberado: muito firmware imprime a própria URL canônica sem porta mesmo
+servindo numa porta alta, e mandar esse link pra porta 80 quebraria um acesso que funcionava.
+
+Testes em `clientes/tests_proxy_web.py`.
+
+---
+
 ## Como Testar Manualmente
 
 ```bash
@@ -121,5 +182,5 @@ puro no log do Daphne). Se precisar depurar um host específico de novo, prefira
 
 ---
 
-**Última atualização:** 04/08/2026
+**Última atualização:** 24/08/2026
 **Autor:** CampeloSuporte
