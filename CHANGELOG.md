@@ -5,6 +5,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-24 (Topologia: importação agrupada por função)
+
+### Alterado
+
+- **Hosts importados entram agrupados por função** (`static/js/topo_main.js` →
+  `importHosts` / novo `_layoutImportados`, cache-buster `topo_main.js?v=39`). Abrir uma
+  topologia ainda não configurada dispara a importação automática, e até agora ela jogava
+  todos os hosts num grid único de 5 colunas na ordem do backend — switch, OLT, roteador e
+  servidor embaralhados num bloco só. Agora cada função vira uma **faixa horizontal própria**,
+  empilhada na hierarquia da rede (trânsito → core → switch L3 → switch L2 → acesso FTTH →
+  wireless → servidores), com um rótulo `text_box` na cor do device à esquerda de cada faixa.
+  - Rótulo tem id fixo `grp_<tipo>`: reimportar não cria um segundo "Switch L3" ao lado do
+    primeiro. É node normal — dá pra mover, editar ou apagar.
+  - Reimportação de host cujo tipo **já existe** no canvas coloca ele ao lado dos irmãos
+    (à direita do de maior `x`), então a faixa continua junta mesmo depois de a pessoa
+    arrastar tudo pra outro canto. Tipo inédito abre faixa nova **abaixo** do desenho atual,
+    nunca por cima do que já foi posicionado à mão.
+  - Sem host novo, a importação só sincroniza função/ícone e avisa "Nenhum host novo para
+    importar" — antes ela recalculava posição em cima de índice que incluía os já existentes.
+  - Detalhes e constantes de layout em [docs/topologia.md](docs/topologia.md).
+
+---
+
 ## [Não publicado] — 2026-08-23 (Segurança: proteção contra invasão)
 
 ### Adicionado

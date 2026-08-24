@@ -5,7 +5,7 @@
 - `static/js/topo_engine.js`
 - `static/js/topo_main.js`
 
-**Atualizado em:** 2026-08-14
+**Atualizado em:** 2026-08-24
 
 ---
 
@@ -35,7 +35,7 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 | `topo_engine.js` | Definição de tipos (`DEVICES`), interfaces (`IFACES`) e paths SVG dos ícones (`ICONS`) |
 | `topo_main.js` | Classe `TopoEditor` — lógica de renderização, eventos, persistência e importação |
 
-Versão atual: **topo_engine v=24 / topo_main v=35** (parâmetro de cache-busting no HTML).
+Versão atual: **topo_engine v=24 / topo_main v=39** (parâmetro de cache-busting no HTML).
 
 **Estes dois JS ficam em `static/` e mesmo assim são versionados.** `static/` é o
 `STATIC_ROOT` (destino do `collectstatic`) e está no `.gitignore`, mas esses dois
@@ -135,6 +135,53 @@ A ordem da lista é significativa: `ix`/`internet` vêm **antes** de `router`/`s
 chamado "Router IX.br" é, no desenho, o ponto de troca) e `ap` vem antes de `radio`. Palavras
 curtas (`ix`, `ptt`, `wan`) só entram com separador — sem isso casariam com "matrix", "unix"
 e qualquer nome que contenha as letras.
+
+---
+
+## Layout da Importação — Faixas por Função — 2026-08-24
+
+Abrir uma topologia **ainda não configurada** dispara `importHosts()` automaticamente
+(`topo_main.js`, no `DOMContentLoaded`, quando `dados_json` não tem nodes). Até 2026-08-23
+todos os hosts caíam num grid único de 5 colunas, na ordem em que o backend devolvia —
+switch, OLT, servidor e roteador embaralhados num bloco só, e a primeira coisa a fazer
+era separar tudo na mão.
+
+Agora `_layoutImportados()` distribui os hosts em **faixas horizontais, uma por função**
+(tipo de dispositivo), empilhadas na hierarquia da rede — de cima pra baixo:
+
+```
+TOPO_IMPORT_TIERS = internet, ix, cloud            ← trânsito / peering
+                    router, firewall, cgnat, dwdm  ← core
+                    switch_l3, switch_l2           ← distribuição
+                    olt, splitter, onu, cpe        ← acesso / FTTH
+                    radio, ap                      ← wireless
+                    server, vm, host               ← servidores
+```
+
+Tipo que não estiver na lista entra depois de todos, na ordem em que apareceu.
+
+| Constante | Valor | Papel |
+|---|---|---|
+| `COL_W` | 170 | espaçamento horizontal entre hosts da mesma faixa |
+| `ROW_H` | 150 | altura de uma linha dentro da faixa |
+| `PER_ROW` | 6 | hosts por linha antes de quebrar pra linha de baixo |
+| `GAP` | 64 | respiro entre uma faixa e a seguinte |
+| `LABEL_X` / `X0` | 130 / 300 | coluna do rótulo e coluna onde os hosts começam |
+
+**Rótulo da faixa:** cada faixa nova ganha um node `text_box` à esquerda com o label do tipo
+("Switch L3", "OLT", …) na cor do device, com id fixo `grp_<tipo>`. O id fixo é o que impede
+uma reimportação de criar um segundo "Switch L3" ao lado do que já está lá. É um node comum —
+pode ser movido, editado ou apagado como qualquer outro, e é salvo no `dados_json`.
+
+**Reimportação (topologia que já tem desenho):**
+
+- Host novo de um tipo que **já existe no canvas** entra ao lado dos irmãos — à direita do node
+  daquele tipo com maior `x`, na mesma altura. Assim a faixa continua junta mesmo depois que a
+  pessoa arrastou tudo pra outro canto do mapa.
+- Host novo de um tipo **inédito** abre uma faixa nova (com rótulo) abaixo de todo o desenho
+  existente (`max(y) + ROW_H + GAP`), nunca por cima do que já foi posicionado à mão.
+- Nenhum host novo → a importação só sincroniza função/ícone dos existentes e avisa
+  "Nenhum host novo para importar", sem mexer em posição.
 
 ---
 
