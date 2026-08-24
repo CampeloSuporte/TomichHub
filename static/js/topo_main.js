@@ -1,3 +1,15 @@
+// Ordem das faixas na importação de hosts do CRM: hierarquia da rede lida de
+// cima pra baixo (trânsito → core → distribuição → acesso → cliente). Tipo que
+// não estiver aqui entra depois de todos, na ordem em que apareceu.
+const TOPO_IMPORT_TIERS = [
+  'internet', 'ix', 'cloud',
+  'router', 'firewall', 'cgnat', 'dwdm',
+  'switch_l3', 'switch_l2',
+  'olt', 'splitter', 'onu', 'cpe',
+  'radio', 'ap',
+  'server', 'vm', 'host',
+];
+
 class TopoEditor {
   constructor(cfg) {
     this.clienteId = cfg.clienteId;
@@ -2400,32 +2412,99 @@ class TopoEditor {
       if (!r.ok) { this._toast(`Erro ${r.status}`, 'error'); return; }
       const d = await r.json();
       if (!d.hosts || !d.hosts.length) { this._toast('Nenhum host cadastrado', 'error'); return; }
-      const grid = 180, perRow = 5;
-      let added = 0;
-      d.hosts.forEach((h, i) => {
+
+      const novos = [];
+      d.hosts.forEach(h => {
         const existing = this.nodes.find(n => n.id === 'crm_' + h.id);
-        if (existing) {
-          existing.funcao = h.funcao;
-          // Ícone trocado manualmente pelo usuário (ver _applyNodeProps) não é
-          // sobrescrito por uma reimportação — só o mapeamento automático (função
-          // do CRM → tipo) é sincronizado aqui.
-          if (!existing.type_manual && existing.type !== h.tipo) {
-            existing.type = h.tipo;
-            this._renderNode(existing); this._setDirty();
-          }
-          return;
+        if (!existing) { novos.push(h); return; }
+        existing.funcao = h.funcao;
+        // Ícone trocado manualmente pelo usuário (ver _applyNodeProps) não é
+        // sobrescrito por uma reimportação — só o mapeamento automático (função
+        // do CRM → tipo) é sincronizado aqui.
+        if (!existing.type_manual && existing.type !== h.tipo) {
+          existing.type = h.tipo;
+          this._renderNode(existing); this._setDirty();
         }
-        const col = i % perRow, row = Math.floor(i / perRow);
-        this.addNode(h.tipo, 120 + col * grid, 120 + row * 140, {
-          label: h.label || h.ip, ip: h.ip, id: 'crm_' + h.id,
-          funcao: h.funcao, acesso_id: h.id, protocolo: h.protocolo,
-          porta: h.porta, usuario: h.usuario, cliente_id: h.cliente_id,
-        });
-        added++;
       });
+      if (!novos.length) { this._toast('Nenhum host novo para importar'); return; }
+
+      const added = this._layoutImportados(novos);
       if (added > 0) this.zoomFit();
       this._toast(`${added} hosts importados`);
     } catch(e) { this._toast('Erro: ' + e.message, 'error'); }
+  }
+
+  // Coloca os hosts recém-importados em faixas horizontais, uma por função
+  // (tipo de dispositivo), na ordem hierárquica de TOPO_IMPORT_TIERS — trânsito
+  // em cima, cliente embaixo. Antes tudo caía num grid único de 5 colunas na
+  // ordem em que o backend devolvia, e uma topologia nunca configurada abria
+  // com switch, OLT e servidor embaralhados no mesmo bloco.
+  _layoutImportados(hosts) {
+    const COL_W = 170, ROW_H = 150, PER_ROW = 6;
+    const LABEL_X = 130, X0 = 300, GAP = 64;
+
+    // Agrupa mantendo a ordem de chegada dentro de cada faixa.
+    const faixas = new Map();
+    hosts.forEach(h => {
+      const t = TOPO_DEVICES[h.tipo] ? h.tipo : 'host';
+      if (!faixas.has(t)) faixas.set(t, []);
+      faixas.get(t).push(h);
+    });
+    const ordenadas = [...faixas.keys()].sort((a, b) => {
+      const ia = TOPO_IMPORT_TIERS.indexOf(a), ib = TOPO_IMPORT_TIERS.indexOf(b);
+      return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+    });
+
+    const jaPosicionados = this.nodes.filter(n => n.type !== 'text_box');
+    // Reimportação: faixa nova entra abaixo do que já está desenhado, em vez de
+    // cair por cima do que a pessoa já posicionou à mão.
+    let y = jaPosicionados.length
+      ? Math.max(...jaPosicionados.map(n => n.y)) + ROW_H + GAP
+      : 120;
+
+    const criar = (h, x, yy) => this.addNode(h.tipo, x, yy, {
+      label: h.label || h.ip, ip: h.ip, id: 'crm_' + h.id,
+      funcao: h.funcao, acesso_id: h.id, protocolo: h.protocolo,
+      porta: h.porta, usuario: h.usuario, cliente_id: h.cliente_id,
+    });
+
+    let added = 0;
+    ordenadas.forEach(tipo => {
+      const lista = faixas.get(tipo);
+
+      // Já existe node dessa função no canvas: o host novo entra ao lado dos
+      // irmãos (à direita do último), pra continuar a faixa mesmo que ela tenha
+      // sido movida — e não abrir um bloco solto no fim do desenho.
+      const irmaos = jaPosicionados.filter(n => n.type === tipo);
+      if (irmaos.length) {
+        const ancora = irmaos.reduce((a, b) => (b.x > a.x ? b : a));
+        lista.forEach((h, i) => {
+          criar(h, ancora.x + COL_W * (1 + (i % PER_ROW)),
+                   ancora.y + ROW_H * Math.floor(i / PER_ROW));
+          added++;
+        });
+        return;
+      }
+
+      const linhas = Math.ceil(lista.length / PER_ROW);
+      const def = TOPO_DEVICES[tipo];
+
+      // Rótulo da faixa (text_box): id fixo por tipo, então uma reimportação
+      // não cria um segundo rótulo "Switch L3" ao lado do que já está lá.
+      if (!this.nodes.find(n => n.id === 'grp_' + tipo)) {
+        this.addNode('text_box', LABEL_X, y + (linhas - 1) * ROW_H / 2, {
+          id: 'grp_' + tipo, label: def.label, color: def.color,
+        });
+      }
+
+      lista.forEach((h, i) => {
+        criar(h, X0 + COL_W * (i % PER_ROW), y + ROW_H * Math.floor(i / PER_ROW));
+        added++;
+      });
+
+      y += linhas * ROW_H + GAP;
+    });
+    return added;
   }
 
   async _refreshCrmNodeTypes() {
