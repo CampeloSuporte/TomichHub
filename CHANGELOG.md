@@ -32,6 +32,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - `importHosts()` ignora hosts que estão dentro de um grupo (`grupo_membros`/`_idsAgrupados()`).
   Sem isso a reimportação traria as OLTs agrupadas de volta pro mapa de cima, duplicadas com as que
   já estão no sub-mapa.
+- **Ctrl+clique** virou o gesto de selecionar vários dispositivos (`static/js/topo_main.js`,
+  `_ehAditivo`) — segurar Ctrl e ir clicando nos hosts, depois **Agrupar**. Ctrl+arrastar no vazio
+  também desenha o laço de seleção. **Shift** (que era o único modificador desde 2026-07-31) e
+  **Cmd** no Mac continuam valendo como alias. Duplo-clique com o modificador segurado deixou de
+  abrir sub-mapa: dois Ctrl+cliques seguidos no mesmo host chegam ao handler como duplo-clique, e
+  num ícone de grupo isso tirava a pessoa da tela no meio da seleção.
 - **O botão de voltar do sub-mapa passou a parecer um botão de voltar**
   (`clientes/templates/topologia_editor.html`). Ele já existia desde os sub-mapas, mas mostrava
   só a seta e o **nome do mapa de cima** ("Nova Topologia"), em cinza, entre a marca e o campo de
