@@ -961,27 +961,94 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
 
     def rewrite_content(self, content: bytes, content_type: str,
                         proxy_base: str, target_host: str,
-                        cookie_prefix: str = '') -> bytes:
+                        cookie_prefix: str = '', target_port: int = None) -> bytes:
         if not content:
             return content
         ct = content_type.lower()
         if 'text/html' in ct:
-            return self._rewrite_html(content, proxy_base, target_host, cookie_prefix)
+            return self._rewrite_html(content, proxy_base, target_host, cookie_prefix,
+                                      target_port=target_port)
         if 'text/css' in ct:
             return self._rewrite_css(content, proxy_base)
         return content
 
+    # ── URLs absolutas que apontam para o próprio device ──────────────────────
+    #
+    # A troca ingênua (`http://host` → proxy_base) deixava a porta órfã grudada
+    # no caminho: "http://10.0.0.5:3000/d/abc" virava
+    # ".../web/3000/http:3000/d/abc" — URL inválida, 404 no Django. Só as portas
+    # 80/443 eram tratadas, então qualquer device em porta alta (Grafana 3000,
+    # Proxmox 8006, Zabbix 8080) caía nisso.
+    #
+    # Agora a porta é lida junto: se for a porta que está sendo proxyada (ou a
+    # padrão do scheme), vira o próprio proxy_base; se for OUTRA porta do mesmo
+    # device, vira o proxy_base daquela porta — o link continua dentro do proxy
+    # em vez de escapar para o IP privado, que o navegador do operador não
+    # alcança.
+    _RX_PROXY_BASE = re.compile(r'^(/clientes/acessos/\d+/web)/(\d+)/(https?)$')
+
+    @classmethod
+    def _rewrite_urls_absolutas(cls, html: str, proxy_base: str, target_host: str,
+                                target_port: int = None) -> str:
+        m_base = cls._RX_PROXY_BASE.match(proxy_base)
+        prefixo = m_base.group(1) if m_base else None
+        if target_port is None and m_base:
+            target_port = int(m_base.group(2))
+
+        rx = re.compile(
+            rf'(?P<proto>https?)://{re.escape(target_host)}(?::(?P<porta>\d+))?',
+            re.IGNORECASE,
+        )
+
+        def _sub(m):
+            proto = m.group('proto').lower()
+            porta = m.group('porta')
+            # Sem porta explícita (o firmware imprimindo a própria URL canônica,
+            # "http://10.0.0.5/") a aposta segura continua sendo a porta que já
+            # está funcionando — muito device serve numa porta alta e mesmo
+            # assim se anuncia sem porta nenhuma.
+            if not porta:
+                return proxy_base
+            porta = int(porta)
+            if porta == target_port or not prefixo:
+                return proxy_base
+            return f'{prefixo}/{porta}/{proto}'
+
+        return rx.sub(_sub, html)
+
+    # ── Grafana: sub-path do frontend ─────────────────────────────────────────
+    #
+    # O Grafana é uma SPA que decide as rotas pelo `appSubUrl` do bootdata
+    # (`window.grafanaBootData.settings`) embutido no próprio HTML. Instalado na
+    # raiz (o padrão), ele vem `""` — então o router recebe o caminho completo do
+    # proxy (`/clientes/acessos/1301/web/3000/http/login`), não reconhece rota
+    # nenhuma e renderiza a **própria** tela "Page not found" do Grafana. Tudo
+    # carrega com 200 no log do nginx, o que faz o sintoma parecer erro do CRM.
+    #
+    # Reescrever `appSubUrl` para o proxy_base resolve os três usos de uma vez:
+    # o basename do router passa a ser o caminho do proxy (a rota vira `/login`),
+    # as chamadas de API viram `proxy_base + /api/...` e o `__webpack_public_path__`
+    # dos chunks lazy vira `proxy_base + /public/build/`.
+    _RX_APP_SUB_URL = re.compile(r'("appSubUrl"\s*:\s*)"[^"]*"')
+
+    @classmethod
+    def _rewrite_grafana_bootdata(cls, html: str, proxy_base: str) -> str:
+        if 'grafanaBootData' not in html:
+            return html
+        # proxy_base nunca termina em "/" (é ".../web/<porta>/<scheme>"), que é
+        # exatamente o formato que o Grafana espera em appSubUrl.
+        return cls._RX_APP_SUB_URL.sub(lambda m: f'{m.group(1)}"{proxy_base}"', html)
+
     def _rewrite_html(self, content: bytes, proxy_base: str, target_host: str,
-                      cookie_prefix: str = '') -> bytes:
+                      cookie_prefix: str = '', target_port: int = None) -> bytes:
         try:
             html = content.decode('utf-8', errors='replace')
         except Exception:
             return content
 
-        for proto in ('https', 'http'):
-            for suffix in (f':{80}', f':{443}', ''):
-                old = f'{proto}://{target_host}{suffix}'
-                html = html.replace(old, proxy_base)
+        html = self._rewrite_urls_absolutas(html, proxy_base, target_host, target_port)
+
+        html = self._rewrite_grafana_bootdata(html, proxy_base)
 
         for attr in ('href', 'src', 'action', 'data-src', 'data-url'):
             html = re.sub(
