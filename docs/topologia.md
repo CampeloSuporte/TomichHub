@@ -37,7 +37,7 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 | `topo_engine.js` | Definição de tipos (`DEVICES`), interfaces (`IFACES`) e paths SVG dos ícones (`ICONS`) |
 | `topo_main.js` | Classe `TopoEditor` — lógica de renderização, eventos, persistência e importação |
 
-Versão atual: **topo_engine v=25 / topo_main v=40** (parâmetro de cache-busting no HTML).
+Versão atual: **topo_engine v=25 / topo_main v=42** (parâmetro de cache-busting no HTML).
 
 **Estes dois JS ficam em `static/` e mesmo assim são versionados.** `static/` é o
 `STATIC_ROOT` (destino do `collectstatic`) e está no `.gitignore`, mas esses dois
@@ -355,6 +355,34 @@ traz os dispositivos de volta.
   continua existindo no banco (vira um mapa órfão, sem nó apontando pra ele).
 - **A cópia de borda não sincroniza.** Mover ou renomear o vizinho dentro do sub-mapa não muda
   o node dele no mapa pai — é uma cópia de contexto, não o mesmo nó em dois lugares.
+
+---
+
+## Tela Cheia — 2026-08-25
+
+Botão **`⛶`** no último cluster da toolbar (junto de legenda/efeitos) ou a tecla **F**.
+`topo.toggleFullscreen()` pede fullscreen no **`<html>`**, não só no canvas — toolbar, paleta,
+painel de propriedades e barra de status vão junto, e o editor continua inteiro.
+
+O caso que motivou: o editor roda **embutido num `<iframe>`** na aba Topologia do cadastro do
+cliente (`clientes/templates/listar.html`, `?embed=1`), com `height: calc(100vh - 200px)` — sobra
+pouca área pra desenhar. Esse iframe precisou ganhar **`allowfullscreen allow="fullscreen"`**:
+sem o atributo o navegador recusa o pedido de dentro do iframe e o botão simplesmente não
+reagiria.
+
+| Situação | Comportamento |
+|---|---|
+| Aba própria (`/clientes/<id>/topologia/editor/`) | Entra e sai normalmente |
+| Iframe do cadastro do cliente | Entra e sai normalmente (o `allowfullscreen` está lá) |
+| Iframe de terceiros sem permissão | `document.fullscreenEnabled === false` → toast "abra o editor em nova aba", em vez de um botão morto |
+| Recusa do navegador (sem gesto do usuário, política de permissão) | A promise rejeitada é capturada e vira o mesmo toast — nunca um erro solto no console |
+
+Sair: **F** de novo, **Esc** (o navegador sai sozinho) ou o botão, que vira `⛷` enquanto está em
+tela cheia. O ícone e o tooltip acompanham o estado por um listener de `fullscreenchange`
+(`_syncFullscreenBtn`), então sair pelo Esc ou pelo F11 do navegador também atualiza o botão.
+
+O CSS traz `html:fullscreen{background:var(--bg)}` — o navegador pinta a moldura em volta com a
+cor do elemento em fullscreen, e sem isso sobra uma borda branca em volta do editor escuro.
 
 ---
 
