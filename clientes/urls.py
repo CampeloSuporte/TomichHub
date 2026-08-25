@@ -223,6 +223,7 @@ urlpatterns = [
     path('<int:cliente_id>/topologia/salvar/', views.topologia_salvar, name='topologia_salvar'),
     path('<int:cliente_id>/topologia/hosts/', views.topologia_hosts, name='topologia_hosts'),
     path('<int:cliente_id>/topologia/<int:diagrama_id>/submapa/', views.topologia_criar_submapa, name='topologia_criar_submapa'),
+    path('<int:cliente_id>/topologia/<int:diagrama_id>/submapa/excluir/', views.topologia_excluir_submapa, name='topologia_excluir_submapa'),
 
     # ── Trocar Senhas em Massa ───────────────────────────────────────────────
     path('trocar-senhas/hosts/', views.trocar_senha_massa_listar_hosts, name='trocar_senha_massa_listar_hosts'),

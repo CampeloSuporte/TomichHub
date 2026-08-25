@@ -59,6 +59,16 @@ body.embed-mode #btn-fechar{display:none!important}
 .tb-btn:hover{background:rgba(255,255,255,.09);border-color:#3a4757;color:#fff}
 .tb-btn:active{transform:scale(.96)}
 .tb-btn.active{background:rgba(0,217,255,.15);border-color:rgba(0,217,255,.45);color:var(--cyan)}
+/* Botão que só faz sentido com 2+ nodes selecionados (Agrupar): apagado
+   enquanto isso, mas clicável — o clique explica o que falta no toast. */
+.tb-btn.dim{opacity:.45}
+.tb-btn.dim:hover{opacity:.75}
+.grupo-lista{display:flex;flex-direction:column;gap:3px;max-height:168px;overflow-y:auto;
+  background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;padding:7px 8px}
+.grupo-membro{display:flex;align-items:center;gap:7px;font-size:.73rem;color:var(--text);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grupo-membro i{font-size:.6rem;opacity:.5;flex-shrink:0}
+.grupo-membro.mais{color:var(--muted);font-style:italic}
 .tb-btn.danger:hover{border-color:var(--red);color:var(--red);background:rgba(248,81,73,.1)}
 .tb-btn:focus-visible,.prop-btn:focus-visible,.prop-input:focus-visible,.prop-select:focus-visible,.pal-search:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 .tb-btn.primary{background:var(--accent-grad);border-color:transparent;color:#04121a;font-weight:700;box-shadow:0 2px 12px rgba(0,217,255,.28)}
@@ -496,6 +506,7 @@ body:not(.pal-off) #legend-panel{left:236px}
     <button class="tb-btn" id="btn-snap" onclick="topo.toggleSnap()" data-tip="Alinhar à grade"><i class="fas fa-magnet"></i></button>
     <button class="tb-btn" id="btn-connect" onclick="topo.toggleConnectMode()" data-tip="Modo conexão (C)"><i class="fas fa-share-nodes"></i></button>
     <button class="tb-btn" id="btn-area-select" onclick="topo.toggleAreaSelect()" data-tip="Seleção por área (ou Shift + arrastar)"><i class="fas fa-vector-square"></i></button>
+    <button class="tb-btn dim" id="btn-agrupar" onclick="topo.agruparSelecionados()" data-tip="Agrupar os selecionados num ícone só, com mapa próprio (G)"><i class="fas fa-object-group"></i></button>
   </div>
   <div class="tb-group">
     <button class="tb-btn" id="btn-legend" onclick="topo.toggleLegend()" data-tip="Legenda de interfaces"><i class="fas fa-list-ul"></i></button>
@@ -612,7 +623,7 @@ body:not(.pal-off) #legend-panel{left:236px}
     document.body.classList.add('embed-mode');
   }
 </script>
-<script src="/static/js/topo_engine.js?v=24"></script>
-<script src="/static/js/topo_main.js?v=39"></script>
+<script src="/static/js/topo_engine.js?v=25"></script>
+<script src="/static/js/topo_main.js?v=40"></script>
 </body>
 </html>
