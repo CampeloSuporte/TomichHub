@@ -32,6 +32,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - `importHosts()` ignora hosts que estão dentro de um grupo (`grupo_membros`/`_idsAgrupados()`).
   Sem isso a reimportação traria as OLTs agrupadas de volta pro mapa de cima, duplicadas com as que
   já estão no sub-mapa.
+- **Botão de tela cheia** no editor de topologia (`⛶` no último cluster da toolbar, ou a tecla
+  **F**). Pede fullscreen no `<html>`, então toolbar e painéis vão junto do canvas. O motivo é o
+  editor embutido no cadastro do cliente, cujo `<iframe>` tem `calc(100vh - 200px)` — esse iframe
+  ganhou `allowfullscreen allow="fullscreen"` (`clientes/templates/listar.html`), sem o que o
+  navegador recusa o pedido vindo de dentro dele. Quando a permissão não existe, o botão avisa por
+  toast ("abra o editor em nova aba") em vez de não reagir; o ícone e o tooltip acompanham o estado
+  por `fullscreenchange`, então sair pelo Esc também atualiza o botão.
 - **Ctrl+clique** virou o gesto de selecionar vários dispositivos (`static/js/topo_main.js`,
   `_ehAditivo`) — segurar Ctrl e ir clicando nos hosts, depois **Agrupar**. Ctrl+arrastar no vazio
   também desenha o laço de seleção. **Shift** (que era o único modificador desde 2026-07-31) e

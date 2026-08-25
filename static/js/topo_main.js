@@ -221,8 +221,12 @@ class TopoEditor {
       if (e.key === 'Delete' || e.key === 'Backspace') { this._deleteSelected(); }
       if (e.key === 'c' || e.key === 'C') { this.toggleConnectMode(); }
       if (e.key === 'g' || e.key === 'G') { this.agruparSelecionados(); }
+      if (e.key === 'f' || e.key === 'F') { this.toggleFullscreen(); }
       if (e.key === 'Escape') { this._cancelConnect(); this._deselect(); this._clearMultiSelect(); }
     });
+
+    ['fullscreenchange','webkitfullscreenchange'].forEach(ev =>
+      document.addEventListener(ev, () => this._syncFullscreenBtn()));
 
     document.getElementById('nome-diagrama').addEventListener('input', () => this._setDirty());
   }
@@ -2622,6 +2626,48 @@ class TopoEditor {
     this.effectsOn = !this.effectsOn;
     document.body.classList.toggle('effects-off', !this.effectsOn);
     document.getElementById('btn-effects').classList.toggle('active', this.effectsOn);
+  }
+
+  // ── Tela cheia ────────────────────────────────────────────────────────────
+  // Vale principalmente pro editor embutido no cadastro do cliente, onde o
+  // iframe tem `calc(100vh - 200px)` e sobra pouca área pra desenhar. Entra em
+  // fullscreen no <html> (não só no canvas) pra toolbar e painéis irem junto.
+
+  _emFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+
+  async toggleFullscreen() {
+    const el = document.documentElement;
+    try {
+      if (this._emFullscreen()) {
+        const sair = document.exitFullscreen || document.webkitExitFullscreen;
+        if (sair) await sair.call(document);
+        return;
+      }
+      // `fullscreenEnabled` é false quando o editor está num <iframe> sem
+      // `allowfullscreen` — melhor dizer o que fazer do que o botão não
+      // reagir. (O iframe do cadastro do cliente já tem o atributo.)
+      if (document.fullscreenEnabled === false) {
+        this._toast('Esta página não libera tela cheia — abra o editor em nova aba', 'error');
+        return;
+      }
+      const abrir = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (!abrir) { this._toast('O navegador não suporta tela cheia', 'error'); return; }
+      await abrir.call(el);
+    } catch (e) {
+      this._toast('Tela cheia bloqueada nesta página — abra o editor em nova aba', 'error');
+    }
+  }
+
+  _syncFullscreenBtn() {
+    const btn = document.getElementById('btn-fullscreen');
+    if (!btn) return;
+    const on = this._emFullscreen();
+    btn.classList.toggle('active', on);
+    const i = btn.querySelector('i');
+    if (i) i.className = on ? 'fas fa-compress' : 'fas fa-expand';
+    btn.setAttribute('data-tip', on ? 'Sair da tela cheia (F ou Esc)' : 'Editar em tela cheia (F)');
   }
 
   zoomIn()  { this.zoom = Math.min(4, this.zoom*1.2); this._updateVP(); }

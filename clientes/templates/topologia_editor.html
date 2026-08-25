@@ -21,6 +21,13 @@
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
 /* modo embed: esconde botão fechar */
 body.embed-mode #btn-fechar{display:none!important}
+/* Tela cheia: o fullscreen é pedido no <html>, então toolbar, painéis e canvas
+   vão junto. O navegador pinta a moldura da própria cor do elemento — sem o
+   background explícito sobra uma borda branca em volta do editor escuro. */
+html:fullscreen{background:var(--bg)}
+html:fullscreen body{height:100%}
+html:-webkit-full-screen{background:var(--bg)}
+html:-webkit-full-screen body{height:100%}
 /* ── Tooltip próprio (data-tip) ─────────────────────────────────────────────
    Substitui o `title` nativo nos controles: o do navegador demora ~1s, aparece
    no lugar do cursor e não tem estilo. Aqui: 450ms de atraso na entrada, saída
@@ -521,6 +528,7 @@ body:not(.pal-off) #legend-panel{left:236px}
   <div class="tb-group">
     <button class="tb-btn" id="btn-legend" onclick="topo.toggleLegend()" data-tip="Legenda de interfaces"><i class="fas fa-list-ul"></i></button>
     <button class="tb-btn" id="btn-effects" onclick="topo.toggleEffects()" data-tip="Efeitos: fluxo nos links e pulso nos hosts do CRM"><i class="fas fa-bolt"></i></button>
+    <button class="tb-btn" id="btn-fullscreen" onclick="topo.toggleFullscreen()" data-tip="Editar em tela cheia (F)"><i class="fas fa-expand"></i></button>
   </div>
   <div class="tb-right">
     <span class="tb-cliente" data-tip="Cliente"><i class="fas fa-building"></i> {{ cliente.nome_empresa }}</span>
@@ -634,6 +642,6 @@ body:not(.pal-off) #legend-panel{left:236px}
   }
 </script>
 <script src="/static/js/topo_engine.js?v=25"></script>
-<script src="/static/js/topo_main.js?v=41"></script>
+<script src="/static/js/topo_main.js?v=42"></script>
 </body>
 </html>
