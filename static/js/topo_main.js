@@ -79,6 +79,11 @@ class TopoEditor {
 
   _snap(v) { return this.snap ? Math.round(v/20)*20 : v; }
 
+  /** Modificador de seleção múltipla: **Ctrl** (o que a equipe usa), com Shift
+   *  e Cmd valendo como alias — Shift porque era o único jeito até 2026-08-25
+   *  e virou dedo de quem já usava, Cmd (metaKey) pro mesmo gesto no Mac. */
+  _ehAditivo(e) { return e.ctrlKey || e.metaKey || e.shiftKey; }
+
   _svgPoint(e) {
     const r = this.svg.getBoundingClientRect();
     return {
@@ -377,9 +382,9 @@ class TopoEditor {
     if (nodeEl) {
       const id = nodeEl.dataset.id;
 
-      // Shift+clique: alterna o nó na multi-seleção sem abrir o painel de
-      // propriedades (mesmo padrão de editores gráficos — clique aditivo).
-      if (e.shiftKey) {
+      // Ctrl+clique (ou Shift/Cmd): alterna o nó na multi-seleção sem abrir o
+      // painel de propriedades — mesmo padrão de editores gráficos.
+      if (this._ehAditivo(e)) {
         this._toggleMultiSelect(id);
         e.stopPropagation();
         return;
@@ -416,9 +421,9 @@ class TopoEditor {
     }
 
     // Área vazia do canvas: com o modo "Área" ativo (botão da toolbar) ou
-    // segurando Shift, arrastar desenha um laço de seleção em vez de fazer
-    // pan — captura todos os nodes cujo centro cair dentro do retângulo.
-    if (this.areaSelectMode || e.shiftKey) {
+    // segurando Ctrl/Shift, arrastar desenha um laço de seleção em vez de
+    // fazer pan — captura todos os nodes cujo centro cair no retângulo.
+    if (this.areaSelectMode || this._ehAditivo(e)) {
       this._deselect();
       this._clearMultiSelect();
       const pt = this._svgPoint(e);
@@ -520,6 +525,10 @@ class TopoEditor {
   }
 
   _onDblClick(e) {
+    // Dois Ctrl+cliques seguidos no mesmo host (marcar/desmarcar da seleção)
+    // chegam aqui como duplo-clique. Sem esse guard, fazer isso num ícone de
+    // grupo abriria o sub-mapa no meio da seleção e tiraria a pessoa da tela.
+    if (this._ehAditivo(e)) return;
     // Remover waypoint com duplo-clique
     const target = e.target;
     if (target.classList.contains('wp-pt')) {
@@ -630,7 +639,7 @@ class TopoEditor {
 
   async agruparSelecionados() {
     if (this.selectedNodes.size < 2) {
-      this._toast('Selecione 2 ou mais dispositivos (botão "Área" ou Shift+clique)', 'error');
+      this._toast('Segure Ctrl e clique nos dispositivos para selecionar (2 ou mais)', 'error');
       return;
     }
     const membros = this.nodes.filter(n => this.selectedNodes.has(n.id));
@@ -925,7 +934,7 @@ class TopoEditor {
     const el = document.getElementById('st-mode');
     if (!el) return;
     if (this.selectedNodes.size > 1) {
-      el.textContent = `${this.selectedNodes.size} selecionados — arraste para mover ou "Agrupar" (G)`;
+      el.textContent = `${this.selectedNodes.size} selecionados (Ctrl+clique adiciona) — arraste para mover ou "Agrupar" (G)`;
     } else {
       el.textContent = 'Modo: ' + (this.connectMode ? 'Conexão' : this.areaSelectMode ? 'Seleção de área' : 'Seleção');
     }

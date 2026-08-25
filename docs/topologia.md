@@ -241,8 +241,15 @@ posição relativa entre eles.
 | Ação | Efeito |
 |---|---|
 | Botão **"Área"** na toolbar (`topo.toggleAreaSelect()`) | Ativa o modo seleção — arrastar na área vazia do canvas desenha um laço em vez de fazer pan |
-| Segurar **Shift** e arrastar na área vazia | Mesmo laço de seleção, sem precisar ativar o modo (funciona a qualquer momento) |
-| **Shift+clique** num dispositivo | Adiciona/remove esse dispositivo da seleção atual, um de cada vez |
+| Segurar **Ctrl** e arrastar na área vazia | Mesmo laço de seleção, sem precisar ativar o modo (funciona a qualquer momento) |
+| **Ctrl+clique** num dispositivo | Adiciona/remove esse dispositivo da seleção atual, um de cada vez |
+
+O modificador é **Ctrl** (`_ehAditivo`, `topo_main.js`). **Shift** e **Cmd** (Mac) valem como
+alias do mesmo gesto: Shift porque foi o único modificador de 2026-07-31 até 2026-08-25 e já
+estava no dedo de quem usava; Cmd porque é o Ctrl do Mac. Duplo-clique com qualquer um deles
+segurado **não** abre sub-mapa — dois Ctrl+cliques seguidos no mesmo host (marcar/desmarcar)
+chegam ao handler como duplo-clique, e sem esse guard marcar e desmarcar um ícone de grupo
+tirava a pessoa da tela.
 
 O laço de seleção (`_finishRubberBand`) captura todo node cujo **centro** (`x,y`) caia
 dentro do retângulo desenhado — não é preciso envolver o node inteiro. Um laço que captura
@@ -279,7 +286,9 @@ está olhando o núcleo da rede. **Agrupar** troca esse bloco por **um ícone s�
 
 ### Como usar
 
-1. Selecionar 2+ dispositivos (botão **Área** na toolbar, Shift+arrastar ou Shift+clique).
+1. Selecionar 2+ dispositivos: **segurar Ctrl e clicar** em cada host (o jeito principal),
+   **Ctrl+arrastar** um laço no vazio do canvas, ou ligar o modo **Área** na toolbar e arrastar
+   sem modificador nenhum.
 2. Clicar em **Agrupar** (ícone `fa-object-group`, ao lado do botão de seleção por área) ou
    apertar **G**. O botão fica apagado (`.tb-btn.dim`) enquanto não há 2+ selecionados —
    clicar assim mesmo explica o que falta num toast.
