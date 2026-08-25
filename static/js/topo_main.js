@@ -10,6 +10,14 @@ const TOPO_IMPORT_TIERS = [
   'server', 'vm', 'host',
 ];
 
+// Ordem crescente de "peso" das interfaces — usada só ao agrupar hosts, para
+// escolher qual dos enlaces do vizinho vira o enlace único que liga ele ao
+// ícone do grupo (fica o mais rápido; os demais viram o rótulo "N enlaces").
+const TOPO_ORDEM_IFACE = [
+  'other', '100m', 'wifi', 'mw', '1g', 'sfp', 'gpon', 'xpon',
+  '10g', 'sfp+', '20g', '30g', '40g', '50g', '100g',
+];
+
 class TopoEditor {
   constructor(cfg) {
     this.clienteId = cfg.clienteId;
@@ -86,6 +94,9 @@ class TopoEditor {
     // Preserva a ordem de definição em topo_engine.js dentro de cada grupo.
     const grupos = new Map();
     Object.entries(TOPO_DEVICES).forEach(([type, def]) => {
+      // `grupo` não entra na paleta: só existe como resultado da ação
+      // "Agrupar" (precisa de membros e de um sub-mapa pra fazer sentido).
+      if (type === 'grupo') return;
       const g = def.group || 'Outros';
       if (!grupos.has(g)) grupos.set(g, []);
       grupos.get(g).push([type, def]);
@@ -204,6 +215,7 @@ class TopoEditor {
       if (e.ctrlKey && e.key === 'y') { this.redo(); }
       if (e.key === 'Delete' || e.key === 'Backspace') { this._deleteSelected(); }
       if (e.key === 'c' || e.key === 'C') { this.toggleConnectMode(); }
+      if (e.key === 'g' || e.key === 'G') { this.agruparSelecionados(); }
       if (e.key === 'Escape') { this._cancelConnect(); this._deselect(); this._clearMultiSelect(); }
     });
 
@@ -572,6 +584,197 @@ class TopoEditor {
     }
   }
 
+  // ── Agrupar hosts num ícone só ────────────────────────────────────────────
+  //
+  // Pega os nodes da multi-seleção, tira eles do mapa e põe um único node do
+  // tipo `grupo` no lugar, ligado a um sub-mapa que contém os mesmos hosts
+  // MAIS os vizinhos deles (o switch de onde saem os enlaces), marcados com
+  // `grupo_borda` — assim o sub-mapa abre já mostrando "switch + OLTs" em vez
+  // de OLTs soltas sem uplink.
+  //
+  // No mapa pai, todos os enlaces que cruzavam a fronteira do grupo viram
+  // **um enlace por vizinho** (o mais rápido deles; se havia mais de um, o
+  // rótulo vira "N enlaces"). Os campos de interface/IP do lado que aponta
+  // para o grupo são limpos: eles pertenciam a um host específico, e o ícone
+  // do grupo não é um host.
+
+  _prefixoComum(nomes) {
+    if (!nomes.length) return '';
+    let p = nomes[0];
+    nomes.slice(1).forEach(n => {
+      let i = 0;
+      while (i < p.length && i < n.length && p[i].toUpperCase() === n[i].toUpperCase()) i++;
+      p = p.slice(0, i);
+    });
+    // Tira o resto de numeração que sobrou do prefixo ("OLT-ALCOBACA-0" dos
+    // hosts 02..06 vira "OLT-ALCOBACA") e o separador solto no fim.
+    return p.replace(/\d+$/, '').replace(/[-_.\s]+$/, '').trim();
+  }
+
+  _pesoIface(k) {
+    const i = TOPO_ORDEM_IFACE.indexOf(k);
+    return i < 0 ? 0 : i;
+  }
+
+  /** Nome sugerido para o grupo: prefixo comum dos hosts ("OLT-ALCOBACA-07",
+   *  "OLT-ALCOBACA-02" → "OLT-ALCOBACA") ou, na falta dele, o tipo dominante. */
+  _nomeSugeridoGrupo(membros) {
+    const prefixo = this._prefixoComum(membros.map(n => n.label || ''));
+    if (prefixo.length >= 3) return `${prefixo} (${membros.length})`;
+    const contagem = {};
+    membros.forEach(n => { contagem[n.type] = (contagem[n.type] || 0) + 1; });
+    const dom = Object.entries(contagem).sort((a, b) => b[1] - a[1])[0][0];
+    const def = TOPO_DEVICES[dom] || TOPO_DEVICES.host;
+    return `${def.label} (${membros.length})`;
+  }
+
+  async agruparSelecionados() {
+    if (this.selectedNodes.size < 2) {
+      this._toast('Selecione 2 ou mais dispositivos (botão "Área" ou Shift+clique)', 'error');
+      return;
+    }
+    const membros = this.nodes.filter(n => this.selectedNodes.has(n.id));
+    const ids = new Set(membros.map(n => n.id));
+
+    const internos = this.links.filter(l => ids.has(l.src) && ids.has(l.tgt));
+    const externos = this.links.filter(l => ids.has(l.src) !== ids.has(l.tgt));
+    const vizinhos = [...new Set(externos.map(l => (ids.has(l.src) ? l.tgt : l.src)))]
+      .map(id => this.nodes.find(n => n.id === id)).filter(Boolean);
+
+    const nome = prompt('Nome do grupo:', this._nomeSugeridoGrupo(membros));
+    if (nome === null) return;
+
+    // O sub-mapa nasce com os membros nas mesmas coordenadas que tinham aqui
+    // (o desenho que a pessoa já arrumou continua valendo lá dentro) + uma
+    // cópia de cada vizinho, marcada como borda.
+    const submapDados = {
+      nodes: [
+        ...membros.map(n => ({...n})),
+        ...vizinhos.map(n => ({...n, grupo_borda: true})),
+      ],
+      links: [...internos, ...externos].map(l => ({...l})),
+    };
+
+    this._saveHistory();
+
+    const cx = this._snap(Math.round(membros.reduce((a, n) => a + n.x, 0) / membros.length));
+    const cy = this._snap(Math.round(membros.reduce((a, n) => a + n.y, 0) / membros.length));
+    const corDom = membros[0].color || (TOPO_DEVICES[membros[0].type] || TOPO_DEVICES.host).color;
+
+    this.nodes = this.nodes.filter(n => !ids.has(n.id));
+    this.links = this.links.filter(l => !ids.has(l.src) && !ids.has(l.tgt));
+
+    const grupo = {
+      id: this._id(), type: 'grupo', x: cx, y: cy, w: 72, h: 72,
+      label: nome || 'Grupo', ip: '', color: corDom,
+      grupo: true,
+      grupo_membros: membros.map(n => ({id: n.id, label: n.label || ''})),
+    };
+    this.nodes.push(grupo);
+
+    // Um enlace por vizinho, no lugar dos N que existiam.
+    vizinhos.forEach(v => {
+      const doVizinho = externos.filter(l => l.src === v.id || l.tgt === v.id);
+      const base = doVizinho.slice()
+        .sort((a, b) => this._pesoIface(b.iface) - this._pesoIface(a.iface))[0];
+      const vizinhoEhOrigem = base.src === v.id;
+      this.links.push({
+        ...base,
+        id: this._id(),
+        src: vizinhoEhOrigem ? v.id : grupo.id,
+        tgt: vizinhoEhOrigem ? grupo.id : v.id,
+        waypoints: [],
+        label: doVizinho.length > 1 ? `${doVizinho.length} enlaces` : (base.label || ''),
+        iface_a:   vizinhoEhOrigem ? (base.iface_a || '') : '',
+        iface_b:   vizinhoEhOrigem ? '' : (base.iface_b || ''),
+        ip_local:  vizinhoEhOrigem ? (base.ip_local || '') : '',
+        ip_remote: vizinhoEhOrigem ? '' : (base.ip_remote || ''),
+      });
+    });
+
+    this._clearMultiSelect();
+    this._deselect();
+    this._renderAll();
+    this._setDirty();
+
+    // O backend grava o `submap_id` no nó dentro do `dados_json` já salvo do
+    // mapa pai — então o pai precisa estar salvo COM o node do grupo antes.
+    await this.save();
+    if (!this.diagramaId) { this._toast('Salve o mapa antes de agrupar', 'error'); return; }
+
+    try {
+      const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      const r = await fetch(`/clientes/${this.clienteId}/topologia/${this.diagramaId}/submapa/`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf},
+        body: JSON.stringify({node_id: grupo.id, nome: grupo.label, dados_json: submapDados}),
+      });
+      const d = await r.json();
+      if (!d.ok) { this._toast(d.error || 'Erro ao criar o mapa do grupo', 'error'); return; }
+      grupo.submap_id = d.submap_id;
+      this._renderNode(grupo);
+      await this.save();
+      this._toast(`${membros.length} dispositivos agrupados — duplo-clique no ícone abre o mapa`);
+    } catch (e) {
+      this._toast('Erro ao criar o mapa do grupo: ' + e, 'error');
+    }
+  }
+
+  /** Traz os hosts do sub-mapa de volta para este mapa e apaga o ícone do
+   *  grupo. Os nós de borda (o vizinho copiado pra dar contexto lá dentro) não
+   *  voltam — eles nunca saíram daqui. */
+  async desagrupar(id) {
+    const grupo = this.nodes.find(n => n.id === id);
+    if (!grupo || !grupo.grupo) return;
+
+    let dados = {nodes: [], links: []};
+    if (grupo.submap_id) {
+      try {
+        const r = await fetch(`/clientes/${this.clienteId}/topologia/dados/?diagrama=${grupo.submap_id}`);
+        if (!r.ok) { this._toast(`Erro ${r.status} ao ler o mapa do grupo`, 'error'); return; }
+        dados = await r.json();
+      } catch (e) {
+        this._toast('Erro ao ler o mapa do grupo: ' + e, 'error');
+        return;
+      }
+    }
+    const existentes = new Set(this.nodes.map(n => n.id));
+    const voltando = (dados.nodes || []).filter(n => !n.grupo_borda && !existentes.has(n.id));
+
+    if (!confirm(`Desagrupar "${grupo.label}"?\n\n${voltando.length} dispositivo(s) voltam para este mapa `
+               + `e o mapa do grupo é excluído.`)) return;
+
+    this._saveHistory();
+    voltando.forEach(n => this.nodes.push(n));
+
+    const validos = new Set(this.nodes.map(n => n.id));
+    const jaTem = new Set(this.links.map(l => l.id));
+    (dados.links || []).forEach(l => {
+      if (!validos.has(l.src) || !validos.has(l.tgt) || jaTem.has(l.id)) return;
+      this.links.push({waypoints: [], shape: 'straight', iface_a: '', iface_b: '', ...l});
+    });
+
+    this.nodes = this.nodes.filter(n => n.id !== id);
+    this.links = this.links.filter(l => l.src !== id && l.tgt !== id);
+
+    this._deselect();
+    this._clearMultiSelect();
+    this._renderAll();
+    this._setDirty();
+    await this.save();
+    if (grupo.submap_id) await this._excluirSubmapa(grupo.submap_id);
+    this._toast(`Grupo desfeito — ${voltando.length} dispositivos de volta no mapa`);
+  }
+
+  async _excluirSubmapa(submapId) {
+    try {
+      const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      await fetch(`/clientes/${this.clienteId}/topologia/${submapId}/submapa/excluir/`, {
+        method: 'POST', headers: {'X-CSRFToken': csrf},
+      });
+    } catch (e) { console.warn('sub-mapa não excluído:', e); }
+  }
+
   _updateVP() {
     this.vp.setAttribute('transform', `translate(${this.panX},${this.panY}) scale(${this.zoom})`);
     document.getElementById('zoom-label').textContent = Math.round(this.zoom*100) + '%';
@@ -611,10 +814,24 @@ class TopoEditor {
     document.getElementById('props-body').innerHTML = `<div class="prop-empty"><i class="fas fa-arrow-pointer"></i>Selecione um dispositivo<br>ou conexão no canvas</div>`;
   }
 
+  /** Nodes de grupo entre os que estão sendo removidos: pede confirmação (os
+   *  hosts lá dentro somem deste mapa junto) e apaga o sub-mapa de cada um. */
+  _confirmarRemoverGrupos(ids) {
+    const grupos = this.nodes.filter(n => ids.has(n.id) && n.grupo);
+    if (!grupos.length) return true;
+    const qtd = grupos.reduce((a, g) => a + (g.grupo_membros || []).length, 0);
+    if (!confirm(`Remover ${grupos.length === 1 ? `o grupo "${grupos[0].label}"` : `${grupos.length} grupos`}?\n\n`
+               + `${qtd} dispositivo(s) dentro dele(s) e o mapa do grupo serão apagados. `
+               + `Use "Desagrupar" se quiser trazer os dispositivos de volta.`)) return false;
+    grupos.forEach(g => { if (g.submap_id) this._excluirSubmapa(g.submap_id); });
+    return true;
+  }
+
   _deleteSelected() {
     if (this.selectedNodes.size > 1) {
-      this._saveHistory();
       const ids = new Set(this.selectedNodes);
+      if (!this._confirmarRemoverGrupos(ids)) return;
+      this._saveHistory();
       this.nodes = this.nodes.filter(n => !ids.has(n.id));
       this.links = this.links.filter(l => !ids.has(l.src) && !ids.has(l.tgt));
       this._clearMultiSelect();
@@ -625,6 +842,8 @@ class TopoEditor {
       return;
     }
     if (!this.selected) return;
+    if (this.selected.type === 'node'
+        && !this._confirmarRemoverGrupos(new Set([this.selected.id]))) return;
     this._saveHistory();
     if (this.selected.type === 'node') {
       const id = this.selected.id;
@@ -701,10 +920,12 @@ class TopoEditor {
   }
 
   _updateMultiSelectStatus() {
+    const btn = document.getElementById('btn-agrupar');
+    if (btn) btn.classList.toggle('dim', this.selectedNodes.size < 2);
     const el = document.getElementById('st-mode');
     if (!el) return;
     if (this.selectedNodes.size > 1) {
-      el.textContent = `${this.selectedNodes.size} selecionados — arraste um deles para mover o grupo`;
+      el.textContent = `${this.selectedNodes.size} selecionados — arraste para mover ou "Agrupar" (G)`;
     } else {
       el.textContent = 'Modo: ' + (this.connectMode ? 'Conexão' : this.areaSelectMode ? 'Seleção de área' : 'Seleção');
     }
@@ -807,7 +1028,12 @@ class TopoEditor {
         ${TOPO_ICONS[def.icon]||''}
       </g>
       ${node.acesso_id ? `<circle class="node-led" cx="${hw-7}" cy="${-hh+7}" r="2.6" fill="#3fb950"/>` : ''}
-      ${node.submap_id ? `<g class="node-submap-badge" transform="translate(${hw-13},${hh-13})" data-tip="Tem sub-mapa">
+      ${node.grupo ? `<g class="node-grupo-badge" transform="translate(${hw-11},${-hh+11})" data-tip="Dispositivos dentro do grupo">
+          <circle r="10" fill="#0d1117" stroke="${c}" stroke-width="1.5"/>
+          <text text-anchor="middle" y="3.6" font-size="10.5" font-weight="800" fill="${c}"
+            font-family="'Segoe UI',sans-serif">${(node.grupo_membros||[]).length || node.grupo_qtd || 0}</text>
+        </g>` : ''}
+      ${node.submap_id && !node.grupo ? `<g class="node-submap-badge" transform="translate(${hw-13},${hh-13})" data-tip="Tem sub-mapa">
           <circle r="9" fill="#0d1117" stroke="${c}" stroke-width="1.5"/>
           <path d="M-3.5,-3.5 h5 v5 M1.5,-3.5 L-3.5,1.5 M-1,-3.5 h4.5 v4.5" fill="none" stroke="${c}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
         </g>` : ''}
@@ -1010,6 +1236,11 @@ class TopoEditor {
       return;
     }
 
+    // Node de grupo tem painel próprio: não é um equipamento (não tem IP de
+    // gerência, nem ícone trocável, nem acesso), é a porta de entrada de um
+    // sub-mapa — o que interessa aqui é abrir, renomear ou desfazer.
+    if (node.grupo) { this._showGrupoProps(node); return; }
+
     const def = TOPO_DEVICES[node.type] || TOPO_DEVICES.host;
 
     let accessHtml = '';
@@ -1028,7 +1259,7 @@ class TopoEditor {
     }
 
     const tipoOpts = Object.entries(TOPO_DEVICES)
-      .filter(([k]) => k !== 'text_box')
+      .filter(([k]) => k !== 'text_box' && k !== 'grupo')
       .map(([k,v]) => `<option value="${k}" ${node.type===k?'selected':''}>${v.label}</option>`).join('');
 
     const autoNote = node.acesso_id ? `
@@ -1112,6 +1343,55 @@ class TopoEditor {
       </div>
       ${accessHtml}
       <button class="prop-btn primary" onclick="topo._applyNodeProps('${id}')"><i class="fas fa-check"></i> Aplicar</button>
+      <button class="prop-btn danger" onclick="topo._deleteSelected()"><i class="fas fa-trash"></i> Remover</button>`;
+  }
+
+  _showGrupoProps(node) {
+    const def = TOPO_DEVICES.grupo;
+    const membros = node.grupo_membros || [];
+    const mostrar = membros.slice(0, 8);
+    const lista = mostrar.map(m =>
+      `<div class="grupo-membro"><i class="fas fa-circle-nodes"></i>${this._esc(m.label || m.id)}</div>`).join('')
+      + (membros.length > mostrar.length
+          ? `<div class="grupo-membro mais">e mais ${membros.length - mostrar.length}…</div>` : '');
+
+    document.getElementById('props-body').innerHTML = `
+      <div class="prop-hero">
+        <div class="prop-hero-icon" style="background:${node.color}1f;color:${node.color}">
+          <svg viewBox="0 0 48 48">${TOPO_ICONS[def.icon]||''}</svg>
+        </div>
+        <div class="prop-hero-txt">
+          <b>${this._esc(node.label || def.label)}</b>
+          <span>${membros.length} dispositivo${membros.length === 1 ? '' : 's'} agrupados</span>
+        </div>
+      </div>
+      ${node.submap_id ? `
+      <button class="prop-btn" style="background:rgba(0,217,255,.12);border-color:var(--cyan);color:var(--cyan);margin:0 0 12px"
+        onclick="topo._abrirOuCriarSubmapa('${node.id}')"
+        title="Abre o mapa só com estes dispositivos (duplo-clique no ícone faz o mesmo)">
+        <i class="fas fa-diagram-project"></i> Abrir mapa do grupo →
+      </button>` : `
+      <div class="prop-group" style="font-size:.68rem;color:var(--red)">
+        <i class="fas fa-triangle-exclamation"></i> Este grupo ficou sem mapa vinculado.
+      </div>`}
+      <div class="prop-group">
+        <label class="prop-label">Nome do grupo</label>
+        <input class="prop-input" id="pn-label" value="${this._esc(node.label)}">
+      </div>
+      <div class="prop-group">
+        <label class="prop-label">Cor</label>
+        <input type="color" class="prop-input" id="pn-color" value="${node.color}" style="height:36px;padding:2px">
+      </div>
+      ${membros.length ? `
+      <div class="prop-group">
+        <label class="prop-label">Dentro do grupo</label>
+        <div class="grupo-lista">${lista}</div>
+      </div>` : ''}
+      <button class="prop-btn primary" onclick="topo._applyNodeProps('${node.id}')"><i class="fas fa-check"></i> Aplicar</button>
+      <button class="prop-btn" onclick="topo.desagrupar('${node.id}')"
+        title="Traz os dispositivos de volta para este mapa e exclui o mapa do grupo">
+        <i class="fas fa-object-ungroup"></i> Desagrupar
+      </button>
       <button class="prop-btn danger" onclick="topo._deleteSelected()"><i class="fas fa-trash"></i> Remover</button>`;
   }
 
@@ -2413,10 +2693,15 @@ class TopoEditor {
       const d = await r.json();
       if (!d.hosts || !d.hosts.length) { this._toast('Nenhum host cadastrado', 'error'); return; }
 
+      // Hosts que foram agrupados não estão mais entre os nodes deste mapa
+      // (vivem no sub-mapa do grupo). Sem essa checagem, "Importar Hosts"
+      // traria cada um deles de volta pro mapa pai como se fosse host novo.
+      const agrupados = this._idsAgrupados();
+
       const novos = [];
       d.hosts.forEach(h => {
         const existing = this.nodes.find(n => n.id === 'crm_' + h.id);
-        if (!existing) { novos.push(h); return; }
+        if (!existing) { if (!agrupados.has('crm_' + h.id)) novos.push(h); return; }
         existing.funcao = h.funcao;
         // Ícone trocado manualmente pelo usuário (ver _applyNodeProps) não é
         // sobrescrito por uma reimportação — só o mapeamento automático (função
@@ -2432,6 +2717,15 @@ class TopoEditor {
       if (added > 0) this.zoomFit();
       this._toast(`${added} hosts importados`);
     } catch(e) { this._toast('Erro: ' + e.message, 'error'); }
+  }
+
+  /** Ids de nodes que estão dentro de algum grupo deste mapa. */
+  _idsAgrupados() {
+    const s = new Set();
+    this.nodes.forEach(n => {
+      if (n.grupo) (n.grupo_membros || []).forEach(m => s.add(m.id));
+    });
+    return s;
   }
 
   // Coloca os hosts recém-importados em faixas horizontais, uma por função

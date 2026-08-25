@@ -5,7 +5,7 @@
 - `static/js/topo_engine.js`
 - `static/js/topo_main.js`
 
-**Atualizado em:** 2026-08-24
+**Atualizado em:** 2026-08-25
 
 ---
 
@@ -20,6 +20,8 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 - Waypoints: dobrar conexões arrastando pontos intermediários
 - Seleção múltipla por laço de área (ou Shift+clique) e movimentação de vários dispositivos
   em grupo, preservando a posição relativa entre eles
+- Agrupar vários hosts num ícone só, que abre um sub-mapa com esses hosts + o vizinho de
+  onde saem os enlaces (ver "Agrupar Hosts num Ícone" abaixo)
 - Documentação de serviços L2VPN (VSI/VPLS, VPWS e L2VC) lida do backup de cada host,
   com o peer de cada túnel ligado ao host do outro lado, e clonagem de serviço aplicada
   no equipamento — ver [topologia_l2vpn.md](topologia_l2vpn.md)
@@ -35,7 +37,7 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 | `topo_engine.js` | Definição de tipos (`DEVICES`), interfaces (`IFACES`) e paths SVG dos ícones (`ICONS`) |
 | `topo_main.js` | Classe `TopoEditor` — lógica de renderização, eventos, persistência e importação |
 
-Versão atual: **topo_engine v=24 / topo_main v=39** (parâmetro de cache-busting no HTML).
+Versão atual: **topo_engine v=25 / topo_main v=40** (parâmetro de cache-busting no HTML).
 
 **Estes dois JS ficam em `static/` e mesmo assim são versionados.** `static/` é o
 `STATIC_ROOT` (destino do `collectstatic`) e está no `.gitignore`, mas esses dois
@@ -90,6 +92,7 @@ Cada tipo tem `label`, `color` (hex) e `icon` (chave em `ICONS`).
 | `server` | Servidor | Servidores | `#8b949e` | Rack 3U com baias e LEDs |
 | `vm` | VM | Servidores | `#a78bfa` | Três caixas empilhadas + "VM" na da frente |
 | `host` | Host/PC | Servidores | `#79c0ff` | Monitor com prompt na tela |
+| `grupo` | Grupo de hosts | Agrupamento | `#7ee787` | Pilha de 3 chassis + seta de "abrir" (não aparece na paleta — só a ação "Agrupar" cria) |
 | `text_box` | Texto/Legenda | Anotações | `#e3b341` | Cartão pontilhado com linhas de texto |
 
 **Linguagem visual do set (redesign 2026-08-13):** todo ícone é desenhado num viewBox 48×48
@@ -265,6 +268,82 @@ Implementação: `static/js/topo_main.js` — `this.selectedNodes` (Set de ids),
 (retângulo em andamento), `this.groupDragging` (arrasto em grupo em andamento),
 `this.areaSelectMode` (toggle do botão "Área"). Estado transitório de UI, não é salvo no
 `dados_json` do diagrama.
+
+---
+
+## Agrupar Hosts num Ícone — 2026-08-25
+
+Cinco OLTs penduradas no mesmo switch ocupam metade do mapa e não acrescentam nada a quem
+está olhando o núcleo da rede. **Agrupar** troca esse bloco por **um ícone só**, que abre um
+**sub-mapa** com aqueles hosts — e o switch junto, pra não virar um mapa de OLTs sem uplink.
+
+### Como usar
+
+1. Selecionar 2+ dispositivos (botão **Área** na toolbar, Shift+arrastar ou Shift+clique).
+2. Clicar em **Agrupar** (ícone `fa-object-group`, ao lado do botão de seleção por área) ou
+   apertar **G**. O botão fica apagado (`.tb-btn.dim`) enquanto não há 2+ selecionados —
+   clicar assim mesmo explica o que falta num toast.
+3. Confirmar o nome sugerido. A sugestão é o **prefixo comum dos nomes** dos hosts
+   (`OLT-ALCOBACA-02`…`OLT-ALCOBACA-06` → `OLT-ALCOBACA (5)`); sem prefixo com 3+ caracteres,
+   cai no rótulo do tipo dominante (`OLT (5)`).
+4. **Duplo-clique** no ícone (ou o botão **"Abrir mapa do grupo →"** no painel de propriedades)
+   abre o sub-mapa. A toolbar do sub-mapa já tinha o botão de voltar pro mapa pai.
+
+### O que acontece com o desenho
+
+| No mapa pai | No sub-mapa |
+|---|---|
+| Os membros e todos os links entre eles **saem** | Entram nas **mesmas coordenadas** que tinham no pai |
+| Entra um node `grupo` no **centroide** dos membros, com a cor do primeiro deles e um badge com a contagem | — |
+| Cada vizinho externo passa a ter **um único enlace** com o ícone do grupo | Entra uma **cópia do vizinho** marcada com `grupo_borda: true`, com os enlaces originais preservados |
+
+O enlace único herda o **mais rápido** dos enlaces que aquele vizinho tinha com o grupo
+(`TOPO_ORDEM_IFACE` em `topo_main.js`) e, quando havia mais de um, ganha o rótulo `N enlaces`.
+Os campos de interface e IP P2P **do lado que aponta pro grupo** são limpos — eles descreviam a
+porta de um host específico, e o ícone do grupo não é um host; o lado do vizinho é preservado
+intacto. Os waypoints do enlace original também são descartados (o traçado antigo ia até outro
+ponto do canvas).
+
+### Campos do node de grupo (`dados_json`)
+
+| Campo | Descrição |
+|---|---|
+| `grupo` | `true` — é o que distingue do resto e liga o painel de propriedades próprio |
+| `grupo_membros` | `[{id, label}]` dos hosts que estão lá dentro |
+| `submap_id` | Id do `TopologiaDiagrama` filho (o mesmo campo que sub-mapa manual já usava) |
+
+`grupo_membros` não é só enfeite do painel: **`importHosts()` pula qualquer host cujo node esteja
+nessa lista** (`_idsAgrupados()`). Sem isso, o host agrupado — que não está mais entre os nodes do
+mapa pai — seria visto como "host novo" e a reimportação traria as OLTs de volta pro mapa de cima,
+duplicadas com as que estão no sub-mapa.
+
+### Desagrupar
+
+Botão **Desagrupar** no painel de propriedades do grupo. Lê o `dados_json` do sub-mapa
+(`GET /clientes/<id>/topologia/dados/?diagrama=<submap_id>`), devolve pro mapa pai todo node que
+**não** tenha `grupo_borda` (o vizinho copiado nunca saiu daqui) e todo link cujas duas pontas
+existam depois disso — os ids dos nodes são os mesmos dos dois lados, então os enlaces originais
+com o vizinho voltam a apontar pro node certo sozinhos. Depois apaga o ícone do grupo, seus
+enlaces agregados e o sub-mapa. O ciclo agrupar → desagrupar devolve o mapa exatamente como
+estava (posições, ids de link, interfaces e IPs incluídos).
+
+**Remover** (lixeira/Delete) num node de grupo é o caminho destrutivo: pede confirmação e apaga
+o sub-mapa junto com os hosts que estavam lá dentro — o painel avisa que "Desagrupar" é o que
+traz os dispositivos de volta.
+
+### Detalhes que valem saber
+
+- **Grupo dentro de grupo funciona.** Ao excluir um sub-mapa, o backend **repõe** os sub-mapas
+  netos como filhos do avô (`filter(pai=submapa).update(pai=submapa.pai)`) antes do `delete()` —
+  sem isso o `on_delete=CASCADE` levaria junto o mapa de um grupo aninhado que acabou de voltar
+  pro mapa pai.
+- **O `submap_id` é gravado pelo backend no `dados_json` já salvo do pai**, então `agrupar`
+  salva o mapa antes de chamar o endpoint (e salva de novo depois, pra fixar o `submap_id` no
+  estado local do editor).
+- **Undo (Ctrl+Z) desfaz só o desenho.** O histórico é local ao editor; o sub-mapa criado
+  continua existindo no banco (vira um mapa órfão, sem nó apontando pra ele).
+- **A cópia de borda não sincroniza.** Mover ou renomear o vizinho dentro do sub-mapa não muda
+  o node dele no mapa pai — é uma cópia de contexto, não o mesmo nó em dois lugares.
 
 ---
 
@@ -473,6 +552,8 @@ O botão **PNG** na toolbar exporta a topologia atual como imagem PNG em resolu�
 | `GET` | `/clientes/<id>/topologia/dados/` | Carrega JSON do diagrama salvo |
 | `POST` | `/clientes/<id>/topologia/salvar/` | Salva diagrama (nome + dados_json) |
 | `GET` | `/clientes/<id>/topologia/hosts/` | Lista hosts CRM com tipo mapeado |
+| `POST` | `/clientes/<id>/topologia/<diagrama_id>/submapa/` | Cria um sub-mapa vinculado a um nó (opcionalmente já com `dados_json` — é o que a ação "Agrupar" usa) |
+| `POST` | `/clientes/<id>/topologia/<diagrama_id>/submapa/excluir/` | Exclui um sub-mapa (usado pelo "Desagrupar"); recusa o mapa raiz |
 | `GET` | `/clientes/acessos/<acesso_id>/interfaces-backup/` | Interfaces extraídas do backup mais recente do acesso (sugestão para Lado A/B e para os combos de interface do painel de clonagem L2VPN; cada item traz `logica`/`subinterface` para filtrar só as físicas) |
 | `GET` | `/clientes/acessos/<acesso_id>/l2vpn-backup/` | Serviços L2VPN (VSI/VPLS/VPWS/L2VC) do backup mais recente, com peers resolvidos para hosts — ver [topologia_l2vpn.md](topologia_l2vpn.md) |
 | `GET` | `/clientes/acessos/<acesso_id>/l2vpn-peers/` | Candidatos a peer de um túnel (hosts do cliente com identidade MPLS) para a busca por nome/IP no painel de clonagem |

@@ -32,6 +32,7 @@ const DEVICES = {
   server:    {label:'Servidor',     color:'#8b949e', icon:'server',    group:'Servidores'},
   vm:        {label:'VM',           color:'#a78bfa', icon:'vm',        group:'Servidores'},
   host:      {label:'Host/PC',      color:'#79c0ff', icon:'host',      group:'Servidores'},
+  grupo:     {label:'Grupo de hosts',color:'#7ee787', icon:'grupo',    group:'Agrupamento'},
   text_box:  {label:'Texto/Legenda',color:'#e3b341', icon:'text_box',  group:'Anotações'},
 };
 const IFACES = {
@@ -298,6 +299,16 @@ const ICONS = {
     </g>
     <path d="M20 35h8l1.6 5h-11.2z" fill="currentColor" opacity=".7"/>
     <rect x="14" y="40" width="20" height="3.4" rx="1.7" fill="currentColor" opacity=".85"/>`,
+
+  // Grupo de hosts: pilha de chassis (os hosts que ficaram dentro) com a seta
+  // de "abrir" à direita — o nó não é um equipamento, é a porta de entrada do
+  // sub-mapa. Criado só pela ação "Agrupar"; não aparece na paleta.
+  grupo:`<rect x="9" y="7" width="30" height="8" rx="3" fill="currentColor" opacity=".35"/>
+    <rect x="6" y="13" width="36" height="9" rx="3.2" fill="currentColor" opacity=".62"/>
+    <rect x="3" y="20" width="42" height="21" rx="5" fill="currentColor" opacity=".95"/>
+    <rect x="7" y="26" width="21" height="9" rx="2.4" fill="#04121a" opacity=".5"/>
+    <g fill="#fff"><circle cx="11.5" cy="30.5" r="1.8" opacity=".9"/><circle cx="17.5" cy="30.5" r="1.8" opacity=".6"/><circle cx="23.5" cy="30.5" r="1.8" opacity=".35"/></g>
+    <path d="M33.5 26.3l4.8 4.2-4.8 4.2" fill="none" stroke="#fff" stroke-opacity=".8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`,
 
   // Legenda: cartão pontilhado com "texto" dentro.
   text_box:`<rect x="3.5" y="9" width="41" height="30" rx="5" fill="currentColor" fill-opacity=".07" stroke="currentColor" stroke-width="2.2" stroke-dasharray="6,3.5"/>

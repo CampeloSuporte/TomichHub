@@ -5,6 +5,37 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-25 (Topologia: agrupar hosts num ícone)
+
+### Adicionado
+
+- **Agrupar hosts num ícone só, com mapa próprio** (`static/js/topo_main.js`,
+  `static/js/topo_engine.js`, `clientes/templates/topologia_editor.html`, `clientes/views.py`).
+  Com 2+ dispositivos selecionados (laço de área ou Shift+clique), o botão **Agrupar** da toolbar
+  (ou a tecla **G**) troca o bloco por um único node do tipo `grupo` — ícone novo de pilha de
+  chassis com badge de contagem — e cria um **sub-mapa** com aqueles hosts mais uma cópia de borda
+  do vizinho de onde saíam os enlaces, pra o mapa de baixo abrir já com "switch + OLTs". No mapa de
+  cima, os N enlaces que cruzavam a fronteira do grupo viram **um enlace por vizinho**, herdando o
+  mais rápido deles e o rótulo `N enlaces`; as interfaces e IPs do lado que aponta pro grupo saem
+  (descreviam a porta de um host, e o ícone não é um host). Duplo-clique no ícone — ou o botão
+  "Abrir mapa do grupo →" no painel de propriedades — abre o sub-mapa; a toolbar de lá já tinha o
+  botão de voltar. O nome sugerido sai do prefixo comum dos hosts
+  (`OLT-ALCOBACA-02`…`-06` → `OLT-ALCOBACA (5)`).
+- **Desagrupar** no painel do grupo: devolve os hosts e os enlaces originais para o mapa pai
+  (posições, ids e campos de link intactos) e exclui o sub-mapa. Remover o ícone pela lixeira segue
+  sendo o caminho destrutivo, agora com confirmação explícita.
+- `POST /clientes/<id>/topologia/<diagrama_id>/submapa/` passou a aceitar `dados_json` (sub-mapa
+  criado já com conteúdo) e ganhou o par
+  `POST /clientes/<id>/topologia/<diagrama_id>/submapa/excluir/`, que recusa o mapa raiz e
+  **reponta** os sub-mapas netos para o avô antes do `delete()` — sem isso o CASCADE levaria junto
+  o mapa de um grupo aninhado que tinha acabado de voltar pro mapa pai.
+- `importHosts()` ignora hosts que estão dentro de um grupo (`grupo_membros`/`_idsAgrupados()`).
+  Sem isso a reimportação traria as OLTs agrupadas de volta pro mapa de cima, duplicadas com as que
+  já estão no sub-mapa.
+- Detalhes em [docs/topologia.md](docs/topologia.md) — seção "Agrupar Hosts num Ícone".
+
+---
+
 ## [Não publicado] — 2026-08-24 (BGP: subir circuito no Huawei parava na confirmação do VRP)
 
 ### Corrigido

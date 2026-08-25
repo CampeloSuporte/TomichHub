@@ -6681,7 +6681,12 @@ def topologia_salvar(request, cliente_id):
 @modulo_habilitado_required('topologia')
 def topologia_criar_submapa(request, cliente_id, diagrama_id):
     """Cria um sub-mapa vinculado a um nó do diagrama `diagrama_id` (que vira
-    o mapa pai) e marca o nó com `submap_id` apontando pro novo diagrama."""
+    o mapa pai) e marca o nó com `submap_id` apontando pro novo diagrama.
+
+    `dados_json` é opcional: vazio quando o sub-mapa é criado à mão pelo botão
+    "Criar sub-mapa" (nasce em branco), e preenchido quando vem da ação
+    "Agrupar" do editor, que já monta o conteúdo (os hosts agrupados + uma
+    cópia de borda dos vizinhos deles) antes de criar o mapa."""
     cliente = get_object_or_404(Cliente, id=cliente_id)
     if not _topologia_perm(request, cliente):
         return JsonResponse({'error': 'Sem permissao'}, status=403)
@@ -6695,10 +6700,15 @@ def topologia_criar_submapa(request, cliente_id, diagrama_id):
     if not node_id:
         return JsonResponse({'error': 'node_id obrigatorio'}, status=400)
 
+    dados_sub = body.get('dados_json')
+    if dados_sub is not None and not isinstance(dados_sub, str):
+        dados_sub = json.dumps(dados_sub)
+
     submapa = TopologiaDiagrama.objects.create(
         cliente=cliente,
         pai=diagrama_pai,
         nome=body.get('nome') or 'Novo sub-mapa',
+        **({'dados_json': dados_sub} if dados_sub else {}),
     )
 
     try:
@@ -6713,6 +6723,46 @@ def topologia_criar_submapa(request, cliente_id, diagrama_id):
     diagrama_pai.save(update_fields=['dados_json'])
 
     return JsonResponse({'ok': True, 'submap_id': submapa.id, 'nome': submapa.nome})
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+@modulo_habilitado_required('topologia')
+def topologia_excluir_submapa(request, cliente_id, diagrama_id):
+    """Exclui um sub-mapa — usado pelo "Desagrupar" (os hosts já voltaram pro
+    mapa pai, o mapa do grupo não tem mais razão de existir) e por remover o
+    ícone de um grupo.
+
+    Só apaga diagrama com `pai` preenchido: o mapa raiz do cliente nunca some
+    por aqui. Sub-mapas de netos (um grupo dentro do grupo) são **repontados**
+    para o pai em vez de irem junto no CASCADE — os nós deles voltam pro mapa
+    pai no desagrupar, e o mapa de cada um precisa continuar existindo."""
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _topologia_perm(request, cliente):
+        return JsonResponse({'error': 'Sem permissao'}, status=403)
+    submapa = get_object_or_404(TopologiaDiagrama, id=diagrama_id, cliente=cliente)
+    if submapa.pai_id is None:
+        return JsonResponse({'error': 'Mapa raiz nao pode ser excluido'}, status=400)
+
+    TopologiaDiagrama.objects.filter(pai=submapa).update(pai=submapa.pai)
+
+    pai = submapa.pai
+    try:
+        dados = json.loads(pai.dados_json)
+    except Exception:
+        dados = None
+    if dados:
+        mudou = False
+        for node in dados.get('nodes', []):
+            if node.get('submap_id') == submapa.id:
+                node.pop('submap_id', None)
+                mudou = True
+        if mudou:
+            pai.dados_json = json.dumps(dados)
+            pai.save(update_fields=['dados_json'])
+
+    submapa.delete()
+    return JsonResponse({'ok': True})
 
 
 @login_required(login_url='login')
