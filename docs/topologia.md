@@ -287,7 +287,9 @@ está olhando o núcleo da rede. **Agrupar** troca esse bloco por **um ícone s�
    (`OLT-ALCOBACA-02`…`OLT-ALCOBACA-06` → `OLT-ALCOBACA (5)`); sem prefixo com 3+ caracteres,
    cai no rótulo do tipo dominante (`OLT (5)`).
 4. **Duplo-clique** no ícone (ou o botão **"Abrir mapa do grupo →"** no painel de propriedades)
-   abre o sub-mapa. A toolbar do sub-mapa já tinha o botão de voltar pro mapa pai.
+   abre o sub-mapa. Para sair, o botão **"Voltar"** (ciano, com o nome do mapa de cima ao lado)
+   fica no canto esquerdo da toolbar — ele existe desde os sub-mapas, mas mostrava só o nome do
+   mapa pai em cinza e ninguém lia aquilo como navegação; virou "Voltar" em 2026-08-25.
 
 ### O que acontece com o desenho
 
