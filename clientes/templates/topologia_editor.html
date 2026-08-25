@@ -77,6 +77,16 @@ body.embed-mode #btn-fechar{display:none!important}
    já que .tb-btn é flex) porque o ::after do botão é o tooltip do [data-tip] —
    um só pseudo-elemento para os dois vira um balão vazado no meio da tela. */
 .tb-btn.primary.dirty::before{content:'';order:9;width:6px;height:6px;border-radius:50%;background:#04121a;opacity:.5;flex-shrink:0}
+/* Voltar pro mapa pai: o link mostrava só o NOME do mapa de cima ("Nova
+   Topologia") ao lado de uma seta — entre a marca e o campo de nome, aquilo
+   lia como título, não como navegação. Agora diz "Voltar", em cor de
+   destaque, com o nome do mapa como legenda ao lado. */
+.tb-back{background:rgba(0,217,255,.12);border-color:rgba(0,217,255,.45);color:var(--cyan);text-decoration:none;display:inline-flex}
+.tb-back:hover{background:rgba(0,217,255,.2);border-color:var(--cyan);color:#fff}
+.tb-back-name{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-weight:500;padding-left:8px;border-left:1px solid rgba(255,255,255,.12)}
+.tb-back:hover .tb-back-name{color:#c9d1d9}
+/* Barra apertada: fica só o "Voltar" (o nome do mapa de cima é o extra). */
+@media (max-width: 1200px){.tb-back-name{display:none}}
 .tb-sep{width:1px;height:24px;background:var(--border);margin:0 3px}
 #nome-diagrama{background:transparent;border:1px solid transparent;color:var(--text);font-size:.88rem;font-weight:600;padding:7px 10px;border-radius:8px;min-width:190px;transition:border-color .15s,background .15s}
 #nome-diagrama:hover{border-color:var(--border-soft);background:rgba(255,255,255,.03)}
@@ -487,8 +497,8 @@ body:not(.pal-off) #legend-panel{left:236px}
     <div class="tb-brand-txt"><b>Topologia</b><span>Editor de rede</span></div>
   </div>
   {% if diagrama.pai %}
-  <a class="tb-btn" href="?diagrama={{ diagrama.pai_id }}" data-tip="Voltar para o mapa pai" style="text-decoration:none;display:inline-flex">
-    <i class="fas fa-arrow-left"></i> {{ diagrama.pai.nome }}
+  <a class="tb-btn tb-back" href="?diagrama={{ diagrama.pai_id }}" data-tip="Voltar para o mapa de cima">
+    <i class="fas fa-arrow-left"></i> Voltar<span class="tb-back-name">{{ diagrama.pai.nome }}</span>
   </a>
   {% endif %}
   <input id="nome-diagrama" value="{{ diagrama.nome|default:'Nova Topologia' }}" aria-label="Nome do diagrama" data-tip="Nome do diagrama">

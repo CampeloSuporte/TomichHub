@@ -32,6 +32,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - `importHosts()` ignora hosts que estão dentro de um grupo (`grupo_membros`/`_idsAgrupados()`).
   Sem isso a reimportação traria as OLTs agrupadas de volta pro mapa de cima, duplicadas com as que
   já estão no sub-mapa.
+- **O botão de voltar do sub-mapa passou a parecer um botão de voltar**
+  (`clientes/templates/topologia_editor.html`). Ele já existia desde os sub-mapas, mas mostrava
+  só a seta e o **nome do mapa de cima** ("Nova Topologia"), em cinza, entre a marca e o campo de
+  nome — lia como título, não como navegação, e quem entrava num grupo não achava a saída. Agora
+  diz **"Voltar"** em cor de destaque, com o nome do mapa pai como legenda ao lado (escondida
+  abaixo de 1200px, onde a barra aperta).
 - Detalhes em [docs/topologia.md](docs/topologia.md) — seção "Agrupar Hosts num Ícone".
 
 ---
