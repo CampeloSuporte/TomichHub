@@ -5,6 +5,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-24 (BGP: subir circuito no Huawei parava na confirmação do VRP)
+
+### Corrigido
+
+- **Criar sessão/circuito BGP no Huawei morria com `Pattern not detected: '(?:VS\-BGP.*$|#.*$)'`**
+  (`clientes/bgp_actions.py` → `_enviar_config_vrp`). Pego ao subir o `ix-03` (PTT-RS): o
+  `send_config_set` do Netmiko espera o prompt depois de cada linha, mas o VRP responde
+  `Continue? [Y/N]:` em comandos como o `undo peer <grupo> enable` da `ipv4-family unicast` (o que
+  tira o peer v6 da family v4, onde ele nasce habilitado). Sem ninguém responder, a leitura estourava
+  o timeout e a exceção subia **sem dizer em que comando parou** e **descartando o output já lido** —
+  com metade do circuito na config candidata (o `commit` nunca chegava a rodar). Agora o Huawei envia
+  comando a comando, para no prompt OU na pergunta, responde `Y` (a ação inteira já foi confirmada no
+  modal) e segue; teto de 5 confirmações por comando. O prompt passa a ser reconhecido pela forma
+  (`<...>`/`[...]`), não pelo nome do host, o que cobre prompt truncado e sub-views
+  (`[*VS-BGP-bgp-af-ipv6]`), e o eco deixa de ser verificado (linha longa quebrada na largura do
+  terminal era um segundo modo de falha). Em modo trial o `commit trial N` vai pelo mesmo caminho.
+- **Erro no meio do envio deixava de mostrar o que já tinha entrado** (mesmo arquivo,
+  `ErroEnvioBgp`). A ação agora registra na auditoria (`AcaoBgp`) o transcript parcial e o comando
+  exato onde parou, que é o que o operador precisa pra decidir entre repetir ou limpar o que ficou
+  pela metade.
+- Testes novos em `clientes/tests_bgp_envio_vrp.py` (9 casos). Detalhes em
+  [docs/bgp_automacao.md](docs/bgp_automacao.md).
+
+---
+
 ## [Não publicado] — 2026-08-24 (Proxy web: Grafana e URLs com porta)
 
 ### Corrigido
