@@ -279,6 +279,53 @@ adicionar `'juniper': 'juniper_junos'` em `DEVICE_TYPES`. Por fabricante:
 Toda `AcaoBgpNaoSuportada` (fabricante/situação sem comando seguro conhecido) é capturada na view e
 devolvida como erro 422 — a UI mostra o motivo em vez de tentar um comando arriscado.
 
+### Huawei: envio comando a comando, respondendo às confirmações do VRP (corrigido em 2026-08-24)
+
+**Bug real (24/08/2026, subindo o circuito `ix-03`/PTT-RS)**: a ação morria com
+
+```
+Pattern not detected: '(?:VS\-BGP.*$|#.*$)' in output.
+```
+
+Esse padrão é montado pelo próprio `send_config_set` do Netmiko: depois de CADA linha ele espera
+o prompt do equipamento (`base_prompt` = nome do host, `VS-BGP`). Só que vários comandos do VRP
+respondem com uma **pergunta** antes de voltar ao prompt — o caso que quebrou foi o
+`undo peer <grupo> enable` que `_bloco_sessao` emite na `ipv4-family unicast` para tirar de lá o
+peer v6 (todo peer nasce habilitado na family v4 no VRP):
+
+```
+Warning: The operation will delete the configurations of the peer/peer group
+in the address family. Continue? [Y/N]:
+```
+
+`[Y/N]:` não casa com o prompt → o Netmiko lê até estourar o `read_timeout` e levanta a exceção
+acima, **sem dizer em que comando parou** e **descartando tudo que já tinha lido** — com metade do
+circuito já na config candidata do equipamento (o `commit` nunca roda, então nada disso vale no
+plano de dados; mas a tentativa seguinte esbarra em "já existe").
+
+Corrigido com `clientes/bgp_actions.py::_enviar_config_vrp`, usado só pelo Huawei (o Juniper, o
+outro fabricante de `_PRECISA_COMMIT`, não pergunta nada em modo configuração):
+
+- cada comando é enviado sozinho (`write_channel` + `read_until_pattern`) e a leitura termina no
+  **prompt OU na pergunta**;
+- pergunta é respondida com `Y` e a leitura continua — o operador já confirmou a ação inteira no
+  modal antes de chegar aqui. Teto de 5 confirmações por comando: se o equipamento continuar
+  perguntando, para com erro em vez de mandar o resto da config dentro de uma confirmação pendente;
+- o prompt é reconhecido pela FORMA (`<...>`/`[...]` ocupando a linha toda no fim da leitura), não
+  pelo nome do host — o que também cobre prompt truncado e sub-views (`[*VS-BGP-bgp-af-ipv6]`);
+- não há verificação de eco do comando (o `send_config_set` faz), então linha longa que quebra na
+  largura do terminal deixa de ser um segundo modo de falha;
+- falha no meio levanta `ErroEnvioBgp`, que carrega **em qual comando parou** e o **transcript
+  parcial**; `executar_acao_bgp` devolve isso como `output` da ação com status `erro` — é o que a
+  auditoria (`AcaoBgp`) e o modal passam a mostrar, em vez de só a mensagem crua do Netmiko.
+
+Em modo trial o `commit trial N` também vai por esse caminho (pode perguntar antes de aplicar). O
+commit normal continua sendo `conn.commit()` — é ele que faz o handshake de confirmação/erro da
+config candidata.
+
+Testes: `clientes/tests_bgp_envio_vrp.py` (9 casos, com um `FakeVRP` que imita a mecânica do canal
+do Netmiko — escreve, o "equipamento" responde no buffer, lê até casar).
+
 ### Cisco/Datacom sempre salva na NVRAM — `end`+`write` (adicionado em 2026-08-04)
 
 `clientes/bgp_views.py::_montar_comandos` acrescenta `'end'` e `'write'` no final de QUALQUER ação

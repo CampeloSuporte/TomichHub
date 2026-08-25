@@ -1028,6 +1028,98 @@ def _comando_commit_trial(vendor, trial_segundos):
     raise AcaoBgpNaoSuportada(f'Trial não suportado para {vendor}.')
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# Envio comando a comando no VRP (Huawei) — respondendo às confirmações
+# ═══════════════════════════════════════════════════════════════════════
+#
+# `send_config_set` do Netmiko manda a lista inteira esperando, depois de
+# CADA linha, o prompt do equipamento (`[~VS-BGP]`, `[*VS-BGP-bgp]`, ...).
+# Só que vários comandos do VRP respondem com uma PERGUNTA antes de voltar
+# ao prompt — `undo peer <grupo> enable` dentro de uma address-family é o
+# caso que quebrou a criação do circuito de IX (ix-03/PTT-RS, 24/08/2026):
+#
+#     Warning: The operation will delete the configurations of the
+#     peer/peer group in the address family. Continue? [Y/N]:
+#
+# Como "[Y/N]:" não casa com o prompt, o Netmiko fica lendo até estourar o
+# read_timeout e morre com
+#
+#     Pattern not detected: '(?:VS\-BGP.*$|#.*$)' in output.
+#
+# — sem dizer em qual comando parou, jogando fora tudo que já tinha lido e
+# deixando metade do circuito na config candidata do equipamento (o que
+# depois vira `commit` parcial ou erro de "já existe" na próxima tentativa).
+#
+# Aqui cada comando vai sozinho e a leitura para no prompt OU na pergunta;
+# a pergunta é respondida com "Y" (o operador já confirmou a ação inteira
+# no modal antes de chegar aqui) e a leitura continua até o prompt.
+#
+# Só o Huawei usa este caminho: Juniper (o outro fabricante de
+# `_PRECISA_COMMIT`) não faz pergunta em modo configuração — `commit`
+# resolve tudo de uma vez — e Cisco/Mikrotik seguem como sempre.
+
+# Prompt do VRP: linha INTEIRA entre `<`/`[` e `>`/`]` no fim do que foi
+# lido — `<VS-BGP>` (user-view), `[~VS-BGP]`, `[*VS-BGP-bgp-af-ipv6]`
+# (system-view/sub-views, `~` = commitado, `*` = pendente). Casar a linha
+# toda, e não só um `]` solto no fim do buffer, evita parar no eco do
+# próprio comando quando ele termina em `]`/`>` (descrição de peer, por
+# exemplo) e o resto da resposta ainda nem chegou.
+_PROMPT_VRP = r'(?:^|\n)[<\[][^\n]*[>\]]\s*$'
+# Confirmações do VRP, sempre no fim da leitura (o equipamento para ali
+# esperando a resposta): "Continue? [Y/N]:", "Are you sure? [Y/N]:",
+# "(y/n)[n]:", "[yes/no]:".
+_PERGUNTA_VRP = r'(?:\[[YyNn]/[YyNn]\]|\([YyNn]/[YyNn]\)|\[yes/no\])[^\n]{0,12}$'
+_FIM_LEITURA_VRP = f'(?:{_PROMPT_VRP}|{_PERGUNTA_VRP})'
+# Teto de segurança: um comando que só faz repetir a pergunta (resposta não
+# aceita) não pode virar laço infinito segurando a conexão.
+_MAX_CONFIRMACOES = 5
+
+
+class ErroEnvioBgp(Exception):
+    """Falha no meio do envio, carregando o transcript do que JÁ tinha sido
+    executado. Sem isso o operador recebe só a mensagem crua do Netmiko e
+    não tem como saber quantos comandos entraram antes de parar — o que é
+    justamente o que ele precisa pra decidir entre repetir a ação ou
+    limpar o que ficou pela metade."""
+
+    def __init__(self, comando, parcial, causa):
+        self.comando = comando
+        self.parcial = parcial
+        super().__init__(f'Falhou no comando "{comando}": {causa}')
+
+
+def _enviar_config_vrp(conn, comandos, read_timeout=60):
+    """Envia `comandos` em modo configuração no VRP, um a um, respondendo
+    às confirmações [Y/N]. Devolve o transcript (eco + resposta de cada
+    comando); levanta `ErroEnvioBgp` com o transcript parcial se algum
+    comando não voltar ao prompt dentro de `read_timeout`."""
+    partes = []
+    comando_atual = 'system-view'
+    try:
+        partes.append(conn.config_mode())
+        for comando in comandos:
+            comando_atual = comando
+            conn.write_channel(conn.normalize_cmd(comando))
+            saida = conn.read_until_pattern(pattern=_FIM_LEITURA_VRP, read_timeout=read_timeout)
+            for _ in range(_MAX_CONFIRMACOES):
+                if not re.search(_PERGUNTA_VRP, saida):
+                    break
+                conn.write_channel('Y' + conn.RETURN)
+                saida += conn.read_until_pattern(pattern=_FIM_LEITURA_VRP, read_timeout=read_timeout)
+            else:
+                # Ainda perguntando depois de N "Y": seguir mandando o resto
+                # jogaria comando dentro de uma confirmação pendente. Para
+                # aqui com o transcript do que aconteceu.
+                if re.search(_PERGUNTA_VRP, saida):
+                    partes.append(saida)
+                    raise ValueError(f'o equipamento continuou perguntando depois de '
+                                     f'{_MAX_CONFIRMACOES} confirmações')
+            partes.append(saida)
+    except Exception as e:
+        raise ErroEnvioBgp(comando_atual, '\n'.join(partes), e)
+    return '\n'.join(partes)
+
+
 def executar_acao_bgp(acesso, vendor, comandos, trial=False, trial_segundos=60):
     """Conecta de verdade e envia os comandos. Retorna (output, status) —
     status é 'sucesso' ou 'erro', nunca levanta exceção de conexão (só
@@ -1057,16 +1149,32 @@ def executar_acao_bgp(acesso, vendor, comandos, trial=False, trial_segundos=60):
             # conn.commit() (que faz o handshake certo de confirmação/erro
             # da config candidata, diferente de só mandar o texto "commit").
             comandos_config = [c for c in comandos if c != 'commit']
-            output = conn.send_config_set(comandos_config, exit_config_mode=False)
+            if vendor == 'huawei':
+                # Comando a comando, respondendo às confirmações do VRP —
+                # ver `_enviar_config_vrp`.
+                output = _enviar_config_vrp(conn, comandos_config)
+            else:
+                output = conn.send_config_set(comandos_config, exit_config_mode=False)
             if trial:
                 comando_commit = _comando_commit_trial(vendor, trial_segundos)
                 output = f'[MODO TRIAL — reverte sozinho se não for confirmado]\n' + output
-                output += '\n' + conn.send_command(comando_commit, read_timeout=20)
+                if vendor == 'huawei':
+                    # `commit trial N` também pode perguntar antes de aplicar.
+                    output += '\n' + _enviar_config_vrp(conn, [comando_commit], read_timeout=30)
+                else:
+                    output += '\n' + conn.send_command(comando_commit, read_timeout=20)
             else:
                 output += '\n' + conn.commit()
         else:
             output = conn.send_config_set(comandos)
         return output, 'sucesso'
+    except ErroEnvioBgp as e:
+        # Devolve junto o que já tinha sido executado: metade dos comandos
+        # pode ter entrado na config candidata, e o operador precisa ver
+        # onde parou pra decidir o que fazer (o `commit` não chegou a
+        # rodar, então nada disso está valendo no plano de dados ainda).
+        logger.error(f'❌ Erro executando ação BGP em {acesso}: {e}')
+        return f'{e.parcial}\n\n❌ {e}', 'erro'
     except Exception as e:
         logger.error(f'❌ Erro executando ação BGP em {acesso}: {e}')
         return str(e), 'erro'
