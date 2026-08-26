@@ -1,6 +1,8 @@
 # Consulta IRR e AS-SET (bgpq4) — abas da ferramenta de LG
 
-Duas abas novas dentro de **Ferramentas → Pesquisa LG** (`/home/ferramentas/lg/`):
+Duas abas novas dentro de **Ferramentas → Pesquisa LG** (`/homeferramentas/lg/` — o
+`include` das rotas do app `home` é `path('home', …)`, sem barra, então o prefixo cola no
+caminho; é assim desde sempre, vale pra `/homegeral` também):
 
 | Aba | Para quê |
 |---|---|
@@ -102,8 +104,8 @@ em ~2,5 s.
 Views em `home/views.py` (`lg_irr_filtro`, `lg_as_set`), rotas em `home/urls.py`:
 
 ```
-/home/ferramentas/lg/irr/       ?objeto=&vendor=&af=&…[&download=1]
-/home/ferramentas/lg/as-set/    ?objeto=&host=&contar_prefixos=[&formato=txt]
+/homeferramentas/lg/irr/       ?objeto=&vendor=&af=&…[&download=1]
+/homeferramentas/lg/as-set/    ?objeto=&host=&contar_prefixos=[&formato=txt]
 ```
 
 Ambas exigem login e a ferramenta `lg` habilitada na instância

@@ -358,7 +358,7 @@ Os banimentos do fail2ban **não** têm modelo: a fonte da verdade é o `fail2ba
 
 **Looking Glass (Pesquisa LG):**
 
-- URL: `/home/ferramentas/lg/` — três abas: **Looking Glass**, **Filtro IRR (bgpq4)** e **AS-SET**
+- URL: `/homeferramentas/lg/` — três abas: **Looking Glass**, **Filtro IRR (bgpq4)** e **AS-SET**
 - Consulta um prefixo IPv4 ou IPv6 em múltiplos coletores BGP públicos simultaneamente
 - Fontes: RIPE NCC RIS (API stat.ripe.net), RIPE RIS Whois (riswhois.ripe.net:43)
 - Exibe AS paths agrupados por frequência com identificação do país de cada coletor RRC
