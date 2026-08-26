@@ -5,6 +5,58 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-25 (Pesquisa LG: consulta IRR com bgpq4 e expansão de as-set)
+
+### Adicionado
+
+- **Aba "Filtro IRR (bgpq4)" na Pesquisa LG** (`home/irr_tools.py`, `home/views.py`,
+  `home/urls.py`, `home/templates/lg_pesquisa.html`). Informa um ASN ou as-set
+  (`AS53181`, `AS-CAMPELO`, `AS271699:AS-CLIENTES`) e sai o prefix-list/route-filter pronto
+  no formato do fabricante: Cisco IOS e IOS XR, Junos (prefix-list e `route-filter-list`),
+  **Huawei VRP e XPL**, **MikroTik RouterOS v6 e v7**, Nokia SR OS clássico e MD-CLI,
+  SR Linux, Arista EOS, BIRD, OpenBGPD, JSON e lista simples. Opções avançadas: nome da
+  lista, servidor IRRd, fontes IRR (`-S`), max-length v4/v6 (`-m`), agregação (`-A`) e
+  "só ASNs com rota registrada" (`-w`). A tela mostra a contagem de prefixos por família, o
+  **comando bgpq4 exato** que rodou (pra reproduzir no terminal), a config com botão Copiar,
+  o botão Baixar e a lista de prefixos expandível.
+- **Aba "AS-SET"**: expande o objeto e mostra os membros diretos, os **as-sets aninhados
+  clicáveis** (abrem o filho, com trilha pra voltar), os ASNs do fechamento recursivo com
+  nome e filtro, a contagem de prefixos IPv4/IPv6 e — o mais útil no dia a dia — **o objeto
+  em cada base IRR** (RADB, LACNIC, TC, RIPE, ARIN…), com `descr`, `mnt-by`, data e
+  `members` de cada uma, mais um aviso quando divergem: o upstream filtra pela base que
+  *ele* consulta, e é aí que mora o "meu prefixo não passa". Botões pra copiar/baixar a
+  lista de ASNs e pra pular direto pro filtro do objeto.
+- `home/irr_tools.py`: cliente do protocolo IRRd na porta 43 com conexão persistente
+  (`!!`, `!i<set>`, `!i<set>,1`), leitura do objeto RPSL cru de todas as bases, resolução
+  de nomes de ASN em lote na RIPEstat e execução do `bgpq4` em paralelo (config e JSON,
+  v4 e v6).
+- Rotas `GET /home/ferramentas/lg/irr/` e `GET /home/ferramentas/lg/as-set/`, ambas com
+  `@ferramenta_instancia_required('lg')` — mesma permissão da aba de Looking Glass.
+- Documentação: `docs/CONSULTA_IRR_ASSET.md` (novo), com entrada em `docs/INDEX.md` e
+  seção atualizada em `SISTEMA.md`.
+
+### Detalhes de implementação
+
+- **bgpq4, não bgpq3**: o bgpq3 está sem manutenção desde 2019; o bgpq4 (fork do NTT) tem os
+  alvos que este CRM usa — MikroTik v7, Huawei VRP/XPL, Nokia MD-CLI — fala IRRd com
+  pipelining e vem empacotado no Debian (`apt install bgpq4`). Sem o binário no PATH, as duas
+  abas respondem 503 com mensagem clara.
+- **Entrada validada antes de virar argumento**: o objeto entra na linha de comando do bgpq4
+  e num socket whois, então `validar_objeto()` só aceita `AS<n>`, `AS-NOME`, `RS-NOME` e
+  combinações com `:` — nada de espaço, `-` inicial (viraria flag) ou metacaractere.
+  Servidor IRRd, fontes e nome da lista têm regex própria; `-m`/`-R` são validados por faixa.
+- **Saída grande**: `AS-HURRICANE` dá 954 mil prefixos IPv4 (dezenas de MB). A tela recebe no
+  máximo 1,5 MB de config, 8 mil prefixos e 2 mil ASNs, sempre com aviso de truncagem; os
+  botões Baixar refazem a consulta **sem cache e sem limite** e devolvem o arquivo inteiro.
+  A contagem de prefixos da aba AS-SET usa `-F '%n/%l'` e conta linhas, em vez de parsear
+  30 MB de JSON só pra saber o total.
+- **Cache Redis de 10 min** por consulta (`lg_irr:…`/`lg_asset:…`), com badge "cache" na
+  tela — dado de IRR muda devagar e isso poupa o mirror do NTT.
+- Timeout do bgpq4: 75 s na aba de filtro, 45 s na contagem do as-set (o gunicorn corta em
+  120 s). `AS-HURRICANE` (25.456 ASNs) responde em ~11 s.
+
+---
+
 ## [Não publicado] — 2026-08-25 (Topologia: agrupar hosts num ícone)
 
 ### Adicionado

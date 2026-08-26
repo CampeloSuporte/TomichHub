@@ -11,9 +11,30 @@
       </a>
       <div>
         <h4 class="mb-0"><i class="fas fa-route me-2" style="color:#58a6ff;opacity:.8"></i>Pesquisa Looking Glass</h4>
-        <small style="color:rgba(88,166,255,.4)">Consulta um prefixo em múltiplos route servers e LGs públicos simultaneamente</small>
+        <small style="color:rgba(88,166,255,.4)">Prefixo em múltiplos route servers e LGs públicos · filtro IRR pronto pelo bgpq4 · expansão de as-set</small>
       </div>
     </div>
+
+    <!-- ── Abas da ferramenta ──────────────────────────────────────── -->
+    <ul class="nav nav-tabs mb-4" id="lg-abas">
+      <li class="nav-item">
+        <a class="nav-link active" href="#" data-aba="lg" onclick="lgAba(event,'lg')">
+          <i class="fas fa-route me-1"></i>Looking Glass
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" data-aba="irr" onclick="lgAba(event,'irr')">
+          <i class="fas fa-filter me-1"></i>Filtro IRR (bgpq4)
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" data-aba="asset" onclick="lgAba(event,'asset')">
+          <i class="fas fa-project-diagram me-1"></i>AS-SET
+        </a>
+      </li>
+    </ul>
+
+    <div id="lg-aba-lg" class="lg-aba">
 
     <!-- ── Formulário de busca ─────────────────────────────────────── -->
     <div class="card mb-4">
@@ -83,6 +104,134 @@
 
     <!-- Mensagem de erro -->
     <div id="lg-erro" style="display:none"></div>
+
+    </div><!-- /aba lg -->
+
+    <!-- ══════════════════════════════════════════════════════════════
+         ABA: FILTRO IRR (bgpq4)
+         ══════════════════════════════════════════════════════════════ -->
+    <div id="lg-aba-irr" class="lg-aba" style="display:none">
+
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+              <label class="form-label irr-lbl">ASN ou AS-SET</label>
+              <input id="irr-objeto" type="text" class="form-control irr-mono"
+                placeholder="AS53181 · AS-CAMPELO · AS271699:AS-CLIENTES">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label irr-lbl">Fabricante / formato de saída</label>
+              <select id="irr-vendor" class="form-select">
+                {% for v in irr_vendors %}<option value="{{ v.id }}">{{ v.nome }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label irr-lbl">Família</label>
+              <select id="irr-af" class="form-select">
+                <option value="ambos">IPv4 + IPv6</option>
+                <option value="4">Só IPv4</option>
+                <option value="6">Só IPv6</option>
+              </select>
+            </div>
+            <div class="col-auto">
+              <button id="irr-btn" class="btn irr-btn-main" onclick="irrGerar()">
+                <i class="fas fa-cogs me-1"></i> Gerar filtro
+              </button>
+            </div>
+          </div>
+
+          <!-- Opções avançadas -->
+          <div class="mt-3">
+            <a href="#" onclick="event.preventDefault();document.getElementById('irr-avancado').classList.toggle('d-none')"
+               style="font-size:.78rem;color:rgba(88,166,255,.6);text-decoration:none">
+              <i class="fas fa-sliders-h me-1"></i>Opções avançadas
+            </a>
+            <div id="irr-avancado" class="d-none row g-3 mt-1">
+              <div class="col-md-3">
+                <label class="form-label irr-lbl">Nome da lista</label>
+                <input id="irr-nome" type="text" class="form-control irr-mono" placeholder="(automático)">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label irr-lbl">Servidor IRRd</label>
+                <select id="irr-host" class="form-select">
+                  {% for h in irr_hosts %}<option value="{{ h.host }}" title="{{ h.descr }}">{{ h.host }} — {{ h.descr }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label irr-lbl">Fontes IRR (-S)</label>
+                <input id="irr-fontes" type="text" class="form-control irr-mono" placeholder="ex: RADB,LACNIC,TC">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label irr-lbl">Max-length IPv4</label>
+                <input id="irr-maxlen4" type="number" class="form-control" min="8" max="32" placeholder="24">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label irr-lbl">Max-length IPv6</label>
+                <input id="irr-maxlen6" type="number" class="form-control" min="16" max="128" placeholder="48">
+              </div>
+              <div class="col-12 d-flex gap-4 flex-wrap">
+                <label class="irr-chk"><input type="checkbox" id="irr-agregar"> Agregar prefixos (-A)</label>
+                <label class="irr-chk"><input type="checkbox" id="irr-validar"> Só ASNs com rota registrada (-w)</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 d-flex align-items-center gap-3 flex-wrap">
+            <span id="irr-loading" style="display:none;color:rgba(88,166,255,.6);font-size:.85rem">
+              <i class="fas fa-circle-notch fa-spin me-1"></i>Consultando IRR e gerando o filtro…
+            </span>
+            <span style="font-size:.72rem;color:#555">
+              <i class="fas fa-terminal me-1"></i>{{ bgpq4_versao|default:"bgpq4" }} · dados do mirror IRR do NTT
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div id="irr-erro" style="display:none"></div>
+      <div id="irr-resultado" style="display:none"></div>
+    </div><!-- /aba irr -->
+
+    <!-- ══════════════════════════════════════════════════════════════
+         ABA: AS-SET
+         ══════════════════════════════════════════════════════════════ -->
+    <div id="lg-aba-asset" class="lg-aba" style="display:none">
+
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-5">
+              <label class="form-label irr-lbl">AS-SET (ou ASN)</label>
+              <input id="as-objeto" type="text" class="form-control irr-mono"
+                placeholder="AS-CAMPELO · AS271699:AS-CLIENTES · AS-PTTMetro-SP">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label irr-lbl">Servidor IRRd</label>
+              <select id="as-host" class="form-select">
+                {% for h in irr_hosts %}<option value="{{ h.host }}" title="{{ h.descr }}">{{ h.host }}</option>{% endfor %}
+              </select>
+            </div>
+            <div class="col-auto">
+              <button id="as-btn" class="btn irr-btn-main" onclick="asBuscar()">
+                <i class="fas fa-sitemap me-1"></i> Expandir
+              </button>
+            </div>
+            <div class="col-auto">
+              <label class="irr-chk"><input type="checkbox" id="as-contar" checked> Contar prefixos</label>
+            </div>
+            <div class="col-auto">
+              <span id="as-loading" style="display:none;color:rgba(88,166,255,.6);font-size:.85rem">
+                <i class="fas fa-circle-notch fa-spin me-1"></i>Expandindo o as-set…
+              </span>
+            </div>
+          </div>
+          <div id="as-trilha" class="mt-3" style="display:none;font-size:.78rem;color:#555"></div>
+        </div>
+      </div>
+
+      <div id="as-erro" style="display:none"></div>
+      <div id="as-resultado" style="display:none"></div>
+    </div><!-- /aba asset -->
 
   </div>
 </div>
@@ -208,6 +357,81 @@
     border:1px solid rgba(255,170,0,.3);
     color:#ffaa00;
     white-space:nowrap;
+}
+/* ── Abas IRR / AS-SET ─────────────────────────────────────────────── */
+#lg-abas { border-bottom:1px solid var(--border, #21262d); }
+#lg-abas .nav-link {
+    color:rgba(88,166,255,.55);
+    border:1px solid transparent;
+    border-bottom:none;
+    font-size:.88rem;
+    padding:.5rem 1rem;
+}
+#lg-abas .nav-link:hover { color:#58a6ff; background:rgba(88,166,255,.06); }
+#lg-abas .nav-link.active {
+    color:#58a6ff;
+    background:rgba(88,166,255,.10);
+    border-color:rgba(88,166,255,.3);
+    border-bottom-color:transparent;
+}
+.irr-lbl  { font-size:.82rem;color:rgba(88,166,255,.4);margin-bottom:.25rem }
+.irr-mono { font-family:monospace;font-size:.92rem }
+.irr-btn-main {
+    background:rgba(88,166,255,.15);
+    border:1px solid #58a6ff;
+    color:#58a6ff;
+    min-width:150px;
+}
+.irr-btn-main:hover { background:rgba(88,166,255,.25);color:#58a6ff }
+.irr-chk { font-size:.8rem;color:rgba(88,166,255,.55);display:flex;align-items:center;gap:6px;cursor:pointer }
+.irr-cmd {
+    font-family:monospace;font-size:.78rem;color:#8b949e;
+    background:#0d1117;border:1px solid #21262d;border-radius:6px;
+    padding:7px 10px;overflow-x:auto;white-space:nowrap;
+}
+.irr-pre {
+    font-family:monospace;font-size:.78rem;color:#e6edf3;
+    background:#0d1117;border:1px solid #21262d;border-radius:6px;
+    padding:10px 12px;max-height:420px;overflow:auto;margin:0;
+    white-space:pre;
+}
+.irr-kpi-lbl { font-size:.75rem;color:rgba(88,166,255,.4) }
+.irr-kpi-val { font-size:1.6rem;font-weight:700;color:#e6edf3 }
+.irr-chip {
+    display:inline-block;padding:2px 8px;border-radius:5px;margin:2px;
+    font-family:monospace;font-size:.8rem;
+    background:rgba(88,166,255,.10);border:1px solid rgba(88,166,255,.25);color:#58a6ff;
+}
+.irr-chip-set {
+    background:rgba(180,100,255,.12);border-color:rgba(180,100,255,.35);color:#b464ff;
+    cursor:pointer;
+}
+.irr-chip-set:hover { background:rgba(180,100,255,.25) }
+.irr-asn-card {
+    display:flex;flex-direction:column;gap:1px;
+    padding:6px 10px;border-radius:6px;
+    background:rgba(255,255,255,.02);border:1px solid var(--border, #21262d);
+}
+.irr-asn-card .asn  { font-family:monospace;font-size:.82rem;color:#58a6ff;font-weight:600 }
+.irr-asn-card .nome { font-size:.72rem;color:#8b949e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap }
+.irr-fonte-card {
+    border:1px solid var(--border, #21262d);border-radius:8px;
+    padding:10px 14px;margin-bottom:8px;background:var(--bg-secondary, #161b22);
+}
+.irr-badge {
+    font-size:.68rem;padding:1px 8px;border-radius:10px;
+    background:rgba(88,166,255,.10);border:1px solid rgba(88,166,255,.3);color:#58a6ff;
+    white-space:nowrap;
+}
+.irr-badge-ok   { background:rgba(63,185,80,.12);border-color:rgba(63,185,80,.35);color:#3fb950 }
+.irr-badge-warn { background:rgba(255,170,0,.10);border-color:rgba(255,170,0,.35);color:#ffaa00 }
+.irr-aviso {
+    padding:9px 14px;border-radius:8px;margin-bottom:8px;font-size:.82rem;
+    background:rgba(255,170,0,.08);border:1px solid rgba(255,170,0,.35);color:#ffaa00;
+}
+.irr-msg-erro {
+    padding:12px 16px;border-radius:8px;
+    background:rgba(224,96,96,.1);border:1px solid #e06060;color:#e06060;font-size:.88rem;
 }
 </style>
 
@@ -667,6 +891,449 @@ document.getElementById('lg-prefixo').addEventListener('keydown', e => {
     const v = document.getElementById('lg-prefixo').value.trim();
     if (v) lgBuscar();
 })();
+
+// ═════════════════════════════════════════════════════════════════════════
+// ABAS: Looking Glass · Filtro IRR (bgpq4) · AS-SET
+// ═════════════════════════════════════════════════════════════════════════
+function esc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// String segura dentro de um atributo onclick="f('…')": escapa primeiro pro JS
+// (o parser HTML desfaz as entidades antes do JS ver a string) e depois pro HTML.
+function jsStr(s) {
+    return esc(String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+}
+
+function lgAba(ev, nome) {
+    if (ev) ev.preventDefault();
+    document.querySelectorAll('.lg-aba').forEach(el => { el.style.display = 'none'; });
+    document.querySelectorAll('#lg-abas .nav-link').forEach(el => {
+        el.classList.toggle('active', el.dataset.aba === nome);
+    });
+    const pane = document.getElementById('lg-aba-' + nome);
+    if (pane) pane.style.display = '';
+    try {
+        const u = new URL(window.location);
+        u.searchParams.set('aba', nome);
+        history.replaceState(null, '', u);
+    } catch(_) {}
+}
+
+function irrCopiar(elId, btn) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const txt = el.dataset.raw !== undefined ? el.dataset.raw : el.textContent;
+    const feito = () => {
+        if (!btn) return;
+        const antes = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check me-1"></i>Copiado';
+        setTimeout(() => { btn.innerHTML = antes; }, 1600);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(txt).then(feito).catch(() => irrCopiarFallback(txt, feito));
+    } else {
+        irrCopiarFallback(txt, feito);
+    }
+}
+
+function irrCopiarFallback(txt, feito) {
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); feito(); } catch(_) {}
+    document.body.removeChild(ta);
+}
+
+function irrBaixarTexto(nomeArquivo, texto) {
+    const blob = new Blob([texto], {type: 'text/plain;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = nomeArquivo;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
+// ── Aba: Filtro IRR (bgpq4) ──────────────────────────────────────────────
+function irrParams() {
+    const p = new URLSearchParams();
+    p.set('objeto', document.getElementById('irr-objeto').value.trim());
+    p.set('vendor', document.getElementById('irr-vendor').value);
+    p.set('af',     document.getElementById('irr-af').value);
+    p.set('host',   document.getElementById('irr-host').value);
+    const nome    = document.getElementById('irr-nome').value.trim();
+    const fontes  = document.getElementById('irr-fontes').value.trim();
+    const ml4     = document.getElementById('irr-maxlen4').value.trim();
+    const ml6     = document.getElementById('irr-maxlen6').value.trim();
+    if (nome)   p.set('nome', nome);
+    if (fontes) p.set('fontes', fontes);
+    if (ml4)    p.set('maxlen4', ml4);
+    if (ml6)    p.set('maxlen6', ml6);
+    if (document.getElementById('irr-agregar').checked) p.set('agregar', '1');
+    if (document.getElementById('irr-validar').checked) p.set('validar_asn', '1');
+    return p;
+}
+
+async function irrGerar() {
+    const objeto = document.getElementById('irr-objeto').value.trim();
+    if (!objeto) { document.getElementById('irr-objeto').focus(); return; }
+
+    document.getElementById('irr-btn').disabled = true;
+    document.getElementById('irr-loading').style.display = '';
+    document.getElementById('irr-erro').style.display = 'none';
+    document.getElementById('irr-resultado').style.display = 'none';
+
+    try {
+        const r = await fetch(`{% url 'lg_irr_filtro' %}?` + irrParams().toString());
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.erro || 'Falha na consulta IRR');
+        renderIrr(d);
+    } catch(e) {
+        const box = document.getElementById('irr-erro');
+        box.style.display = '';
+        box.innerHTML = `<div class="irr-msg-erro"><i class="fas fa-times-circle me-2"></i>${esc(e.message)}</div>`;
+    } finally {
+        document.getElementById('irr-btn').disabled = false;
+        document.getElementById('irr-loading').style.display = 'none';
+    }
+}
+
+function renderIrr(d) {
+    const res    = d.resultados || {};
+    const ordem  = ['v4', 'v6'].filter(k => res[k]);
+    const totV4  = res.v4 ? res.v4.total : null;
+    const totV6  = res.v6 ? res.v6.total : null;
+    const vazio  = ordem.every(k => !res[k].total);
+
+    let html = `
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+          <span class="irr-badge ${vazio ? 'irr-badge-warn' : 'irr-badge-ok'}">
+            <i class="fas fa-${vazio ? 'exclamation-triangle' : 'check'} me-1"></i>${vazio ? 'nenhum prefixo' : 'filtro gerado'}
+          </span>
+          <strong style="color:#e6edf3;font-family:monospace">${esc(d.objeto)}</strong>
+          <span style="font-size:.82rem;color:#8b949e">${esc(d.vendor_nome)}</span>
+          <span style="font-size:.75rem;color:#555">lista <code style="color:#8b949e">${esc(d.nome_lista)}</code> · IRRd ${esc(d.host)}${d.fontes ? ' · fontes ' + esc(d.fontes) : ''}</span>
+          ${d.cache ? '<span class="irr-badge" title="resposta em cache (10 min)"><i class="fas fa-bolt me-1"></i>cache</span>' : ''}
+          <button class="btn btn-sm ms-auto" onclick="asBuscar('${jsStr(d.objeto)}')"
+            style="background:rgba(180,100,255,.12);border:1px solid rgba(180,100,255,.4);color:#b464ff;font-size:.75rem">
+            <i class="fas fa-sitemap me-1"></i>Ver membros do as-set
+          </button>
+        </div>
+        <div class="row g-3">
+          ${totV4 !== null ? `<div class="col-6 col-md-3"><div class="irr-kpi-lbl">Prefixos IPv4</div><div class="irr-kpi-val">${totV4}</div></div>` : ''}
+          ${totV6 !== null ? `<div class="col-6 col-md-3"><div class="irr-kpi-lbl">Prefixos IPv6</div><div class="irr-kpi-val">${totV6}</div></div>` : ''}
+          <div class="col-6 col-md-3"><div class="irr-kpi-lbl">Tempo do bgpq4</div><div class="irr-kpi-val">${ordem.reduce((s,k)=>Math.max(s,res[k].segundos||0),0)}s</div></div>
+        </div>
+      </div>
+    </div>`;
+
+    if (vazio) {
+        html += `<div class="irr-aviso">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            O bgpq4 não devolveu nenhum prefixo para <strong>${esc(d.objeto)}</strong>.
+            Ou o objeto não existe nas bases espelhadas por ${esc(d.host)}, ou o as-set
+            não tem <code>route</code>/<code>route6</code> registrados para os membros.
+            Confira na aba <strong>AS-SET</strong> quais bases têm o objeto.
+        </div>`;
+    }
+
+    ordem.forEach((k, i) => {
+        const r    = res[k];
+        const idPre = `irr-pre-${k}`;
+        html += `
+        <div class="card mb-4">
+          <div class="card-body">
+            <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+              <h5 class="mb-0" style="font-size:1rem;color:#e6edf3">
+                <i class="fas fa-list me-2" style="color:${r.af === 4 ? '#58a6ff' : '#b464ff'}"></i>IPv${r.af}
+              </h5>
+              <span class="irr-badge">${r.total} prefixo${r.total === 1 ? '' : 's'}</span>
+              <span style="font-size:.73rem;color:#555">${r.segundos}s · ${(r.bytes_config/1024).toFixed(1)} KB</span>
+              <div class="ms-auto d-flex gap-2">
+                <button class="btn btn-sm" onclick="irrCopiar('${idPre}', this)"
+                  style="background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.4);color:#58a6ff;font-size:.75rem">
+                  <i class="fas fa-copy me-1"></i>Copiar
+                </button>
+                <button class="btn btn-sm" onclick="irrBaixar(${r.af})"
+                  style="background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.4);color:#3fb950;font-size:.75rem">
+                  <i class="fas fa-download me-1"></i>Baixar
+                </button>
+              </div>
+            </div>
+            <div class="irr-cmd mb-2">$ ${esc(r.comando)}</div>
+            ${r.erro ? `<div class="irr-aviso"><i class="fas fa-exclamation-circle me-2"></i>${esc(r.erro)}</div>` : ''}
+            ${r.config_truncado ? `<div class="irr-aviso"><i class="fas fa-scissors me-2"></i>Saída grande demais para a tela — mostrando só o começo. Use <strong>Baixar</strong> para o arquivo completo (${r.total} prefixos).</div>` : ''}
+            <pre class="irr-pre" id="${idPre}">${esc(r.config || '(vazio)')}</pre>
+            ${r.total ? `
+            <div class="mt-2">
+              <a href="#" style="font-size:.78rem;color:rgba(88,166,255,.6);text-decoration:none"
+                 onclick="event.preventDefault();document.getElementById('irr-lista-${k}').classList.toggle('d-none')">
+                <i class="fas fa-chevron-down me-1"></i>Ver os ${r.total} prefixos
+              </a>
+              <div id="irr-lista-${k}" class="d-none mt-2">
+                ${r.prefixos.slice(0, 1500).map(p => `<span class="irr-chip">${esc(p.prefix)}${p.exact ? '' : ` <span style="color:#8b949e">(${p['greater-equal'] || ''}${p['less-equal'] ? '-' + p['less-equal'] : ''})</span>`}</span>`).join('')}
+                ${r.prefixos.length > 1500 ? `<div style="font-size:.75rem;color:#555;margin-top:6px">…e mais ${r.total - 1500} prefixos (use o botão Baixar)</div>` : ''}
+                ${r.truncado ? `<div style="font-size:.75rem;color:#ffaa00;margin-top:6px">Lista truncada pelo servidor — baixe o arquivo para a íntegra.</div>` : ''}
+              </div>
+            </div>` : ''}
+          </div>
+        </div>`;
+    });
+
+    document.getElementById('irr-resultado').innerHTML = html;
+    document.getElementById('irr-resultado').style.display = '';
+}
+
+function irrBaixar(af) {
+    const p = irrParams();
+    p.set('af', String(af));
+    p.set('download', '1');
+    window.location = `{% url 'lg_irr_filtro' %}?` + p.toString();
+}
+
+// ── Aba: AS-SET ──────────────────────────────────────────────────────────
+let _asTrilha = [];   // drill-down em as-sets aninhados
+
+async function asBuscar(objeto, semTrilha) {
+    if (objeto) {
+        document.getElementById('as-objeto').value = objeto;
+        lgAba(null, 'asset');
+    }
+    const alvo = document.getElementById('as-objeto').value.trim();
+    if (!alvo) { document.getElementById('as-objeto').focus(); return; }
+
+    if (!semTrilha) {
+        const ja = _asTrilha.indexOf(alvo.toUpperCase());
+        if (ja >= 0) _asTrilha = _asTrilha.slice(0, ja + 1);
+        else _asTrilha.push(alvo.toUpperCase());
+    }
+    asRenderTrilha();
+
+    document.getElementById('as-btn').disabled = true;
+    document.getElementById('as-loading').style.display = '';
+    document.getElementById('as-erro').style.display = 'none';
+
+    const p = new URLSearchParams({
+        objeto: alvo,
+        host:   document.getElementById('as-host').value,
+        contar_prefixos: document.getElementById('as-contar').checked ? '1' : '0',
+    });
+
+    try {
+        const r = await fetch(`{% url 'lg_as_set' %}?` + p.toString());
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.erro || 'Falha ao expandir o as-set');
+        renderAsSet(d);
+    } catch(e) {
+        const box = document.getElementById('as-erro');
+        box.style.display = '';
+        box.innerHTML = `<div class="irr-msg-erro"><i class="fas fa-times-circle me-2"></i>${esc(e.message)}</div>`;
+        document.getElementById('as-resultado').style.display = 'none';
+    } finally {
+        document.getElementById('as-btn').disabled = false;
+        document.getElementById('as-loading').style.display = 'none';
+    }
+}
+
+function asRenderTrilha() {
+    const el = document.getElementById('as-trilha');
+    if (_asTrilha.length < 2) { el.style.display = 'none'; return; }
+    el.style.display = '';
+    el.innerHTML = '<i class="fas fa-stream me-2"></i>' + _asTrilha.map((o, i) =>
+        i === _asTrilha.length - 1
+            ? `<strong style="color:#b464ff;font-family:monospace">${esc(o)}</strong>`
+            : `<a href="#" style="color:rgba(88,166,255,.7);font-family:monospace;text-decoration:none"
+                 onclick="event.preventDefault();asBuscar('${jsStr(o)}')">${esc(o)}</a>`
+    ).join(' <span style="color:#555">›</span> ');
+}
+
+let _asUltimo = null;
+
+function renderAsSet(d) {
+    _asUltimo = d;
+    const pfx    = d.prefixos || {};
+    const nSets  = (d.sets_aninhados || []).length;
+
+    let html = `
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+          <span class="irr-badge ${d.existe ? 'irr-badge-ok' : 'irr-badge-warn'}">
+            <i class="fas fa-${d.existe ? 'check' : 'exclamation-triangle'} me-1"></i>${d.existe ? 'encontrado' : 'não encontrado'}
+          </span>
+          <strong style="color:#e6edf3;font-family:monospace;font-size:1rem">${esc(d.objeto)}</strong>
+          <span style="font-size:.75rem;color:#555">IRRd ${esc(d.host)} · ${d.segundos}s</span>
+          ${d.cache ? '<span class="irr-badge" title="resposta em cache (10 min)"><i class="fas fa-bolt me-1"></i>cache</span>' : ''}
+          <button class="btn btn-sm ms-auto" onclick="asGerarFiltro()"
+            style="background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.4);color:#58a6ff;font-size:.75rem">
+            <i class="fas fa-filter me-1"></i>Gerar filtro deste objeto
+          </button>
+        </div>
+        <div class="row g-3">
+          <div class="col-6 col-md-3"><div class="irr-kpi-lbl">ASNs (recursivo)</div><div class="irr-kpi-val">${d.total_asns}</div></div>
+          <div class="col-6 col-md-3"><div class="irr-kpi-lbl">AS-SETs aninhados</div><div class="irr-kpi-val" style="color:#b464ff">${nSets}</div></div>
+          <div class="col-6 col-md-3"><div class="irr-kpi-lbl">Prefixos IPv4</div><div class="irr-kpi-val" style="color:#58a6ff">${pfx.v4 && pfx.v4.total !== null && pfx.v4.total !== undefined ? pfx.v4.total : '—'}</div></div>
+          <div class="col-6 col-md-3"><div class="irr-kpi-lbl">Prefixos IPv6</div><div class="irr-kpi-val" style="color:#b464ff">${pfx.v6 && pfx.v6.total !== null && pfx.v6.total !== undefined ? pfx.v6.total : '—'}</div></div>
+        </div>
+      </div>
+    </div>`;
+
+    (d.avisos || []).forEach(a => {
+        html += `<div class="irr-aviso"><i class="fas fa-exclamation-triangle me-2"></i>${esc(a)}</div>`;
+    });
+
+    // ── Objeto em cada base IRR ───────────────────────────────────────
+    if ((d.fontes || []).length) {
+        html += `
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5 class="mb-1" style="font-size:1rem;color:#e6edf3"><i class="fas fa-database me-2" style="color:#ffaa00"></i>Objeto nas bases IRR</h5>
+            <div style="font-size:.75rem;color:#555;margin-bottom:12px">O upstream filtra pela base que ele consulta — se o conteúdo divergir entre elas, o filtro dele diverge também.</div>`;
+        d.fontes.forEach((f, i) => {
+            const idm = `as-membros-${i}`;
+            html += `
+            <div class="irr-fonte-card">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="irr-badge irr-badge-ok">${esc(f.source)}</span>
+                <span style="font-family:monospace;font-size:.85rem;color:#e6edf3">${esc(f.nome)}</span>
+                <span style="font-size:.78rem;color:#8b949e">${esc(f.descr)}</span>
+                ${f.mnt_by ? `<span style="font-size:.72rem;color:#555">mnt-by ${esc(f.mnt_by)}</span>` : ''}
+                ${f.alterado ? `<span style="font-size:.72rem;color:#555">· ${esc(f.alterado)}</span>` : ''}
+                ${f.n_membros ? `<a href="#" class="ms-auto" style="font-size:.75rem;color:rgba(88,166,255,.6);text-decoration:none"
+                     onclick="event.preventDefault();document.getElementById('${idm}').classList.toggle('d-none')">
+                     <i class="fas fa-chevron-down me-1"></i>${f.n_membros} membros diretos</a>`
+                  : `<span class="ms-auto" style="font-size:.72rem;color:#555">sem members nesta base</span>`}
+              </div>
+              ${f.n_membros ? `<div id="${idm}" class="d-none mt-2">${
+                  f.membros.map(m => /^AS\d+$/i.test(m)
+                      ? `<span class="irr-chip">${esc(m)}</span>`
+                      : `<span class="irr-chip irr-chip-set" onclick="asBuscar('${jsStr(m)}')" title="abrir este as-set">${esc(m)}</span>`
+                  ).join('')}</div>` : ''}
+            </div>`;
+        });
+        html += `</div></div>`;
+    }
+
+    // ── Membros diretos ───────────────────────────────────────────────
+    if (!d.e_asn) {
+        html += `
+        <div class="card mb-4">
+          <div class="card-body">
+            <h5 class="mb-3" style="font-size:1rem;color:#e6edf3"><i class="fas fa-layer-group me-2" style="color:#b464ff"></i>Membros diretos (nível 1)</h5>`;
+        if (nSets) {
+            html += `<div class="mb-3">
+                <div class="irr-kpi-lbl mb-1">AS-SETs aninhados — clique para abrir</div>
+                ${d.sets_aninhados.map(s => `<span class="irr-chip irr-chip-set" onclick="asBuscar('${jsStr(s)}')">${esc(s)}</span>`).join('')}
+              </div>`;
+        }
+        html += `<div>
+            <div class="irr-kpi-lbl mb-1">ASNs declarados direto no objeto (${(d.asns_diretos||[]).length})</div>
+            ${(d.asns_diretos || []).length
+                ? d.asns_diretos.map(a => `<span class="irr-chip" data-asn="${esc(a)}" onmouseenter="lgAsnShow(this)" onmouseleave="lgAsnHide()">AS${esc(a)}</span>`).join('')
+                : '<span style="font-size:.8rem;color:#555">nenhum</span>'}
+          </div>
+        </div></div>`;
+    }
+
+    // ── ASNs expandidos ───────────────────────────────────────────────
+    html += `
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+          <h5 class="mb-0" style="font-size:1rem;color:#e6edf3"><i class="fas fa-sitemap me-2" style="color:#3fb950"></i>ASNs do fechamento recursivo</h5>
+          <span class="irr-badge">${d.total_asns}</span>
+          <input id="as-filtro" class="form-control form-control-sm" style="max-width:220px;font-size:.8rem"
+                 placeholder="filtrar ASN ou nome…" oninput="asFiltrar(this.value)">
+          <div class="ms-auto d-flex gap-2">
+            <button class="btn btn-sm" onclick="asCopiarAsns(this)"
+              style="background:rgba(88,166,255,.12);border:1px solid rgba(88,166,255,.4);color:#58a6ff;font-size:.75rem">
+              <i class="fas fa-copy me-1"></i>Copiar ASNs
+            </button>
+            <button class="btn btn-sm" onclick="asBaixarAsns()"
+              style="background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.4);color:#3fb950;font-size:.75rem">
+              <i class="fas fa-download me-1"></i>Baixar .txt
+            </button>
+          </div>
+        </div>
+        <div id="as-asns-grid" class="row g-2">
+          ${(d.asns || []).map(a => `
+            <div class="col-6 col-md-4 col-lg-3 as-asn-item" data-busca="${esc((a.asn + ' ' + (a.nome||'')).toLowerCase())}">
+              <div class="irr-asn-card" title="${esc(a.nome || '')}">
+                <span class="asn">AS${esc(a.asn)}</span>
+                <span class="nome">${esc(a.nome || '—')}</span>
+              </div>
+            </div>`).join('')}
+        </div>
+        ${d.lista_truncada ? `<div style="font-size:.75rem;color:#ffaa00;margin-top:10px"><i class="fas fa-scissors me-1"></i>Mostrando ${(d.asns||[]).length} de ${d.total_asns} ASNs — use <strong>Baixar .txt</strong> para a lista completa.</div>` : ''}
+        ${d.total_asns === 0 ? '<div style="font-size:.85rem;color:#555">Nenhum ASN — objeto sem membros ou inexistente nas bases consultadas.</div>' : ''}
+      </div>
+    </div>`;
+
+    document.getElementById('as-resultado').innerHTML = html;
+    document.getElementById('as-resultado').style.display = '';
+}
+
+function asFiltrar(termo) {
+    const t = (termo || '').toLowerCase().trim();
+    document.querySelectorAll('.as-asn-item').forEach(el => {
+        el.style.display = (!t || el.dataset.busca.includes(t)) ? '' : 'none';
+    });
+}
+
+function asListaAsns() {
+    return (_asUltimo && _asUltimo.asns || []).map(a => 'AS' + a.asn).join('\n');
+}
+
+function asCopiarAsns(btn) {
+    const tmp = document.createElement('div');
+    tmp.id = 'as-tmp-copy';
+    tmp.dataset.raw = asListaAsns();
+    tmp.style.display = 'none';
+    document.body.appendChild(tmp);
+    irrCopiar('as-tmp-copy', btn);
+    setTimeout(() => tmp.remove(), 100);
+}
+
+function asBaixarAsns() {
+    if (!_asUltimo) return;
+    const p = new URLSearchParams({objeto: _asUltimo.objeto, host: _asUltimo.host, formato: 'txt'});
+    window.location = `{% url 'lg_as_set' %}?` + p.toString();
+}
+
+function asGerarFiltro() {
+    if (!_asUltimo) return;
+    document.getElementById('irr-objeto').value = _asUltimo.objeto;
+    document.getElementById('irr-host').value   = _asUltimo.host;
+    lgAba(null, 'irr');
+    irrGerar();
+}
+
+// Enter nos campos das novas abas
+document.getElementById('irr-objeto').addEventListener('keydown', e => { if (e.key === 'Enter') irrGerar(); });
+document.getElementById('as-objeto').addEventListener('keydown', e => { if (e.key === 'Enter') asBuscar(); });
+
+// Aba inicial + objeto vindo por URL (?aba=irr&objeto=AS-X)
+(function(){
+    const aba = "{{ aba_inicial|escapejs }}" || 'lg';
+    const obj = "{{ objeto_inicial|escapejs }}";
+    if (obj) {
+        document.getElementById('irr-objeto').value = obj;
+        document.getElementById('as-objeto').value  = obj;
+    }
+    if (aba === 'irr' || aba === 'asset') {
+        lgAba(null, aba);
+        if (obj) { if (aba === 'irr') irrGerar(); else asBuscar(); }
+    }
+})();
+
 </script>
 
 {% endblock %}

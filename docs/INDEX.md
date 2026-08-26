@@ -2,6 +2,34 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 46 — 25/08/2026: Consulta IRR e AS-SET na ferramenta de LG (bgpq4)
+
+**O que foi implementado?**
+- 🧰 **Duas abas novas em Ferramentas → Pesquisa LG**: a tela virou "Looking Glass ·
+  Filtro IRR (bgpq4) · AS-SET" — a consulta de prefixo continua igual, na primeira aba.
+- 🔧 **Filtro IRR**: gera o prefix-list/route-filter de um ASN ou as-set já no formato do
+  fabricante (Cisco IOS/XR, Junos incl. `route-filter-list`, **Huawei VRP e XPL**,
+  **MikroTik v6 e v7**, Nokia SR OS/MD-CLI/SR Linux, Arista, BIRD, OpenBGPD, JSON e lista
+  simples), com `-S` de fontes, max-length, agregação e `-w`. Mostra o comando bgpq4 exato,
+  copia e baixa.
+- 🌳 **AS-SET**: membros diretos, as-sets aninhados clicáveis (com trilha de navegação),
+  ASNs do fechamento recursivo com nome, contagem de prefixos v4/v6 e — o mais útil — **o
+  objeto em cada base IRR** (RADB × LACNIC × TC × RIPE…), com aviso quando divergem: é aí
+  que mora o "meu prefixo não passa no upstream".
+- 🛡️ Entrada validada por regex antes de virar argumento do bgpq4/socket whois; resultado
+  10 min no Redis; downloads (config completa e lista de ASNs) refazem a consulta sem limite.
+- ✅ Validado ao vivo: `AS53181`, `AS-GOOGLE` (5 bases, 3 sets aninhados) e `AS-HURRICANE`
+  (25.456 ASNs, 954 mil prefixos v4) em ~11 s.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[CONSULTA_IRR_ASSET.md](CONSULTA_IRR_ASSET.md)** | Novo — por que bgpq4 e não bgpq3, as duas abas, endpoints, limites de tamanho, cache, validação e armadilhas |
+| **[../SISTEMA.md](../SISTEMA.md)** | Seção "Ferramentas de Rede → Looking Glass": as três abas |
+
+---
+
 ### Sessão 45 — 23/08/2026: Proteção contra invasão (bloqueio de login, fail2ban, SQL injection)
 
 **O que foi implementado?**
@@ -1381,6 +1409,7 @@ docs/
 └─ MODULOS_CLIENTE.md ..................... 📌 Habilitar/desabilitar ferramentas por cliente
 └─ HOTSPOT_INTEGRACAO_DISPARO.md .......... 📌 Hotspot: disparo automático de WhatsApp (Chatmix + Opa Suite)
 └─ GEOLOCALIZACAO_IP.md ................... 📌 Geolocalização de IP, correção e Geofeed público (múltiplos blocos)
+└─ CONSULTA_IRR_ASSET.md .................. 📌 Filtro IRR pelo bgpq4 e expansão de as-set (abas da Pesquisa LG)
 ```
 
 ---
@@ -1515,6 +1544,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 25/08/2026 | Pesquisa LG ganhou duas abas: **Filtro IRR (bgpq4)** — prefix-list de ASN/as-set no formato do fabricante, com comando exato, copiar e baixar — e **AS-SET** — membros diretos, sets aninhados clicáveis, ASNs recursivos com nome, contagem de prefixos e o objeto em cada base IRR com aviso de divergência | CONSULTA_IRR_ASSET.md |
 | 20/08/2026 | Acessos: fix do RDP — botão "Acessar" abria o terminal SSH (`terminal_tab_manager.js` não tratava o protocolo `RDP`) e, depois disso, a sessão subia só com tela preta porque o `xfreerdp` era chamado com `/sec:tls` e o Windows Server exige NLA; stderr do cliente RDP passou a ser logado e a falha vira mensagem na tela | winbox_vnc.md |
 | 20/08/2026 | Clientes: botão "Listar Chamados" na aba Tarefas — histórico de chamados do cliente com a conversa abrindo em modal **dentro do CRM** (o próprio cliente valida os chamados dele: `login_required` + `pode_acessar_cliente`, nota interna nunca sai pra quem não é staff); filtros no servidor por busca/status/responsável/categoria e período com escolha de qual data filtrar (abertura, última msg ou encerramento), atalhos de período e resumo com tempo médio de resolução | ATENDIMENTO.md |
 | 20/08/2026 | Atendimento: agente IA "Tomichinho" passa a **encerrar o chamado escrevendo a resolução** a partir do que o atendente respondeu (gatilho no grupo do WhatsApp, na caixa normal do chat e em comentário interno); `services.finalizar_conversa()` unifica o fechamento da tela e o da IA | ATENDIMENTO.md |
