@@ -67,12 +67,16 @@ sudo apt install -y \
     expect \
     novnc \
     fail2ban \
+    whois \
+    bgpq4 \
     sudo
 ```
 
 > **Nota:** O Python 3.12 é obrigatório. Verifique com `python3.12 --version`.
 
 > **Nota:** O `fail2ban` só entra em ação depois de configurado — ver seção [14 — Fail2ban](#14-fail2ban-proteção-contra-invasão).
+
+> **Nota:** O `bgpq4` (e o `whois`) alimentam as abas **Filtro IRR** e **AS-SET** da Pesquisa LG — sem ele, essas abas respondem "bgpq4 não está instalado no servidor" e o resto do CRM segue normal. Precisa de saída TCP na porta 43 para `rr.ntt.net`. Ver [docs/CONSULTA_IRR_ASSET.md](docs/CONSULTA_IRR_ASSET.md).
 
 > **Nota:** O pacote `novnc` é necessário para o acesso via WinBox/VNC no navegador. Após instalar, copie os arquivos para os estáticos do projeto (ver seção [9 — Arquivos Estáticos e Mídia](#9-arquivos-estáticos-e-mídia)).
 

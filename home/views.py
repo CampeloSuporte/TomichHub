@@ -376,8 +376,18 @@ def configuracoes_sistema(request):
 @login_required(login_url='login')
 @ferramenta_instancia_required('lg')
 def lg_pesquisa(request):
+    from home import irr_tools
+
     prefixo = request.GET.get('prefixo', '')
-    return render(request, 'lg_pesquisa.html', {'prefixo_inicial': prefixo})
+    return render(request, 'lg_pesquisa.html', {
+        'prefixo_inicial': prefixo,
+        'objeto_inicial':  request.GET.get('objeto', ''),
+        'aba_inicial':     request.GET.get('aba', 'lg'),
+        'irr_vendors':     [{'id': k, 'nome': v['nome']} for k, v in irr_tools.VENDORS.items()],
+        'irr_hosts':       [{'host': h, 'descr': d} for h, d in irr_tools.IRRD_HOSTS.items()],
+        'irr_host_padrao': irr_tools.IRRD_HOST,
+        'bgpq4_versao':    irr_tools.versao_bgpq4(),
+    })
 
 
 @login_required(login_url='login')
@@ -785,6 +795,166 @@ def lg_pesquisa_buscar(request):
         'origin_info':       origin_info,
         'geo_info':          geo_info_raw,
     })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CONSULTA IRR (bgpq4) E EXPANSÃO DE AS-SET — abas da ferramenta de LG
+# ─────────────────────────────────────────────────────────────────────────────
+def _irr_cache_get(chave, gerar, segundos=600):
+    """IRR muda devagar; 10 min de cache poupa o mirror e deixa a tela rápida."""
+    from django.core.cache import cache
+    dados = cache.get(chave)
+    if dados is None:
+        dados = gerar()
+        try:
+            cache.set(chave, dados, segundos)
+        except Exception:      # redis fora do ar não pode derrubar a consulta
+            pass
+        dados['cache'] = False
+    else:
+        dados['cache'] = True
+    return dados
+
+
+def _irr_int(valor, minimo, maximo):
+    try:
+        n = int(valor)
+    except (TypeError, ValueError):
+        return None
+    return n if minimo <= n <= maximo else None
+
+
+@login_required(login_url='login')
+@ferramenta_instancia_required('lg')
+def lg_irr_filtro(request):
+    """Gera prefix-list/filtro de um ASN ou as-set com o bgpq4.
+
+    `?download=1` devolve a configuração como arquivo (as-sets grandes passam
+    fácil de 1 MB de texto — copiar da tela não é opção).
+    """
+    from home import irr_tools
+
+    q = request.GET
+    try:
+        objeto = irr_tools.validar_objeto(q.get('objeto', ''))
+        host   = irr_tools.validar_host(q.get('host', ''))
+        fontes = irr_tools.validar_fontes(q.get('fontes', ''))
+        vendor = (q.get('vendor') or 'cisco').strip().lower()
+        if vendor not in irr_tools.VENDORS:
+            raise irr_tools.IRRError(f'Fabricante desconhecido: {vendor}')
+        nome = (q.get('nome') or '').strip() or irr_tools.nome_lista_padrao(objeto)
+
+        af   = (q.get('af') or 'ambos').strip()
+        afs  = (4,) if af == '4' else (6,) if af == '6' else (4, 6)
+
+        opcoes = dict(
+            vendor=vendor, afs=afs, nome=nome, host=host, fontes=fontes,
+            agregar=q.get('agregar') in ('1', 'true', 'on'),
+            validar_asn=q.get('validar_asn') in ('1', 'true', 'on'),
+            maxlen4=_irr_int(q.get('maxlen4'), 8, 32),
+            maxlen6=_irr_int(q.get('maxlen6'), 16, 128),
+            mais_especificos=_irr_int(q.get('mais_especificos'), 8, 128),
+        )
+    except irr_tools.IRRError as e:
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+    if not irr_tools.bgpq4_disponivel():
+        return JsonResponse({'ok': False, 'erro': 'bgpq4 não está instalado no servidor.'}, status=503)
+
+    if q.get('download') in ('1', 'true'):
+        # Baixar = arquivo inteiro, sem cache e sem a lista de prefixos em JSON
+        # (as-set grande gera dezenas de MB, que não cabem no Redis nem na tela).
+        from django.http import HttpResponse
+        try:
+            completo = irr_tools.gerar_filtro(objeto, limite_prefixos=0,
+                                              limite_config=None, **opcoes)
+        except irr_tools.IRRError as e:
+            return JsonResponse({'ok': False, 'erro': str(e)}, status=502)
+        partes = []
+        for af in afs:
+            r = completo.get(f'v{af}', {})
+            if r.get('config'):
+                partes.append(f'! ── {objeto} — IPv{af} — {r["total"]} prefixos '
+                              f'({irr_tools.VENDORS[vendor]["nome"]}) ──\n{r["config"]}')
+            elif r.get('erro'):
+                partes.append(f'! IPv{af}: {r["erro"]}\n')
+        ext  = irr_tools.VENDORS[vendor]['ext']
+        resp = HttpResponse(''.join(partes) or '! sem resultados\n',
+                            content_type='text/plain; charset=utf-8')
+        resp['Content-Disposition'] = (
+            f'attachment; filename="{nome.lower()}-{vendor}.{ext}"')
+        return resp
+
+    chave = 'lg_irr:' + hashlib.md5(
+        json.dumps([objeto, opcoes['vendor'], sorted(afs), nome, host, fontes,
+                    opcoes['agregar'], opcoes['validar_asn'], opcoes['maxlen4'],
+                    opcoes['maxlen6'], opcoes['mais_especificos']],
+                   sort_keys=True, default=str).encode()).hexdigest()
+
+    try:
+        dados = _irr_cache_get(chave, lambda: {'resultados': irr_tools.gerar_filtro(objeto, **opcoes)})
+    except irr_tools.IRRError as e:
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=502)
+
+    return JsonResponse({
+        'ok':           True,
+        'objeto':       objeto,
+        'vendor':       vendor,
+        'vendor_nome':  irr_tools.VENDORS[vendor]['nome'],
+        'nome_lista':   nome,
+        'host':         host,
+        'fontes':       fontes,
+        'cache':        dados.get('cache', False),
+        'resultados':   dados['resultados'],
+    })
+
+
+@login_required(login_url='login')
+@ferramenta_instancia_required('lg')
+def lg_as_set(request):
+    """Expande um as-set: membros diretos, ASNs recursivos e o objeto por base IRR."""
+    from home import irr_tools
+
+    q = request.GET
+    try:
+        objeto = irr_tools.validar_objeto(q.get('objeto', ''))
+        host   = irr_tools.validar_host(q.get('host', ''))
+        fontes = irr_tools.validar_fontes(q.get('fontes', ''))
+    except irr_tools.IRRError as e:
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+
+    contar = q.get('contar_prefixos', '1') in ('1', 'true', 'on')
+
+    if q.get('formato') == 'txt':
+        # Lista completa de ASNs — sem cache, sem nomes e sem contar prefixos:
+        # só a expansão recursiva no IRRd (as-set grande passa de 25 mil ASNs).
+        from django.http import HttpResponse
+        try:
+            completo = irr_tools.consultar_as_set(objeto, host=host, fontes=fontes,
+                                                  com_prefixos=False, limite_nomes=0,
+                                                  limite_lista=None)
+        except irr_tools.IRRError as e:
+            return JsonResponse({'ok': False, 'erro': str(e)}, status=502)
+        corpo = ''.join(f'AS{a["asn"]}\n' for a in completo['asns'])
+        resp = HttpResponse(corpo or '', content_type='text/plain; charset=utf-8')
+        arq = _re.sub(r'[^a-z0-9\-]', '-', objeto.lower())
+        resp['Content-Disposition'] = f'attachment; filename="{arq}-asns.txt"'
+        return resp
+
+    chave  = 'lg_asset:' + hashlib.md5(
+        f'{objeto}|{host}|{fontes}|{contar}'.encode()).hexdigest()
+
+    try:
+        dados = _irr_cache_get(
+            chave,
+            lambda: irr_tools.consultar_as_set(objeto, host=host, fontes=fontes,
+                                               com_prefixos=contar),
+        )
+    except irr_tools.IRRError as e:
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=502)
+
+    dados['ok'] = True
+    return JsonResponse(dados)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

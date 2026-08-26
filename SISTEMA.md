@@ -358,13 +358,16 @@ Os banimentos do fail2ban **não** têm modelo: a fonte da verdade é o `fail2ba
 
 **Looking Glass (Pesquisa LG):**
 
-- URL: `/home/ferramentas/lg/`
+- URL: `/home/ferramentas/lg/` — três abas: **Looking Glass**, **Filtro IRR (bgpq4)** e **AS-SET**
 - Consulta um prefixo IPv4 ou IPv6 em múltiplos coletores BGP públicos simultaneamente
 - Fontes: RIPE NCC RIS (API stat.ripe.net), RIPE RIS Whois (riswhois.ripe.net:43)
 - Exibe AS paths agrupados por frequência com identificação do país de cada coletor RRC
 - Badges IX.br/PTT: coletor RRC15 (São Paulo) identificado com badge `BR — IX.br/PTT`
 - Modal de topologia BGP: clique em qualquer AS path para visualizar graficamente o caminho AS → ASN de origem
 - Integrado com a aba IRR/RPKI dos clientes via botão "Consultar LG" e query string `?prefixo=`
+- **Aba Filtro IRR (bgpq4)**: gera o prefix-list/route-filter de um ASN ou as-set no formato do fabricante (Cisco IOS/XR, Junos, Huawei VRP/XPL, MikroTik v6/v7, Nokia, Arista, BIRD, OpenBGPD, JSON, lista simples), com fontes IRR, max-length, agregação e download do arquivo completo
+- **Aba AS-SET**: membros diretos, as-sets aninhados clicáveis, ASNs do fechamento recursivo com nome, contagem de prefixos v4/v6 e o objeto em cada base IRR (RADB, LACNIC, TC, RIPE…) com aviso quando divergem
+- Detalhes: [docs/CONSULTA_IRR_ASSET.md](docs/CONSULTA_IRR_ASSET.md)
 
 **Geolocalização IP:**
 
@@ -414,6 +417,7 @@ Os banimentos do fail2ban **não** têm modelo: a fonte da verdade é o `fail2ba
 | MikroTik | API RouterOS / Winbox | Configuração de VPN, acesso remoto |
 | RIPE NCC RIS | REST API (stat.ripe.net) | Pesquisa Looking Glass — AS paths por prefixo |
 | RIPE RIS Whois | TCP porta 43 (riswhois.ripe.net) | Consulta de AS paths via protocolo WHOIS |
+| NTT IRR (rr.ntt.net) | IRRd/WHOIS porta 43 + bgpq4 | Filtro IRR por fabricante e expansão de as-set (Pesquisa LG) |
 | ip-api.com | REST API (HTTP) | Geolocalização IP — país, estado, cidade, ASN |
 | ipinfo.io | REST API (HTTPS) | Geolocalização IP — país, estado, cidade, org |
 | ipwhois.app | REST API (HTTPS) | Geolocalização IP — país, estado, cidade, org |
@@ -780,7 +784,8 @@ Quando acessada com `?prefixo=x.x.x.x/xx` na URL, a ferramenta executa a busca a
 
 **Arquivos:**
 
-- Views: `home/views.py` → funções `lg_pesquisa` e `lg_pesquisa_buscar`
+- Views: `home/views.py` → funções `lg_pesquisa`, `lg_pesquisa_buscar`, `lg_irr_filtro` e `lg_as_set`
+- Consultas IRR/bgpq4: `home/irr_tools.py`
 - Template: `home/templates/lg_pesquisa.html`
 - URLs: `home/urls.py`
 
