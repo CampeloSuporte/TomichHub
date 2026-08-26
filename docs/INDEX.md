@@ -2,6 +2,35 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 47 — 26/08/2026: Topologia — tela cheia cortada e navegação lenta
+
+**O que foi implementado?**
+- 🖥️ **Fix da tela cheia**: o `⛶` do editor abria o mapa **cortado numa faixa no topo**, com o
+  resto da tela preto, quando o editor roda embutido na aba Topologia do cadastro do cliente.
+  O pedido de fullscreen ia pro `<html>` **de dentro do `<iframe>`**: o navegador pintava a
+  moldura no tamanho da tela, mas o **viewport do iframe continuava com a altura antiga**
+  (`calc(100vh - 200px)`), então todas as alturas do editor seguiam valendo a caixa pequena.
+  Agora quem entra em tela cheia é o **próprio `<iframe>`**, no documento pai
+  (`window.frameElement`) — o viewport de dentro é redimensionado de verdade. Em aba própria
+  nada muda: continua o `<html>` local.
+- ⚡ **Navegação do mapa muito mais leve** (pan, zoom e arrastar host). O mapa é um `<svg>` só,
+  então qualquer movimento rasteriza a cena inteira a cada frame — com ~35 hosts e ~40 enlaces
+  o arraste caía a poucos quadros por segundo. `mousemove` e roda do mouse passaram a **agendar**
+  o desenho (1x por frame, `requestAnimationFrame`); arrastar um host redesenha **só os enlaces
+  que tocam nele** (antes: os 40, com `<animateMotion>` e tudo) e move o ícone pelo `transform`
+  em vez de reconstruir ~15 elementos SVG via `innerHTML`; o rect do canvas virou cache de um
+  frame; e `body.nav-busy` tira os efeitos decorativos enquanto o mapa se move, devolvendo 200ms
+  depois que para.
+- 🔒 Nada disso muda dado nenhum — `nav-busy` é só visual, no mesmo espírito do botão "Efeitos".
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[topologia.md](topologia.md)** | Seção "Tela Cheia" reescrita (tabela de qual elemento entra em fullscreen em cada situação, por que não o `<html>` do iframe) e nova seção "Desempenho da navegação" |
+
+---
+
 ### Sessão 46 — 25/08/2026: Consulta IRR e AS-SET na ferramenta de LG (bgpq4)
 
 **O que foi implementado?**
@@ -1544,6 +1573,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 26/08/2026 | Topologia: tela cheia abria o editor cortado no iframe do cadastro (fullscreen passou a ser pedido no próprio `<iframe>`, no documento pai) e navegação do mapa otimizada — desenho 1x por frame, só os enlaces do host movido, ícone reposicionado por `transform` e efeitos decorativos suspensos durante o movimento | topologia.md |
 | 25/08/2026 | Pesquisa LG ganhou duas abas: **Filtro IRR (bgpq4)** — prefix-list de ASN/as-set no formato do fabricante, com comando exato, copiar e baixar — e **AS-SET** — membros diretos, sets aninhados clicáveis, ASNs recursivos com nome, contagem de prefixos e o objeto em cada base IRR com aviso de divergência | CONSULTA_IRR_ASSET.md |
 | 20/08/2026 | Acessos: fix do RDP — botão "Acessar" abria o terminal SSH (`terminal_tab_manager.js` não tratava o protocolo `RDP`) e, depois disso, a sessão subia só com tela preta porque o `xfreerdp` era chamado com `/sec:tls` e o Windows Server exige NLA; stderr do cliente RDP passou a ser logado e a falha vira mensagem na tela | winbox_vnc.md |
 | 20/08/2026 | Clientes: botão "Listar Chamados" na aba Tarefas — histórico de chamados do cliente com a conversa abrindo em modal **dentro do CRM** (o próprio cliente valida os chamados dele: `login_required` + `pode_acessar_cliente`, nota interna nunca sai pra quem não é staff); filtros no servidor por busca/status/responsável/categoria e período com escolha de qual data filtrar (abertura, última msg ou encerramento), atalhos de período e resumo com tempo médio de resolução | ATENDIMENTO.md |
@@ -1603,7 +1633,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 ---
 
-**Última atualização:** 26/07/2026  
+**Última atualização:** 26/08/2026  
 **Versão:** 2.1  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)
