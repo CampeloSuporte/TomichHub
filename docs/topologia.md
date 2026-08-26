@@ -358,11 +358,9 @@ traz os dispositivos de volta.
 
 ---
 
-## Tela Cheia — 2026-08-25
+## Tela Cheia — 2026-08-25 (corrigida em 2026-08-26)
 
 Botão **`⛶`** no último cluster da toolbar (junto de legenda/efeitos) ou a tecla **F**.
-`topo.toggleFullscreen()` pede fullscreen no **`<html>`**, não só no canvas — toolbar, paleta,
-painel de propriedades e barra de status vão junto, e o editor continua inteiro.
 
 O caso que motivou: o editor roda **embutido num `<iframe>`** na aba Topologia do cadastro do
 cliente (`clientes/templates/listar.html`, `?embed=1`), com `height: calc(100vh - 200px)` — sobra
@@ -370,19 +368,77 @@ pouca área pra desenhar. Esse iframe precisou ganhar **`allowfullscreen allow="
 sem o atributo o navegador recusa o pedido de dentro do iframe e o botão simplesmente não
 reagiria.
 
-| Situação | Comportamento |
+### Quem vai pra tela cheia (`_fsAlvo`)
+
+Depende de onde o editor está rodando:
+
+| Situação | Elemento que entra em fullscreen | Documento que recebe o evento |
+|---|---|---|
+| Aba própria (`/clientes/<id>/topologia/editor/`) | `document.documentElement` (o `<html>` do editor) | o próprio |
+| Embutido no cadastro do cliente | **o `<iframe>`**, via `window.frameElement` | o documento **pai** |
+| Iframe cross-origin (frameElement inacessível) | `document.documentElement` | o próprio |
+
+**Por que não o `<html>` de dentro do iframe.** Era assim até 25/08 e dava *editor cortado*: o
+navegador desenha a moldura no tamanho da tela, mas o **viewport do iframe continua com o
+tamanho antigo**. Como as alturas do editor são relativas (`body` em `100%`, painéis em `100%`),
+tudo continuava valendo o `calc(100vh - 200px)` do cadastro — o editor aparecia espremido numa
+faixa no topo e o resto da tela ficava preto. Mandando o **próprio `<iframe>`** pra tela cheia,
+ele vai pra *top layer* em tela inteira (a folha de estilo do navegador aplica
+`position:fixed;inset:0;width:100%!important;height:100%!important`, que vence o `style=` inline
+do iframe) e o viewport de dentro é redimensionado de verdade.
+
+Consequências práticas no código (`static/js/topo_main.js`):
+
+- `_emFullscreen()` olha os **dois** documentos (o local e o do pai).
+- Sair pede `exitFullscreen()` **no documento que entrou**, não sempre no local.
+- O listener de `fullscreenchange` é registrado nos dois documentos — o evento do iframe sai no
+  pai, e sem isso o botão nunca virava "sair".
+- `_aoTrocarFullscreen()` ainda invalida o rect cacheado do canvas (ver *Desempenho* abaixo),
+  já que o viewport mudou de tamanho.
+
+Sair: **F** de novo, **Esc** (o navegador sai sozinho) ou o botão, que vira `⛷` enquanto está em
+tela cheia.
+
+| Recusa | Comportamento |
 |---|---|
-| Aba própria (`/clientes/<id>/topologia/editor/`) | Entra e sai normalmente |
-| Iframe do cadastro do cliente | Entra e sai normalmente (o `allowfullscreen` está lá) |
 | Iframe de terceiros sem permissão | `document.fullscreenEnabled === false` → toast "abra o editor em nova aba", em vez de um botão morto |
 | Recusa do navegador (sem gesto do usuário, política de permissão) | A promise rejeitada é capturada e vira o mesmo toast — nunca um erro solto no console |
 
-Sair: **F** de novo, **Esc** (o navegador sai sozinho) ou o botão, que vira `⛷` enquanto está em
-tela cheia. O ícone e o tooltip acompanham o estado por um listener de `fullscreenchange`
-(`_syncFullscreenBtn`), então sair pelo Esc ou pelo F11 do navegador também atualiza o botão.
-
 O CSS traz `html:fullscreen{background:var(--bg)}` — o navegador pinta a moldura em volta com a
-cor do elemento em fullscreen, e sem isso sobra uma borda branca em volta do editor escuro.
+cor do elemento em fullscreen, e sem isso sobra uma borda branca em volta do editor escuro. O
+`body` usa `height:100%` (com `100vh` só como reserva pra navegador antigo): dentro do iframe o
+`vh` acompanha a janela de fora, não a caixa onde o editor está de fato.
+
+---
+
+## Desempenho da navegação — 2026-08-26
+
+O mapa inteiro é **um `<svg>` só**: arrastar, dar zoom ou mover um host obriga o navegador a
+rasterizar a cena toda de novo a cada frame — e nessa conta entram todos os `drop-shadow`,
+`backdrop-filter`, dashes animados e `<animateMotion>` da tela. Com ~35 hosts e ~40 enlaces
+(mapa real de cliente) o pan caía pra poucos quadros por segundo. O que foi feito:
+
+| Antes | Agora | Onde |
+|---|---|---|
+| Cada `mousemove` redesenhava na hora (mouse de 1000Hz = ~8 desenhos por frame pintado) | O evento só guarda a posição; o desenho roda **1x por frame** (`requestAnimationFrame`) | `_onMove` → `_aplicarMove`, `_flushMove` |
+| Cada evento de roda escrevia o `transform` do viewport | `_agendarVP()` escreve **1x por frame** | `_agendarVP` |
+| `getBoundingClientRect()` do canvas a cada evento (força recálculo de layout no meio do arraste) | Rect cacheado, válido por um frame | `_svgRect` |
+| Arrastar um host reconstruía **todos** os enlaces do mapa, com `<animateMotion>` e tudo | Só os enlaces que **tocam** os hosts movidos | `_renderLinksDe` |
+| Arrastar reconstruía o ícone via `innerHTML` (~15 elementos SVG) a cada frame | Só muda o `transform` do `<g>` | `_moverNode` |
+| Enfeites (fluxo, pacotes, pulso, sombras, blur dos painéis) ativos durante o movimento | `body.nav-busy` tira os enfeites enquanto o mapa se move; voltam **200ms** depois que para | `_navBusy` + bloco `body.nav-busy` no `<style>` |
+| `_setDirty()` reescrevia a barra de status e o botão Salvar a cada frame | Sai fora na primeira linha se já está sujo | `_setDirty` |
+
+Detalhes que valem saber:
+
+- **`body.nav-busy` é só visual.** Nenhum dado muda; é o mesmo espírito do botão "Efeitos"
+  (`body.effects-off`), só que automático e temporário. Quem tiver o botão de efeitos desligado
+  não nota diferença nenhuma.
+- **Os "pacotes" (`<animateMotion>`) não são recriados durante o movimento** — estão escondidos
+  por CSS, então recriar dois elementos SMIL por enlace a cada frame era custo puro. O flag
+  `_navSujo` marca que os enlaces saíram em modo leve, e o `_navBusy` faz um `_renderLinks()`
+  completo quando o mapa para.
+- **O `_flushMove()` no `mouseup`** aplica o último movimento pendente antes de fechar o gesto —
+  sem ele, soltar o mouse podia deixar o host um frame atrás da posição real do cursor.
 
 ---
 

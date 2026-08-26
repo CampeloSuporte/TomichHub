@@ -5,6 +5,44 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-26 (Topologia: tela cheia cortada e navegação lenta)
+
+### Corrigido
+
+- **Tela cheia abria o editor cortado** quando ele roda embutido na aba Topologia do cadastro
+  do cliente (`static/js/topo_main.js`, `clientes/templates/topologia_editor.html`). O pedido de
+  fullscreen ia pro `<html>` de dentro do `<iframe>`: o navegador pintava a moldura no tamanho da
+  tela, mas o **viewport do iframe continuava com a altura antiga** (`calc(100vh - 200px)`), então
+  o editor aparecia espremido numa faixa no topo e o resto da tela ficava preto. Agora quem vai
+  pra tela cheia é o **próprio `<iframe>`**, no documento pai (`window.frameElement`) — ele vai
+  pra *top layer* em tela inteira e o viewport de dentro é redimensionado de verdade. Fora de
+  iframe (aba própria) nada muda: continua sendo o `<html>` local. Junto: `_emFullscreen()` olha
+  os dois documentos, o `exitFullscreen()` é pedido no documento que entrou e o listener de
+  `fullscreenchange` também é registrado no pai (sem isso o botão nunca virava "sair").
+
+### Desempenho
+
+- **Navegação do mapa (pan, zoom e arrastar host) muito mais leve** (`static/js/topo_main.js`,
+  `clientes/templates/topologia_editor.html`). O mapa é um `<svg>` só, então qualquer movimento
+  rasteriza a cena inteira a cada frame — com ~35 hosts e ~40 enlaces isso derrubava o arraste a
+  poucos quadros por segundo. Mudanças:
+  - `mousemove` e roda do mouse agora só **agendam** o desenho: ele roda uma vez por frame
+    (`requestAnimationFrame`), em vez de uma vez por evento (mouse de 1000Hz mandava ~8 por frame).
+  - Arrastar um host redesenha **só os enlaces que tocam nele** — antes reconstruía os 40 enlaces
+    do mapa, com `<animateMotion>` e tudo, a cada frame.
+  - Arrastar um host agora só muda o `transform` do ícone, em vez de reconstruir ~15 elementos SVG
+    via `innerHTML`.
+  - `body.nav-busy`: enquanto o mapa está em movimento saem de cena os efeitos decorativos (fluxo
+    animado, pacotes, pulso dos hosts do CRM, `drop-shadow` dos ícones, `backdrop-filter` dos
+    painéis) e voltam 200ms depois que ele para. É só visual — nenhum dado muda.
+  - `getBoundingClientRect()` do canvas passou a ser cacheado por frame (cada chamada no meio do
+    arraste força o navegador a recalcular layout), e `_setDirty()` não reescreve mais a barra de
+    status e o botão Salvar a cada frame.
+- Documentação: `docs/topologia.md` — seção "Tela Cheia" reescrita com a tabela de qual elemento
+  entra em fullscreen em cada situação, e nova seção "Desempenho da navegação".
+
+---
+
 ## [Não publicado] — 2026-08-25 (Pesquisa LG: consulta IRR com bgpq4 e expansão de as-set)
 
 ### Adicionado

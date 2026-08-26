@@ -46,6 +46,18 @@ class TopoEditor {
     this.rubberBand = null;         // {x0,y0,x1,y1} durante o arraste do laço de seleção
     this.groupDragging = null;      // {startX,startY,positions:{id:{x,y}}} arrasto em grupo
     this.areaSelectMode = false;    // toggle do botão "Área" — troca pan por laço de seleção
+    // ── Estado da navegação (pan/zoom/arraste) ──────────────────────────────
+    // O mapa é um SVG só: qualquer movimento rasteriza a cena inteira de novo,
+    // com todos os drop-shadows, blurs e fluxos animados junto. Estes campos
+    // seguram o desenho em 1x por frame (_moveRaf/_vpRaf) e desligam os
+    // efeitos decorativos enquanto a mão está no mapa (_navBusy).
+    this._moveEvt = null;   // último mousemove recebido, aplicado no próximo frame
+    this._moveRaf = null;
+    this._vpRaf = null;     // frame agendado para o transform do viewport
+    this._navOn = false;    // body.nav-busy ligado
+    this._navTimer = null;
+    this._navSujo = false;  // links desenhados em modo leve, redesenhar ao parar
+    this._rect = null;      // getBoundingClientRect do SVG, válido por 1 frame
     this.svg = document.getElementById('canvas-svg');
     this.vp = document.getElementById('viewport');
     this.nodesLayer = document.getElementById('nodes-layer');
@@ -84,8 +96,19 @@ class TopoEditor {
    *  e virou dedo de quem já usava, Cmd (metaKey) pro mesmo gesto no Mac. */
   _ehAditivo(e) { return e.ctrlKey || e.metaKey || e.shiftKey; }
 
+  /** Retângulo do canvas, cacheado por um frame: o mousemove pedia
+   *  getBoundingClientRect a cada evento, e cada chamada força o navegador a
+   *  recalcular layout no meio do arraste. */
+  _svgRect() {
+    if (!this._rect) {
+      this._rect = this.svg.getBoundingClientRect();
+      requestAnimationFrame(() => { this._rect = null; });
+    }
+    return this._rect;
+  }
+
   _svgPoint(e) {
-    const r = this.svg.getBoundingClientRect();
+    const r = this._svgRect();
     return {
       x: (e.clientX - r.left - this.panX) / this.zoom,
       y: (e.clientY - r.top  - this.panY) / this.zoom
@@ -193,13 +216,20 @@ class TopoEditor {
     svg.addEventListener('dblclick',  e => this._onDblClick(e));
     svg.addEventListener('wheel', e => {
       e.preventDefault();
-      const r = svg.getBoundingClientRect();
+      // Um giro de scroll manda dezenas de eventos; o transform só precisa ser
+      // escrito uma vez por frame (ver _agendarVP).
+      this._navBusy();
+      const r = this._svgRect();
       const cx = e.clientX - r.left, cy = e.clientY - r.top;
       const dz = e.deltaY < 0 ? 1.1 : 0.9;
-      this.panX = cx - (cx - this.panX) * dz;
-      this.panY = cy - (cy - this.panY) * dz;
-      this.zoom *= dz;
-      this._updateVP();
+      // Mesmo limite dos botões +/− (10%–400%). O fator do pan sai do zoom já
+      // limitado, senão o mapa continuaria escorregando no batente.
+      const novoZoom = Math.max(.1, Math.min(4, this.zoom * dz));
+      const fator = novoZoom / this.zoom;
+      this.panX = cx - (cx - this.panX) * fator;
+      this.panY = cy - (cy - this.panY) * fator;
+      this.zoom = novoZoom;
+      this._agendarVP();
     }, {passive:false});
 
     document.addEventListener('keydown', e => {
@@ -225,8 +255,13 @@ class TopoEditor {
       if (e.key === 'Escape') { this._cancelConnect(); this._deselect(); this._clearMultiSelect(); }
     });
 
-    ['fullscreenchange','webkitfullscreenchange'].forEach(ev =>
-      document.addEventListener(ev, () => this._syncFullscreenBtn()));
+    // Quando é o <iframe> que entra em tela cheia (ver _fsAlvo), o evento sai
+    // no documento pai — sem escutar lá, o botão nunca virava "sair".
+    const fsDoc = this._fsAlvo().doc;
+    ['fullscreenchange','webkitfullscreenchange'].forEach(ev => {
+      document.addEventListener(ev, () => this._aoTrocarFullscreen());
+      if (fsDoc !== document) fsDoc.addEventListener(ev, () => this._aoTrocarFullscreen());
+    });
 
     document.getElementById('nome-diagrama').addEventListener('input', () => this._setDirty());
   }
@@ -442,7 +477,29 @@ class TopoEditor {
     this.panning = {startX: e.clientX, startY: e.clientY, px: this.panX, py: this.panY};
   }
 
+  /** Handler cru do mousemove: só guarda o evento. Mouses de 500–1000Hz
+   *  entregam 4–8 movimentos por frame — antes cada um redesenhava node e
+   *  enlaces na hora, ou seja o mapa era reconstruído várias vezes para ser
+   *  pintado uma só. Agora o desenho roda uma vez por frame. */
   _onMove(e) {
+    this._moveEvt = e;
+    if (this._moveRaf) return;
+    this._moveRaf = requestAnimationFrame(() => {
+      this._moveRaf = null;
+      if (this._moveEvt) this._aplicarMove(this._moveEvt);
+    });
+  }
+
+  /** Aplica o último movimento no mouseup pendente, para o gesto não terminar
+   *  um frame atrás da posição real do cursor. */
+  _flushMove() {
+    if (!this._moveRaf) return;
+    cancelAnimationFrame(this._moveRaf);
+    this._moveRaf = null;
+    if (this._moveEvt) this._aplicarMove(this._moveEvt);
+  }
+
+  _aplicarMove(e) {
     if (this.wpDrag) {
       const pt = this._svgPoint(e);
       const link = this.links.find(l => l.id === this.wpDrag.linkId);
@@ -455,6 +512,7 @@ class TopoEditor {
       return;
     }
     if (this.rubberBand) {
+      this._navBusy();
       const pt = this._svgPoint(e);
       this.rubberBand.x1 = pt.x;
       this.rubberBand.y1 = pt.y;
@@ -462,6 +520,7 @@ class TopoEditor {
       return;
     }
     if (this.groupDragging) {
+      this._navBusy();
       const pt = this._svgPoint(e);
       let dx = pt.x - this.groupDragging.startX;
       let dy = pt.y - this.groupDragging.startY;
@@ -472,21 +531,22 @@ class TopoEditor {
         if (node && start) {
           node.x = start.x + dx;
           node.y = start.y + dy;
-          this._renderNode(node);
+          this._moverNode(node);
         }
       });
-      this._renderLinks();
+      this._renderLinksDe(this.selectedNodes);
       this._setDirty();
       return;
     }
     if (this.dragging) {
+      this._navBusy();
       const pt = this._svgPoint(e);
       const node = this.nodes.find(n => n.id === this.dragging.id);
       if (node) {
         node.x = this._snap(pt.x - this.dragging.offX);
         node.y = this._snap(pt.y - this.dragging.offY);
-        this._renderNode(node);
-        this._renderLinks();
+        this._moverNode(node);
+        this._renderLinksDe([node.id]);
         // Atualiza handles se um link do nó arrastado estiver selecionado
         if (this.selected && this.selected.type === 'link') {
           const selLink = this.links.find(l => l.id === this.selected.id);
@@ -497,9 +557,10 @@ class TopoEditor {
         this._setDirty();
       }
     } else if (this.panning) {
+      this._navBusy();
       this.panX = this.panning.px + (e.clientX - this.panning.startX);
       this.panY = this.panning.py + (e.clientY - this.panning.startY);
-      this._updateVP();
+      this._agendarVP();
     } else if (this.connectSrc) {
       const pt = this._svgPoint(e);
       const src = this.nodes.find(n => n.id === this.connectSrc);
@@ -511,6 +572,7 @@ class TopoEditor {
   }
 
   _onUp(e) {
+    this._flushMove();
     if (this.wpDrag) { this._saveHistory(); this.wpDrag = null; return; }
     if (this.rubberBand) { this._finishRubberBand(); this.rubberBand = null; return; }
     if (this.groupDragging) { this._saveHistory(); this.groupDragging = null; return; }
@@ -790,7 +852,45 @@ class TopoEditor {
 
   _updateVP() {
     this.vp.setAttribute('transform', `translate(${this.panX},${this.panY}) scale(${this.zoom})`);
-    document.getElementById('zoom-label').textContent = Math.round(this.zoom*100) + '%';
+    const lbl = this._zoomLabel || (this._zoomLabel = document.getElementById('zoom-label'));
+    const txt = Math.round(this.zoom*100) + '%';
+    if (lbl && lbl.textContent !== txt) lbl.textContent = txt;
+  }
+
+  /** Escreve o transform do viewport no máximo uma vez por frame. Pan e zoom
+   *  chegam muito mais rápido que isso e o navegador só pinta uma vez mesmo. */
+  _agendarVP() {
+    if (this._vpRaf) return;
+    this._vpRaf = requestAnimationFrame(() => { this._vpRaf = null; this._updateVP(); });
+  }
+
+  /** Modo navegação: enquanto o mapa está sendo arrastado, ampliado ou tem um
+   *  host sendo movido, os enfeites saem de cena (fluxo animado nos enlaces,
+   *  pacotes, pulso dos hosts do CRM, drop-shadow dos ícones, blur dos
+   *  painéis) — ver `body.nav-busy` no <style> do editor. Cada um deles é
+   *  recalculado a cada frame do movimento, e com ~35 hosts e ~40 enlaces
+   *  somados derrubavam o arraste a poucos quadros por segundo. Voltam 200ms
+   *  depois que o mapa para. */
+  _navBusy() {
+    if (!this._navOn) { this._navOn = true; document.body.classList.add('nav-busy'); }
+    clearTimeout(this._navTimer);
+    this._navTimer = setTimeout(() => {
+      this._navOn = false;
+      document.body.classList.remove('nav-busy');
+      // Enlaces desenhados sem os "pacotes" durante o movimento: agora que
+      // parou, redesenha com a animação de volta.
+      if (this._navSujo) { this._navSujo = false; this._renderLinks(); }
+    }, 200);
+  }
+
+  /** Redesenha só os enlaces que tocam estes hosts. Arrastar um único ícone
+   *  reconstruía os 40 enlaces do mapa (com `<animateMotion>` e tudo) a cada
+   *  frame — quase todos parados no mesmo lugar. */
+  _renderLinksDe(ids) {
+    const alvo = ids instanceof Set ? ids : new Set(ids);
+    this.links.forEach(l => {
+      if (alvo.has(l.src) || alvo.has(l.tgt)) this._renderLink(l);
+    });
   }
 
   _cancelConnect() {
@@ -987,6 +1087,15 @@ class TopoEditor {
     return link;
   }
 
+  /** Arrastar não muda o desenho do ícone, só onde ele está: reposiciona pelo
+   *  `transform` em vez de passar pelo _renderNode, que reconstrói ~15
+   *  elementos SVG via innerHTML — a 60fps, caro à toa. */
+  _moverNode(node) {
+    const el = this.nodesLayer.querySelector(`[data-id="${node.id}"]`);
+    if (!el) { this._renderNode(node); return; }
+    el.setAttribute('transform', `translate(${node.x},${node.y})`);
+  }
+
   _renderNode(node) {
     let el = this.nodesLayer.querySelector(`[data-id="${node.id}"]`);
     if (!el) {
@@ -1174,8 +1283,12 @@ class TopoEditor {
     // ao comprimento do link (px/s constante) pra todo link parecer andar na
     // mesma "velocidade", em vez de um link curto parecer mais lento/rápido
     // que um comprido com a mesma duração fixa.
+    // Durante o movimento os pacotes estão escondidos por CSS (body.nav-busy):
+    // recriar dois <animateMotion> por enlace a cada frame era puro custo. O
+    // _navBusy() redesenha os enlaces por inteiro quando o mapa para.
     const flowDur = Math.max(.6, Math.min(4, linkLen / 220));
-    const packetsHtml = `
+    if (this._navOn) this._navSujo = true;
+    const packetsHtml = this._navOn ? '' : `
       <circle class="link-packet" r="${Math.max(2.2, w*.9)}" fill="${color}" style="color:${color}">
         <animateMotion dur="${flowDur.toFixed(2)}s" repeatCount="indefinite" path="${d}"/>
       </circle>
@@ -2630,19 +2743,47 @@ class TopoEditor {
 
   // ── Tela cheia ────────────────────────────────────────────────────────────
   // Vale principalmente pro editor embutido no cadastro do cliente, onde o
-  // iframe tem `calc(100vh - 200px)` e sobra pouca área pra desenhar. Entra em
-  // fullscreen no <html> (não só no canvas) pra toolbar e painéis irem junto.
+  // iframe tem `calc(100vh - 200px)` e sobra pouca área pra desenhar.
+
+  /** Quem vai pra tela cheia, e em qual documento.
+   *
+   *  Embutido num <iframe>, pedir fullscreen no <html> DE DENTRO do iframe dá
+   *  o editor cortado: o navegador desenha a moldura no tamanho da tela, mas o
+   *  VIEWPORT do iframe continua com o tamanho antigo — as alturas do editor
+   *  (body em 100vh, painéis em 100%) seguem valendo o `calc(100vh - 200px)`
+   *  do cadastro, então tudo fica espremido numa faixa no topo e o resto da
+   *  tela fica preto.
+   *
+   *  Quem precisa ir pra tela cheia é o PRÓPRIO <iframe>, no documento pai: aí
+   *  ele vai pra top layer em tela inteira e o viewport de dentro é
+   *  redimensionado de verdade, com as medidas do editor batendo de novo.
+   *  `window.frameElement` é null fora de iframe e estoura em cross-origin —
+   *  nos dois casos cai no <html> local, que é o certo pra aba solta. */
+  _fsAlvo() {
+    try {
+      const frame = window.frameElement;
+      const abrir = frame && (frame.requestFullscreen || frame.webkitRequestFullscreen);
+      if (abrir) return {el: frame, doc: frame.ownerDocument};
+    } catch (e) { /* iframe cross-origin: usa o documento local */ }
+    return {el: document.documentElement, doc: document};
+  }
 
   _emFullscreen() {
-    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    const docs = [document];
+    const {doc} = this._fsAlvo();
+    if (doc !== document) docs.push(doc);
+    return docs.some(d => !!(d.fullscreenElement || d.webkitFullscreenElement));
   }
 
   async toggleFullscreen() {
-    const el = document.documentElement;
+    const {el, doc} = this._fsAlvo();
     try {
       if (this._emFullscreen()) {
-        const sair = document.exitFullscreen || document.webkitExitFullscreen;
-        if (sair) await sair.call(document);
+        // Sair tem que ser pedido no documento que entrou (o pai, quando é o
+        // iframe que está em tela cheia).
+        const d = (doc.fullscreenElement || doc.webkitFullscreenElement) ? doc : document;
+        const sair = d.exitFullscreen || d.webkitExitFullscreen;
+        if (sair) await sair.call(d);
         return;
       }
       // `fullscreenEnabled` é false quando o editor está num <iframe> sem
@@ -2658,6 +2799,13 @@ class TopoEditor {
     } catch (e) {
       this._toast('Tela cheia bloqueada nesta página — abra o editor em nova aba', 'error');
     }
+  }
+
+  /** O viewport muda de tamanho ao entrar/sair: o rect cacheado do canvas e o
+   *  botão precisam acompanhar. */
+  _aoTrocarFullscreen() {
+    this._rect = null;
+    this._syncFullscreenBtn();
   }
 
   _syncFullscreenBtn() {
@@ -2708,6 +2856,9 @@ class TopoEditor {
   }
 
   _setDirty() {
+    // Chamado a cada frame de arraste — quando já está sujo não há nada novo a
+    // escrever na barra de status nem no botão Salvar.
+    if (this.dirty) return;
     this.dirty = true;
     document.getElementById('st-save').textContent = '● Não salvo';
     document.getElementById('st-save').style.color = 'var(--orange)';

@@ -18,15 +18,23 @@
   --shadow-lg:0 16px 48px rgba(0,0,0,.55);
   --ease-out:cubic-bezier(.23,1,.32,1);
 }
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
+html{height:100%}
+/* height:100% (com 100vh de reserva pra navegador antigo) em vez de 100vh
+   puro: dentro do iframe do cadastro o vh acompanha a janela de fora, não a
+   caixa onde o editor realmente está. */
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,sans-serif;height:100vh;height:100%;min-height:100%;display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased}
 /* modo embed: esconde botão fechar */
 body.embed-mode #btn-fechar{display:none!important}
-/* Tela cheia: o fullscreen é pedido no <html>, então toolbar, painéis e canvas
-   vão junto. O navegador pinta a moldura da própria cor do elemento — sem o
-   background explícito sobra uma borda branca em volta do editor escuro. */
-html:fullscreen{background:var(--bg)}
+/* Tela cheia (aba solta): o fullscreen é pedido no <html>, então toolbar,
+   painéis e canvas vão junto. O navegador pinta a moldura da própria cor do
+   elemento — sem o background explícito sobra uma borda branca em volta do
+   editor escuro. Embutido no cadastro do cliente quem vai pra tela cheia é o
+   <iframe>, no documento pai (ver _fsAlvo em topo_main.js): pedir aqui dentro
+   deixava o viewport do iframe com a altura antiga e o editor aparecia numa
+   faixa cortada no topo da tela. */
+html:fullscreen{background:var(--bg);height:100%}
 html:fullscreen body{height:100%}
-html:-webkit-full-screen{background:var(--bg)}
+html:-webkit-full-screen{background:var(--bg);height:100%}
 html:-webkit-full-screen body{height:100%}
 /* ── Tooltip próprio (data-tip) ─────────────────────────────────────────────
    Substitui o `title` nativo nos controles: o do navegador demora ~1s, aparece
@@ -214,6 +222,37 @@ body.effects-off .link-glow{display:none}
    dá a impressão de um pulso de luz/dado passando, tipo tráfego de verdade. */
 .link-packet{pointer-events:none;filter:drop-shadow(0 0 5px currentColor) drop-shadow(0 0 2px #fff)}
 body.effects-off .link-packet{display:none}
+/* ── Modo navegação (body.nav-busy) ─────────────────────────────────────────
+   Ligado enquanto o mapa é arrastado, ampliado ou tem um host sendo movido, e
+   desligado 200ms depois que para (ver _navBusy em topo_main.js).
+   O mapa é um SVG só: qualquer movimento redesenha a cena inteira a cada
+   frame, e nessa conta entram TODOS os drop-shadows, blurs, dashes animados e
+   `<animateMotion>` da tela. Com ~35 hosts e ~40 enlaces isso derrubava o pan
+   a poucos quadros por segundo. Durante o movimento fica só o essencial —
+   linha, ícone e rótulo; os enfeites voltam assim que a mão sai do mapa. */
+body.nav-busy .link-flow,
+body.nav-busy .link-glow,
+body.nav-busy .link-packet{display:none}
+body.nav-busy .node-body,
+body.nav-busy .node-icon,
+body.nav-busy .node-led,
+body.nav-busy .link.selected,
+body.nav-busy .node.selected .node-body,
+body.nav-busy .node.multi-selected .node-body{filter:none}
+body.nav-busy .node[data-live="1"] .node-ring{animation:none}
+/* Transições de hover no meio do arraste só geram trabalho extra. */
+body.nav-busy .node-body,
+body.nav-busy .node-icon,
+body.nav-busy .anchor,
+body.nav-busy .link{transition:none}
+/* backdrop-filter: o desfoque é recalculado a cada frame porque o que está
+   ATRÁS do painel (o mapa) está se mexendo — é o item mais caro da tela. */
+body.nav-busy .panel-card,
+body.nav-busy .rail-btn,
+body.nav-busy .canvas-hint,
+body.nav-busy #zoom-ctl,
+body.nav-busy #legend-panel,
+body.nav-busy #toast{backdrop-filter:none}
 .link-label-bg{fill:var(--surface);rx:4}
 .link-label{font-size:10px;fill:#9fb0c0;text-anchor:middle;pointer-events:none;font-weight:500}
 .link-arrow{overflow:visible}
@@ -642,6 +681,6 @@ body:not(.pal-off) #legend-panel{left:236px}
   }
 </script>
 <script src="/static/js/topo_engine.js?v=25"></script>
-<script src="/static/js/topo_main.js?v=42"></script>
+<script src="/static/js/topo_main.js?v=43"></script>
 </body>
 </html>
