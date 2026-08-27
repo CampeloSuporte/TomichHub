@@ -565,6 +565,12 @@ class TopoEditor {
         node.w = w; node.h = h;
         node.x = left + w/2; node.y = top + h/2;
         this._renderNode(node);
+        // Mantém os campos Largura/Altura do painel em dia — senão "Aplicar"
+        // relê os valores antigos e encolhe a área de volta.
+        const wI = document.getElementById('pn-w');
+        if (wI) wI.value = Math.round(w);
+        const hI = document.getElementById('pn-h');
+        if (hI) hI.value = Math.round(h);
         this._setDirty();
       }
       return;
@@ -632,7 +638,16 @@ class TopoEditor {
   _onUp(e) {
     this._flushMove();
     if (this.wpDrag) { this._saveHistory(); this.wpDrag = null; return; }
-    if (this.areaResizing) { this.areaResizing = null; return; }
+    if (this.areaResizing) {
+      const id = this.areaResizing.id;
+      this.areaResizing = null;
+      // Redesenha o painel com o tamanho final (os campos Largura/Altura já
+      // foram acompanhando o arraste, isto só canoniza).
+      if (this.selected && this.selected.type === 'node' && this.selected.id === id) {
+        this._showNodeProps(id);
+      }
+      return;
+    }
     if (this.rubberBand) { this._finishRubberBand(); this.rubberBand = null; return; }
     if (this.groupDragging) { this._saveHistory(); this.groupDragging = null; return; }
     if (this.dragging) { this._saveHistory(); this.dragging = null; }

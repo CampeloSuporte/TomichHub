@@ -30,7 +30,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   - Nome, cor e tamanho (largura/altura) no painel de propriedades. Não entra na contagem de
     "dispositivos" da barra de status, não participa de conexões e não é capturada pelo laço de
     seleção em área.
-  - Cache-busting: `topo_engine.js?v=26` e `topo_main.js?v=44`.
+  - Cache-busting: `topo_engine.js?v=26` e `topo_main.js?v=45`.
+  - **Fix (mesma sessão):** redimensionar a área pelos cantos e clicar "Aplicar" a
+    encolhia de volta — os campos Largura/Altura do painel não acompanhavam o arraste, então
+    "Aplicar" relia os valores antigos. Agora os campos seguem o arraste e o painel é
+    redesenhado com o tamanho final ao soltar.
 
 ---
 
