@@ -94,6 +94,7 @@ Cada tipo tem `label`, `color` (hex) e `icon` (chave em `ICONS`).
 | `host` | Host/PC | Servidores | `#79c0ff` | Monitor com prompt na tela |
 | `grupo` | Grupo de hosts | Agrupamento | `#7ee787` | Pilha de 3 chassis + seta de "abrir" (não aparece na paleta — só a ação "Agrupar" cria) |
 | `text_box` | Texto/Legenda | Anotações | `#e3b341` | Cartão pontilhado com linhas de texto |
+| `area` | Área | Anotações | `#58a6ff` | Retângulo translúcido com aba de título no canto (ver "Áreas de documentação" abaixo) |
 
 **Linguagem visual do set (redesign 2026-08-13):** todo ícone é desenhado num viewBox 48×48
 ocupando a área ótica `x:3..45 / y:6..42`, para nenhum device pesar mais que o outro na paleta.
@@ -1055,3 +1056,57 @@ O mesmo já valia para `body.effects-off`, que sempre usou `display:none`.
 
 Cache-busting: `topo_main.js?v=35` em [`topologia_editor.html`](../clientes/templates/topologia_editor.html)
 — ver [`docs/../CHANGELOG.md`] e a nota sobre versionamento de `static/` antes de rodar `collectstatic`.
+
+---
+
+## Rótulos de IP × Interface do enlace — Corrigido em 2026-08-27
+
+O IP ponta-a-ponta e o nome da interface de cada lado do enlace se sobrepunham em links **quase
+verticais** (visto na topologia do `SW3-PE-TREVO-PARANAITA`: `172.24.17.0` do nó por baixo do
+`100GE0/0/2` do enlace).
+
+**Causa:** em `_renderLink` o IP era posicionado `8 px` **acima** e a interface `14 px` **abaixo**
+do ponto na linha — um deslocamento fixo no eixo **Y**. Num enlace horizontal isso separa os dois
+rótulos; num enlace vertical, "acima" e "abaixo" caem praticamente na mesma coluna e os retângulos
+se empilham.
+
+**Correção:** o afastamento agora é **perpendicular à linha**. Calcula-se o vetor normal ao enlace
+(`nx = -uy, ny = ux`, normalizado para apontar sempre "para cima") e o IP é deslocado `+12 px`
+nessa direção enquanto a interface vai `-12 px` (lado oposto). Assim os dois rótulos se separam em
+**qualquer ângulo** do enlace. A distância ao longo da linha (que tira o rótulo de cima da borda
+do node) não mudou.
+
+---
+
+## Áreas de documentação — Adicionado em 2026-08-27
+
+Item **"Área"** no grupo *Anotações* da paleta (`DEVICES.area`, ícone `area`). É uma **zona de
+fundo** para circundar e nomear um conjunto de nós — POP, sala, borda da rede, cliente — sem virar
+um "device" no modelo.
+
+**Modelo de dados (node):** `type:'area'`, `x/y` (centro), `w/h`, `label`, `color`. Serializa junto
+com os demais nodes em `dados_json` (`{nodes, links}`) — sem migração nem endpoint novo.
+
+**Renderização — camada própria `#areas-layer`:**
+
+| | |
+|---|---|
+| Posição no `#viewport` | Inserida **antes** de `#links-layer` → pintada atrás de links **e** equipamentos |
+| `.area-rect` | Retângulo visível (`fill` da cor a ~8%, borda cheia). `pointer-events:none` — **não** captura clique |
+| `.area-border-hit` | Faixa transparente de `stroke-width:18` com `pointer-events:stroke` — é por ela que se seleciona/arrasta a área |
+| `.area-label` | Aba de título no canto superior esquerdo (chip na cor da área, texto escuro) |
+| `.area-handle` × 4 | Quadradinhos nos cantos, visíveis só com a área selecionada — redimensionam (`this.areaResizing`, âncora no canto oposto) |
+
+**Por que o preenchimento não captura o mouse:** uma área grande cobrindo o mapa inteiro roubaria
+o *pan* e o clique em todo equipamento por cima dela. Com `pointer-events:none` no `fill`, só a
+borda e o título respondem; o interior deixa o clique passar para o canvas (pan) ou para o node
+que estiver ali (nodes ficam no layer de cima).
+
+**Interações que ignoram áreas:** contagem de "dispositivos" na barra de status, laço de seleção
+por área (`_finishRubberBand`), modo conexão (`_ehArea`), faixas da importação de hosts
+(`_layoutImportados`).
+
+**Painel de propriedades:** nome (rótulo do topo), cor e largura/altura. Arrastar a borda mede;
+arrastar os cantos redimensiona.
+
+Cache-busting: `topo_engine.js?v=26` + `topo_main.js?v=44`.

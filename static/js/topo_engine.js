@@ -34,6 +34,7 @@ const DEVICES = {
   host:      {label:'Host/PC',      color:'#79c0ff', icon:'host',      group:'Servidores'},
   grupo:     {label:'Grupo de hosts',color:'#7ee787', icon:'grupo',    group:'Agrupamento'},
   text_box:  {label:'Texto/Legenda',color:'#e3b341', icon:'text_box',  group:'Anotações'},
+  area:      {label:'Área',          color:'#58a6ff', icon:'area',      group:'Anotações'},
 };
 const IFACES = {
   '100m':  {label:'100 Mbps', color:'#8b949e', w:2},
@@ -317,6 +318,12 @@ const ICONS = {
       <path d="M10 24.5h22" stroke-opacity=".5"/>
       <path d="M10 31h15" stroke-opacity=".3"/>
     </g>`,
+
+  // Área: retângulo de fundo translúcido com a "aba" de título no canto — é uma
+  // zona de documentação (POP, sala, borda da rede) desenhada atrás dos
+  // equipamentos, não um device.
+  area:`<rect x="4" y="10" width="40" height="30" rx="4" fill="currentColor" fill-opacity=".14" stroke="currentColor" stroke-width="2.4"/>
+    <path d="M4 16v-2a4 4 0 0 1 4-4h12v6z" fill="currentColor" opacity=".9"/>`,
 };
 
 window.TOPO_DEVICES = DEVICES;

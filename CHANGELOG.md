@@ -5,6 +5,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-27 (Topologia: rótulos sobrepostos e Áreas de documentação)
+
+### Corrigido
+
+- **Nome da interface cobria o IP do enlace** em links quase verticais
+  (`static/js/topo_main.js`, `_renderLink`). O IP ia sempre 8 px **acima** e a interface 14 px
+  **abaixo** do ponto na linha — um deslocamento fixo no eixo Y. Num enlace na horizontal isso
+  separa bem, mas num enlace vertical "acima/abaixo" vira "quase no mesmo lugar" e os dois
+  retângulos se empilhavam (visível na topologia com o `SW3-PE-TREVO-PARANAITA`). Agora o
+  afastamento é **perpendicular à linha**: o IP sai para um lado, a interface para o lado oposto,
+  então eles se separam em qualquer ângulo do enlace.
+
+### Adicionado
+
+- **Áreas de documentação no editor de topologia** (`static/js/topo_engine.js`,
+  `static/js/topo_main.js`, `clientes/templates/topologia_editor.html`). Novo item **"Área"** no
+  grupo *Anotações* da paleta de dispositivos: arraste para o canvas e ganha um retângulo de fundo
+  com cor configurável e um **rótulo no topo** (ex.: "POP Central", "Sala de servidores", "Borda").
+  - Desenhada numa camada própria (`#areas-layer`) **atrás** de links e equipamentos — serve para
+    circundar e nomear um conjunto de nós sem atrapalhar o clique em nada.
+  - O preenchimento não captura o mouse (não rouba o *pan* nem o clique nos equipamentos por cima);
+    seleciona/move pela **borda** ou pela aba de título, e **redimensiona pelos quatro cantos**.
+  - Nome, cor e tamanho (largura/altura) no painel de propriedades. Não entra na contagem de
+    "dispositivos" da barra de status, não participa de conexões e não é capturada pelo laço de
+    seleção em área.
+  - Cache-busting: `topo_engine.js?v=26` e `topo_main.js?v=44`.
+
+---
+
 ## [Não publicado] — 2026-08-26 (Topologia: tela cheia cortada e navegação lenta)
 
 ### Corrigido

@@ -2,6 +2,30 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 48 — 27/08/2026: Topologia — rótulos sobrepostos e Áreas de documentação
+
+**O que foi implementado?**
+- 🏷️ **Fix do rótulo do enlace**: em links quase verticais o **nome da interface cobria o IP**
+  ponta-a-ponta (visto na topologia do `SW3-PE-TREVO-PARANAITA`). O IP ia sempre `8px` acima e a
+  interface `14px` abaixo do ponto na linha — deslocamento fixo em Y, que só separa em link
+  horizontal. Agora o afastamento é **perpendicular à linha** (IP para um lado, interface para o
+  oposto), então eles não se tocam em nenhum ângulo.
+- 🗂️ **Áreas de documentação**: novo item **"Área"** no grupo *Anotações* da paleta. Retângulo de
+  fundo com cor configurável e **rótulo no topo** (ex.: "POP Central", "Sala de servidores"),
+  desenhado **atrás** de links e equipamentos numa camada própria (`#areas-layer`). O
+  preenchimento não captura o mouse (não rouba o pan nem o clique nos equipamentos por cima);
+  seleciona/move pela borda ou pelo título e redimensiona pelos quatro cantos. Nome, cor e
+  tamanho no painel de propriedades. É anotação: não conta como "dispositivo", não conecta e não
+  é pega pelo laço de seleção. Serializa junto no `dados_json` — sem migração.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[topologia.md](topologia.md)** | Novas seções "Rótulos de IP × Interface do enlace" e "Áreas de documentação"; linha `area` na tabela de tipos de dispositivo |
+
+---
+
 ### Sessão 47 — 26/08/2026: Topologia — tela cheia cortada e navegação lenta
 
 **O que foi implementado?**
@@ -1573,6 +1597,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 27/08/2026 | Topologia: fix do rótulo do enlace (nome da interface cobria o IP em links quase verticais — afastamento passou a ser perpendicular à linha) e novo item "Área" na paleta — retângulo de fundo com rótulo no topo, cor e cantos de redimensionar, desenhado atrás de links/equipamentos para documentar POP/sala/borda sem virar um "device" | topologia.md |
 | 26/08/2026 | Topologia: tela cheia abria o editor cortado no iframe do cadastro (fullscreen passou a ser pedido no próprio `<iframe>`, no documento pai) e navegação do mapa otimizada — desenho 1x por frame, só os enlaces do host movido, ícone reposicionado por `transform` e efeitos decorativos suspensos durante o movimento | topologia.md |
 | 25/08/2026 | Pesquisa LG ganhou duas abas: **Filtro IRR (bgpq4)** — prefix-list de ASN/as-set no formato do fabricante, com comando exato, copiar e baixar — e **AS-SET** — membros diretos, sets aninhados clicáveis, ASNs recursivos com nome, contagem de prefixos e o objeto em cada base IRR com aviso de divergência | CONSULTA_IRR_ASSET.md |
 | 20/08/2026 | Acessos: fix do RDP — botão "Acessar" abria o terminal SSH (`terminal_tab_manager.js` não tratava o protocolo `RDP`) e, depois disso, a sessão subia só com tela preta porque o `xfreerdp` era chamado com `/sec:tls` e o Windows Server exige NLA; stderr do cliente RDP passou a ser logado e a falha vira mensagem na tela | winbox_vnc.md |
@@ -1633,7 +1658,7 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 
 ---
 
-**Última atualização:** 26/08/2026  
+**Última atualização:** 27/08/2026  
 **Versão:** 2.1  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)

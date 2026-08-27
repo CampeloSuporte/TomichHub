@@ -39,6 +39,7 @@ class TopoEditor {
     this.selected = null;
     this.dirty = false;
     this.wpDrag = null;   // {linkId, wpIdx} — arrastar waypoint
+    this.areaResizing = null; // {id, corner, fx, fy} — arrastar canto de uma Área
     this._propsGen = 0;   // invalida fetch de interfaces em voo ao trocar seleção
     this._ifaceCache = {}; // acesso_id -> [interfaces] (extraídas do backup)
     this._l2vpn = null;    // estado do modal de VSI/VPLS/VPWS/L2VC quando aberto
@@ -70,6 +71,13 @@ class TopoEditor {
     this.handlesLayer.id = 'handles-layer';
     this.vp.insertBefore(this.handlesLayer, this.nodesLayer);
 
+    // Camada das Áreas — zonas de documentação desenhadas ATRÁS de tudo (fica
+    // antes de links-layer no viewport, então links e nodes são pintados por
+    // cima da área que os agrupa).
+    this.areasLayer = document.createElementNS('http://www.w3.org/2000/svg','g');
+    this.areasLayer.id = 'areas-layer';
+    this.vp.insertBefore(this.areasLayer, this.linksLayer);
+
     // Retoca a animação de fade do painel de propriedades (`#props-fade` no CSS)
     // toda vez que o conteúdo troca — só setar innerHTML de novo no mesmo nó
     // não reinicia uma CSS animation já concluída, então sem isso o fade só
@@ -95,6 +103,9 @@ class TopoEditor {
    *  e Cmd valendo como alias — Shift porque era o único jeito até 2026-08-25
    *  e virou dedo de quem já usava, Cmd (metaKey) pro mesmo gesto no Mac. */
   _ehAditivo(e) { return e.ctrlKey || e.metaKey || e.shiftKey; }
+
+  /** true se o id aponta para uma Área (zona de documentação, não device). */
+  _ehArea(id) { const n = this.nodes.find(x => x.id === id); return !!n && n.type === 'area'; }
 
   /** Retângulo do canvas, cacheado por um frame: o mousemove pedia
    *  getBoundingClientRect a cada evento, e cada chamada força o navegador a
@@ -207,6 +218,14 @@ class TopoEditor {
       const type = e.dataTransfer.getData('device-type');
       if (!type) return;
       const pt = this._svgPoint(e);
+      if (type === 'area') {
+        // Área nasce grande (é um contêiner) e já selecionada, pra pessoa
+        // digitar o nome na hora.
+        const a = this.addNode('area', this._snap(pt.x), this._snap(pt.y),
+          {w: 280, h: 190, label: 'Nova área'});
+        this._select('node', a.id);
+        return;
+      }
       this.addNode(type, this._snap(pt.x), this._snap(pt.y));
     });
 
@@ -398,11 +417,31 @@ class TopoEditor {
       return;
     }
 
+    // Canto de uma Área: redimensiona em vez de mover. O canto oposto (fx,fy)
+    // fica ancorado enquanto o outro segue o cursor.
+    if (target.classList.contains('area-handle')) {
+      const id = target.dataset.id;
+      const node = this.nodes.find(n => n.id === id);
+      if (node) {
+        this._select('node', id);
+        const corner = target.dataset.corner;
+        this._saveHistory();
+        this.areaResizing = {
+          id, corner,
+          fx: node.x + (corner.includes('w') ?  node.w/2 : -node.w/2),
+          fy: node.y + (corner.includes('n') ?  node.h/2 : -node.h/2),
+        };
+        e.stopPropagation();
+      }
+      return;
+    }
+
     const nodeEl = target.closest('.node');
     const linkEl = target.closest('.link-hit');
     const isAnchor = target.classList.contains('anchor');
 
-    if (this.connectMode && nodeEl) {
+    // Áreas não participam de conexões (não são equipamentos).
+    if (this.connectMode && nodeEl && !this._ehArea(nodeEl.dataset.id)) {
       this.connectSrc = nodeEl.dataset.id;
       this.anchorDrag = true;
       nodeEl.classList.add('connecting');
@@ -511,6 +550,25 @@ class TopoEditor {
       }
       return;
     }
+    if (this.areaResizing) {
+      this._navBusy();
+      const s = this.areaResizing;
+      const node = this.nodes.find(n => n.id === s.id);
+      if (node) {
+        const pt = this._svgPoint(e);
+        let nx = pt.x, ny = pt.y;
+        if (this.snap) { nx = Math.round(nx/20)*20; ny = Math.round(ny/20)*20; }
+        const w = Math.max(80, Math.abs(nx - s.fx));
+        const h = Math.max(50, Math.abs(ny - s.fy));
+        const left = nx < s.fx ? s.fx - w : s.fx;
+        const top  = ny < s.fy ? s.fy - h : s.fy;
+        node.w = w; node.h = h;
+        node.x = left + w/2; node.y = top + h/2;
+        this._renderNode(node);
+        this._setDirty();
+      }
+      return;
+    }
     if (this.rubberBand) {
       this._navBusy();
       const pt = this._svgPoint(e);
@@ -574,6 +632,7 @@ class TopoEditor {
   _onUp(e) {
     this._flushMove();
     if (this.wpDrag) { this._saveHistory(); this.wpDrag = null; return; }
+    if (this.areaResizing) { this.areaResizing = null; return; }
     if (this.rubberBand) { this._finishRubberBand(); this.rubberBand = null; return; }
     if (this.groupDragging) { this._saveHistory(); this.groupDragging = null; return; }
     if (this.dragging) { this._saveHistory(); this.dragging = null; }
@@ -906,7 +965,8 @@ class TopoEditor {
     // _deselect(), em vez de ficar ocupando a lateral com "selecione algo".
     document.body.classList.remove('props-off');
     if (type === 'node') {
-      const el = this.nodesLayer.querySelector(`[data-id="${id}"]`);
+      const el = this.nodesLayer.querySelector(`[data-id="${id}"]`)
+              || this.areasLayer.querySelector(`[data-id="${id}"]`);
       if (el) el.classList.add('selected');
       this._showNodeProps(id);
     } else {
@@ -992,7 +1052,8 @@ class TopoEditor {
     // não deve contar como um laço de seleção de 0x0.
     if (maxX - minX < 4 && maxY - minY < 4) return;
 
-    const found = this.nodes.filter(n => n.x >= minX && n.x <= maxX && n.y >= minY && n.y <= maxY);
+    const found = this.nodes.filter(n => n.type !== 'area'
+      && n.x >= minX && n.x <= maxX && n.y >= minY && n.y <= maxY);
     if (!found.length) return;
 
     if (found.length === 1) {
@@ -1091,18 +1152,20 @@ class TopoEditor {
    *  `transform` em vez de passar pelo _renderNode, que reconstrói ~15
    *  elementos SVG via innerHTML — a 60fps, caro à toa. */
   _moverNode(node) {
-    const el = this.nodesLayer.querySelector(`[data-id="${node.id}"]`);
+    const el = this.nodesLayer.querySelector(`[data-id="${node.id}"]`)
+            || this.areasLayer.querySelector(`[data-id="${node.id}"]`);
     if (!el) { this._renderNode(node); return; }
     el.setAttribute('transform', `translate(${node.x},${node.y})`);
   }
 
   _renderNode(node) {
-    let el = this.nodesLayer.querySelector(`[data-id="${node.id}"]`);
+    const layer = node.type === 'area' ? this.areasLayer : this.nodesLayer;
+    let el = layer.querySelector(`[data-id="${node.id}"]`);
     if (!el) {
       el = document.createElementNS('http://www.w3.org/2000/svg','g');
       el.classList.add('node');
       el.dataset.id = node.id;
-      this.nodesLayer.appendChild(el);
+      layer.appendChild(el);
     }
     const def = TOPO_DEVICES[node.type] || TOPO_DEVICES.host;
     const c = node.color || def.color;
@@ -1110,6 +1173,33 @@ class TopoEditor {
     // Anel pulsante (CSS) só em nodes vinculados a um Acesso real do CRM —
     // ver `.node[data-live="1"] .node-ring` no <style> do template.
     if (node.acesso_id) el.dataset.live = '1'; else delete el.dataset.live;
+
+    if (node.type === 'area') {
+      el.classList.add('area-node');
+      el.style.color = c; // currentColor do drop-shadow de seleção
+      const hw = Math.max(40, node.w/2), hh = Math.max(25, node.h/2);
+      const label = node.label || '';
+      const titleW = Math.max(28, label.length * 6.7 + 20);
+      const corner = (k) => {
+        const hx = k.includes('w') ? -hw : hw;
+        const hy = k.includes('n') ? -hh : hh;
+        return `<rect class="area-handle" data-corner="${k}" data-id="${node.id}"
+          x="${hx-5}" y="${hy-5}" width="10" height="10" rx="2"
+          fill="#0d1117" stroke="${c}" stroke-width="2" style="cursor:${k}-resize"/>`;
+      };
+      el.innerHTML = `
+        <rect class="area-rect" x="${-hw}" y="${-hh}" width="${hw*2}" height="${hh*2}" rx="10"
+          fill="${c}14" stroke="${c}" stroke-width="1.6"/>
+        <rect class="area-border-hit" x="${-hw}" y="${-hh}" width="${hw*2}" height="${hh*2}" rx="10"/>
+        ${label ? `<g class="area-label" transform="translate(${-hw},${-hh})">
+          <rect x="0" y="-10" width="${titleW}" height="20" rx="6" fill="${c}" fill-opacity=".95"/>
+          <text x="10" y="4.5" font-size="11.5" font-weight="700" fill="#0d1117"
+            font-family="'Segoe UI',sans-serif">${this._esc(label)}</text>
+        </g>` : ''}
+        ${['nw','ne','sw','se'].map(corner).join('')}`;
+      return;
+    }
+    el.classList.remove('area-node');
 
     if (node.type === 'text_box') {
       el.classList.add('text-box-node');
@@ -1215,6 +1305,17 @@ class TopoEditor {
     const raioA = (src.w || 64) / 2 + 14;
     const raioB = (tgt.w || 64) / 2 + 14;
 
+    // Vetor PERPENDICULAR à linha, sempre apontando "para cima" (ny <= 0). O IP
+    // é afastado da linha por esse vetor e a interface pelo oposto — em vez de
+    // um deslocamento fixo em Y. Com o Y fixo (IP -8, interface +14), um link
+    // quase vertical jogava os dois rótulos praticamente na mesma coluna e o
+    // nome da interface cobria o IP (bug visto em produção — ver captura da
+    // sessão). Na perpendicular eles se separam em qualquer ângulo do enlace.
+    let nx = -uy, ny = ux;
+    if (ny > 0) { nx = -nx; ny = -ny; }
+    const OFF_IP = 12;   // afastamento perpendicular do rótulo de IP (um lado)
+    const OFF_IF = 12;   // ...e do rótulo de interface (lado oposto)
+
     // Largura de cada rótulo, calculada ANTES da posição — precisa entrar na
     // conta da distância até o node (ver comentário abaixo).
     const ipLocalW = Math.max(68, (link.ip_local||'').length * 6 + 8);
@@ -1231,10 +1332,10 @@ class TopoEditor {
     // pela borda do node em links horizontais).
     const clearIpA = Math.min(raioA + 16 + ipLocalW/2, linkLen * 0.45);
     const clearIpB = Math.min(raioB + 16 + ipRemoteW/2, linkLen * 0.45);
-    const ipLocalX  = src.x + ux * clearIpA;
-    const ipLocalY  = src.y + uy * clearIpA - 8;
-    const ipRemoteX = tgt.x - ux * clearIpB;
-    const ipRemoteY = tgt.y - uy * clearIpB - 8;
+    const ipLocalX  = src.x + ux * clearIpA + nx * OFF_IP;
+    const ipLocalY  = src.y + uy * clearIpA + ny * OFF_IP;
+    const ipRemoteX = tgt.x - ux * clearIpB + nx * OFF_IP;
+    const ipRemoteY = tgt.y - uy * clearIpB + ny * OFF_IP;
     const ipLocalHtml = link.ip_local ? `
       <rect x="${ipLocalX-ipLocalW/2}" y="${ipLocalY-10}" width="${ipLocalW}" height="14" rx="5" fill="#0b0f15" fill-opacity=".92" stroke="${color}" stroke-opacity=".35"/>
       <text class="link-ip" x="${ipLocalX}" y="${ipLocalY}">${this._esc(link.ip_local)}</text>` : '';
@@ -1246,10 +1347,10 @@ class TopoEditor {
     // linha. Mesmo ajuste de `largura/2` explicado acima.
     const clearIfA = Math.min(raioA + ifAW/2 + 6, linkLen * 0.4);
     const clearIfB = Math.min(raioB + ifBW/2 + 6, linkLen * 0.4);
-    const ifAx = src.x + ux * clearIfA;
-    const ifAy = src.y + uy * clearIfA + 14;
-    const ifBx = tgt.x - ux * clearIfB;
-    const ifBy = tgt.y - uy * clearIfB + 14;
+    const ifAx = src.x + ux * clearIfA - nx * OFF_IF;
+    const ifAy = src.y + uy * clearIfA - ny * OFF_IF;
+    const ifBx = tgt.x - ux * clearIfB - nx * OFF_IF;
+    const ifBy = tgt.y - uy * clearIfB - ny * OFF_IF;
     const ifAHtml = link.iface_a ? `
       <rect x="${ifAx-ifAW/2}" y="${ifAy-8.5}" width="${ifAW}" height="12" rx="4" fill="#0b0f15" fill-opacity=".92"/>
       <text class="link-iface" x="${ifAx}" y="${ifAy}" fill="${color}">${this._esc(link.iface_a)}</text>` : '';
@@ -1325,7 +1426,10 @@ class TopoEditor {
     this.nodesLayer.innerHTML = '';
     this.linksLayer.innerHTML = '';
     this.handlesLayer.innerHTML = '';
-    this.nodes.forEach(n => this._renderNode(n));
+    this.areasLayer.innerHTML = '';
+    // Áreas primeiro: ficam atrás e não devem cobrir o clique de nada.
+    this.nodes.filter(n => n.type === 'area').forEach(n => this._renderNode(n));
+    this.nodes.filter(n => n.type !== 'area').forEach(n => this._renderNode(n));
     this.links.forEach(l => this._renderLink(l));
     // Undo/redo pode trazer de volta (ou remover) nodes que estavam na
     // multi-seleção — descarta ids que não existem mais e reaplica o
@@ -1344,6 +1448,35 @@ class TopoEditor {
   _showNodeProps(id) {
     const node = this.nodes.find(n => n.id === id);
     if (!node) return;
+
+    if (node.type === 'area') {
+      document.getElementById('props-body').innerHTML = `
+        <div class="prop-title" style="color:${node.color}"><i class="fas fa-vector-square"></i> Área</div>
+        <div class="prop-group">
+          <label class="prop-label">Nome (rótulo no topo)</label>
+          <input class="prop-input" id="pn-label" value="${this._esc(node.label)}" placeholder="Ex.: POP Central, Sala de servidores…">
+        </div>
+        <div class="prop-group">
+          <label class="prop-label">Cor</label>
+          <input type="color" class="prop-input" id="pn-color" value="${node.color}" style="height:36px;padding:2px">
+        </div>
+        <div class="prop-row">
+          <div class="prop-group" style="flex:1;margin-bottom:0">
+            <label class="prop-label">Largura</label>
+            <input class="prop-input" id="pn-w" type="number" min="80" value="${Math.round(node.w)}">
+          </div>
+          <div class="prop-group" style="flex:1;margin-bottom:0">
+            <label class="prop-label">Altura</label>
+            <input class="prop-input" id="pn-h" type="number" min="50" value="${Math.round(node.h)}">
+          </div>
+        </div>
+        <div class="prop-group" style="font-size:.68rem;color:var(--muted);margin-top:10px">
+          <i class="fas fa-circle-info"></i> Arraste a borda para mover, os cantos para redimensionar.
+        </div>
+        <button class="prop-btn primary" onclick="topo._applyNodeProps('${id}')"><i class="fas fa-check"></i> Aplicar</button>
+        <button class="prop-btn danger" onclick="topo._deleteSelected()"><i class="fas fa-trash"></i> Remover</button>`;
+      return;
+    }
 
     if (node.type === 'text_box') {
       document.getElementById('props-body').innerHTML = `
@@ -1385,7 +1518,7 @@ class TopoEditor {
     }
 
     const tipoOpts = Object.entries(TOPO_DEVICES)
-      .filter(([k]) => k !== 'text_box' && k !== 'grupo')
+      .filter(([k]) => k !== 'text_box' && k !== 'grupo' && k !== 'area')
       .map(([k,v]) => `<option value="${k}" ${node.type===k?'selected':''}>${v.label}</option>`).join('');
 
     const autoNote = node.acesso_id ? `
@@ -1559,6 +1692,10 @@ class TopoEditor {
     node.label = document.getElementById('pn-label').value;
     const ipEl = document.getElementById('pn-ip');
     if (ipEl) node.ip = ipEl.value;
+    const wEl = document.getElementById('pn-w');
+    if (wEl) node.w = Math.max(80, parseInt(wEl.value) || node.w);
+    const hEl = document.getElementById('pn-h');
+    if (hEl) node.h = Math.max(50, parseInt(hEl.value) || node.h);
     node.color = document.getElementById('pn-color').value;
     const typeEl = document.getElementById('pn-type');
     if (typeEl && typeEl.value !== node.type) {
@@ -2955,7 +3092,7 @@ class TopoEditor {
       return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
     });
 
-    const jaPosicionados = this.nodes.filter(n => n.type !== 'text_box');
+    const jaPosicionados = this.nodes.filter(n => n.type !== 'text_box' && n.type !== 'area');
     // Reimportação: faixa nova entra abaixo do que já está desenhado, em vez de
     // cair por cima do que a pessoa já posicionou à mão.
     let y = jaPosicionados.length
@@ -3072,7 +3209,9 @@ class TopoEditor {
   }
 
   _updateStatus() {
-    document.getElementById('st-nodes').textContent = this.nodes.length;
+    // Áreas são anotações de fundo, não contam como "dispositivos".
+    const reais = this.nodes.filter(n => n.type !== 'area');
+    document.getElementById('st-nodes').textContent = reais.length;
     document.getElementById('st-links').textContent = this.links.length;
     const hint = document.getElementById('canvas-hint');
     if (hint) hint.classList.toggle('show', !this.nodes.length);

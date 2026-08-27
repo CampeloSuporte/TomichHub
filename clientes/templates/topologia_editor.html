@@ -499,6 +499,20 @@ body.props-off #props{transform:translateX(calc(100% + 20px));opacity:0;pointer-
 .text-box-node .node-ring{display:none}
 .text-box-node .anchor{opacity:0}
 .text-box-node:hover .anchor{opacity:1}
+/* ── Área (zona de documentação) ────────────────────────────────────────────
+   Retângulo de fundo desenhado ATRÁS de links e nodes (camada #areas-layer).
+   O preenchimento não captura clique (pointer-events:none) para não roubar o
+   pan nem os cliques nos equipamentos que ficam por cima; quem seleciona/
+   arrasta a área é a faixa da borda (.area-border-hit) e a aba de título. */
+.area-node{cursor:move}
+.area-rect{pointer-events:none;transition:none}
+.area-border-hit{fill:none;stroke:transparent;stroke-width:18;pointer-events:stroke;cursor:move}
+.area-label{cursor:move}
+.area-label text{user-select:none}
+.area-node.selected .area-rect{stroke-width:2.6;filter:drop-shadow(0 0 6px currentColor)}
+.area-handle{opacity:0;pointer-events:none}
+.area-node.selected .area-handle{opacity:1;pointer-events:all}
+body.nav-busy .area-node.selected .area-rect{filter:none}
 /* Toast */
 #toast{position:fixed;bottom:52px;left:50%;transform:translateX(-50%) translateY(10px) scale(.97);background:rgba(18,24,31,.96);backdrop-filter:blur(8px);border:1px solid rgba(63,185,80,.5);color:var(--green);padding:10px 20px;border-radius:22px;font-size:.8rem;font-weight:600;z-index:200;opacity:0;transition:opacity .22s var(--ease-out),transform .22s var(--ease-out);pointer-events:none;box-shadow:var(--shadow-lg)}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
@@ -680,7 +694,7 @@ body:not(.pal-off) #legend-panel{left:236px}
     document.body.classList.add('embed-mode');
   }
 </script>
-<script src="/static/js/topo_engine.js?v=25"></script>
-<script src="/static/js/topo_main.js?v=43"></script>
+<script src="/static/js/topo_engine.js?v=26"></script>
+<script src="/static/js/topo_main.js?v=44"></script>
 </body>
 </html>
