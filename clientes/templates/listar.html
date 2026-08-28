@@ -3426,6 +3426,74 @@ const VLANSW = { carregado: false, switches: [], aberto: null, cacheDetalhe: {},
         border:1px solid var(--border); border-radius:4px; padding:0 4px; margin:0 1px;
     }
 
+
+    /* ─────────────────────────────────────────────────────────────
+       Blocos livres do prefixo pai (botão "Livres" do modal Sub-rede)
+       Painel embutido, e não dropdown flutuante: o modal tem
+       overflow-y:auto, então uma lista absoluta era cortada na borda —
+       era isso que "bugava" o menu em prefixo grande.
+    ───────────────────────────────────────────────────────────── */
+    .livres-painel {
+        border:1px solid rgba(63,185,80,.28); border-radius:10px; background:#0d1117;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.03); overflow:hidden;
+    }
+    .livres-head {
+        display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+        padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.05);
+    }
+    .livres-head .fa-layer-group { color:var(--primary-green); }
+    .livres-titulo { color:var(--text-light); font-size:.84rem; font-weight:600; }
+    .livres-cidr {
+        font-family:'Courier New',monospace; font-size:.8rem; color:var(--primary-green);
+        background:rgba(63,185,80,.08); border:1px solid rgba(63,185,80,.18);
+        border-radius:6px; padding:1px 8px;
+    }
+    .livres-meta { color:var(--text-muted); font-size:.74rem; }
+    .livres-x {
+        margin-left:auto; background:transparent; border:0; color:var(--text-muted); cursor:pointer;
+        width:24px; height:24px; border-radius:6px; line-height:1; font-size:.9rem;
+    }
+    .livres-x:hover { background:rgba(255,255,255,.06); color:var(--text-light); }
+
+    .livres-tools { display:flex; align-items:center; gap:8px; padding:9px 14px 4px; flex-wrap:wrap; }
+    .livres-chips { display:flex; gap:5px; flex-wrap:wrap; padding:0 14px 9px; }
+    .livres-chip {
+        padding:3px 9px; border-radius:999px; border:1px solid var(--border); background:transparent;
+        color:var(--text-muted); font-size:.71rem; cursor:pointer; white-space:nowrap;
+        font-family:'Courier New',monospace; line-height:1.5;
+        transition:color 120ms ease, border-color 120ms ease, background-color 120ms ease, transform 160ms cubic-bezier(.23,1,.32,1);
+    }
+    .livres-chip:hover { color:var(--text-light); border-color:rgba(255,255,255,.2); }
+    .livres-chip:active { transform:scale(.96); }
+    .livres-chip[data-on="1"] { color:var(--primary-green); border-color:rgba(63,185,80,.45); background:rgba(63,185,80,.12); }
+    .livres-chip small { opacity:.55; margin-left:4px; font-family:'Inter',sans-serif; }
+
+    .livres-grade {
+        display:grid; grid-template-columns:repeat(auto-fill,minmax(168px,1fr)); gap:4px;
+        max-height:300px; overflow-y:auto; padding:2px 10px 10px;
+        scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.14) transparent;
+    }
+    .livres-grade::-webkit-scrollbar { width:8px; }
+    .livres-grade::-webkit-scrollbar-thumb { background:rgba(255,255,255,.12); border-radius:4px; }
+    .livres-item {
+        display:flex; align-items:center; gap:7px; padding:5px 9px; border-radius:7px;
+        border:1px solid transparent; cursor:pointer; text-align:left; width:100%;
+        background:rgba(255,255,255,.02); color:var(--text-light);
+        font-family:'Courier New',monospace; font-size:.8rem;
+        transition:background-color 110ms ease, border-color 110ms ease;
+    }
+    .livres-item:hover { background:rgba(63,185,80,.12); border-color:rgba(63,185,80,.3); }
+    .livres-item[aria-selected="true"] { background:rgba(63,185,80,.18); border-color:rgba(63,185,80,.5); }
+    .livres-item i { color:var(--primary-green); opacity:.55; font-size:.62rem; }
+    .livres-item small { margin-left:auto; color:var(--text-muted); font-size:.66rem; font-family:'Inter',sans-serif; }
+    .livres-vazio { padding:20px 12px; text-align:center; color:var(--text-muted); font-size:.79rem; grid-column:1/-1; }
+    .livres-foot {
+        display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+        padding:8px 14px 11px; border-top:1px solid rgba(255,255,255,.05);
+    }
+    .livres-conta { color:var(--text-muted); font-size:.73rem; flex:1; min-width:120px; }
+    .livres-aviso { color:#ffaa00; font-size:.73rem; }
+
     /* Movimento reduzido: mantém o fade (ajuda a entender que algo abriu),
        corta o deslocamento/escala. */
     @media (prefers-reduced-motion:reduce) {
@@ -3564,7 +3632,7 @@ function _renderSrLeafRow(s, baseNivel, oculta){
        "+". Traço = folha de verdade (host /32 ou /128, ou /64 IPv6 sem filha). */
     const folderBase = 'display:inline-block;width:16px;text-align:center;font-size:.8rem;margin-right:4px;';
     const folderIcon = hasChildren
-        ? `<i class="fas ${aberta ? 'fa-folder-open' : 'fa-folder'}" title="${aberta ? 'Recolher' : 'Expandir'} sub-redes filhas"
+        ? `<i id="sr-folder-${s.id}" class="fas ${aberta ? 'fa-folder-open' : 'fa-folder'}" title="${aberta ? 'Recolher' : 'Expandir'} sub-redes filhas"
              style="${folderBase}color:#ffaa00;cursor:pointer;"
              onclick="ipamToggleSrChildren(${s.id})"></i>`
         : podeDividir
@@ -3628,7 +3696,14 @@ function _renderSrLeafRow(s, baseNivel, oculta){
 
 window.ipamCarregarPrefixos = async function(){
     const tb = document.getElementById('ipam-prefixos-tbody');
-    tb.innerHTML = tbEmpty(7,'<i class="fas fa-spinner fa-spin"></i>');
+    // Redesenhar com a página rolada não pode jogar o usuário pro topo:
+    // guarda a posição e devolve depois que a tabela recupera a altura.
+    const scrollY = window.scrollY;
+    // O spinner só entra quando não há tabela ainda — trocar uma árvore cheia
+    // por uma linha de "carregando" encolhe a página e desloca tudo.
+    if(!tb.querySelector('.ipam-row-prefixo')){
+        tb.innerHTML = tbEmpty(7,'<i class="fas fa-spinner fa-spin"></i>');
+    }
     let r, d;
     try {
         r = await fetch(`/clientes/${CID}/ipam/prefixos/`);
@@ -3668,7 +3743,7 @@ window.ipamCarregarPrefixos = async function(){
             ancestral = pai ? pai.pai_id : null;
         }
         const toggleArvore = ehGalho
-            ? `<i class="fas ${IPAM._pfxCollapsed[p.id] ? 'fa-caret-right' : 'fa-caret-down'}" style="width:14px;cursor:pointer;color:var(--text-muted);"
+            ? `<i id="pfx-caret-${p.id}" class="fas ${IPAM._pfxCollapsed[p.id] ? 'fa-caret-right' : 'fa-caret-down'}" style="width:14px;cursor:pointer;color:var(--text-muted);"
                  onclick="ipamToggleArvorePrefixo(${p.id})" title="Expandir/colapsar prefixos filhos"></i>`
             : `<span style="display:inline-block;width:14px;"></span>`;
         const subredesAbertas = !!IPAM._bdOpen[p.id];
@@ -3725,22 +3800,81 @@ window.ipamCarregarPrefixos = async function(){
 
         return linhaPrefixo + linhasSub;
     }).join('');
+
+    if(scrollY) window.scrollTo({top: scrollY});
+};
+
+/* ─────────────────────────────────────────────────────────────
+   ABRIR / FECHAR PASTAS  —  só DOM, sem refazer a tabela
+
+   Toda linha de sub-rede já está no HTML desde o render (fechada
+   nasce com display:none), então expandir é reavaliar visibilidade.
+   Antes cada clique em pasta chamava ipamCarregarPrefixos(): ida ao
+   servidor + innerHTML inteiro trocado, o que zerava a rolagem e
+   jogava o usuário pro topo da página.
+───────────────────────────────────────────────────────────── */
+window.ipamAplicarVisibilidade = function(){
+    if(!IPAM.prefixos || !IPAM.prefixos.length) return;
+    const gruposSub = _srAgruparPorPrefixo();
+    const porId     = new Map(IPAM.prefixos.map(p => [p.id, p]));
+    const oculto    = {};
+
+    IPAM.prefixos.forEach(p => {
+        let anc = p.pai_id, esconde = false;
+        while(anc){
+            if(IPAM._pfxCollapsed[anc]){ esconde = true; break; }
+            anc = (porId.get(anc) || {}).pai_id || null;
+        }
+        oculto[p.id] = esconde;
+
+        const tr = document.getElementById(`pfx-row-${p.id}`);
+        if(tr) tr.style.display = esconde ? 'none' : '';
+
+        const colapsado = !!IPAM._pfxCollapsed[p.id];
+        const caret = document.getElementById(`pfx-caret-${p.id}`);
+        if(caret) caret.className = `fas ${colapsado ? 'fa-caret-right' : 'fa-caret-down'}`;
+
+        const aberta = !!IPAM._bdOpen[p.id];
+        const pasta  = document.getElementById(`ipam-bd-icon-${p.id}`);
+        if(pasta) pasta.className = `fas ${aberta ? 'fa-folder-open' : 'fa-folder'}`;
+    });
+
+    Object.keys(gruposSub).forEach(pid => {
+        const base = oculto[pid] || !IPAM._bdOpen[pid];
+        gruposSub[pid].forEach(sr => {
+            const esconde = base || !_srAncestraisAbertos(sr);
+            const tr = document.getElementById(`sr-row-${sr.id}`);
+            if(tr) tr.style.display = esconde ? 'none' : '';
+
+            // A grade de IPs é uma linha irmã: some junto com a dona e só
+            // reaparece se ela mesma continuar aberta.
+            const grade = document.getElementById(`sr-grade-${sr.id}`);
+            if(grade) grade.style.display = (!esconde && IPAM._srGradeOpen[sr.id]) ? '' : 'none';
+
+            const srAberta = !!IPAM._srOpen[sr.id];
+            const icone = document.getElementById(`sr-folder-${sr.id}`);
+            if(icone){
+                icone.className = `fas ${srAberta ? 'fa-folder-open' : 'fa-folder'}`;
+                icone.title = `${srAberta ? 'Recolher' : 'Expandir'} sub-redes filhas`;
+            }
+        });
+    });
 };
 
 window.ipamToggleArvorePrefixo = function(pid){
     IPAM._pfxCollapsed[pid] = !IPAM._pfxCollapsed[pid];
-    ipamCarregarPrefixos();
+    ipamAplicarVisibilidade();
 };
 
 /* ─── Breakdown inline ─── */
 IPAM._bdOpen = {};
 
-/* Abre/fecha a pasta de sub-redes de um prefixo — as linhas já vêm do cache
-   (IPAM.subredes, agrupado por _srAgruparPorPrefixo), sem round-trip extra;
-   só re-renderiza a árvore de prefixos com o novo estado. */
-window.ipamToggleBreakdown = async function(pid){
+/* Abre/fecha a pasta de sub-redes de um prefixo. As linhas já estão no DOM
+   (vêm do cache IPAM.subredes no render), então isso é só visibilidade —
+   sem fetch e sem perder a posição da rolagem. */
+window.ipamToggleBreakdown = function(pid){
     IPAM._bdOpen[pid] = !IPAM._bdOpen[pid];
-    await ipamCarregarPrefixos();
+    ipamAplicarVisibilidade();
 };
 
 /* Converte IPv4 ou IPv6 → BigInt para ordenação */
@@ -4251,12 +4385,12 @@ window.ipamSubdivVerOcupante = async function(subredeId, prefixoId, srPaiId){
     ipamSubdivFechar();
     await ipamCarregarSubRedes();          // garante IPAM.subredes atualizado pra edição
     if(srPaiId) IPAM._srOpen[srPaiId] = true;
+    if(prefixoId) IPAM._bdOpen[prefixoId] = true;   // abre a sub-pasta do prefixo
+    // Redesenha de fato: ipamCarregarSubRedes() acabou de trocar o cache, então
+    // as linhas que estão no DOM podem estar desatualizadas.
+    await ipamCarregarPrefixos();
     if(prefixoId){
-        IPAM._bdOpen[prefixoId] = false;
-        await ipamToggleBreakdown(prefixoId);  // abre a sub-pasta do prefixo
         document.getElementById(`pfx-row-${prefixoId}`)?.scrollIntoView({behavior:'smooth', block:'center'});
-    } else {
-        await ipamCarregarPrefixos();
     }
     ipamEditarSubRede(subredeId);
 };
@@ -4291,10 +4425,10 @@ async function _ipamMarcarEmUsoExec(pid, prefixo, breakdownPid){
 }
 
 /* Clique no nº de sub-redes da linha do Prefixo — abre a sub-pasta (breakdown) dele */
-window.ipamFiltrarSubredes = async function(prefixo_id){
+window.ipamFiltrarSubredes = function(prefixo_id){
     if(!prefixo_id) return;
-    IPAM._bdOpen[prefixo_id] = false;
-    await ipamToggleBreakdown(prefixo_id);
+    IPAM._bdOpen[prefixo_id] = true;
+    ipamAplicarVisibilidade();
     document.getElementById(`pfx-row-${prefixo_id}`)?.scrollIntoView({behavior:'smooth', block:'center'});
 };
 
@@ -4377,11 +4511,11 @@ function _srFolderPrefixo(s){
 }
 
 /* Toggle expand/collapse da árvore de sub-redes — guarda o estado em
-   IPAM._srOpen e re-renderiza (as filhas descendem de _srAncestraisAbertos),
-   então o que estava aberto continua aberto depois de criar/editar/excluir. */
+   IPAM._srOpen (as filhas descendem de _srAncestraisAbertos), então o que
+   estava aberto continua aberto depois de criar/editar/excluir. */
 window.ipamToggleSrChildren = function(pid){
     IPAM._srOpen[pid] = !IPAM._srOpen[pid];
-    ipamCarregarPrefixos();
+    ipamAplicarVisibilidade();
 };
 
 /* ─── Grade visual de IPs (estilo phpIPAM) ─── */
@@ -4982,17 +5116,16 @@ const MODAL_FORMS = {
         const vlOpts = IPAM.vlans.map(v=>`<option value="${v.id}" ${d.vlan_id==v.id?'selected':''}>VLAN ${v.numero} — ${v.nome}</option>`).join('');
         return `
         <div class="row g-2">
-        <div class="col-md-6" style="position:relative;">
+        <div class="col-md-6">
             <label class="form-label text-muted" style="font-size:.82rem">Rede CIDR *</label>
             <div style="display:flex;gap:4px;">
                 <input id="mf-rede" class="form-control form-control-sm" value="${d.rede||''}" placeholder="ex: 192.168.1.0/24"
                        style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
-                <button type="button" onclick="ipamToggleDisponiveis()" title="Ver blocos livres do prefixo pai"
+                <button type="button" id="mf-livres-btn" onclick="ipamToggleDisponiveis()" title="Ver blocos livres do prefixo pai"
                     style="background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--primary-green);border-radius:4px;padding:0 10px;white-space:nowrap;font-size:.78rem;">
                     <i class="fas fa-list-ul me-1"></i>Livres
                 </button>
             </div>
-            <div id="mf-rede-disponiveis" style="display:none;position:absolute;z-index:20;top:100%;left:0;right:0;background:#161b22;border:1px solid rgba(63,185,80,.3);border-radius:6px;margin-top:2px;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.4);"></div>
         </div>
         <div class="col-md-3">
             <label class="form-label text-muted" style="font-size:.82rem">Gateway</label>
@@ -5021,6 +5154,9 @@ const MODAL_FORMS = {
             <label class="form-label text-muted" style="font-size:.82rem">Local / Site</label>
             <input id="mf-local" class="form-control form-control-sm" value="${d.local||''}"
                    style="background:var(--bg-secondary);color:var(--text-light);border-color:var(--border);">
+        </div>
+        <div class="col-12">
+            <div id="mf-rede-disponiveis" class="livres-painel" style="display:none;"></div>
         </div>
         <div class="col-12">
             <label class="form-label text-muted" style="font-size:.82rem">Descrição</label>
@@ -5190,6 +5326,10 @@ function ipamAbrirModal(tipo, dados){
     const titulo = (dados ? 'Editar' : 'Novo') + ' ' + MODAL_TITLES[tipo];
     document.getElementById('modalIpamTitle').textContent = titulo;
     document.getElementById('modalIpamBody').innerHTML = MODAL_FORMS[tipo](dados||{});
+    // Sub-rede é o único formulário que abre o seletor de blocos livres embutido;
+    // nos 720px padrão a grade de blocos ficava com 3 colunas e muito scroll.
+    const dlg = document.getElementById('modalIpamDialog');
+    if(dlg) dlg.style.maxWidth = (tipo === 'subrede') ? '1040px' : '720px';
     ovl.style.display = 'flex';
     // Já veio com um prefixo pai pré-selecionado (ex: botão "+" da pasta) —
     // mostra de cara os blocos livres, sem precisar clicar em "Livres".
@@ -5199,43 +5339,209 @@ function ipamAbrirModal(tipo, dados){
 }
 window.ipamAbrirModal = ipamAbrirModal;
 
-/* ─── Blocos livres do prefixo pai, agrupados por tamanho (estilo phpIPAM) ─── */
+/* ─────────────────────────────────────────────────────────────
+   BLOCOS LIVRES DO PREFIXO PAI  (botão "Livres" do modal Sub-rede)
+
+   Painel embutido no modal, largura toda. Antes era um dropdown
+   absoluto de 260px dentro de um modal com overflow-y:auto — ele
+   era cortado na borda e, em prefixo grande, o backend ainda só
+   mandava as 6 primeiras máscaras (num /16 dava /17../22: um /24
+   não existia como opção). Agora:
+     • o padrão são os buracos livres inteiros (resposta exata);
+     • um chip por máscara, do /pai+1 até /32, com quantos blocos
+       livres existem em cada uma;
+     • a lista de um tamanho vem paginada ("carregar mais"),
+       então um /16 em /30 não trava mais nada.
+───────────────────────────────────────────────────────────── */
+IPAM._livres = {pfxId:null, mask:'gaps', offset:0, blocos:[], sel:null, busca:'', carregando:false};
+
+function _livresEl(id){ return document.getElementById(id); }
+
 window.ipamToggleDisponiveis = async function(forcarAberto){
-    const panel = document.getElementById('mf-rede-disponiveis');
-    const pfxId = document.getElementById('mf-prefixo_id')?.value;
+    const panel = _livresEl('mf-rede-disponiveis');
+    const pfxId = _livresEl('mf-prefixo_id')?.value;
     if(!panel) return;
     if(!pfxId){
         panel.style.display = 'none';
         if(!forcarAberto) uiAlert('Selecione um Prefixo pai primeiro pra ver os blocos livres.');
         return;
     }
-    if(!forcarAberto && panel.style.display !== 'none'){ panel.style.display = 'none'; return; }
-
-    panel.style.display = '';
-    panel.innerHTML = `<div style="padding:10px;color:var(--text-muted);font-size:.8rem;"><i class="fas fa-spinner fa-spin me-2"></i>Carregando blocos livres…</div>`;
-    try {
-        const r = await fetch(`/clientes/ipam/prefixos/${pfxId}/disponiveis/`);
-        const d = await r.json();
-        if(!d.ok){ panel.innerHTML = `<div style="padding:10px;color:#e06060;font-size:.8rem;">${d.erro}</div>`; return; }
-        if(!d.grupos.length){ panel.innerHTML = `<div style="padding:10px;color:var(--text-muted);font-size:.8rem;">Nenhum bloco livre neste prefixo.</div>`; return; }
-        panel.innerHTML = d.grupos.map(g => `
-            <div style="padding:5px 12px;background:rgba(255,255,255,.03);color:var(--text-muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;">${g.label}</div>
-            ${g.blocos.map(b => `<div onclick="ipamSelecionarRedeDisponivel('${b}')"
-                onmouseover="this.style.background='rgba(63,185,80,.12)'" onmouseout="this.style.background='transparent'"
-                style="padding:5px 16px;cursor:pointer;font-family:'Courier New',monospace;color:var(--text-light);font-size:.82rem;">
-                ${b}
-            </div>`).join('')}
-        `).join('');
-    } catch(e){
-        panel.innerHTML = `<div style="padding:10px;color:#e06060;font-size:.8rem;">Erro: ${e.message}</div>`;
+    // Trocar de prefixo pai com o painel aberto recarrega em vez de fechar
+    const trocouPfx = String(IPAM._livres.pfxId) !== String(pfxId);
+    if(!forcarAberto && !trocouPfx && panel.style.display !== 'none'){
+        panel.style.display = 'none';
+        return;
     }
+
+    Object.assign(IPAM._livres, {pfxId, mask:'gaps', offset:0, blocos:[], sel:null, busca:''});
+    panel.style.display = '';
+    panel.innerHTML = `<div class="livres-vazio"><i class="fas fa-spinner fa-spin me-2"></i>Calculando blocos livres…</div>`;
+    await _livresBuscar({base:true});
 };
 
-window.ipamSelecionarRedeDisponivel = function(cidr){
-    const input = document.getElementById('mf-rede');
-    if(input) input.value = cidr;
-    const panel = document.getElementById('mf-rede-disponiveis');
+/* Fecha só o painel (o X) — o modal continua aberto */
+window.ipamLivresFechar = function(){
+    const panel = _livresEl('mf-rede-disponiveis');
     if(panel) panel.style.display = 'none';
+};
+
+function _livresUrl(){
+    const S = IPAM._livres;
+    const qs = new URLSearchParams();
+    if(S.mask !== 'gaps'){
+        qs.set('prefixlen', S.mask);
+        if(S.offset) qs.set('offset', S.offset);
+        if(S.busca)  qs.set('q', S.busca);
+    }
+    const cauda = qs.toString();
+    return `/clientes/ipam/prefixos/${S.pfxId}/disponiveis/` + (cauda ? `?${cauda}` : '');
+}
+
+/* base=true → primeira carga (guarda cabeçalho/chips); anexar=true → "carregar mais" */
+async function _livresBuscar({base=false, anexar=false} = {}){
+    const S = IPAM._livres;
+    const panel = _livresEl('mf-rede-disponiveis');
+    if(!panel) return;
+    S.carregando = true;
+    if(!base) _livresRender();
+    try {
+        const r = await fetch(_livresUrl());
+        const d = await r.json();
+        S.carregando = false;
+        if(!d.ok){
+            panel.innerHTML = `<div class="livres-vazio" style="color:#e06060;">${_subdivEsc(d.erro || 'Erro ao listar blocos livres')}</div>`;
+            return;
+        }
+        if(base){
+            Object.assign(S, {prefixo:d.prefixo, versao:d.versao, tamanhos:d.tamanhos || [],
+                              gaps:d.gaps || [], gapsTotal:d.gaps_total || 0,
+                              livreTotal:d.livre_total || '0'});
+        }
+        const novos = d.blocos || [];
+        S.blocos     = anexar ? S.blocos.concat(novos) : novos;
+        S.total      = d.total;
+        S.totalLabel = d.total_label || '';
+        S.temMais    = !!d.tem_mais;
+        S.buscaTrunc = !!d.busca_truncada;
+        _livresRender();
+    } catch(e){
+        S.carregando = false;
+        panel.innerHTML = `<div class="livres-vazio" style="color:#e06060;">Erro: ${_subdivEsc(e.message)}</div>`;
+    }
+}
+
+window.ipamLivresMascara = function(mask){
+    const S = IPAM._livres;
+    if(String(S.mask) === String(mask)) return;
+    S.mask = mask === 'gaps' ? 'gaps' : parseInt(mask, 10);
+    S.offset = 0; S.sel = null; S.blocos = [];
+    _livresBuscar({});
+};
+
+window.ipamLivresMais = function(){
+    const S = IPAM._livres;
+    if(S.carregando || !S.temMais) return;
+    S.offset = S.blocos.length;   // o offset é quanto já está na tela
+    _livresBuscar({anexar:true});
+};
+
+/* Busca só faz sentido dentro de uma máscara: nos "buracos" a lista já é
+   curta e o filtro roda local, sem ida ao servidor. */
+window.ipamLivresBusca = function(valor){
+    const S = IPAM._livres;
+    S.busca = (valor || '').trim();
+    if(S.mask === 'gaps'){ _livresRender(); return; }
+    clearTimeout(IPAM._livresDebounce);
+    IPAM._livresDebounce = setTimeout(() => {
+        S.offset = 0; S.blocos = [];
+        _livresBuscar({});
+    }, 260);
+};
+
+function _livresItens(){
+    const S = IPAM._livres;
+    if(S.mask === 'gaps'){
+        const termo = S.busca.toLowerCase();
+        return (S.gaps || [])
+            .filter(g => !termo || g.rede.toLowerCase().includes(termo))
+            .map(g => ({rede:g.rede, nota:(g.label || '').replace(/^\/\d+\s*\(|\)$/g, '')}));
+    }
+    return (S.blocos || []).map(b => ({rede:b, nota:''}));
+}
+
+function _livresRender(){
+    const S = IPAM._livres;
+    const panel = _livresEl('mf-rede-disponiveis');
+    if(!panel) return;
+    // O painel é redesenhado inteiro a cada tecla da busca; sem guardar o foco
+    // e o cursor aqui, digitar o segundo caractere já era impossível.
+    const focoBusca = document.activeElement && document.activeElement.id === 'mf-livres-busca';
+    const cursor    = focoBusca ? document.activeElement.selectionStart : 0;
+
+    const chips = [`<button type="button" class="livres-chip" data-on="${S.mask === 'gaps' ? 1 : 0}"
+        onclick="ipamLivresMascara('gaps')" title="Os maiores blocos livres, inteiros">
+        buracos<small>${S.gapsTotal || 0}</small></button>`]
+        .concat((S.tamanhos || []).map(t => `<button type="button" class="livres-chip" data-on="${S.mask === t.prefixlen ? 1 : 0}"
+            onclick="ipamLivresMascara(${t.prefixlen})" title="${_subdivEsc(t.label)} — ${t.total_label} livre(s)">
+            /${t.prefixlen}<small>${t.total_label}</small></button>`))
+        .join('');
+
+    const itens = _livresItens();
+    const grade = itens.length
+        ? itens.map(it => `<button type="button" class="livres-item" aria-selected="${S.sel === it.rede}"
+              onclick="ipamSelecionarRedeDisponivel('${_subdivEsc(it.rede)}')">
+              <i class="fas fa-square"></i><span>${_subdivEsc(it.rede)}</span>
+              ${it.nota ? `<small>${_subdivEsc(it.nota)}</small>` : ''}
+           </button>`).join('')
+        : `<div class="livres-vazio">${S.carregando
+              ? '<i class="fas fa-spinner fa-spin me-2"></i>Carregando…'
+              : (S.busca ? 'Nenhum bloco livre bate com essa busca.' : 'Nenhum bloco livre neste tamanho.')}</div>`;
+
+    const conta = S.mask === 'gaps'
+        ? `${itens.length} de ${S.gapsTotal || 0} bloco(s) livre(s) inteiro(s)`
+        : `mostrando ${itens.length} de ${S.totalLabel || itens.length} bloco(s) /${S.mask}`;
+
+    panel.innerHTML = `
+      <div class="livres-head">
+          <i class="fas fa-layer-group"></i>
+          <span class="livres-titulo">Blocos livres</span>
+          <span class="livres-cidr">${_subdivEsc(S.prefixo || '')}</span>
+          <span class="livres-meta">${S.livreTotal || '0'} endereços livres</span>
+          <button type="button" class="livres-x" onclick="ipamLivresFechar()" title="Fechar">&times;</button>
+      </div>
+      <div class="livres-tools">
+          <div class="subdiv-busca"><i class="fas fa-search"></i>
+              <input type="text" id="mf-livres-busca" placeholder="filtrar por parte do IP…"
+                     value="${_subdivEsc(S.busca)}" oninput="ipamLivresBusca(this.value)">
+          </div>
+      </div>
+      <div class="livres-chips">${chips}</div>
+      <div class="livres-grade">${grade}</div>
+      <div class="livres-foot">
+          <span class="livres-conta">${conta}</span>
+          ${S.buscaTrunc ? `<span class="livres-aviso"><i class="fas fa-triangle-exclamation me-1"></i>busca parou no limite de varredura — refine o filtro</span>` : ''}
+          ${S.temMais ? `<button type="button" class="subdiv-btn" onclick="ipamLivresMais()" ${S.carregando ? 'disabled' : ''}>
+              ${S.carregando ? '<i class="fas fa-spinner fa-spin me-1"></i>' : '<i class="fas fa-angles-down me-1"></i>'}carregar mais
+          </button>` : ''}
+      </div>`;
+
+    if(focoBusca){
+        const inp = _livresEl('mf-livres-busca');
+        if(inp){ inp.focus(); inp.setSelectionRange(cursor, cursor); }
+    }
+}
+
+window.ipamSelecionarRedeDisponivel = function(cidr){
+    IPAM._livres.sel = cidr;
+    const input = _livresEl('mf-rede');
+    if(input){
+        input.value = cidr;
+        // Pisca o campo: o painel fecha e sem isso não fica claro o que mudou
+        input.style.transition = 'box-shadow 220ms ease';
+        input.style.boxShadow  = '0 0 0 3px rgba(63,185,80,.35)';
+        setTimeout(() => { input.style.boxShadow = ''; }, 480);
+    }
+    ipamLivresFechar();
 };
 
 function mfVal(id){ const el = document.getElementById(id); return el ? el.value : undefined; }
@@ -10079,7 +10385,7 @@ function getCsrfToken(){
 
     <!-- ═══ Modal IPAM (overlay customizado, sem Bootstrap Modal) ═══════════ -->
     <div id="modalIpamOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;">
-      <div style="background:#0a0a0a;border:2px solid var(--primary-green);border-radius:8px;width:90%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:0 0 30px var(--glow-green);position:relative;z-index:100000;">
+      <div id="modalIpamDialog" style="background:#0a0a0a;border:2px solid var(--primary-green);border-radius:8px;width:90%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:0 0 30px var(--glow-green);position:relative;z-index:100000;">
         <div style="border-bottom:1px solid var(--border);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
           <h5 id="modalIpamTitle" style="color:var(--primary-green);font-family:'Inter', sans-serif;margin:0;"></h5>
           <button onclick="ipamFecharModal()" style="background:transparent;border:none;color:rgba(255,255,255,.7);font-size:1.4rem;cursor:pointer;line-height:1;">&times;</button>
