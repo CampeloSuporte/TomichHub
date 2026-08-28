@@ -8,6 +8,8 @@ anuncia 4 prefixos e aparecia com "Anunciados (0)").
 from django.test import SimpleTestCase
 
 from clientes.bgp_actions import (
+    _contar_prepends,
+    _extrair_anuncios,
     _extrair_prefixos,
     comando_contar_recebidos,
     comandos_validar_anuncios,
@@ -100,3 +102,82 @@ class ExtrairPrefixosV6Test(SimpleTestCase):
     def test_ignora_token_que_nao_e_ipv6(self):
         # "Path/Ogn : 268080i" e afins não podem virar prefixo.
         self.assertEqual(_extrair_prefixos(' Path/Ogn : 268080i\n Label : 3/4\n'), [])
+
+
+class AsPathDoAnuncioTest(SimpleTestCase):
+    """AS-path de cada prefixo ANUNCIADO — o que o peer recebe de verdade. O
+    `apply as-path X X additive` da policy de saída não aparece na RIB local,
+    então só a consulta ao vivo mostra quantos prepends estão saindo.
+
+    As saídas abaixo são capturas reais, tiradas dos transcripts das sessões de
+    terminal (acessos 324/A2+ e 923/DS TECH)."""
+
+    CABECALHO = (
+        ' Total Number of Routes: 1\n'
+        '        Network            NextHop                       MED        LocPrf'
+        '    PrefVal Path/Ogn\n\n'
+    )
+
+    def test_v4_conta_os_prepends_do_path(self):
+        saida = self.CABECALHO + (
+            ' *>     45.187.123.0/24    172.30.252.34                  0'
+            '                     0      268546 268546 268546i\n')
+        self.assertEqual(_extrair_anuncios(saida), [{
+            'prefixo': '45.187.123.0/24', 'as_path': '268546 268546 268546',
+            'asns': 3, 'prepends': 2}])
+
+    def test_v4_um_prepend_e_nenhum(self):
+        um = self.CABECALHO + (
+            ' *>     45.187.123.0/24    172.30.252.22                  0'
+            '                     0      268546 268546i\n')
+        nenhum = self.CABECALHO + (
+            ' *>     45.187.123.0/24    45.68.76.102                   0'
+            '                     0      268546i\n')
+        self.assertEqual(_extrair_anuncios(um)[0]['prepends'], 1)
+        self.assertEqual(_extrair_anuncios(um)[0]['asns'], 2)
+        self.assertEqual(_extrair_anuncios(nenhum)[0]['prepends'], 0)
+        self.assertEqual(_extrair_anuncios(nenhum)[0]['as_path'], '268546')
+
+    def test_colunas_numericas_nao_viram_as_path(self):
+        """MED/LocPrf/PrefVal também são dígitos e podem vir vazias — uma regex
+        de "cauda de dígitos" comeria o final do next-hop e as colunas junto."""
+        saida = self.CABECALHO + ' *>     45.169.4.0/24   0.0.0.0   0   100   0   i\n'
+        anuncio = _extrair_anuncios(saida)[0]
+        self.assertEqual(anuncio['as_path'], '')
+        self.assertEqual(anuncio['asns'], 0)
+        self.assertEqual(anuncio['prepends'], 0)
+
+    def test_v6_le_o_path_do_bloco_e_admite_nao_saber(self):
+        """IPv6 no VRP não é tabela, é bloco por prefixo. O último bloco está
+        cortado pelo `---- More ----` da paginação: sem Path/Ogn o campo vem
+        `None` — "não consegui ler" não pode virar "zero prepend"."""
+        saida = (
+            ' *>     Network  : 2804:57B0::                              PrefixLen : 34\n'
+            '        NextHop  : 2001:12F8:0:2::54:172                    LocPrf    :\n'
+            '        MED      : 0                                        PrefVal   : 0\n'
+            '        Label    :\n'
+            '        Path/Ogn : 268080 268080i\n'
+            ' *>     Network  : 2804:57B0:8000::                         PrefixLen : 34\n'
+            '        NextHop  : 2001:12F8:0:2::54:172                    LocPrf    :\n'
+            '  ---- More ----\n'
+        )
+        self.assertEqual(_extrair_anuncios(saida), [
+            {'prefixo': '2804:57B0::/34', 'as_path': '268080 268080',
+             'asns': 2, 'prepends': 1},
+            {'prefixo': '2804:57B0:8000::/34', 'as_path': None,
+             'asns': None, 'prepends': None},
+        ])
+
+    def test_asn_diferente_no_path_nao_e_prepend(self):
+        """Dois ASNs não significam um prepend: só a repetição do primeiro é."""
+        self.assertEqual(_contar_prepends('268546 26162'), 0)
+        self.assertEqual(_contar_prepends('268546 268546 26162'), 1)
+        self.assertEqual(_contar_prepends(''), 0)
+
+    def test_saida_de_fabricante_nao_mapeado_nao_inventa_numero(self):
+        """Mikrotik: prefixo é lido, AS-path não — melhor "—" que um número
+        errado na tela de conferência."""
+        saida = ' 0 ADb dst-address=2804:7240::/32 gateway=2804:4bc:99:d::1\n'
+        self.assertEqual(_extrair_anuncios(saida), [
+            {'prefixo': '2804:7240::/32', 'as_path': None,
+             'asns': None, 'prepends': None}])

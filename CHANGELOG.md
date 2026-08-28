@@ -5,6 +5,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-28 (BGP: AS-path na consulta de anúncios)
+
+### Adicionado
+
+- **A consulta ao vivo de anúncios agora devolve o AS-path de cada prefixo**, não só o prefixo
+  (`clientes/bgp_actions.py::_extrair_anuncios`, `clientes/templates/bgp_automacao.html`). É a única
+  forma de conferir prepend de verdade: o `apply as-path <asn> <asn> additive` da policy de saída não
+  aparece em lugar nenhum da RIB local, só no que sai pela sessão.
+  - Cada anunciado vira `{'prefixo', 'as_path', 'asns', 'prepends'}` e o painel mostra
+    `45.187.123.0/24 · 268546 268546 (1 prepend)`.
+  - `prepends` conta a repetição do PRIMEIRO ASN — `268546 268546 268546` são 2 prepends, enquanto
+    `268546 26162` são dois saltos e nenhum prepend.
+  - Duas gramáticas do VRP mapeadas contra captura real (transcripts dos acessos 324 e 923): a tabela
+    de largura fixa do IPv4, onde o `Path/Ogn` é a última célula, e o bloco por prefixo do IPv6, onde
+    o path vem em linha própria. O que ancora a célula do IPv4 é a largura do espaço (coluna = 2+
+    espaços, ASNs = 1): uma regex de cauda de dígitos engole o fim do next-hop e as colunas
+    MED/LocPrf/PrefVal junto.
+  - `as_path: null` significa **"não consegui ler"**, não "sem prepend" — acontece em fabricante cuja
+    saída ainda não foi mapeada contra captura real (Cisco/Juniper/Mikrotik) e no Huawei quando a
+    paginação corta o bloco. O painel mostra `AS-path —` com tooltip, nunca um número inventado.
+
+---
+
 ## [Não publicado] — 2026-08-28 (BGP: community de prefixo que não casa filtro nenhum)
 
 ### Adicionado
