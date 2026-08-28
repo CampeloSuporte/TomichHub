@@ -5,6 +5,44 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-28 (IPAM: blocos livres completos e pasta sem recarregar)
+
+### Corrigido
+
+- **"Livres" só mostrava uma fatia do prefixo e o menu ficava cortado**
+  (`clientes/ipam_views.py::ipam_prefixo_disponiveis`, `clientes/templates/listar.html`).
+  A rota tinha dois tetos de quando o cadastro era pequeno: 6 máscaras e 40 blocos por máscara.
+  Num `/16` a lista ia de `/17` a `/22` — **um `/24` não existia como opção**, e é o tamanho que
+  se cadastra o dia inteiro. O painel ainda era um `position:absolute` de 260 px dentro de um
+  modal com `overflow-y:auto`, então a lista era cortada na borda: o "menu bugado".
+  - Máscaras agora vão de `pai+1` até `/32` em IPv4 (`_mascaras_disponiveis`); em IPv6, nibble
+    até `/64` mais `/112 /126 /127 /128`, as únicas abaixo de /64 que aparecem no cadastro.
+  - Sem `?prefixlen` a rota devolve os **gaps** (maiores blocos livres inteiros) e a contagem de
+    livres por máscara — `_livres_contagem` soma `2^(pl - gap.prefixlen)` em vez de enumerar.
+    Com `?prefixlen=N` devolve página de 240 blocos, e o salto até o `offset` é aritmético
+    (`_livres_pagina`): `?prefixlen=30&offset=100000` num `/12` custa o mesmo que a 1ª página.
+  - Busca por pedaço do CIDR (`?q=`) com teto de varredura de 20.000 blocos; quando para no
+    meio devolve `busca_truncada` e a UI diz isso, em vez de fingir lista completa.
+  - **Prefixo filho passou a ocupar espaço** (`_ocupadas_no_prefixo`): antes só `IPAMSubRede`
+    contava, e um `/24` cadastrado como *prefixo* dentro do `/16` era oferecido como livre.
+  - Front: o dropdown virou painel embutido de largura total (chips por máscara com contagem,
+    busca, grade responsiva e "carregar mais") e o **modal de Sub-rede abre em 1040 px** — em
+    720 px a grade ficava com 3 colunas e muito scroll.
+
+- **Clicar na pasta do prefixo recarregava a árvore e jogava a página pro topo**
+  (`clientes/templates/listar.html`). Os três toggles (`ipamToggleBreakdown`,
+  `ipamToggleArvorePrefixo`, `ipamToggleSrChildren`) chamavam `ipamCarregarPrefixos()` — `fetch`
+  mais `innerHTML` da tabela inteira —, então abrir uma pasta lá embaixo devolvia o usuário pro
+  começo da página e ele tinha que rolar de novo até onde clicou.
+  - As linhas de sub-rede **já estão no DOM desde o render** (fechada nasce com `display:none`),
+    então `ipamAplicarVisibilidade()` só reavalia `style.display` das linhas e troca os ícones de
+    pasta/caret (ids novos `#pfx-caret-*` e `#sr-folder-*`). Sem requisição e sem salto.
+  - Onde o redesenho é mesmo necessário (criar/editar/excluir), `ipamCarregarPrefixos()` guarda e
+    devolve `window.scrollY`, e o spinner só entra quando ainda não há árvore na tela — trocar
+    uma tabela cheia por uma linha de "carregando" encolhia a página antes da resposta chegar.
+
+---
+
 ## [Não publicado] — 2026-08-28 (BGP: AS-path na consulta de anúncios)
 
 ### Adicionado

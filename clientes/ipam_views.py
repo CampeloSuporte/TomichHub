@@ -774,18 +774,158 @@ def ipam_subrede_subdivisoes(request, subrede_id):
     return JsonResponse(payload)
 
 
-DISPONIVEIS_TAMANHOS_MAX  = 6   # quantos tamanhos (máscaras) distintos sugerir
-DISPONIVEIS_LIMITE_POR_PL = 40  # quantos blocos livres listar por tamanho
+DISPONIVEIS_PAGINA     = 240    # blocos por página quando o tamanho é escolhido
+DISPONIVEIS_GAPS_MAX   = 500    # tetos de "buracos" livres inteiros devolvidos
+DISPONIVEIS_BUSCA_SCAN = 20000  # blocos varridos no máximo quando há busca
+
+
+def _mascaras_disponiveis(parent_net):
+    """
+    Máscaras oferecidas no seletor de blocos livres.
+
+    Diferente de `_mascaras_candidatas` (subdivisão, que para em pai+9), aqui
+    vai até o fim da família: dentro de um /16 o operador precisa poder pedir
+    um /30 de p2p ou um /32 de loopback sem digitar o CIDR na mão. A versão
+    antiga só oferecia pai+1..pai+6, então num /16 a lista ia de /17 a /22 e
+    um /24 simplesmente não existia como opção.
+    """
+    inicio = parent_net.prefixlen + 1
+    if parent_net.version == 4:
+        return list(range(inicio, 33))
+    # IPv6 anda de nibble em nibble até /64; abaixo disso só as máscaras que
+    # aparecem de verdade no cadastro (p2p /126-/127 e loopback /128).
+    pls = {pl for pl in range(inicio, V6_MASCARA_MINIMA + 1) if pl % 4 == 0}
+    pls |= {pl for pl in (112, 126, 127, 128) if pl >= inicio}
+    return sorted(pls)
+
+
+def _num_blocos(n):
+    """
+    Contagem de blocos livres: número cheio até o bilhão, potência de 2 acima.
+
+    `_num_curto` corta em 65.536, o que em IPv4 é cedo demais — "2^20" no lugar
+    de "1.048.576 blocos /30" não ajuda ninguém a decidir.
+    """
+    if n <= 10 ** 9:
+        return f'{n:,}'.replace(',', '.')
+    bits = n.bit_length() - 1
+    return ('' if n == 1 << bits else '~') + f'2^{bits}'
+
+
+def _livres_contagem(gaps, pl):
+    """Quantos blocos /pl cabem no espaço livre — soma exata, sem enumerar."""
+    return sum(1 << (pl - g.prefixlen) for g in gaps if g.prefixlen <= pl)
+
+
+def _livres_pagina(gaps, pl, version, offset=0, limite=DISPONIVEIS_PAGINA):
+    """
+    Uma fatia da lista de blocos /pl livres, sem materializar o resto.
+
+    O salto até o `offset` é aritmético (base + i * passo), então pedir a
+    página 40 de um /16 dividido em /30 custa o mesmo que pedir a primeira —
+    era enumerar tudo de uma vez que travava o menu.
+    """
+    passo    = 1 << ((128 if version == 6 else 32) - pl)
+    blocos   = []
+    restante = max(0, offset)
+
+    for gap in gaps:
+        if len(blocos) >= limite:
+            break
+        if gap.prefixlen > pl:
+            continue
+        n = 1 << (pl - gap.prefixlen)
+        if restante >= n:
+            restante -= n
+            continue
+        base = int(gap.network_address)
+        i, restante = restante, 0
+        while i < n and len(blocos) < limite:
+            blocos.append(f'{ipaddress.ip_address(base + i * passo)}/{pl}')
+            i += 1
+    return blocos
+
+
+def _livres_busca(gaps, pl, version, termo, limite=DISPONIVEIS_PAGINA):
+    """
+    Blocos /pl livres cujo CIDR contém `termo`.
+
+    Aqui não dá pra pular por aritmética (o filtro é textual), então a varredura
+    tem teto: devolve `(blocos, truncou)` e a UI avisa quando parou no meio em
+    vez de fingir que aquilo é a lista inteira.
+    """
+    passo    = 1 << ((128 if version == 6 else 32) - pl)
+    termo    = termo.strip().lower()
+    achados  = []
+    varridos = 0
+
+    for gap in gaps:
+        if gap.prefixlen > pl:
+            continue
+        base = int(gap.network_address)
+        for i in range(1 << (pl - gap.prefixlen)):
+            if len(achados) >= limite:
+                return achados, False
+            if varridos >= DISPONIVEIS_BUSCA_SCAN:
+                return achados, True
+            varridos += 1
+            cidr = f'{ipaddress.ip_address(base + i * passo)}/{pl}'
+            if termo in cidr:
+                achados.append(cidr)
+    return achados, False
+
+
+def _ocupadas_no_prefixo(pobj, prefixo_net):
+    """
+    Tudo que já consome espaço dentro do prefixo: as sub-redes cadastradas e
+    também os prefixos FILHOS.
+
+    Os filhos entravam de fora antes, e um /24 registrado como prefixo dentro
+    de um /16 aparecia como "bloco livre" do /16 — livre ele não estava.
+    """
+    version  = prefixo_net.version
+    ocupadas = []
+
+    def _add(cidr):
+        try:
+            net = ipaddress.ip_network(cidr, strict=False)
+        except ValueError:
+            return
+        if net.version == version and net.subnet_of(prefixo_net):
+            ocupadas.append(net)
+
+    for s in IPAMSubRede.objects.filter(cliente=pobj.cliente).only('rede'):
+        _add(s.rede)
+    for p in IPAMPrefixo.objects.filter(cliente=pobj.cliente).exclude(id=pobj.id).only('prefixo'):
+        try:
+            net = ipaddress.ip_network(p.prefixo, strict=False)
+        except ValueError:
+            continue
+        # `subnet_of` inclui igualdade: um prefixo duplicado com o mesmo CIDR
+        # zeraria o espaço livre do pai, então só entra quem é mais específico.
+        if net.version == version and net != prefixo_net and net.subnet_of(prefixo_net):
+            ocupadas.append(net)
+    return ocupadas
 
 
 @login_required
 @ferramenta_instancia_required('ipam')
 def ipam_prefixo_disponiveis(request, prefixo_id):
     """
-    Lista sub-redes LIVRES dentro do prefixo, agrupadas por tamanho
-    (prefixlen) — estilo phpIPAM "Add subnet": ao criar uma sub-rede dentro
-    de um prefixo, mostra os blocos já disponíveis pra usar em vez do
-    usuário ter que calcular/digitar o CIDR manualmente.
+    Seletor de blocos LIVRES dentro de um prefixo — o que o botão "Livres" do
+    modal de sub-rede abre. Estilo phpIPAM "Add subnet": em vez de calcular o
+    CIDR na mão, o operador escolhe da lista.
+
+    Dois modos, controlados pelo parâmetro `prefixlen`:
+
+      - sem `prefixlen`: devolve os *gaps* (os maiores blocos livres alinhados,
+        já é a resposta exata e curta) e a contagem de blocos livres por
+        máscara, pra UI montar os chips de tamanho;
+      - com `prefixlen`: devolve uma PÁGINA (`offset` + `limite`) dos blocos
+        daquela máscara. Um /16 tem 16.384 /30 — mandar tudo de uma vez era o
+        que deixava o menu inutilizável.
+
+    `q` filtra por pedaço do CIDR, com varredura limitada (ver `_livres_busca`).
     """
     pobj = get_object_or_404(IPAMPrefixo, id=prefixo_id)
     _checar_obj_cliente(request, pobj)
@@ -794,37 +934,62 @@ def ipam_prefixo_disponiveis(request, prefixo_id):
     except ValueError as e:
         return JsonResponse({'ok': False, 'erro': f'Prefixo inválido: {e}'}, status=400)
 
-    version = prefixo_net.version
-    max_pl  = 32 if version == 4 else 128
+    version   = prefixo_net.version
+    gaps      = _gaps_livres(prefixo_net, _ocupadas_no_prefixo(pobj, prefixo_net))
+    mascaras  = _mascaras_disponiveis(prefixo_net)
+    livre_end = sum(g.num_addresses for g in gaps)
 
-    alocadas_nets = []
-    for s in IPAMSubRede.objects.filter(cliente=pobj.cliente):
-        try:
-            snet = ipaddress.ip_network(s.rede, strict=False)
-        except ValueError:
-            continue
-        if snet.version == version and snet.subnet_of(prefixo_net):
-            alocadas_nets.append(snet)
+    resp = {
+        'ok':            True,
+        'prefixo':       str(prefixo_net),
+        'versao':        version,
+        'prefixlen_pai': prefixo_net.prefixlen,
+        'livre_total':   _num_blocos(livre_end),
+        'gaps': [{'rede': str(g), 'label': _prefixlen_label(g.prefixlen, version)}
+                 for g in gaps[:DISPONIVEIS_GAPS_MAX]],
+        'gaps_total': len(gaps),
+        'tamanhos': [],
+    }
+    for pl in mascaras:
+        n = _livres_contagem(gaps, pl)
+        if n:
+            resp['tamanhos'].append({'prefixlen': pl, 'total_label': _num_blocos(n),
+                                     'label': _prefixlen_label(pl, version)})
 
-    gaps = _gaps_livres(prefixo_net, alocadas_nets)
+    bruto = (request.GET.get('prefixlen') or '').strip()
+    if not bruto:
+        return JsonResponse(resp)
 
-    primeiro_pl = prefixo_net.prefixlen + 1
-    grupos = []
-    for pl in range(primeiro_pl, min(max_pl, primeiro_pl + DISPONIVEIS_TAMANHOS_MAX - 1) + 1):
-        blocos = []
-        for gap in gaps:
-            if gap.prefixlen > pl:
-                continue
-            for sub in gap.subnets(new_prefix=pl):
-                blocos.append(str(sub))
-                if len(blocos) >= DISPONIVEIS_LIMITE_POR_PL:
-                    break
-            if len(blocos) >= DISPONIVEIS_LIMITE_POR_PL:
-                break
-        if blocos:
-            grupos.append({'prefixlen': pl, 'label': _prefixlen_label(pl, version), 'blocos': blocos})
+    try:
+        pl = int(bruto)
+    except ValueError:
+        return JsonResponse({'ok': False, 'erro': 'prefixlen inválido'}, status=400)
+    if pl not in mascaras:
+        return JsonResponse({'ok': False,
+                             'erro': f'/{pl} não é um tamanho válido dentro de {prefixo_net}'},
+                            status=400)
 
-    return JsonResponse({'ok': True, 'prefixo': str(prefixo_net), 'grupos': grupos})
+    try:
+        offset = max(0, int(request.GET.get('offset') or 0))
+    except ValueError:
+        offset = 0
+
+    total = _livres_contagem(gaps, pl)
+    busca = (request.GET.get('q') or '').strip()
+    if busca:
+        blocos, truncou = _livres_busca(gaps, pl, version, busca)
+        resp.update({'blocos': blocos, 'busca': busca, 'busca_truncada': truncou,
+                     'offset': 0, 'tem_mais': False})
+    else:
+        blocos = _livres_pagina(gaps, pl, version, offset)
+        resp.update({'blocos': blocos, 'offset': offset,
+                     'tem_mais': offset + len(blocos) < total})
+
+    # `total` cru só vai quando cabe em número JS exato (IPv6 estoura fácil);
+    # quem precisa mostrar usa sempre `total_label`.
+    resp.update({'prefixlen': pl, 'total_label': _num_blocos(total),
+                 'total': total if total <= 2 ** 53 else None})
+    return JsonResponse(resp)
 
 
 @login_required

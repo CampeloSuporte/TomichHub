@@ -2,7 +2,7 @@
 
 **Arquivo principal:** `clientes/ipam_views.py`  
 **Models:** `IPAMVlan`, `IPAMPrefixo`, `IPAMSubRede`, `IPAMEndereco`, `IPAMVpnDoc`  
-**Atualizado em:** 2026-05-26
+**Atualizado em:** 2026-08-28
 
 ---
 
@@ -211,6 +211,77 @@ pra a mesma feature valer nas duas famílias:
 - **Guarda-corpo do "Dividir"** (`_checar_limite_divisao`, `DIVIDIR_LIMITE = 4096`): dividir um
   /32 IPv6 em /48 eram 65.536 `INSERT` num clique — hoje devolve 400 com a saída ("use o +",
   ou "criar apenas o primeiro bloco"). Vale pras duas rotas de dividir, prefixo e sub-rede.
+
+---
+
+## Seletor de "Blocos livres" e árvore que não recarrega (2026-08-28)
+
+Duas coisas na aba **Documentação de Rede** que quebravam em cadastro grande.
+
+### 1. "Livres" mostrava só uma fatia do prefixo — e o menu ficava cortado
+
+`ipam_prefixo_disponiveis` (o botão **Livres** do modal Sub-rede) tinha dois tetos herdados de
+quando o cadastro era pequeno: `DISPONIVEIS_TAMANHOS_MAX = 6` (só as 6 primeiras máscaras) e
+`DISPONIVEIS_LIMITE_POR_PL = 40` (40 blocos por máscara). Num `/16` isso significava a lista ir
+de `/17` a `/22` e **um `/24` simplesmente não existir como opção** — justamente o tamanho que
+se cadastra o dia inteiro. No front, o painel era um `position:absolute` de 260 px dentro de um
+modal com `overflow-y:auto`: a lista era **cortada na borda do modal**, e é isso que aparecia
+como "menu bugado".
+
+O que passou a valer:
+
+- **Máscaras completas** (`_mascaras_disponiveis`): IPv4 vai de `pai+1` até `/32`. IPv6 anda de
+  nibble até `/64` e ainda oferece `/112 /126 /127 /128`, as únicas abaixo de /64 que aparecem
+  de verdade no cadastro (p2p e loopback). Diferente de `_mascaras_candidatas`, que para em
+  `pai+9` porque lá o assunto é *subdividir*, não *escolher um bloco*.
+- **Dois modos na mesma rota.** Sem `?prefixlen`, devolve os **gaps** — os maiores blocos livres
+  alinhados, que já são a resposta exata e curta — mais `tamanhos[]`, a contagem de blocos
+  livres por máscara (`_livres_contagem`: soma `2^(pl - gap.prefixlen)`, sem enumerar nada).
+  Com `?prefixlen=N`, devolve uma **página** de `DISPONIVEIS_PAGINA = 240` blocos.
+- **Paginação por aritmética** (`_livres_pagina`): o salto até o `offset` é
+  `base + i * passo`, então pedir `?prefixlen=30&offset=100000` num `/12` custa o mesmo que
+  pedir a primeira página. Enumerar era o que travava — um `/12` tem 260.836 `/30` livres.
+- **Busca** (`?q=`, `_livres_busca`): filtro textual não tem como pular, então a varredura tem
+  teto (`DISPONIVEIS_BUSCA_SCAN = 20000`) e devolve `busca_truncada`, que a UI mostra como
+  "busca parou no limite de varredura". Melhor do que uma lista parcial se passando por completa.
+- **Prefixos filhos passaram a ocupar espaço** (`_ocupadas_no_prefixo`). Antes só `IPAMSubRede`
+  contava: um `/24` cadastrado como **prefixo** dentro do `/16` era oferecido como bloco livre
+  do `/16`. Igualdade fica de fora de propósito — um prefixo duplicado com o mesmo CIDR zeraria
+  o espaço livre do pai.
+- **Contagem legível** (`_num_blocos`): número cheio até o bilhão, `2^N` acima. `_num_curto`
+  corta em 65.536, o que em IPv4 é cedo demais — "2^20" no lugar de "1.048.576 blocos /30" não
+  ajuda a decidir nada. `total` cru só vai no JSON quando cabe em número JS exato (`≤ 2^53`).
+
+No front (`clientes/templates/listar.html`), o dropdown virou **painel embutido de largura
+total** (`.livres-painel`, `col-12` do formulário) e o modal de Sub-rede abre em **1040 px** em
+vez de 720 — é o único formulário com o seletor dentro, e em 720 px a grade ficava com 3 colunas
+e muito scroll. O painel tem cabeçalho com o prefixo e o total livre, chip por máscara com a
+contagem (`buracos · /13 · /14 … /32`), busca, grade responsiva
+(`repeat(auto-fill, minmax(168px, 1fr))`) e **carregar mais**. Estado em `IPAM._livres`;
+`_livresRender()` guarda foco e cursor da busca antes de trocar o `innerHTML`, senão digitar o
+segundo caractere era impossível.
+
+### 2. Clicar na pasta recarregava a árvore e jogava a página pro topo
+
+`ipamToggleBreakdown`, `ipamToggleArvorePrefixo` e `ipamToggleSrChildren` chamavam
+`ipamCarregarPrefixos()` — `fetch` + `innerHTML` da tabela inteira. Com a página rolada, abrir
+uma pasta lá embaixo devolvia o usuário pro topo e ele tinha que rolar de novo até o ponto onde
+clicou.
+
+As linhas de sub-rede **já estão no DOM desde o render** (pasta fechada nasce com
+`display:none`, via o parâmetro `oculta` de `_renderSrLeafRow`), então abrir é reavaliar
+visibilidade, não redesenhar:
+
+- `ipamAplicarVisibilidade()` percorre `IPAM.prefixos` + `_srAgruparPorPrefixo()` e mexe **só em
+  `style.display`** de `#pfx-row-*`, `#sr-row-*` e `#sr-grade-*`, trocando de passagem os ícones
+  `#pfx-caret-*`, `#ipam-bd-icon-*` e `#sr-folder-*` (ids novos). Zero requisição, zero salto.
+- `ipamFiltrarSubredes` (clique no número de sub-redes) também virou DOM puro.
+  `ipamSubdivVerOcupante` **continua** redesenhando: ali `ipamCarregarSubRedes()` acabou de
+  trocar o cache, e as linhas no DOM podem estar desatualizadas.
+- Quando o redesenho é mesmo necessário (criar/editar/excluir), `ipamCarregarPrefixos()` guarda
+  `window.scrollY` e devolve depois de remontar a tabela; e o spinner só entra quando ainda não
+  há árvore na tela — trocar uma tabela cheia por uma linha de "carregando" encolhe a página e
+  desloca tudo antes mesmo da resposta chegar.
 
 ---
 
