@@ -1126,6 +1126,29 @@ a automação por community precisa exatamente do que a simulação joga fora.
   resolvidas em `{circuito: ação}`. Communities fora do catálogo (ex: `65100:10091`, convenções
   próprias do cliente) ficam em `communities_extras` e são **reemitidas intactas** em qualquer
   reescrita.
+- **Communities órfãs** (`communities_orfas`, adicionado em 2026-08-28): o subconjunto das extras
+  que tem a **forma** do catálogo e mesmo assim não casa community-filter nenhum da caixa — ou
+  seja, está na config e não produz efeito. `_classificar_orfa` separa dois casos, e a diferença
+  importa porque só um é dedutível do backup:
+  - `asn` — a parte **depois do `:`** casa um filtro vivo, só o ASN da community é outro
+    (`65100:50104` numa caixa que carimba `65101:50104`). É o rastro de uma troca do ASN de
+    community feita nos filtros sem reescrever as policies locais; dá pra dizer com certeza qual
+    era a intenção e qual community está viva hoje.
+  - `orfa` — decompõe no padrão (ação reconhecível) mas nem o valor nem a parte numérica existem
+    na caixa (`65146:65203` num equipamento cujos grupos são 501-510/601-610/611-615). Aqui a
+    intenção **não** é dedutível: um dígito trocado em `50203` e um `65203` legítimo de convenção
+    própria são indistinguíveis pelo backup.
+
+  Em nenhum dos dois casos a automação corrige sozinha — corrigir mudaria o que o prefixo faz na
+  rede. Vira **aviso** em `validar_mapa` (consolidado por valor no caso `asn`, e por grupo no caso
+  `orfa`: a mesma órfã costuma se repetir em dezenas de prefixos) e destaque ⚠ na linha do prefixo
+  no painel. A reescrita segue preservando o valor intacto.
+
+  Caso real que motivou (28/08/2026, borda do A2+): `apply community 65146:60011 65146:50102
+  65146:65203 additive` foi digitado à mão no terminal — `65203` no lugar de `50203`. Como não
+  casa `c-02-export-2p` (`65146:50203`), o prefixo deixou de ser anunciado com 2 prepends pelo
+  circuito de backup, e toda edição posterior pelo painel reemitia o valor errado junto (correto:
+  é uma extra, e extras são preservadas) sem nada na tela indicando o problema.
 - **Route-policy local vazia continua editável**: `route-policy RT-BGP-LOCAL-57B0-34 permit node 10`
   sem `apply community` nenhum (policy criada junto com o `network` e nunca preenchida) só aparece
   em `policies`, não em `community_nodes` — o parser guarda ali apenas os nós que mexem com

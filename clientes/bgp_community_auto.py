@@ -197,6 +197,59 @@ def _decompor_community(valor):
     return asn, grupo, acao['chave']
 
 
+def _classificar_orfa(valor, por_resto):
+    """
+    Uma community da route-policy LOCAL de um prefixo que tem a cara deste
+    catálogo mas não casa nenhum community-filter do equipamento — ou seja:
+    está na config e não produz efeito nenhum.
+
+    Dois casos aparecem em produção, e a diferença importa porque só um deles
+    é derivável do backup:
+
+    - `asn`: a parte numérica bate com um filtro que existe, só o ASN da
+      community é outro (65100:50104 numa caixa que carimba 65101:50104). É o
+      rastro de uma troca do ASN de community feita nos filtros sem reescrever
+      as policies locais — dá pra dizer com certeza qual era a intenção.
+    - `orfa`: decompõe no padrão (ação reconhecível), mas nem o valor nem a
+      parte numérica existem na caixa (65146:65203 — grupo 652 num equipamento
+      cujos grupos são 501-510/601-610/611-615). Aqui a intenção NÃO é
+      dedutível: um dígito trocado em 50203 e um 65203 legítimo de convenção
+      própria do cliente são indistinguíveis pelo backup. Vira aviso, nunca
+      correção automática.
+
+    Devolve None para o que não tem nada a ver com o catálogo (as convenções
+    próprias do cliente, preservadas em silêncio como sempre).
+    """
+    m = _RE_COMMUNITY.match(valor or '')
+    if not m:
+        return None
+    achado = por_resto.get(m.group(2))
+    if achado:
+        # Chegou aqui como "extra", então o valor exato não casou nenhum
+        # filtro: se a parte numérica casa, o que difere é o ASN.
+        destino_id, chave, community_viva = achado
+        return {'valor': valor, 'tipo': 'asn', 'destino': destino_id,
+                'acao': chave, 'sugestao': community_viva, 'grupo': ''}
+    dec = _decompor_community(valor)
+    if not dec:
+        return None
+    return {'valor': valor, 'tipo': 'orfa', 'destino': '', 'acao': dec[2],
+            'sugestao': '', 'grupo': dec[1]}
+
+
+def _indice_por_resto(circuitos, globais):
+    """`{'50203': ('c-02', 'export-2p', '65146:50203')}` — as communities vivas
+    da caixa indexadas pela parte DEPOIS do `:`, que é o que sobrevive a uma
+    troca do ASN de community."""
+    por_resto = {}
+    for destino_id, d in list(circuitos.items()) + list((globais or {}).items()):
+        for chave, a in d['acoes'].items():
+            m = _RE_COMMUNITY.match(a['community'] or '')
+            if m:
+                por_resto.setdefault(m.group(2), (destino_id, chave, a['community']))
+    return por_resto
+
+
 def _familia_do_prefixo(prefixo):
     return 'v6' if ':' in (prefixo or '') else 'v4'
 
@@ -658,6 +711,7 @@ def mapear_anuncios(dados, circuitos, globais=None):
     for gid, g in globais.items():
         for chave, a in g['acoes'].items():
             por_community_global.setdefault(a['community'], (gid, chave))
+    por_resto = _indice_por_resto(circuitos, globais)
 
     linhas, vistos = [], set()
     for net in networks:
@@ -742,6 +796,11 @@ def mapear_anuncios(dados, circuitos, globais=None):
             'globais': destinos_globais,
             'efetivo': efetivo,
             'communities_extras': extras,
+            # Subconjunto das extras que tem a cara do catálogo mas não casa
+            # filtro nenhum: continuam sendo preservadas na reescrita (mexer
+            # nelas sozinho mudaria o que o prefixo faz), só deixam de passar
+            # despercebidas — ver `_classificar_orfa`.
+            'communities_orfas': [o for o in (_classificar_orfa(v, por_resto) for v in extras) if o],
             'avisos': avisos_linha,
         })
 
@@ -929,6 +988,47 @@ def validar_mapa(dados, mapa):
     # Grupos globais que são config morta. Vem em UMA linha só: nas caixas
     # antigas o bloco `glob-*` inteiro (6-7 grupos) foi colado sem nunca ser
     # referenciado, e sete avisos idênticos afogariam os achados que importam.
+    # Communities de prefixo que não casam filtro nenhum (`_classificar_orfa`).
+    # Consolidadas por VALOR e não por prefixo: numa caixa que trocou o ASN de
+    # community sem reescrever as policies locais, a mesma community órfã se
+    # repete em dezenas de prefixos e um aviso por linha afogaria o painel.
+    orfas = {}
+    for linha in mapa.get('anuncios') or []:
+        for o in linha.get('communities_orfas') or []:
+            reg = orfas.setdefault(o['valor'], {'info': o, 'prefixos': []})
+            reg['prefixos'].append(linha['prefixo'])
+
+    def _onde(prefixos):
+        return f'{len(prefixos)} prefixos' if len(prefixos) > 1 else prefixos[0]
+
+    for valor in sorted(v for v, r in orfas.items() if r['info']['tipo'] == 'asn'):
+        o, prefixos = orfas[valor]['info'], orfas[valor]['prefixos']
+        rotulo = ACOES_POR_CHAVE.get(o['acao'], {}).get('rotulo', o['acao'])
+        avisos.append(
+            f'{valor} (em {_onde(prefixos)}) não casa nenhum community-filter: esta caixa '
+            f'usa {o["sugestao"]} para "{rotulo}" em {o["destino"]}. Enquanto estiver assim, '
+            f'{"esses prefixos não estão" if len(prefixos) > 1 else "esse prefixo não está"} '
+            f'sendo anunciado por {o["destino"]} — provável troca do ASN de community feita '
+            f'só nos filtros.'
+        )
+    # As órfãs sem destino dedutível vêm agrupadas por GRUPO: um bloco de
+    # convenção antiga (581/582/583 de uma caixa pré-padrão) rende uma linha
+    # por grupo em vez de uma por ação × prefixo.
+    por_grupo = {}
+    for valor, reg in orfas.items():
+        if reg['info']['tipo'] == 'orfa':
+            por_grupo.setdefault(reg['info']['grupo'], []).append((valor, reg['prefixos']))
+    for grupo in sorted(por_grupo):
+        itens = sorted(por_grupo[grupo])
+        lista = ', '.join(f'{v} (em {_onde(p)})' for v, p in itens)
+        avisos.append(
+            f'{"As communities" if len(itens) > 1 else "A community"} {lista} '
+            f'{"têm" if len(itens) > 1 else "tem"} a forma do padrão (grupo {grupo}) mas não '
+            f'{"correspondem" if len(itens) > 1 else "corresponde"} a nenhum community-filter '
+            f'deste equipamento — não {"produzem" if len(itens) > 1 else "produz"} efeito '
+            f'nenhum. Ou é convenção própria fora do catálogo, ou é dígito trocado.'
+        )
+
     mortos = sorted(gid for gid, g in (mapa.get('globais') or {}).items() if not g['alcance'])
     if mortos:
         avisos.append(
