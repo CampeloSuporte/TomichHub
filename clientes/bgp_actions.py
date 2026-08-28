@@ -1256,6 +1256,101 @@ def _extrair_prefixos(texto):
     return vistos
 
 
+# ─── AS-path de cada prefixo anunciado ───────────────────────────────────────
+# O que o peer recebe de verdade: `apply as-path X X additive` na policy de
+# saída não aparece em lugar nenhum da RIB local, só no que sai. Confirmado nas
+# saídas reais dos acessos 324 (A2+) e 923 (DS TECH), guardadas nos transcripts
+# das sessões de terminal.
+#
+# Huawei IPv4 — tabela de largura fixa, o Path/Ogn é a ÚLTIMA célula:
+#     *>  45.187.123.0/24  172.30.252.22  0     0  268546 268546i
+#     *>  45.187.123.0/24  45.68.76.102   0     0  268546i
+# O que separa a célula do AS-path das colunas numéricas anteriores
+# (MED/LocPrf/PrefVal — também dígitos, e que podem vir VAZIAS) é a largura do
+# espaço: coluna se separa por 2+ espaços, os ASNs de um mesmo path por um só.
+# Uma regex de "cauda de dígitos" não serve — ela come o final do next-hop e as
+# colunas numéricas junto ("...252.22   0   0   268546 268546" viraria path).
+# A célula tem que casar INTEIRA: ASNs opcionais + código de origem colado.
+# Rota sem AS-path (originada local) traz só "i" — vira path vazio, 0 prepend.
+_CELULA_RE = re.compile(r'\s{2,}')
+_AS_PATH_CELULA_RE = re.compile(r'^(\d+(?:\s\d+)*)?\s*[ie?]$')
+# Huawei IPv6 — não é tabela, é bloco por prefixo, e o path vem numa linha
+# própria alguns campos depois do `Network :`:
+#     *>  Network  : 2804:57B0::   PrefixLen : 34
+#         ...
+#         Path/Ogn : 268080i
+_AS_PATH_CAMPO_RE = re.compile(r'Path/Ogn\s*:\s*(\d+(?:\s+\d+)*)?\s*[ie?]?\s*$')
+
+
+def _as_path_por_prefixo(texto):
+    """`{prefixo: 'ASN ASN ...'}` lido da MESMA saída do comando de anúncios.
+
+    Duas gramáticas, as duas do VRP: a de uma linha por rota (IPv4) e a de um
+    bloco por rota (IPv6). Prefixo que aparece na saída sem AS-path
+    identificável simplesmente não entra no dict — o chamador devolve `None`
+    em vez de chutar um número, porque "0 prepend" e "não consegui ler" são
+    coisas diferentes na hora de conferir um anúncio.
+    """
+    achados, atual = {}, ''
+    for linha in (texto or '').splitlines():
+        m_campo = _AS_PATH_CAMPO_RE.search(linha)
+        if m_campo and atual:
+            achados[atual] = (m_campo.group(1) or '').strip()
+            continue
+        prefixos_da_linha = _extrair_prefixos(linha)
+        if not prefixos_da_linha:
+            continue
+        atual = prefixos_da_linha[-1]
+        celula = _CELULA_RE.split(linha.strip())[-1]
+        m_celula = _AS_PATH_CELULA_RE.match(celula)
+        if m_celula:
+            achados[atual] = (m_celula.group(1) or '').strip()
+    return achados
+
+
+def _contar_prepends(as_path):
+    """Quantas vezes o primeiro ASN se repete no começo do path, menos ele
+    mesmo — é exatamente o que `apply as-path <asn> <asn> additive` produz.
+
+    `268546 268546 268546` → 2. `268546 26162` → 0 (dois ASNs, nenhum prepend:
+    o segundo é de outro AS, não uma repetição)."""
+    asns = (as_path or '').split()
+    if not asns:
+        return 0
+    repeticoes = 0
+    for asn in asns[1:]:
+        if asn != asns[0]:
+            break
+        repeticoes += 1
+    return repeticoes
+
+
+def _extrair_anuncios(texto):
+    """Os prefixos anunciados com o AS-path de cada um:
+    `[{'prefixo', 'as_path', 'asns', 'prepends'}]`.
+
+    `as_path`/`asns`/`prepends` vêm `None` quando a saída do fabricante não
+    permite ler o path com segurança — hoje só o VRP (Huawei) tem as duas
+    gramáticas mapeadas contra saída real. Nos demais o painel mostra "—" em
+    vez de um número inventado."""
+    paths = _as_path_por_prefixo(texto)
+    anuncios = []
+    for prefixo in _extrair_prefixos(texto):
+        as_path = paths.get(prefixo)
+        if as_path is None:
+            anuncios.append({'prefixo': prefixo, 'as_path': None,
+                             'asns': None, 'prepends': None})
+            continue
+        asns = as_path.split()
+        anuncios.append({
+            'prefixo': prefixo,
+            'as_path': as_path,
+            'asns': len(asns),
+            'prepends': _contar_prepends(as_path),
+        })
+    return anuncios
+
+
 def _sessao_e_v6(sessao):
     """A sessão é IPv6? O peer_ip decide (não existe sessão BGP com peer v4
     trocando family v6 nesta base). Muda o comando de consulta em quase
@@ -1401,9 +1496,18 @@ def validar_anuncios_ao_vivo(acesso, vendor, dados, sessao):
     não busca a lista (peer full-table/transit), só devolve a contagem.
 
     Retorna dict, nunca levanta exceção de conexão:
-    {'status': 'sucesso', 'anunciados': [...], 'recebidos': [...]|None,
+    {'status': 'sucesso',
+     'anunciados': [{'prefixo', 'as_path', 'asns', 'prepends'}, ...],
+     'recebidos': [prefixo, ...]|None,
      'total_recebidos': int|None, 'recebidos_truncado': bool}
-    ou {'status': 'erro', 'mensagem': str}."""
+    ou {'status': 'erro', 'mensagem': str}.
+
+    Os anunciados vêm com o AS-path que o peer recebe de verdade (o
+    `apply as-path ... additive` da policy de saída não aparece na RIB local),
+    e `as_path`/`asns`/`prepends` vêm `None` no fabricante cuja saída ainda não
+    foi mapeada contra captura real — ver `_extrair_anuncios`. Os recebidos
+    continuam sendo só a lista de prefixos: ali o AS-path é o do vizinho, e o
+    volume pode passar de um milhão de rotas (LIMITE_PREFIXOS_LISTAR)."""
     fabricante_conexao = 'cisco' if vendor == 'datacom' else vendor
     if fabricante_conexao not in DEVICE_TYPES:
         return {'status': 'erro', 'mensagem': f'Fabricante "{vendor}" sem driver de conexão configurado.'}
@@ -1426,7 +1530,7 @@ def validar_anuncios_ao_vivo(acesso, vendor, dados, sessao):
             logger.warning(f'validar_anuncios_ao_vivo: contagem de recebidos falhou em {acesso} (segue sem trava): {e}')
 
         out_anunciados = conn.send_command(comandos['anunciados'], read_timeout=25)
-        anunciados = _extrair_prefixos(out_anunciados)
+        anunciados = _extrair_anuncios(out_anunciados)
 
         recebidos = None
         recebidos_truncado = False

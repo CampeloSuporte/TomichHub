@@ -884,6 +884,33 @@ disso devolve só a contagem (`recebidos: null, recebidos_truncado: true`). Não
 lado ANUNCIADO porque em todo peer testado ao vivo (Huawei, Cisco, Juniper, Mikrotik) esse número ficou
 sempre pequeno (1 a 14) — o risco de explosão é só do lado recebido.
 
+#### AS-path de cada prefixo anunciado (adicionado em 2026-08-28)
+
+A lista de anunciados vem com o **AS-path que o peer recebe**, não só o prefixo:
+`[{'prefixo', 'as_path', 'asns', 'prepends'}]`. É a única forma de conferir prepend de verdade — o
+`apply as-path <asn> <asn> additive` da policy de saída não aparece em lugar nenhum da RIB local, só
+no que sai pela sessão. `prepends` conta a repetição do PRIMEIRO ASN (`268546 268546 268546` → 2);
+dois ASNs diferentes (`268546 26162`) são um path de dois saltos, não um prepend.
+
+Duas gramáticas do VRP, as duas mapeadas contra captura real (transcripts dos acessos 324/A2+ e
+923/DS TECH):
+
+- **IPv4** — tabela de largura fixa, o `Path/Ogn` é a última célula da linha:
+  `*>  45.187.123.0/24  172.30.252.34  0    0  268546 268546 268546i`.
+  O que separa essa célula das colunas numéricas anteriores (MED/LocPrf/PrefVal — também dígitos, e
+  que vêm **vazias** com frequência) é a largura do espaço: coluna se separa por 2+ espaços, ASNs de
+  um mesmo path por um só. Uma regex de "cauda de dígitos" não serve — ela engole o final do
+  next-hop e as colunas junto (`...252.22   0   0   268546 268546` viraria AS-path de 5 saltos, e
+  foi exatamente o que a primeira versão fez).
+- **IPv6** — não é tabela, é bloco por prefixo, e o path vem numa linha própria (`Path/Ogn :
+  268080i`) alguns campos depois do `Network :`.
+
+**`as_path: null` não é o mesmo que "sem prepend"**: é "não consegui ler". Acontece no fabricante
+cuja saída ainda não foi mapeada contra captura real (Cisco/Juniper/Mikrotik — nas tabelas deles a
+coluna de path tem a mesma ambiguidade com as colunas numéricas, e sem saída real capturada não dá
+pra ancorar) e também no Huawei quando o bloco vem cortado pelo `---- More ----` da paginação. O
+painel mostra `AS-path —` com tooltip nesse caso, em vez de um número inventado.
+
 **Comandos por fabricante — todos confirmados ao vivo contra equipamento real** (não só documentação):
 
 | Fabricante | Contagem barata (recebidos) | Lista anunciados | Lista recebidos |

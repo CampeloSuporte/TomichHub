@@ -93,6 +93,11 @@
     .validar-col-titulo .contagem { color: #7d8590; font-weight: 400; }
     .validar-lista { max-height: 220px; overflow-y: auto; background: #161b22; border: 1px solid #30363d; border-radius: 4px; padding: 6px 8px; }
     .validar-lista code { display: block; font-size: 11px; color: #a5d6ff; font-family: 'Cascadia Code', monospace; padding: 1px 0; }
+    /* AS-path do prefixo anunciado, ao lado do prefixo. `.sem` é o caso em que
+       a saída do fabricante não permite ler o path — não é "zero prepend". */
+    .validar-lista code .aspath { color: #7d8590; }
+    .validar-lista code .aspath .prepend { color: #d29922; }
+    .validar-lista code .aspath.sem { cursor: help; }
     .validar-avisos { color: #d29922; font-size: 11px; margin-top: 6px; }
     .validar-erro { color: #ff5555; font-size: 11px; margin-top: 6px; }
     .select-community:disabled { opacity: .4; }
@@ -1007,6 +1012,24 @@ function pedirAcaoPrepend(key, prefixo, nomeSessao) {
     pedirAcao('prepend', prefixo, { sessao: nomeSessao, delta }, `Adicionar +${delta} prepend em ${prefixo}`);
 }
 
+// Uma linha da lista de validação. Os RECEBIDOS vêm como string (só prefixo);
+// os ANUNCIADOS vêm como objeto com o AS-path que o peer recebe de verdade —
+// o `apply as-path ... additive` da policy de saída não aparece na RIB local,
+// só no que sai. `as_path: null` = a saída daquele fabricante ainda não é
+// lida com segurança, e "—" NÃO quer dizer zero prepend (ver bgp_actions.py).
+function _validarItem(item) {
+    if (typeof item === 'string') return escapeHtml(item);
+    const prefixo = escapeHtml(item.prefixo);
+    if (item.as_path === null || item.as_path === undefined) {
+        return `${prefixo} <span class="aspath sem" title="AS-path não identificado na saída deste equipamento — não confunda com ausência de prepend.">· AS-path —</span>`;
+    }
+    const path = item.as_path ? escapeHtml(item.as_path) : 'sem AS-path';
+    const prep = item.prepends
+        ? ` <span class="prepend">(${item.prepends} prepend${item.prepends > 1 ? 's' : ''})</span>`
+        : '';
+    return `${prefixo} <span class="aspath">· ${path}${prep}</span>`;
+}
+
 function _validarAnunciosColuna(titulo, prefixos, total, truncado) {
     if (truncado) {
         return `
@@ -1015,7 +1038,7 @@ function _validarAnunciosColuna(titulo, prefixos, total, truncado) {
                 <div class="validar-avisos">⚠️ Peer full-table/transit — ${total} prefixos é demais pra listar aqui com segurança (limite de 500). Mostrando só a contagem.</div>
             </div>`;
     }
-    const linhas = (prefixos || []).map(p => `<code>${escapeHtml(p)}</code>`).join('');
+    const linhas = (prefixos || []).map(p => `<code>${_validarItem(p)}</code>`).join('');
     return `
         <div class="validar-col">
             <div class="validar-col-titulo">${titulo} <span class="contagem">(${(prefixos || []).length})</span></div>
