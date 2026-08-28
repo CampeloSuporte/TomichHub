@@ -5,6 +5,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-28 (BGP: community de prefixo que não casa filtro nenhum)
+
+### Adicionado
+
+- **Aviso de community órfã na automação de anúncios BGP** (`clientes/bgp_community_auto.py`,
+  `clientes/templates/bgp_automacao.html`). A route-policy local de um prefixo pode carregar uma
+  community que tem a **cara** do padrão e não corresponde a community-filter nenhum do
+  equipamento — config que está lá e não produz efeito. Até agora ela era tratada como qualquer
+  convenção própria do cliente: preservada em silêncio a cada reescrita, sem nada na tela.
+  - Achado que motivou: na borda do A2+, `65146:65203` digitado à mão no lugar de `65146:50203`
+    (`c-02-export-2p`). O prefixo `45.187.123.0/24` parou de ser anunciado com 2 prepends pelo
+    circuito de backup, e cada edição pelo painel reemitia o valor errado junto.
+  - `_classificar_orfa` separa o que dá pra deduzir do backup do que não dá: quando a parte depois
+    do `:` casa um filtro vivo e só o ASN difere (`65100:50104` numa caixa que usa `65101:50104`),
+    o aviso diz qual é o destino e qual a community correta; quando o grupo não existe na caixa, o
+    aviso aponta que não produz efeito e pede conferência do dígito.
+  - Em nenhum dos casos a automação corrige sozinha — corrigir mudaria o que o prefixo faz na rede.
+    A reescrita continua preservando o valor intacto; o que muda é a **visibilidade**: entra nos
+    avisos do painel (consolidados, porque a mesma órfã se repete em dezenas de prefixos) e sai em
+    ⚠ na linha do prefixo. Varredura nos snapshots atuais: 3 caixas afetadas.
+
+---
+
 ## [Não publicado] — 2026-08-27 (Topologia: rótulos sobrepostos e Áreas de documentação)
 
 ### Corrigido

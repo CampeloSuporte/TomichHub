@@ -273,6 +273,9 @@
     .ca-tabela td.ca-prefixo { font-family: 'Cascadia Code', monospace; color: #e6edf3; white-space: nowrap; }
     .ca-tabela td.ca-prefixo small { display: block; color: #7d8590; font-family: inherit; }
     .ca-tabela tr.nao-editavel td.ca-prefixo { color: #7d8590; }
+    /* Community que está na policy local do prefixo e não casa filtro nenhum
+       nesta caixa: fica em destaque porque é config que não produz efeito. */
+    .ca-tabela td.ca-prefixo small .ca-orfa { color: #d29922; cursor: help; }
     .ca-tabela select {
         background: #0d1117; border: 1px solid #30363d; color: #e6edf3;
         border-radius: 4px; padding: 4px 6px; font-size: 11px; min-width: 190px;
@@ -1536,6 +1539,27 @@ function caBlocoPrefixos(d) {
         </div>`;
 }
 
+// As communities do node local que não são de nenhum destino do catálogo. As
+// que têm a forma do padrão mas não casam filtro nenhum (`communities_orfas`)
+// saem em destaque: é config que está lá e não produz efeito — dígito trocado
+// ou sobra de uma troca do ASN de community. Ver bgp_community_auto.py.
+function caExtras(l) {
+    const orfas = l.communities_orfas || [];
+    const marcadas = new Set(orfas.map(o => o.valor));
+    const livres = (l.communities_extras || []).filter(v => !marcadas.has(v));
+    let html = '';
+    if (orfas.length) {
+        const dica = orfas.map(o => o.tipo === 'asn'
+            ? `${o.valor} não casa filtro nenhum: esta caixa usa ${o.sugestao} para ${o.destino}.`
+            : `${o.valor} não corresponde a nenhum community-filter desta caixa — não produz efeito.`
+        ).join('\n');
+        html += ` · <span class="ca-orfa" title="${escapeHtml(dica)}">⚠ ${
+            escapeHtml(orfas.map(o => o.valor).join(' '))}</span>`;
+    }
+    if (livres.length) html += ' · extras: ' + escapeHtml(livres.join(' '));
+    return html;
+}
+
 function caLinhaPrefixo(d, l, idx) {
     const atual = (caEhGlobal(d) ? l.globais : l.destinos)[d.id] || '';
     const familiaOk = caAtendeFamilia(d, l.familia);
@@ -1557,8 +1581,7 @@ function caLinhaPrefixo(d, l, idx) {
     return `
     <tr class="${l.editavel ? '' : 'nao-editavel'}">
         <td class="ca-prefixo">${escapeHtml(l.prefixo)}
-            <small>${escapeHtml(l.route_policy || 'sem route-policy local')}${
-                l.communities_extras.length ? ' · extras: ' + escapeHtml(l.communities_extras.join(' ')) : ''}</small>
+            <small>${escapeHtml(l.route_policy || 'sem route-policy local')}${caExtras(l)}</small>
         </td>
         <td class="ca-efeito">${caEfeito(d, l)}</td>
         <td>

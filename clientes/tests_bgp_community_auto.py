@@ -368,6 +368,71 @@ def _dados_com_cliente():
     return dados
 
 
+class CommunityOrfaTest(SimpleTestCase):
+    """Community que está na policy LOCAL do prefixo, tem a forma do catálogo e
+    não casa community-filter nenhum — config que não produz efeito. Caso real:
+    um `65146:65203` digitado no lugar de `65146:50203` ficou meses sendo
+    reemitido intacto pela automação sem ninguém notar (28/08/2026)."""
+
+    def _com_community(self, valor):
+        dados = dados_base()
+        dados['community_nodes']['RT-BGP-LOCAL-04-22'][0]['apply_community'].append(valor)
+        return dados, montar_mapa(dados)
+
+    def _linha(self, mapa):
+        return next(l for l in mapa['anuncios'] if l['prefixo'] == '45.169.4.0/22')
+
+    def test_grupo_que_nao_existe_na_caixa_vira_orfa(self):
+        """Dígito trocado: o grupo 652 não existe (a caixa tem 501/581/601/611)
+        e não há como deduzir do backup que a intenção era 502 — vira aviso."""
+        dados, mapa = self._com_community(f'{ASN}:65203')
+        orfas = self._linha(mapa)['communities_orfas']
+        self.assertEqual([o['valor'] for o in orfas], [f'{ASN}:65203'])
+        self.assertEqual(orfas[0]['tipo'], 'orfa')
+        self.assertEqual(orfas[0]['grupo'], '652')
+        self.assertTrue(any(f'{ASN}:65203' in a and 'grupo 652' in a for a in mapa['avisos']))
+
+    def test_asn_de_community_trocado_so_nos_filtros_aponta_o_destino(self):
+        """Aqui a intenção É dedutível: a parte numérica casa um filtro vivo,
+        só o ASN da community é outro."""
+        dados, mapa = self._com_community('65999:50103')
+        orfa = self._linha(mapa)['communities_orfas'][0]
+        self.assertEqual(orfa['tipo'], 'asn')
+        self.assertEqual(orfa['destino'], 'c-01')
+        self.assertEqual(orfa['acao'], 'export-2p')
+        self.assertEqual(orfa['sugestao'], f'{ASN}:50103')
+        self.assertTrue(any('65999:50103' in a and f'{ASN}:50103' in a for a in mapa['avisos']))
+
+    def test_orfa_continua_sendo_preservada_na_reescrita(self):
+        """O aviso não muda o que a automação escreve: corrigir sozinha uma
+        community órfã mudaria o que o prefixo faz na rede."""
+        dados, mapa = self._com_community(f'{ASN}:65203')
+        comandos = comandos_definir_anuncio(dados, mapa, '45.169.4.0/22', 'ix-01', 'export')
+        self.assertEqual(
+            comandos[2],
+            f'apply community {ASN}:50101 {ASN}:60101 {ASN}:65203 additive')
+
+    def test_community_de_convencao_propria_nao_vira_orfa(self):
+        """`65100:10091` não decompõe no padrão (sufixo 91 não é ação): segue
+        sendo extra silenciosa, sem aviso."""
+        mapa = montar_mapa(dados_base())
+        linha = next(l for l in mapa['anuncios'] if l['prefixo'] == '45.169.8.0/24')
+        self.assertEqual(linha['communities_extras'], [f'{ASN}:10091'])
+        self.assertEqual(linha['communities_orfas'], [])
+        self.assertFalse(any('10091' in a for a in mapa['avisos']))
+
+    def test_avisos_de_uma_mesma_orfa_saem_consolidados(self):
+        """Numa caixa que trocou o ASN de community, a mesma órfã se repete em
+        dezenas de prefixos — um aviso por linha afogaria o painel."""
+        dados = dados_base()
+        for rp in ('RT-BGP-LOCAL-04-22', 'RT-BGP-LOCAL-06-24', 'RT-BGP-LOCAL-08-24'):
+            dados['community_nodes'][rp][0]['apply_community'].append(f'{ASN}:65203')
+        mapa = montar_mapa(dados)
+        achados = [a for a in mapa['avisos'] if f'{ASN}:65203' in a]
+        self.assertEqual(len(achados), 1)
+        self.assertIn('3 prefixos', achados[0])
+
+
 class SlotsTest(SimpleTestCase):
     def setUp(self):
         self.mapa = montar_mapa(dados_base())
