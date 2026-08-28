@@ -12,6 +12,8 @@ from django.test import SimpleTestCase
 
 from clientes.bgp_actions import AcaoBgpNaoSuportada
 from clientes.bgp_community_auto import (
+    GRUPOS_CANONICOS,
+    _grupo_canonico,
     aplicar_efeito_local,
     comandos_criar_circuito,
     comandos_criar_downstream,
@@ -431,6 +433,69 @@ class CommunityOrfaTest(SimpleTestCase):
         achados = [a for a in mapa['avisos'] if f'{ASN}:65203' in a]
         self.assertEqual(len(achados), 1)
         self.assertIn('3 prefixos', achados[0])
+
+
+class PadraoCanonicoTest(SimpleTestCase):
+    """O grupo de community de um slot é uma CONTA (`base_grupo + numero`), não
+    um cadastro — o padrão inteiro é conhecido sem depender do que a caixa tem
+    configurado. Até 2026-08-28 isso só era usado pra CRIAR circuito; o que já
+    estava no equipamento era aceito como verdade."""
+
+    def test_grupo_de_qualquer_slot_sai_da_conta(self):
+        self.assertEqual(_grupo_canonico('c-02'), '502')
+        self.assertEqual(_grupo_canonico('ix-07'), '607')
+        self.assertEqual(_grupo_canonico('cdn-03'), '613')
+        self.assertEqual(GRUPOS_CANONICOS['507'], 'c-07')
+        self.assertEqual(len(GRUPOS_CANONICOS), 25)
+
+    def test_circuito_fora_das_faixas_nao_tem_canonico(self):
+        """`c-81` (IX chamado de `c-NN` nas caixas antigas) é config legítima
+        que o template atual não prevê — tratar como erro seria falso positivo."""
+        self.assertEqual(_grupo_canonico('c-81'), '')
+        mapa = montar_mapa(dados_base())
+        self.assertEqual(mapa['circuitos']['c-81']['grupo'], '581')
+        self.assertFalse(any('c-81' in a and 'padrão reserva' in a for a in mapa['avisos']))
+
+    def test_bloco_clonado_sem_trocar_o_numero_vira_aviso(self):
+        """Caso real: o bloco de filtros de um circuito copiado pro slot seguinte
+        sem trocar o grupo. Consistente consigo mesmo, e errado."""
+        dados = dados_base()
+        for nome, entradas in list(dados['community_filters'].items()):
+            if nome.startswith('c-01-'):
+                for e in entradas:
+                    e['valores'] = [v.replace(':501', ':502') for v in e['valores']]
+        mapa = montar_mapa(dados)
+        self.assertEqual(mapa['circuitos']['c-01']['grupo'], '502')
+        self.assertTrue(any(
+            a.startswith('c-01: os community-filters usam o grupo 502')
+            and 'padrão reserva 501' in a and 'c-02' in a
+            for a in mapa['avisos']))
+
+    def test_orfa_de_slot_valido_diz_de_quem_e_o_grupo(self):
+        """507 é do c-07 em QUALQUER equipamento — mesmo neste, que não tem o
+        c-07 configurado."""
+        dados = dados_base()
+        dados['community_nodes']['RT-BGP-LOCAL-04-22'][0]['apply_community'].append(f'{ASN}:50701')
+        mapa = montar_mapa(dados)
+        achado = next(a for a in mapa['avisos'] if f'{ASN}:50701' in a)
+        self.assertIn('o grupo 507 é do slot c-07', achado)
+        self.assertIn('não tem configurado', achado)
+
+    def test_orfa_lista_as_parecidas_sem_escolher(self):
+        """`65203` fica a UM dígito de 60203 (ix-02) e a dois de 50203 (c-02),
+        que era a intenção real — correção automática por proximidade acertaria
+        o circuito errado."""
+        dados = dados_base()
+        # As duas candidatas VIVAS na caixa: a certa (c-02, a dois dígitos) e a
+        # errada (ix-02, a um dígito).
+        dados['community_filters'].update(_filtros('c-02', '502'))
+        dados['community_filters'].update(_filtros('ix-02', '602'))
+        dados['community_nodes']['RT-BGP-LOCAL-04-22'][0]['apply_community'].append(f'{ASN}:65203')
+        mapa = montar_mapa(dados)
+        achado = next(a for a in mapa['avisos'] if f'{ASN}:65203' in a)
+        self.assertIn('não existe no padrão', achado)
+        self.assertIn(f'{ASN}:60203 (ix-02)', achado)
+        self.assertNotIn(f'{ASN}:50203', achado)
 
 
 class SlotsTest(SimpleTestCase):

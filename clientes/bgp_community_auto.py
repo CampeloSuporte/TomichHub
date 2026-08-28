@@ -197,6 +197,57 @@ def _decompor_community(valor):
     return asn, grupo, acao['chave']
 
 
+def _grupo_canonico(cid):
+    """`c-02` → '502', `ix-07` → '607', `cdn-03` → '613'. O grupo de um slot é
+    uma CONTA (`base_grupo + numero`, §6/§7/§8), então o padrão inteiro é
+    conhecido de antemão — não precisa estar configurado em lugar nenhum pra
+    ser reconhecido.
+
+    Devolve '' para o que está FORA das faixas reservadas: o `c-81` das caixas
+    antigas (IX chamado de `c-NN`) é config legítima que o template atual não
+    prevê, e tratar isso como erro encheria o painel de falso positivo.
+    """
+    m = re.match(rf'^({_PREFIXOS_CIRCUITO})-(\d+)$', cid or '')
+    if not m:
+        return ''
+    tipo, numero = TIPOS_POR_PREFIXO[m.group(1)], int(m.group(2))
+    if not 1 <= numero <= tipo['slots']:
+        return ''
+    return str(tipo['base_grupo'] + numero)
+
+
+# Todos os grupos que o padrão reserva → o slot dono de cada um. É o catálogo
+# completo (25 slots), independente do que a caixa tem configurado.
+GRUPOS_CANONICOS = {}
+for _t in TIPOS_CIRCUITO:
+    for _n in range(1, _t['slots'] + 1):
+        GRUPOS_CANONICOS[str(_t['base_grupo'] + _n)] = f'{_t["prefixo"]}-{_n:02d}'
+del _t, _n
+
+FAIXAS_CANONICAS = ', '.join(
+    f'{t["rotulo"]} {t["base_grupo"] + 1}-{t["base_grupo"] + t["slots"]}'
+    for t in TIPOS_CIRCUITO
+)
+
+
+def _parecidas(resto, por_resto):
+    """Communities VIVAS da caixa a um único dígito de distância da órfã —
+    mesmo tamanho, uma posição diferente.
+
+    Existe pra mostrar o tamanho da ambiguidade, não pra escolher: o caso real
+    que motivou isso (`65203`) fica a um dígito de `60203` (ix-02) e a dois de
+    `50203` (c-02), que era a intenção de verdade. Qualquer correção
+    automática por proximidade teria acertado o circuito errado.
+    """
+    achados = []
+    for outro, (destino_id, chave, community) in por_resto.items():
+        if len(outro) != len(resto):
+            continue
+        if sum(1 for a, b in zip(outro, resto) if a != b) == 1:
+            achados.append({'community': community, 'destino': destino_id, 'acao': chave})
+    return sorted(achados, key=lambda a: a['community'])
+
+
 def _classificar_orfa(valor, por_resto):
     """
     Uma community da route-policy LOCAL de um prefixo que tem a cara deste
@@ -233,8 +284,14 @@ def _classificar_orfa(valor, por_resto):
     dec = _decompor_community(valor)
     if not dec:
         return None
+    grupo = dec[1]
     return {'valor': valor, 'tipo': 'orfa', 'destino': '', 'acao': dec[2],
-            'sugestao': '', 'grupo': dec[1]}
+            'sugestao': '', 'grupo': grupo,
+            # O slot que o PADRÃO dá a esse grupo, mesmo que a caixa não o
+            # tenha configurado: 507 é do c-07 em qualquer equipamento; 652
+            # não é de ninguém.
+            'slot_canonico': GRUPOS_CANONICOS.get(grupo, ''),
+            'parecidas': _parecidas(m.group(2), por_resto)}
 
 
 def _indice_por_resto(circuitos, globais):
@@ -905,6 +962,22 @@ def validar_mapa(dados, mapa):
                         f'"{f}", que não existe no equipamento.'
                     )
 
+    # O grupo de community de um slot é uma CONTA (`base_grupo + numero`), não
+    # um cadastro: `c-02` é 502 em qualquer equipamento. Até 2026-08-28 o padrão
+    # só era usado pra CRIAR circuito — o que já estava na caixa era aceito como
+    # verdade. Um bloco clonado sem trocar o número (`c-04` inteiro carimbando
+    # 503) passava batido enquanto fosse consistente consigo mesmo.
+    for cid, c in mapa['circuitos'].items():
+        canonico = _grupo_canonico(cid)
+        if canonico and c['grupo'] and c['grupo'] != canonico:
+            dono = GRUPOS_CANONICOS.get(c['grupo'], '')
+            avisos.append(
+                f'{cid}: os community-filters usam o grupo {c["grupo"]}, mas o padrão reserva '
+                f'{canonico} para este slot' +
+                (f' — {c["grupo"]} é do {dono}, provável bloco clonado sem trocar o número.'
+                 if dono else '.')
+            )
+
     for cid, c in mapa['circuitos'].items():
         for chave_policy in ('v4_out', 'v6_out'):
             nome_policy = c['policies'].get(chave_policy)
@@ -1021,12 +1094,28 @@ def validar_mapa(dados, mapa):
     for grupo in sorted(por_grupo):
         itens = sorted(por_grupo[grupo])
         lista = ', '.join(f'{v} (em {_onde(p)})' for v, p in itens)
+        slot = GRUPOS_CANONICOS.get(grupo, '')
+        # O padrão é uma conta, então dá pra dizer de quem É o grupo mesmo em
+        # caixa que não o configurou — e dizer que não é de ninguém quando o
+        # grupo está fora de todas as faixas.
+        de_quem = (f'No padrão o grupo {grupo} é do slot {slot}, que este equipamento não tem '
+                   f'configurado.'
+                   if slot else
+                   f'O grupo {grupo} não existe no padrão ({FAIXAS_CANONICAS}).')
+        # As parecidas são as mesmas pra todas as ações do grupo (só muda o
+        # sufixo), então sai uma vez só, na do primeiro item.
+        vizinhas = orfas[itens[0][0]]['info'].get('parecidas') or []
+        pista = ''
+        if vizinhas:
+            pista = (' A um único dígito de distância existe(m) ' +
+                     ', '.join(f'{v["community"]} ({v["destino"]})' for v in vizinhas[:3]) +
+                     ' — proximidade não é prova de intenção, confira antes de corrigir.')
         avisos.append(
             f'{"As communities" if len(itens) > 1 else "A community"} {lista} '
-            f'{"têm" if len(itens) > 1 else "tem"} a forma do padrão (grupo {grupo}) mas não '
+            f'{"têm" if len(itens) > 1 else "tem"} a forma do padrão mas não '
             f'{"correspondem" if len(itens) > 1 else "corresponde"} a nenhum community-filter '
             f'deste equipamento — não {"produzem" if len(itens) > 1 else "produz"} efeito '
-            f'nenhum. Ou é convenção própria fora do catálogo, ou é dígito trocado.'
+            f'nenhum. {de_quem}{pista}'
         )
 
     mortos = sorted(gid for gid, g in (mapa.get('globais') or {}).items() if not g['alcance'])
