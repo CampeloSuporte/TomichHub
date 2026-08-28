@@ -1119,6 +1119,11 @@ a automação por community precisa exatamente do que a simulação joga fora.
   sustentou nos 8 equipamentos: o nome segue `AS<asn>-<NOME>-V4-OUT` na maioria mas nem sempre
   (`RP-IX-SP-V4-OUT`), e há caixas onde a policy IN de um circuito carimba a community de origem de
   **outro** (copy/paste real — vira aviso, não vira mapeamento errado).
+- **Quem manda na hora de GERAR continua sendo a caixa, não o padrão**: o canônico serve pra
+  validar e pra criar circuito novo, nunca pra escolher a community de um comando. Numa caixa que
+  usa ASN 65146 (ou 65101, ou 268080) e num equipamento com bloco clonado, emitir o valor "do
+  padrão" produziria uma community que não casa filtro nenhum — exatamente o defeito que o aviso
+  de órfã existe pra pegar.
 - **Grupo/ASN do circuito** vêm da community da ação `export`, não de uma média das ações: em
   produção existem caixas onde `c-04-export-bh`/`c-04-export-bl` apontam pro grupo 503 (bloco
   clonado do c-03 sem trocar o número). O circuito continua sendo o 504 e a divergência é reportada.
@@ -1138,6 +1143,20 @@ a automação por community precisa exatamente do que a simulação joga fora.
     na caixa (`65146:65203` num equipamento cujos grupos são 501-510/601-610/611-615). Aqui a
     intenção **não** é dedutível: um dígito trocado em `50203` e um `65203` legítimo de convenção
     própria são indistinguíveis pelo backup.
+
+  O padrão é aplicado nas duas pontas (28/08/2026): `_grupo_canonico` /
+  `GRUPOS_CANONICOS` derivam o catálogo inteiro (25 slots) da conta `base_grupo + numero`, sem
+  depender do que a caixa tem configurado, e com isso o aviso diz **de quem é** o grupo mesmo em
+  equipamento que não o tem (`507` é do `c-07` em qualquer lugar) ou que ele **não é de ninguém**
+  (`652` está fora de 501-510 / 601-610 / 611-615). O mesmo canônico confere os circuitos
+  descobertos: `c-04` carimbando 503 (bloco clonado sem trocar o número) vira aviso, coisa que
+  antes passava batido por ser consistente consigo mesmo. Fora das faixas não há canônico — o
+  `c-81` das caixas antigas é config legítima, não erro.
+
+  O aviso de órfã ainda lista as communities vivas **a um dígito de distância**, e é justamente aí
+  que fica claro por que a correção não pode ser automática: `65203` está a **um** dígito de
+  `60203` (ix-02) e a **dois** de `50203` (c-02), que era a intenção real. Corrigir por
+  proximidade acertaria o circuito errado.
 
   Em nenhum dos dois casos a automação corrige sozinha — corrigir mudaria o que o prefixo faz na
   rede. Vira **aviso** em `validar_mapa` (consolidado por valor no caso `asn`, e por grupo no caso

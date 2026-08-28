@@ -21,6 +21,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
     do `:` casa um filtro vivo e só o ASN difere (`65100:50104` numa caixa que usa `65101:50104`),
     o aviso diz qual é o destino e qual a community correta; quando o grupo não existe na caixa, o
     aviso aponta que não produz efeito e pede conferência do dígito.
+  - **O padrão canônico agora vale para conferir, não só para criar** (`_grupo_canonico`,
+    `GRUPOS_CANONICOS`): o grupo de um slot é uma conta (`base_grupo + numero`), então os 25 slots
+    são conhecidos sem depender do que a caixa tem configurado. O aviso passa a dizer de quem é o
+    grupo (`507` é do `c-07`) ou que ele não é de ninguém (`652` está fora de 501-510/601-610/
+    611-615), e os circuitos existentes passam a ser conferidos contra a conta — `c-04` carimbando
+    503 (bloco clonado sem trocar o número) vira aviso em vez de passar batido. Fora das faixas não
+    há canônico: o `c-81` das caixas antigas é config legítima, não erro.
+  - O aviso lista as communities vivas **a um dígito** da órfã — e é o que mostra por que corrigir
+    sozinho seria errado: `65203` está a um dígito de `60203` (ix-02) e a dois de `50203` (c-02),
+    que era a intenção real.
   - Em nenhum dos casos a automação corrige sozinha — corrigir mudaria o que o prefixo faz na rede.
     A reescrita continua preservando o valor intacto; o que muda é a **visibilidade**: entra nos
     avisos do painel (consolidados, porque a mesma órfã se repete em dezenas de prefixos) e sai em
