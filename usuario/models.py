@@ -54,11 +54,17 @@ class UsuarioAcesso(models.Model):
     """Quais hosts (`clientes.Acesso`) do cliente um login do portal enxerga
     e pode usar.
 
-    **Sem nenhum registro para o usuário = todos os hosts do cliente** — é o
-    comportamento de sempre, então nenhum login existente muda ao subir essa
-    tabela, e um host cadastrado depois já nasce visível para quem não tem
-    restrição. Havendo registro, o login vê **só** os hosts marcados (nas
-    listas e nas ações: terminal, WinBox, backup, proxy web, scripts...).
+    **Sem nenhum registro para o usuário — nem aqui nem em `UsuarioFuncao` —
+    = todos os hosts do cliente**: é o comportamento de sempre, então nenhum
+    login existente muda ao subir essa tabela, e um host cadastrado depois já
+    nasce visível para quem não tem restrição. Havendo registro, o login vê
+    **só** os hosts liberados (nas listas e nas ações: terminal, WinBox,
+    backup, proxy web, scripts...).
+
+    Esta tabela é a liberação **host a host**; `UsuarioFuncao` é a liberação
+    **por função** (todas as OLTs, por exemplo). Quando as duas têm registro,
+    o login vê a **união** — a tela de usuários grava uma de cada vez, mas a
+    permissão não depende disso.
 
     Só vale para o portal do cliente final. Administrador, Consultor e
     Operador continuam limitados pelo cliente/instância
@@ -78,12 +84,50 @@ class UsuarioAcesso(models.Model):
         return f"{self.usuario.username} → {self.acesso.tipo} ({self.acesso.host})"
 
 
+class UsuarioFuncao(models.Model):
+    """Quais **funções de equipamento** um login do portal enxerga — "só as
+    OLTs", "só os BRAS".
+
+    Diferente de `UsuarioAcesso`, é uma regra e não uma lista: um host novo
+    do cliente com uma função liberada **já nasce visível** para esse login,
+    sem ninguém reeditar o usuário. Por isso é o jeito certo de dizer "esse
+    técnico cuida das OLTs".
+
+    Host sem função cadastrada nunca entra por aqui (não tem como casar com
+    regra nenhuma) — para liberá-lo, use `UsuarioAcesso`.
+    """
+
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='funcoes_permitidas')
+    funcao = models.ForeignKey(
+        'funcao_equipamento.Funcao_equipamento', on_delete=models.CASCADE,
+        related_name='usuarios_permitidos',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('usuario', 'funcao')
+        verbose_name = 'Função liberada para o Usuário'
+        verbose_name_plural = 'Funções liberadas para o Usuário'
+
+    def __str__(self):
+        return f"{self.usuario.username} → função {self.funcao}"
+
+
 def acessos_permitidos_ids(user):
-    """`set` de ids de Acesso liberados, ou `None` quando o usuário não tem
-    restrição nenhuma (= vê todos os hosts do cliente dele)."""
+    """`set` de ids de Acesso liberados host a host, ou `None` quando não há
+    registro nenhum."""
     if not user or not user.is_authenticated:
         return None
     ids = set(UsuarioAcesso.objects.filter(usuario=user).values_list('acesso_id', flat=True))
+    return ids or None
+
+
+def funcoes_permitidas_ids(user):
+    """`set` de ids de Funcao_equipamento liberadas, ou `None` quando não há
+    registro nenhum."""
+    if not user or not user.is_authenticated:
+        return None
+    ids = set(UsuarioFuncao.objects.filter(usuario=user).values_list('funcao_id', flat=True))
     return ids or None
 
 

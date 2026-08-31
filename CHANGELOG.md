@@ -5,6 +5,42 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-31 (Hosts por função para o login do portal)
+
+### Adicionado
+
+- **Liberar hosts por função de equipamento** (`usuario/models.py`, `usuario/perms.py`,
+  `usuario/views.py`, `usuario/templates/cadastrar_usuario.html`). A seção "Hosts liberados"
+  ganhou um rádio com três modos: **todos os hosts** (padrão), **somente as funções marcadas**
+  (ex.: só as OLTs) e **somente os hosts marcados** (o que já existia).
+  - Modelo novo `UsuarioFuncao` (migração `usuario/0013_usuariofuncao`). Diferente da lista host
+    a host, função é **regra e não retrato**: host novo com uma função liberada aparece sozinho,
+    sem reeditar o usuário. É o jeito certo de dizer "esse técnico cuida das OLTs".
+  - O modal lista só as funções que os hosts **daquele cliente** usam, cada uma com a contagem
+    de hosts — a lista global de `Funcao_equipamento` é da plataforma inteira e encheria a tela
+    de opção que não casa com host nenhum dele.
+  - Host **sem função** cadastrada não entra pelo modo função (não casa com regra nenhuma); o
+    modal diz quantos hosts do cliente estão nessa situação, para o admin cair no modo host.
+  - Os três modos são exclusivos na tela: gravar um limpa a tabela do outro; "todos" limpa as
+    duas. Nada marcado continua não sendo gravado (seria indistinguível de "sem restrição" e
+    liberaria geral) — o form mantém a seleção e avisa.
+
+### Alterado
+
+- `perms.pode_acessar_acesso` e `filtrar_acessos_visiveis` passaram a somar as duas regras: o
+  login vê os hosts liberados individualmente **mais** os hosts das funções liberadas. Sem
+  registro em nenhuma das tabelas, vê todos — como sempre. Nenhum call site mudou: os ~26 pontos
+  de permissão por host e as três listagens (aba Acessos, `/clientes/terminal/acessos/`, backups
+  do cliente) já passavam por essas duas funções.
+
+**Testes:** `usuario.tests.FuncoesLiberadasPortalTest` (10) + `HostsLiberadosPortalTest` (9).
+Suíte do app: 27 testes, OK. Conferência no banco real com o login `leivy` (Startnet Provedor):
+restrito à função BRAS, passou a ver 14 hosts (todos BRAS no combo do terminal) e 403 em host de
+outra função — login devolvido ao estado original.
+**Documentação:** `docs/HOSTS_POR_USUARIO.md` — modos de acesso, "função é regra; host é lista".
+
+---
+
 ## [Não publicado] — 2026-08-31 (Hosts liberados por usuário do portal)
 
 ### Adicionado

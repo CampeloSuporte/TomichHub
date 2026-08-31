@@ -85,6 +85,19 @@
 }
 .hosts-acoes button:hover { color: var(--text-light); border-color: rgba(255,255,255,.25); }
 
+/* Modo de acesso aos hosts */
+.acesso-modos { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.acesso-modo {
+    display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+    background: rgba(255,255,255,.02); transition: .15s;
+}
+.acesso-modo:hover { border-color: rgba(255,255,255,.25); }
+.acesso-modo.active { border-color: var(--green); background: rgba(63,185,80,.08); }
+.acesso-modo input { margin-top: 3px; }
+.acesso-modo .titulo { font-size: .84rem; font-weight: 600; color: var(--text-light); }
+.acesso-modo .desc { font-size: .74rem; color: var(--text-muted); margin-top: 2px; line-height: 1.45; }
+
 /* Toggle "Tipo de usuário" (substitui o checkbox cru) */
 .role-toggle { display: flex; gap: 10px; }
 .role-option {
@@ -355,10 +368,11 @@
                     <div class="form-section hosts-section">
                         <div class="form-section-title"><i class="fas fa-server"></i> Hosts liberados</div>
                         <small class="form-text text-muted">
-                            Escolher quais hosts este login vai enxergar só é possível depois de
-                            vinculá-lo a um cliente (tela <strong>Clientes</strong>, campo "Usuário"
-                            ou "Usuários adicionais"). Feito o vínculo, volte aqui e edite o usuário —
-                            por padrão ele vê todos os hosts do cliente.
+                            Escolher quais hosts este login vai enxergar — todos, só os de certas
+                            funções (ex.: só as OLTs) ou uma lista de equipamentos — só é possível
+                            depois de vinculá-lo a um cliente (tela <strong>Clientes</strong>, campo
+                            "Usuário" ou "Usuários adicionais"). Feito o vínculo, volte aqui e edite
+                            o usuário — por padrão ele vê todos os hosts do cliente.
                         </small>
                     </div>
                 </form>
@@ -481,11 +495,47 @@
                     <div class="form-section hosts-section">
                         <div class="form-section-title"><i class="fas fa-server"></i> Hosts liberados</div>
                         <input type="hidden" name="acessos_form_present" value="1">
-                        <div class="hosts-acoes">
-                            <button type="button" onclick="marcarTodosHosts(true)">Marcar todos</button>
-                            <button type="button" onclick="marcarTodosHosts(false)">Desmarcar todos</button>
+
+                        <div class="acesso-modos" id="edit_acesso_modos">
+                            <label class="acesso-modo" data-modo="todos">
+                                <input type="radio" name="acessos_modo" value="todos" checked onchange="setModoAcesso('todos')">
+                                <span>
+                                    <span class="titulo">Todos os hosts do cliente</span>
+                                    <span class="desc">Sem restrição — inclusive os hosts cadastrados depois.</span>
+                                </span>
+                            </label>
+                            <label class="acesso-modo" data-modo="funcao">
+                                <input type="radio" name="acessos_modo" value="funcao" onchange="setModoAcesso('funcao')">
+                                <span>
+                                    <span class="titulo">Somente as funções marcadas</span>
+                                    <span class="desc">Ex.: só as OLTs. É regra, não lista: host novo com uma função liberada aparece sozinho.</span>
+                                </span>
+                            </label>
+                            <label class="acesso-modo" data-modo="host">
+                                <input type="radio" name="acessos_modo" value="host" onchange="setModoAcesso('host')">
+                                <span>
+                                    <span class="titulo">Somente os hosts marcados</span>
+                                    <span class="desc">Escolha equipamento por equipamento. Host cadastrado depois não entra sozinho.</span>
+                                </span>
+                            </label>
                         </div>
-                        <div class="hosts-lista" id="edit_hosts_lista"></div>
+
+                        <div id="edit_bloco_funcoes" style="display:none;">
+                            <div class="hosts-acoes">
+                                <button type="button" onclick="marcarTodasFuncoes(true)">Marcar todas</button>
+                                <button type="button" onclick="marcarTodasFuncoes(false)">Desmarcar todas</button>
+                            </div>
+                            <div class="hosts-lista" id="edit_funcoes_lista"></div>
+                        </div>
+
+                        <div id="edit_bloco_hosts" style="display:none;">
+                            <div class="hosts-acoes">
+                                <button type="button" onclick="marcarTodosHosts(true)">Marcar todos</button>
+                                <button type="button" onclick="marcarTodosHosts(false)">Desmarcar todos</button>
+                            </div>
+                            <div class="hosts-lista" id="edit_hosts_lista"></div>
+                        </div>
+
                         <small class="form-text text-muted" id="edit_hosts_ajuda"></small>
                     </div>
                 </form>
@@ -630,71 +680,114 @@ function editarUsuario(id, username, email, role, instanciaId, modulosHabilitado
 // (e não embutido na página) porque a tela lista dezenas de usuários de
 // portal — ver a view hosts_usuario.
 async function carregarHostsLiberados(usuarioId) {
-    const lista = document.getElementById('edit_hosts_lista');
+    const ajuda = document.getElementById('edit_hosts_ajuda');
+    const modos = document.getElementById('edit_acesso_modos');
     const marcador = document.querySelector('#edicaoForm input[name="acessos_form_present"]');
-    if (!lista) return;
-    // Enquanto não chegar a resposta, o form não pode gravar seleção nenhuma.
+    if (!ajuda) return;
+
+    // Enquanto não chegar a resposta o form não pode gravar seleção nenhuma,
+    // e o rádio fica escondido pra ninguém escolher modo sobre lista vazia.
     if (marcador) marcador.disabled = true;
-    lista.innerHTML = '<div style="padding:10px;font-size:.82rem;color:var(--text-muted)">'
-        + '<i class="fas fa-spinner fa-spin me-2"></i>Carregando hosts...</div>';
+    modos.style.display = 'none';
+    document.getElementById('edit_bloco_funcoes').style.display = 'none';
+    document.getElementById('edit_bloco_hosts').style.display = 'none';
+    ajuda.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Carregando hosts...';
+
     try {
         const r = await fetch('/auth/usuarios/' + usuarioId + '/hosts/');
         if (!r.ok) throw new Error('HTTP ' + r.status);
         const d = await r.json();
         renderHostsLiberados(d.info);
     } catch (e) {
-        lista.innerHTML = '<div style="padding:10px;font-size:.82rem;color:var(--red)">'
-            + 'Não foi possível carregar os hosts (' + e.message + ').</div>';
-        document.getElementById('edit_hosts_ajuda').textContent = '';
+        ajuda.innerHTML = '<span style="color:var(--red)">Não foi possível carregar os hosts ('
+            + e.message + ').</span>';
     }
 }
 
-// Monta a lista de hosts do cliente vinculado, marcando os que o login já
-// enxerga. `hostsInfo` vem do servidor (_hosts_do_usuario) e é null quando o
-// usuário ainda não está vinculado a nenhum cliente.
+// Monta as duas listas (funções e hosts) do cliente vinculado, marcando o
+// que vale hoje. `hostsInfo` vem do servidor (_hosts_do_usuario) e é null
+// quando o usuário ainda não está vinculado a nenhum cliente.
 function renderHostsLiberados(hostsInfo) {
     const lista = document.getElementById('edit_hosts_lista');
+    const listaFuncoes = document.getElementById('edit_funcoes_lista');
     const ajuda = document.getElementById('edit_hosts_ajuda');
+    const modos = document.getElementById('edit_acesso_modos');
     const marcador = document.querySelector('#edicaoForm input[name="acessos_form_present"]');
     if (!lista) return;
 
     if (!hostsInfo) {
-        lista.innerHTML = '<div style="padding:10px;font-size:.82rem;color:var(--text-muted)">'
-            + 'Este login ainda não está vinculado a nenhum cliente. Faça o vínculo na tela '
-            + '<strong>Clientes</strong> e volte aqui para escolher os hosts.</div>';
-        ajuda.textContent = '';
+        modos.style.display = 'none';
+        document.getElementById('edit_bloco_funcoes').style.display = 'none';
+        document.getElementById('edit_bloco_hosts').style.display = 'none';
+        ajuda.innerHTML = 'Este login ainda não está vinculado a nenhum cliente. Faça o vínculo na '
+            + 'tela <strong>Clientes</strong> e volte aqui para escolher os hosts.';
         // Sem marcador o POST não mexe na seleção de hosts.
         if (marcador) marcador.disabled = true;
         return;
     }
     if (marcador) marcador.disabled = false;
+    modos.style.display = '';
 
+    // Funções do cliente (só as que têm host)
+    if (!hostsInfo.funcoes.length) {
+        listaFuncoes.innerHTML = '<div style="padding:10px;font-size:.82rem;color:var(--text-muted)">'
+            + 'Nenhum host deste cliente tem função cadastrada — use "Somente os hosts marcados".</div>';
+    } else {
+        listaFuncoes.innerHTML = hostsInfo.funcoes.map(function(f) {
+            return '<div class="host-item">'
+                + '<input class="form-check-input mt-0" type="checkbox" name="funcoes_acesso" value="' + f.id + '"'
+                + ' id="edit_funcao_' + f.id + '"' + (f.marcado ? ' checked' : '') + '>'
+                + '<label for="edit_funcao_' + f.id + '">' + f.descricao
+                + ' <span class="host-meta">' + f.hosts + (f.hosts === 1 ? ' host' : ' hosts') + '</span></label>'
+                + '</div>';
+        }).join('');
+    }
+
+    // Hosts do cliente
     if (!hostsInfo.hosts.length) {
         lista.innerHTML = '<div style="padding:10px;font-size:.82rem;color:var(--text-muted)">'
             + 'O cliente <strong>' + hostsInfo.cliente_nome + '</strong> ainda não tem host cadastrado.</div>';
-        ajuda.textContent = '';
-        return;
+    } else {
+        lista.innerHTML = hostsInfo.hosts.map(function(h) {
+            const meta = [h.protocolo, h.funcao].filter(Boolean).join(' · ');
+            return '<div class="host-item">'
+                + '<input class="form-check-input mt-0" type="checkbox" name="acessos" value="' + h.id + '"'
+                + ' id="edit_acesso_' + h.id + '"' + (h.marcado ? ' checked' : '') + '>'
+                + '<label for="edit_acesso_' + h.id + '">' + h.tipo
+                + ' <span class="host-meta">' + h.host + (meta ? ' — ' + meta : '') + '</span></label>'
+                + '</div>';
+        }).join('');
     }
 
-    lista.innerHTML = hostsInfo.hosts.map(function(h) {
-        const meta = [h.protocolo, h.funcao].filter(Boolean).join(' · ');
-        return '<div class="host-item">'
-            + '<input class="form-check-input mt-0" type="checkbox" name="acessos" value="' + h.id + '"'
-            + ' id="edit_acesso_' + h.id + '"' + (h.marcado ? ' checked' : '') + '>'
-            + '<label for="edit_acesso_' + h.id + '">' + h.tipo
-            + ' <span class="host-meta">' + h.host + (meta ? ' — ' + meta : '') + '</span></label>'
-            + '</div>';
-    }).join('');
+    let texto = 'Hosts do cliente <strong>' + hostsInfo.cliente_nome + '</strong>.';
+    if (hostsInfo.hosts_sem_funcao) {
+        texto += ' <em>' + hostsInfo.hosts_sem_funcao + ' host(s) sem função cadastrada não entram por função.</em>';
+    }
+    ajuda.innerHTML = texto;
 
-    ajuda.innerHTML = 'Hosts do cliente <strong>' + hostsInfo.cliente_nome + '</strong>. '
-        + 'Desmarque o que este login não deve ver nem acessar (aba Acessos, terminal, WinBox, '
-        + 'backups e proxy web). Com <strong>todos</strong> marcados o login fica sem restrição — '
-        + 'e passa a ver também os hosts cadastrados depois.'
-        + (hostsInfo.todos ? '' : ' <em>Hoje este login está restrito aos hosts marcados.</em>');
+    // Pré-seleciona o modo que está gravado hoje
+    const radio = document.querySelector('#edicaoForm input[name="acessos_modo"][value="' + hostsInfo.modo + '"]');
+    if (radio) radio.checked = true;
+    setModoAcesso(hostsInfo.modo);
+}
+
+// Mostra o bloco do modo escolhido — os três são exclusivos.
+function setModoAcesso(modo) {
+    document.querySelectorAll('#edit_acesso_modos .acesso-modo').forEach(function(el) {
+        el.classList.toggle('active', el.dataset.modo === modo);
+    });
+    document.getElementById('edit_bloco_funcoes').style.display = (modo === 'funcao') ? '' : 'none';
+    document.getElementById('edit_bloco_hosts').style.display = (modo === 'host') ? '' : 'none';
 }
 
 function marcarTodosHosts(marcar) {
     document.querySelectorAll('#edit_hosts_lista input[name="acessos"]').forEach(function(cb) {
+        cb.checked = marcar;
+    });
+}
+
+function marcarTodasFuncoes(marcar) {
+    document.querySelectorAll('#edit_funcoes_lista input[name="funcoes_acesso"]').forEach(function(cb) {
         cb.checked = marcar;
     });
 }

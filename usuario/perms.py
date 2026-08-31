@@ -10,6 +10,7 @@ from .models import (
     Instancia, PerfilUsuario, InstanciaFerramenta,
     ferramenta_habilitada as _ferramenta_habilitada,
     acessos_permitidos_ids as _acessos_permitidos_ids,
+    funcoes_permitidas_ids as _funcoes_permitidas_ids,
 )
 
 
@@ -124,9 +125,10 @@ def pode_acessar_acesso(user, acesso):
     """Permissão sobre um host específico (`clientes.Acesso`).
 
     É `pode_acessar_cliente` mais um recorte por host que só existe para o
-    portal do cliente final: o login pode estar limitado a alguns hosts do
-    cliente dele (`usuario.models.UsuarioAcesso`). Sem restrição gravada, vê
-    todos — que é como todo login existente continua.
+    portal do cliente final. O recorte vem de duas tabelas que se somam:
+    `UsuarioAcesso` (host a host) e `UsuarioFuncao` (por função — "só as
+    OLTs"). Nenhuma das duas com registro = vê todos os hosts do cliente,
+    que é como todo login existente continua.
 
     Back-office não é filtrado por host: Administrador vê tudo e
     Consultor/Operador respondem pela instância inteira.
@@ -138,7 +140,12 @@ def pode_acessar_acesso(user, acesso):
     if is_backoffice(user):
         return True
     permitidos = _acessos_permitidos_ids(user)
-    return permitidos is None or acesso.id in permitidos
+    funcoes = _funcoes_permitidas_ids(user)
+    if permitidos is None and funcoes is None:
+        return True
+    if permitidos is not None and acesso.id in permitidos:
+        return True
+    return funcoes is not None and acesso.funcao_id in funcoes
 
 
 def filtrar_acessos_visiveis(user, queryset):
@@ -148,7 +155,16 @@ def filtrar_acessos_visiveis(user, queryset):
     if is_backoffice(user):
         return queryset
     permitidos = _acessos_permitidos_ids(user)
-    return queryset if permitidos is None else queryset.filter(id__in=permitidos)
+    funcoes = _funcoes_permitidas_ids(user)
+    if permitidos is None and funcoes is None:
+        return queryset
+    from django.db.models import Q
+    filtro = Q(pk__in=[])  # nada, até alguma das duas regras somar algo
+    if permitidos is not None:
+        filtro |= Q(id__in=permitidos)
+    if funcoes is not None:
+        filtro |= Q(funcao_id__in=funcoes)
+    return queryset.filter(filtro)
 
 
 def pode_editar_wiki(user):
