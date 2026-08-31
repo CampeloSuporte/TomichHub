@@ -15,7 +15,7 @@ from clientes.decorators import admin_required  # ← ADICIONAR ESTA LINHA
 from django.contrib.auth import logout as auth_logout
 from django.contrib.auth import update_session_auth_hash
 from clientes.models import Cliente
-from .models import UsuarioModulo, modulos_habilitados_dict, Instancia, PerfilUsuario, InstanciaFerramenta, ferramentas_habilitadas_dict, TOTPDevice, PortalUsuarioInstancia, UsuarioAcesso
+from .models import UsuarioModulo, modulos_habilitados_dict, Instancia, PerfilUsuario, InstanciaFerramenta, ferramentas_habilitadas_dict, TOTPDevice, PortalUsuarioInstancia, UsuarioAcesso, UsuarioFuncao
 from . import perms
 from . import totp as totp_lib
 from seguranca import services as seguranca
@@ -93,23 +93,39 @@ def _sincronizar_modulos_usuario(request, usuario):
 
 
 def _hosts_do_usuario(usuario):
-    """Hosts do cliente vinculado a `usuario`, marcando os que ele pode ver.
+    """O que o modal de edição precisa pra montar a seção "Hosts liberados":
+    as funções e os hosts do cliente vinculado, já marcando o que vale hoje.
 
-    Alimenta a seção "Hosts liberados" do modal de edição. Retorna `None`
-    quando o login ainda não está vinculado a nenhum Cliente (a seção então
-    vira um aviso pedindo pra fazer o vínculo primeiro) — o vínculo é feito
-    na tela do Cliente, não aqui.
+    Retorna `None` quando o login ainda não está vinculado a nenhum Cliente
+    (a seção vira um aviso pedindo pra fazer o vínculo primeiro) — o vínculo
+    é feito na tela do Cliente, não aqui.
 
-    `todos=True` significa "sem restrição gravada": o login vê todo host do
-    cliente, inclusive os cadastrados depois. É o estado de qualquer login
-    que nunca passou por essa tela.
+    `modo` resume o estado gravado, e é o que o rádio da tela pré-seleciona:
+
+    - `'todos'`  — sem registro nenhum: vê todo host do cliente, inclusive os
+      cadastrados depois. É o estado de quem nunca passou por essa tela.
+    - `'funcao'` — há `UsuarioFuncao`: vê os hosts das funções marcadas, e
+      acompanha host novo dessas funções.
+    - `'host'`   — há só `UsuarioAcesso`: vê exatamente os hosts marcados.
     """
     cliente = Cliente.objects.filter_by_usuario_vinculado(usuario).first()
     if cliente is None:
         return None
+
     permitidos = set(
         UsuarioAcesso.objects.filter(usuario=usuario).values_list('acesso_id', flat=True)
     )
+    funcoes_ok = set(
+        UsuarioFuncao.objects.filter(usuario=usuario).values_list('funcao_id', flat=True)
+    )
+    if funcoes_ok:
+        modo = 'funcao'
+    elif permitidos:
+        modo = 'host'
+    else:
+        modo = 'todos'
+
+    acessos = list(cliente.acessos.select_related('funcao').order_by('tipo', 'host'))
     hosts = [
         {
             'id': a.id,
@@ -117,53 +133,113 @@ def _hosts_do_usuario(usuario):
             'host': a.host,
             'protocolo': a.protocolo or '',
             'funcao': a.funcao.descricao if a.funcao else '',
-            'marcado': (not permitidos) or (a.id in permitidos),
+            'funcao_id': a.funcao_id,
+            'marcado': (modo != 'host') or (a.id in permitidos),
         }
-        for a in cliente.acessos.select_related('funcao').order_by('tipo', 'host')
+        for a in acessos
     ]
+
+    # Só as funções que esse cliente realmente usa — a lista global de
+    # Funcao_equipamento é da plataforma inteira e encheria a tela de opção
+    # que não casa com host nenhum dele.
+    funcoes = {}
+    sem_funcao = 0
+    for a in acessos:
+        if a.funcao_id is None:
+            sem_funcao += 1
+            continue
+        item = funcoes.setdefault(a.funcao_id, {
+            'id': a.funcao_id,
+            'descricao': a.funcao.descricao,
+            'hosts': 0,
+            'marcado': a.funcao_id in funcoes_ok,
+        })
+        item['hosts'] += 1
+
     return {
         'cliente_id': cliente.id,
         'cliente_nome': cliente.nome_empresa,
-        'todos': not permitidos,
+        'modo': modo,
         'hosts': hosts,
+        'funcoes': sorted(funcoes.values(), key=lambda f: (f['descricao'] or '').lower()),
+        'hosts_sem_funcao': sem_funcao,
     }
 
 
 def _sincronizar_acessos_usuario(request, usuario):
-    """Grava `UsuarioAcesso` a partir dos checkboxes 'acessos' do POST.
+    """Grava o recorte de hosts do login a partir do POST do modal.
 
-    Mesmo marcador de seção do `_sincronizar_modulos_usuario` — sem
-    'acessos_form_present' o form não mexe em nada (um POST antigo, ou o
-    modal de cadastro, não podem apagar a seleção de ninguém).
+    Sem o marcador 'acessos_form_present' o form não mexe em nada (um POST
+    antigo, ou o modal de cadastro, não podem apagar a seleção de ninguém) —
+    mesmo padrão do `_sincronizar_modulos_usuario`.
 
-    Duas regras:
-    - **Tudo marcado = sem restrição**: apaga os registros em vez de gravar
-      um por host. É o que faz um host novo do cliente já nascer visível pra
-      quem tem acesso total, sem precisar reeditar o usuário.
-    - **Nada marcado não é gravado**: "zero host" é indistinguível de "sem
-      restrição" nessa tabela, e gravar isso liberaria tudo — o oposto do
-      que o clique quis dizer. Quem quer tirar hosts do login desmarca a
-      ferramenta "Acessos" logo acima.
-    - Só entram hosts **do cliente vinculado** ao usuário: id de host de
-      outro cliente vindo por POST manipulado é descartado.
+    O rádio 'acessos_modo' decide o que é gravado, e os três modos são
+    exclusivos entre si na tela:
+
+    - `todos`  → apaga `UsuarioAcesso` e `UsuarioFuncao`. "Sem restrição" é a
+      ausência de registro; é o que faz host novo do cliente já nascer
+      visível pra esse login.
+    - `funcao` → grava `UsuarioFuncao` com as funções marcadas (e limpa a
+      lista host a host). É regra, não retrato: host novo de uma função
+      liberada entra sozinho.
+    - `host`   → grava `UsuarioAcesso` com os hosts marcados (e limpa as
+      funções). Marcar todos equivale a `todos`, e é gravado como tal.
+
+    Em `funcao` e `host`, **nada marcado não é gravado**: "zero host" é
+    indistinguível de "sem restrição" nessas tabelas, e gravar liberaria tudo
+    — o oposto do que o clique quis dizer. Quem quer tirar hosts do login
+    desmarca a ferramenta "Acessos" logo acima.
+
+    Só entram hosts e funções **do cliente vinculado** ao usuário: id vindo
+    de POST manipulado que não seja dele é descartado.
     """
     if not request.POST.get('acessos_form_present'):
         return
     cliente = Cliente.objects.filter_by_usuario_vinculado(usuario).first()
     if cliente is None:
         return
+
+    modo = request.POST.get('acessos_modo') or 'todos'
+    if modo not in ('todos', 'funcao', 'host'):
+        modo = 'todos'
+
+    if modo == 'todos':
+        UsuarioAcesso.objects.filter(usuario=usuario).delete()
+        UsuarioFuncao.objects.filter(usuario=usuario).delete()
+        return
+
+    if modo == 'funcao':
+        ids_funcoes = set(
+            cliente.acessos.exclude(funcao__isnull=True).values_list('funcao_id', flat=True)
+        )
+        marcadas = {int(v) for v in request.POST.getlist('funcoes_acesso') if str(v).isdigit()} & ids_funcoes
+        if not marcadas:
+            messages.warning(
+                request,
+                'Nenhuma função marcada — o acesso aos hosts foi mantido como estava. '
+                'Para o login não ver host nenhum, desmarque a ferramenta "Acessos".'
+            )
+            return
+        UsuarioAcesso.objects.filter(usuario=usuario).delete()
+        UsuarioFuncao.objects.filter(usuario=usuario).delete()
+        UsuarioFuncao.objects.bulk_create(
+            [UsuarioFuncao(usuario=usuario, funcao_id=fid) for fid in marcadas]
+        )
+        return
+
     ids_cliente = set(cliente.acessos.values_list('id', flat=True))
     marcados = {int(v) for v in request.POST.getlist('acessos') if str(v).isdigit()} & ids_cliente
 
     if ids_cliente and not marcados:
         messages.warning(
             request,
-            'Nenhum host marcado — a seleção de hosts foi mantida como estava. '
+            'Nenhum host marcado — o acesso aos hosts foi mantido como estava. '
             'Para o login não ver host nenhum, desmarque a ferramenta "Acessos".'
         )
         return
 
     UsuarioAcesso.objects.filter(usuario=usuario).delete()
+    UsuarioFuncao.objects.filter(usuario=usuario).delete()
     if marcados and marcados != ids_cliente:
         UsuarioAcesso.objects.bulk_create(
             [UsuarioAcesso(usuario=usuario, acesso_id=aid) for aid in marcados]
