@@ -477,10 +477,13 @@ def listar_interfaces_zabbix(request):
 def historico_item_zabbix(request):
     cliente_id = request.GET.get('cliente_id')
     item_id    = request.GET.get('item_id')
-    hours      = int(request.GET.get('hours', 1))
+    try:
+        hours = int(request.GET.get('hours', 1))
+    except (TypeError, ValueError):
+        hours = 1
 
-    # Garante valor válido
-    if hours not in (1, 3, 6, 12, 24):
+    # Garante valor válido (168h = 7 dias, 720h = 30 dias)
+    if hours not in (1, 3, 6, 12, 24, 168, 720):
         hours = 1
 
     # O frontend já manda o limit real que o gráfico usa (ex: 60 pontos) —
