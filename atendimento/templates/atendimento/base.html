@@ -1620,6 +1620,17 @@ document.addEventListener('click', function() {
         return 'open';
     }
 
+    /* Destaca na lista o chamado que está aberto na tela. Global porque a
+       lista pode ser remontada depois da navegação (chamado recém-criado só
+       entra no painel quando o refresh do WebSocket chega). */
+    window.__markActiveConvItem = function() {
+        var here = location.pathname.replace(/\/+$/, '');
+        document.querySelectorAll('.conv-panel .conv-item').forEach(function(el) {
+            var h = (el.getAttribute('href') || '').replace(/\/+$/, '');
+            el.classList.toggle('active', !!h && h === here);
+        });
+    };
+
     function _applyConvPanelHtml(convPanel, newCP) {
         /* Preserva o que é estado local da tela e se perde no replace:
            texto da busca, scroll e destaque do chamado aberto. */
@@ -1646,11 +1657,7 @@ document.addEventListener('click', function() {
         if (newList && oldScroll) newList.scrollTop = oldScroll;
 
         /* Marca de novo o chamado que está aberto no momento */
-        var here = location.pathname.replace(/\/+$/, '');
-        convPanel.querySelectorAll('.conv-item').forEach(function(el) {
-            var h = (el.getAttribute('href') || '').replace(/\/+$/, '');
-            el.classList.toggle('active', !!h && h === here);
-        });
+        window.__markActiveConvItem();
 
         window.__syncOpenBadges();
     }
@@ -1800,6 +1807,17 @@ document.addEventListener('click', function() {
                         showBrowserNotif('⏰ SLA estourado', (p.group_name || 'Chamado') + ' está sem resposta há mais tempo que o permitido.');
                         showToast(p.group_name || 'Chamado', 'SLA de 1ª resposta estourado', p.conversation_id, (p.group_name || '??').substring(0, 2).toUpperCase(), true);
                         pulseConvItem(p.conversation_id);
+                        return;
+                    }
+
+                    /* Chamado aberto pela plataforma ("Iniciar conversa") — nasce
+                       já assumido, então nunca gera 'conversation_reassigned' e
+                       nenhuma mensagem passa pelo webhook. Sem tratar aqui, o
+                       chamado só aparecia em "Assumidos" depois de um F5. Sem
+                       som/toast: quem abriu foi o próprio atendente. */
+                    if (p.type === 'conversation_created' && p.conversation_id) {
+                        if (typeof window.__spaClearPrefetchCache === 'function') window.__spaClearPrefetchCache();
+                        window.__scheduleConvPanelRefresh(p.assigned_to_id === currentUserId ? 0 : 900);
                         return;
                     }
 
@@ -2297,6 +2315,13 @@ function doStartConv(groupId, el) {
     el.style.pointerEvents = 'none';
     el.querySelector('i.fa-chevron-right').className = 'fas fa-spinner fa-spin';
 
+    /* O chamado nasce assumido por quem clicou, então a lista tem que voltar
+       do servidor já na aba "Assumidos" — é lá que ele vai estar. Definido
+       ANTES do POST porque o refresh é disparado pelo WebSocket, que pode
+       chegar antes da resposta desta requisição. */
+    var _tabAnterior = window._activeInboxTab;
+    window._activeInboxTab = 'mine';
+
     fetch('/atendimento/api/conversation/start/', {
         method: 'POST',
         headers: {
@@ -2314,16 +2339,27 @@ function doStartConv(groupId, el) {
             var path = url.pathname + url.search;
             if (typeof loadPage === 'function') {
                 loadPage(path, true);
+                /* Rede de segurança do refresh: o evento do WebSocket chega
+                   ANTES desta navegação, e naquele instante a lista da tela
+                   pode não ser a do Inbox (ex.: iniciou a conversa pelo
+                   Dashboard) — aí o refresh é ignorado. Aqui já estamos
+                   dentro do chamado, então ele acontece de verdade. Também
+                   cobre o caso do WebSocket fora do ar. */
+                if (typeof window.__scheduleConvPanelRefresh === 'function') {
+                    window.__scheduleConvPanelRefresh(1200);
+                }
             } else {
                 window.location.href = d.url;
             }
         } else {
+            window._activeInboxTab = _tabAnterior;
             alert('Erro: ' + (d.error || 'Falha ao iniciar conversa'));
             el.style.opacity = '';
             el.style.pointerEvents = '';
         }
     })
     .catch(function(){
+        window._activeInboxTab = _tabAnterior;
         alert('Erro de conexão');
         el.style.opacity = '';
         el.style.pointerEvents = '';
@@ -2518,6 +2554,10 @@ document.addEventListener('keydown', function(e) {
 
             if (push) history.pushState({ href: href }, '', href);
             updateActiveNav(href);
+            /* A marca otimista lá em cima não acha o item de um chamado que
+               acabou de ser criado (ele ainda não estava na lista). Agora que
+               a URL é a definitiva, destaca de novo. */
+            if (typeof window.__markActiveConvItem === 'function') window.__markActiveConvItem();
             if (typeof syncMobileChatView === 'function') syncMobileChatView();
         })
         .catch(function() {

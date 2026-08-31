@@ -73,6 +73,7 @@
 
 <script>
 var _activeInboxTab = '{{ active_tab|default:"open" }}';
+var _meuUserId = {{ request.user.id|default:0 }};
 
 function switchInboxTab(tab, btn) {
     /* Esconde todas as listas */
@@ -160,6 +161,22 @@ document.getElementById('convSearch').addEventListener('input', function() {
                 /* Chamado foi lido (nesta ou em outra aba/dispositivo) → some o indicador */
                 if (payload.type === 'messages_read' && payload.conversation_id) {
                     if (typeof window.markConvRead === 'function') window.markConvRead(payload.conversation_id);
+                    return;
+                }
+
+                /* Chamado aberto pela plataforma ("Iniciar conversa") → entra
+                   direto em "Assumidos" de quem abriu. Igual ao caso abaixo:
+                   só o servidor sabe montar o item da lista. */
+                if (payload.type === 'conversation_created') {
+                    if (typeof window.__scheduleConvPanelRefresh === 'function') {
+                        /* Mesmo atraso usado em base.html — os dois sockets
+                           recebem este evento e o debounce só junta os dois
+                           pedidos num refresh só se ambos pedirem o mesmo
+                           (o id do usuário vem do template porque o de
+                           base.html está preso dentro de uma IIFE). */
+                        var meu = payload.assigned_to_id === _meuUserId;
+                        window.__scheduleConvPanelRefresh(meu ? 0 : 900);
+                    }
                     return;
                 }
 

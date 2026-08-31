@@ -2121,3 +2121,79 @@ class EscopoDeDadosNoAtendimentoTest(TestCase):
         html = self.client.get(reverse('atendimento:empresas')).content.decode()
         self.assertIn('CLIENTE DA PRINCIPAL', html)
         self.assertIn('CLIENTE DA REVENDA', html)
+
+
+class IniciarConversaTempoRealTest(TestCase):
+    """Chamado aberto pela plataforma ("Iniciar conversa") só aparecia em
+    "Assumidos" depois de recarregar a página.
+
+    Ele nasce já assumido por quem clicou, então não passa por
+    `notify_reassignment` (nunca teve outro dono) nem pelo webhook — nada
+    avisava as telas abertas. E o chamado anterior do grupo, que essa mesma
+    view encerra automaticamente, continuava nas listas como item fantasma.
+    """
+
+    def setUp(self):
+        self.agent = _criar_agente_staff('joana')
+        self.client.force_login(self.agent)
+        self.anterior = _criar_conversa()
+        self.anterior.status = 'open'
+        self.anterior.save(update_fields=['status'])
+        self.group = self.anterior.group
+
+    def _iniciar(self):
+        return self.client.post(
+            reverse('atendimento:api_start_conversation'),
+            data=json.dumps({'group_id': self.group.id}),
+            content_type='application/json',
+        )
+
+    @mock.patch('atendimento.services._ws_send_inbox')
+    def test_avisa_a_caixa_de_entrada_do_chamado_criado(self, mock_ws):
+        resp = self._iniciar()
+
+        self.assertEqual(resp.status_code, 200)
+        nova = Conversation.objects.exclude(id=self.anterior.id).get()
+        eventos = [c.args[0] for c in mock_ws.call_args_list]
+        criados = [e for e in eventos if e['type'] == 'conversation_created']
+        self.assertEqual(len(criados), 1)
+        self.assertEqual(criados[0]['conversation_id'], str(nova.id))
+        self.assertEqual(criados[0]['assigned_to_id'], self.agent.id)
+        self.assertEqual(criados[0]['group_name'], self.group.name)
+
+    @mock.patch('atendimento.services._ws_send_inbox')
+    def test_avisa_o_encerramento_automatico_do_chamado_anterior(self, mock_ws):
+        self._iniciar()
+
+        eventos = [c.args[0] for c in mock_ws.call_args_list]
+        encerrados = [e for e in eventos
+                      if e['type'] == 'conversation_status'
+                      and e['conversation_id'] == str(self.anterior.id)]
+        self.assertEqual(len(encerrados), 1)
+        self.assertEqual(encerrados[0]['status'], 'resolved')
+
+    @mock.patch('atendimento.services._ws_send_inbox', side_effect=RuntimeError('sem channel layer'))
+    def test_falha_no_websocket_nao_derruba_a_criacao(self, _mock_ws):
+        """O chamado é o que importa: WebSocket fora do ar não pode virar
+        erro 400 na tela de quem clicou em "Iniciar"."""
+        resp = self._iniciar()
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['success'])
+        self.assertTrue(
+            Conversation.objects.filter(
+                assigned_to=self.agent, status='open').exclude(id=self.anterior.id).exists())
+
+    def test_chamado_iniciado_entra_na_aba_assumidos(self):
+        """O refresh do painel busca a lista no Inbox — o chamado precisa
+        estar em `tab=mine` já na primeira consulta depois de criado."""
+        self._iniciar()
+        nova = Conversation.objects.exclude(id=self.anterior.id).get()
+
+        html = self.client.get(
+            reverse('atendimento:inbox') + '?tab=mine',
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        ).content.decode()
+
+        self.assertIn('data-conv-id="%s"' % nova.id, html)
+        self.assertNotIn('data-conv-id="%s"' % self.anterior.id, html)
