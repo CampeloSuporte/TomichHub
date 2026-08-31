@@ -5,6 +5,38 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-31 (VPN: portal do cliente cria usuário adicional)
+
+### Corrigido
+
+- **Login do portal não via o botão "Novo Usuário" na aba VPN** (`clientes/templates/listar.html`).
+  O botão dependia de `window._ovpnIsAdmin`, alimentado por `{{ is_admin }}` — que nessa tela
+  significa `is_backoffice()` ("não é o portal do cliente final"), não "é Administrador". Resultado:
+  o cliente enxergava a config OpenVPN do MikroTik dele e o `.ovpn` principal, mas não conseguia
+  gerar um acesso a mais para outro técnico da própria rede (caso do `leivy`, da Startnet Provedor).
+  A flag virou `window._ovpnPodeGerenciarUsuarios = is_admin || is_cliente`, e `is_cliente` só é
+  verdadeiro para o login vinculado **àquele** cliente (principal ou `usuarios_adicionais`). A aba
+  continua condicionada ao módulo `vpn` do usuário e o botão só aparece em config `concluido`.
+
+### Segurança
+
+- **Endpoints `openvpn_*` não checavam de quem era o cliente** (`clientes/views.py`). As 11 views
+  tinham só `@login_required` + `@modulo_habilitado_required('vpn')`, que responde "esse login pode
+  usar VPN?" e ignora o `cliente_id`/`config_id` da URL — qualquer conta com o módulo ligado listava,
+  baixava o `.ovpn`, lia os logs e deletava a configuração **de outro cliente** trocando o id.
+  Novos helpers `_openvpn_cliente_ou_403`, `_openvpn_config_ou_403` e `_openvpn_usuario_ou_403`
+  resolvem o objeto passando por `usuario.perms.pode_acessar_cliente` (Administrador vê tudo,
+  Consultor/Operador só a própria Instancia, portal só o cliente vinculado); fora do escopo é
+  `403 {"ok": false, "erro": "Sem permissão"}`.
+
+**Testes:** `django.test.Client` logado como `leivy` — `listar` do próprio cliente `200` (config #80),
+de outro cliente `403`, `logs` da própria config `200`, e o render de `listar_clientes?id=90` com
+`_ovpnPodeGerenciarUsuarios = false || true` e o modal presente.
+**Documentação:** `docs/MODULOS_CLIENTE.md` — seção "Atualização — 31/08/2026: aba VPN do portal cria
+usuário adicional no OpenVPN".
+
+---
+
 ## [Não publicado] — 2026-08-31 (Atendimento: chamado iniciado pela plataforma em tempo real)
 
 ### Corrigido

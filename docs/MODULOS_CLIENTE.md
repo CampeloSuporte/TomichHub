@@ -279,3 +279,58 @@ Via `python manage.py shell` (`RequestFactory`), sem servidor rodando:
 Ambas aplicadas em `crm_db` (banco compartilhado entre o worktree de desenvolvimento e
 produção). Merge feito via fast-forward `claude/system-tools-modularization-d70813` → `main`,
 gunicorn reiniciado.
+
+---
+
+## Atualização — 31/08/2026: aba VPN do portal cria usuário adicional no OpenVPN
+
+**Sintoma:** o login do portal (ex.: `leivy`, do cliente *Startnet Provedor*) via a aba **VPN**
+e a configuração OpenVPN do MikroTik dele, mas **sem o botão "Novo Usuário"** — não conseguia
+gerar um `.ovpn` a mais para outro técnico da própria rede.
+
+**Causa:** o botão era desenhado só quando `window._ovpnIsAdmin`, alimentado por
+`{{ is_admin }}` — e em `listar.html` `is_admin` **não é o Administrador**, é
+`_perms.is_backoffice()` ("não é o portal do cliente final"). Ou seja: qualquer login de
+portal ficava sem o botão, mesmo com o módulo `vpn` habilitado e o cliente sendo o dele.
+
+**Correção** (`clientes/templates/listar.html`):
+
+```js
+// antes
+window._ovpnIsAdmin = {{ is_admin|yesno:"true,false" }};
+// depois
+window._ovpnPodeGerenciarUsuarios = {{ is_admin|yesno:"true,false" }} || {{ is_cliente|yesno:"true,false" }};
+```
+
+`is_cliente` já vem do contexto de `listar_clientes` e só é `True` quando o login está
+vinculado **àquele** cliente (`Cliente.objects.get_by_usuario_vinculado`, que cobre o usuário
+principal e os `usuarios_adicionais`). O resto da aba não mudou: a aba só aparece com o módulo
+`vpn` habilitado (`UsuarioModulo`), e o botão só aparece em config com status `concluido`.
+
+### Escopo por cliente nos endpoints `openvpn_*`
+
+As 11 views `openvpn_*` de `clientes/views.py` tinham **só** `@login_required` +
+`@modulo_habilitado_required('vpn')`. Esse decorator responde "esse *login* pode usar VPN?" e
+nunca olha de quem é o `cliente_id`/`config_id` da URL — então qualquer conta com o módulo
+ligado alcançava a config, os logs, o `.ovpn` e o `deletar` de **outro cliente** trocando o id
+na URL. Liberar o botão para o portal sem fechar isso seria ampliar o buraco.
+
+Três helpers passaram a resolver o objeto já com o escopo conferido:
+
+| Helper | Entrada | Usado por |
+|---|---|---|
+| `_openvpn_cliente_ou_403` | `cliente_id` | `openvpn_listar`, `openvpn_criar` |
+| `_openvpn_config_ou_403` | `config_id` | `status`, `download`, `deletar`, `logs`, `reexecutar`, `usuario_criar` |
+| `_openvpn_usuario_ou_403` | `usuario_id` | `usuario_status`, `usuario_download`, `usuario_deletar` |
+
+Todos chamam `usuario.perms.pode_acessar_cliente(request.user, cliente)` — a mesma função do
+resto do sistema: Administrador vê tudo, Consultor/Operador só a própria `Instancia`, portal só
+o cliente vinculado. Quem não passa recebe `403 {"ok": false, "erro": "Sem permissão"}`.
+
+**Testes** (`django.test.Client` logado como `leivy`, banco real):
+
+- `GET /clientes/90/openvpn/listar/` (cliente dele) → `200`, config #80 na resposta.
+- `GET /clientes/<outro>/openvpn/listar/` → `403 Sem permissão` (antes: `200` com os dados).
+- `GET /clientes/openvpn/80/logs/` → `200`.
+- Render de `listar_clientes?id=90` como `leivy` → `window._ovpnPodeGerenciarUsuarios = false || true`
+  e o modal `modalOvpnUsuario` presente no HTML.
