@@ -285,6 +285,67 @@ visibilidade, não redesenhar:
 
 ---
 
+## Auto-documentação por backup — descrição de loopback (2026-08-31)
+
+Quem preenche o IPAM a partir dos backups é a dupla
+`clientes/ipam_views.py::ipam_analisar_backups` (botão "Analisar backups", por cliente) e
+`clientes/tasks.py::analisar_backups_ipam` (Celery, a cada 3 dias). Ambas usam os mesmos
+parsers — `_parse_mikrotik`, `_parse_huawei`, `_parse_generic` — que devolvem
+`(ip_cidr, descricao, vlan)` por endereço encontrado.
+
+### O problema
+
+A descrição de cada IP saía da `description` (Huawei/Cisco) ou do `comment=` (MikroTik) da
+interface. Quando a interface não tinha nenhuma, o fallback era o **nome da interface**:
+
+| Backup                                            | Descrição gravada antes |
+|---------------------------------------------------|-------------------------|
+| `interface LoopBack0` + `ip address 198.19.255.0 255.255.255.255` | `LoopBack0`   |
+| `/ip address add address=10.255.255.1 interface=bridge2-LOOPBACK` | *(vazia)*     |
+
+Um loopback é justamente o IP que **identifica o equipamento** — e `LoopBack0` repetido em 700
+linhas do IPAM não diz de qual equipamento se trata.
+
+### A regra
+
+Endereço **/32 (IPv4) ou /128 (IPv6)** em cima de interface de loopback e **sem descrição na
+interface** → a descrição passa a ser o **nome do host declarado no próprio backup**
+(`_hostname_do_backup`: `/system identity set name=` no MikroTik, `sysname` no Huawei,
+`set system host-name` no Juniper, `hostname` no Cisco/Parks).
+
+- `_eh_interface_loopback` reconhece `LoopBack0`, `loopback0`, `lo`, `lo0`, `lo0.0` e qualquer
+  nome que contenha "loopback" — inclusive `bridge2-LOOPBACK`, o padrão MikroTik, que não tem
+  interface de loopback nativa.
+- Endereço de loopback com máscara diferente de /32|/128 (existe: `LoopBack0` com /30) e backup
+  sem hostname continuam com o comportamento antigo.
+- A interface **com** `description`/`comment` nunca é sobrescrita.
+
+### Rodadas anteriores
+
+Descrição já gravada só é substituída quando está vazia **ou** quando é o nome cru da interface
+deixado por uma rodada antiga — `_descricao_e_so_nome_de_loopback`, que casa apenas
+`^(loopback|lo)\d*(\.\d+)?$`. `LOOPBACK - INTERNEXA` ou `Loopback MPLS` foi alguém que
+escreveu e fica intacto. Na base atual isso reclassifica 708 IPs (`LoopBack0` → `BDR-SINOP`,
+`SW3-PE-CNZ-CEN-01`, …) e documenta 81 loopbacks novos.
+
+### Efeito colateral corrigido junto
+
+O parser MikroTik só lia `comment="entre aspas"`. O `.rsc` grava sem aspas quando o comentário
+não tem espaço (`comment=MKAUTH`, `comment=BGP`, `comment=LOOPBACK`), e essas descrições eram
+descartadas — agora as duas formas são lidas. Sem isso, um loopback comentado passaria por
+"sem descrição" e receberia o nome do host à toa.
+
+O mesmo valia para `interface=` — só o formato com aspas era lido, e o nome sem aspas
+(`interface=loopback`, `interface=vlan3010-WAN`) chegava vazio ao parser. Além do loopback, isso
+devolve a detecção de VLAN pelo nome da interface: 818 endereços que estavam sem VLAN passam a
+ficar vinculados à VLAN certa.
+
+> Um caso real do porquê da regra: `CGNAT-BORDA` tem 512 `/32` públicos pendurados na bridge
+> `loopback`, todos sem `comment` — os 512 eram documentados com descrição vazia e agora
+> carregam `BORDA_CGNAT_FRIENDS_150`.
+
+---
+
 ## Models Relacionados
 
 | Model          | Campos principais                                              |

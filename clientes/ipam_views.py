@@ -1871,6 +1871,75 @@ def _detect_vendor(content):
     return 'generic'
 
 
+# Nome do host dentro do próprio backup, por fabricante. Usado só como
+# descrição de último recurso (ver `_desc_loopback`).
+_RE_HOSTNAME_BACKUP = (
+    re.compile(r'^\s*/system identity set name="?([^"\n]+?)"?\s*$', re.MULTILINE),   # mikrotik
+    re.compile(r'^\s*sysname\s+(\S+)', re.MULTILINE),                                 # huawei
+    re.compile(r'^\s*set system host-name\s+(\S+)', re.MULTILINE),                    # juniper
+    re.compile(r'^\s*hostname\s+(\S+)', re.MULTILINE),                                # cisco/parks
+)
+
+
+def _hostname_do_backup(content):
+    """Nome do equipamento declarado na própria config (sysname, /system
+    identity, hostname, host-name). String vazia se o backup não trouxer."""
+    for padrao in _RE_HOSTNAME_BACKUP:
+        m = padrao.search(content)
+        if m:
+            nome = m.group(1).strip().strip('"')
+            if nome:
+                return nome
+    return ''
+
+
+def _eh_interface_loopback(iface):
+    """True para interface de loopback — `Loopback0`, `LoopBack1`, `lo`, `lo0`,
+    `bridge2-LOOPBACK` (padrão MikroTik, que não tem loopback nativa)."""
+    if not iface:
+        return False
+    nome = iface.strip().strip('"')
+    return bool(
+        re.search(r'loopback', nome, re.IGNORECASE) or
+        re.match(r'^lo\d*(\.\d+)?$', nome, re.IGNORECASE)
+    )
+
+
+def _descricao_e_so_nome_de_loopback(desc):
+    """
+    True quando a descrição gravada no IPAM é só o nome cru de uma interface
+    de loopback ("LoopBack0", "lo0") — sobra de uma rodada antiga da
+    auto-documentação, que pode ser sobrescrita. Bem mais restrito que
+    `_eh_interface_loopback`: "LOOPBACK - INTERNEXA" foi alguém que escreveu,
+    e nunca é tocado.
+    """
+    if not desc:
+        return False
+    return bool(re.match(r'^(loopback|lo)\d*(\.\d+)?$', desc.strip(), re.IGNORECASE))
+
+
+def _desc_loopback(iface, ip_cidr, hostname):
+    """
+    Descrição de fallback para IP de loopback: /32 (ou /128) em cima de uma
+    interface de loopback sem `description`/`comment` não tem o que
+    documentar além de qual equipamento ele identifica — então vale mais
+    gravar o nome do host do que o nome da interface ("LoopBack0" não diz
+    nada em uma listagem de IPs do IPAM).
+
+    Devolve '' quando não se aplica (não é loopback, não é /32|/128, ou o
+    backup não declara hostname), deixando o fallback antigo valer.
+    """
+    if not hostname or not _eh_interface_loopback(iface):
+        return ''
+    try:
+        net = ipaddress.ip_network(ip_cidr, strict=False)
+    except Exception:
+        return ''
+    if net.prefixlen != net.max_prefixlen:
+        return ''
+    return hostname
+
+
 def _parse_mikrotik(content):
     """
     Parseia backup MikroTik.
@@ -1878,8 +1947,9 @@ def _parse_mikrotik(content):
     Extrai IPs de    /ip address add address=X/XX comment="DESC" interface="..."
              e       /ipv6 address add address=X::X/XX comment="DESC" interface="..."
     """
-    vlans = {}
-    ips   = []
+    vlans    = {}
+    ips      = []
+    hostname = _hostname_do_backup(content)
 
     for m in re.finditer(r'/interface vlan add\b[^\n]+', content, re.IGNORECASE):
         line = m.group(0)
@@ -1898,10 +1968,18 @@ def _parse_mikrotik(content):
             if not ip_m:
                 continue
             ip_cidr = ip_m.group(1)
-            cm      = re.search(r'comment="([^"]+)"', line)
-            desc    = cm.group(1) if cm else ''
-            ifm     = re.search(r'interface="([^"]+)"', line)
-            iface   = ifm.group(1) if ifm else ''
+            # `comment=SEM_ASPAS` é tão válido quanto `comment="com aspas"`
+            # no .rsc — sem os dois casos, um loopback comentado passaria por
+            # "sem descrição" e receberia o nome do host à toa.
+            cm      = re.search(r'comment=(?:"([^"]+)"|(\S+))', line)
+            desc    = ((cm.group(1) or cm.group(2)) if cm else '').strip('"')
+            # `interface=nome-sem-espaco` também é válido no .rsc (só leva
+            # aspas quando o nome tem espaço), e é a forma mais comum na
+            # bridge usada como loopback.
+            ifm     = re.search(r'interface=(?:"([^"]+)"|(\S+))', line)
+            iface   = ((ifm.group(1) or ifm.group(2)) if ifm else '').strip('"')
+            if not desc:
+                desc = _desc_loopback(iface, ip_cidr, hostname)
             vlan_num = None
             vm = re.search(r'[Vv][Ll][Aa][Nn][-_]?(\d+)', iface)
             if vm:
@@ -1923,8 +2001,9 @@ def _parse_huawei(content):
     Blocos de interface: description, ip address X.X.X.X MASK, ipv6 address X::X/XX,
     vlan-type dot1q NN
     """
-    vlans = {}
-    ips   = []
+    vlans    = {}
+    ips      = []
+    hostname = _hostname_do_backup(content)
 
     blocks = re.split(r'\n(?=interface )', content)
 
@@ -1969,7 +2048,11 @@ def _parse_huawei(content):
                 vlans.setdefault(vlan_num, f'VLAN {vlan_num}')
 
         for ip_cidr in ip_cidrs:
-            ips.append((ip_cidr, desc or iface_name, vlan_num))
+            ips.append((
+                ip_cidr,
+                desc or _desc_loopback(iface_name, ip_cidr, hostname) or iface_name,
+                vlan_num,
+            ))
 
     return {
         'vlans': [{'numero': n, 'nome': v} for n, v in vlans.items()],
@@ -1983,8 +2066,9 @@ def _parse_generic(content):
     Procura blocos interface com ip address X/XX, ip address X M ou
     ipv6 address X::X/XX.
     """
-    vlans = {}
-    ips   = []
+    vlans    = {}
+    ips      = []
+    hostname = _hostname_do_backup(content)
 
     blocks = re.split(r'\n(?=interface\s)', content, flags=re.IGNORECASE)
 
@@ -2034,7 +2118,11 @@ def _parse_generic(content):
                 vlans.setdefault(vlan_num, f'VLAN {vlan_num}')
 
         for ip_cidr in ip_cidrs:
-            ips.append((ip_cidr, desc or iface_name, vlan_num))
+            ips.append((
+                ip_cidr,
+                desc or _desc_loopback(iface_name, ip_cidr, hostname) or iface_name,
+                vlan_num,
+            ))
 
     return {
         'vlans': [{'numero': n, 'nome': v} for n, v in vlans.items()],
@@ -2942,7 +3030,14 @@ def ipam_analisar_backups(request, cliente_id):
                 criados_ips += 1
             else:
                 changed = False
-                if not ip_obj.descricao and desc:
+                # Descrição vazia, ou preenchida por uma rodada anterior com o
+                # nome cru da interface de loopback ("LoopBack0", "lo0"), que
+                # não documenta nada — nesses dois casos vale sobrescrever.
+                # Descrição escrita por gente nunca é tocada.
+                if desc and not _descricao_e_so_nome_de_loopback(desc) and (
+                    not ip_obj.descricao
+                    or _descricao_e_so_nome_de_loopback(ip_obj.descricao)
+                ):
                     ip_obj.descricao = desc
                     changed = True
                 if not ip_obj.hostname and host_label:

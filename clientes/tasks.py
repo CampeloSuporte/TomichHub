@@ -522,7 +522,8 @@ def analisar_backups_ipam():
     """
     import ipaddress
     from .models import Cliente, IPAMVlan, IPAMSubRede, IPAMEndereco
-    from .ipam_views import _detect_vendor, _parse_mikrotik, _parse_huawei, _parse_generic
+    from .ipam_views import (_detect_vendor, _parse_mikrotik, _parse_huawei,
+                             _parse_generic, _descricao_e_so_nome_de_loopback)
 
     total_clientes   = 0
     total_processados = 0
@@ -639,7 +640,13 @@ def analisar_backups_ipam():
                     changed = False
                     if not ip_obj.hostname and host_label:
                         ip_obj.hostname = host_label; changed = True
-                    if not ip_obj.descricao and desc:
+                    # Mesma regra da view: sobrescreve descrição vazia ou o
+                    # nome cru da interface de loopback deixado por rodada
+                    # anterior; descrição escrita por gente fica intacta.
+                    if desc and not _descricao_e_so_nome_de_loopback(desc) and (
+                        not ip_obj.descricao
+                        or _descricao_e_so_nome_de_loopback(ip_obj.descricao)
+                    ):
                         ip_obj.descricao = desc; changed = True
                     if not ip_obj.subrede:
                         ip_obj.subrede = sub; changed = True

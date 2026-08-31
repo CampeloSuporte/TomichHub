@@ -5,6 +5,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-31 (IPAM: loopback /32 documentado com o nome do host)
+
+### Alterado
+
+- **Loopback sem descrição agora é documentado com o nome do equipamento**
+  (`clientes/ipam_views.py`, `clientes/tasks.py::analisar_backups_ipam`).
+  A auto-documentação por backup usava o nome da interface como descrição de último recurso, e
+  o IPAM ficava com 700+ endereços descritos como `LoopBack0` — justamente nos IPs que
+  identificam o equipamento. Agora, endereço **/32 (ou /128) em cima de interface de loopback e
+  sem `description`/`comment` na interface** recebe o **hostname declarado no próprio backup**
+  (`sysname`, `/system identity set name=`, `set system host-name`, `hostname`).
+  - `_eh_interface_loopback` cobre `LoopBack0`, `lo`, `lo0`, `lo0.0` e `bridge2-LOOPBACK`
+    (MikroTik não tem loopback nativa — usa bridge).
+  - Descrição escrita por gente nunca é tocada: só é sobrescrita a que está vazia ou é o nome
+    cru da interface de rodada anterior (`_descricao_e_so_nome_de_loopback`).
+  - Efeito na base atual: 708 IPs reclassificados e 81 loopbacks novos documentados.
+
+### Corrigido
+
+- **Comentário MikroTik sem aspas era descartado** (`clientes/ipam_views.py::_parse_mikrotik`).
+  O parser só lia `comment="com aspas"`; o `.rsc` omite as aspas quando o comentário não tem
+  espaço (`comment=MKAUTH`, `comment=BGP`), então essas descrições sumiam do IPAM — e um
+  loopback comentado passava por "sem descrição" na regra nova. As duas formas são lidas agora.
+  Mesma coisa em `interface=nome-sem-aspas`, que é como a bridge de loopback costuma aparecer —
+  com isso a VLAN também volta a ser identificada em `interface=vlan3010-WAN` (sem aspas):
+  818 endereços que estavam sem VLAN no IPAM passam a ficar vinculados à VLAN correta.
+
+---
+
 ## [Não publicado] — 2026-08-28 (IPAM: blocos livres completos e pasta sem recarregar)
 
 ### Corrigido
