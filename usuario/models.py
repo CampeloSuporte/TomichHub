@@ -50,6 +50,43 @@ def modulos_habilitados_dict(user):
     return {chave: estado.get(chave, True) for chave, _ in UsuarioModulo.MODULO_CHOICES}
 
 
+class UsuarioAcesso(models.Model):
+    """Quais hosts (`clientes.Acesso`) do cliente um login do portal enxerga
+    e pode usar.
+
+    **Sem nenhum registro para o usuário = todos os hosts do cliente** — é o
+    comportamento de sempre, então nenhum login existente muda ao subir essa
+    tabela, e um host cadastrado depois já nasce visível para quem não tem
+    restrição. Havendo registro, o login vê **só** os hosts marcados (nas
+    listas e nas ações: terminal, WinBox, backup, proxy web, scripts...).
+
+    Só vale para o portal do cliente final. Administrador, Consultor e
+    Operador continuam limitados pelo cliente/instância
+    (`perms.pode_acessar_cliente`), nunca por host.
+    """
+
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='acessos_permitidos')
+    acesso = models.ForeignKey('clientes.Acesso', on_delete=models.CASCADE, related_name='usuarios_permitidos')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('usuario', 'acesso')
+        verbose_name = 'Host liberado para o Usuário'
+        verbose_name_plural = 'Hosts liberados para o Usuário'
+
+    def __str__(self):
+        return f"{self.usuario.username} → {self.acesso.tipo} ({self.acesso.host})"
+
+
+def acessos_permitidos_ids(user):
+    """`set` de ids de Acesso liberados, ou `None` quando o usuário não tem
+    restrição nenhuma (= vê todos os hosts do cliente dele)."""
+    if not user or not user.is_authenticated:
+        return None
+    ids = set(UsuarioAcesso.objects.filter(usuario=user).values_list('acesso_id', flat=True))
+    return ids or None
+
+
 class Instancia(models.Model):
     """Uma 'conta' de revenda: um Consultor cadastra e gerencia seus próprios
     Clientes dentro da sua Instancia, isolados de outras instâncias. O

@@ -15,7 +15,7 @@ from django.views.decorators.http import require_http_methods
 
 from .decorators import ferramenta_instancia_required
 from .models import Acesso, ScriptCRM, ScriptExecucaoLog
-from usuario.perms import pode_acessar_cliente
+from usuario.perms import pode_acessar_acesso
 
 logger = logging.getLogger(__name__)
 
@@ -359,7 +359,7 @@ def deletar_script(request, script_id):
 def historico_execucoes(request, acesso_id):
     """GET /clientes/scripts/historico/<acesso_id>/ — últimas execuções"""
     acesso = get_object_or_404(Acesso, id=acesso_id)
-    if not pode_acessar_cliente(request.user, acesso.cliente):
+    if not pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     logs = ScriptExecucaoLog.objects.filter(
@@ -513,7 +513,7 @@ def executar_script(request):
     except ScriptCRM.DoesNotExist:
         return JsonResponse({'error': 'Script não encontrado'}, status=404)
 
-    if not pode_acessar_cliente(request.user, acesso.cliente):
+    if not pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     # Normaliza chaves: remove {} caso usuário tenha digitado "{PON}" em vez de "PON"

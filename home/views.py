@@ -2241,8 +2241,8 @@ def backup_acesso_config(request, acesso_id):
     URL alcançava qualquer host da plataforma."""
     try:
         acesso = get_object_or_404(Acesso, id=acesso_id)
-        from usuario.perms import pode_acessar_cliente
-        if not pode_acessar_cliente(request.user, acesso.cliente):
+        from usuario.perms import pode_acessar_acesso
+        if not pode_acessar_acesso(request.user, acesso):
             return JsonResponse({'ok': False, 'erro': 'Sem permissão para este acesso.'}, status=403)
         data = json.loads(request.body)
         acesso.backup_habilitado = bool(data.get('backup_habilitado', False))

@@ -282,6 +282,15 @@ gunicorn reiniciado.
 
 ---
 
+## Recorte por host (31/08/2026)
+
+Este documento cobre o recorte **por aba**. O recorte **por host** dentro da aba Acessos —
+escolher quais equipamentos do cliente um login de portal enxerga e pode abrir — está em
+[HOSTS_POR_USUARIO.md](HOSTS_POR_USUARIO.md) (`UsuarioAcesso`). Os dois se somam: a aba some
+pelo `UsuarioModulo`, e o que sobra dentro dela é filtrado pelo `UsuarioAcesso`.
+
+---
+
 ## Atualização — 31/08/2026: aba VPN do portal cria usuário adicional no OpenVPN
 
 **Sintoma:** o login do portal (ex.: `leivy`, do cliente *Startnet Provedor*) via a aba **VPN**

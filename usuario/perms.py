@@ -6,7 +6,11 @@ do cliente) e escopo de instância. Decorators e views do núcleo (clientes,
 monitoramento, ipam, hotspot, bgp, scripts) devem checar permissão através
 destas funções em vez de `request.user.is_staff` cru.
 """
-from .models import Instancia, PerfilUsuario, InstanciaFerramenta, ferramenta_habilitada as _ferramenta_habilitada
+from .models import (
+    Instancia, PerfilUsuario, InstanciaFerramenta,
+    ferramenta_habilitada as _ferramenta_habilitada,
+    acessos_permitidos_ids as _acessos_permitidos_ids,
+)
 
 
 def get_perfil(user):
@@ -114,6 +118,37 @@ def pode_acessar_cliente(user, cliente):
     except Cliente.DoesNotExist:
         return False
     return cliente_do_usuario.id == cliente.id
+
+
+def pode_acessar_acesso(user, acesso):
+    """Permissão sobre um host específico (`clientes.Acesso`).
+
+    É `pode_acessar_cliente` mais um recorte por host que só existe para o
+    portal do cliente final: o login pode estar limitado a alguns hosts do
+    cliente dele (`usuario.models.UsuarioAcesso`). Sem restrição gravada, vê
+    todos — que é como todo login existente continua.
+
+    Back-office não é filtrado por host: Administrador vê tudo e
+    Consultor/Operador respondem pela instância inteira.
+    """
+    if acesso is None:
+        return False
+    if not pode_acessar_cliente(user, acesso.cliente):
+        return False
+    if is_backoffice(user):
+        return True
+    permitidos = _acessos_permitidos_ids(user)
+    return permitidos is None or acesso.id in permitidos
+
+
+def filtrar_acessos_visiveis(user, queryset):
+    """Recorta um queryset de `clientes.Acesso` pelos hosts liberados ao
+    login — a versão em lista de `pode_acessar_acesso`, para as telas e APIs
+    que listam hosts. Não substitui o filtro por cliente: aplique os dois."""
+    if is_backoffice(user):
+        return queryset
+    permitidos = _acessos_permitidos_ids(user)
+    return queryset if permitidos is None else queryset.filter(id__in=permitidos)
 
 
 def pode_editar_wiki(user):

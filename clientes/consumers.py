@@ -664,7 +664,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         user = getattr(self, '_crm_user', None)
         if not user:
             return False
-        return _perms.pode_acessar_cliente(user, acesso.cliente)
+        return _perms.pode_acessar_acesso(user, acesso)
 
     def _label_usuario(self):
         user = getattr(self, '_crm_user', None)

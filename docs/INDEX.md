@@ -102,6 +102,7 @@
 |--------------|------|
 | **[SEGURANCA.md](SEGURANCA.md)** | As três camadas, configuração, armadilhas do fail2ban, escopo por papel e operação |
 | **[PERMISSOES_CONSULTOR.md](PERMISSOES_CONSULTOR.md)** | Escopo do Consultor no painel de Segurança |
+| **[HOSTS_POR_USUARIO.md](HOSTS_POR_USUARIO.md)** | Quais hosts do cliente cada login de portal enxerga (`UsuarioAcesso`) |
 
 ---
 
