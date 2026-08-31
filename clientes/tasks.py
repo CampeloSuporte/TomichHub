@@ -569,6 +569,9 @@ def analisar_backups_ipam():
 
             total_processados += 1
             host_label = f"{acesso.tipo} ({acesso.host})" if acesso.tipo else acesso.host
+            # Nome curto do equipamento — último recurso na descrição de
+            # loopback quando o backup não declara hostname.
+            nome_equip = (acesso.tipo or acesso.host or '').strip()
 
             # Salvar contexto no Acesso para o Agent NOC
             from .ipam_views import _build_contexto_backup
@@ -602,6 +605,12 @@ def analisar_backups_ipam():
                     cidr_rede = str(net)
                 except Exception:
                     continue
+
+                # Mesma regra da view: loopback /32|/128 que ficou com o nome
+                # cru da interface vira o nome do equipamento no CRM.
+                if (net.prefixlen == net.max_prefixlen and nome_equip
+                        and _descricao_e_so_nome_de_loopback(desc)):
+                    desc = nome_equip
 
                 vlan_obj = None
                 if vlan_num is not None:

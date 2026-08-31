@@ -316,8 +316,11 @@ interface** → a descrição passa a ser o **nome do host declarado no próprio
 - `_eh_interface_loopback` reconhece `LoopBack0`, `loopback0`, `lo`, `lo0`, `lo0.0` e qualquer
   nome que contenha "loopback" — inclusive `bridge2-LOOPBACK`, o padrão MikroTik, que não tem
   interface de loopback nativa.
-- Endereço de loopback com máscara diferente de /32|/128 (existe: `LoopBack0` com /30) e backup
-  sem hostname continuam com o comportamento antigo.
+- Endereço de loopback com máscara diferente de /32|/128 continua com o comportamento antigo —
+  existe de verdade (`LoopBack0` com /30 em ATN Huawei) e não é o caso da regra.
+- Se o backup não declara hostname nenhum (Hillstone, por exemplo), as duas rotinas caem no nome
+  do equipamento cadastrado no CRM (`Acesso.tipo`) — assim nenhum loopback /32 fica descrito
+  como "LoopBack0".
 - A interface **com** `description`/`comment` nunca é sobrescrita.
 
 ### Rodadas anteriores
