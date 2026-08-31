@@ -2645,6 +2645,8 @@ def api_start_conversation_by_group(request):
         if not pode_ver_group(request.user, group):
             return JsonResponse({'success': False, 'error': 'Grupo de outra instância.'}, status=403)
 
+        from .services import _ws_send_inbox
+
         now = timezone.now()
 
         # Ao iniciar pela plataforma, queremos SEMPRE um chamado NOVO e limpo —
@@ -2667,6 +2669,18 @@ def api_start_conversation_by_group(request):
                 conversation=c, actor=request.user, action='status_changed',
                 old_value=old_status, new_value='resolved',
             )
+            # Sem este aviso o chamado encerrado aqui continuava na lista de
+            # todo mundo (inclusive na do próprio atendente) até um F5 — um
+            # item fantasma que, ao ser clicado, abria um chamado resolvido.
+            try:
+                _ws_send_inbox({
+                    'type': 'conversation_status',
+                    'conversation_id': str(c.id),
+                    'status': c.status,
+                    'assigned_to_id': c.assigned_to_id,
+                })
+            except Exception as _e:
+                logger.warning(f"Falha ao notificar inbox (encerramento automático): {_e}")
 
         conv = Conversation.objects.create(
             group=group,
@@ -2682,6 +2696,22 @@ def api_start_conversation_by_group(request):
             old_value='',
             new_value='open',
         )
+        # Chamado criado pela plataforma não passa por webhook nem por
+        # notify_reassignment (nunca teve outro dono), então nada avisava as
+        # telas abertas: ele só aparecia em "Assumidos" depois de recarregar
+        # a página. Evento próprio — quem assina refaz a lista, sem o som e o
+        # toast de "transferido para você" (aqui foi o próprio atendente que
+        # abriu o chamado).
+        try:
+            _ws_send_inbox({
+                'type': 'conversation_created',
+                'conversation_id': str(conv.id),
+                'group_name': group.name,
+                'assigned_to_id': conv.assigned_to_id,
+            })
+        except Exception as _e:
+            logger.warning(f"Falha ao notificar inbox (chamado iniciado): {_e}")
+
         return JsonResponse({
             'success': True,
             'url': f'/atendimento/conversation/{conv.id}/',

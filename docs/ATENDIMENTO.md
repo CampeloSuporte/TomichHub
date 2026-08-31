@@ -416,6 +416,7 @@ systemctl restart gunicorn daphne celery
 | 05/08/2026 | **Correção transferência/atribuição** — troca de atendente não avisava ninguém em tempo real (WS `conversation_reassigned`) |
 | 05/08/2026 | **Visual estilo WhatsApp Dark** no chat e na lista de conversas |
 | 05/08/2026 | **Correção UI**: barra de rolagem visível nas abas do Inbox; aba "Tarefas" movida pro menu principal |
+| 31/08/2026 | **Correção "Iniciar conversa"** — chamado criado pela plataforma só aparecia em "Assumidos" após F5 (WS `conversation_created`); chamado anterior encerrado junto virava item fantasma na lista |
 
 ---
 
@@ -1060,6 +1061,59 @@ indefinidamente.
 **Testes:** `AtualizacaoAutomaticaDaListaTest` cobre o Inbox via AJAX devolvendo a lista no bloco
 `conv_panel`, o `conversation_detail` devolvendo o bloco vazio (o motivo de o refresh apontar pro
 Inbox) e um chamado novo aparecendo na lista que o refresh busca.
+
+---
+
+## 🆕 Chamado iniciado pela plataforma aparece na hora (31/08/2026)
+
+**Sintoma relatado:** "quando inicio uma nova conversa ela não aparece na aba de Assumidos, só
+aparece quando atualizo a página".
+
+**Causa:** `api_start_conversation_by_group` era o único caminho de criação de chamado que não
+avisava ninguém. Ele cria a conversa **já assumida** por quem clicou em "Iniciar", e é justamente
+por isso que caía num ponto cego:
+
+- não passa pelo webhook, então não há `_broadcast_msg` (o chamado nasce sem mensagem);
+- não passa por `notify_reassignment`, que só dispara quando o dono **muda** — aqui o chamado
+  nasce com dono, `old_assigned_to_id` e `assigned_to_id` nunca divergem.
+
+Sem evento nenhum, os dois handlers de WebSocket (`base.html` e `inbox.html`) não tinham o que
+processar, e o painel só se atualizava no F5.
+
+E a mesma view **encerra automaticamente** os chamados ativos anteriores do grupo (é o que garante
+um chamado novo e limpo, sem arrastar o histórico). Esse encerramento também era silencioso: o
+chamado resolvido continuava na lista de todos os atendentes como item fantasma, e quem clicasse
+nele abria um chamado já resolvido.
+
+**Como ficou:**
+
+| Evento WS | Quando | O que a tela faz |
+|---|---|---|
+| `conversation_created` | Chamado aberto por "Iniciar conversa" | Refaz a lista (`__scheduleConvPanelRefresh`) — imediato pra quem abriu, 900ms pros demais. **Sem som e sem toast**: quem abriu foi o próprio atendente |
+| `conversation_status` (`resolved`) | Chamados anteriores do grupo, encerrados automaticamente | Remove o item de todas as abas, como qualquer outro encerramento |
+
+Detalhes que fazem a diferença na prática:
+
+- `doStartConv` define `window._activeInboxTab = 'mine'` **antes** do POST — o refresh é disparado
+  pelo WebSocket, que pode chegar antes da resposta da requisição, e sem isso a lista voltava do
+  servidor na aba "Abertos", com o chamado recém-criado escondido na aba ao lado.
+- Depois de navegar para o chamado, `doStartConv` agenda um refresh de segurança (1200ms). O
+  evento do WS chega **antes** da navegação, e naquele instante a lista da tela pode não ser a do
+  Inbox (ex.: iniciou a conversa pelo Dashboard), caso em que `__refreshConvPanel` ignora o
+  pedido de propósito. Também cobre o WebSocket fora do ar.
+- `window.__markActiveConvItem()` (extraído de `_applyConvPanelHtml`) roda de novo ao fim do
+  `loadPage`: a marcação otimista do início da navegação não acha o item de um chamado que
+  acabou de ser criado — ele só entra no painel quando o refresh chega.
+- Os dois handlers usam o **mesmo atraso** para o mesmo evento. O debounce de
+  `__scheduleConvPanelRefresh` só junta os pedidos dos dois sockets num refresh só se ambos
+  pedirem o mesmo tempo. Em `inbox.html` o id do usuário vem do template (`_meuUserId`) porque o
+  `currentUserId` de `base.html` está preso dentro de uma IIFE.
+- Falha no envio do WS é logada e engolida: WebSocket fora do ar não pode virar erro na tela de
+  quem clicou em "Iniciar" — o chamado é o que importa.
+
+**Testes:** `IniciarConversaTempoRealTest` (4 testes) — evento do chamado criado, evento do
+encerramento automático do anterior, criação sobrevivendo a um WS quebrado e o chamado novo
+aparecendo em `inbox?tab=mine` (a URL que o refresh busca).
 
 ---
 

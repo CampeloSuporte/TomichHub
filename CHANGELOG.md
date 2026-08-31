@@ -5,6 +5,42 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-31 (Atendimento: chamado iniciado pela plataforma em tempo real)
+
+### Corrigido
+
+- **Chamado aberto por "Iniciar conversa" só aparecia em "Assumidos" depois de recarregar a
+  página** (`atendimento/views.py::api_start_conversation_by_group`,
+  `atendimento/templates/atendimento/base.html`, `.../inbox.html`). Era o único caminho de criação
+  de chamado que não avisava ninguém: ele nasce **já assumido** por quem clicou, então não passa
+  pelo webhook (`_broadcast_msg`) nem por `notify_reassignment` — que só dispara quando o dono
+  *muda*. Sem evento nenhum no WebSocket, os handlers de `base.html` e `inbox.html` não tinham o
+  que processar. Agora a view emite `conversation_created` e a lista se refaz sozinha: imediato
+  pra quem abriu o chamado, 900ms pros demais atendentes, sem som nem toast de "transferido para
+  você" (quem abriu foi o próprio atendente).
+  - A lista volta do servidor já na aba **Assumidos** (`_activeInboxTab` é definido antes do POST,
+    porque o evento do WS pode chegar antes da resposta da requisição).
+  - Refresh de segurança 1200ms depois de entrar no chamado, para o caso de a conversa ter sido
+    iniciada de uma tela cuja lista lateral não é a do Inbox (Dashboard) ou de o WebSocket estar
+    fora do ar.
+  - O chamado recém-criado passou a ficar destacado na lista (`window.__markActiveConvItem()`
+    roda de novo ao fim do `loadPage` — a marcação otimista do início da navegação não acha um
+    item que ainda não existia).
+
+- **Chamado anterior encerrado automaticamente virava item fantasma na lista de todo mundo**
+  (mesma view). "Iniciar conversa" resolve os chamados ativos do grupo para abrir um novo limpo,
+  mas fazia isso em silêncio — o item continuava nas abas de todos os atendentes até um F5, e
+  clicar nele abria um chamado já resolvido. Agora cada encerramento emite `conversation_status`
+  (`resolved`), o mesmo evento que `finalizar_conversa` já usava.
+
+- Falha no envio do WebSocket é logada e engolida nos dois pontos: Daphne/channel layer fora do ar
+  não pode transformar o "Iniciar" em erro na tela — o chamado é o que importa.
+
+**Testes:** `atendimento.tests.IniciarConversaTempoRealTest` (4). Suíte do módulo: 142 testes, OK.
+**Documentação:** `docs/ATENDIMENTO.md` — seção "Chamado iniciado pela plataforma aparece na hora".
+
+---
+
 ## [Não publicado] — 2026-08-31 (IPAM: loopback /32 documentado com o nome do host)
 
 ### Alterado
