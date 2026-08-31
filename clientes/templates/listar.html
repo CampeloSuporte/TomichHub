@@ -8608,7 +8608,10 @@ function getCsrfToken(){
     // ============================================
 
     const OVPN_CID = {{ cliente.id }};
-    window._ovpnIsAdmin = {{ is_admin|yesno:"true,false" }};
+    // Quem pode criar usuário adicional na VPN: o back-office e também o
+    // login do portal do próprio cliente (ele gerencia os acessos VPN da
+    // rede dele). O backend confere o mesmo escopo em openvpn_usuario_criar.
+    window._ovpnPodeGerenciarUsuarios = {{ is_admin|yesno:"true,false" }} || {{ is_cliente|yesno:"true,false" }};
     let _ovpnPollTimer = null;
 
     /* Combobox custom "Host MikroTik" (busca + lista) — mesmo padrão do
@@ -8803,7 +8806,7 @@ function getCsrfToken(){
                                 style="padding:4px 10px;background:rgba(255,170,0,.08);border:1px solid rgba(255,170,0,.25);color:#ffaa00;border-radius:5px;font-size:.8rem;cursor:pointer;">
                                 <i class="fas fa-redo me-1"></i>Tentar Novamente
                             </button>` : ''}
-                            ${(c.status==='concluido' && window._ovpnIsAdmin) ? '<button onclick="ovpnUsuarioAbrirModal('+c.id+')" style="padding:4px 10px;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.25);color:#3fb950;border-radius:5px;font-size:.8rem;cursor:pointer;"><i class=\'fas fa-user-plus me-1\'></i>Novo Usuário</button>' : ''}
+                            ${(c.status==='concluido' && window._ovpnPodeGerenciarUsuarios) ? '<button onclick="ovpnUsuarioAbrirModal('+c.id+')" style="padding:4px 10px;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.25);color:#3fb950;border-radius:5px;font-size:.8rem;cursor:pointer;"><i class=\'fas fa-user-plus me-1\'></i>Novo Usuário</button>' : ''}
                             <button onclick="ovpnDeletar(${c.id})"
                                 style="padding:4px 10px;background:rgba(224,96,96,.08);border:1px solid rgba(224,96,96,.25);color:#e06060;border-radius:5px;font-size:.8rem;cursor:pointer;">
                                 <i class="fas fa-trash me-1"></i>

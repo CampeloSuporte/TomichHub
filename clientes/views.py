@@ -7902,12 +7902,46 @@ def vpn_ovpn_setup_arquivo(request, token, nome_arquivo):
 # OpenVPN — Configuração automatizada em MikroTik
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _openvpn_cliente_ou_403(request, cliente_id):
+    """Cliente do request com o escopo já conferido.
+
+    `modulo_habilitado_required('vpn')` só diz que o módulo está liberado
+    para quem logou — não amarra a config ao cliente da URL. Sem isso, um
+    login de portal (ou de outra instância) chegaria na config de qualquer
+    cliente pelo id. Retorna (cliente, None) ou (None, JsonResponse 403).
+    """
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return None, JsonResponse({'ok': False, 'erro': 'Sem permissão'}, status=403)
+    return cliente, None
+
+
+def _openvpn_config_ou_403(request, config_id):
+    """Mesma checagem de `_openvpn_cliente_ou_403`, partindo da config."""
+    from .models import OpenVPNConfig
+    config = get_object_or_404(OpenVPNConfig, id=config_id)
+    if not _perms.pode_acessar_cliente(request.user, config.cliente):
+        return None, JsonResponse({'ok': False, 'erro': 'Sem permissão'}, status=403)
+    return config, None
+
+
+def _openvpn_usuario_ou_403(request, usuario_id):
+    """Mesma checagem, partindo do usuário adicional da VPN."""
+    from .models import OpenVPNUsuario
+    u = get_object_or_404(OpenVPNUsuario, id=usuario_id)
+    if not _perms.pode_acessar_cliente(request.user, u.config.cliente):
+        return None, JsonResponse({'ok': False, 'erro': 'Sem permissão'}, status=403)
+    return u, None
+
+
 @login_required
 @modulo_habilitado_required('vpn')
 def openvpn_listar(request, cliente_id):
     """Lista as configurações OpenVPN do cliente incluindo usuários adicionais."""
     from .models import OpenVPNConfig
-    cliente = get_object_or_404(Cliente, id=cliente_id)
+    cliente, negado = _openvpn_cliente_ou_403(request, cliente_id)
+    if negado:
+        return negado
     qs = OpenVPNConfig.objects.filter(cliente=cliente).select_related('acesso').prefetch_related('usuarios')
     data = []
     for c in qs:
@@ -7950,7 +7984,9 @@ def openvpn_criar(request, cliente_id):
     from .models import OpenVPNConfig
     from .openvpn_manager import gerar_senha, executar_config_openvpn
 
-    cliente = get_object_or_404(Cliente, id=cliente_id)
+    cliente, negado = _openvpn_cliente_ou_403(request, cliente_id)
+    if negado:
+        return negado
     try:
         body       = json.loads(request.body)
         acesso_id  = body.get('acesso_id')
@@ -7994,8 +8030,9 @@ def openvpn_criar(request, cliente_id):
 @modulo_habilitado_required('vpn')
 def openvpn_status(request, config_id):
     """Retorna o status atual de uma configuração OpenVPN (usado para polling)."""
-    from .models import OpenVPNConfig
-    c = get_object_or_404(OpenVPNConfig, id=config_id)
+    c, negado = _openvpn_config_ou_403(request, config_id)
+    if negado:
+        return negado
     return JsonResponse({
         'ok':        True,
         'status':    c.status,
@@ -8008,8 +8045,9 @@ def openvpn_status(request, config_id):
 @modulo_habilitado_required('vpn')
 def openvpn_download(request, config_id):
     """Faz o download do arquivo .ovpn gerado."""
-    from .models import OpenVPNConfig
-    c = get_object_or_404(OpenVPNConfig, id=config_id)
+    c, negado = _openvpn_config_ou_403(request, config_id)
+    if negado:
+        return negado
     if not c.ovpn_path:
         return JsonResponse({'ok': False, 'erro': 'Arquivo ainda não gerado'}, status=404)
     caminho = os.path.join(settings.MEDIA_ROOT, c.ovpn_path)
@@ -8027,8 +8065,9 @@ def openvpn_download(request, config_id):
 @modulo_habilitado_required('vpn')
 def openvpn_deletar(request, config_id):
     """Remove uma configuração OpenVPN e seu arquivo .ovpn."""
-    from .models import OpenVPNConfig
-    c = get_object_or_404(OpenVPNConfig, id=config_id)
+    c, negado = _openvpn_config_ou_403(request, config_id)
+    if negado:
+        return negado
     if c.ovpn_path:
         try:
             caminho = os.path.join(settings.MEDIA_ROOT, c.ovpn_path)
@@ -8044,8 +8083,9 @@ def openvpn_deletar(request, config_id):
 @modulo_habilitado_required('vpn')
 def openvpn_logs(request, config_id):
     """Retorna os logs de execução de uma configuração OpenVPN."""
-    from .models import OpenVPNConfig
-    c = get_object_or_404(OpenVPNConfig, id=config_id)
+    c, negado = _openvpn_config_ou_403(request, config_id)
+    if negado:
+        return negado
     return JsonResponse({'ok': True, 'logs': c.logs or '(sem logs)'})
 
 
@@ -8055,9 +8095,10 @@ def openvpn_logs(request, config_id):
 def openvpn_reexecutar(request, config_id):
     """Re-executa a configuração OpenVPN (útil quando houve erro)."""
     import threading
-    from .models import OpenVPNConfig
     from .openvpn_manager import executar_config_openvpn
-    c = get_object_or_404(OpenVPNConfig, id=config_id)
+    c, negado = _openvpn_config_ou_403(request, config_id)
+    if negado:
+        return negado
     c.status   = 'configurando'
     c.erro_msg = ''
     c.save(update_fields=['status', 'erro_msg'])
@@ -8074,10 +8115,12 @@ def openvpn_reexecutar(request, config_id):
 def openvpn_usuario_criar(request, config_id):
     import threading
     import json
-    from .models import OpenVPNConfig, OpenVPNUsuario
+    from .models import OpenVPNUsuario
     from .openvpn_manager import adicionar_usuario_openvpn, gerar_senha
 
-    config = get_object_or_404(OpenVPNConfig, id=config_id)
+    config, negado = _openvpn_config_ou_403(request, config_id)
+    if negado:
+        return negado
     try:
         data     = json.loads(request.body)
         nome     = data.get('nome', '').strip()
@@ -8099,8 +8142,9 @@ def openvpn_usuario_criar(request, config_id):
 @login_required
 @modulo_habilitado_required('vpn')
 def openvpn_usuario_status(request, usuario_id):
-    from .models import OpenVPNUsuario
-    u = get_object_or_404(OpenVPNUsuario, id=usuario_id)
+    u, negado = _openvpn_usuario_ou_403(request, usuario_id)
+    if negado:
+        return negado
     return JsonResponse({
         'status': u.status, 'erro_msg': u.erro_msg,
         'tem_arquivo': bool(u.ovpn_path),
@@ -8110,9 +8154,10 @@ def openvpn_usuario_status(request, usuario_id):
 @login_required
 @modulo_habilitado_required('vpn')
 def openvpn_usuario_download(request, usuario_id):
-    from .models import OpenVPNUsuario
     from django.http import FileResponse
-    u = get_object_or_404(OpenVPNUsuario, id=usuario_id)
+    u, negado = _openvpn_usuario_ou_403(request, usuario_id)
+    if negado:
+        return negado
     if not u.ovpn_path:
         return JsonResponse({'erro': 'Arquivo não disponível'}, status=404)
     path = os.path.join(settings.MEDIA_ROOT, u.ovpn_path)
@@ -8124,8 +8169,9 @@ def openvpn_usuario_download(request, usuario_id):
 @require_http_methods(['POST'])
 @modulo_habilitado_required('vpn')
 def openvpn_usuario_deletar(request, usuario_id):
-    from .models import OpenVPNUsuario
-    u = get_object_or_404(OpenVPNUsuario, id=usuario_id)
+    u, negado = _openvpn_usuario_ou_403(request, usuario_id)
+    if negado:
+        return negado
     if u.ovpn_path:
         try:
             os.remove(os.path.join(settings.MEDIA_ROOT, u.ovpn_path))
