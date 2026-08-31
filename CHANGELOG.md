@@ -24,6 +24,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Corrigido
 
+- **Nome de VLAN longo derrubava a rotina inteira de auto-documentação**
+  (`clientes/ipam_views.py::_parse_mikrotik`). `IPAMVlan.nome` é `varchar(100)` e o MikroTik
+  aceita nome de interface bem maior — um `vlan1152 - L(83)PacPon Riacho de Areia, Faz. …` de
+  270 caracteres estourava `DataError: value too long` no meio do `analisar_backups_ipam`, que
+  não tem try/except por cliente: tudo que viria depois daquele acesso simplesmente não era
+  documentado. O nome agora é cortado em 100.
+
 - **Comentário MikroTik sem aspas era descartado** (`clientes/ipam_views.py::_parse_mikrotik`).
   O parser só lia `comment="com aspas"`; o `.rsc` omite as aspas quando o comentário não tem
   espaço (`comment=MKAUTH`, `comment=BGP`), então essas descrições sumiam do IPAM — e um
