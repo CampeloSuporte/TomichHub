@@ -2876,6 +2876,9 @@ def ipam_analisar_backups(request, cliente_id):
     for acesso in acessos:
         # Label do equipamento para preencher o hostname do IP
         host_label = f"{acesso.tipo} ({acesso.host})" if acesso.tipo else acesso.host
+        # Nome curto do equipamento, usado como último recurso na descrição de
+        # loopback quando o backup não declara hostname (ex: Hillstone).
+        nome_equip = (acesso.tipo or acesso.host or '').strip()
 
         backup = (
             BackupLog.objects
@@ -2978,6 +2981,13 @@ def ipam_analisar_backups(request, cliente_id):
             except Exception:
                 erros.append(f'Acesso {acesso.id}: CIDR inválido "{ip_cidr}"')
                 continue
+
+            # /32|/128 de loopback que sobrou com o nome cru da interface
+            # ("LoopBack0") porque o backup não declara hostname — o nome do
+            # equipamento no CRM diz mais do que "LoopBack0".
+            if (net.prefixlen == net.max_prefixlen and nome_equip
+                    and _descricao_e_so_nome_de_loopback(desc)):
+                desc = nome_equip
 
             # Resolver VLAN
             vlan_obj = None

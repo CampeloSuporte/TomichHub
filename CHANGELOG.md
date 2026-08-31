@@ -20,6 +20,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
     (MikroTik não tem loopback nativa — usa bridge).
   - Descrição escrita por gente nunca é tocada: só é sobrescrita a que está vazia ou é o nome
     cru da interface de rodada anterior (`_descricao_e_so_nome_de_loopback`).
+  - Backup que não declara hostname nenhum (Hillstone, por exemplo) cai no nome do equipamento
+    cadastrado no CRM (`Acesso.tipo`), para nenhum loopback /32 ficar descrito como "LoopBack0".
   - Efeito na base atual: 708 IPs reclassificados e 81 loopbacks novos documentados.
 
 ### Corrigido
