@@ -5,6 +5,46 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-31 (Geofeed por bloco alocado — Registro.br)
+
+### Corrigido
+
+- **Registro.br recusava o Geofeed com `Prefixo IP do CSV de Geofeed não está contido no bloco
+  original (linha 10)`** (`home/views.py`, `home/urls.py`, `clientes/models.py`,
+  `home/templates/geo_consulta.html`). O `geofeed.csv` global mistura os prefixos de todas as
+  empresas, e o portal valida o arquivo **contra o bloco em que a URL foi cadastrada** — a linha 10
+  era o `187.84.126.0/24`, de outra empresa, primeira fora do `186.65.76.0/22`. Separar por empresa
+  (2026-07-30) não bastava: o cadastro no Registro.br é **por bloco alocado**, então empresa com
+  mais de um bloco (ou com IPv4 + IPv6) precisa de um arquivo para cada.
+
+### Adicionado
+
+- **Geofeed por bloco alocado** — nova rota pública
+  `/homeferramentas/geo/geofeed/bloco/<bloco>.csv` (`186.65.76.0/22` → `186.65.76.0_22`), servindo só
+  o bloco e seus sub-blocos. O filtro é por contenção real do prefixo (`subnet_of`), então nunca
+  escapa linha de fora do bloco pedido. É esta a URL a colar em Numeração → bloco → *Configurar
+  Geofeed*. Bloco inválido na URL devolve 404.
+- **Campo `Bloco original (RIR)`** em `GeofeedBloco` (`bloco_rir`, migration
+  `0113_geofeedbloco_bloco_rir`) — o bloco alocado que contém o prefixo; em branco vale o próprio
+  prefixo. Salvar prefixo fora do bloco informado é recusado com a mesma mensagem que o Registro.br
+  daria, antes de ir para o RIR.
+- **UI da ferramenta** — coluna do bloco original na tabela de blocos, seletor "Arquivo" com os
+  grupos *Por bloco alocado* / *Por empresa*, e lista **URLs por bloco alocado** (empresa · bloco ·
+  URL · copiar/abrir) para levar uma URL por bloco ao portal.
+- Blocos já cadastrados preenchidos com o `inetnum` real do WHOIS LACNIC: `186.65.76.0/22`
+  (CONECTA ISP), `2804:57b0::/32` (JMA Provedor) e `187.84.124.0/22` (FLAY NET TELECOM, que estava
+  sem empresa).
+
+### Alterado
+
+- CSV do Geofeed: cidade sem acento e sem vírgula (exigência do validador na coluna City) e sem a
+  linha em branco entre o cabeçalho de comentários e os dados.
+
+**Documentação:** `docs/GEOLOCALIZACAO_IP.md` — seções "Fix — Registro.br rejeitando o Geofeed por
+empresa: é uma URL por bloco alocado" e "Como cadastrar no Registro.br (por bloco)".
+
+---
+
 ## [Não publicado] — 2026-08-31 (Períodos do gráfico de monitoramento)
 
 ### Corrigido

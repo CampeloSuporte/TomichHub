@@ -1027,11 +1027,15 @@ def geo_consulta(request):
     geofeed_url_empresa_base = request.build_absolute_uri(
         reverse('geo_geofeed_csv_empresa', args=['__SLUG__'])
     )
+    geofeed_url_bloco_base = request.build_absolute_uri(
+        reverse('geo_geofeed_csv_bloco', args=['__SLUG__'])
+    )
     return render(request, 'geo_consulta.html', {
         'prefixo_inicial': request.GET.get('prefixo', ''),
         'cfg': cfg,
         'geofeed_url': geofeed_url,
         'geofeed_url_empresa_base': geofeed_url_empresa_base,
+        'geofeed_url_bloco_base': geofeed_url_bloco_base,
     })
 
 
@@ -1522,6 +1526,40 @@ def geo_atualizar(request):
 
 # ── Geofeed público RFC 8805 ─────────────────────────────────────────────────
 
+def _geo_prefixo_slug(prefixo):
+    """Prefixo -> pedaço de URL ('186.65.76.0/22' -> '186.65.76.0_22')."""
+    return (prefixo or '').strip().replace('/', '_')
+
+
+def _geo_prefixo_de_slug(slug):
+    """Inverso de _geo_prefixo_slug — devolve ip_network ou None se o slug não for um bloco."""
+    import ipaddress
+    texto = (slug or '').strip()
+    if texto.lower().endswith('.csv'):
+        texto = texto[:-4]
+    if '_' not in texto:
+        return None
+    rede, _, mascara = texto.rpartition('_')
+    try:
+        return ipaddress.ip_network(f'{rede}/{mascara}', strict=False)
+    except ValueError:
+        return None
+
+
+def _geo_blocos_contidos(blocos_qs, rede):
+    """IDs dos blocos de `blocos_qs` contidos em `rede` (mesma família de IP)."""
+    import ipaddress
+    ids = []
+    for bloco in blocos_qs:
+        try:
+            atual = ipaddress.ip_network(bloco.prefixo.strip(), strict=False)
+        except ValueError:
+            continue
+        if atual.version == rede.version and atual.subnet_of(rede):
+            ids.append(bloco.id)
+    return ids
+
+
 def _geo_geofeed_csv_response(request, blocos_qs):
     """Monta a resposta CSV RFC 8805 a partir de um queryset de GeofeedBloco já filtrado."""
     from django.http import HttpResponse
@@ -1535,12 +1573,14 @@ def _geo_geofeed_csv_response(request, blocos_qs):
         f'# Gerado em: {hoje}',
         f'# {base_url}',
         '# Prefix,Country,Region,City,Postal-Code',
-        '',
     ]
 
     for bloco in blocos_qs.filter(ativo=True).order_by('prefixo'):
         regiao_iso = _geo_regiao_iso(bloco.pais, bloco.regiao)
-        linhas.append(f'{bloco.prefixo},{bloco.pais},{regiao_iso},{bloco.cidade},{bloco.postal_code}')
+        # o validador do Registro.br não aceita vírgula na cidade; acento é evitado por
+        # compatibilidade com os bancos de geolocalização (MaxMind e afins)
+        cidade = _sem_acentos(bloco.cidade or '').replace(',', ' ').strip()
+        linhas.append(f'{bloco.prefixo},{bloco.pais},{regiao_iso},{cidade},{bloco.postal_code}')
 
     content = '\r\n'.join(linhas) + '\r\n'
     resp = HttpResponse(content, content_type='text/csv; charset=utf-8')
@@ -1563,9 +1603,33 @@ def geo_geofeed_csv(request):
 
 
 def geo_geofeed_csv_empresa(request, empresa_slug):
-    """Arquivo Geofeed RFC 8805 filtrado por empresa — uma URL por dono do recurso no RIR."""
+    """Arquivo Geofeed RFC 8805 filtrado por empresa — só serve se a empresa tiver um único bloco.
+
+    O Registro.br valida o arquivo contra O BLOCO em que a URL foi cadastrada, então uma empresa
+    com mais de um bloco alocado precisa da URL por bloco (geo_geofeed_csv_bloco).
+    """
     from clientes.models import GeofeedBloco
     return _geo_geofeed_csv_response(request, GeofeedBloco.objects.filter(empresa_slug=empresa_slug))
+
+
+def geo_geofeed_csv_bloco(request, bloco_slug):
+    """Arquivo Geofeed RFC 8805 de um bloco alocado — só prefixos contidos nele.
+
+    É esta a URL que vai no Registro.br (Numeração → bloco → Configurar Geofeed): o portal recusa
+    o arquivo inteiro se alguma linha cair fora do bloco onde a URL foi cadastrada
+    ("Prefixo IP do CSV de Geofeed não está contido no bloco original"). Como o filtro é por
+    contenção real do prefixo, nunca escapa linha de outro bloco/empresa.
+    """
+    from django.http import Http404
+    from clientes.models import GeofeedBloco
+
+    rede = _geo_prefixo_de_slug(bloco_slug)
+    if rede is None:
+        raise Http404('Bloco inválido')
+
+    qs = GeofeedBloco.objects.filter(ativo=True)
+    ids = _geo_blocos_contidos(qs, rede)
+    return _geo_geofeed_csv_response(request, GeofeedBloco.objects.filter(id__in=ids))
 
 
 # ── Blocos do Geofeed (cadastro manual de múltiplos blocos/localizações) ─────
@@ -1576,18 +1640,20 @@ def geo_blocos_listar(request):
     """Lista todos os blocos cadastrados no Geofeed."""
     from clientes.models import GeofeedBloco
 
-    blocos = GeofeedBloco.objects.order_by('empresa', 'prefixo')
+    blocos = GeofeedBloco.objects.order_by('empresa', 'bloco_rir', 'prefixo')
     return JsonResponse({'ok': True, 'blocos': [
         {
-            'id':           b.id,
-            'prefixo':      b.prefixo,
-            'pais':         b.pais,
-            'regiao':       b.regiao,
-            'cidade':       b.cidade,
-            'postal_code':  b.postal_code,
-            'ativo':        b.ativo,
-            'empresa':      b.empresa,
-            'empresa_slug': b.empresa_slug,
+            'id':             b.id,
+            'prefixo':        b.prefixo,
+            'pais':           b.pais,
+            'regiao':         b.regiao,
+            'cidade':         b.cidade,
+            'postal_code':    b.postal_code,
+            'ativo':          b.ativo,
+            'empresa':        b.empresa,
+            'empresa_slug':   b.empresa_slug,
+            'bloco_rir':      b.bloco_rir,
+            'bloco_rir_slug': _geo_prefixo_slug(b.bloco_rir_efetivo),
         }
         for b in blocos
     ]})
@@ -1626,6 +1692,23 @@ def geo_blocos_salvar(request):
             erros.append({'prefixo': prefixo, 'erro': 'Prefixo/bloco IP invalido'})
             continue
 
+        bloco_rir = (item.get('bloco_rir') or '').strip()
+        if bloco_rir:
+            try:
+                rede_rir = ipaddress.ip_network(bloco_rir, strict=False)
+            except ValueError:
+                erros.append({'prefixo': prefixo, 'erro': 'Bloco original (RIR) invalido'})
+                continue
+            rede_prefixo = ipaddress.ip_network(prefixo, strict=False)
+            # mesma checagem que o Registro.br faz no CSV: linha fora do bloco derruba o arquivo
+            if rede_prefixo.version != rede_rir.version or not rede_prefixo.subnet_of(rede_rir):
+                erros.append({
+                    'prefixo': prefixo,
+                    'erro': f'Prefixo {prefixo} nao esta contido no bloco original {rede_rir}',
+                })
+                continue
+            bloco_rir = str(rede_rir)
+
         defaults = {
             'pais':        (item.get('pais') or '').strip().upper(),
             'regiao':      (item.get('regiao') or '').strip(),
@@ -1633,6 +1716,7 @@ def geo_blocos_salvar(request):
             'postal_code': (item.get('postal_code') or '').strip(),
             'ativo':       bool(item.get('ativo', True)),
             'empresa':     (item.get('empresa') or '').strip(),
+            'bloco_rir':   bloco_rir,
         }
         from django.utils.text import slugify
         defaults['empresa_slug'] = slugify(defaults['empresa']) if defaults['empresa'] else ''
@@ -1658,6 +1742,8 @@ def geo_blocos_salvar(request):
             'regiao': bloco.regiao, 'cidade': bloco.cidade,
             'postal_code': bloco.postal_code, 'ativo': bloco.ativo,
             'empresa': bloco.empresa, 'empresa_slug': bloco.empresa_slug,
+            'bloco_rir': bloco.bloco_rir,
+            'bloco_rir_slug': _geo_prefixo_slug(bloco.bloco_rir_efetivo),
         })
 
     return JsonResponse({'ok': True, 'salvos': salvos, 'erros': erros})

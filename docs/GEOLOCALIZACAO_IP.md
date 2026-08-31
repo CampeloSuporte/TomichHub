@@ -1,6 +1,7 @@
 # Geolocalização de IP — Consulta, Correção e Geofeed Público (RFC 8805)
 
-**Data de Implementação:** 2026-05-17 (base) · **2026-07-26** (múltiplos blocos/localizações)
+**Data de Implementação:** 2026-05-17 (base) · **2026-07-26** (múltiplos blocos/localizações) ·
+**2026-08-31** (Geofeed por bloco alocado — Registro.br)
 **Arquivo principal:** `home/views.py`, `home/templates/geo_consulta.html`
 **Status:** ✅ Produção
 
@@ -155,6 +156,53 @@ ninguém** no LACNIC (`whois -h whois.lacnic.net`) — provavelmente dado de tes
   futuro) e o bloco não alocado (`38.210.126.0/24`) desativado (`ativo=False`, não apagado) até
   alguém confirmar o prefixo correto.
 
+### Fix — Registro.br rejeitando o Geofeed por empresa: é **uma URL por bloco alocado** (2026-08-31)
+
+Mesmo com o arquivo por empresa, o Registro.br continuou recusando com
+`Prefixo IP do CSV de Geofeed não está contido no bloco original (linha 10)`. Motivo: no portal do
+Registro.br o geofeed é cadastrado **em cada bloco alocado** (Numeração → bloco → *Configurar
+Geofeed*), e o validador exige que **todas** as linhas do CSV estejam dentro **daquele** bloco —
+"um arquivo por bloco cadastrado, contendo apenas o próprio bloco ou sub-blocos dele". A linha 10 do
+`geofeed.csv` global era o `187.84.126.0/24` (outra empresa), a primeira fora do `186.65.76.0/22`.
+
+Ou seja: agrupar por empresa só resolve quando a empresa tem **um único** bloco alocado. Empresa com
+dois blocos (ou blocos de famílias diferentes, IPv4 + IPv6) precisa de um arquivo para cada.
+
+**Solução — Geofeed por bloco alocado:**
+- Novo campo `GeofeedBloco.bloco_rir` (migration `0113_geofeedbloco_bloco_rir`): o bloco alocado no
+  RIR que contém o prefixo (ex.: `186.65.76.0/22` para o prefixo `186.65.78.0/24`). Em branco, vale
+  o próprio prefixo (`bloco_rir_efetivo`), caso do bloco alocado direto sem sub-blocos.
+- Nova rota pública `/homeferramentas/geo/geofeed/bloco/<bloco_slug>.csv`
+  (`views.geo_geofeed_csv_bloco`), com `bloco_slug` = prefixo com `_` no lugar da barra
+  (`186.65.76.0/22` → `186.65.76.0_22`; IPv6: `2804:57b0::/32` → `2804:57b0::_32`).
+  **É esta a URL a cadastrar no Registro.br.**
+- O filtro do arquivo é por **contenção real** (`ipaddress.ip_network(...).subnet_of(rede)`), não pelo
+  campo `bloco_rir`: mesmo que alguém agrupe errado no cadastro, nunca escapa linha de fora do bloco
+  pedido na URL. `bloco_rir` só serve para a UI saber quais URLs existem. Bloco inválido na URL → 404.
+- `geo_blocos_salvar` recusa salvar prefixo que não esteja contido no `bloco_rir` informado
+  (`Prefixo X nao esta contido no bloco original Y`) — a mesma checagem do Registro.br, antes do RIR.
+- CSV: cidade sai sem acento e sem vírgula (`_sem_acentos`, exigência do validador para a coluna
+  City), e a linha em branco entre os comentários e os dados foi removida.
+- UI (`geo_consulta.html`): coluna **Bloco original (RIR)** na tabela de blocos; o seletor do painel
+  virou "Arquivo", com os grupos *Por bloco alocado (use no Registro.br)* e *Por empresa*; e uma
+  lista **URLs por bloco alocado** (empresa · bloco · URL · copiar/abrir) que é o que se leva para o
+  portal — uma URL por bloco cadastrado lá.
+- Dados existentes preenchidos a partir do WHOIS LACNIC (`whois -h whois.lacnic.net <ip>`):
+  `186.65.76-79.0/24` → `186.65.76.0/22` (CONECTA ISP TELECOMUNICACOES), `2804:57b0:efe0::/44` →
+  `2804:57b0::/32` (JMA Provedor) e `187.84.126.0/24` → `187.84.124.0/22`, este último ainda sem
+  empresa no cadastro e marcado como **FLAY NET TELECOM** (dono no WHOIS). `38.210.126.0/24` segue
+  desativado.
+
+### Como cadastrar no Registro.br (por bloco)
+
+1. Cadastre os prefixos em **Blocos do Geofeed** preenchendo **Bloco original (RIR)** com o bloco que
+   aparece na sua conta do Registro.br (o `inetnum` do WHOIS) — vários prefixos podem apontar para o
+   mesmo bloco.
+2. No painel **Geofeed Público**, copie a URL da linha daquele bloco em *URLs por bloco alocado*.
+3. Portal Registro.br → **Numeração** → selecione o bloco → **Configurar Geofeed** → cole a URL.
+4. Repita para cada bloco alocado (IPv4 e IPv6 são blocos separados, cada um com a sua URL).
+5. Confira depois no WHOIS/RDAP do bloco que o atributo `geofeed:` aparece com a URL.
+
 ---
 
 ## Endpoints (visão completa da ferramenta)
@@ -172,7 +220,8 @@ ninguém** no LACNIC (`whois -h whois.lacnic.net`) — provavelmente dado de tes
 | `/homeferramentas/geo/<id>/aplicacao/` | GET | ✅ | Re-verifica se a correção foi aplicada |
 | `/homeferramentas/geo/<id>/confirmar-maxmind/` | GET | ✅ | Confirma e-mail MaxMind via IMAP |
 | `/homeferramentas/geo/geofeed.csv` | GET | 🌐 público | Todos os blocos ativos — só para conferência interna, não cadastrar em RIR |
-| `/homeferramentas/geo/geofeed/<empresa_slug>.csv` | GET | 🌐 público | Só os blocos daquela empresa — URL a cadastrar no RIR |
+| `/homeferramentas/geo/geofeed/<empresa_slug>.csv` | GET | 🌐 público | Só os blocos daquela empresa — serve quando a empresa tem um único bloco alocado |
+| `/homeferramentas/geo/geofeed/bloco/<bloco_slug>.csv` | GET | 🌐 público | Só o bloco alocado e seus sub-blocos — **URL a cadastrar no Registro.br** |
 
 ---
 
@@ -183,6 +232,8 @@ ninguém** no LACNIC (`whois -h whois.lacnic.net`) — provavelmente dado de tes
   recente de cada `CorrecaoGeoIP`, preservando o conteúdo do `geofeed.csv` público no deploy.
 - `0094_geofeed_bloco_empresa` — adiciona `empresa` e `empresa_slug` em `GeofeedBloco`, base do Geofeed
   por empresa (ver seção "Fix — LACNIC rejeitando o Geofeed com prefixo de outra empresa").
+- `0113_geofeedbloco_bloco_rir` — adiciona `bloco_rir` em `GeofeedBloco`, base do Geofeed por bloco
+  alocado (ver seção "Fix — Registro.br rejeitando o Geofeed por empresa").
 
 ---
 

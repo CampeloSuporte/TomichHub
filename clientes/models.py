@@ -1321,6 +1321,13 @@ class GeofeedBloco(models.Model):
     empresa      = models.CharField(max_length=200, blank=True, db_index=True, verbose_name='Empresa (dona do bloco)')
     empresa_slug = models.SlugField(max_length=220, blank=True, db_index=True, verbose_name='Slug da empresa (URL do geofeed)')
 
+    # Bloco original alocado pelo RIR (ex: "186.65.76.0/22") no qual este prefixo está contido.
+    # O Registro.br cadastra o geofeed POR BLOCO e recusa o arquivo inteiro se qualquer linha cair
+    # fora do bloco ("Prefixo IP do CSV de Geofeed não está contido no bloco original"), por isso
+    # cada bloco alocado tem a própria URL (/geo/geofeed/bloco/<prefixo>.csv). Em branco = o próprio
+    # prefixo é o bloco alocado.
+    bloco_rir    = models.CharField(max_length=50, blank=True, db_index=True, verbose_name='Bloco original (alocado no RIR)')
+
     criado_em    = models.DateTimeField(auto_now_add=True, verbose_name='Criado em')
     atualizado_em = models.DateTimeField(auto_now=True, verbose_name='Atualizado em')
     criado_por   = models.ForeignKey(
@@ -1332,6 +1339,11 @@ class GeofeedBloco(models.Model):
         from django.utils.text import slugify
         self.empresa_slug = slugify(self.empresa) if self.empresa else ''
         super().save(*args, **kwargs)
+
+    @property
+    def bloco_rir_efetivo(self):
+        """Bloco alocado ao qual este prefixo pertence — o próprio prefixo quando não informado."""
+        return (self.bloco_rir or self.prefixo).strip()
 
     class Meta:
         ordering = ['prefixo']
