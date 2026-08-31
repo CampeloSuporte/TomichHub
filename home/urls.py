@@ -32,7 +32,9 @@ urlpatterns = [
     path('ferramentas/geo/<int:correcao_id>/confirmar-maxmind/', views.geo_confirmar_maxmind, name='geo_confirmar_maxmind'),
     # Arquivo público Geofeed RFC 8805 (sem login — referenciado no WHOIS/Registro.br)
     path('ferramentas/geo/geofeed.csv', views.geo_geofeed_csv, name='geo_geofeed_csv'),
-    # Geofeed por empresa (só os prefixos daquela empresa — necessário pra cadastro no RIR)
+    # Geofeed por bloco alocado (é esta URL que o Registro.br aceita — só o bloco e sub-blocos dele)
+    path('ferramentas/geo/geofeed/bloco/<str:bloco_slug>.csv', views.geo_geofeed_csv_bloco, name='geo_geofeed_csv_bloco'),
+    # Geofeed por empresa (só os prefixos daquela empresa — serve quando a empresa tem um bloco só)
     path('ferramentas/geo/geofeed/<str:empresa_slug>.csv', views.geo_geofeed_csv_empresa, name='geo_geofeed_csv_empresa'),
     # Download público de firmware via token (sem login)
     path('ferramentas/firmware/dl/<str:token>/<path:nome_arquivo>', firmware_download, name='firmware_download'),
