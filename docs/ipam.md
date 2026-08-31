@@ -340,6 +340,14 @@ O mesmo valia para `interface=` — só o formato com aspas era lido, e o nome s
 devolve a detecção de VLAN pelo nome da interface: 818 endereços que estavam sem VLAN passam a
 ficar vinculados à VLAN certa.
 
+### Nome de VLAN estourando o campo
+
+`IPAMVlan.nome` é `varchar(100)`; o MikroTik aceita nome de interface bem maior. Um
+`/interface vlan add name="vlan1152 - L(83)PacPon Riacho de Areia, Faz. …"` de 270 caracteres
+estourava `DataError: value too long` no meio de `analisar_backups_ipam` — que não isola
+cliente por cliente, então tudo o que viria depois daquele acesso ficava sem documentar.
+`_parse_mikrotik` corta o nome em 100.
+
 > Um caso real do porquê da regra: `CGNAT-BORDA` tem 512 `/32` públicos pendurados na bridge
 > `loopback`, todos sem `comment` — os 512 eram documentados com descrição vazia e agora
 > carregam `BORDA_CGNAT_FRIENDS_150`.

@@ -1958,7 +1958,11 @@ def _parse_mikrotik(content):
             continue
         vlan_id = int(vid.group(1))
         nm = re.search(r'name="([^"]+)"', line)
-        nome = nm.group(1) if nm else f'VLAN {vlan_id}'
+        # `IPAMVlan.nome` é varchar(100) e o MikroTik aceita nome de interface
+        # bem mais longo que isso — sem o corte, um nome de 270 caracteres
+        # derrubava a rotina inteira de auto-documentação com DataError
+        # (caso real: `vlan1152 - L(83)PacPon Riacho de Areia, Faz. ...`).
+        nome = (nm.group(1) if nm else f'VLAN {vlan_id}')[:100]
         vlans.setdefault(vlan_id, nome)
 
     def _extrai_enderecos(padrao_secao, padrao_endereco):
