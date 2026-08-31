@@ -7,7 +7,7 @@
 - `monitoramento/templates/monitoramento/tab_monitoramento.html` — frontend JS/CSS
 - `monitoramento/migrations/0002_monitordashconfig.py` — migration
 
-**Última atualização:** 2026-06-13
+**Última atualização:** 2026-08-31
 
 ---
 
@@ -200,6 +200,43 @@ são destruídos para liberar memória e CPU. A nova aba inicializa seus própri
 
 ---
 
+## Períodos do gráfico
+
+Cada painel tem seu próprio seletor de período — **1h, 3h, 6h, 12h, 24h, 7d e 30d** — salvo
+junto do gráfico (campo `hours` do chart, em horas: `168` = 7 dias, `720` = 30 dias).
+
+O frontend chama `GET /monitoramento/zabbix/history/?cliente_id=&item_id=&hours=`; a view só
+aceita os valores da lista acima (qualquer outro vira `1`).
+
+### Como o backend monta a janela (`services.historico_item`)
+
+| Janela | Fonte no Zabbix | Observação |
+|--------|-----------------|------------|
+| ≤ 3 dias (1h a 24h) | `history.get` | dado bruto do item, ordem cronológica |
+| > 3 dias (7d, 30d)  | `trend.get`  | médias horárias (`value_avg`) — o `history` costuma ser expurgado antes disso |
+
+Se a fonte preferida vier vazia, cai automaticamente na outra. O período **inteiro** é buscado
+(`time_from` → `time_till`, teto de 20.000 pontos brutos) e reduzido aqui com `_downsample()`
+para no máximo `limit` pontos (padrão 300) — é isso que mantém o gráfico leve em 30 dias.
+
+Contador acumulativo de bytes continua virando taxa (`bps`) pela diferença entre pontos
+consecutivos, tanto no `history` quanto no `trend`.
+
+### Intervalo do poll por período
+
+Janela longa não muda a cada 15s, então o `setInterval` acompanha o período escolhido (o badge
+ao lado do seletor mostra o valor em uso):
+
+| Período | Poll |
+|---------|------|
+| até 6h  | 15s  |
+| 12h e 24h | 60s |
+| 7d e 30d | 5min |
+
+O eixo X também acompanha: `HH:MM:SS` até 6h, `HH:MM` em 12h/24h e `dd/mm HH:MM` em 7d/30d.
+
+---
+
 ## Permissões
 
 ```python
@@ -230,6 +267,25 @@ Clientes só acessam o dashboard do próprio cliente. Admins/operadores acessam 
 ---
 
 ## Histórico de Alterações
+
+### 2026-08-31 — Períodos de 12h/24h corrigidos e 7d/30d adicionados
+
+**Problema:** escolher 12h ou 24h no painel mostrava o mesmo gráfico curto de sempre.
+
+**Causa raiz:** `historico_item()` pedia ao Zabbix `sortorder: DESC` com `limit` (300 por
+padrão) — ou seja, os 300 pontos **mais recentes**. Com item de 1 em 1 minuto isso é sempre a
+mesma fatia de ~5h no fim da janela, independente do `hours` pedido.
+
+**Solução:** a janela inteira passou a ser buscada em ordem cronológica (`ASC`, com
+`time_till`) e o corte de pontos virou reamostragem (`_downsample`) no servidor. Junto disso
+entraram os períodos de 7 e 30 dias, servidos por `trend.get` (o `history` não sobrevive tanto
+tempo no Zabbix), o poll escalonado por período e o rótulo do eixo X com data nas janelas longas.
+
+**Arquivos modificados:**
+- `monitoramento/services.py` — `historico_item()` reescrita (fallback history/trends + downsample)
+- `monitoramento/views.py` — `historico_item_zabbix` aceita `hours` 168 e 720
+- `monitoramento/templates/monitoramento/tab_monitoramento.html` — lista `PERIODOS`, botões por
+  `data-h`, `_pollMs()`, `_fmtEixo()`
 
 ### 2026-08-20 — Camada Zabbix reutilizada pelo Agent NOC
 

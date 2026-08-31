@@ -5,6 +5,37 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-31 (Períodos do gráfico de monitoramento)
+
+### Corrigido
+
+- **12h e 24h no gráfico da aba Monitoramento mostravam a mesma janela curta**
+  (`monitoramento/services.py`). `historico_item()` pedia ao Zabbix `sortorder: DESC` com
+  `limit` (300) — os 300 pontos **mais recentes**, e não a janela pedida. Com item coletando de
+  1 em 1 minuto, 12h e 24h devolviam sempre a mesma fatia de ~5h no fim do período. Agora a
+  janela inteira é buscada em ordem cronológica (`ASC` + `time_till`) e a redução de pontos é
+  feita no servidor por `_downsample()` (padrão 300 pontos), então o gráfico continua leve e
+  cobre o período todo.
+
+### Adicionado
+
+- **Períodos de 7 e 30 dias** (`monitoramento/services.py`, `monitoramento/views.py`,
+  `monitoramento/templates/monitoramento/tab_monitoramento.html`). O seletor de cada painel
+  passou a ser `1h · 3h · 6h · 12h · 24h · 7d · 30d`, tanto no card quanto no fullscreen.
+  - Janela maior que 3 dias sai de `trend.get` (médias horárias) e não de `history.get`: o
+    `history` do Zabbix costuma ser expurgado em poucos dias e devolveria gráfico vazio em 30
+    dias. Se a fonte preferida vier vazia, cai automaticamente na outra.
+  - O poll acompanha o período — 15s até 6h, 60s em 12h/24h e 5min em 7d/30d — para não pedir
+    30 dias de histórico ao Zabbix a cada 15 segundos. O badge ao lado do seletor mostra o
+    intervalo em uso.
+  - Eixo X com data (`dd/mm HH:MM`) nas janelas longas, onde só a hora se repetiria; o rótulo
+    do "Pico" acompanha o período escolhido (ex.: "Pico (30d)").
+
+**Documentação:** `docs/monitoramento.md` — seção "Períodos do gráfico" (fontes, downsample,
+poll por período).
+
+---
+
 ## [Não publicado] — 2026-08-31 (Hosts por função para o login do portal)
 
 ### Adicionado

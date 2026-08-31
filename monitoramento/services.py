@@ -269,9 +269,25 @@ def listar_interfaces(config, host_id: str) -> list:
 # HISTÓRICO DE ITENS
 # ──────────────────────────────────────────────────────────────
 
+# Janelas maiores que isso saem do `trends` (médias horárias): o `history` do
+# Zabbix costuma ser expurgado em poucos dias e não cobre 7/30 dias.
+_JANELA_TRENDS = 3 * 86400
+# Teto de pontos brutos puxados do Zabbix antes do downsample.
+_MAX_BRUTO     = 20000
+
+
 def historico_item(config, item_id, hours=1, limit=300):
-    auth = _get_auth_token(config)
-    time_from = int(time.time()) - (hours * 3600)
+    """Histórico das últimas `hours` horas de um item, já reamostrado para no
+    máximo `limit` pontos.
+
+    O período inteiro é sempre coberto: antes essa função pedia ao Zabbix os
+    `limit` pontos mais recentes (sortorder DESC), então 12h e 24h devolviam a
+    mesma fatia curta do fim da janela. Agora busca a janela toda em ordem
+    cronológica e reduz aqui, com fallback para `trends` nas janelas longas.
+    """
+    auth      = _get_auth_token(config)
+    agora     = int(time.time())
+    time_from = agora - int(hours * 3600)
 
     # Metadados do item (value_type/units) raramente mudam — cacheados
     # separado do histórico em si, que precisa ser sempre fresco.
@@ -293,46 +309,62 @@ def historico_item(config, item_id, hours=1, limit=300):
     value_type = meta['value_type']
     units = meta['units']
 
-    result = _rpc(config.url, 'history.get', {
-        'itemids':   [item_id],
-        'history':   value_type,
-        'time_from': time_from,
-        'sortfield': 'clock',
-        'sortorder': 'DESC',
-        'limit':     limit,
-    }, auth, config=config)
-    if result:
-        result = list(reversed(result))
+    janela = agora - time_from
+    fontes = ['trends', 'history'] if janela > _JANELA_TRENDS else ['history', 'trends']
 
-    if not result:
+    pontos = []
+    for fonte in fontes:
+        try:
+            if fonte == 'history':
+                bruto = _rpc(config.url, 'history.get', {
+                    'itemids':   [item_id],
+                    'history':   value_type,
+                    'time_from': time_from,
+                    'time_till': agora,
+                    'sortfield': 'clock',
+                    'sortorder': 'ASC',
+                    'limit':     _MAX_BRUTO,
+                }, auth, config=config)
+                pontos = [{'t': int(p['clock']), 'v': float(p['value'])} for p in bruto]
+            else:
+                bruto = _rpc(config.url, 'trend.get', {
+                    'itemids':   [item_id],
+                    'time_from': time_from,
+                    'time_till': agora,
+                    'limit':     _MAX_BRUTO,
+                }, auth, config=config)
+                pontos = [{'t': int(p['clock']), 'v': float(p['value_avg'])} for p in bruto]
+                pontos.sort(key=lambda p: p['t'])
+        except Exception as exc:
+            logger.warning('%s.get do item %s falhou: %s', fonte, item_id, exc)
+            pontos = []
+        if pontos:
+            break
+
+    if not pontos:
         return []
-
-    pontos = [{'t': int(p['clock']), 'v': float(p['value'])} for p in result]
 
     units_lower = units.lower()
 
-    # ✅ Já é taxa (bps, pps, etc.) — retorna direto sem calcular delta
-    if any(u in units_lower for u in ('bps', 'pps', 'b/s', 'bit')):
-        return pontos
+    # ✅ Já é taxa (bps, pps, etc.) — não calcula delta
+    if not any(u in units_lower for u in ('bps', 'pps', 'b/s', 'bit')):
+        # ✅ Contador acumulativo de bytes — calcula delta e converte para bps
+        if value_type == 3 and len(pontos) >= 2:
+            taxa = []
+            for i in range(1, len(pontos)):
+                dt = pontos[i]['t'] - pontos[i-1]['t']
+                if dt <= 0:
+                    continue
+                delta = pontos[i]['v'] - pontos[i-1]['v']
+                if delta < 0:
+                    # Contador reiniciou (reboot do equipamento)
+                    continue
+                # Bytes → bits
+                bps = (delta * 8) / dt
+                taxa.append({'t': pontos[i]['t'], 'v': bps})
+            pontos = taxa
 
-    # ✅ Contador acumulativo de bytes — calcula delta e converte para bps
-    if value_type == 3 and len(pontos) >= 2:
-        taxa = []
-        for i in range(1, len(pontos)):
-            dt = pontos[i]['t'] - pontos[i-1]['t']
-            if dt <= 0:
-                continue
-            delta = pontos[i]['v'] - pontos[i-1]['v']
-            if delta < 0:
-                # Contador reiniciou (reboot do equipamento)
-                continue
-            # Bytes → bits
-            bps = (delta * 8) / dt
-            taxa.append({'t': pontos[i]['t'], 'v': bps})
-        return taxa
-
-    # Qualquer outro tipo — retorna direto
-    return pontos
+    return _downsample(pontos, limit)
 
 
 # ──────────────────────────────────────────────────────────────

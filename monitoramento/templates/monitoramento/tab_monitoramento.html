@@ -1197,11 +1197,52 @@ const GRAPH = (() => {
     </div>`;
   }
 
+  // ─────────────────────────────────────────────────────────
+  // PERÍODOS DISPONÍVEIS (horas → rótulo)
+  // ─────────────────────────────────────────────────────────
+  const PERIODOS = [
+    { h: 1, l: '1h' }, { h: 3, l: '3h' }, { h: 6, l: '6h' },
+    { h: 12, l: '12h' }, { h: 24, l: '24h' },
+    { h: 168, l: '7d' }, { h: 720, l: '30d' },
+  ];
+
+  function _periodLabel(hours) {
+    const p = PERIODOS.find(x => x.h === hours);
+    return p ? p.l : `${hours}h`;
+  }
+
+  // Janela longa não muda de minuto em minuto — poll mais espaçado evita
+  // martelar o Zabbix a cada 15s pedindo 30 dias de dados.
+  function _pollMs(hours) {
+    if (hours <= 6)  return 15000;
+    if (hours <= 24) return 60000;
+    return 300000;
+  }
+
+  function _pollLabel(hours) {
+    const seg = _pollMs(hours) / 1000;
+    return seg >= 60 ? `${seg / 60}min` : `${seg}s`;
+  }
+
+  function _periodBtns(c, extraStyle) {
+    const hours = c.hours || 1;
+    const fn    = extraStyle ? 'setFsPeriod' : 'setPeriod';
+    return PERIODOS.map(p =>
+      `<button class="grph-period-btn ${p.h === hours ? 'active' : ''}" data-h="${p.h}"`
+      + ` onclick="GRAPH.${fn}(${c.id},${p.h})"${extraStyle ? ` style="${extraStyle}"` : ''}>${p.l}</button>`
+    ).join('');
+  }
+
+  function _marcarPeriodo(sel, hours) {
+    if (!sel) return;
+    sel.querySelectorAll('.grph-period-btn').forEach(btn => {
+      btn.classList.toggle('active', parseInt(btn.dataset.h) === hours);
+    });
+  }
+
   function _cardHTML(c) {
     const hours = c.hours || 1;
-    const periodBtns = [1, 3, 6, 12, 24].map(h =>
-      `<button class="grph-period-btn ${h === hours ? 'active' : ''}" onclick="GRAPH.setPeriod(${c.id},${h})">${h}h</button>`
-    ).join('');
+    const periodBtns = _periodBtns(c);
     const displayTitle = c.titulo || c.hostname || '—';
     const subHostHtml  = c.titulo
       ? `<span class="grph-host-sub"><svg viewBox="0 0 24 24" width="9" height="9" style="opacity:.4;flex-shrink:0"><rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>${c.hostname || ''}</span>`
@@ -1247,7 +1288,7 @@ const GRAPH = (() => {
         <div class="grph-stat-divider"></div>
         <div class="grph-stat-block grph-stat-peak">
           <svg viewBox="0 0 24 24" width="12" height="12" style="opacity:.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
-          <div><div class="grph-stat-val" id="grph-peak-${c.id}">—</div><div class="grph-stat-label">Pico (${hours}h)</div></div>
+          <div><div class="grph-stat-val" id="grph-peak-${c.id}">—</div><div class="grph-stat-label">Pico (${_periodLabel(hours)})</div></div>
         </div>
       </div>
       <div class="grph-canvas-wrap"><canvas id="grph-cv-${c.id}"></canvas></div>
@@ -1255,7 +1296,7 @@ const GRAPH = (() => {
         <span class="grph-ts" id="grph-ts-${c.id}">Aguardando dados...</span>
         <div style="display:flex;align-items:center;gap:8px;">
           <div class="grph-period-sel" id="grph-period-${c.id}">${periodBtns}</div>
-          <span class="grph-interval"><span class="grph-interval-dot"></span>15s</span>
+          <span class="grph-interval" id="grph-poll-${c.id}"><span class="grph-interval-dot"></span>${_pollLabel(hours)}</span>
         </div>
       </div>`;
   }
@@ -1308,13 +1349,12 @@ const GRAPH = (() => {
     if (!c) return;
     c.hours = hours;
     const peakLabel = document.querySelector(`#grph-card-${id} .grph-stat-peak .grph-stat-label`);
-    if (peakLabel) peakLabel.textContent = `Pico (${hours}h)`;
-    const sel = document.getElementById(`grph-period-${id}`);
-    if (sel) sel.querySelectorAll('.grph-period-btn').forEach(btn => {
-      btn.classList.toggle('active', parseInt(btn.textContent) === hours);
-    });
+    if (peakLabel) peakLabel.textContent = `Pico (${_periodLabel(hours)})`;
+    _marcarPeriodo(document.getElementById(`grph-period-${id}`), hours);
+    const pollBadge = document.getElementById(`grph-poll-${id}`);
+    if (pollBadge) pollBadge.innerHTML = `<span class="grph-interval-dot"></span>${_pollLabel(hours)}`;
     _salvarStorage();
-    _fetchHistory(c);
+    _startPolling(c);   // já refaz o fetch e reajusta o intervalo do período
   }
 
   // ─────────────────────────────────────────────────────────
@@ -1335,10 +1375,7 @@ const GRAPH = (() => {
       document.body.appendChild(overlay);
     }
 
-    const hours = c.hours || 1;
-    const fsPeriodBtns = [1, 3, 6, 12, 24].map(h =>
-      `<button class="grph-period-btn ${h === hours ? 'active' : ''}" onclick="GRAPH.setFsPeriod(${c.id},${h})" style="font-size:.72rem;padding:3px 9px;">${h}h</button>`
-    ).join('');
+    const fsPeriodBtns = _periodBtns(c, 'font-size:.72rem;padding:3px 9px;');
     const fsTitle = c.titulo || c.hostname || '—';
     const fsSub   = c.titulo ? `${c.hostname||''} · ${c.ifaceName||''}` : (c.ifaceName || '—');
 
@@ -1391,10 +1428,7 @@ const GRAPH = (() => {
   }
 
   function setFsPeriod(id, hours) {
-    const sel = document.getElementById('grph-fs-period');
-    if (sel) sel.querySelectorAll('.grph-period-btn').forEach(btn => {
-      btn.classList.toggle('active', parseInt(btn.textContent) === hours);
-    });
+    _marcarPeriodo(document.getElementById('grph-fs-period'), hours);
     setPeriod(id, hours);
   }
 
@@ -1417,7 +1451,7 @@ const GRAPH = (() => {
     if (c._interval) clearInterval(c._interval);
     if (!c.inId && !c.outId) return;
     _fetchHistory(c);
-    c._interval = setInterval(() => _fetchHistory(c), 15000);
+    c._interval = setInterval(() => _fetchHistory(c), _pollMs(c.hours || 1));
   }
 
   function atualizarTodos() { charts.forEach(c => _fetchHistory(c)); }
@@ -1449,7 +1483,7 @@ const GRAPH = (() => {
       const allTs  = [...new Set([...histIn.map(p => p.t), ...histOut.map(p => p.t)])].sort((a, b) => a - b);
       const mapIn  = Object.fromEntries(histIn.map(p  => [p.t, p.v]));
       const mapOut = Object.fromEntries(histOut.map(p => [p.t, p.v]));
-      const labels  = allTs.map(_fmtTime);
+      const labels  = allTs.map(t => _fmtEixo(t, hours));
       const dataIn  = allTs.map(t => mapIn[t]  !== undefined ? parseFloat(mapIn[t])  : null);
       const dataOut = allTs.map(t => mapOut[t] !== undefined ? parseFloat(mapOut[t]) : null);
 
@@ -1796,6 +1830,15 @@ const GRAPH = (() => {
     if (v >= 1e6) return `${(v/1e6).toFixed(2)} Mbps`;
     if (v >= 1e3) return `${(v/1e3).toFixed(1)} Kbps`;
     return `${v.toFixed(0)} bps`;
+  }
+
+  // Eixo X: em janelas longas a hora sozinha se repete — mostra o dia.
+  function _fmtEixo(ts, hours) {
+    const d = new Date(ts * 1000);
+    const hh = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    if (hours > 24) return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${hh}`;
+    if (hours > 6)  return hh;
+    return _fmtTime(ts);
   }
 
   function _fmtTime(ts) {
