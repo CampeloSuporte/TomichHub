@@ -5,6 +5,7 @@ from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.http import JsonResponse
 from django.shortcuts import render,redirect,get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -14,7 +15,7 @@ from clientes.decorators import admin_required  # ← ADICIONAR ESTA LINHA
 from django.contrib.auth import logout as auth_logout
 from django.contrib.auth import update_session_auth_hash
 from clientes.models import Cliente
-from .models import UsuarioModulo, modulos_habilitados_dict, Instancia, PerfilUsuario, InstanciaFerramenta, ferramentas_habilitadas_dict, TOTPDevice, PortalUsuarioInstancia
+from .models import UsuarioModulo, modulos_habilitados_dict, Instancia, PerfilUsuario, InstanciaFerramenta, ferramentas_habilitadas_dict, TOTPDevice, PortalUsuarioInstancia, UsuarioAcesso
 from . import perms
 from . import totp as totp_lib
 from seguranca import services as seguranca
@@ -88,6 +89,84 @@ def _sincronizar_modulos_usuario(request, usuario):
         UsuarioModulo.objects.update_or_create(
             usuario=usuario, modulo=chave,
             defaults={'habilitado': chave in modulos_marcados},
+        )
+
+
+def _hosts_do_usuario(usuario):
+    """Hosts do cliente vinculado a `usuario`, marcando os que ele pode ver.
+
+    Alimenta a seção "Hosts liberados" do modal de edição. Retorna `None`
+    quando o login ainda não está vinculado a nenhum Cliente (a seção então
+    vira um aviso pedindo pra fazer o vínculo primeiro) — o vínculo é feito
+    na tela do Cliente, não aqui.
+
+    `todos=True` significa "sem restrição gravada": o login vê todo host do
+    cliente, inclusive os cadastrados depois. É o estado de qualquer login
+    que nunca passou por essa tela.
+    """
+    cliente = Cliente.objects.filter_by_usuario_vinculado(usuario).first()
+    if cliente is None:
+        return None
+    permitidos = set(
+        UsuarioAcesso.objects.filter(usuario=usuario).values_list('acesso_id', flat=True)
+    )
+    hosts = [
+        {
+            'id': a.id,
+            'tipo': a.tipo,
+            'host': a.host,
+            'protocolo': a.protocolo or '',
+            'funcao': a.funcao.descricao if a.funcao else '',
+            'marcado': (not permitidos) or (a.id in permitidos),
+        }
+        for a in cliente.acessos.select_related('funcao').order_by('tipo', 'host')
+    ]
+    return {
+        'cliente_id': cliente.id,
+        'cliente_nome': cliente.nome_empresa,
+        'todos': not permitidos,
+        'hosts': hosts,
+    }
+
+
+def _sincronizar_acessos_usuario(request, usuario):
+    """Grava `UsuarioAcesso` a partir dos checkboxes 'acessos' do POST.
+
+    Mesmo marcador de seção do `_sincronizar_modulos_usuario` — sem
+    'acessos_form_present' o form não mexe em nada (um POST antigo, ou o
+    modal de cadastro, não podem apagar a seleção de ninguém).
+
+    Duas regras:
+    - **Tudo marcado = sem restrição**: apaga os registros em vez de gravar
+      um por host. É o que faz um host novo do cliente já nascer visível pra
+      quem tem acesso total, sem precisar reeditar o usuário.
+    - **Nada marcado não é gravado**: "zero host" é indistinguível de "sem
+      restrição" nessa tabela, e gravar isso liberaria tudo — o oposto do
+      que o clique quis dizer. Quem quer tirar hosts do login desmarca a
+      ferramenta "Acessos" logo acima.
+    - Só entram hosts **do cliente vinculado** ao usuário: id de host de
+      outro cliente vindo por POST manipulado é descartado.
+    """
+    if not request.POST.get('acessos_form_present'):
+        return
+    cliente = Cliente.objects.filter_by_usuario_vinculado(usuario).first()
+    if cliente is None:
+        return
+    ids_cliente = set(cliente.acessos.values_list('id', flat=True))
+    marcados = {int(v) for v in request.POST.getlist('acessos') if str(v).isdigit()} & ids_cliente
+
+    if ids_cliente and not marcados:
+        messages.warning(
+            request,
+            'Nenhum host marcado — a seleção de hosts foi mantida como estava. '
+            'Para o login não ver host nenhum, desmarque a ferramenta "Acessos".'
+        )
+        return
+
+    UsuarioAcesso.objects.filter(usuario=usuario).delete()
+    if marcados and marcados != ids_cliente:
+        UsuarioAcesso.objects.bulk_create(
+            [UsuarioAcesso(usuario=usuario, acesso_id=aid) for aid in marcados]
         )
 
 
@@ -209,6 +288,24 @@ def cadastrar_usuario(request):
 
 @login_required(login_url='login')
 @perms.pode_gerenciar_usuarios_required
+def hosts_usuario(request, usuario_id):
+    """Hosts do cliente vinculado a um login, para a seção "Hosts liberados"
+    do modal de edição.
+
+    Sob demanda em vez de embutido na página: a lista de usuários tem dezenas
+    de logins de portal e cada cliente pode ter dezenas de hosts — embutir
+    tudo dobrava o tamanho do HTML pra alimentar um modal que abre um usuário
+    por vez. De quebra, a lista vem sempre atual (host cadastrado depois de a
+    página carregar já aparece).
+    """
+    if not perms.is_admin(request.user) and not perms.usuarios_gerenciaveis_por(request.user).filter(id=usuario_id).exists():
+        return JsonResponse({'ok': False, 'erro': 'Sem permissão'}, status=403)
+    usuario = get_object_or_404(User, id=usuario_id)
+    return JsonResponse({'ok': True, 'info': _hosts_do_usuario(usuario)})
+
+
+@login_required(login_url='login')
+@perms.pode_gerenciar_usuarios_required
 def editar_usuario(request):
     if request.method == 'POST':
         usuario_id = request.POST.get('id')
@@ -299,6 +396,7 @@ def editar_usuario(request):
                 perfil.delete()
 
         _sincronizar_modulos_usuario(request, usuario)
+        _sincronizar_acessos_usuario(request, usuario)
 
         tipo_usuario = _TIPO_LABELS.get(role, 'Cliente')
         messages.success(request, f'Usuário atualizado com sucesso como {tipo_usuario}!')

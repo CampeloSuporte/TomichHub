@@ -68,6 +68,23 @@
     border-bottom: 1px solid rgba(88,166,255,.15);
 }
 
+/* Lista de hosts liberados (modal de edição) */
+.hosts-lista {
+    max-height: 230px; overflow-y: auto;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: rgba(255,255,255,.02); padding: 8px 10px;
+}
+.host-item { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,.04); }
+.host-item:last-child { border-bottom: none; }
+.host-item label { margin: 0; cursor: pointer; font-size: .82rem; color: var(--text-light); }
+.host-item .host-meta { font-size: .72rem; color: var(--text-muted); }
+.hosts-acoes { display: flex; gap: 10px; margin-bottom: 8px; }
+.hosts-acoes button {
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text-muted); font-size: .72rem; padding: 3px 10px; cursor: pointer;
+}
+.hosts-acoes button:hover { color: var(--text-light); border-color: rgba(255,255,255,.25); }
+
 /* Toggle "Tipo de usuário" (substitui o checkbox cru) */
 .role-toggle { display: flex; gap: 10px; }
 .role-option {
@@ -334,6 +351,16 @@
                         </div>
                         <small class="form-text text-muted">Só vale para usuários do tipo Cliente — desmarque o que este login não deve ver. Administradores sempre veem tudo.</small>
                     </div>
+
+                    <div class="form-section hosts-section">
+                        <div class="form-section-title"><i class="fas fa-server"></i> Hosts liberados</div>
+                        <small class="form-text text-muted">
+                            Escolher quais hosts este login vai enxergar só é possível depois de
+                            vinculá-lo a um cliente (tela <strong>Clientes</strong>, campo "Usuário"
+                            ou "Usuários adicionais"). Feito o vínculo, volte aqui e edite o usuário —
+                            por padrão ele vê todos os hosts do cliente.
+                        </small>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -450,6 +477,17 @@
                         </div>
                         <small class="form-text text-muted">Só vale para usuários do tipo Cliente — desmarque o que este login não deve ver. Administradores sempre veem tudo.</small>
                     </div>
+
+                    <div class="form-section hosts-section">
+                        <div class="form-section-title"><i class="fas fa-server"></i> Hosts liberados</div>
+                        <input type="hidden" name="acessos_form_present" value="1">
+                        <div class="hosts-acoes">
+                            <button type="button" onclick="marcarTodosHosts(true)">Marcar todos</button>
+                            <button type="button" onclick="marcarTodosHosts(false)">Desmarcar todos</button>
+                        </div>
+                        <div class="hosts-lista" id="edit_hosts_lista"></div>
+                        <small class="form-text text-muted" id="edit_hosts_ajuda"></small>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -530,6 +568,9 @@ function setRole(el, role) {
     // Ferramentas por login (UsuarioModulo) só fazem sentido pro portal do
     // cliente final.
     if (modulosSection) modulosSection.style.display = (role === 'cliente') ? '' : 'none';
+    // Hosts liberados: mesma regra dos módulos — é recorte do portal.
+    const hostsSection = form.querySelector('.hosts-section');
+    if (hostsSection) hostsSection.style.display = (role === 'cliente') ? '' : 'none';
     // Instância só aparece pra Operador.
     if (instanciaSection) instanciaSection.style.display = (role === 'operador') ? '' : 'none';
     // Nome da instância + ferramentas liberadas só fazem sentido pro Consultor.
@@ -559,10 +600,14 @@ function editarUsuario(id, username, email, role, instanciaId, modulosHabilitado
     const instanciaSection = form.querySelector('.instancia-section');
     const consultorNomeSection = form.querySelector('.consultor-nome-section');
     const ferramentasSection = form.querySelector('.ferramentas-section');
+    const hostsSection = form.querySelector('.hosts-section');
     if (modulosSection) modulosSection.style.display = (role === 'cliente') ? '' : 'none';
     if (instanciaSection) instanciaSection.style.display = (role === 'operador') ? '' : 'none';
     if (consultorNomeSection) consultorNomeSection.style.display = (role === 'consultor') ? '' : 'none';
     if (ferramentasSection) ferramentasSection.style.display = (role === 'consultor') ? '' : 'none';
+    if (hostsSection) hostsSection.style.display = (role === 'cliente') ? '' : 'none';
+
+    carregarHostsLiberados(id);
 
     // Instância (Operador) e ferramentas liberadas (Consultor)
     const instanciaSelect = document.getElementById('edit_instancia_select');
@@ -579,6 +624,79 @@ function editarUsuario(id, username, email, role, instanciaId, modulosHabilitado
     // Abre o modal
     const modal = new bootstrap.Modal(document.getElementById('edicaoModal'));
     modal.show();
+}
+
+// Busca os hosts do cliente vinculado ao login e monta a lista. Sob demanda
+// (e não embutido na página) porque a tela lista dezenas de usuários de
+// portal — ver a view hosts_usuario.
+async function carregarHostsLiberados(usuarioId) {
+    const lista = document.getElementById('edit_hosts_lista');
+    const marcador = document.querySelector('#edicaoForm input[name="acessos_form_present"]');
+    if (!lista) return;
+    // Enquanto não chegar a resposta, o form não pode gravar seleção nenhuma.
+    if (marcador) marcador.disabled = true;
+    lista.innerHTML = '<div style="padding:10px;font-size:.82rem;color:var(--text-muted)">'
+        + '<i class="fas fa-spinner fa-spin me-2"></i>Carregando hosts...</div>';
+    try {
+        const r = await fetch('/auth/usuarios/' + usuarioId + '/hosts/');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        renderHostsLiberados(d.info);
+    } catch (e) {
+        lista.innerHTML = '<div style="padding:10px;font-size:.82rem;color:var(--red)">'
+            + 'Não foi possível carregar os hosts (' + e.message + ').</div>';
+        document.getElementById('edit_hosts_ajuda').textContent = '';
+    }
+}
+
+// Monta a lista de hosts do cliente vinculado, marcando os que o login já
+// enxerga. `hostsInfo` vem do servidor (_hosts_do_usuario) e é null quando o
+// usuário ainda não está vinculado a nenhum cliente.
+function renderHostsLiberados(hostsInfo) {
+    const lista = document.getElementById('edit_hosts_lista');
+    const ajuda = document.getElementById('edit_hosts_ajuda');
+    const marcador = document.querySelector('#edicaoForm input[name="acessos_form_present"]');
+    if (!lista) return;
+
+    if (!hostsInfo) {
+        lista.innerHTML = '<div style="padding:10px;font-size:.82rem;color:var(--text-muted)">'
+            + 'Este login ainda não está vinculado a nenhum cliente. Faça o vínculo na tela '
+            + '<strong>Clientes</strong> e volte aqui para escolher os hosts.</div>';
+        ajuda.textContent = '';
+        // Sem marcador o POST não mexe na seleção de hosts.
+        if (marcador) marcador.disabled = true;
+        return;
+    }
+    if (marcador) marcador.disabled = false;
+
+    if (!hostsInfo.hosts.length) {
+        lista.innerHTML = '<div style="padding:10px;font-size:.82rem;color:var(--text-muted)">'
+            + 'O cliente <strong>' + hostsInfo.cliente_nome + '</strong> ainda não tem host cadastrado.</div>';
+        ajuda.textContent = '';
+        return;
+    }
+
+    lista.innerHTML = hostsInfo.hosts.map(function(h) {
+        const meta = [h.protocolo, h.funcao].filter(Boolean).join(' · ');
+        return '<div class="host-item">'
+            + '<input class="form-check-input mt-0" type="checkbox" name="acessos" value="' + h.id + '"'
+            + ' id="edit_acesso_' + h.id + '"' + (h.marcado ? ' checked' : '') + '>'
+            + '<label for="edit_acesso_' + h.id + '">' + h.tipo
+            + ' <span class="host-meta">' + h.host + (meta ? ' — ' + meta : '') + '</span></label>'
+            + '</div>';
+    }).join('');
+
+    ajuda.innerHTML = 'Hosts do cliente <strong>' + hostsInfo.cliente_nome + '</strong>. '
+        + 'Desmarque o que este login não deve ver nem acessar (aba Acessos, terminal, WinBox, '
+        + 'backups e proxy web). Com <strong>todos</strong> marcados o login fica sem restrição — '
+        + 'e passa a ver também os hosts cadastrados depois.'
+        + (hostsInfo.todos ? '' : ' <em>Hoje este login está restrito aos hosts marcados.</em>');
+}
+
+function marcarTodosHosts(marcar) {
+    document.querySelectorAll('#edit_hosts_lista input[name="acessos"]').forEach(function(cb) {
+        cb.checked = marcar;
+    });
 }
 </script>
 

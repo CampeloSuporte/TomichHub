@@ -90,12 +90,18 @@ def listar_clientes(request):
     modelos = Modelo_equipamento.objects.all()
     funcao_equipamentos = Funcao_equipamento.objects.all()
 
-    funcoes = cliente.acessos.values_list('funcao', flat=True).distinct()
+    # Hosts que este login enxerga: para o portal do cliente final pode ser
+    # um subconjunto do cliente (usuario.models.UsuarioAcesso); pro
+    # back-office é sempre tudo. Vale pro combo de função, pra lista e pro
+    # aviso de backup com erro — senão o usuário veria pela borda um host
+    # que não pode abrir.
+    acessos_do_cliente = _perms.filtrar_acessos_visiveis(request.user, cliente.acessos.all())
+    funcoes = acessos_do_cliente.values_list('funcao', flat=True).distinct()
 
     if funcao_selecionada:
-        acessos = cliente.acessos.filter(funcao=funcao_selecionada)
+        acessos = acessos_do_cliente.filter(funcao=funcao_selecionada)
     else:
-        acessos = cliente.acessos.all()
+        acessos = acessos_do_cliente
 
     documentos = Documento.objects.filter(cliente=cliente).order_by('-data_upload')
     arquivos_vpn = ArquivoVPN.objects.filter(cliente=cliente).order_by('-data_upload')
@@ -122,7 +128,7 @@ def listar_clientes(request):
 
     # ── Detectar acessos com erro de backup ─────────────────────────────
     acessos_com_erro_backup = []
-    for ac in cliente.acessos.filter(backup_habilitado=True):
+    for ac in acessos_do_cliente.filter(backup_habilitado=True):
         ultimo_backup = BackupLog.objects.filter(acesso=ac).order_by('-data_backup').first()
         if ultimo_backup and ultimo_backup.status == 'ERRO':
             acessos_com_erro_backup.append({
@@ -913,7 +919,7 @@ def buscar_acesso(request, acesso_id):
         acesso = Acesso.objects.get(id=acesso_id)
 
         # ✅ Verificar permissão
-        if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        if not _perms.pode_acessar_acesso(request.user, acesso):
             return JsonResponse({'error': 'Sem permissão'}, status=403)
 
         data = {
@@ -1773,7 +1779,7 @@ def executar_backup_acesso(request, acesso_id):
         acesso = Acesso.objects.get(id=acesso_id)
 
         # Verificar permissão
-        if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        if not _perms.pode_acessar_acesso(request.user, acesso):
             return JsonResponse({'error': 'Sem permissão'}, status=403)
 
         # Verificar se backup está habilitado
@@ -3527,6 +3533,14 @@ def listar_backups_cliente(request):
         'acesso', 'template', 'executado_por'
     ).order_by('-data_backup')
 
+    # Login de portal limitado a alguns hosts só vê o backup desses hosts —
+    # o arquivo do BackupLog é a configuração do equipamento, o mesmo dado
+    # que o host esconde. `acesso` é obrigatório no BackupLog, então o filtro
+    # não descarta registro nenhum além dos hosts bloqueados.
+    backups = backups.filter(
+        acesso__in=_perms.filtrar_acessos_visiveis(request.user, cliente.acessos.all())
+    )
+
     # ✅ PASSO 1: Verificar quais arquivos existem e quais são órfãos
     backups_validos = []
     backups_para_deletar = []
@@ -3879,7 +3893,7 @@ def configurar_backup_massa(request):
         if not acesso:
             erros.append(f"Acesso {item.get('acesso_id')} não encontrado")
             continue
-        if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        if not _perms.pode_acessar_acesso(request.user, acesso):
             erros.append(f'Sem permissão para {acesso.tipo}')
             continue
 
@@ -3993,7 +4007,9 @@ def listar_acessos_terminal(request):
         cliente_obj = get_object_or_404(Cliente, id=cliente_id)
         if not _perms.pode_acessar_cliente(request.user, cliente_obj):
             return JsonResponse({'acessos': []})
-        acessos = base_qs.filter(cliente=cliente_obj).order_by('tipo')
+        acessos = _perms.filtrar_acessos_visiveis(
+            request.user, base_qs.filter(cliente=cliente_obj)
+        ).order_by('tipo')
     elif _perms.is_admin(request.user):
         acessos = base_qs.order_by('cliente__nome_empresa', 'tipo')
     elif _perms.is_backoffice(request.user):
@@ -4004,7 +4020,9 @@ def listar_acessos_terminal(request):
     else:
         try:
             cliente_obj = Cliente.objects.get_by_usuario_vinculado(request.user)
-            acessos = base_qs.filter(cliente=cliente_obj).order_by('tipo')
+            acessos = _perms.filtrar_acessos_visiveis(
+                request.user, base_qs.filter(cliente=cliente_obj)
+            ).order_by('tipo')
         except Cliente.DoesNotExist:
             return JsonResponse({'acessos': []})
 
@@ -4033,7 +4051,7 @@ def winbox_page(request, acesso_id):
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
     # Verificar permissões
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     # Determinar porta WebFig (80 = HTTP padrão do RouterOS)
@@ -4060,7 +4078,7 @@ def rdp_page(request, acesso_id):
     Xvfb + xfreerdp + x11vnc + noVNC, ver clientes/rdp_vnc.py)."""
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     context = {
@@ -4077,7 +4095,7 @@ def webfig_vnc_page(request, acesso_id):
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
     # Verificar permissões
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     context = {
@@ -4149,7 +4167,7 @@ def ping_acesso(request, acesso_id):
         acesso = Acesso.objects.get(id=acesso_id)
 
         # ✅ Verificar permissão
-        if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+        if not _perms.pode_acessar_acesso(request.user, acesso):
             return JsonResponse({'error': 'Sem permissão'}, status=403)
 
         host = acesso.host
@@ -4391,7 +4409,7 @@ def traceroute_acesso(request, acesso_id):
     except Acesso.DoesNotExist:
         return JsonResponse({'error': 'Acesso não encontrado'}, status=404)
 
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     host = acesso.host
@@ -5458,7 +5476,7 @@ def listar_comentarios_acesso(request, acesso_id):
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
     # ✅ CORRIGIDO: Verificação de permissão CORRETA
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     comentarios = acesso.comentarios.all()
@@ -5486,7 +5504,7 @@ def adicionar_comentario_acesso(request, acesso_id):
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
     # ✅ CORRIGIDO: Verificação de permissão CORRETA
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     comentario_texto = request.POST.get('comentario', '').strip()
@@ -5529,7 +5547,7 @@ def listar_sessoes_auditoria(request, acesso_id):
     usado pelo modal de auditoria por equipamento."""
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     sessoes = acesso.sessoes_auditoria.select_related('usuario').annotate(
@@ -5595,7 +5613,7 @@ def listar_comandos_sessao(request, sessao_id):
     sessao = get_object_or_404(AcessoSessao, id=sessao_id)
     acesso = sessao.acesso
 
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     dados = [
@@ -5616,7 +5634,7 @@ def ver_transcript_sessao(request, sessao_id):
     sessao = get_object_or_404(AcessoSessao, id=sessao_id)
     acesso = sessao.acesso
 
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     return JsonResponse({'success': True, 'transcript': sessao.transcript})
@@ -6313,7 +6331,7 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
     # ── Permissão ─────────────────────────────────────────────────────
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return HttpResponse('Sem permissao', status=403)
 
     # ── Normalização de URL ───────────────────────────────────────────
@@ -6959,7 +6977,7 @@ def interfaces_backup_acesso(request, acesso_id):
     lista vazia — o campo continua editável em texto livre."""
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     backup = BackupLog.objects.filter(
@@ -7150,7 +7168,7 @@ def l2vpn_backup_acesso(request, acesso_id):
     em vez de sumir)."""
     acesso = get_object_or_404(Acesso.objects.select_related('cliente'), id=acesso_id)
 
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     servicos, log = _l2vpn_servicos_do_acesso(acesso)
@@ -7230,7 +7248,7 @@ def l2vpn_peers_acesso(request, acesso_id):
     """
     acesso = get_object_or_404(Acesso.objects.select_related('cliente'), id=acesso_id)
 
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     candidatos = []
@@ -7282,7 +7300,7 @@ def l2vpn_clonar_acesso(request, acesso_id):
 
     if not (_perms.is_backoffice(request.user)
             and _perms.ferramenta_habilitada(request.user, 'topologia')
-            and _perms.pode_acessar_cliente(request.user, acesso.cliente)):
+            and _perms.pode_acessar_acesso(request.user, acesso)):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     try:
@@ -7454,7 +7472,7 @@ def vlans_switches_cliente(request, cliente_id):
 def vlans_backup_acesso(request, acesso_id):
     """VLANs configuradas no switch, extraídas do backup mais recente."""
     acesso = get_object_or_404(Acesso.objects.select_related('cliente'), id=acesso_id)
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     vlans, log = _vlans_do_acesso(acesso)
@@ -7508,7 +7526,7 @@ def _pon_pode(request, acesso):
     rede, não função de portal de cliente."""
     return (_perms.is_backoffice(request.user)
             and _perms.ferramenta_habilitada(request.user, 'topologia')
-            and _perms.pode_acessar_cliente(request.user, acesso.cliente))
+            and _perms.pode_acessar_acesso(request.user, acesso))
 
 
 @login_required(login_url='login')

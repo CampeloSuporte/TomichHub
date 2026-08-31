@@ -5,6 +5,51 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-08-31 (Hosts liberados por usuário do portal)
+
+### Adicionado
+
+- **Selecionar quais hosts do cliente cada login de portal enxerga** (`usuario/models.py`,
+  `usuario/perms.py`, `usuario/views.py`, `usuario/templates/cadastrar_usuario.html`,
+  `clientes/views.py`). Até aqui o recorte do portal ia só até a aba (`UsuarioModulo`): quem
+  tinha "Acessos" via os 46 hosts do cliente. Agora **Sistema → Usuário**, ao editar um login do
+  tipo *Cliente*, traz a seção **"Hosts liberados"** com os hosts do cliente vinculado a ele —
+  desmarque o que esse login não deve ver.
+  - Modelo novo `UsuarioAcesso` (migração `usuario/0012_usuarioacesso`). **Sem registro = vê
+    todos os hosts**, como sempre foi: ninguém perde acesso no deploy e restringir é ação
+    explícita do admin. É lista de *permitidos*, então host cadastrado depois nasce invisível
+    para quem está restrito — e visível para quem não está.
+  - Marcar todos de volta apaga os registros (volta a "sem restrição"). Desmarcar **tudo** não é
+    gravado: seria indistinguível de "sem restrição" e liberaria geral — o form mantém a seleção
+    e explica que o caminho é desmarcar a ferramenta "Acessos".
+  - A lista de hosts do modal vem de `GET /auth/usuarios/<id>/hosts/` ao abrir a edição.
+    Embutida no HTML da tela de usuários ela levava a página de 254 KB para 596 KB (dezenas de
+    logins × dezenas de hosts) para alimentar um modal que abre um usuário por vez.
+  - O vínculo login ↔ cliente continua na tela **Clientes**; sem vínculo o modal explica isso em
+    vez de mostrar lista vazia.
+
+### Alterado
+
+- **Permissão de host virou ponto único** (`usuario.perms.pode_acessar_acesso` e
+  `filtrar_acessos_visiveis`). Os ~26 lugares que faziam
+  `pode_acessar_cliente(user, acesso.cliente)` passaram a chamar `pode_acessar_acesso(user, acesso)`
+  — `clientes/views.py` (buscar acesso, backup manual, WinBox, RDP, WebFig, ping, traceroute,
+  comentários, auditoria, proxy web, interfaces/VLANs/L2VPN, OLT PON), `clientes/script_views.py`,
+  `clientes/bgp_views.py`, `home/views.py` e o WebSocket do Terminal SSH (`clientes/consumers.py`).
+  Nada muda para Administrador, Consultor e Operador: eles respondem pelo cliente/instância
+  inteiros e nunca são filtrados por host.
+- Listas de host filtradas pelo mesmo critério: aba **Acessos** (mais o combo de Função e o aviso
+  de backup com erro), `/clientes/terminal/acessos/` (Terminal SSH, WinBox e combos) e os
+  **backups do cliente** — o arquivo de backup é a configuração do equipamento.
+
+**Testes:** `usuario.tests.HostsLiberadosPortalTest` (9). Suíte do app: 17, OK.
+`clientes` + `atendimento`: 310 testes, OK. Conferência no banco real com o login `leivy`
+(Startnet Provedor, 46 hosts): restrito a 3, a aba mostrou 3, o combo do terminal 3, e host
+bloqueado deu 403 em buscar/comentários/proxy web/WinBox — login devolvido ao estado original.
+**Documentação:** `docs/HOSTS_POR_USUARIO.md` (novo).
+
+---
+
 ## [Não publicado] — 2026-08-31 (VPN: portal do cliente cria usuário adicional)
 
 ### Corrigido

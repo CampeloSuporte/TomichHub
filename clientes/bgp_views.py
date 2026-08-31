@@ -53,7 +53,7 @@ def _checar_acesso(request, acesso):
     """Checagem de posse do Acesso (mesma instância/consultor dono do cliente).
     Devolve um JsonResponse de erro (status 403) se não puder acessar, ou
     None se puder — mesmo estilo de `_checar_staff`."""
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
     return None
 
@@ -65,7 +65,7 @@ def bgp_page(request, acesso_id):
         return render(request, 'terminal_link_invalido.html',
                        {'motivo': 'Sem permissão para acessar esta tela.'}, status=403)
     acesso = get_object_or_404(Acesso, id=acesso_id)
-    if not _perms.pode_acessar_cliente(request.user, acesso.cliente):
+    if not _perms.pode_acessar_acesso(request.user, acesso):
         return render(request, 'terminal_link_invalido.html',
                        {'motivo': 'Sem permissão para acessar esta tela.'}, status=403)
     return render(request, 'bgp_automacao.html', {
