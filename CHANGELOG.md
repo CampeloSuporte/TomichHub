@@ -5,6 +5,35 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-02 (Colar de fora dentro do WinBox/RDP web)
+
+### Corrigido
+
+- **`Ctrl+V` com texto copiado fora do navegador não colava nada dentro da renderização do WinBox
+  Web e do RDP Web** (`clientes/templates/winbox.html`, `clientes/rdp_vnc.py`). Duas causas, uma em
+  cada ponta:
+  - **Navegador**: o canvas do noVNC só encaminha a *tecla* — o texto precisa chegar antes ao
+    clipboard X11 da sessão via `ClientCutText`. A leitura do clipboard local dependia só de
+    `navigator.clipboard.readText()`, que o **Firefox nunca expôs** e que no **Chrome** pode estar
+    com a permissão negada; quando falhava, o código desistia em silêncio. Agora o texto vem do
+    **evento `paste` do próprio navegador** (não pede permissão nenhuma): o `keydown` de
+    `Ctrl+V`/`Shift+Insert` é interceptado em captura, o foco vai para um `<textarea>` invisível
+    que recebe a colagem, e `readText()` virou apenas plano B.
+  - **Servidor (RDP)**: o `xfreerdp` subia sem o canal `cliprdr`, então nada atravessava até o
+    Windows mesmo com o texto na seleção X11. Agora recebe `+clipboard` (forma válida no FreeRDP
+    2 e 3 — o 3 já liga por padrão, o 2.x do fallback não).
+- **Modificador preso na sessão remota** ao colar: com o foco no `<textarea>` invisível, o `keyup`
+  do Ctrl não chegava ao noVNC. O foco volta ao canvas logo após a colagem e o `Ctrl+V` remoto é
+  sintetizado inteiro (Control down → v down → v up → Control up).
+
+### Alterado
+
+- Painel manual de área de transferência (botão 📋) ganhou o botão **"Colar na sessão"**, que
+  empurra o texto e dispara o `Ctrl+V` remoto de uma vez, e o texto de ajuda passou a dizer que o
+  caminho normal é o `Ctrl+V` direto na tela.
+
+---
+
 ## [Não publicado] — 2026-08-31 (Geofeed por bloco alocado — Registro.br)
 
 ### Corrigido

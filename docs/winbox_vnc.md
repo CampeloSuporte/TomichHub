@@ -307,6 +307,60 @@ continua guardada em memória e alimentando o diagnóstico, independente do nív
 Validado em produção em 20/08/2026 no `SRV-AGRONELORE` (Grupo Agronelore, 192.168.0.1:3389 pelo
 túnel do ProxyServer): área de trabalho do Windows renderizando no noVNC.
 
+### Colar do PC local dentro da sessão não funcionava (WinBox e RDP) — Corrigido em 02/09/2026
+
+Copiar um texto **fora** do navegador (ou em outra aba) e dar `Ctrl+V` dentro da renderização do
+WinBox/RDP não colava nada. Duas causas independentes, uma em cada ponta:
+
+**1. Navegador — a leitura do clipboard local dependia só de `navigator.clipboard.readText()`**
+
+O canvas do noVNC apenas **encaminha a tecla** pro host remoto; quem cola é o app lá dentro, contra
+o clipboard X11 da sessão. Então o texto precisa chegar antes, via `ClientCutText`
+(`rfb.clipboardPasteFrom()`). O código lia o clipboard local com `navigator.clipboard.readText()` e,
+se a promise falhasse, desistia em silêncio — e ela falha em muita gente:
+
+- o **Firefox nunca expôs `readText()`** para páginas comuns;
+- no **Chrome** a permissão `clipboard-read` pode estar negada (e, dentro de `<iframe>`, exige
+  `allow="clipboard-read; clipboard-write"` — a aba WinBox do terminal já traz esse atributo).
+
+Agora a leitura sai do **evento `paste` do próprio navegador**, que não pede permissão nenhuma e
+existe em todos eles. O `keydown` de `Ctrl+V`/`Shift+Insert` é interceptado em fase de **captura**
+no `document`, move o foco para um `<textarea>` invisível (`#wb-paste-sink`) e deixa a ação padrão
+seguir — o navegador entrega o `paste` nele e o texto é lido de `clipboardData`. `readText()` virou
+só plano B, num timeout de 150 ms.
+
+Detalhes que não podem ser mexidos sem quebrar de novo:
+
+- **Nunca chamar `preventDefault()` nesse `keydown`**: o evento `paste` é a ação padrão dele.
+  Só `stopPropagation()`/`stopImmediatePropagation()`, pra segurar a tecla (se ela chegasse agora
+  no app remoto, ele colaria o conteúdo *antigo* do clipboard da sessão).
+- O `#wb-paste-sink` precisa ser focável de verdade — `display:none`/`visibility:hidden` não
+  recebem foco e o `paste` nunca chegaria. Ele fica em `left:-9999px` com `opacity:0`.
+- O foco volta pro canvas num `setTimeout(…, 0)`; parado no sink, o `keyup` do Ctrl não chegaria no
+  noVNC e o modificador ficaria **preso** na sessão remota.
+- O `Ctrl+V` remoto é sintetizado inteiro (Control down → v down → v up → Control up), porque o Ctrl
+  físico pode ter sido solto durante a espera e o noVNC ignora release de tecla que ele não
+  registrou como pressionada.
+- Clipboard local vazio ou ilegível ainda reenvia a tecla segurada, pra colar o que já estiver no
+  clipboard da sessão em vez de o `Ctrl+V` do usuário sumir.
+
+**2. Servidor — o RDP subia sem o canal de clipboard**
+
+Mesmo com o texto na seleção X11 do Xvfb, ele não tinha como atravessar até o Windows: o
+`RdpVNCManager` chamava o `xfreerdp` **sem** o canal `cliprdr`. Agora passa `+clipboard` (forma
+aceita pelo FreeRDP 2 e 3). O FreeRDP 3 liga por padrão, mas o binário 2.x do fallback não.
+
+Do lado do WinBox não foi preciso nada no servidor: o `x11vnc` já define **PRIMARY e CLIPBOARD** ao
+receber `ClientCutText` (é o padrão — `-nosetclipboard`/`-nosetprimary` desligariam), e o WinBox
+nativo/Wine lê o `CLIPBOARD`.
+
+O atraso entre empurrar o texto e sintetizar o `Ctrl+V` é de **80 ms** no WinBox/WebFig e **250 ms**
+no RDP — no RDP o FreeRDP ainda precisa negociar o `cliprdr` com o Windows depois que o `x11vnc`
+assume a seleção X11.
+
+O painel manual (botão 📋) continua existindo como alternativa e ganhou um botão **"Colar na
+sessão"**, que empurra o texto e dispara o `Ctrl+V` remoto de uma vez.
+
 ---
 
 ## Modos Suportados
@@ -340,5 +394,5 @@ sudo -u www-data env -i HOME=/var/www PATH=/usr/local/sbin:/usr/local/bin:/usr/s
 
 ---
 
-**Última atualização:** 20/08/2026  
+**Última atualização:** 02/09/2026  
 **Autor:** CampeloSuporte

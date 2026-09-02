@@ -121,6 +121,12 @@ class RdpVNCManager:
         # xfreerdp morre em ~100 ms e o usuário só vê a tela preta do Xvfb.
         # Sem o flag, o FreeRDP negocia sozinho (NLA → TLS → RDP legado) e
         # atende tanto servidor novo quanto servidor antigo sem NLA.
+        #
+        # "+clipboard" (forma aceita tanto pelo FreeRDP 2 quanto pelo 3) liga o
+        # canal cliprdr. Sem ele o texto que o noVNC empurra pra seleção X11 do
+        # Xvfb (via x11vnc) nunca chega ao Windows, e colar de fora dentro da
+        # sessão RDP simplesmente não fazia nada. O FreeRDP 3 já liga por padrão,
+        # mas o binário 2.x do fallback não — então deixamos explícito.
         rdp_cmd = [
             rdp_bin,
             f"/v:{self.host}:{self.port}",
@@ -128,6 +134,7 @@ class RdpVNCManager:
             f"/p:{self.password}",
             "/cert:ignore",
             "/dynamic-resolution",
+            "+clipboard",
             "/f",
         ]
         try:
