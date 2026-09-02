@@ -3561,8 +3561,10 @@ IPAM._srNodeById = {};
 function _srAncestraisAbertos(s){
     let anc = s._parentId;
     while(anc){
-        if(!IPAM._srOpen[anc]) return false;
-        anc = (IPAM._srNodeById[anc] || {})._parentId || null;
+        const n = IPAM._srNodeById[anc] || {};
+        // a espelho não tem linha nem pasta própria — nunca segura a filha
+        if(!n._espelho && !IPAM._srOpen[anc]) return false;
+        anc = n._parentId || null;
     }
     return true;
 }
@@ -3578,6 +3580,7 @@ function _srAgruparPorPrefixo(){
     const grupos  = {};
     const pfxPorId = new Map((IPAM.prefixos || []).map(p => [p.id, p]));
     const donoDoNo = {};   // id da sub-rede → id do prefixo cuja pasta a abriga
+    const temEspelho = {}; // pasta que já achou a sub-rede de mesmo CIDR
 
     flat.forEach(s => {
         const herdado = (s._parentId != null && donoDoNo[s._parentId] !== undefined)
@@ -3605,7 +3608,16 @@ function _srAgruparPorPrefixo(){
         // Profundidade DENTRO da pasta: quem abre grupo novo volta a ser raiz,
         // senão a indentação herdaria o nível da árvore global de sub-redes.
         const pai = s._parentId != null ? IPAM._srNodeById[s._parentId] : null;
-        s._depthRel = (pai && donoDoNo[s._parentId] === dono) ? (pai._depthRel + 1) : 0;
+        const noGrupoDoPai = !!(pai && donoDoNo[s._parentId] === dono);
+        /* A sub-rede ESPELHO — mesmo CIDR do prefixo dono — não ganha linha
+           própria: quem a representa é a linha do prefixo (o sistema cadastra
+           o bloco duas vezes, ver _get_or_create_prefixo_pai, e duas linhas
+           idênticas uma embaixo da outra não dizem nada). Por isso ela é
+           transparente na indentação: as filhas dela são a raiz da pasta. */
+        s._depthRel = noGrupoDoPai ? (pai._espelho ? pai._depthRel : pai._depthRel + 1) : 0;
+        s._espelho  = s._depthRel === 0 && !temEspelho[dono]
+                      && (pfxPorId.get(dono) || {}).prefixo === s.rede;
+        if(s._espelho) temEspelho[dono] = true;
         (grupos[dono] = grupos[dono] || []).push(s);
     });
     return grupos;
@@ -3764,6 +3776,7 @@ window.ipamCarregarPrefixos = async function(){
         filhos.forEach(c => {
             let ancora = null, ancoraPL = -1;
             grupo.forEach(s => {
+                if(s._espelho) return;   // sem linha própria: não serve de âncora
                 const pl = parseInt((s.rede||'').split('/')[1]||'0', 10);
                 if(pl > ancoraPL && _srContains(s.rede, c.prefixo)){ ancora = s; ancoraPL = pl; }
             });
@@ -3782,7 +3795,10 @@ window.ipamCarregarPrefixos = async function(){
         const maxPL   = ver === 6 ? 128 : 32;
         const podeDividir = pfxLen < maxPL - 1;
         const ehGalho = temFilhos.has(p.id);
-        const qtdSub  = grupo.filter(s => (s._depthRel || 0) === 0).length;
+        /* Sub-rede de mesmo CIDR do prefixo: some como linha e é absorvida por
+           esta — gateway, VLAN, utilização, grade de IPs e os botões dela. */
+        const espelho = grupo.find(s => s._espelho) || null;
+        const qtdSub  = grupo.filter(s => (s._depthRel || 0) === 0 && !s._espelho).length;
         const toggleArvore = ehGalho
             ? `<i id="pfx-caret-${p.id}" class="fas ${colapsado ? 'fa-caret-right' : 'fa-caret-down'}" style="width:14px;cursor:pointer;color:var(--text-muted);"
                  onclick="ipamToggleArvorePrefixo(${p.id})" title="Expandir/colapsar prefixos filhos"></i>`
@@ -3798,19 +3814,59 @@ window.ipamCarregarPrefixos = async function(){
                 style="padding:2px 6px;font-size:.7rem;background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.2);color:var(--primary-green);border-radius:4px;"
                 onclick="ipamCriarSubRedeNoEspaco(null,0,${p.id})"><i class="fas fa-plus"></i></button>`;
 
+        /* ── O que a linha herda da espelho ──
+           Sem ela a linha do prefixo mostraria só "0 sub-redes" e esconderia o
+           gateway, a VLAN e a ocupação reais do bloco. */
+        const espCheia  = !!(espelho && espelho.pool_cheia);
+        const gwHtml    = espelho && espelho.gateway
+            ? `<small style="color:var(--text-muted);margin-left:6px;">gw ${espelho.gateway}</small>` : '';
+        const vlanHtml  = espelho && espelho.vlan
+            ? `<span style="color:#ffaa00;font-size:.78rem;margin-left:6px;">${espelho.vlan}</span>` : '';
+        const utilHtml  = !espelho ? ''
+            : (espCheia
+                ? `<span style="color:#ff8080;font-size:.72rem;white-space:nowrap;"><i class="fas fa-ban me-1"></i>Cheia</span>`
+                : `<span style="color:var(--text-muted);font-size:.75rem;white-space:nowrap;">${espelho.utilizacao_pct}% (${espelho.usados}/${espelho.total_hosts})</span>`);
+        // Grade de IPs: mesma regra da linha de sub-rede — bloco pequeno e
+        // indiviso (num bloco quebrado quem manda nos IPs são as filhas).
+        const tetoGrade = ver === 6 ? 120 : 24;
+        const gradeBtn  = (espelho && pfxLen >= tetoGrade && qtdSub === 0)
+            ? `<button class="btn btn-xs me-1" id="ipam-grade-btn-${espelho.id}"
+                style="padding:2px 7px;font-size:.75rem;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.25);color:var(--primary-green);border-radius:4px;"
+                onclick="ipamToggleGradeSubrede(${espelho.id})" title="Ver grade de IPs"><i class="fas fa-table-cells"></i></button>`
+            : '';
+        const editSubBtn = espelho
+            ? `<button class="btn btn-xs me-1" title="Editar a sub-rede deste bloco (gateway, VLAN, status)"
+                style="padding:2px 7px;font-size:.75rem;background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.25);color:#79c0ff;border-radius:4px;"
+                onclick="ipamEditarSubRede(${espelho.id})"><i class="fas fa-network-wired"></i></button>`
+            : '';
+        /* Pool cheia: com espelho o toggle é o DELA — o flag do prefixo é
+           derivado das sub-redes vinculadas (_sync_prefixo_pool_cheia), então
+           marcar no prefixo seria desfeito na próxima sincronização. */
+        const cheia = espelho ? espCheia : p.pool_cheia;
+        const poolBtn = `<button class="btn btn-xs me-1" title="${cheia ? 'Desmarcar pool cheia' : 'Marcar pool cheia'}"
+                style="padding:2px 7px;font-size:.75rem;background:${cheia ? 'rgba(255,80,80,.2)' : 'rgba(255,170,0,.08)'};border:1px solid ${cheia ? 'rgba(255,80,80,.4)' : 'rgba(255,170,0,.25)'};color:${cheia ? '#ff8080' : '#ffaa00'};border-radius:4px;"
+                onclick="${espelho ? `ipamToggleSubredePoolCheia(${espelho.id})` : `ipamTogglePoolCheia(${p.id})`}">
+                <i class="fas ${cheia ? 'fa-times-circle' : 'fa-ban'}"></i>
+            </button>`;
+        // Linha irmã da grade: mora aqui porque a linha da espelho não existe
+        const linhaGrade = espelho
+            ? `<tr id="sr-grade-${espelho.id}" style="display:none;"><td colspan="7" style="padding:0;border:none;"></td></tr>`
+            : '';
+
         const linhaPrefixo = `
     <tr id="pfx-row-${p.id}" class="ipam-row-prefixo" data-pai="${p.pai_id||''}" style="${escondida ? 'display:none;' : ''}">
         <td style="white-space:nowrap;">
             <span style="display:inline-block;width:${nivel*18}px;"></span>${toggleArvore}${folderBtn}${addSubBtn}
-            <strong class="ipam-pfx-addr" style="color:var(--accent-cyan);font-family:'Courier New',monospace;font-size:.9rem;">${p.prefixo}</strong>
-            ${p.pool_cheia ? `<span style="margin-left:6px;padding:1px 6px;background:rgba(255,80,80,.15);border:1px solid rgba(255,80,80,.35);border-radius:4px;font-size:.7rem;color:#ff8080;vertical-align:middle;"><i class="fas fa-ban me-1"></i>Pool Cheia</span>` : ''}
+            <strong class="ipam-pfx-addr" style="color:var(--accent-cyan);font-family:'Courier New',monospace;font-size:.9rem;">${p.prefixo}</strong>${gwHtml}
+            ${cheia ? `<span style="margin-left:6px;padding:1px 6px;background:rgba(255,80,80,.15);border:1px solid rgba(255,80,80,.35);border-radius:4px;font-size:.7rem;color:#ff8080;vertical-align:middle;"><i class="fas fa-ban me-1"></i>Pool Cheia</span>` : ''}
         </td>
-        <td>${tipoBadge(p.tipo)}</td>
+        <td>${tipoBadge(p.tipo)}${vlanHtml}</td>
         <td>${badge(p.status)}</td>
         <td>
             ${qtdSub > 0
                 ? `<a href="#" style="color:var(--primary-green);font-weight:600;" onclick="ipamFiltrarSubredes(${p.id});return false;">${qtdSub}</a>`
-                : `<span style="color:var(--text-muted);">0</span>`}
+                : (espelho ? '' : `<span style="color:var(--text-muted);">0</span>`)}
+            ${qtdSub > 0 && utilHtml ? `<span style="color:var(--text-muted);margin:0 4px;">·</span>` : ''}${utilHtml}
         </td>
         <td style="color:var(--text-muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${p.descricao||''}">${p.descricao||''}</td>
         <td style="color:var(--text-muted)">${p.local||''}</td>
@@ -3825,14 +3881,10 @@ window.ipamCarregarPrefixos = async function(){
                 onclick="ipamAbrirDividir('prefixo',${p.id},'${p.prefixo}',${pfxLen},${ver})">
                 <i class="fas fa-cut"></i>
             </button>` : ''}
-            <button class="btn btn-xs me-1" title="${p.pool_cheia ? 'Desmarcar pool cheia' : 'Marcar pool cheia'}"
-                style="padding:2px 7px;font-size:.75rem;background:${p.pool_cheia ? 'rgba(255,80,80,.2)' : 'rgba(255,170,0,.08)'};border:1px solid ${p.pool_cheia ? 'rgba(255,80,80,.4)' : 'rgba(255,170,0,.25)'};color:${p.pool_cheia ? '#ff8080' : '#ffaa00'};border-radius:4px;"
-                onclick="ipamTogglePoolCheia(${p.id})">
-                <i class="fas ${p.pool_cheia ? 'fa-times-circle' : 'fa-ban'}"></i>
-            </button>
+            ${gradeBtn}${poolBtn}${editSubBtn}
             ${acoes('ipamDeletarPrefixo','ipamEditarPrefixo',p.id)}
         </td>
-    </tr>`;
+    </tr>${linhaGrade}`;
 
         /* Sub-árvore de uma sub-rede (o DFS já vem pronto em `grupo`): a linha,
            as filhas e, no fim delas, os prefixos ancorados nessa sub-rede. */
@@ -3865,6 +3917,7 @@ window.ipamCarregarPrefixos = async function(){
         const itens = [];
         let i = 0;
         while(i < grupo.length){
+            if(grupo[i]._espelho){ i++; continue; }   // absorvida pela linha do prefixo
             const r = _emitirSr(i);
             itens.push({cidr: grupo[i].rede, html: r.html});
             i = r.fim;
@@ -3937,7 +3990,10 @@ window.ipamAplicarVisibilidade = function(){
     Object.keys(gruposSub).forEach(pid => {
         const base = oculto[pid] || !IPAM._bdOpen[pid];
         gruposSub[pid].forEach(sr => {
-            const esconde = base || !_srAncestraisAbertos(sr);
+            // A espelho não tem linha própria; o que sobra dela é a linha da
+            // grade de IPs, que acompanha a linha do prefixo que a absorveu.
+            const esconde = sr._espelho ? !!oculto[pid]
+                                        : (base || !_srAncestraisAbertos(sr));
             const tr = document.getElementById(`sr-row-${sr.id}`);
             if(tr) tr.style.display = esconde ? 'none' : '';
 

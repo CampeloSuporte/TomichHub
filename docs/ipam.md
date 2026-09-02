@@ -435,6 +435,38 @@ Efeito colateral bom: sub-rede aninhada cuja raiz não tinha pasta nenhuma era *
 árvore (o `curPfxId` ficava `null` e ninguém a mostrava); com o FK valendo por nó, ela aparece na
 pasta do prefixo a que está vinculada.
 
+### Terceira camada: uma linha só por bloco (sub-rede espelho)
+
+Sobrou o desenho abaixo — o mesmo `/24` duas vezes, um embaixo do outro: a linha do prefixo e a
+linha da sub-rede de mesmo CIDR. Não é dado errado, é como o sistema cadastra
+(`_get_or_create_prefixo_pai` cria o `IPAMPrefixo` **e** o `IPAMSubRede`) — na base atual são
+**295 pares** para 631 prefixos, quase metade da árvore repetida.
+
+A sub-rede de mesmo CIDR do prefixo dono virou **espelho** (`_espelho`, marcado em
+`_srAgruparPorPrefixo`): não ganha linha e é **transparente na indentação** — as filhas dela são a
+raiz da pasta. A linha do prefixo absorve o que era só dela:
+
+| Da espelho                | Onde foi parar na linha do prefixo                        |
+|---------------------------|-----------------------------------------------------------|
+| `gateway`                 | `gw x.x.x.x` ao lado do CIDR                              |
+| `vlan`                    | chip âmbar ao lado do badge de tipo                       |
+| utilização / "Cheia"      | coluna **Sub-redes**, depois da contagem (`3 · 12% (30/254)`) |
+| `pool_cheia`              | badge "Pool Cheia" e o **toggle** da linha (o do prefixo é derivado por `_sync_prefixo_pool_cheia`, marcar nele seria desfeito) |
+| grade de IPs              | botão `fa-table-cells` (só em bloco indiviso, mesma regra da linha de sub-rede) — a `<tr id="sr-grade-*">` sai logo depois da linha do prefixo |
+| editar                    | botão `fa-network-wired` — "Editar a sub-rede deste bloco (gateway, VLAN, status)" |
+
+O que **não** foi duplicado: deletar. Some da árvore só o prefixo (`ipamDeletarPrefixo`); apagado
+ele, a sub-rede espelho deixa de ter dono e volta a aparecer como linha própria (fallback por
+containment), de onde dá pra apagá-la. Âncora de prefixo filho nunca é uma espelho — sem linha,
+o filho ficaria indentado um nível fundo demais; ele vira "solto" e entra na sequência numérica
+das raízes da pasta.
+
+Na visibilidade, a espelho não segura ninguém: `_srAncestraisAbertos` pula nós `_espelho` (não há
+pasta pra abrir) e a linha da grade dela acompanha a **linha do prefixo**, não o estado da pasta.
+
+Medido nos 8 clientes com mais blocos: as únicas linhas que sumiram são espelhos — nenhuma
+sub-rede comum deixou de aparecer (cliente 90: 1017 → 822 linhas, exatamente as 195 espelhos).
+
 ---
 
 ## Models Relacionados
