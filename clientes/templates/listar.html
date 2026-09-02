@@ -3575,14 +3575,38 @@ function _srAgruparPorPrefixo(){
     const flat = _buildSrFlatTree(IPAM.subredes || []);
     IPAM._srNodeById = {};
     flat.forEach(n => { IPAM._srNodeById[n.id] = n; });
-    const grupos = {};
-    let curPfxId = null;
+    const grupos  = {};
+    const pfxPorId = new Map((IPAM.prefixos || []).map(p => [p.id, p]));
+    const donoDoNo = {};   // id da sub-rede → id do prefixo cuja pasta a abriga
+
     flat.forEach(s => {
-        if(s._depth === 0){
-            const pfx = _srFolderPrefixo(s);
-            curPfxId = pfx ? pfx.id : null;
+        const herdado = (s._parentId != null && donoDoNo[s._parentId] !== undefined)
+                        ? donoDoNo[s._parentId] : null;
+        let dono = herdado;
+
+        /* FK explícito manda, mesmo em sub-rede aninhada: quem tem
+           `prefixo_id` mora na pasta DESSE prefixo. O sistema cadastra o bloco
+           pai duas vezes — um IPAMPrefixo e um IPAMSubRede de mesmo CIDR (ver
+           _get_or_create_prefixo_pai) —, e sem isso a sub-rede ia parar na
+           pasta do bloco de cima junto com a árvore inteira: o 100.64.1.0/24
+           caía na pasta do 100.64.0.0/10 e o prefixo homônimo aparecia solto
+           logo abaixo dela, como se estivesse dentro do próprio /24. */
+        const fk = s.prefixo_id ? pfxPorId.get(s.prefixo_id) : null;
+        if(fk && fk.id !== herdado && (fk.prefixo === s.rede || _srContains(fk.prefixo, s.rede))){
+            dono = fk.id;
         }
-        if(curPfxId != null){ (grupos[curPfxId] = grupos[curPfxId] || []).push(s); }
+        if(dono == null && s._parentId == null){
+            const pfx = _srFolderPrefixo(s);
+            dono = pfx ? pfx.id : null;
+        }
+        if(dono == null) return;   // sub-rede sem pasta nenhuma: fora da árvore
+
+        donoDoNo[s.id] = dono;
+        // Profundidade DENTRO da pasta: quem abre grupo novo volta a ser raiz,
+        // senão a indentação herdaria o nível da árvore global de sub-redes.
+        const pai = s._parentId != null ? IPAM._srNodeById[s._parentId] : null;
+        s._depthRel = (pai && donoDoNo[s._parentId] === dono) ? (pai._depthRel + 1) : 0;
+        (grupos[dono] = grupos[dono] || []).push(s);
     });
     return grupos;
 }
@@ -3598,7 +3622,7 @@ function _renderSrLeafRow(s, baseNivel, oculta){
     // endereçamento é escolhido a dedo e entra digitando o CIDR na mão.
     const tetoDiv = version === 6 ? 64 : maxPL;
     const podeDividir = pfxLen < tetoDiv;
-    const nivel   = baseNivel + s._depth;
+    const nivel   = baseNivel + (s._depthRel || 0);
     const escondida = oculta || !_srAncestraisAbertos(s);
     // Conta também os prefixos ancorados nesta sub-rede (ver _pfxBloco):
     // sem isso a pasta nasceria "folha" e não daria pra expandir o filho.
@@ -3758,7 +3782,7 @@ window.ipamCarregarPrefixos = async function(){
         const maxPL   = ver === 6 ? 128 : 32;
         const podeDividir = pfxLen < maxPL - 1;
         const ehGalho = temFilhos.has(p.id);
-        const qtdSub  = grupo.filter(s => s._depth === 0).length;
+        const qtdSub  = grupo.filter(s => (s._depthRel || 0) === 0).length;
         const toggleArvore = ehGalho
             ? `<i id="pfx-caret-${p.id}" class="fas ${colapsado ? 'fa-caret-right' : 'fa-caret-down'}" style="width:14px;cursor:pointer;color:var(--text-muted);"
                  onclick="ipamToggleArvorePrefixo(${p.id})" title="Expandir/colapsar prefixos filhos"></i>`
@@ -3821,14 +3845,14 @@ window.ipamCarregarPrefixos = async function(){
             // que mora dentro dele, não depois.
             const filhas = [];
             let j = i + 1;
-            while(j < grupo.length && grupo[j]._depth > s._depth){
+            while(j < grupo.length && grupo[j]._depthRel > s._depthRel){
                 const cidr = grupo[j].rede;
                 const r = _emitirSr(j);
                 filhas.push({cidr, html: r.html});
                 j = r.fim;
             }
             (ancorados[s.id] || []).forEach(c => {
-                filhas.push({cidr: c.prefixo, html: _pfxBloco(c, nivel + s._depth + 2, escondeFilho)});
+                filhas.push({cidr: c.prefixo, html: _pfxBloco(c, nivel + s._depthRel + 2, escondeFilho)});
             });
             filhas.sort((a,b) => _cmpCidrStr(a.cidr, b.cidr));
             const html = _renderSrLeafRow(s, nivel + 1, escondida || !subredesAbertas)

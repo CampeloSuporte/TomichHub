@@ -24,6 +24,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   (`_pfxFilhos`) e nasce clicável; `ipamAplicarVisibilidade()` esconde/mostra o prefixo ancorado
   junto com a pasta do pai e a sub-rede âncora (`_pfxOculto`, memoizada e à prova de ciclo em
   `pai_id`).
+- **Sub-rede ia para a pasta do avô** (`_srAgruparPorPrefixo`): a pasta era decidida só na raiz de
+  cada árvore de sub-redes e a descendência ia junto, ignorando o `prefixo_id` de cada uma. Como o
+  bloco é cadastrado duas vezes (um `IPAMPrefixo` e um `IPAMSubRede` de mesmo CIDR), a sub-rede
+  `100.64.1.0/24` ficava na pasta do `100.64.0.0/10` e o prefixo homônimo aparecia logo abaixo
+  dela — como se um /24 estivesse dentro do outro. Agora o FK explícito abre pasta própria mesmo em
+  sub-rede aninhada, senão herda a do nó pai, e o fallback por containment vale só na raiz. A
+  indentação passou a usar `_depthRel` (profundidade dentro da pasta) no lugar de `_depth`.
+- Sub-rede aninhada cuja raiz não tinha pasta nenhuma era descartada da árvore; com o FK valendo
+  por nó, ela aparece na pasta do prefixo a que está vinculada.
 
 ---
 

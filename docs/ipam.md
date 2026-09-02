@@ -399,6 +399,42 @@ A ordenação por `nivel` que vem do backend (`ipam_prefixos_listar`) deixou de 
 — o nível agora sai da recursão, porque depende da profundidade da sub-rede âncora. O campo
 continua no JSON.
 
+### Segunda camada: a sub-rede do próprio filho ficava na pasta do avô
+
+Com o filho já ancorado, o `100.64.1.0/24` (prefixo) aparecia **logo abaixo da sub-rede
+`100.64.1.0/24`**, de mesmo CIDR — parecia estar dentro dela. A causa está em
+`_srAgruparPorPrefixo()`: a pasta era decidida **só na raiz** de cada árvore de sub-redes
+(`curPfxId` só mudava em `_depth === 0`) e toda a descendência ia junto, ignorando o
+`prefixo_id` de cada uma. Como o bloco é cadastrado **duas vezes** — um `IPAMPrefixo` e um
+`IPAMSubRede` de mesmo CIDR, ver `_get_or_create_prefixo_pai` —, a sub-rede `100.64.1.0/24`
+(FK → prefixo `871`) era arrastada para a pasta do `100.64.0.0/10` junto com a raiz
+`100.64.0.0/12`, deixando o prefixo `871` com a pasta vazia e a linha solta.
+
+Agora o dono de cada sub-rede é decidido nó a nó:
+
+1. **FK explícito manda** — `prefixo_id` apontando para um prefixo que contém (ou é igual a) a
+   sub-rede abre uma pasta nova, mesmo em sub-rede aninhada;
+2. senão **herda** a pasta do nó pai;
+3. só na raiz, sem FK e sem herança, vale o fallback por containment (`_srFolderPrefixo`).
+
+Como uma sub-rede pode abrir pasta no meio da árvore, a indentação passou a usar `_depthRel`
+(profundidade **dentro da pasta**, zerada em quem abre grupo novo) no lugar de `_depth` (a
+profundidade na árvore global de sub-redes) — em `_renderSrLeafRow`, no `qtdSub`, na varredura de
+`_emitirSr` e no nível do prefixo ancorado. O resultado é o mesmo desenho que qualquer outro bloco
+auto-cadastrado já tinha (`128.41.0.0/16` prefixo → `128.41.0.0/16` sub-rede dentro dele):
+
+```
+100.64.0.0/10          prefixo
+  100.64.0.0/12        sub-rede
+    100.64.1.0/24      prefixo   ← pasta própria, com a contagem 1
+      100.64.1.0/24    sub-rede
+        100.64.1.1/32  sub-rede
+```
+
+Efeito colateral bom: sub-rede aninhada cuja raiz não tinha pasta nenhuma era **descartada** da
+árvore (o `curPfxId` ficava `null` e ninguém a mostrava); com o FK valendo por nó, ela aparece na
+pasta do prefixo a que está vinculada.
+
 ---
 
 ## Models Relacionados
