@@ -66,15 +66,73 @@ _ROTULO_SENDER = {
 }
 
 
-def _contexto_conversa(conv, limite=12):
+def _contexto_conversa(conv, limite=12, incluir_inicio=0):
     """Últimas mensagens da conversa formatadas como "Quem: texto", pra dar
     à IA o histórico real por trás de um gatilho curto (ex.: "Tomichinho,
     criar tarefa" não diz nada sozinho — o pedido de verdade está nas
-    mensagens do cliente antes disso)."""
-    historico = list(conv.messages.order_by('-created_at')[:limite])[::-1]
-    linhas = [f"{_ROTULO_SENDER.get(m.sender_type, m.sender_type)}: {m.content}"
-              for m in historico if m.content]
-    return "\n".join(linhas), historico
+    mensagens do cliente antes disso).
+
+    `incluir_inicio` prende as N primeiras mensagens do chamado no começo do
+    contexto. Numa conversa longa as últimas linhas são só o desfecho, e o
+    relato original do cliente — justamente o "o que o cliente pediu" que a
+    resolução precisa dizer — já teria saído da janela. Um "(…)" marca o
+    trecho omitido no meio pra IA não ler os dois blocos como sequência.
+
+    Devolve (texto, historico), com `historico` em ordem cronológica.
+    """
+    fim = list(conv.messages.order_by('-created_at')[:limite])[::-1]
+    inicio = []
+    if incluir_inicio:
+        ids_fim = {m.id for m in fim}
+        inicio = [m for m in conv.messages.order_by('created_at')[:incluir_inicio]
+                  if m.id not in ids_fim]
+
+    def _linha(m):
+        return f"{_ROTULO_SENDER.get(m.sender_type, m.sender_type)}: {m.content}"
+
+    linhas = [_linha(m) for m in inicio if m.content]
+    if linhas:
+        linhas.append('(…)')
+    linhas += [_linha(m) for m in fim if m.content]
+    return "\n".join(linhas), inicio + fim
+
+
+def _resolucao_de_fallback(historico):
+    """Resolução quando a IA não respondeu — nunca pode ser o próprio pedido
+    de fechamento.
+
+    O comando ("pode finalizar o chamado") já está gravado como mensagem
+    quando esta task roda, então pegar simplesmente "a última fala do
+    atendente" devolvia o gatilho de volta: era exatamente isso que estava
+    indo parar no campo Resolução dos chamados. Aqui ele é descartado, junto
+    com as confirmações do próprio Tomichinho e os marcos do Sistema, e
+    sobram só as falas em que o atendente contou o que fez.
+    """
+    from .services import _pede_fechamento_de_chamado
+
+    uteis = []
+    for m in historico:
+        if m.sender_type not in ('agent', 'internal'):
+            continue
+        texto = (m.content or '').strip()
+        # Confirmações do agente IA ("✅ Chamado #123 encerrado.", "✅ Tarefa
+        # aberta: …") entram como nota interna e não são tratativa.
+        if not texto or texto.startswith('✅'):
+            continue
+        if _pede_fechamento_de_chamado(texto):
+            continue
+        uteis.append(texto)
+
+    if uteis:
+        # As últimas falas, em ordem cronológica: é onde está o desfecho.
+        return ' / '.join(uteis[-3:])[:600]
+
+    relato = next((m.content.strip() for m in historico
+                   if m.sender_type == 'customer' and (m.content or '').strip()), '')
+    if relato:
+        return ('Encerrado sem tratativa registrada no chat. '
+                f'Relato do cliente: {relato}')[:600]
+    return 'Chamado encerrado sem resolução registrada.'
 
 
 def _resumir_chamado_ia(conv):
@@ -233,8 +291,12 @@ def fechar_chamado_ia(conversation_id, texto_comando, is_internal=False):
     atendente de fato respondeu/fez e encerra o chamado com ela.
 
     Se a IA não estiver configurada ou falhar, o chamado fecha do mesmo
-    jeito (o pedido foi explícito) com a última resposta do atendente como
-    resolução — nunca deixa um pedido de fechamento sem efeito.
+    jeito (o pedido foi explícito), com a resolução montada a partir das
+    falas do atendente (`_resolucao_de_fallback`) — nunca deixa um pedido de
+    fechamento sem efeito. Nesse caso a confirmação avisa, em texto, que a
+    resolução não foi escrita pela IA e por quê: silêncio aqui foi o que fez
+    meses de chamados fecharem com "pode finalizar o chamado" no campo
+    Resolução, sem ninguém perceber que a conta da IA estava sem crédito.
 
     Quando `is_internal`, nada sai pro WhatsApp: nem a confirmação, nem a
     mensagem de encerramento — o pedido começou como comentário privado da
@@ -243,8 +305,8 @@ def fechar_chamado_ia(conversation_id, texto_comando, is_internal=False):
     import json as _json
     import re as _re
     from .models import Conversation
-    from .services import _ia_enviar, finalizar_conversa
-    from .ai import call_ai
+    from .services import _ia_enviar, finalizar_conversa, _pede_fechamento_de_chamado
+    from .ai import call_ai, ultimo_erro_ia
 
     try:
         conv = Conversation.objects.select_related('group', 'group__connection').get(id=conversation_id)
@@ -256,8 +318,11 @@ def fechar_chamado_ia(conversation_id, texto_comando, is_internal=False):
         return {'skipped': True, 'reason': 'chamado já encerrado'}
 
     # Histórico mais longo que o da abertura de tarefa: a resolução sai do
-    # que foi feito ao longo do atendimento, não da última mensagem.
-    contexto, historico = _contexto_conversa(conv, limite=30)
+    # que foi feito ao longo do atendimento, não da última mensagem. As 4
+    # primeiras mensagens vão junto (`incluir_inicio`) porque o relato
+    # original do cliente costuma estar fora das últimas 30 linhas em chamado
+    # de grupo movimentado — e a resolução tem que dizer o que ele relatou.
+    contexto, historico = _contexto_conversa(conv, limite=30, incluir_inicio=4)
 
     resposta = call_ai(
         system_prompt=(
@@ -276,7 +341,12 @@ def fechar_chamado_ia(conversation_id, texto_comando, is_internal=False):
             "técnicos relevantes: equipamento, porta, contrato, número de "
             "protocolo). Não invente nada que não esteja no histórico; se o "
             "histórico não disser como foi resolvido, descreva apenas o que "
-            "consta."
+            "consta. NUNCA use o pedido de fechamento em si como resolução "
+            '(responder "pode finalizar o chamado" é resposta errada), e '
+            "ignore as linhas do Sistema e as confirmações do Tomichinho — "
+            "elas são registro do CRM, não tratativa. Um \"(…)\" no meio do "
+            "histórico marca um trecho omitido: o bloco de cima é o início do "
+            "chamado e o de baixo, o desfecho."
         ),
         user_prompt=f"Histórico da conversa:\n{contexto}\n\nComando que pediu o fechamento: {texto_comando}",
         max_tokens=500,
@@ -291,11 +361,24 @@ def fechar_chamado_ia(conversation_id, texto_comando, is_internal=False):
             logger.warning(f"Agente IA: resposta de fechamento não é JSON válido: {e}")
             # Texto solto ainda serve como resolução — melhor que fechar vazio.
             resolucao = resposta.strip()
+
+    # A IA às vezes devolve o próprio comando de volta ("pode fechar o
+    # chamado") em vez de redigir a resolução. Só descarta quando é curto o
+    # bastante pra ser isso mesmo — uma resolução de verdade pode terminar
+    # com "…, chamado encerrado" e continua valendo.
+    if resolucao and len(resolucao) < 60 and _pede_fechamento_de_chamado(resolucao):
+        logger.warning(
+            f"Agente IA: resolução devolvida para o chamado #{conv.conversation_id} "
+            f"era só o comando de fechamento ({resolucao!r}) — usando o fallback")
+        resolucao = ''
+
+    erro_ia = ''
     if not resolucao:
-        ultima_do_atendente = next(
-            (m.content for m in reversed(historico)
-             if m.sender_type in ('agent', 'internal') and m.content), '')
-        resolucao = (ultima_do_atendente or texto_comando).strip() or 'Chamado encerrado.'
+        erro_ia = ultimo_erro_ia() or 'a IA não respondeu'
+        resolucao = _resolucao_de_fallback(historico)
+        logger.error(
+            f"Chamado #{conv.conversation_id} encerrado SEM resolução da IA "
+            f"({erro_ia}) — resolução montada a partir do histórico")
 
     finalizar_conversa(
         conv, resolution=resolucao, actor=conv.assigned_to, status='resolved',
@@ -308,6 +391,14 @@ def fechar_chamado_ia(conversation_id, texto_comando, is_internal=False):
         f"✅ Chamado #{conv.conversation_id} encerrado.\n"
         f"📝 *Resolução:* {resolucao}"
     )
+    if erro_ia:
+        # Sem este aviso o fechamento parece normal e ninguém descobre que a
+        # IA está fora — foi assim que chamados passaram a ser fechados com o
+        # próprio comando no lugar da resolução.
+        texto_confirmacao += (
+            f"\n\n⚠️ _Resolução montada a partir do histórico: a IA não "
+            f"respondeu ({erro_ia}). Revise em Configurações → Integração IA._"
+        )
     if is_internal:
         _ia_enviar(
             conv, conv.group, conv.group.connection, texto_confirmacao,

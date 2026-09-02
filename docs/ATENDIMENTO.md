@@ -1194,8 +1194,10 @@ de encerramento" das configurações ("Finalizamos seu atendimento..."), que sai
 logo depois do fechamento, realimente o gatilho.
 
 **Degradação:** sem IA configurada (ou se a chamada falhar), o chamado fecha do mesmo jeito — o
-pedido foi explícito — usando a última resposta do atendente como resolução. Chamado já
+pedido foi explícito — com a resolução montada a partir do histórico. Chamado já
 `resolved`/`closed` é ignorado, então repetir o pedido não sobrescreve a resolução anterior.
+Esse fallback foi refeito em 02/09/2026 (ver *"Resolução saía como 'pode finalizar o chamado'"*,
+abaixo): ele pegava a última fala do atendente, que era o **próprio pedido de fechamento**.
 
 `finalizar_conversa()` nasceu deste trabalho: o fechamento vivia dentro de
 `views.api_update_conversation` e a view passou a chamar o mesmo serviço, então tela e IA encerram
@@ -1389,3 +1391,88 @@ vê os clientes/conversas/grupos **dela**, não os de uma revenda, e os guardas 
 
 **Regressão:** `atendimento.tests.AtendimentoExclusivoDaPrincipalTest` (8 testes) e
 `EscopoDeDadosNoAtendimentoTest` (8 testes).
+
+
+---
+
+## 🤖 Resolução do chamado saía como "pode finalizar o chamado" (02/09/2026)
+
+Todo chamado fechado pelo agente vinha com a **resolução errada** — literalmente o comando que
+pediu o fechamento:
+
+| Protocolo | Resolução gravada |
+|---|---|
+| #1508 | `pode finalizar o chamado` |
+| #1509 | `Fechar atendimento` |
+| #1506 | `OK` |
+
+### Causa raiz — a IA estava fora e ninguém sabia
+
+`atendimento/ai.py` devolvia `None` em toda chamada. A conta configurada em
+**Configurações → Integração IA** (provedor `openai`, modelo `gpt-4o`) estava **sem crédito**:
+
+```
+429 - {'error': {'message': 'You have no credits remaining. Add credits to continue using the
+API…', 'type': 'insufficient_quota', 'code': 'credit_balance_exhausted'}}
+```
+
+A falha ia para o log em `WARNING` e nada mais. Como `fechar_chamado_ia` fecha o chamado de
+qualquer jeito (é comportamento desejado — o pedido foi explícito), o fechamento parecia normal e
+a resolução seguia sendo gravada em silêncio.
+
+### Causa 2 — o fallback devolvia o próprio gatilho
+
+O fallback era "última mensagem do atendente/nota interna". Quando a task roda, **o pedido de
+fechamento já está gravado como mensagem** — então a "última fala do atendente" era exatamente
+`"pode finalizar o chamado"`. O fallback nunca teve chance de acertar.
+
+### O que mudou
+
+**`atendimento/ai.py`**
+
+- **Fallback de provedor**: falhou o provedor escolhido, tenta o outro, desde que tenha API key
+  salva. Uma conta sem crédito não derruba as automações quando existe um segundo provedor
+  configurado ali do lado.
+- **O erro para de ser invisível**: o motivo fica em `SystemSetting` (`ai_last_error` /
+  `ai_last_error_at`), lido por `ultimo_erro_ia()`, e o log sobe de `WARNING` para `ERROR`.
+  `_motivo_legivel()` traduz a exceção do SDK no que precisa ser feito ("conta sem crédito/quota —
+  recarregue o saldo do provedor", "API key inválida ou revogada", "rate limit", "modelo
+  indisponível para esta chave"). Chamada bem-sucedida limpa o registro.
+
+**`atendimento/tasks.py`**
+
+- **`_resolucao_de_fallback(historico)`** substitui o "última fala do atendente": descarta o pedido
+  de fechamento (`_pede_fechamento_de_chamado`), as confirmações do próprio Tomichinho (começam com
+  `✅`) e os marcos do Sistema, e junta as **últimas 3 falas úteis** do atendente. Sem nenhuma,
+  descreve o relato do cliente (`"Encerrado sem tratativa registrada no chat. Relato do cliente:
+  …"`). Nunca mais grava o gatilho como resolução.
+- **`_contexto_conversa(conv, limite, incluir_inicio)`**: `fechar_chamado_ia` passa
+  `incluir_inicio=4`, prendendo as 4 primeiras mensagens do chamado no começo do contexto. Em grupo
+  movimentado, as últimas 30 linhas são só o desfecho e o relato original do cliente — o "o que o
+  cliente pediu" que a resolução precisa dizer — já teria saído da janela. Um `(…)` marca o trecho
+  omitido, e o prompt explica o que ele significa.
+- **Guarda contra a IA devolver o gatilho**: resolução com menos de 60 caracteres que bata em
+  `_pede_fechamento_de_chamado` é descartada e cai no fallback.
+- **A confirmação avisa**: quando a resolução saiu do fallback, a mensagem de encerramento ganha
+  `⚠️ Resolução montada a partir do histórico: a IA não respondeu (<motivo>). Revise em
+  Configurações → Integração IA.` — no canal em que o pedido foi feito.
+
+**Tela** (`atendimento/templates/atendimento/configuracoes.html` + `views.configuracoes`): a aba
+**Integração IA** mostra um aviso em destaque com o último erro e quando aconteceu. Salvar as
+configurações da IA limpa o aviso (`api_settings`), pra não deixar erro velho pendurado depois de
+trocar a chave.
+
+### O que ainda depende de você
+
+O código agora avisa, mas não conjura crédito: enquanto a conta da OpenAI estiver zerada **e** o
+campo *API Key (Claude)* estiver vazio, as resoluções continuam saindo do fallback (agora com o
+texto certo e com o aviso). Recarregue o saldo da OpenAI **ou** preencha a chave do Claude em
+Configurações → Integração IA.
+
+O prompt em si estava correto — validado ao vivo contra o chamado #1508 real, que devolveu:
+*"Cliente relatou que o link da Garra foi desativado e questionou se houve rompimento. Atendente
+confirmou que se tratava de problema no link… Protocolo #1508."*
+
+**Testes:** `FecharChamadoIATaskTest` ganhou 5 casos — fallback não usa o pedido de fechamento,
+aviso da IA fora na confirmação, relato do cliente quando não há fala do atendente, IA devolvendo o
+gatilho cai no fallback, e o relato original chegando ao prompt em conversa longa.

@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from atendimento.models import (
     WhatsAppConnection, ContactGroup, Conversation, Message, ScheduledMessage,
+    SystemSetting,
 )
 from atendimento.services import ConversationService, _save_media_file, _read_attachment_as_base64
 from atendimento.tasks import enviar_mensagens_agendadas
@@ -1568,6 +1569,85 @@ class FecharChamadoIATaskTest(TestCase):
         self.assertEqual(
             self.conversation.resolution,
             'Troquei o SFP da porta 3 da OLT, link estabilizado.')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai', return_value=None)
+    def test_sem_ia_nao_usa_o_proprio_pedido_de_fechamento_como_resolucao(
+            self, mock_call_ai, mock_client_cls):
+        """O comando já está gravado como mensagem quando a task roda —
+        pegá-lo de volta era o que enchia o campo Resolução de "pode
+        finalizar o chamado"."""
+        from atendimento.tasks import fechar_chamado_ia
+        Message.objects.create(
+            conversation=self.conversation, sender_type='internal',
+            content='pode finalizar o chamado', external_id='nota-f1')
+
+        fechar_chamado_ia(str(self.conversation.id), 'pode finalizar o chamado', True)
+
+        self.conversation.refresh_from_db()
+        self.assertEqual(
+            self.conversation.resolution,
+            'Troquei o SFP da porta 3 da OLT, link estabilizado.')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai', return_value=None)
+    def test_sem_ia_avisa_no_chat_que_a_resolucao_nao_veio_da_ia(
+            self, mock_call_ai, mock_client_cls):
+        from atendimento.ai import AI_ERRO_KEY
+        from atendimento.tasks import fechar_chamado_ia
+        SystemSetting.set(AI_ERRO_KEY, 'ChatGPT: conta sem crédito/quota')
+
+        fechar_chamado_ia(str(self.conversation.id), 'pode fechar o chamado')
+
+        confirmacao = Message.objects.get(content__startswith='✅ Chamado #')
+        self.assertIn('conta sem crédito', confirmacao.content)
+        self.assertIn('⚠️', confirmacao.content)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai', return_value=None)
+    def test_sem_ia_e_sem_fala_do_atendente_descreve_o_relato_do_cliente(
+            self, mock_call_ai, mock_client_cls):
+        from atendimento.tasks import fechar_chamado_ia
+        Message.objects.filter(sender_type='agent').delete()
+
+        fechar_chamado_ia(str(self.conversation.id), 'pode fechar o chamado')
+
+        self.conversation.refresh_from_db()
+        self.assertIn('O link caiu de novo aqui', self.conversation.resolution)
+        self.assertNotIn('pode fechar', self.conversation.resolution)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai',
+                return_value='{"resolucao": "pode finalizar o chamado"}')
+    def test_ia_devolvendo_o_comando_cai_no_fallback(self, mock_call_ai, mock_client_cls):
+        from atendimento.tasks import fechar_chamado_ia
+
+        fechar_chamado_ia(str(self.conversation.id), 'pode finalizar o chamado')
+
+        self.conversation.refresh_from_db()
+        self.assertEqual(
+            self.conversation.resolution,
+            'Troquei o SFP da porta 3 da OLT, link estabilizado.')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai',
+                return_value='{"resolucao": "Resolvido: link estabilizado após a troca do SFP."}')
+    def test_relato_original_do_cliente_vai_pro_prompt_mesmo_em_conversa_longa(
+            self, mock_call_ai, mock_client_cls):
+        """Sem prender o início do chamado no contexto, as últimas 30 linhas
+        de um grupo movimentado são só o desfecho — e a resolução tem que
+        dizer o que o cliente relatou."""
+        from atendimento.tasks import fechar_chamado_ia
+        for i in range(40):
+            Message.objects.create(
+                conversation=self.conversation, sender_type='customer',
+                content=f'mensagem de enchimento {i}', external_id=f'ench-{i}')
+
+        fechar_chamado_ia(str(self.conversation.id), 'pode fechar o chamado')
+
+        _args, kwargs = mock_call_ai.call_args
+        self.assertIn('O link caiu de novo aqui', kwargs['user_prompt'])
+        self.assertIn('(…)', kwargs['user_prompt'])
 
     @mock.patch('atendimento.services.EvolutionAPIClient')
     @mock.patch('atendimento.ai.call_ai')

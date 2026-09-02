@@ -5,6 +5,45 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-02 (Resolução do chamado escrita pela IA)
+
+### Corrigido
+
+- **Chamado fechado pelo agente IA gravava o próprio comando como resolução** — "pode finalizar o
+  chamado", "Fechar atendimento", "OK" (`atendimento/ai.py`, `atendimento/tasks.py`). Duas causas
+  somadas:
+  - A IA estava **fora**: a conta OpenAI configurada em Configurações → Integração IA está sem
+    crédito (`429 insufficient_quota`), então `call_ai()` devolvia `None` em toda chamada. A falha
+    ia só pro log em `WARNING` e o chamado fechava normalmente — nada indicava que a resolução não
+    tinha sido escrita pela IA.
+  - O **fallback** era "última mensagem do atendente", e o pedido de fechamento já está gravado
+    como mensagem quando a task roda — ou seja, o fallback devolvia o próprio gatilho.
+- **`_resolucao_de_fallback()`** substitui aquele fallback: descarta o pedido de fechamento, as
+  confirmações do Tomichinho e os marcos do Sistema, e junta as últimas 3 falas úteis do atendente;
+  sem nenhuma, descreve o relato do cliente. Resolução curta devolvida pela IA que seja só o
+  gatilho também cai no fallback.
+- **Relato original do cliente chegando ao prompt**: `_contexto_conversa()` ganhou
+  `incluir_inicio`, e o fechamento prende as 4 primeiras mensagens do chamado no contexto — em
+  grupo movimentado as últimas 30 linhas são só o desfecho.
+
+### Adicionado
+
+- **Fallback de provedor de IA** (`atendimento/ai.py`): falhou o provedor escolhido, tenta o outro,
+  desde que tenha API key salva.
+- **Aviso de IA indisponível**: o motivo da última falha fica em `ai_last_error`/`ai_last_error_at`,
+  aparece em destaque na aba **Integração IA** das configurações e é citado na mensagem de
+  encerramento quando a resolução saiu do fallback (`⚠️ Resolução montada a partir do histórico…`).
+  `_motivo_legivel()` traduz o erro do SDK em ação ("conta sem crédito/quota — recarregue o saldo do
+  provedor", "API key inválida ou revogada", "rate limit"…). Salvar as configurações da IA limpa o
+  aviso.
+
+### Alterado
+
+- Log de falha da IA subiu de `WARNING` para `ERROR`, e o fechamento sem resolução da IA registra
+  `Chamado #N encerrado SEM resolução da IA (<motivo>)`.
+
+---
+
 ## [Não publicado] — 2026-09-02 (Colar de fora dentro do WinBox/RDP web)
 
 ### Corrigido
