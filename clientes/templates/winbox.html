@@ -112,6 +112,23 @@
         #wb-clip-panel .wb-clip-dica {
             font-size: 10px; color: #666; margin-top: 6px; line-height: 1.4;
         }
+        #wb-clip-panel .wb-clip-colar {
+            width: 100%; margin-top: 7px; padding: 6px;
+            background: #1a1a1a; color: #d29922;
+            border: 1px solid #d29922; border-radius: 4px;
+            font-family: inherit; font-size: 11px; cursor: pointer;
+        }
+        #wb-clip-panel .wb-clip-colar:hover { background: #d29922; color: #0a0a0a; }
+
+        /* Alvo invisivel que recebe o evento "paste" do navegador (ver o bloco
+           de Ctrl+V no script). Precisa ser focavel de verdade: display:none ou
+           visibility:hidden nao recebem foco e o paste nunca chegaria. */
+        #wb-paste-sink {
+            position: fixed; top: 0; left: -9999px;
+            width: 1px; height: 1px;
+            opacity: 0; border: 0; padding: 0;
+            pointer-events: none;
+        }
     </style>
     <script type="module">
         import RFB from '{% static "novnc/core/rfb.js" %}';
@@ -217,41 +234,111 @@
             });
         }
 
-        // ── Ctrl+V direto no canvas ──
-        // O canvas do noVNC so envia a TECLA pro host remoto — nao existe "clipboard
-        // do sistema" do lado de la. Sem isso, Ctrl+V so reproduzia o atalho dentro
-        // da sessao sem nenhum texto ter chegado no clipboard remoto antes.
+        // ── Colar do PC local dentro da sessao (Ctrl+V / Shift+Insert) ──
+        // O canvas do noVNC so encaminha a TECLA pro host remoto — quem cola e o
+        // app la dentro, contra o clipboard X11 da sessao. Entao, antes do Ctrl+V
+        // chegar no app remoto, precisamos empurrar o texto do PC local pro
+        // clipboard da sessao (ClientCutText, via rfb.clipboardPasteFrom).
         //
-        // Interceptamos o keydown em fase de CAPTURA no document (antes do listener
-        // do proprio noVNC, que fica registrado no canvas) pra: 1) ler o clipboard
-        // do navegador, 2) mandar pro clipboard X11 remoto via clipboardPasteFrom
-        // (ClientCutText), e só ENTAO 3) sintetizar o Ctrl+V pro app remoto — nessa
-        // ordem, pela mesma conexao ordenada, o app remoto ja encontra o texto certo
-        // esperando quando processa o "colar". Se o navegador não expõe
-        // navigator.clipboard.readText() (ex: http sem TLS, ou o usuário negou a
-        // permissão), deixamos o evento seguir normal — o painel manual continua
-        // funcionando como alternativa.
+        // A leitura do clipboard local sai do evento "paste" do proprio navegador,
+        // NAO de navigator.clipboard.readText(): o evento nao pede permissao
+        // nenhuma e existe em todos os navegadores, enquanto readText() nunca
+        // existiu no Firefox e no Chrome pode estar negado — era exatamente por
+        // isso que colar algo de fora dentro da renderizacao nao fazia nada.
+        // O truque e mover o foco pra um <textarea> invisivel ainda dentro do
+        // keydown: o navegador entrega o "paste" nele e lemos o conteudo dali.
+        //
+        // IMPORTANTE: nao chamar preventDefault() nesse keydown — o evento
+        // "paste" e a acao padrao dele, e cancelar mataria justamente essa via.
+        //
+        // Depois que o texto entra no clipboard da sessao, sintetizamos o Ctrl+V
+        // pro app remoto. O atraso da tempo do x11vnc assumir a selecao X11 e,
+        // no RDP, do FreeRDP negociar o cliprdr com o Windows antes do paste.
+        const _pasteDelay = vncMode === 'rdp' ? 250 : 80;
+        let _pasteArmado = false;
+        let _pasteTimer  = null;
+
+        function _focarSessao() {
+            try { rfb && rfb.focus(); } catch (_) {}
+        }
+
+        function _enviarCtrlVRemoto() {
+            if (!rfb) return;
+            // Sintetiza o Ctrl+V inteiro, incluindo o proprio Control: durante a
+            // espera o Ctrl fisico pode ja ter sido solto, e o noVNC ignora
+            // release de tecla que ele nao registrou como pressionada.
+            rfb.sendKey(KeyTable.XK_Control_L, 'ControlLeft', true);
+            rfb.sendKey(KeyTable.XK_v, 'KeyV', true);
+            rfb.sendKey(KeyTable.XK_v, 'KeyV', false);
+            rfb.sendKey(KeyTable.XK_Control_L, 'ControlLeft', false);
+        }
+
+        function colarNaSessao(texto) {
+            if (!rfb) return;
+            // Clipboard local vazio (ou ilegivel): ainda assim reenvia a tecla que
+            // seguramos no keydown, pra colar o que ja estiver no clipboard da
+            // sessao em vez de o Ctrl+V do usuario simplesmente sumir.
+            if (!texto) { _enviarCtrlVRemoto(); return; }
+            rfb.clipboardPasteFrom(texto);
+            const ta = document.getElementById('wb-clip-text');
+            if (ta) ta.value = texto;
+            setTimeout(_enviarCtrlVRemoto, _pasteDelay);
+        }
+
+        function _armarCapturaDeColagem() {
+            const sink = document.getElementById('wb-paste-sink');
+            sink.value = '';
+            _pasteArmado = true;
+            try { sink.focus({ preventScroll: true }); } catch (_) { sink.focus(); }
+
+            // Devolve o foco pro canvas assim que a acao padrao do keydown (o
+            // "paste") terminar de ser despachada — se o foco ficasse no sink, o
+            // keyup do Ctrl nao chegaria no noVNC e o modificador ficaria preso
+            // na sessao remota.
+            setTimeout(_focarSessao, 0);
+
+            clearTimeout(_pasteTimer);
+            // Plano B: se o "paste" nao chegar (navegador bloqueou a acao padrao),
+            // tenta a API assincrona, que exige permissao mas e melhor que nada.
+            _pasteTimer = setTimeout(() => {
+                if (!_pasteArmado) return;
+                _pasteArmado = false;
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    navigator.clipboard.readText()
+                        .then(colarNaSessao)
+                        .catch(() => _enviarCtrlVRemoto());
+                } else {
+                    _enviarCtrlVRemoto();
+                }
+            }, 150);
+        }
+
         document.addEventListener('keydown', (ev) => {
-            const isPaste = (ev.ctrlKey || ev.metaKey) && !ev.altKey &&
-                             (ev.code === 'KeyV' || ev.key === 'v' || ev.key === 'V');
-            if (!isPaste || !rfb) return;
-            // Dentro do proprio textarea do painel, deixa o paste nativo do navegador agir.
-            if (document.activeElement === document.getElementById('wb-clip-text')) return;
-            if (!navigator.clipboard || !navigator.clipboard.readText) return;
+            if (!rfb) return;
+            const ehColar =
+                ((ev.ctrlKey || ev.metaKey) && !ev.altKey &&
+                 (ev.code === 'KeyV' || ev.key === 'v' || ev.key === 'V')) ||
+                (ev.shiftKey && !ev.ctrlKey && ev.code === 'Insert');
+            if (!ehColar) return;
+            // No textarea do painel manual, deixa o colar nativo do navegador agir.
+            if (ev.target && ev.target.id === 'wb-clip-text') return;
 
-            ev.preventDefault();
+            // Segura a tecla: se ela chegasse agora no app remoto, ele colaria o
+            // conteudo antigo do clipboard da sessao. Ela e reenviada por
+            // colarNaSessao() depois que o texto novo estiver la.
             ev.stopPropagation();
+            ev.stopImmediatePropagation();
+            _armarCapturaDeColagem();
+        }, true);
 
-            navigator.clipboard.readText().then(text => {
-                if (!rfb) return;
-                rfb.clipboardPasteFrom(text);
-                rfb.sendKey(KeyTable.XK_v, 'KeyV', true);
-                rfb.sendKey(KeyTable.XK_v, 'KeyV', false);
-                const ta = document.getElementById('wb-clip-text');
-                if (ta) ta.value = text;
-            }).catch(() => {
-                // Sem permissao de leitura do clipboard — usuario pode usar o painel manual.
-            });
+        document.addEventListener('paste', (ev) => {
+            if (!_pasteArmado) return;  // colagem dentro do painel manual segue normal
+            _pasteArmado = false;
+            clearTimeout(_pasteTimer);
+            ev.preventDefault();
+            const dados = ev.clipboardData || window.clipboardData;
+            _focarSessao();
+            colarNaSessao(dados ? dados.getData('text/plain') : '');
         }, true);
 
         // ── Painel de clipboard ──
@@ -286,9 +373,19 @@
             const texto = document.getElementById('wb-clip-text').value;
             if (rfb) rfb.clipboardPasteFrom(texto);
         }
+        // Botao do painel: alem de mandar o texto, dispara o Ctrl+V dentro da
+        // sessao — util quando o navegador bloqueia a leitura do clipboard e o
+        // usuario digita/cola o texto no painel na mao.
+        function colarPainelNaSessao() {
+            const texto = document.getElementById('wb-clip-text').value;
+            _focarSessao();
+            colarNaSessao(texto);
+            fecharPainelClipboard();
+        }
         window.toggleClipboard = toggleClipboard;
         window.fecharPainelClipboard = fecharPainelClipboard;
         window.enviarClipboardParaSessao = enviarClipboardParaSessao;
+        window.colarPainelNaSessao = colarPainelNaSessao;
 
         document.addEventListener('DOMContentLoaded', () => {
             initVNC();
@@ -324,7 +421,11 @@
             <span style="cursor:pointer;color:#666" onclick="fecharPainelClipboard()">✕</span>
         </div>
         <textarea id="wb-clip-text" placeholder="Cole aqui (Ctrl+V) para enviar à sessão remota, ou o texto copiado lá dentro aparece aqui..."></textarea>
-        <div class="wb-clip-dica">Cole aqui e depois Ctrl+V dentro da janela remota. O que for copiado lá dentro aparece aqui automaticamente.</div>
+        <button class="wb-clip-colar" onclick="colarPainelNaSessao()">Colar na sessão</button>
+        <div class="wb-clip-dica">Normalmente basta dar Ctrl+V direto na tela remota. Este painel é a alternativa manual: o que for copiado lá dentro também aparece aqui.</div>
     </div>
+
+    <!-- Alvo invisível do evento "paste" do navegador (ver script) -->
+    <textarea id="wb-paste-sink" tabindex="-1" aria-hidden="true"></textarea>
 </body>
 </html>
