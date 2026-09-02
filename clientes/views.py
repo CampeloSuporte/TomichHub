@@ -1980,8 +1980,13 @@ def realizar_backup(acesso, usuario=None):
         is_zte      = 'zte'    in modelo_nome
         is_parks    = 'parks'  in modelo_nome
         is_mikrotik = any(k in modelo_nome for k in ('mikrotik', 'routeros', 'routerboard'))
+        # Raisecom (ROS): o SSH do equipamento aceita o pedido de "exec" mas
+        # nunca responde — exec_command fica pendurado até estourar o timeout
+        # (socket.timeout, str() vazia → "ERRO: " no arquivo) e o backup saía
+        # só com os cabeçalhos. Só funciona por shell interativo, como Cisco/ZTE.
+        is_raisecom = 'raisecom' in modelo_nome
 
-        print(f"🏭 Huawei: {is_huawei} | A10: {is_a10} | Cisco: {is_cisco} | ZTE: {is_zte} | Parks: {is_parks} | MikroTik: {is_mikrotik}")
+        print(f"🏭 Huawei: {is_huawei} | A10: {is_a10} | Cisco: {is_cisco} | ZTE: {is_zte} | Parks: {is_parks} | MikroTik: {is_mikrotik} | Raisecom: {is_raisecom}")
 
         # ✅ Criar túnel se IP privado
         if eh_privado:
@@ -2108,8 +2113,14 @@ def realizar_backup(acesso, usuario=None):
                 output = _executar_comandos_huawei(client, comandos)
             elif is_a10:
                 output = _executar_comandos_a10(client, comandos, acesso.senha_adm)
-            elif is_cisco or is_zte:
-                output = _executar_comandos_cisco(client, comandos, acesso.usuario, acesso.senha)
+            elif is_cisco or is_zte or is_raisecom:
+                # ROS não tem "terminal length 0" (responde "Error input in the
+                # position marked by '^'"); a paginação se desliga com
+                # "terminal page-break disable".
+                output = _executar_comandos_cisco(
+                    client, comandos, acesso.usuario, acesso.senha,
+                    cmd_paginacao='terminal page-break disable' if is_raisecom else 'terminal length 0',
+                )
             elif is_mikrotik:
                 output = _executar_comandos_mikrotik(client, comandos)
             elif precisa_shell_persistente:
@@ -2120,8 +2131,11 @@ def realizar_backup(acesso, usuario=None):
 
             client.close()
 
-        if len(output.strip()) < 100:
-            raise Exception("Backup vazio ou muito pequeno. Verifique os comandos do template.")
+        if len(output.strip()) < 100 or not _backup_tem_conteudo(output):
+            raise Exception(
+                "Backup vazio: nenhum comando do template retornou configuração. "
+                "Verifique os comandos do template e a CLI do equipamento."
+            )
 
         # ── Normalizar saída e calcular hash ─────────────────────────────
         # Remove ANSI escape codes e linhas que contenham apenas timestamps
@@ -2242,6 +2256,27 @@ def realizar_backup(acesso, usuario=None):
                     ssh_tunnel['server_socket'].close()
             except:
                 pass
+
+def _backup_tem_conteudo(output, minimo=40):
+    """
+    True se pelo menos um comando do template devolveu saída de verdade.
+
+    Só o tamanho não serve como critério: um backup em que todos os comandos
+    falharam ainda passa dos 100 bytes por causa dos separadores e das linhas
+    "Comando: ..." e era gravado como SUCESSO (visto nos Raisecom, que só
+    tinham "ERRO: " de socket.timeout dentro do arquivo). Aqui descartamos
+    separadores, cabeçalhos de comando e linhas de erro e olhamos o que sobra.
+    """
+    corpo = []
+    for linha in (output or '').splitlines():
+        limpa = linha.strip().lstrip('#').strip()   # MikroTik prefixa tudo com "#"
+        if not limpa or set(limpa) == {'='}:
+            continue
+        if limpa.startswith('Comando:') or limpa.startswith('ERRO:'):
+            continue
+        corpo.append(limpa)
+    return len('\n'.join(corpo)) >= minimo
+
 
 def _executar_comandos_a10(client, comandos, senha_enable):
     """
@@ -2411,10 +2446,14 @@ def _executar_comandos_mikrotik(client, comandos):
             output += f"ERRO: {str(e)}\n"
     return output
 
-def _executar_comandos_cisco(client, comandos, usuario='', senha=''):
+def _executar_comandos_cisco(client, comandos, usuario='', senha='',
+                             cmd_paginacao='terminal length 0'):
     """
-    Cisco IOS/IOS-XE, ZTE C300 e Parks FIBERLINK.
+    Cisco IOS/IOS-XE, ZTE C300, Parks FIBERLINK e Raisecom ROS.
     Versão diagnóstico: loga tudo que o OLT envia para identificar o problema.
+
+    `cmd_paginacao` é o comando que desliga a paginação da CLI: "terminal
+    length 0" na família Cisco, "terminal page-break disable" no Raisecom ROS.
     """
     output = ""
 
@@ -2475,20 +2514,23 @@ def _executar_comandos_cisco(client, comandos, usuario='', senha=''):
     # ✅ NÃO interrompe mais aqui — tenta continuar e loga o que acontece
     # Desabilitar paginação
     try:
-        print("  [0] terminal length 0")
-        channel.send('terminal length 0\n')
+        print(f"  [0] {cmd_paginacao}")
+        channel.send(cmd_paginacao + '\n')
         time.sleep(1)
         resp_tl = _ler_ate_silencio(channel, silencio=2.0, max_wait=10)
-        print(f"\n📋 RESPOSTA APÓS terminal length 0:\n{repr(resp_tl)}\n")
+        print(f"\n📋 RESPOSTA APÓS {cmd_paginacao}:\n{repr(resp_tl)}\n")
     except Exception as e:
-        print(f"    ❌ Falha ao enviar terminal length 0: {e}")
+        print(f"    ❌ Falha ao enviar {cmd_paginacao}: {e}")
         raise Exception(
-            f"Falha ao enviar 'terminal length 0': {e}. "
+            f"Falha ao enviar '{cmd_paginacao}': {e}. "
             f"Verifique o log acima para ver o que o OLT enviou."
         )
 
     for i, comando in enumerate(comandos, 1):
-        if 'terminal length' in comando.lower():
+        # O template pode trazer o comando de paginação de outra família (ex:
+        # "terminal length 0" no template Cisco usado também pelo Raisecom) —
+        # já mandamos o correto acima, reenviar só geraria erro de sintaxe.
+        if 'terminal length' in comando.lower() or 'terminal page-break' in comando.lower():
             print(f"  [{i}/{len(comandos)}] {comando} (já enviado — ignorando)")
             continue
 
@@ -2684,7 +2726,11 @@ def limpar_ansi(texto):
     texto = ansi_escape.sub('', texto)
     texto = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]', '', texto)
     texto = texto.replace('[K', '')
-    texto = texto.replace('\r\n', '\n').replace('\r', '\n')
+    # Raisecom ROS (e alguns ZTE) ecoam "\r\r\n" no fim da linha: trocar "\r\n"
+    # e depois "\r" isolados geraria uma linha em branco entre cada linha real
+    # e dobraria o tamanho do backup. Colapsa os CR repetidos antes.
+    texto = re.sub(r'\r+\n', '\n', texto)
+    texto = texto.replace('\r', '\n')
     return texto
 
 def ler_saida_comando(ssh_process, silence_timeout=2.0, max_timeout=120,modelo=None):

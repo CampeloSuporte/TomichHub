@@ -5,7 +5,7 @@
 - `clientes/management/commands/rotina_backup.py` — management command
 - `crm/celery.py` — agendamento Celery Beat
 
-**Atualizado em:** 2026-07-20
+**Atualizado em:** 2026-09-02
 
 ---
 
@@ -307,6 +307,62 @@ nome_arquivo = f"{tipo_seguro}_{timestamp}.txt"
 Resultado para o caso acima: `BRAS_CGNAT_BORDA_-_JUNIPER_20260720_110811.txt` (nome plano, sem
 criar subpastas). Afeta tanto o botão manual de backup quanto o pipeline automático (mesma
 função `realizar_backup`, chamada por `clientes/tasks.py`).
+
+---
+
+## Raisecom ROS: shell interativo e `terminal page-break disable` — 2026-09-02
+
+**Sintoma:** todos os switches Raisecom (RAX700/RAX711, ~10 acessos) gravavam backup marcado como
+**SUCESSO** com ~790 bytes — só o cabeçalho, o separador de cada comando e uma linha `ERRO: ` sem
+mensagem nenhuma. Duração típica de 130s para dois comandos:
+
+```
+============================================================
+Comando: terminal length 0
+============================================================
+ERRO:
+
+============================================================
+Comando: show running-config
+============================================================
+```
+
+**Causas (três, encadeadas):**
+
+1. **Caminho de execução errado.** `realizar_backup` só tinha flags para Huawei, A10, Cisco, ZTE,
+   Parks e MikroTik. `RAISECOM` não casa com nenhuma, então caía no `else` final
+   (`_executar_comandos_sem_pty`, que usa `client.exec_command()`). O SSH do Raisecom
+   (`SSH-1.99-Raisecom_ssh_1.01`) aceita o pedido de `exec` mas nunca responde: o `stdout.read()`
+   fica pendurado até o timeout de 120s e estoura `socket.timeout` — cuja `str()` é **vazia**, daí
+   o `ERRO: ` sem texto. Depois disso a sessão fica inutilizável e o comando seguinte volta vazio
+   (confirmado ao vivo no BA-CAR-A01-SW-01). Por `invoke_shell` o mesmo equipamento responde
+   normalmente e já entra no prompt privilegiado `#`, sem pedir login de novo.
+2. **Comando de paginação inexistente no ROS.** `terminal length 0` responde
+   `Error input in the position marked by '^'`. No Raisecom o comando é
+   `terminal page-break disable` (`Set successfully`) — confirmado no `terminal ?` do equipamento.
+3. **Backup vazio contava como sucesso.** A única trava era `len(output.strip()) < 100`, e só os
+   cabeçalhos já passam de 100 bytes. O backup entrava no histórico como SUCESSO.
+
+**Correções** (`clientes/views.py`):
+
+- `is_raisecom = 'raisecom' in modelo_nome` (mesma detecção combinada
+  fabricante + nome + `acesso.tipo`) e roteamento para `_executar_comandos_cisco`, junto com
+  Cisco e ZTE.
+- `_executar_comandos_cisco` recebe `cmd_paginacao` (default `terminal length 0`); o Raisecom passa
+  `terminal page-break disable`. O laço ignora **os dois** comandos de paginação quando vierem no
+  template, já que o correto foi enviado antes.
+- `_backup_tem_conteudo(output)`: descarta separadores, linhas `Comando:` e linhas `ERRO:` e exige
+  pelo menos 40 caracteres de saída real. Sem isso, backup vazio vira SUCESSO.
+- `limpar_ansi`: o ROS ecoa `\r\r\n` no fim da linha; o `.replace('\r\n','\n').replace('\r','\n')`
+  antigo transformava isso em **duas** quebras e dobrava o arquivo. Agora `re.sub(r'\r+\n', '\n', …)`
+  colapsa os CR repetidos antes.
+
+**Resultado** no BA-CAR-A01-SW-01 (DS TECH, via proxy SSH): 774 bytes em 134s → **6.349 bytes de
+`show running-config` completo em 27s**.
+
+> A trava de backup vazio vale para todos os fabricantes: acessos que vinham gravando "sucesso" só
+> com cabeçalho (algumas OLTs Intelbras, Fiberhome, VSOL e Hillstone, com ~800–1.900 bytes) passam
+> a registrar **ERRO** — o backup não existia, apenas não aparecia como falha.
 
 ---
 

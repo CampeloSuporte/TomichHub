@@ -5,6 +5,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-02 (Backup Raisecom: shell interativo e paginação do ROS)
+
+### Corrigido
+
+- **Backup dos switches Raisecom saía vazio marcado como SUCESSO** (`clientes/views.py`,
+  `realizar_backup`). Os ~10 acessos Raisecom (RAX700/RAX711) gravavam ~790 bytes: só cabeçalho,
+  os separadores dos comandos e uma linha `ERRO: ` sem mensagem, em 130s.
+- **Causa 1 — caminho de execução:** sem flag `is_raisecom`, o fabricante caía no
+  `_executar_comandos_sem_pty` (`exec_command`). O SSH do Raisecom
+  (`SSH-1.99-Raisecom_ssh_1.01`) aceita o pedido de `exec` e nunca responde — o `stdout.read()`
+  pendura até o timeout de 120s e estoura `socket.timeout`, cuja `str()` é vazia (daí o `ERRO: `
+  mudo); a sessão morre e o comando seguinte volta vazio. Agora Raisecom vai para
+  `_executar_comandos_cisco` (shell interativo), junto com Cisco e ZTE.
+- **Causa 2 — paginação:** o ROS não tem `terminal length 0` (responde
+  `Error input in the position marked by '^'`). `_executar_comandos_cisco` passou a receber
+  `cmd_paginacao`, e o Raisecom envia `terminal page-break disable`; comandos de paginação vindos
+  do template são ignorados no laço, já que o correto é enviado antes.
+- **Causa 3 — backup vazio virava sucesso:** a única trava era `len(output) < 100`, e só os
+  cabeçalhos passam disso. Novo `_backup_tem_conteudo()` descarta separadores, linhas `Comando:`
+  e `ERRO:` e exige saída real. Vale para todos os fabricantes: acessos que gravavam "sucesso"
+  só com cabeçalho (algumas OLTs Intelbras, Fiberhome, VSOL e Hillstone) passam a registrar ERRO.
+- **`limpar_ansi` dobrava o arquivo** em equipamentos que ecoam `\r\r\n` (Raisecom, alguns ZTE):
+  cada linha real vinha seguida de uma linha em branco. `re.sub(r'\r+\n', '\n', …)` colapsa os CR
+  repetidos antes da normalização.
+
+Validado ao vivo no BA-CAR-A01-SW-01 (DS TECH, via proxy SSH): 774 bytes em 134s →
+6.349 bytes de `show running-config` completo em 27s.
+
+---
+
 ## [Não publicado] — 2026-09-02 (Árvore do IPAM: prefixo filho no bloco certo)
 
 ### Corrigido
