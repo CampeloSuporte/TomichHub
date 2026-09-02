@@ -357,6 +357,50 @@ cliente por cliente, então tudo o que viria depois daquele acesso ficava sem do
 
 ---
 
+## Prefixo filho aparecia no bloco errado da árvore (2026-09-02)
+
+O `100.64.1.0/24` (prefixo, tipo container, filho do `100.64.0.0/10`) era desenhado logo abaixo do
+`100.120.0.0/13` — dois blocos que não têm relação nenhuma. O `pai_id` no banco estava certo
+(`_computar_pai_id` acha o prefixo mais específico que contém o novo); o problema era **só o
+desenho**: `ipamCarregarPrefixos()` montava a tabela em duas hierarquias paralelas.
+
+### O que acontecia
+
+A ordem das linhas era `_ordenarArvorePrefixos()` (DFS de prefixo por `pai_id`) e, para cada
+prefixo, **a linha dele + a árvore inteira de sub-redes da pasta**. Um prefixo filho só entrava
+depois de tudo isso, com indentação de "filho do pai" — ou seja, o `/24` saía no fim da lista de
+sub-redes do `/10`, logo abaixo da última (`100.124.0.0/14`, dentro do `/13`), como se pertencesse
+a ela. Sub-rede aninhava em sub-rede e prefixo aninhava em prefixo, mas **prefixo nunca aninhava em
+sub-rede** — e é exatamente esse o caso aqui: o `100.64.1.0/24` mora dentro da sub-rede
+`100.64.0.0/12`.
+
+### Como ficou
+
+`_pfxBloco(p, nivel, escondida)` (recursiva, substitui `_ordenarArvorePrefixos`) monta a linha do
+prefixo e o conteúdo da pasta numa árvore só:
+
+- **Âncora**: cada prefixo filho procura a sub-rede **mais específica da pasta do pai que o
+  contém** (`_srContains`). Achou → é renderizado como filho dela, no nível
+  `nivel + _depth da âncora + 2`; o par vai para `IPAM._pfxAncora[filho] = {sr, pasta}`.
+- **Sem âncora** → continua filho direto do prefixo pai (nível `nivel + 1`), como antes.
+- **Ordem**: dentro de cada nível, sub-redes e prefixos ancorados saem misturados e ordenados por
+  CIDR (`_cmpCidrStr` — endereço asc, máscara asc), então um `/24` cadastrado como prefixo vem
+  antes do `/25` que mora dentro dele, e um filho sem âncora entra na sequência numérica das
+  sub-redes raiz em vez de ir para o fim.
+- **Pasta da âncora**: `ancora._pfxFilhos` conta o filho, e `_renderSrLeafRow` usa
+  `_childCount + _pfxFilhos` — sem isso a sub-rede nasceria como folha e não daria para expandir o
+  prefixo pendurado nela.
+- **Visibilidade**: `ipamAplicarVisibilidade()` ganhou `_pfxOculto()` (memoizada, corta ciclo de
+  `pai_id`). Um prefixo ancorado só aparece se nenhum ancestral estiver colapsado **e** a pasta do
+  pai estiver aberta **e** a sub-rede âncora estiver expandida — mesma regra das sub-redes filhas.
+  Sem âncora, vale a regra antiga (só o colapso dos ancestrais).
+
+A ordenação por `nivel` que vem do backend (`ipam_prefixos_listar`) deixou de ser usada no desenho
+— o nível agora sai da recursão, porque depende da profundidade da sub-rede âncora. O campo
+continua no JSON.
+
+---
+
 ## Models Relacionados
 
 | Model          | Campos principais                                              |
