@@ -33,6 +33,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   indentação passou a usar `_depthRel` (profundidade dentro da pasta) no lugar de `_depth`.
 - Sub-rede aninhada cuja raiz não tinha pasta nenhuma era descartada da árvore; com o FK valendo
   por nó, ela aparece na pasta do prefixo a que está vinculada.
+- **O mesmo bloco aparecia duas vezes, uma linha embaixo da outra** — a do prefixo e a da sub-rede
+  de mesmo CIDR (o sistema cadastra os dois; são 295 pares para 631 prefixos). A sub-rede de mesmo
+  CIDR virou **espelho**: perde a linha, fica transparente na indentação (as filhas dela sobem pra
+  raiz da pasta) e a linha do prefixo absorve o gateway, a VLAN, a utilização, o badge e o toggle
+  de Pool Cheia, a grade de IPs e um botão de editar a sub-rede. Deletar continua só no prefixo —
+  apagado ele, a espelho volta a aparecer como linha própria.
 
 ---
 
