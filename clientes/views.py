@@ -1953,6 +1953,16 @@ def realizar_backup(acesso, usuario=None):
         print(f"🔧 Modelo: {acesso.modelo}")
         print(f"📝 Template: {acesso.backup_template.nome if acesso.backup_template else 'N/A'}")
 
+        # Sem template não há o que executar: sem esta guarda o erro só
+        # aparecia lá na frente como AttributeError de NoneType em
+        # get_comandos_list(). O pipeline noturno preenche o template faltante
+        # (habilitar_backups_automaticos), mas o backup manual pode rodar antes.
+        if not acesso.backup_template:
+            raise Exception(
+                "Acesso sem template de backup. Selecione um template no cadastro "
+                "do acesso (ou aguarde a rotina diária, que preenche pelo fabricante)."
+            )
+
         eh_privado = is_private_ip(acesso.host)
         print(f"🔍 IP Privado? {eh_privado}")
 
