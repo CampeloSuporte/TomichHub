@@ -5,6 +5,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-02 (Árvore do IPAM: prefixo filho no bloco certo)
+
+### Corrigido
+
+- **Prefixo filho desenhado dentro de um bloco que não o contém** (`clientes/templates/listar.html`,
+  aba IPAM → Prefixos & Sub-redes). O `100.64.1.0/24` aparecia logo abaixo do `100.120.0.0/13`. O
+  `pai_id` no banco estava certo; o desenho é que tratava prefixos e sub-redes como duas árvores
+  paralelas — o prefixo filho era emitido **depois da árvore inteira de sub-redes do pai**, caindo
+  colado na última delas.
+- **`_pfxBloco()`** (recursiva, no lugar de `_ordenarArvorePrefixos`) monta uma árvore só: cada
+  prefixo filho é ancorado na sub-rede mais específica da pasta do pai que o contém — o
+  `100.64.1.0/24` passa a sair dentro do `100.64.0.0/12` —, e quem não tem sub-rede que o contenha
+  entra na **sequência numérica** das sub-redes raiz em vez de ir para o fim.
+- **Ordem por CIDR em todos os níveis** (`_cmpCidrStr`): um `/24` cadastrado como prefixo vem antes
+  do `/25` que mora dentro dele.
+- **Pasta e visibilidade coerentes**: a sub-rede âncora conta o prefixo pendurado nela
+  (`_pfxFilhos`) e nasce clicável; `ipamAplicarVisibilidade()` esconde/mostra o prefixo ancorado
+  junto com a pasta do pai e a sub-rede âncora (`_pfxOculto`, memoizada e à prova de ciclo em
+  `pai_id`).
+
+---
+
 ## [Não publicado] — 2026-09-02 (Resolução do chamado escrita pela IA)
 
 ### Corrigido

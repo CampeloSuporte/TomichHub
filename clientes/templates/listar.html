@@ -3550,28 +3550,6 @@ function tbEmpty(cols, msg){ return `<tr><td colspan="${cols}" class="text-cente
 /* ─────────────────────────────────────────────────
    PREFIXOS
 ───────────────────────────────────────────────── */
-/* Ordena prefixos em DFS (pai antes dos filhos, filhos por endereço de rede)
-   pra que a indentação da árvore faça sentido visualmente. */
-function _ordenarArvorePrefixos(prefixos){
-    const porPai = {};
-    prefixos.forEach(p => {
-        const k = p.pai_id || 'raiz';
-        (porPai[k] = porPai[k] || []).push(p);
-    });
-    Object.values(porPai).forEach(lista =>
-        lista.sort((a,b) => { const ka=_ipSortBigInt(a.prefixo.split('/')[0]), kb=_ipSortBigInt(b.prefixo.split('/')[0]); return ka<kb?-1:ka>kb?1:0; })
-    );
-    const out = [];
-    function _visit(pid){
-        (porPai[pid || 'raiz'] || []).forEach(p => { out.push(p); _visit(p.id); });
-    }
-    _visit(null);
-    // Sobra de segurança: prefixo cujo pai_id aponta pra algo fora da lista (não deveria acontecer)
-    const vistos = new Set(out.map(p => p.id));
-    prefixos.forEach(p => { if(!vistos.has(p.id)) out.push(p); });
-    return out;
-}
-
 IPAM._pfxCollapsed = {};
 /* Sub-redes com a sub-árvore de filhas expandida (id → true). Vive no estado
    e não no DOM porque a árvore é re-renderizada inteira a cada mudança —
@@ -3622,7 +3600,9 @@ function _renderSrLeafRow(s, baseNivel, oculta){
     const podeDividir = pfxLen < tetoDiv;
     const nivel   = baseNivel + s._depth;
     const escondida = oculta || !_srAncestraisAbertos(s);
-    const hasChildren = s._childCount > 0;
+    // Conta também os prefixos ancorados nesta sub-rede (ver _pfxBloco):
+    // sem isso a pasta nasceria "folha" e não daria pra expandir o filho.
+    const hasChildren = (s._childCount + (s._pfxFilhos || 0)) > 0;
     const aberta  = !!IPAM._srOpen[s.id];
 
     /* A pasta é o ÚNICO controle de árvore da linha — não há mais chevron ao
@@ -3722,31 +3702,67 @@ window.ipamCarregarPrefixos = async function(){
     // Sub-redes ficam aninhadas dentro da pasta do prefixo — garante cache pronto
     if(!IPAM.subredes || !IPAM.subredes.length){ await ipamCarregarSubRedes(); }
 
-    const ordenados = _ordenarArvorePrefixos(IPAM.prefixos);
     const temFilhos  = new Set(IPAM.prefixos.filter(p => p.pai_id).map(p => p.pai_id));
     const gruposSub  = _srAgruparPorPrefixo();
+    const porId      = new Map(IPAM.prefixos.map(p => [p.id, p]));
 
-    tb.innerHTML = ordenados.map(p => {
+    // Filhos diretos de cada prefixo, em ordem numérica de CIDR
+    const filhosPorPai = {};
+    IPAM.prefixos.forEach(p => {
+        if(p.pai_id && porId.has(p.pai_id)) (filhosPorPai[p.pai_id] = filhosPorPai[p.pai_id] || []).push(p);
+    });
+    Object.values(filhosPorPai).forEach(l => l.sort((a,b) => _cmpCidrStr(a.prefixo, b.prefixo)));
+
+    // Onde cada prefixo filho entra na árvore de sub-redes do pai (id da
+    // sub-rede que o contém). Preenchido no render e lido pela visibilidade,
+    // pra que o filho suma junto com a pasta/sub-rede que o abriga.
+    IPAM._pfxAncora = {};
+    const pfxFeitos = new Set();
+
+    /* Bloco de um prefixo: a linha dele, as sub-redes da pasta e os prefixos
+       filhos — cada filho encaixado sob a sub-rede que o contém (ex: o
+       100.64.1.0/24 cadastrado como prefixo dentro do 100.64.0.0/12 que já é
+       sub-rede) e, quando nenhuma o contém, na sequência numérica das raízes.
+       Antes os filhos saíam todos DEPOIS da árvore inteira de sub-redes do
+       pai, o que fazia o 100.64.1.0/24 aparecer colado no 100.120.0.0/13. */
+    function _pfxBloco(p, nivel, escondida){
+        if(pfxFeitos.has(p.id)) return '';   // ciclo em pai_id: não repete
+        pfxFeitos.add(p.id);
+
+        const grupo   = gruposSub[p.id] || [];
+        const filhos  = filhosPorPai[p.id] || [];
+        const subredesAbertas = !!IPAM._bdOpen[p.id];
+        const colapsado = !!IPAM._pfxCollapsed[p.id];
+
+        // Âncora de cada filho: a sub-rede mais específica da pasta que o contém
+        const ancorados = {};
+        const soltos    = [];
+        filhos.forEach(c => {
+            let ancora = null, ancoraPL = -1;
+            grupo.forEach(s => {
+                const pl = parseInt((s.rede||'').split('/')[1]||'0', 10);
+                if(pl > ancoraPL && _srContains(s.rede, c.prefixo)){ ancora = s; ancoraPL = pl; }
+            });
+            if(ancora){
+                (ancorados[ancora.id] = ancorados[ancora.id] || []).push(c);
+                // conta como filha pra pasta da sub-rede nascer clicável
+                ancora._pfxFilhos = (ancora._pfxFilhos || 0) + 1;
+                IPAM._pfxAncora[c.id] = {sr: ancora.id, pasta: p.id};
+            } else {
+                soltos.push(c);
+            }
+        });
+
         const pfxLen  = parseInt((p.prefixo||'').split('/')[1]||'32', 10);
         const ver     = (p.prefixo||'').includes(':') ? 6 : 4;
         const maxPL   = ver === 6 ? 128 : 32;
         const podeDividir = pfxLen < maxPL - 1;
-        const nivel   = p.nivel || 0;
         const ehGalho = temFilhos.has(p.id);
-        const grupo   = gruposSub[p.id] || [];
         const qtdSub  = grupo.filter(s => s._depth === 0).length;
-        // Escondida se algum ancestral estiver colapsado
-        let ancestral = p.pai_id, escondida = false;
-        while(ancestral){
-            if(IPAM._pfxCollapsed[ancestral]){ escondida = true; break; }
-            const pai = IPAM.prefixos.find(x => x.id === ancestral);
-            ancestral = pai ? pai.pai_id : null;
-        }
         const toggleArvore = ehGalho
-            ? `<i id="pfx-caret-${p.id}" class="fas ${IPAM._pfxCollapsed[p.id] ? 'fa-caret-right' : 'fa-caret-down'}" style="width:14px;cursor:pointer;color:var(--text-muted);"
+            ? `<i id="pfx-caret-${p.id}" class="fas ${colapsado ? 'fa-caret-right' : 'fa-caret-down'}" style="width:14px;cursor:pointer;color:var(--text-muted);"
                  onclick="ipamToggleArvorePrefixo(${p.id})" title="Expandir/colapsar prefixos filhos"></i>`
             : `<span style="display:inline-block;width:14px;"></span>`;
-        const subredesAbertas = !!IPAM._bdOpen[p.id];
         const folderBtn = qtdSub > 0
             ? `<button class="btn btn-xs ipam-bd-btn me-1" id="ipam-bd-btn-${p.id}"
                 style="padding:2px 7px;font-size:.72rem;background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.3);color:#ffaa00;border-radius:4px;"
@@ -3794,12 +3810,53 @@ window.ipamCarregarPrefixos = async function(){
         </td>
     </tr>`;
 
-        const linhasSub = qtdSub > 0
-            ? grupo.map(s => _renderSrLeafRow(s, nivel + 1, escondida || !subredesAbertas)).join('')
-            : '';
+        /* Sub-árvore de uma sub-rede (o DFS já vem pronto em `grupo`): a linha,
+           as filhas e, no fim delas, os prefixos ancorados nessa sub-rede. */
+        function _emitirSr(i){
+            const s = grupo[i];
+            const escondeFilho = escondida || colapsado || !subredesAbertas
+                                 || !IPAM._srOpen[s.id] || !_srAncestraisAbertos(s);
+            // Filhas diretas e prefixos ancorados saem misturados, em ordem de
+            // CIDR — um /24 cadastrado como prefixo tem que vir antes do /25
+            // que mora dentro dele, não depois.
+            const filhas = [];
+            let j = i + 1;
+            while(j < grupo.length && grupo[j]._depth > s._depth){
+                const cidr = grupo[j].rede;
+                const r = _emitirSr(j);
+                filhas.push({cidr, html: r.html});
+                j = r.fim;
+            }
+            (ancorados[s.id] || []).forEach(c => {
+                filhas.push({cidr: c.prefixo, html: _pfxBloco(c, nivel + s._depth + 2, escondeFilho)});
+            });
+            filhas.sort((a,b) => _cmpCidrStr(a.cidr, b.cidr));
+            const html = _renderSrLeafRow(s, nivel + 1, escondida || !subredesAbertas)
+                       + filhas.map(x => x.html).join('');
+            return {html, fim: j};
+        }
 
-        return linhaPrefixo + linhasSub;
-    }).join('');
+        // Itens da pasta: sub-árvores de sub-redes raiz + filhos sem âncora,
+        // tudo ordenado pelo CIDR pra ninguém aparecer fora de sequência.
+        const itens = [];
+        let i = 0;
+        while(i < grupo.length){
+            const r = _emitirSr(i);
+            itens.push({cidr: grupo[i].rede, html: r.html});
+            i = r.fim;
+        }
+        soltos.forEach(c => itens.push({cidr: c.prefixo, html: _pfxBloco(c, nivel + 1, escondida || colapsado)}));
+        itens.sort((a,b) => _cmpCidrStr(a.cidr, b.cidr));
+
+        return linhaPrefixo + itens.map(x => x.html).join('');
+    }
+
+    const raizes = IPAM.prefixos.filter(p => !p.pai_id || !porId.has(p.pai_id))
+                                .sort((a,b) => _cmpCidrStr(a.prefixo, b.prefixo));
+    let htmlArvore = raizes.map(p => _pfxBloco(p, 0, false)).join('');
+    // Sobra de segurança: prefixo cujo pai_id aponta pra algo fora da lista
+    IPAM.prefixos.forEach(p => { if(!pfxFeitos.has(p.id)) htmlArvore += _pfxBloco(p, 0, false); });
+    tb.innerHTML = htmlArvore;
 
     if(scrollY) window.scrollTo({top: scrollY});
 };
@@ -3818,14 +3875,28 @@ window.ipamAplicarVisibilidade = function(){
     const gruposSub = _srAgruparPorPrefixo();
     const porId     = new Map(IPAM.prefixos.map(p => [p.id, p]));
     const oculto    = {};
+    const ancoras   = IPAM._pfxAncora || {};
 
-    IPAM.prefixos.forEach(p => {
-        let anc = p.pai_id, esconde = false;
-        while(anc){
-            if(IPAM._pfxCollapsed[anc]){ esconde = true; break; }
-            anc = (porId.get(anc) || {}).pai_id || null;
+    /* Um prefixo some se algum prefixo ancestral está colapsado ou — quando
+       ele mora dentro de uma sub-rede do pai (âncora definida no render) — se
+       a pasta do pai está fechada ou a sub-rede âncora não está expandida. */
+    function _pfxOculto(p){
+        if(oculto[p.id] !== undefined) return oculto[p.id];
+        oculto[p.id] = true;                       // corta ciclo em pai_id
+        const pai = p.pai_id ? porId.get(p.pai_id) : null;
+        let esconde = pai ? (_pfxOculto(pai) || !!IPAM._pfxCollapsed[pai.id]) : false;
+        const anc = esconde ? null : ancoras[p.id];
+        if(anc){
+            const sr = IPAM._srNodeById[anc.sr];
+            esconde = !IPAM._bdOpen[anc.pasta] || !sr
+                      || !IPAM._srOpen[sr.id] || !_srAncestraisAbertos(sr);
         }
         oculto[p.id] = esconde;
+        return esconde;
+    }
+
+    IPAM.prefixos.forEach(p => {
+        const esconde = _pfxOculto(p);
 
         const tr = document.getElementById(`pfx-row-${p.id}`);
         if(tr) tr.style.display = esconde ? 'none' : '';
@@ -4452,14 +4523,16 @@ function _srContains(parentCidr, childCidr){
     } catch(e){ return false; }
 }
 
+/* Ordena CIDRs: endereço asc, depois máscara asc (bloco maior primeiro) */
+function _cmpCidrStr(a, b){
+    const ak = _ipSortBigInt((a||'').split('/')[0]);
+    const bk = _ipSortBigInt((b||'').split('/')[0]);
+    if(ak < bk) return -1; if(ak > bk) return 1;
+    return (parseInt((a||'').split('/')[1])||0) - (parseInt((b||'').split('/')[1])||0);
+}
+
 function _buildSrFlatTree(subredes){
-    // Ordena numericamente por endereço IP (asc), depois por prefixlen (asc = maiores blocos primeiro)
-    const sorted = [...subredes].sort((a,b)=>{
-        const ak = _ipSortBigInt(a.rede.split('/')[0]);
-        const bk = _ipSortBigInt(b.rede.split('/')[0]);
-        if(ak < bk) return -1; if(ak > bk) return 1;
-        return parseInt(a.rede.split('/')[1]) - parseInt(b.rede.split('/')[1]);
-    });
+    const sorted = [...subredes].sort((a,b) => _cmpCidrStr(a.rede, b.rede));
     // Nós com lista de filhos diretos
     const nodes = sorted.map(s => ({...s, _children:[], _parentId:null, _depth:0, _childCount:0}));
     const byId  = {};
