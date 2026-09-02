@@ -1129,6 +1129,7 @@ def configuracoes(request):
     # Coleta settings em uma única query
     setting_keys = ['ai_provider','ai_api_key','ai_model','ai_system_prompt',
                     'ai_openai_api_key','ai_openai_model',
+                    'ai_last_error','ai_last_error_at',
                     'daily_alert_enabled','daily_alert_time','daily_alert_group',
                     'notif_abertos_enabled','notif_abertos_group_id','msg_encerramento',
                     'reminder_morning_time','reminder_noon_time',
@@ -1158,6 +1159,10 @@ def configuracoes(request):
         'ai_openai_key': settings_qs.get('ai_openai_api_key', ''),
         'ai_openai_model': settings_qs.get('ai_openai_model', 'gpt-4o'),
         'ai_prompt': settings_qs.get('ai_system_prompt', ''),
+        # Último erro da IA (gravado por atendimento/ai.py) — é o que avisa que
+        # as automações estão saindo no fallback em vez de escritas pela IA.
+        'ai_last_error': settings_qs.get('ai_last_error', ''),
+        'ai_last_error_at': settings_qs.get('ai_last_error_at', ''),
         'daily_alert_enabled': settings_qs.get('daily_alert_enabled', 'false'),
         'daily_alert_time': settings_qs.get('daily_alert_time', '08:00'),
         'daily_alert_group': settings_qs.get('daily_alert_group', ''),
@@ -1331,6 +1336,12 @@ def api_settings(request):
                 if k.startswith('_'):
                     continue
                 SystemSetting.set(k, v, is_secret=(k in secret_keys))
+            # Trocou chave/provedor da IA: o erro antigo não vale mais e o
+            # aviso na tela ficaria pendurado até a próxima falha.
+            if any(k.startswith('ai_') for k in data):
+                from atendimento.ai import AI_ERRO_KEY, AI_ERRO_AT_KEY
+                SystemSetting.set(AI_ERRO_KEY, '')
+                SystemSetting.set(AI_ERRO_AT_KEY, '')
             return JsonResponse({'success': True})
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)

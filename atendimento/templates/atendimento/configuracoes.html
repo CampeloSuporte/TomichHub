@@ -68,6 +68,23 @@ input:checked + .toggle-slider:before{transform:translateX(18px)}
   <div class="cfg-panel active" id="panel-0">
     <div class="cfg-section">
       <h3><i class="fas fa-robot" style="color:var(--active)"></i> Configuração da IA</h3>
+
+      {# Falha da IA fica visível aqui: sem isso, uma conta sem crédito passa
+         despercebida e os chamados vão fechando com resolução de fallback. #}
+      {% if ai_last_error %}
+      <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;margin-bottom:14px;
+                  border:1px solid #e0a060;border-radius:6px;background:rgba(224,160,96,.08)">
+        <i class="fas fa-exclamation-triangle" style="color:#e0a060;margin-top:2px"></i>
+        <div style="font-size:12px;line-height:1.5">
+          <b style="color:#e0a060">IA indisponível na última tentativa</b><br>
+          {{ ai_last_error }}
+          {% if ai_last_error_at %}<br><span style="opacity:.7">Em {{ ai_last_error_at }}</span>{% endif %}
+          <br><span style="opacity:.7">Enquanto isso, o fechamento de chamado grava uma resolução
+          montada a partir do histórico, avisando no chat que não foi a IA que escreveu.</span>
+        </div>
+      </div>
+      {% endif %}
+
       <div class="cfg-field">
         <label>Provedor</label>
         <select class="cfg-select" id="aiProvider">
