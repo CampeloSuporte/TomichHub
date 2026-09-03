@@ -1592,12 +1592,26 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 ### "Opa Suite retorna 'Communication channel not found', o que fazer?"
 → [HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md) — Seção "Bugs Corrigidos" (Bug 5: Canal e Template trocados) — confirme os IDs reais chamando `GET /api/v1/canal-comunicacao/` e `GET /api/v1/template` com o token, em vez de confiar no que aparece no painel
 
+### "O terminal repete 'Erro ao enviar comando: Socket is closed' a cada tecla, o que houve?"
+→ [terminal_ssh.md](terminal_ssh.md) — Seção "Queda da sessão com o terminal aberto". A sessão
+SSH com o equipamento caiu (ociosidade, `logout`, queda do caminho) com o WebSocket ainda
+aberto. Desde 03/09/2026 o terminal avisa uma vez em amarelo e apaga a bolinha da aba; é só
+clicar em **↻ Reconectar**. No log do Daphne, `motivo=` na linha "Thread paramiko shell
+finalizada" diz quem fechou o canal.
+
+### "Por que abriram duas abas do mesmo host e uma delas deu 'senha incorreta'?"
+→ [terminal_ssh.md](terminal_ssh.md) — Seção "Uma aba = um WebSocket = uma sessão VTY". Cada
+aba abre um login VTY novo; no Huawei o segundo cai em "Reenter times have reached the upper
+limit". Corrigido em 03/09/2026 (reabertura do mesmo acesso em menos de 5 s ativa a aba
+existente).
+
 ---
 
 ## 📅 Histórico
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 03/09/2026 | Terminal: queda da sessão com o terminal aberto deixou de ser silenciosa (aviso único em amarelo + bolinha da aba apagada, no lugar de um `Socket is closed` por tecla), `set_keepalive(20)` no transporte que fala com o equipamento (o pool só cuidava do proxy), trava contra abrir duas abas/dois logins VTY do mesmo host e `motivo=` no log dizendo por que o loop de leitura terminou | terminal_ssh.md |
 | 27/08/2026 | Topologia: fix do rótulo do enlace (nome da interface cobria o IP em links quase verticais — afastamento passou a ser perpendicular à linha) e novo item "Área" na paleta — retângulo de fundo com rótulo no topo, cor e cantos de redimensionar, desenhado atrás de links/equipamentos para documentar POP/sala/borda sem virar um "device" | topologia.md |
 | 26/08/2026 | Topologia: tela cheia abria o editor cortado no iframe do cadastro (fullscreen passou a ser pedido no próprio `<iframe>`, no documento pai) e navegação do mapa otimizada — desenho 1x por frame, só os enlaces do host movido, ícone reposicionado por `transform` e efeitos decorativos suspensos durante o movimento | topologia.md |
 | 25/08/2026 | Pesquisa LG ganhou duas abas: **Filtro IRR (bgpq4)** — prefix-list de ASN/as-set no formato do fabricante, com comando exato, copiar e baixar — e **AS-SET** — membros diretos, sets aninhados clicáveis, ASNs recursivos com nome, contagem de prefixos e o objeto em cada base IRR com aviso de divergência | CONSULTA_IRR_ASSET.md |
