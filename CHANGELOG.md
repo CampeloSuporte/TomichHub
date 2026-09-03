@@ -5,6 +5,33 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-03 (Terminal: equipamento com SSH legado e senha recusada)
+
+### Corrigido
+
+- **Host não abria de jeito nenhum quando o equipamento só fala `ssh-dss`**
+  (`clientes/consumers.py`, `connect_ssh_via_proxy`). O Paramiko 4.0.0 removeu o suporte a DSA
+  (`paramiko.DSSKey` não existe mais), então o handshake morria em ~0,1 s com
+  `Incompatible ssh peer (no acceptable host key)` e o terminal só mostrava esse erro cru.
+  Diagnosticado no acesso **OLT-CDJD (172.16.0.86, INFOLINE)**: o equipamento se anuncia como
+  `SSH-1.99-IPSSH-6.6.0` e oferece **apenas** `ssh-dss` como host key e
+  `diffie-hellman-group1-sha1` como KEX. Agora, ao ver `no acceptable` no erro, o consumer cai
+  para o caminho pexpect + `ProxyCommand` (o `ssh` do sistema, que ainda negocia com esses
+  equipamentos e já leva `HostKeyAlgorithms=+ssh-rsa,ssh-dss` e `group1-sha1`).
+  `connect_ssh_parks_proxy()` ganhou o parâmetro `rotulo` e passou a servir aos dois casos em
+  que o Paramiko não dá conta do peer (firmware Parks e algoritmo legado).
+- **Senha errada no cadastro virava "conectado"** no caminho pexpect+proxy: depois de enviar a
+  senha do equipamento o `expect` só olhava prompt ou TIMEOUT, esperava 15 s e mandava
+  `connected` assim mesmo — a aba ficava "conectada" parada num prompt de senha. `Permission
+  denied` / `Access denied` / `Authentication failed` agora viram erro imediato: *"Senha
+  recusada pelo equipamento — confira usuário e senha no cadastro do acesso"*.
+
+Validado ao vivo contra o 172.16.0.86 via proxy da INFOLINE: fallback dispara, o `ssh` do
+sistema negocia com o equipamento e o erro que sobra é o da credencial (a senha do cadastro
+está errada — o equipamento responde `Permission denied`).
+
+---
+
 ## [Não publicado] — 2026-09-03 (Terminal: queda silenciosa da sessão e aba duplicada)
 
 ### Corrigido

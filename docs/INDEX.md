@@ -1592,6 +1592,12 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 ### "Opa Suite retorna 'Communication channel not found', o que fazer?"
 → [HOTSPOT_INTEGRACAO_DISPARO.md](HOTSPOT_INTEGRACAO_DISPARO.md) — Seção "Bugs Corrigidos" (Bug 5: Canal e Template trocados) — confirme os IDs reais chamando `GET /api/v1/canal-comunicacao/` e `GET /api/v1/template` com o token, em vez de confiar no que aparece no painel
 
+### "Um host dá 'Incompatible ssh peer (no acceptable host key)' e não abre, e agora?"
+→ [terminal_ssh.md](terminal_ssh.md) — Seção "Equipamento com SSH legado (ssh-dss)". O
+equipamento só oferece `ssh-dss`, que o Paramiko 4 não suporta mais; desde 03/09/2026 o
+terminal cai sozinho para o `ssh` do sistema. Se depois disso vier "Senha recusada pelo
+equipamento", o problema é a credencial do cadastro, não o CRM.
+
 ### "O terminal repete 'Erro ao enviar comando: Socket is closed' a cada tecla, o que houve?"
 → [terminal_ssh.md](terminal_ssh.md) — Seção "Queda da sessão com o terminal aberto". A sessão
 SSH com o equipamento caiu (ociosidade, `logout`, queda do caminho) com o WebSocket ainda
@@ -1611,6 +1617,7 @@ existente).
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 03/09/2026 | Terminal: fallback para o `ssh` do sistema quando o equipamento só fala `ssh-dss` (Paramiko 4 removeu DSA — diagnosticado no OLT-CDJD 172.16.0.86, banner `SSH-1.99-IPSSH-6.6.0`) e senha recusada deixou de virar "conectado" no caminho pexpect+proxy | terminal_ssh.md |
 | 03/09/2026 | Terminal: queda da sessão com o terminal aberto deixou de ser silenciosa (aviso único em amarelo + bolinha da aba apagada, no lugar de um `Socket is closed` por tecla), `set_keepalive(20)` no transporte que fala com o equipamento (o pool só cuidava do proxy), trava contra abrir duas abas/dois logins VTY do mesmo host e `motivo=` no log dizendo por que o loop de leitura terminou | terminal_ssh.md |
 | 27/08/2026 | Topologia: fix do rótulo do enlace (nome da interface cobria o IP em links quase verticais — afastamento passou a ser perpendicular à linha) e novo item "Área" na paleta — retângulo de fundo com rótulo no topo, cor e cantos de redimensionar, desenhado atrás de links/equipamentos para documentar POP/sala/borda sem virar um "device" | topologia.md |
 | 26/08/2026 | Topologia: tela cheia abria o editor cortado no iframe do cadastro (fullscreen passou a ser pedido no próprio `<iframe>`, no documento pai) e navegação do mapa otimizada — desenho 1x por frame, só os enlaces do host movido, ícone reposicionado por `transform` e efeitos decorativos suspensos durante o movimento | topologia.md |
