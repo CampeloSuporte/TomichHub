@@ -1474,24 +1474,47 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
 
         except Exception as e:
             tempo_total = time.time() - tempo_inicio
-            logger.error(f"❌ SSH via proxy falhou em {tempo_total:.1f}s: {str(e)}")
-            self.send_error(f'Erro SSH via proxy: {str(e)}')
+            msg = str(e)
+            # Equipamento legado que só oferece ssh-dss e/ou
+            # diffie-hellman-group1-sha1 (visto no 172.16.0.86 da INFOLINE,
+            # banner SSH-1.99-IPSSH-6.6.0): o Paramiko 4 removeu o suporte a
+            # DSA — nem existe mais `paramiko.DSSKey` — e aborta o handshake em
+            # 0,1 s com "Incompatible ssh peer (no acceptable host key)".
+            # O ssh do sistema (OpenSSH 9.2) ainda negocia com esses equipamentos
+            # e o comando do caminho pexpect já leva `HostKeyAlgorithms=+ssh-dss`
+            # e `diffie-hellman-group1-sha1`, então caímos para ele em vez de
+            # devolver um erro que nenhum ajuste de cadastro resolveria.
+            if 'no acceptable' in msg.lower():
+                logger.warning(f"⚠️ SSH legado no equipamento ({msg}) — caindo para o ssh do sistema")
+                self.send_json({
+                    'type': 'info',
+                    'message': '↩️ Equipamento com SSH legado (ssh-dss) — usando o ssh do sistema...',
+                })
+                self._fechar_recursos_fisicos()
+                self.connect_ssh_parks_proxy(acesso, rotulo='SSH legado')
+                return
+            logger.error(f"❌ SSH via proxy falhou em {tempo_total:.1f}s: {msg}")
+            self.send_error(f'Erro SSH via proxy: {msg}')
             self.limpar_recursos()
 
     # ─────────────────────────────────────────────────────────────────────────
     # Parks OLT: pexpect + ProxyCommand (Paramiko invoke_shell não é compatível)
     # ─────────────────────────────────────────────────────────────────────────
 
-    def connect_ssh_parks_proxy(self, acesso):
+    def connect_ssh_parks_proxy(self, acesso, rotulo='Parks'):
         """
-        Conecta a OLTs Parks via pexpect usando o binário ssh do sistema com ProxyCommand.
-        Paramiko invoke_shell crasha o firmware Parks — o ssh real negocia corretamente.
+        Conecta via pexpect usando o binário ssh do sistema com ProxyCommand.
+
+        Dois usos, pelo mesmo motivo de fundo (o Paramiko não dá conta do peer):
+        - OLTs Parks — `invoke_shell` do Paramiko crasha o firmware;
+        - equipamentos com SSH legado (só ssh-dss / group1-sha1), para onde
+          `connect_ssh_via_proxy` cai depois de "no acceptable host key".
         """
         tempo_inicio = time.time()
         try:
             proxy = self.get_active_proxy(acesso.cliente)
-            logger.info(f"🔗 SSH Parks via pexpect+proxy: {proxy.nome}")
-            self.send_json({'type': 'info', 'message': f'⚡ Conectando Parks via proxy {proxy.nome}...'})
+            logger.info(f"🔗 {rotulo} via pexpect+proxy: {proxy.nome}")
+            self.send_json({'type': 'info', 'message': f'⚡ Conectando via proxy {proxy.nome} [{rotulo}]...'})
 
             porta = int(acesso.porta) if acesso.porta else 22
 
@@ -1533,7 +1556,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                 f"-p {porta} {acesso.usuario}@{acesso.host}"
             )
 
-            logger.info(f"🖥️ Parks pexpect cmd: ...@{acesso.host}:{porta}")
+            logger.info(f"🖥️ {rotulo} pexpect cmd: ...@{acesso.host}:{porta}")
             proc = pexpect.spawn(ssh_cmd, timeout=30, encoding=None, maxread=65536)
             proc.setwinsize(50, 220)
 
@@ -1562,18 +1585,32 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             ], timeout=15)
 
             if idx2 in (0, 1):
-                # Segunda senha = OLT
+                # Segunda senha = equipamento
                 proc.sendline(acesso.senha.encode())
-                proc.expect([rb'[#>$\]]\s*$', pexpect.TIMEOUT], timeout=15)
+                # Sem tratar "Permission denied" aqui, uma senha errada no
+                # cadastro caía no TIMEOUT de 15s e mesmo assim seguia para o
+                # 'connected' — o usuário via a aba "conectada" parada num
+                # prompt de senha, sem entender que a credencial é que estava
+                # errada.
+                idx3 = proc.expect([
+                    rb'[#>$\]]\s*$',                                  # 0 prompt
+                    b'Permission denied', b'Access denied',            # 1,2 senha errada
+                    b'Authentication failed',                          # 3
+                    pexpect.TIMEOUT, pexpect.EOF,                      # 4,5
+                ], timeout=15)
+                if idx3 in (1, 2, 3):
+                    raise Exception(
+                        'Senha recusada pelo equipamento — confira usuário e senha no cadastro do acesso'
+                    )
             elif idx2 in (3, 4):
-                raise Exception('Timeout ao aguardar prompt do OLT Parks')
+                raise Exception(f'Timeout ao aguardar prompt do equipamento ({rotulo})')
 
             self.ssh_process = proc
 
             tempo_total = time.time() - tempo_inicio
             self.send_json({
                 'type': 'connected',
-                'message': f'✓ SSH a {acesso.host}:{porta} via {proxy.nome} [Parks] ({tempo_total:.1f}s)',
+                'message': f'✓ SSH a {acesso.host}:{porta} via {proxy.nome} [{rotulo}] ({tempo_total:.1f}s)',
             })
 
             self.is_reading  = True
@@ -1582,8 +1619,8 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
 
         except Exception as e:
             tempo_total = time.time() - tempo_inicio
-            logger.error(f"❌ SSH Parks via proxy falhou em {tempo_total:.1f}s: {e}")
-            self.send_error(f'Erro SSH Parks via proxy: {str(e)}')
+            logger.error(f"❌ {rotulo} via proxy falhou em {tempo_total:.1f}s: {e}")
+            self.send_error(f'Erro SSH via proxy [{rotulo}]: {str(e)}')
             self.limpar_recursos()
 
     def _read_pexpect_shell(self):

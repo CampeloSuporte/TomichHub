@@ -191,6 +191,39 @@ Duas travas em `terminal.html`:
 
 ---
 
+## Equipamento com SSH legado (ssh-dss) — Adicionado em 2026-09-03
+
+O Paramiko 4.0.0 **removeu o suporte a DSA** — `paramiko.DSSKey` não existe mais. Equipamento
+antigo que só oferece `ssh-dss` como host key (e normalmente só
+`diffie-hellman-group1-sha1` como KEX) faz o handshake abortar em ~0,1 s com:
+
+```
+Connected (version 1.99, client IPSSH-6.6.0)
+paramiko.ssh_exception.IncompatiblePeer: Incompatible ssh peer (no acceptable host key)
+```
+
+Nenhum ajuste de cadastro resolve — é limitação da biblioteca. O `ssh` do sistema (OpenSSH 9.2
+do Debian 12) ainda negocia com esses equipamentos, e o comando montado no caminho pexpect já
+leva `HostKeyAlgorithms=+ssh-rsa,ssh-dss` e `diffie-hellman-group1-sha1` na lista de KEX.
+
+Então `connect_ssh_via_proxy()`, ao pegar um erro com `no acceptable` na mensagem (cobre
+"no acceptable host key" e "no acceptable kex algorithm"), fecha o transporte pela metade e cai
+para `connect_ssh_parks_proxy(acesso, rotulo='SSH legado')` — o mesmo caminho
+pexpect + `ProxyCommand` usado nas OLTs Parks. O usuário vê
+`↩️ Equipamento com SSH legado (ssh-dss) — usando o ssh do sistema...` e a sessão abre normal.
+
+`connect_ssh_parks_proxy()` deixou de ser exclusiva das Parks: recebe `rotulo` (usado no log e
+nas mensagens) e serve aos dois casos em que o Paramiko não dá conta do peer — firmware Parks
+que crasha no `invoke_shell` e peer com algoritmo legado.
+
+**Senha errada deixou de virar "conectado".** Depois de enviar a senha do equipamento, o
+`expect` só olhava por prompt ou TIMEOUT: com credencial errada no cadastro, esperava 15 s e
+mesmo assim mandava `connected` — a aba ficava "conectada" parada num prompt de senha. Agora
+`Permission denied` / `Access denied` / `Authentication failed` viram erro imediato:
+*"Senha recusada pelo equipamento — confira usuário e senha no cadastro do acesso"*.
+
+---
+
 ## Suporte a Huawei (modo especial)
 
 Equipamentos Huawei requerem tratamento de prompt diferenciado.  
