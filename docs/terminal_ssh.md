@@ -2,7 +2,7 @@
 
 **Arquivo:** `clientes/consumers.py`  
 **Classe principal:** `SSHConsumer` (Django Channels WebSocket Consumer)  
-**Atualizado em:** 2026-08-05
+**Atualizado em:** 2026-09-03
 
 ---
 
@@ -129,11 +129,65 @@ proxy que ainda usava a ordem padrão do paramiko.
 |-------------------------------|----------------------------------------------------|
 | `StrictHostKeyChecking`       | `no` — ambiente interno controlado                 |
 | `ConnectTimeout`              | `10` segundos                                      |
-| `ServerAliveInterval`         | `60` s — mantém sessão viva em links instáveis     |
+| `ServerAliveInterval`         | `20` s — mantém sessão viva em links instáveis     |
 | `ServerAliveCountMax`         | `3` tentativas antes de desconectar                |
 | `HostKeyAlgorithms`           | `+ssh-rsa,ssh-dss` — suporte a equipamentos legados|
 | `Ciphers`                     | inclui `aes128-cbc`, `aes256-cbc`, `3des-cbc`      |
 | `PreferredAuthentications`    | `password,keyboard-interactive`                    |
+
+---
+
+## Queda da sessão com o terminal aberto — Adicionado em 2026-09-03
+
+O WebSocket com o browser e a sessão SSH com o equipamento são coisas separadas: a sessão
+podia morrer (timeout de ociosidade do equipamento, `logout`, queda do caminho até ele) com
+o WebSocket ainda aberto. Antes, isso era **silencioso**: a thread de leitura terminava, a
+aba continuava com a bolinha de "conectado" e cada tecla digitada devolvia uma linha nova de
+`✕ ERRO: Erro ao enviar comando: Socket is closed` — sem dizer o que tinha acontecido nem o
+que fazer.
+
+**Keepalive na sessão com o equipamento.** `connect_ssh_via_proxy` e
+`_connect_ssh_paramiko_direct` chamam `transport.set_keepalive(20)` logo após o
+`start_client()`. O `_ProxyPool` já fazia isso na conexão com o *proxy*; faltava na sessão
+com o equipamento, que fica ociosa enquanto o operador lê a tela e podia ser descartada por
+NAT/firewall no caminho proxy→equipamento sem FIN nenhum. O keepalive também é o que faz o
+Paramiko *perceber* que o outro lado morreu, em vez de só descobrir na próxima escrita.
+Validado ao vivo no BA-ALC-A01-SW-01 (Huawei, via proxy DS TECH): a sessão com keepalive
+sobrevive a 180 s de ociosidade e continua ecoando.
+
+**Aviso único e claro.** `_notificar_sessao_encerrada()` manda
+`{"type": "error", "sessao_encerrada": true}` uma só vez por sessão. É chamado:
+
+- pelo `finally` das quatro threads de leitura (`_read_paramiko_shell`, `read_ssh_output`,
+  `read_telnet_output`, `_read_pexpect_shell`) **quando `is_reading` ainda estava `True`** —
+  ou seja, o loop caiu sozinho e não foi `_fechar_recursos_fisicos()` pedindo parada;
+- por `enviar_comando()`, quando a escrita falha com socket fechado/EOF.
+
+Em sessão compartilhada o aviso vai para todos os espectadores (`_broadcast_para`). O
+frontend (`terminal.html`) apaga a bolinha de conectado da aba e escreve a linha em amarelo
+pedindo **↻ Reconectar**, em vez do vermelho de erro repetido.
+
+**Motivo da queda no log.** `_read_paramiko_shell` agora registra por que o loop terminou:
+`motivo=EOF — o outro lado fechou o canal`, `select falhou: …`, `recv falhou: …`,
+`canal já fechado` ou `parada solicitada`, mais `transporte_ativo=`. Sem isso o log só dizia
+"Thread paramiko shell finalizada" e não dava para separar queda do equipamento de
+encerramento normal.
+
+### Uma aba = um WebSocket = uma sessão VTY
+
+Cada WebSocket abre uma sessão SSH **nova** no equipamento. A janela do terminal recebia o
+acesso por dois caminhos (`localStorage['acessoPendente']` na carga da página e o
+`postMessage` `NOVA_CONEXAO` do opener, ambos em `terminal_tab_manager.js`) e, quando os dois
+chegavam, nasciam duas abas para o mesmo host com ~1,5 s de diferença — dois logins VTY. Em
+Huawei o segundo login costuma cair em
+`Disconnect (code 2): Reenter times have reached the upper limit`, e a aba duplicada mostrava
+"Senha incorreta ou acesso negado" com a sessão boa aberta ao lado.
+
+Duas travas em `terminal.html`:
+
+- `abrirTerminal()` ignora a abertura do mesmo `acesso.id` em menos de 5 s (ativa a aba que já
+  existe). Abrir o mesmo host de propósito depois disso continua valendo.
+- `conectarWebSocket()` não abre um segundo socket se o da aba está `CONNECTING`/`OPEN`.
 
 ---
 

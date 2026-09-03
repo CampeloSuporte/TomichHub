@@ -5,6 +5,46 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-03 (Terminal: queda silenciosa da sessão e aba duplicada)
+
+### Corrigido
+
+- **Terminal enchia a tela de `✕ ERRO: Erro ao enviar comando: Socket is closed`**
+  (`clientes/consumers.py`, `clientes/templates/terminal.html`). Quando a sessão SSH com o
+  equipamento morria com o terminal aberto, a thread de leitura terminava em silêncio: a aba
+  continuava marcada como conectada e cada tecla digitada gerava uma linha de erro nova, sem
+  dizer o que aconteceu nem o que fazer. Visto ao vivo no BA-ALC-A01-SW-01 e no BA-TEI-BNG-01.
+- **Sem keepalive na sessão com o equipamento.** O `_ProxyPool` já mantinha keepalive na
+  conexão com o *proxy*, mas o transporte que fala com o equipamento (`connect_ssh_via_proxy`
+  e `_connect_ssh_paramiko_direct`) não tinha nenhum — uma sessão ociosa podia ser descartada
+  por NAT/firewall no caminho proxy→equipamento sem FIN, e o Paramiko só descobria na próxima
+  escrita. Agora `set_keepalive(20)` nos dois; o `ServerAliveInterval` do `ssh` binário caiu
+  de 60 s para 20 s. Validado ao vivo no BA-ALC-A01-SW-01 (Huawei via proxy DS TECH): sessão
+  com keepalive viva e ecoando após 180 s de ociosidade.
+- **Aviso único quando a sessão cai.** Novo `_notificar_sessao_encerrada()`, disparado pelo
+  `finally` das quatro threads de leitura (só quando o loop caiu sozinho, não quando foi
+  `_fechar_recursos_fisicos()` pedindo parada) e por `enviar_comando()` ao escrever em socket
+  fechado. Manda `{"type": "error", "sessao_encerrada": true}` uma vez por sessão — em sessão
+  compartilhada, para todos os espectadores. O frontend apaga a bolinha de conectado da aba e
+  escreve a linha em amarelo pedindo **↻ Reconectar**.
+- **Duas abas (dois logins VTY) para o mesmo host.** A janela do terminal recebia o acesso por
+  dois caminhos — `localStorage['acessoPendente']` na carga da página e o `postMessage`
+  `NOVA_CONEXAO` do opener (`terminal_tab_manager.js`) — e abria duas sessões SSH com ~1,5 s de
+  diferença. Em Huawei o segundo login cai em `Reenter times have reached the upper limit`, e a
+  aba duplicada mostrava "Senha incorreta ou acesso negado" ao lado da sessão boa.
+  `abrirTerminal()` passa a ignorar a reabertura do mesmo acesso em menos de 5 s (ativa a aba
+  existente) e `conectarWebSocket()` não abre um segundo socket para a mesma aba.
+
+### Diagnóstico
+
+- `_read_paramiko_shell` registra no log **por que** o loop terminou
+  (`motivo=EOF — o outro lado fechou o canal`, `select falhou: …`, `recv falhou: …`,
+  `canal já fechado`, `parada solicitada`) e se o transporte ainda estava ativo. Antes o log
+  só dizia "Thread paramiko shell finalizada", sem separar queda do equipamento de
+  encerramento normal.
+
+---
+
 ## [Não publicado] — 2026-09-02 (Backup Raisecom: shell interativo e paginação do ROS)
 
 ### Corrigido

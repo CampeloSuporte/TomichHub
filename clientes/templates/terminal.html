@@ -1770,6 +1770,22 @@
         }
 
         abrirTerminal(acessoData) {
+            // Trava contra abertura duplicada em rajada do mesmo host: a janela do
+            // terminal recebe o acesso por DOIS caminhos (localStorage
+            // 'acessoPendente' na carga da página e postMessage NOVA_CONEXAO do
+            // opener) e quando os dois chegam nascem duas abas — duas sessões SSH
+            // no equipamento. Em Huawei a segunda login falha com "Reenter times
+            // have reached the upper limit" e a aba mostra erro com a sessão boa
+            // ao lado. Abrir o mesmo host de novo de propósito continua valendo:
+            // só o eco imediato (< 5s) é ignorado.
+            const agoraMs = Date.now();
+            for (const t of this.terminals.values()) {
+                if (t.acesso && String(t.acesso.id) === String(acessoData.id) &&
+                    (agoraMs - (t.criadoEm || 0)) < 5000) {
+                    this.ativarTerminal(t.id);
+                    return;
+                }
+            }
             const terminalId = `terminal-${++this.tabCounter}`;
             try {
                 // Tamanho de fonte menor no mobile para melhor aproveitamento da tela
@@ -1824,7 +1840,7 @@
                 const tObj = {
                     id: terminalId, terminal, fitAddon, pane, acesso: acessoData,
                     socket: null, connected: false, wsRetries: 0, hadSshError: false,
-                    shared: false, viewers: [], isPhysical: true
+                    shared: false, viewers: [], isPhysical: true, criadoEm: agoraMs
                 };
                 this.terminals.set(terminalId, tObj);
                 this.criarAba(terminalId, acessoData);
@@ -1935,6 +1951,13 @@
 
         conectarWebSocket(terminalId) {
             const tObj = this.terminals.get(terminalId); if (!tObj) return;
+            // Uma aba = um WebSocket. Cada WebSocket abre uma sessão SSH NOVA no
+            // equipamento, então dois sockets simultâneos na mesma aba dobram os
+            // usuários VTY e, em Huawei, disparam "Reenter times have reached the
+            // upper limit" — o segundo login falha e a aba mostra erro mesmo com
+            // a primeira sessão viva.
+            if (tObj.socket && (tObj.socket.readyState === WebSocket.CONNECTING ||
+                                tObj.socket.readyState === WebSocket.OPEN)) return;
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${protocol}//${window.location.host}/ws/ssh/`;
             try {
@@ -1979,7 +2002,16 @@
                     } else if (data.type === 'error') {
                         tObj.connected = false;
                         tObj.hadSshError = true;   // não reconectar automaticamente após erro SSH
-                        tObj.terminal.writeln('\x1b[31m✕ ERRO: ' + data.message + '\x1b[0m\n');
+                        if (data.sessao_encerrada) {
+                            // A conexão com o equipamento morreu com o terminal aberto:
+                            // apaga o indicador de conectado da aba para o usuário ver
+                            // que precisa reconectar, em vez de só uma linha de erro.
+                            const tabEnc = document.getElementById(`tab-${terminalId}`);
+                            if (tabEnc) tabEnc.querySelector('.terminal-tab-status').classList.remove('connected');
+                            tObj.terminal.writeln('\x1b[33m⚠ ' + data.message + '\x1b[0m\n');
+                        } else {
+                            tObj.terminal.writeln('\x1b[31m✕ ERRO: ' + data.message + '\x1b[0m\n');
+                        }
                     } else if (data.type === 'share_started') {
                         tObj.shared = true;
                         tObj.isPhysical = true;

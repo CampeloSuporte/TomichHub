@@ -61,6 +61,12 @@ _ZTE_PREFERRED_KEX = (
 )
 
 
+_MSG_SESSAO_ENCERRADA = (
+    'Sessão encerrada pelo equipamento (timeout de ociosidade, logout ou queda '
+    'do caminho até ele). Clique em "↻ Reconectar" para abrir uma nova.'
+)
+
+
 class ThreadedDispatchMixin:
     """
     Channels despacha consumers síncronos via `database_sync_to_async`, que é
@@ -680,6 +686,24 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             except Exception:
                 pass
 
+    def _notificar_sessao_encerrada(self, motivo):
+        """Avisa o usuário (e os espectadores, se compartilhado) que a conexão
+        real com o equipamento morreu — o shell fechou, mas o WebSocket segue
+        aberto. Sem isso a aba continua com aparência de conectada e cada tecla
+        digitada devolvia um "Erro ao enviar comando: Socket is closed" novo,
+        enchendo a tela de erros sem explicar o que aconteceu.
+        Dispara uma única vez por sessão (a thread de leitura e a escrita
+        detectam a morte quase juntas)."""
+        if getattr(self, '_sessao_encerrada_avisada', False):
+            return
+        self._sessao_encerrada_avisada = True
+        payload = {'type': 'error', 'sessao_encerrada': True, 'message': motivo}
+        session = getattr(self, '_shared_session', None)
+        if session:
+            self._broadcast_para(session, payload)
+        else:
+            self.send_json(payload)
+
     def _iniciar_compartilhamento(self):
         """Chamado pelo usuário que já está conectado normalmente a um Acesso
         e decide compartilhar sua sessão viva com outros usuários autorizados."""
@@ -807,6 +831,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         label = self._label_usuario()
         session.add_viewer(self, label)
         self._shared_session = session
+        self._sessao_encerrada_avisada = False
         self.acessoId         = session.acesso_id
         self.protocol         = session.physical.protocol
         self.is_huawei        = session.physical.is_huawei
@@ -897,6 +922,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             self._cmd_buffer = ''
             self._cmd_cursor = 0
             self._transcript_buf = ''
+            self._sessao_encerrada_avisada = False
 
             _fab = ''
             if acesso.modelo and acesso.modelo.fabricante:
@@ -988,8 +1014,17 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                 if alvo.telnet_client:
                     alvo.telnet_client.write(command.encode('utf-8'))
         except Exception as e:
-            logger.error(f"❌ Erro ao enviar: {str(e)}")
-            self.send_error(f'Erro ao enviar comando: {str(e)}')
+            msg = str(e)
+            # "Socket is closed" / EOF = o equipamento (ou o caminho até ele) já
+            # derrubou a sessão. Não é erro de envio: avisa uma vez que a sessão
+            # acabou em vez de repetir o mesmo erro a cada tecla.
+            if isinstance(e, (OSError, EOFError)) or 'closed' in msg.lower():
+                logger.info(f"🔌 Escrita em sessão já encerrada: {msg}")
+                alvo.is_reading = False
+                alvo._notificar_sessao_encerrada(_MSG_SESSAO_ENCERRADA)
+            else:
+                logger.error(f"❌ Erro ao enviar: {msg}")
+                self.send_error(f'Erro ao enviar comando: {msg}')
 
     def is_private_ip(self, host):
         try:
@@ -1249,6 +1284,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         transport._preferred_kex = _ZTE_PREFERRED_KEX
 
         transport.start_client(timeout=15)
+        transport.set_keepalive(20)   # ver comentário em connect_ssh_via_proxy
         self._paramiko_dest_transport = transport
 
         # Detectar vendor pelo banner SSH
@@ -1378,6 +1414,12 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             # version = stack SSH embarcado mínimo).
             dest_transport._preferred_kex = _ZTE_PREFERRED_KEX
             dest_transport.start_client(timeout=10)
+            # Keepalive na sessão com o EQUIPAMENTO (o pool já cuida da conexão
+            # com o proxy). Sem isso, uma sessão ociosa morria em silêncio depois
+            # de ~1-2 min — firewall/NAT no caminho proxy→equipamento descartava
+            # o fluxo sem FIN e a primeira tecla depois disso virava
+            # "Socket is closed".
+            dest_transport.set_keepalive(20)
             self._paramiko_dest_transport = dest_transport
 
             # Detectar vendor pelo banner SSH
@@ -1562,18 +1604,28 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             logger.error(f"❌ Erro thread pexpect Parks: {e}")
         finally:
             logger.info("🛑 Thread pexpect (Parks) finalizada")
+            # is_reading ainda True aqui = o loop caiu sozinho (EOF/canal
+            # fechado pelo equipamento), não foi _fechar_recursos_fisicos()
+            # pedindo parada. Só nesse caso há alguém do outro lado para avisar.
+            if self.is_reading:
+                self._notificar_sessao_encerrada(_MSG_SESSAO_ENCERRADA)
             self.is_reading = False
 
     def _read_paramiko_shell(self):
         """Loop de leitura para conexão SSH via paramiko (proxy) — latência mínima via select."""
         shell = self._paramiko_shell
         _bytes_recebidos = 0
+        # Por que o loop terminou — sem isso o log só dizia "finalizada" e uma
+        # sessão derrubada no meio do uso (o usuário só descobria na tecla
+        # seguinte, com "Socket is closed") não deixava pista nenhuma.
+        motivo = 'parada solicitada'
         logger.info("📖 Thread paramiko shell iniciada")
         try:
             while self.is_reading and shell and not shell.closed:
                 try:
                     r, _, _ = select.select([shell], [], [], 0.1)
-                except Exception:
+                except Exception as e:
+                    motivo = f'select falhou: {e}'
                     break
                 if not r:
                     continue
@@ -1581,9 +1633,12 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                 # Lê o primeiro chunk
                 try:
                     chunk = shell.recv(65536)
-                except Exception:
+                except Exception as e:
+                    motivo = f'recv falhou: {e}'
                     chunk = b''
                 if not chunk:
+                    if motivo == 'parada solicitada':
+                        motivo = 'EOF — o outro lado fechou o canal'
                     break
 
                 buf = bytearray(chunk)
@@ -1627,9 +1682,21 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                 self.send_output(texto)
 
         except Exception as e:
+            motivo = f'exceção: {e}'
             logger.error(f"❌ Erro thread paramiko: {e}")
         finally:
-            logger.info(f"🛑 Thread paramiko shell finalizada (total={_bytes_recebidos}b)")
+            if self.is_reading and motivo == 'parada solicitada' and shell is not None and shell.closed:
+                motivo = 'canal já fechado'
+            _t = getattr(self, '_paramiko_dest_transport', None)
+            logger.info(
+                f"🛑 Thread paramiko shell finalizada (total={_bytes_recebidos}b) "
+                f"motivo={motivo} | transporte_ativo={bool(_t and _t.is_active())}"
+            )
+            # is_reading ainda True aqui = o loop caiu sozinho (EOF/canal
+            # fechado pelo equipamento), não foi _fechar_recursos_fisicos()
+            # pedindo parada. Só nesse caso há alguém do outro lado para avisar.
+            if self.is_reading:
+                self._notificar_sessao_encerrada(_MSG_SESSAO_ENCERRADA)
             self.is_reading = False
 
     # =========================================================
@@ -1677,7 +1744,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             f"-o PubkeyAuthentication=no "
             f"-o PreferredAuthentications=password,keyboard-interactive "
             f"-o ConnectTimeout=10 "
-            f"-o ServerAliveInterval=60 "
+            f"-o ServerAliveInterval=20 "
             f"-o ServerAliveCountMax=3 "
             f"-o LogLevel=ERROR "
             f"-o NumberOfPasswordPrompts=3 "
@@ -1936,6 +2003,11 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             logger.error(f"❌ Erro thread SSH: {str(e)}")
         finally:
             logger.info("🛑 Thread SSH finalizada")
+            # is_reading ainda True aqui = o loop caiu sozinho (EOF/canal
+            # fechado pelo equipamento), não foi _fechar_recursos_fisicos()
+            # pedindo parada. Só nesse caso há alguém do outro lado para avisar.
+            if self.is_reading:
+                self._notificar_sessao_encerrada(_MSG_SESSAO_ENCERRADA)
             self.is_reading = False
 
     # =========================================================
@@ -2004,6 +2076,11 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             logger.error(f"❌ Erro thread Telnet: {str(e)}")
         finally:
             logger.info("🛑 Thread Telnet finalizada")
+            # is_reading ainda True aqui = o loop caiu sozinho (EOF/canal
+            # fechado pelo equipamento), não foi _fechar_recursos_fisicos()
+            # pedindo parada. Só nesse caso há alguém do outro lado para avisar.
+            if self.is_reading:
+                self._notificar_sessao_encerrada(_MSG_SESSAO_ENCERRADA)
             self.is_reading = False
 
     # =========================================================
