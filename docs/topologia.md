@@ -5,7 +5,7 @@
 - `static/js/topo_engine.js`
 - `static/js/topo_main.js`
 
-**Atualizado em:** 2026-08-25
+**Atualizado em:** 2026-09-04
 
 ---
 
@@ -37,7 +37,7 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 | `topo_engine.js` | Definição de tipos (`DEVICES`), interfaces (`IFACES`) e paths SVG dos ícones (`ICONS`) |
 | `topo_main.js` | Classe `TopoEditor` — lógica de renderização, eventos, persistência e importação |
 
-Versão atual: **topo_engine v=25 / topo_main v=42** (parâmetro de cache-busting no HTML).
+Versão atual: **topo_engine v=26 / topo_main v=46** (parâmetro de cache-busting no HTML).
 
 **Estes dois JS ficam em `static/` e mesmo assim são versionados.** `static/` é o
 `STATIC_ROOT` (destino do `collectstatic`) e está no `.gitignore`, mas esses dois
@@ -440,6 +440,78 @@ Detalhes que valem saber:
   completo quando o mapa para.
 - **O `_flushMove()` no `mouseup`** aplica o último movimento pendente antes de fechar o gesto —
   sem ele, soltar o mouse podia deixar o host um frame atrás da posição real do cursor.
+
+---
+
+## Desempenho com o mapa PARADO — 2026-09-04
+
+O passe de 2026-08-26 (acima) atacou o custo **do movimento**. Sobrou o problema maior: com o
+mapa **parado**, sem ninguém tocar em nada, o editor continuava queimando CPU sem parar. A
+animação de fluxo dos enlaces (`stroke-dashoffset`) e os `<animateMotion>` dos pacotes rodam
+para sempre — e como tudo vive num `<svg>` só, **cada quadro invalida a cena inteira**, com
+todos os filtros de todos os nodes junto. Num mapa real de backbone (89 hosts num cliente, 41
+enlaces em outro) isso segurava a aba inteira; e como o editor roda dentro de um `<iframe>` na
+aba Topologia do cadastro do cliente, **a página do cliente em volta ficava lenta junto** — é
+exatamente o "quando eu entro fica lento".
+
+### O que era pago a cada quadro, para sempre
+
+| Item | Custo por quadro | Por que era caro |
+|---|---|---|
+| `.link-glow` com `filter:blur(2.5px)` | 1 raster de blur **por enlace** | `filter` SVG não é cacheado entre repaints; o dash animado repinta sempre |
+| `.link-flow` com `mix-blend-mode:screen` + `drop-shadow` | 1 camada isolada + 1 filtro **por enlace** | blend obriga o navegador a isolar o elemento num grupo próprio |
+| `.link-packet` com 2 `drop-shadow` | 2 filtros **por pacote**, 2 pacotes por enlace | ~164 filtros em movimento num mapa de 41 enlaces |
+| `.node-body`, `.node-icon`, `.node-led` com `drop-shadow` em repouso | 3 filtros **por host** | ~267 filtros num mapa de 89 hosts, re-rasterizados a cada quadro da animação dos enlaces |
+| `backdrop-filter:blur()` nos painéis, dica, zoom, legenda e toast | 1 desfoque de região grande **por painel** | o desfoque é do que está ATRÁS, e o que está atrás (o mapa) se mexe sempre |
+
+### O que mudou
+
+- **Nenhum filtro em repouso.** O volume do chassi já vinha dos gradientes `node-gloss` /
+  `node-shade` nos `<defs>` — a sombra por node era redundante. `drop-shadow` ficou só no
+  **hover** e na **seleção**, onde no máximo 1–2 elementos o usam por vez. O LED verde de "host
+  do CRM" trocou o `drop-shadow` por um `stroke` translúcido; o halo é o mesmo, o custo é zero.
+- **Fluxo e halo sem blur nem blend.** `.link-glow` virou traço mais grosso e translúcido (sem
+  `filter:blur`) e `.link-flow` perdeu `mix-blend-mode:screen` e `drop-shadow` — o traço quase
+  branco já acende sozinho sobre a linha colorida. Os pacotes ficaram com um anel branco no lugar
+  dos dois `drop-shadow`.
+- **`backdrop-filter` saiu dos painéis.** Todos estavam a ≥90% de opacidade — o desfoque não
+  aparecia mesmo. Sobrou só no `.modal-overlay`, que é transitório. As opacidades subiram para
+  ~96% para compensar.
+- **Enfeites desligados não existem no DOM.** Antes eram criados sempre e escondidos com
+  `display:none`: sumia a pintura, mas ficavam 4 elementos por enlace — e, no caso dos pacotes,
+  uma **linha do tempo SMIL viva** por elemento. Agora `_renderLink` só cria halo, fluxo e
+  pacotes quando `this.effectsOn`; `toggleEffects()` chama `_renderLinks()` para trazê-los de
+  volta.
+- **O `#grid-bg` deixou de ser um retângulo 20000×20000.** Ele fica **fora** do `#viewport` (não
+  recebe pan nem zoom), então `width/height: 100%` cobre exatamente a mesma coisa. O `pattern` é
+  `userSpaceOnUse`, ancorado na origem — a fase dos pontos não muda.
+
+### Modo leve automático (`_decidirEfeitos`)
+
+O botão **"Efeitos"** já existia, mas ninguém o achava — e o mapa abria sempre com tudo ligado.
+Agora a decisão é tomada **antes do primeiro desenho** (o `_renderLink` consulta `effectsOn` para
+saber o que criar), nesta ordem:
+
+1. **Escolha explícita da pessoa**, guardada em `localStorage['topo_efeitos']` (`'1'`/`'0'`) pelo
+   próprio botão. Manda em tudo — inclusive religa os efeitos num mapa gigante, se for isso que
+   a pessoa quer.
+2. **`prefers-reduced-motion: reduce`** do SO/navegador → desligado.
+3. **Peso do mapa**: `hosts + enlaces × 3 > TOPO_PESO_LEVE` (60) → desligado, e o `data-tip` do
+   botão passa a dizer *"Efeitos desligados (mapa grande) — clique para ligar"*. Enlace pesa 3×
+   um host porque cada um traz halo + fluxo + 2 pacotes animados. 15 hosts + 15 enlaces batem
+   exatamente no limite: mapa pequeno continua bonito, backbone abre leve.
+
+`_revisarPeso()` refaz a conta depois de **"Importar Hosts"** — um mapa vazio abre com peso zero
+(efeitos ligados) e pode ganhar 80 hosts de uma vez logo em seguida. Ele só **desliga**, nunca
+liga: religar sozinho contrariaria quem acabou de desligar no botão.
+
+`localStorage` dentro de `<iframe>` pode simplesmente lançar (cookies de terceiros bloqueados,
+janela anônima) — daí os wrappers `_lsGet`/`_lsSet` com `try/catch`. Preferência de enfeite não
+vale derrubar o editor.
+
+> **Sub-mapa recalcula sozinho:** abrir um sub-mapa é uma navegação de página inteira
+> (`window.location.href = ...?diagrama=N`), então o `_decidirEfeitos` roda de novo com a
+> contagem daquele mapa.
 
 ---
 

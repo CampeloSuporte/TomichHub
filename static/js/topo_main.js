@@ -10,6 +10,11 @@ const TOPO_IMPORT_TIERS = [
   'server', 'vm', 'host',
 ];
 
+// Acima deste "peso" (hosts + enlaces*3) o editor abre em modo leve, com os
+// enfeites animados desligados — ver _decidirEfeitos. 15 hosts + 15 enlaces
+// batem exatamente no limite; os mapas de backbone reais ficam bem acima.
+const TOPO_PESO_LEVE = 60;
+
 // Ordem crescente de "peso" das interfaces — usada só ao agrupar hosts, para
 // escolher qual dos enlaces do vizinho vira o enlace único que liga ele ao
 // ícone do grupo (fica o mais rápido; os demais viram o rótulo "N enlaces").
@@ -1402,20 +1407,27 @@ class TopoEditor {
     // Durante o movimento os pacotes estão escondidos por CSS (body.nav-busy):
     // recriar dois <animateMotion> por enlace a cada frame era puro custo. O
     // _navBusy() redesenha os enlaces por inteiro quando o mapa para.
+    // Com os efeitos DESLIGADOS os enfeites não são nem criados: escondê-los
+    // por CSS (`display:none`) tirava a pintura, mas continuava custando o DOM
+    // de 4 elementos por enlace — e, no caso do <animateMotion>, uma linha do
+    // tempo SMIL viva por pacote. Ligar de novo passa por _renderLinks()
+    // (ver toggleEffects), então nada fica faltando na tela.
     const flowDur = Math.max(.6, Math.min(4, linkLen / 220));
     if (this._navOn) this._navSujo = true;
-    const packetsHtml = this._navOn ? '' : `
+    const packetsHtml = (this._navOn || !this.effectsOn) ? '' : `
       <circle class="link-packet" r="${Math.max(2.2, w*.9)}" fill="${color}" style="color:${color}">
         <animateMotion dur="${flowDur.toFixed(2)}s" repeatCount="indefinite" path="${d}"/>
       </circle>
       <circle class="link-packet" r="${Math.max(2.2, w*.9)}" fill="${color}" style="color:${color}">
         <animateMotion dur="${flowDur.toFixed(2)}s" repeatCount="indefinite" path="${d}" begin="${(flowDur/2).toFixed(2)}s"/>
       </circle>`;
+    const enfeitesHtml = !this.effectsOn ? '' : `
+      <path class="link-glow" d="${d}" stroke="${color}" stroke-width="${w + 5}" style="color:${color}"/>
+      <path class="link-flow" d="${d}" stroke-width="${Math.max(1.4, w - .6)}" style="color:${color}"/>`;
 
     linkGroup.innerHTML = `
       <path class="link" d="${d}" stroke="${color}" stroke-width="${w}" stroke-dasharray="${dash}" stroke-linecap="round"/>
-      <path class="link-glow" d="${d}" stroke="${color}" stroke-width="${w + 4}" style="color:${color}"/>
-      <path class="link-flow" d="${d}" stroke-width="${Math.max(1.4, w - .6)}" style="color:${color}"/>
+      ${enfeitesHtml}
       ${packetsHtml}
       <path class="link-hit" d="${d}" data-id="${link.id}"/>
       ${ipLocalHtml}${ipRemoteHtml}
@@ -2888,10 +2900,56 @@ class TopoEditor {
   }
 
   toggleEffects() {
-    this.effectsOn = !this.effectsOn;
-    document.body.classList.toggle('effects-off', !this.effectsOn);
-    document.getElementById('btn-effects').classList.toggle('active', this.effectsOn);
+    this._setEfeitos(!this.effectsOn);
+    // Enfeites ligados/desligados mudam o DOM do enlace (ver _renderLink), não
+    // só a pintura — sem redesenhar, ligar o botão não traria nada de volta.
+    this._renderLinks();
+    this._lsSet('topo_efeitos', this.effectsOn ? '1' : '0');
   }
+
+  /** Liga/desliga os efeitos no estado + body + botão, sem redesenhar nem
+   *  gravar preferência (quem chama decide as duas coisas). */
+  _setEfeitos(on) {
+    this.effectsOn = !!on;
+    document.body.classList.toggle('effects-off', !this.effectsOn);
+    document.getElementById('btn-effects')?.classList.toggle('active', this.effectsOn);
+  }
+
+  /** Decide se os enfeites animados entram ligados e sincroniza body/botão.
+   *  Precisa rodar ANTES do primeiro desenho — _renderLink consulta
+   *  `this.effectsOn` para decidir o que criar.
+   *
+   *  Ordem de decisão: escolha explícita da pessoa (botão "Efeitos", guardada
+   *  no navegador) > `prefers-reduced-motion` do SO > peso do mapa.
+   *
+   *  O peso existe porque a animação nunca para: o mapa é um SVG só, e cada
+   *  quadro do fluxo/pacotes re-rasteriza a cena inteira. Em mapas grandes (o
+   *  maior em produção tem 89 hosts e outro 41 enlaces) isso queimava CPU sem
+   *  parar só com o editor aberto — e derrubava junto a página do cliente em
+   *  volta, já que o editor roda num <iframe> dentro dela. Enlace pesa mais
+   *  que host: cada um traz halo + fluxo + 2 pacotes animados. */
+  _decidirEfeitos(nNodes, nLinks) {
+    const pref = this._lsGet('topo_efeitos');
+    let on;
+    if (pref === '1' || pref === '0') {
+      on = pref === '1';
+    } else if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      on = false;
+    } else {
+      on = (nNodes + nLinks * 3) <= TOPO_PESO_LEVE;
+    }
+    this._setEfeitos(on);
+    if (!on && pref === null) {
+      const btn = document.getElementById('btn-effects');
+      if (btn) btn.dataset.tip = 'Efeitos desligados (mapa grande) — clique para ligar';
+    }
+  }
+
+  /** localStorage dentro de <iframe> pode simplesmente lançar (navegador com
+   *  cookies de terceiros bloqueados, modo anônimo). Preferência de enfeite não
+   *  vale derrubar o editor. */
+  _lsGet(k) { try { return localStorage.getItem(k); } catch(e) { return null; } }
+  _lsSet(k, v) { try { localStorage.setItem(k, v); } catch(e) { /* silencioso */ } }
 
   // ── Tela cheia ────────────────────────────────────────────────────────────
   // Vale principalmente pro editor embutido no cadastro do cliente, onde o
@@ -3072,9 +3130,23 @@ class TopoEditor {
       if (!novos.length) { this._toast('Nenhum host novo para importar'); return; }
 
       const added = this._layoutImportados(novos);
-      if (added > 0) this.zoomFit();
+      if (added > 0) { this.zoomFit(); this._revisarPeso(); }
       this._toast(`${added} hosts importados`);
     } catch(e) { this._toast('Erro: ' + e.message, 'error'); }
+  }
+
+  /** Reavalia o peso do mapa depois de uma importação: um mapa vazio abre com
+   *  os efeitos ligados (peso zero) e pode ganhar 80 hosts de uma vez logo em
+   *  seguida. Só DESLIGA, nunca liga — religar sozinho contrariaria quem
+   *  acabou de desligar no botão. */
+  _revisarPeso() {
+    if (!this.effectsOn) return;
+    if (this._lsGet('topo_efeitos') !== null) return;  // escolha explícita manda
+    if (this.nodes.length + this.links.length * 3 <= TOPO_PESO_LEVE) return;
+    this._setEfeitos(false);
+    const btn = document.getElementById('btn-effects');
+    if (btn) btn.dataset.tip = 'Efeitos desligados (mapa grande) — clique para ligar';
+    this._renderLinks();
   }
 
   /** Ids de nodes que estão dentro de algum grupo deste mapa. */
@@ -3681,13 +3753,24 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   topo._updateStatus(); // estado inicial da dica de canvas vazio, antes de qualquer fetch resolver
 
+  // O JSON é lido aqui (e não só dentro do fromJSON) porque o tamanho do mapa
+  // decide se os enfeites animados entram ligados — e essa decisão tem que ser
+  // tomada ANTES do primeiro desenho, senão os enlaces nascem com halo, fluxo e
+  // pacotes que teriam de ser desmontados logo em seguida.
   const dados = window.TOPO_DADOS;
-  const temNodes = dados && (typeof dados === 'string'
-    ? dados.includes('"nodes"') && JSON.parse(dados)?.nodes?.length
-    : dados.nodes?.length);
+  let d = dados;
+  if (typeof dados === 'string') {
+    try { d = JSON.parse(dados); } catch(e) { d = null; }
+  }
+  const nNodes = (d && d.nodes && d.nodes.length) || 0;
+  const nLinks = (d && d.links && d.links.length) || 0;
 
-  if (temNodes) {
-    topo.fromJSON(dados);
+  // Efeitos (pulso nos nodes do CRM, fluxo animado e "pacotes" nos links):
+  // preferência guardada > prefers-reduced-motion > peso do mapa.
+  topo._decidirEfeitos(nNodes, nLinks);
+
+  if (nNodes) {
+    topo.fromJSON(d);
     topo._refreshCrmNodeTypes();
   } else {
     topo.importHosts();
@@ -3695,14 +3778,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('btn-grid').classList.add('active');
   document.getElementById('btn-snap').classList.add('active');
-  // Efeitos (pulso nos nodes do CRM, fluxo animado e "pacotes" nos links) vêm
-  // ligados por padrão, exceto para quem pediu menos movimento no SO/navegador
-  // (prefers-reduced-motion) — nesse caso já inicia desligado, sem exigir que
-  // a pessoa descubra e clique no botão "Efeitos" manualmente.
-  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    topo.effectsOn = false;
-    document.body.classList.add('effects-off');
-  } else {
-    document.getElementById('btn-effects').classList.add('active');
-  }
 });
