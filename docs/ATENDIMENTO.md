@@ -1725,12 +1725,52 @@ para grupo. Dois lugares guardando o mesmo fato saem de sincronia: marcar
 > quando isto foi implementado, então ligar a regra não mudou nada do que já
 > estava no ar.
 
-### Administrador vê tudo
+### A restrição vale para todo mundo — inclusive administrador
 
-A escolha serve para **dividir o trabalho entre atendentes**, não para esconder
-do dono do sistema — um chamado que ninguém com poder de supervisionar consegue
-ver é pior que um chamado exposto. Vale para Consultor e Operador; o
-Administrador passa direto, igual ao escopo por instância que já existia.
+**Corrigido no mesmo dia (04/09/2026, tarde).** A primeira versão deixava o
+administrador passar direto, com o argumento de que a escolha serve para
+dividir trabalho, não para esconder do dono do sistema. Na prática não
+restringia quase nada.
+
+O motivo está no cadastro, não na regra: `perms.get_role` trata todo usuário
+`is_staff` **sem `PerfilUsuario`** como *"admin legado"* (compatibilidade com
+contas anteriores aos perfis). Nesta base, **8 dos 12 usuários** caíam nisso, e
+**6 deles sem ninguém nunca ter decidido que eram administradores**:
+
+| Papel efetivo | Usuários |
+|---|---|
+| admin **por perfil ausente** | saracampelo, nailson, josefhtomich, adm_466dee, adm_6cb110, admweb_2211cb |
+| admin (superuser) | danilotomich, lucas |
+| operador / consultor | guilherme, semperfil_6cb110, testemarinho, mmarinho |
+
+Ou seja: um contato marcado para uma pessoa continuava aparecendo em "Em
+andamento" para o escritório inteiro. O sintoma que denunciou isso foi
+exatamente esse — contato *Sartor* marcado só para o `lucas`, e a Sara
+enxergando o chamado.
+
+Agora **quem não está na lista não vê o chamado, seja qual for o papel**. A
+regra não depende mais de o cadastro de perfis estar correto.
+
+### A válvula de escape: contato ≠ chamado
+
+O administrador **perde os CHAMADOS** do contato restrito, mas **continua
+enxergando o CONTATO** na tela de Grupos/Contatos:
+
+| | Administrador não marcado | Atendente não marcado |
+|---|---|---|
+| Chamados do contato | ❌ não vê | ❌ não vê |
+| O contato na tela Grupos/Contatos | ✅ vê | ❌ não vê |
+| Mudar a lista de quem atende | ✅ pode | ❌ não pode |
+
+Sem essa exceção a restrição seria **irreversível**: um contato marcado para
+alguém que sai da empresa ficaria sem volta — ninguém veria o chamado e
+ninguém acharia o contato para corrigir. A tela de Grupos/Contatos é
+**administração**, não atendimento; o preço é o nome do contato ficar visível
+ali para quem administra, e é um preço que vale pagar.
+
+Na prática: `conversations_visiveis` aplica `_restricao_q` **antes** do
+`if _tudo(user)`, enquanto `groups_visiveis`/`pode_ver_group` mantêm o
+`_tudo` na frente.
 
 ### Todos os caminhos onde a regra é aplicada
 
@@ -1741,7 +1781,7 @@ Restrição que vale em uma tela e falha em outra não restringe nada. Os pontos
 | Listagens (inbox, dashboard, kanban, histórico, relatórios, busca) | `conversations_visiveis` ganhou `_restricao_q` | `scope.py` |
 | Abrir um chamado | `pode_ver_conversation` → 403 | `scope.py` |
 | Lista de Grupos/Contatos e filtros | `groups_visiveis` / `pode_ver_group` — o **nome** do contato restrito também some | `scope.py` |
-| WebSocket da caixa de entrada | pacote carrega `allowed_user_ids`; o consumer descarta para quem não pode | `services.py` + `consumers.py` |
+| WebSocket da caixa de entrada | pacote carrega `allowed_user_ids`; o consumer descarta para quem não pode, **sem exceção para admin** | `services.py` + `consumers.py` |
 | WebSocket da conversa | `connect` passou a checar `pode_ver_conversation` | `consumers.py` |
 | Aviso "chamado sem atendimento" (WhatsApp) | chamado restrito não é avisado | `tasks.py` |
 | Resumo diário (WhatsApp) | idem, nas duas listas | `tasks.py` |
@@ -1829,8 +1869,10 @@ que não existe.
 
 ### Testes
 
-`ContatoTelefoneVisibilidadeTest` (22 casos) cobre: normalização do telefone,
-contato aberto × restrito, admin vendo tudo, o chamado **não** duplicando com
+`ContatoTelefoneVisibilidadeTest` (24 casos) cobre: normalização do telefone,
+contato aberto × restrito, **admin não marcado perdendo o chamado mas ainda
+enxergando o contato** (e o caminho de volta funcionando de ponta a ponta), o
+chamado **não** duplicando com
 vários atendentes marcados, contato restrito **não** derrubando os chamados dos
 contatos abertos, inbox e detalhe, criação e validações, lista vazia voltando ao
 geral, operador barrado, id inválido ignorado, payload do WebSocket, aviso do

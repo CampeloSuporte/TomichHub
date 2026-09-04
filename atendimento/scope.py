@@ -20,10 +20,24 @@ Regra:
 Em cima disso existe um SEGUNDO recorte, independente da instância: um
 contato/grupo pode ter atendentes escolhidos (`UserGroupPermission`), e aí só
 eles veem os chamados dele. Contato sem ninguém escolhido é aberto — cai no
-atendimento geral, como sempre foi. Administrador continua vendo tudo: a
-escolha serve para dividir o trabalho entre atendentes, não para esconder do
-dono do sistema. Ver `_restricao_q` e docs/ATENDIMENTO.md → "Contatos
-restritos a atendentes".
+atendimento geral, como sempre foi.
+
+**Esse segundo recorte vale para TODO MUNDO, administrador incluído.** Não é o
+que valeu no primeiro dia (04/09/2026 de manhã o admin passava direto), e a
+razão da mudança está na realidade do cadastro: `perms.get_role` trata todo
+`is_staff` SEM `PerfilUsuario` como "admin legado", e nesta base 8 dos 12
+usuários caíam nisso — 6 deles sem ninguém nunca ter decidido que eram
+administradores. Na prática "admin vê tudo" queria dizer "quase ninguém é
+filtrado", e um contato marcado para uma pessoa continuava visível para o
+escritório inteiro.
+
+A válvula de escape fica em `groups_visiveis`/`pode_ver_group`, não aqui: o
+administrador continua enxergando o CONTATO na tela de Grupos/Contatos (para
+mudar a lista ou tirar a restrição), mas não os CHAMADOS dele. Sem isso, um
+contato restrito a alguém que sai da empresa viraria uma armadilha sem volta —
+ninguém veria o chamado e ninguém conseguiria achar o contato para desfazer.
+
+Ver `_restricao_q` e docs/ATENDIMENTO.md → "Contatos restritos a atendentes".
 """
 from django.db.models import Exists, OuterRef, Q
 
@@ -83,7 +97,14 @@ def groups_visiveis(user, qs=None, incluir_sem_cliente=True):
 
     Contato com atendentes escolhidos some da lista para quem não está entre
     eles — senão o nome do contato restrito continuaria aparecendo na tela de
-    Grupos/Contatos e nos filtros, que é metade do que se quer esconder."""
+    Grupos/Contatos e nos filtros, que é metade do que se quer esconder.
+
+    **O administrador é a exceção, e de propósito:** aqui ele vê tudo. Esta é a
+    tela de ADMINISTRAÇÃO do contato, não de atendimento — é por ela que se
+    muda a lista ou se tira a restrição. Se o admin também não enxergasse, um
+    contato marcado para alguém que sai da empresa ficaria sem volta: ninguém
+    veria o chamado e ninguém acharia o contato para corrigir. Os CHAMADOS
+    desse contato continuam escondidos dele (ver `conversations_visiveis`)."""
     from .models import ContactGroup
     qs = ContactGroup.objects.all() if qs is None else qs
     if _tudo(user):
@@ -97,33 +118,40 @@ def groups_visiveis(user, qs=None, incluir_sem_cliente=True):
 def conversations_visiveis(user, qs=None):
     """Conversa é escopada pelo próprio cliente OU pelo cliente do grupo —
     conversa antiga pode ter `cliente` nulo mas grupo já vinculado — e, por
-    cima disso, pelos atendentes escolhidos no contato/grupo."""
+    cima disso, pelos atendentes escolhidos no contato/grupo.
+
+    A restrição por atendente é aplicada ANTES do `_tudo`: ela vale para o
+    administrador também (ver o cabeçalho do módulo)."""
     from .models import Conversation
     qs = Conversation.objects.all() if qs is None else qs
+    qs = qs.filter(_restricao_q(user))
     if _tudo(user):
         return qs
     permitidos = clientes_visiveis(user)
     return (qs
             .filter(Q(cliente__in=permitidos) | Q(group__cliente__in=permitidos))
-            .filter(_restricao_q(user))
             .distinct())
 
 
 def pode_ver_conversation(user, conversation):
+    # Atendentes escolhidos primeiro: vale inclusive para o administrador.
+    if not _permitido_no_grupo(user, conversation.group):
+        return False
     if _tudo(user):
         return True
     permitidos = clientes_visiveis(user)
     ids = set(permitidos.values_list('id', flat=True))
-    da_instancia = conversation.cliente_id in ids or (
+    return conversation.cliente_id in ids or (
         conversation.group_id is not None and conversation.group.cliente_id in ids
     )
-    return da_instancia and _permitido_no_grupo(user, conversation.group)
 
 
 def pode_ver_group(user, group):
     """Grupo sem cliente é "de ninguém" ainda — visível/vinculável por
     qualquer back-office. Grupo já vinculado só para a instância dona. Em
-    qualquer caso, contato restrito só para os atendentes escolhidos."""
+    qualquer caso, contato restrito só para os atendentes escolhidos — com o
+    administrador de fora da regra, pela mesma razão de `groups_visiveis`:
+    é por aqui que a restrição é desfeita."""
     if _tudo(user):
         return True
     if not _permitido_no_grupo(user, group):
@@ -136,7 +164,9 @@ def pode_ver_group(user, group):
 def atendentes_do_chamado(conversation):
     """Ids dos atendentes que podem ver este chamado, ou `None` quando ele é
     aberto para todos. É o que viaja no payload do WebSocket para o
-    `InboxConsumer` decidir se entrega ou descarta — ver consumers.py."""
+    `InboxConsumer` decidir se entrega ou descarta — ver consumers.py. Como a
+    restrição vale para o administrador também, o consumer não abre exceção
+    para ninguém que não esteja nesta lista."""
     if conversation.group_id is None:
         return None
     ids = conversation.group.atendentes_ids()

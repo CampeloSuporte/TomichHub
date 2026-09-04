@@ -2821,6 +2821,7 @@ class ContatoTelefoneVisibilidadeTest(TestCase):
     # ── Escopo ────────────────────────────────────────────────────────────
 
     def test_chamado_de_contato_aberto_aparece_para_toda_a_equipe(self):
+        """Contato sem ninguém marcado não é afetado por nada disso."""
         from atendimento.scope import conversations_visiveis
         conv = Conversation.objects.create(group=self._contato(), cliente=self.cliente)
         for user in (self.ana, self.bruno, self.admin):
@@ -2839,14 +2840,54 @@ class ContatoTelefoneVisibilidadeTest(TestCase):
         self.assertNotIn(conv, conversations_visiveis(self.bruno))
         self.assertFalse(pode_ver_conversation(self.bruno, conv))
 
-    def test_administrador_ve_chamado_restrito_mesmo_sem_estar_marcado(self):
+    def test_administrador_nao_marcado_tambem_perde_o_chamado(self):
+        """A restrição vale para TODO MUNDO. No primeiro dia o admin passava
+        direto, e na prática isso não restringia nada: `perms.get_role` trata
+        todo `is_staff` sem `PerfilUsuario` como "admin legado", e a maioria da
+        equipe caía nisso sem ninguém ter decidido — um contato marcado para
+        uma pessoa seguia visível para o escritório inteiro."""
         from atendimento.scope import conversations_visiveis, pode_ver_conversation
         contato = self._contato()
         self._restringir(contato, self.ana)
         conv = Conversation.objects.create(group=contato, cliente=self.cliente)
 
+        self.assertNotIn(conv, conversations_visiveis(self.admin))
+        self.assertFalse(pode_ver_conversation(self.admin, conv))
+
+    def test_admin_marcado_ve_o_chamado(self):
+        from atendimento.scope import conversations_visiveis, pode_ver_conversation
+        contato = self._contato()
+        self._restringir(contato, self.admin)
+        conv = Conversation.objects.create(group=contato, cliente=self.cliente)
+
         self.assertIn(conv, conversations_visiveis(self.admin))
         self.assertTrue(pode_ver_conversation(self.admin, conv))
+        self.assertNotIn(conv, conversations_visiveis(self.ana))
+
+    def test_admin_ainda_enxerga_o_contato_para_poder_desfazer(self):
+        """Válvula de escape: o admin perde os CHAMADOS do contato restrito,
+        mas não o CONTATO em si — é pela tela de Grupos/Contatos que ele muda a
+        lista. Sem isso, contato marcado para quem sai da empresa ficaria sem
+        volta: ninguém veria o chamado e ninguém acharia o contato."""
+        from atendimento.scope import groups_visiveis, pode_ver_group
+        contato = self._contato()
+        self._restringir(contato, self.ana)
+        conv = Conversation.objects.create(group=contato, cliente=self.cliente)
+
+        self.assertIn(contato, groups_visiveis(self.admin))
+        self.assertTrue(pode_ver_group(self.admin, contato))
+
+        from atendimento.scope import conversations_visiveis
+        self.assertNotIn(conv, conversations_visiveis(self.admin))
+
+        # E o caminho de volta funciona de verdade: esvaziar a lista devolve
+        # o chamado para todo mundo, admin incluído.
+        self.client.force_login(self.admin)
+        self.client.post(
+            reverse('atendimento:api_group_atendentes', args=[contato.id]),
+            data=json.dumps({'atendentes': []}), content_type='application/json',
+        )
+        self.assertIn(conv, conversations_visiveis(self.admin))
 
     def test_restricao_nao_derruba_os_chamados_abertos_dos_outros_contatos(self):
         """O `Exists` negado tem que valer por contato, não por consulta: um
@@ -2883,6 +2924,8 @@ class ContatoTelefoneVisibilidadeTest(TestCase):
         self.assertTrue(pode_ver_group(self.ana, contato))
         self.assertNotIn(contato, groups_visiveis(self.bruno))
         self.assertFalse(pode_ver_group(self.bruno, contato))
+        # Admin continua vendo o CONTATO (administração) — ver o teste da
+        # válvula de escape acima.
         self.assertIn(contato, groups_visiveis(self.admin))
 
     # ── Telas ─────────────────────────────────────────────────────────────

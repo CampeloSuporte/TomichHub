@@ -5,6 +5,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-04 (Atendimento: a restrição não restringia quase nada)
+
+### Corrigido
+
+- **Contato marcado para uma pessoa continuava aparecendo para o escritório inteiro.** Relatado
+  na hora: contato *Sartor* marcado só para o `lucas`, e a Sara enxergando o chamado em "Em
+  andamento". A regra estava funcionando — os atendentes de verdade não viam — mas a exceção
+  "administrador vê tudo" engolia o resto.
+
+  O motivo está no cadastro, não na regra: `perms.get_role` trata todo usuário `is_staff` **sem
+  `PerfilUsuario`** como *"admin legado"* (compatibilidade com contas anteriores aos perfis).
+  Nesta base, **8 dos 12 usuários** caíam nisso — e **6 sem ninguém nunca ter decidido que eram
+  administradores**. Na prática, "admin vê tudo" queria dizer "quase ninguém é filtrado".
+
+  Agora **quem não está na lista não vê o chamado, seja qual for o papel** — a restrição não
+  depende mais de o cadastro de perfis estar correto. Vale igual no HTTP e no WebSocket.
+
+- **A restrição não podia virar armadilha sem volta**, então o administrador continua enxergando
+  o **contato** na tela de Grupos/Contatos (para mudar a lista ou tirar a restrição), mesmo sem
+  ver os **chamados** dele. Sem essa separação, um contato marcado para alguém que sai da empresa
+  ficaria irreversível: ninguém veria o chamado e ninguém acharia o contato para corrigir. A tela
+  de Grupos/Contatos é administração, não atendimento.
+
+201 testes do módulo passando, 24 em `ContatoTelefoneVisibilidadeTest` — incluindo o caminho de
+volta completo (esvaziar a lista devolve o chamado para todos).
+
+---
+
 ## [Não publicado] — 2026-09-04 (Atendimento: contato de telefone e "quem atende")
 
 ### Adicionado
