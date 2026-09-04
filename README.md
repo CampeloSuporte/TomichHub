@@ -629,6 +629,7 @@ sudo -u postgres psql crm_db < backup_20260101.sql
 | [docs/backup_automatico.md](docs/backup_automatico.md) | Sistema de backup automático |
 | [docs/ipam.md](docs/ipam.md) | IPAM nativo |
 | [docs/topologia.md](docs/topologia.md) | Topologia de rede interativa |
+| [docs/bgp_automacao.md](docs/bgp_automacao.md) | Automação BGP — subir circuito/IX (inclusive com peer de outro ASN), anúncios por community, prepend, modo trial |
 
 ---
 
