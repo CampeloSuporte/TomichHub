@@ -26,6 +26,21 @@ input:checked + .toggle-slider:before { transform:translateX(16px); }
 .form-field { margin-bottom:14px; }
 .form-field label { display:block; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-bottom:5px; }
 .form-select { width:100%; padding:8px 12px; background:#161d30; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px; font-family:'Inter',sans-serif; box-sizing:border-box; }
+.form-hint { font-size:11px; color:var(--muted); margin-top:5px; line-height:1.45; }
+.tipo-badge { padding:2px 7px; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:.3px; }
+.tipo-grupo { background:rgba(124,58,237,.14); color:#a78bfa; }
+.tipo-contato { background:rgba(14,165,233,.14); color:#38bdf8; }
+/* Lista de atendentes do modal: caixa rolável de checkboxes — um <select
+   multiple> obriga a segurar Ctrl para marcar mais de um, e foi assim que
+   gente marcou uma pessoa só sem perceber. */
+.at-lista { max-height:230px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; background:#161d30; }
+.at-item { display:flex; align-items:center; gap:9px; padding:8px 11px; cursor:pointer; font-size:13px; color:var(--text); border-bottom:1px solid rgba(255,255,255,.04); }
+.at-item:last-child { border-bottom:none; }
+.at-item:hover { background:rgba(255,255,255,.03); }
+.at-item input { width:15px; height:15px; accent-color:var(--active); cursor:pointer; flex-shrink:0; }
+.at-resumo { font-size:12px; padding:9px 11px; border-radius:6px; margin-bottom:12px; line-height:1.5; }
+.at-aberto { background:rgba(34,197,94,.1); color:#4ade80; border:1px solid rgba(34,197,94,.25); }
+.at-restrito { background:rgba(234,179,8,.1); color:#facc15; border:1px solid rgba(234,179,8,.25); }
 {% endblock %}
 
 {% block main_content %}
@@ -34,9 +49,12 @@ input:checked + .toggle-slider:before { transform:translateX(16px); }
         <i class="fas fa-users" style="color:var(--active);font-size:24px;"></i>
         <div>
             <h2>Grupos / Contatos</h2>
-            <small>{{ groups|length }} grupo(s)</small>
+            <small>{{ groups|length }} registro(s)</small>
         </div>
     </div>
+    <button class="btn-cyber" onclick="abrirNovoContato()" style="margin-left:auto;padding:8px 14px;">
+        <i class="fas fa-user-plus"></i> Novo contato
+    </button>
 </div>
 
 <div class="atendimento-content">
@@ -69,11 +87,13 @@ input:checked + .toggle-slider:before { transform:translateX(16px); }
                     <tr>
                         <th style="width:44px;"></th>
                         <th>Nome</th>
-                        <th>JID</th>
+                        <th>Tipo</th>
+                        <th>JID / Telefone</th>
                         <th>Conexão</th>
                         <th>Membros</th>
                         <th>Empresa</th>
                         <th>Cliente CRM</th>
+                        <th>Quem atende</th>
                         <th>IA</th>
                         <th>Status</th>
                         <th></th>
@@ -92,9 +112,18 @@ input:checked + .toggle-slider:before { transform:translateX(16px); }
                             {% endif %}
                         </td>
                         <td style="font-weight:600;">{{ group.name|truncatechars:40 }}</td>
-                        <td style="color:var(--muted);font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ group.jid }}">{{ group.jid|truncatechars:30 }}</td>
+                        <td>
+                            {% if group.is_group %}
+                            <span class="tipo-badge tipo-grupo">GRUPO</span>
+                            {% else %}
+                            <span class="tipo-badge tipo-contato">CONTATO</span>
+                            {% endif %}
+                        </td>
+                        <td style="color:var(--muted);font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ group.jid }}">
+                            {% if group.is_group %}{{ group.jid|truncatechars:30 }}{% else %}{{ group.telefone }}{% endif %}
+                        </td>
                         <td style="color:var(--muted);">{{ group.connection.name }}</td>
-                        <td style="color:var(--muted);">{{ group.members_count }}</td>
+                        <td style="color:var(--muted);">{% if group.is_group %}{{ group.members_count }}{% else %}—{% endif %}</td>
                         <td>
                             {% if group.company %}
                             <span style="background:rgba(14,165,233,.12);color:#0ea5e9;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">{{ group.company.name|truncatechars:20 }}</span>
@@ -110,6 +139,18 @@ input:checked + .toggle-slider:before { transform:translateX(16px); }
                             <span style="color:var(--muted);font-size:12px;">—</span>
                             {% endif %}
                             <button class="btn-cyber secondary" style="padding:3px 7px;font-size:10px;margin-left:4px;" onclick="openClienteModal({{ group.id }}, '{{ group.cliente.id|default:'' }}')"><i class="fas fa-link"></i></button>
+                        </td>
+                        <td id="at-cel-{{ group.id }}">
+                            {% if group.qtd_atendentes %}
+                            <span style="background:rgba(234,179,8,.12);color:#facc15;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;"
+                                  title="Só estes atendentes veem os chamados deste contato">
+                                <i class="fas fa-user-lock" style="font-size:9px;"></i> {{ group.qtd_atendentes }}
+                            </span>
+                            {% else %}
+                            <span style="color:var(--muted);font-size:11px;">Todos</span>
+                            {% endif %}
+                            <button class="btn-cyber secondary" style="padding:3px 7px;font-size:10px;margin-left:4px;"
+                                    onclick="abrirAtendentes({{ group.id }})" title="Escolher quem atende"><i class="fas fa-user-check"></i></button>
                         </td>
                         <td>
                             <label class="toggle-switch">
@@ -135,7 +176,7 @@ input:checked + .toggle-slider:before { transform:translateX(16px); }
         {% else %}
         <div style="padding:40px;text-align:center;color:var(--muted);">
             <i class="fas fa-users" style="font-size:36px;opacity:.15;display:block;margin-bottom:10px;"></i>
-            <p style="font-size:13px;">Nenhum grupo encontrado.</p>
+            <p style="font-size:13px;">Nenhum grupo ou contato encontrado.</p>
         </div>
         {% endif %}
     </div>
@@ -181,6 +222,85 @@ input:checked + .toggle-slider:before { transform:translateX(16px); }
         <div style="display:flex;gap:10px;margin-top:4px;">
             <button class="btn-cyber" style="flex:1;" onclick="saveClienteLink()"><i class="fas fa-save"></i> Vincular</button>
             <button class="btn-cyber secondary" style="flex:1;" onclick="document.getElementById('clienteModal').style.display='none'">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Novo Contato de Telefone -->
+<div class="modal-overlay" id="contatoModal" onclick="fecharSeFundo(event,'contatoModal')">
+    <div class="modal-box" style="max-width:440px;">
+        <h2><i class="fas fa-user-plus" style="color:var(--active);margin-right:8px;"></i>Novo contato de telefone</h2>
+        <p class="form-hint" style="margin:-8px 0 16px;">
+            Conversa direta com um número, fora de grupo. O chamado só abre para números
+            cadastrados aqui — quem não estiver na lista continua sendo ignorado.
+        </p>
+        <div class="form-field">
+            <label>Nome *</label>
+            <input type="text" class="form-select" id="ctNome" placeholder="Ex.: João da Silva — Prefeitura">
+        </div>
+        <div class="form-field">
+            <label>Telefone *</label>
+            <input type="text" class="form-select" id="ctTelefone" placeholder="34 99999-8888">
+            <div class="form-hint">DDD + número. Para outro país, escreva com "+" (ex.: +351 912 345 678).</div>
+        </div>
+        <div class="form-field">
+            <label>Conexão WhatsApp *</label>
+            <select class="form-select" id="ctConexao">
+                {% for conn in connections_ativas %}
+                <option value="{{ conn.id }}">{{ conn.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-field">
+            <label>Cliente CRM</label>
+            <input type="text" class="form-select" id="ctClienteBusca" placeholder="Digite para filtrar..." oninput="filtrarCtClientes()" style="margin-bottom:8px;">
+            <select class="form-select" id="ctCliente" size="5" style="height:120px;">
+                <option value="">-- Sem cliente --</option>
+                {% for c in clientes %}
+                <option value="{{ c.id }}">{{ c.nome_empresa }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-field">
+            <label>Quem atende este contato</label>
+            <div class="form-hint" style="margin:0 0 7px;">
+                Deixe <strong>tudo desmarcado</strong> para o contato cair no atendimento geral —
+                os chamados aparecem em "Chamados abertos" para toda a equipe. Marcando alguém,
+                só essas pessoas (e os administradores) veem os chamados dele.
+            </div>
+            <div class="at-lista" id="ctAtendentes">
+                {% for u in equipe %}
+                <label class="at-item">
+                    <input type="checkbox" value="{{ u.id }}">
+                    {{ u.get_full_name|default:u.username }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <div id="ctErro" style="display:none;color:#f87171;font-size:12px;margin-bottom:10px;"></div>
+        <div style="display:flex;gap:10px;margin-top:4px;">
+            <button class="btn-cyber" style="flex:1;" id="ctSalvar" onclick="salvarContato()"><i class="fas fa-save"></i> Criar contato</button>
+            <button class="btn-cyber secondary" style="flex:1;" onclick="document.getElementById('contatoModal').style.display='none'">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Quem atende -->
+<div class="modal-overlay" id="atendentesModal" onclick="fecharSeFundo(event,'atendentesModal')">
+    <div class="modal-box" style="max-width:420px;">
+        <h2><i class="fas fa-user-check" style="color:var(--active);margin-right:8px;"></i>Quem atende</h2>
+        <p style="font-size:12px;color:var(--muted);margin:-8px 0 14px;" id="atNome"></p>
+        <div class="at-resumo" id="atResumo"></div>
+        <input type="hidden" id="atGroupId">
+        <div class="at-lista" id="atLista"></div>
+        <div class="form-hint" style="margin-top:8px;">
+            Nenhum marcado = cai no atendimento geral, visível para toda a equipe.
+            Administradores veem os chamados em qualquer caso.
+        </div>
+        <div id="atErro" style="display:none;color:#f87171;font-size:12px;margin-top:10px;"></div>
+        <div style="display:flex;gap:10px;margin-top:16px;">
+            <button class="btn-cyber" style="flex:1;" id="atSalvar" onclick="salvarAtendentes()"><i class="fas fa-save"></i> Salvar</button>
+            <button class="btn-cyber secondary" style="flex:1;" onclick="document.getElementById('atendentesModal').style.display='none'">Cancelar</button>
         </div>
     </div>
 </div>
@@ -246,6 +366,130 @@ async function saveCompanyLink() {
     });
     if(r.ok) { location.reload(); }
     else { alert('Erro ao vincular empresa'); }
+}
+
+// ── Contato de telefone ───────────────────────────────────────────────────
+
+function fecharSeFundo(e, id) { if (e.target === e.currentTarget) document.getElementById(id).style.display = 'none'; }
+
+function marcados(containerId) {
+    return [...document.querySelectorAll(`#${containerId} input[type=checkbox]:checked`)].map(c => +c.value);
+}
+
+function mostrarErro(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.style.display = msg ? 'block' : 'none';
+}
+
+function abrirNovoContato() {
+    ['ctNome','ctTelefone','ctClienteBusca'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('ctCliente').value = '';
+    document.querySelectorAll('#ctAtendentes input').forEach(c => c.checked = false);
+    filtrarCtClientes();
+    mostrarErro('ctErro', '');
+    document.getElementById('contatoModal').style.display = 'flex';
+    document.getElementById('ctNome').focus();
+}
+
+function filtrarCtClientes() {
+    const q = document.getElementById('ctClienteBusca').value.toLowerCase();
+    const opts = document.getElementById('ctCliente').options;
+    for (let i = 1; i < opts.length; i++) {
+        opts[i].style.display = opts[i].text.toLowerCase().includes(q) ? '' : 'none';
+    }
+}
+
+async function salvarContato() {
+    const btn = document.getElementById('ctSalvar');
+    mostrarErro('ctErro', '');
+    btn.disabled = true;
+    try {
+        const r = await fetch('/atendimento/api/contatos/criar/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+            body: JSON.stringify({
+                nome:          document.getElementById('ctNome').value,
+                telefone:      document.getElementById('ctTelefone').value,
+                connection_id: document.getElementById('ctConexao').value,
+                cliente_id:    document.getElementById('ctCliente').value || null,
+                atendentes:    marcados('ctAtendentes'),
+            })
+        });
+        // Sessão expirada devolve 302 para o login e o .json() estoura com um
+        // erro que não diz nada — avisa o que de fato aconteceu.
+        if (r.redirected || r.status === 401 || r.status === 403) {
+            mostrarErro('ctErro', 'Sua sessão expirou ou você não tem permissão. Recarregue a página.');
+            return;
+        }
+        const d = await r.json();
+        if (d.success) { location.reload(); }
+        else { mostrarErro('ctErro', d.error || 'Não foi possível criar o contato.'); }
+    } catch (e) {
+        mostrarErro('ctErro', 'Falha de conexão: ' + e.message);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+// ── Quem atende ───────────────────────────────────────────────────────────
+
+async function abrirAtendentes(groupId) {
+    document.getElementById('atGroupId').value = groupId;
+    document.getElementById('atLista').innerHTML =
+        '<div style="padding:14px;color:var(--muted);font-size:12px;">Carregando...</div>';
+    mostrarErro('atErro', '');
+    document.getElementById('atendentesModal').style.display = 'flex';
+
+    const r = await fetch(`/atendimento/api/groups/${groupId}/atendentes/`);
+    if (!r.ok) {
+        document.getElementById('atLista').innerHTML = '';
+        mostrarErro('atErro', 'Não foi possível carregar a equipe.');
+        return;
+    }
+    const d = await r.json();
+    document.getElementById('atNome').textContent = d.nome;
+    document.getElementById('atLista').innerHTML = d.atendentes.map(u => `
+        <label class="at-item">
+            <input type="checkbox" value="${u.id}" ${u.marcado ? 'checked' : ''} onchange="pintarResumo()">
+            ${u.nome.replace(/</g, '&lt;')}
+        </label>`).join('') ||
+        '<div style="padding:14px;color:var(--muted);font-size:12px;">Nenhum atendente cadastrado.</div>';
+    pintarResumo();
+}
+
+function pintarResumo() {
+    const n = marcados('atLista').length;
+    const el = document.getElementById('atResumo');
+    el.className = 'at-resumo ' + (n ? 'at-restrito' : 'at-aberto');
+    el.innerHTML = n
+        ? `<i class="fas fa-user-lock"></i> <strong>Restrito.</strong> Os chamados aparecem só para ${n === 1 ? 'a pessoa marcada' : 'as ' + n + ' pessoas marcadas'} e para os administradores.`
+        : '<i class="fas fa-users"></i> <strong>Atendimento geral.</strong> Os chamados caem em "Chamados abertos" para toda a equipe.';
+}
+
+async function salvarAtendentes() {
+    const groupId = document.getElementById('atGroupId').value;
+    const btn = document.getElementById('atSalvar');
+    mostrarErro('atErro', '');
+    btn.disabled = true;
+    try {
+        const r = await fetch(`/atendimento/api/groups/${groupId}/atendentes/`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+            body: JSON.stringify({atendentes: marcados('atLista')})
+        });
+        if (r.redirected || r.status === 401) {
+            mostrarErro('atErro', 'Sua sessão expirou. Recarregue a página.');
+            return;
+        }
+        const d = await r.json();
+        if (d.success) { location.reload(); }
+        else { mostrarErro('atErro', d.error || 'Não foi possível salvar.'); }
+    } catch (e) {
+        mostrarErro('atErro', 'Falha de conexão: ' + e.message);
+    } finally {
+        btn.disabled = false;
+    }
 }
 </script>
 {% endblock %}

@@ -5,6 +5,63 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-04 (Atendimento: contato de telefone e "quem atende")
+
+### Adicionado
+
+- **Contato de telefone (conversa 1:1)** no atendimento, ao lado dos grupos do WhatsApp. Botão
+  **"Novo contato"** na tela *Grupos / Contatos* (`grupos.html`, `views.py`, `urls.py`). Mesmo
+  modelo `ContactGroup`, com `is_group=False`; a tela ganhou coluna **Tipo** (GRUPO / CONTATO) e
+  mostra o telefone em vez do JID cru.
+- **Escolha de quem atende** cada contato **ou grupo** — botão na nova coluna *Quem atende*.
+  A regra pedida, e implementada:
+  - **ninguém marcado → o chamado cai em "Chamados abertos" para toda a equipe** (é o padrão, e o
+    comportamento que o módulo sempre teve);
+  - **alguém marcado → só essas pessoas veem os chamados daquele contato**, toda vez que ele
+    aparecer, em qualquer tela.
+  - **Administrador vê tudo**, marcado ou não: a escolha serve para dividir o trabalho entre
+    atendentes, não para esconder do dono do sistema.
+
+  Não há flag de "restrito" — a regra é a ausência de linhas em `UserGroupPermission`. Dois
+  lugares guardando o mesmo fato saem de sincronia (marcar restrito e esquecer de escolher alguém
+  esconderia o chamado de todo mundo).
+
+  A restrição foi aplicada em **todos** os caminhos, porque uma que vale numa tela e falha em
+  outra não restringe nada: listagens (`conversations_visiveis`), abertura do chamado
+  (`pode_ver_conversation`), a própria lista de Grupos/Contatos (`groups_visiveis` — o nome do
+  contato restrito também some), o **WebSocket da caixa de entrada** (todo mundo assina o mesmo
+  canal, então o pacote leva `allowed_user_ids` e o consumer descarta na saída), o **WebSocket da
+  conversa** e os **avisos automáticos no WhatsApp**.
+
+- **Mensagem privada passou a abrir chamado — mas só de número cadastrado.** Até aqui o webhook
+  descartava toda conversa 1:1 (`if not jid.endswith("@g.us"): return`), então o contato sozinho
+  não produziria chamado nenhum. Agora ela entra se o número já estiver cadastrado como contato;
+  quem não estiver continua sendo ignorado, senão qualquer pessoa que mandasse mensagem para o
+  WhatsApp da empresa abriria um chamado.
+
+### Corrigido
+
+- **`UserGroupPermission` era uma tela que não fazia nada.** O modelo e a edição em Configurações
+  existiam desde o começo do módulo, mas **nenhuma consulta jamais os usou** — dava para marcar
+  permissões e nada acontecia. Agora a tabela é de fato a fonte da regra. A tabela estava vazia
+  (0 linhas) no momento da mudança, então nada do que já estava no ar mudou de visibilidade.
+- **`WebSocket` da conversa não checava nada além do acesso ao módulo** — bastava conhecer o UUID
+  de uma conversa para assinar o canal dela e receber cada mensagem em tempo real, contornando o
+  escopo por instância que o HTTP já aplicava (`consumers.py`).
+- **Contato 1:1 nascia marcado como grupo.** `is_group` não ia no `defaults` do `get_or_create` do
+  webhook, então caía no default do campo (`True`) e se passava por grupo no admin e nos filtros.
+- **Aviso de "chamado sem atendimento" e resumo diário** passaram a pular contato restrito: as
+  duas mensagens vão para um grupo do WhatsApp que a equipe inteira lê e carregam o **nome** do
+  contato — avisar ali vazaria justamente o que a restrição protege.
+
+199 testes do módulo passando, dos quais 22 novos (`ContatoTelefoneVisibilidadeTest`) cobrindo,
+entre outros, que o chamado **não duplica** com vários atendentes marcados e que um contato
+restrito **não derruba** os chamados dos contatos abertos.
+
+Detalhes em [docs/ATENDIMENTO.md](docs/ATENDIMENTO.md) → "Contato de telefone e quem atende".
+
+---
+
 ## [Não publicado] — 2026-09-04 (Topologia: o editor ficava pesado só de estar aberto)
 
 ### Corrigido

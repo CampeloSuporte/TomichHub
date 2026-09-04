@@ -433,12 +433,17 @@ def notificar_chamados_abertos():
     threshold = timezone.now() - timedelta(minutes=10)
     # Apenas chamados AINDA NÃO notificados (notif_aberto_enviada=False) →
     # cada chamado é avisado uma única vez.
+    # `exclude(group__user_permissions__isnull=False)`: chamado de contato
+    # restrito fica de fora. Esta mensagem vai para um grupo do WhatsApp que a
+    # equipe inteira lê e carrega o NOME do contato — avisar ali seria vazar
+    # exatamente o que a restrição existe para proteger. Quem tem acesso
+    # continua vendo o chamado normalmente na tela.
     convs = list(Conversation.objects.filter(
         status__in=['new', 'open'],
         assigned_to__isnull=True,
         last_message_at__lt=threshold,
         notif_aberto_enviada=False,
-    ).select_related('cliente', 'group'))
+    ).exclude(group__user_permissions__isnull=False).select_related('cliente', 'group'))
 
     if not convs:
         return {'notified': 0}
@@ -579,15 +584,20 @@ def enviar_alerta_diario():
 
     agora = timezone.localtime(timezone.now())
 
+    # Mesmo motivo do aviso de chamados sem atendimento: o resumo vai para um
+    # grupo do WhatsApp e lista o nome de cada chamado em aberto. Contato
+    # restrito fica de fora das duas listas.
     abertos = Conversation.objects.filter(
         status__in=['new', 'open'],
         assigned_to__isnull=True,
-    ).select_related('cliente', 'group').order_by('last_message_at')
+    ).exclude(group__user_permissions__isnull=False).select_related(
+        'cliente', 'group').order_by('last_message_at')
 
     assumidos = Conversation.objects.filter(
         status__in=['new', 'open', 'pending'],
         assigned_to__isnull=False,
-    ).select_related('cliente', 'group', 'assigned_to').order_by('assigned_to__first_name')
+    ).exclude(group__user_permissions__isnull=False).select_related(
+        'cliente', 'group', 'assigned_to').order_by('assigned_to__first_name')
 
     em_tarefa = Conversation.objects.filter(
         status__in=['new', 'open', 'pending'],
@@ -793,13 +803,17 @@ def _run_alerta_diario_agora():
 
     agora = timezone.localtime(timezone.now())
 
+    # Contato restrito fora — este é o mesmo resumo do `enviar_alerta_diario`,
+    # disparado à mão pelo botão de teste, e vai para o mesmo grupo.
     abertos = Conversation.objects.filter(
         status__in=['new', 'open'], assigned_to__isnull=True,
-    ).select_related('cliente', 'group').order_by('last_message_at')
+    ).exclude(group__user_permissions__isnull=False).select_related(
+        'cliente', 'group').order_by('last_message_at')
 
     assumidos = Conversation.objects.filter(
         status__in=['new', 'open', 'pending'], assigned_to__isnull=False,
-    ).select_related('cliente', 'group', 'assigned_to').order_by('assigned_to__first_name')
+    ).exclude(group__user_permissions__isnull=False).select_related(
+        'cliente', 'group', 'assigned_to').order_by('assigned_to__first_name')
 
     em_tarefa = Conversation.objects.filter(
         status__in=['new', 'open', 'pending'], is_task_conv=True,
