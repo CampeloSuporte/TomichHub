@@ -5,6 +5,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-04 (Repositório: `.pyc` versionado travava o merge do deploy)
+
+### Corrigido
+
+- **`git merge` abortava com "Your local changes would be overwritten by merge"** listando só
+  arquivos `.pyc`, e era preciso rodar `git checkout -- '*.pyc'` na mão antes de cada merge
+  (aconteceu ao mesclar `claude/topologia-modulo-lentidao-99181e`). Causa: 2.930 arquivos
+  `__pycache__/*.pyc` estavam **versionados** — 100 do projeto (`clientes/migrations/`, `crm/`,
+  `financeiro/`, `usuario/`, `monitoramento/`, `wiki/`, …) e 2.830 dentro de `venv/`. Como o
+  Python regrava o bytecode em tempo de execução, eles ficavam permanentemente `modified` no
+  `git status` de `/opt/crm`, e o merge se recusava a sobrescrever "alteração local".
+
+  O `.gitignore` **já** trazia `__pycache__/`, `*.py[cod]` e `venv/` — mas regra de ignore não
+  vale para arquivo já rastreado. A correção foi tirar todos do índice com
+  `git rm -r --cached` (os arquivos continuam no disco; o Python precisa deles). Saiu junto
+  `celerybeat-schedule`, o *shelve* de runtime do Celery beat, pelo mesmo motivo: também já
+  estava no `.gitignore`, também era reescrito sozinho e também sujava o `git status`.
+
+  Nenhuma linha de código mudou — não é preciso reiniciar Gunicorn, Daphne nem Celery.
+
+  Fica pendente, fora do escopo: o `venv/` inteiro (32.122 arquivos) segue versionado.
+
+---
+
 ## [Não publicado] — 2026-09-04 (Topologia: o editor ficava pesado só de estar aberto)
 
 ### Corrigido
