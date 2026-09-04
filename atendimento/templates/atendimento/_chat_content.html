@@ -170,7 +170,7 @@
                 (white-space:pre-wrap), então qualquer indentação do template
                 aqui dentro vira linha em branco e recuo dentro do balão.
                 {% endcomment %}
-                <div class="msg-bubble">{% if message.message_type == 'image' and message.attachment_url %}<img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'audio' and message.attachment_url %}<audio controls class="msg-audio-player" preload="none"><source src="{{ message.attachment_url }}"></audio>{% elif message.message_type == 'video' and message.attachment_url %}<video controls class="msg-video-player" preload="none"><source src="{{ message.attachment_url }}"></video>{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'document' and message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}</a>{% else %}<span class="msg-text">{{ message.content|urlize }}</span>{% endif %}<span class="msg-meta">{% if message.edited_at %}<span class="msg-edited" title="Editada às {{ message.edited_at|date:"H:i" }}">editada</span>{% endif %}<span class="msg-time">{{ message.created_at|date:"H:i" }}</span>{% if message.sender_type == 'agent' %}<i class="fas fa-check-double msg-tick"></i>{% endif %}</span></div>{% if message.editavel %}<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>{% endif %}
+                <div class="msg-bubble">{% if message.excluida %}<span class="msg-apagada"><i class="fas fa-ban"></i>Mensagem apagada</span><span class="msg-meta"><span class="msg-time">{{ message.created_at|date:"H:i" }}</span></span>{% else %}{% if message.message_type == 'image' and message.attachment_url %}<img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'audio' and message.attachment_url %}<audio controls class="msg-audio-player" preload="none"><source src="{{ message.attachment_url }}"></audio>{% elif message.message_type == 'video' and message.attachment_url %}<video controls class="msg-video-player" preload="none"><source src="{{ message.attachment_url }}"></video>{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'document' and message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}</a>{% else %}<span class="msg-text">{{ message.content|urlize }}</span>{% endif %}<span class="msg-meta">{% if message.edited_at %}<span class="msg-edited" title="Editada às {{ message.edited_at|date:"H:i" }}">editada</span>{% endif %}<span class="msg-time">{{ message.created_at|date:"H:i" }}</span>{% if message.sender_type == 'agent' %}<i class="fas fa-check-double msg-tick"></i>{% endif %}</span>{% endif %}</div>{% if message.editavel and not message.excluida %}<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>{% endif %}{% if message.excluivel %}<button type="button" class="msg-del-btn" title="Apagar mensagem"><i class="fas fa-trash"></i></button>{% endif %}
                 {% with reacoes=message.reactions.all %}{% if reacoes %}
                 <div class="msg-reactions" data-reactions-for="{{ message.id }}">
                     {% for r in reacoes %}
@@ -1267,6 +1267,7 @@
     var API_PART  = '{% url "atendimento:api_conversation_participants" conversation.id %}';
     /* Editar mensagem: a URL leva o id da MENSAGEM, então é montada na hora. */
     var API_EDIT  = function(id) { return '/atendimento/api/message/' + id + '/edit/'; };
+    var API_DEL   = function(id) { return '/atendimento/api/message/' + id + '/delete/'; };
     var MEU_ID    = '{{ request.user.id }}';
     var JANELA_EDICAO_MS = {{ janela_edicao_min|default:15 }} * 60 * 1000;
 
@@ -1559,6 +1560,18 @@
         return new Date(criada.getTime() + JANELA_EDICAO_MS).toISOString();
     }
 
+    /* Espelha `ConversationService.pode_excluir` para os balões que nascem no
+       JS. Mais frouxo que `prazoDeEdicao` em dois pontos, de propósito: mídia
+       também se apaga, e não há prazo do lado do CRM — quem recusa é o
+       WhatsApp, e o motivo aparece na confirmação. O servidor decide de novo
+       na hora do clique; isto aqui só decide se o botão nasce. */
+    function podeApagar(msg) {
+        var tipo = msg.sender_type;
+        if (tipo !== 'agent' && tipo !== 'internal') return false;
+        if (!msg.sender_id || String(msg.sender_id) !== String(MEU_ID)) return false;
+        return true;
+    }
+
     function renderMessage(msg) {
         var cls      = msg.sender_type === 'agent' ? 'agent' : (msg.sender_type === 'internal' ? 'internal' : (msg.sender_type === 'system' ? 'system' : 'customer'));
         var nameText = cls === 'agent'
@@ -1594,6 +1607,7 @@
                 '<div class="msg-sender-name' + (cls === 'agent' ? ' agent-name' : '') + '">' + nameText + '</div>' +
                 '<div class="msg-bubble">' + renderMediaBubble(msg) + renderMeta(cls, msg.created_at, msg.edited_at) + '</div>' +
                 (prazo ? '<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>' : '') +
+                (podeApagar(msg) ? '<button type="button" class="msg-del-btn" title="Apagar mensagem"><i class="fas fa-trash"></i></button>' : '') +
                 '</div>';
         }
         _renderedIds.add(String(msg.id));
@@ -1764,9 +1778,119 @@
         }
     }
 
+    /* ── Apagar mensagem ────────────────────────────────────────────────
+       Apagar é para todos: sai do WhatsApp do cliente e vira "Mensagem
+       apagada" aqui. Não existe "apagar só no CRM" — esconder do supervisor
+       o que o cliente ainda tem na mão não é apagar, é maquiar o registro. */
+    var _apagando = null;
+
+    function abrirConfirmacaoApagar(id) {
+        if (_apagando && _apagando !== id) fecharConfirmacaoApagar(_apagando);
+        if (_editando === id) fecharEdicao(id);
+        var el = balaoDaMensagem(id);
+        if (!el) return;
+        var bolha = el.querySelector('.msg-bubble');
+        if (!bolha || el.querySelector('.msg-del-box')) return;
+
+        _apagando = id;
+        var box = document.createElement('div');
+        box.className = 'msg-del-box';
+        box.innerHTML =
+            '<div class="msg-del-texto">Apagar esta mensagem para todos? ' +
+            'Ela some do WhatsApp do cliente e não tem como desfazer.</div>' +
+            '<div class="msg-del-acoes">' +
+              '<span class="msg-del-erro" style="display:none"></span>' +
+              '<button type="button" class="msg-del-cancelar">Cancelar</button>' +
+              '<button type="button" class="msg-del-confirmar">Apagar</button>' +
+            '</div>';
+        bolha.parentNode.insertBefore(box, bolha.nextSibling);
+        box.querySelector('.msg-del-cancelar').onclick = function() { fecharConfirmacaoApagar(id); };
+        box.querySelector('.msg-del-confirmar').onclick = function() { confirmarApagar(id); };
+        box.querySelector('.msg-del-confirmar').focus();
+    }
+
+    function fecharConfirmacaoApagar(id) {
+        var el = balaoDaMensagem(id);
+        if (el) {
+            var box = el.querySelector('.msg-del-box');
+            if (box) box.remove();
+        }
+        if (_apagando === id) _apagando = null;
+    }
+
+    function mostrarErroApagar(id, texto) {
+        var el = balaoDaMensagem(id);
+        if (!el) return;
+        var erro = el.querySelector('.msg-del-erro');
+        if (erro) { erro.textContent = texto; erro.style.display = ''; }
+    }
+
+    function confirmarApagar(id) {
+        var el = balaoDaMensagem(id);
+        if (!el) return;
+        var btn = el.querySelector('.msg-del-confirmar');
+        btn.disabled = true;
+        btn.textContent = 'Apagando…';
+        fetch(API_DEL(id), {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+            credentials: 'same-origin'
+        })
+        .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, d: d}; }); })
+        .then(function(res) {
+            if (!res.ok || !res.d.success) {
+                btn.disabled = false;
+                btn.textContent = 'Apagar';
+                /* O motivo da recusa vem do WhatsApp (mensagem velha demais,
+                   tipo incompatível) — é o que a pessoa precisa ler. */
+                mostrarErroApagar(id, res.d.error || 'Não foi possível apagar.');
+                return;
+            }
+            fecharConfirmacaoApagar(id);
+            aplicarExclusao(id);
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.textContent = 'Apagar';
+            mostrarErroApagar(id, 'Falha de conexão ao apagar.');
+        });
+    }
+
+    /* Troca o conteúdo do balão pelo rastro. Serve para quem apagou e para as
+       outras abas, que recebem a exclusão pelo WebSocket. O balão fica: sumir
+       com ele faria a conversa "pular" e esconderia que algo foi removido. */
+    function aplicarExclusao(id) {
+        var el = balaoDaMensagem(id);
+        if (!el) return;
+        var bolha = el.querySelector('.msg-bubble');
+        if (bolha) {
+            var hora = el.querySelector('.msg-time');
+            bolha.innerHTML =
+                '<span class="msg-apagada"><i class="fas fa-ban"></i>Mensagem apagada</span>' +
+                '<span class="msg-meta"><span class="msg-time">' +
+                escapeHTML(hora ? hora.textContent : '') + '</span></span>';
+            bolha.style.display = '';
+        }
+        /* Sem lápis nem lixeira: não há o que editar nem uma segunda exclusão. */
+        var btnE = el.querySelector('.msg-edit-btn'); if (btnE) btnE.remove();
+        var btnD = el.querySelector('.msg-del-btn');  if (btnD) btnD.remove();
+        var boxE = el.querySelector('.msg-edit-box'); if (boxE) boxE.remove();
+        el.removeAttribute('data-editavel-ate');
+        if (_editando === id) _editando = null;
+    }
+
     /* Delegação: os balões nascem do template e do JS, e mensagens novas
        chegam o tempo todo — um listener no container cobre todos. */
     chatMsgs.addEventListener('click', function(e) {
+        var del = e.target.closest('.msg-del-btn');
+        if (del) {
+            var elDel = del.closest('.msg[data-msg-id]');
+            if (!elDel) return;
+            e.preventDefault();
+            if (_apagando === elDel.dataset.msgId) fecharConfirmacaoApagar(elDel.dataset.msgId);
+            else abrirConfirmacaoApagar(elDel.dataset.msgId);
+            return;
+        }
         var btn = e.target.closest('.msg-edit-btn');
         if (!btn) return;
         var el = btn.closest('.msg[data-msg-id]');
@@ -2177,6 +2301,10 @@
                     /* Edição feita em outra aba ou por um supervisor: o balão
                        aqui tem que acompanhar, senão duas telas mostrariam
                        textos diferentes da MESMA mensagem do WhatsApp. */
+                    if(p.type==='message_deleted'&&p.message) {
+                        aplicarExclusao(String(p.message.id));
+                        return;
+                    }
                     if(p.type==='message_edited'&&p.message) {
                         if (_editando === String(p.message.id)) fecharEdicao(String(p.message.id));
                         aplicarEdicao(String(p.message.id), p.message.content, p.message.edited_at);
@@ -2227,6 +2355,11 @@
                     renderMessage(msg);
                     lastMsgTs = msg.created_at_iso || lastMsgTs;
                 }
+                /* O polling reenvia a mensagem da fronteira a cada ciclo, e é
+                   por ele que quem está sem WebSocket descobre uma exclusão
+                   feita em outra aba — daí o `aplicarExclusao` ficar fora do
+                   `if` de "ainda não renderizada". É idempotente. */
+                if (msg.deleted) aplicarExclusao(String(msg.id));
             });
         }).catch(function(){}).finally(function(){ _pollRunning = false; schedulePoll(); });
     }

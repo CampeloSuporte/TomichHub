@@ -351,6 +351,18 @@ class Message(models.Model):
     edited_at = models.DateTimeField(null=True, blank=True)
     is_read = models.BooleanField(default=False)
 
+    # ── Exclusão ───────────────────────────────────────────────────────
+    # Apagar é SOFT DELETE: a linha fica, some da conversa e vira o aviso
+    # "Mensagem apagada" — igual ao que o WhatsApp mostra do outro lado.
+    # Apagar a linha de verdade destruiria o histórico do chamado (que é o
+    # registro do atendimento) e liberaria o `external_id`, que é `unique`
+    # e é a chave da mensagem lá no WhatsApp.
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    deleted_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+        help_text='Quem apagou. A mensagem some da conversa mas a linha fica.'
+    )
+
     class Meta:
         ordering = ['created_at']
         indexes = [
@@ -360,6 +372,10 @@ class Message(models.Model):
 
     def __str__(self):
         return f"Msg #{self.id}"
+
+    @property
+    def excluida(self) -> bool:
+        return self.deleted_at is not None
 
 
 class ScheduledMessage(models.Model):
@@ -445,6 +461,7 @@ class ConversationActivity(models.Model):
         ('note_added', 'Nota adicionada'),
         ('message_sent', 'Mensagem enviada'),
         ('message_edited', 'Mensagem editada'),
+        ('message_deleted', 'Mensagem apagada'),
         ('closed', 'Fechado'),
         ('resolved', 'Resolvido'),
         ('reopened', 'Reaberto'),

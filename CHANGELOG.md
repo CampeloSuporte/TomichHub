@@ -28,6 +28,49 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   Fica pendente, fora do escopo: o `venv/` inteiro (32.122 arquivos) segue versionado.
 ---
 
+## [Não publicado] — 2026-09-04 (Atendimento: apagar mensagem enviada)
+
+### Adicionado
+
+- **Apagar mensagem enviada no chat**, irmã da edição. Lixeira ao lado do lápis; o clique abre uma
+  confirmação **no lugar do balão** (não um `confirm()` do navegador: apagar é irreversível dos
+  dois lados e o diálogo nativo não diz de qual mensagem se trata).
+
+  **Apagar é para todos** — a mensagem sai do WhatsApp do cliente e vira "Mensagem apagada" no
+  CRM. Não há "apagar só no CRM": esconder do supervisor o que o cliente ainda tem na mão não é
+  apagar, é maquiar o registro do atendimento.
+
+  O WhatsApp é chamado **primeiro** e de forma síncrona; se recusar, nada muda no CRM e o motivo
+  dele vai para a tela. Marcar como apagada aqui enquanto o cliente segue com a mensagem no
+  celular seria a pior das duas telas.
+
+  Três diferenças deliberadas em relação à edição:
+  - **mídia pode ser apagada** (o WhatsApp não reescreve mídia, mas apaga — e mandar o arquivo
+    errado é o caso em que apagar mais importa);
+  - **sem prazo do lado do CRM** — a janela de "apagar para todos" é bem maior que os 15 min da
+    edição e o WhatsApp já mudou esse número; fixar um limite só criaria um botão que recusa o
+    que o WhatsApp aceitaria;
+  - **mensagem automática (IA/fluxo) só administrador apaga** — é operação legítima, mas de
+    supervisão.
+
+  É *soft delete*: a linha fica no banco com `deleted_at`/`deleted_by`. Apagar a linha destruiria
+  o histórico do chamado e liberaria o `external_id`, que é `unique` e é a chave da mensagem lá no
+  WhatsApp. O **arquivo de mídia sai do disco** — deixá-lo servido em `attachment_url` faria a
+  exclusão ser só de fachada.
+
+  Fechados os caminhos por onde o apagado voltaria: o **polling** (fallback sem WebSocket) devolve
+  `content` e `attachment_url` vazios, o **contexto da IA** ignora mensagem apagada (senão ela
+  reescreveria o conteúdo numa resolução ou num resumo) e a **prévia da lista lateral** não usa
+  mensagem apagada como última mensagem.
+
+221 testes do módulo passando, 20 novos (`ApagarMensagemTest`) — incluindo WhatsApp recusando não
+marcar nada no CRM, o arquivo saindo do disco, path traversal barrado e os dois caminhos de
+vazamento.
+
+Detalhes em [docs/ATENDIMENTO.md](docs/ATENDIMENTO.md) → "Apagar mensagem enviada".
+
+---
+
 ## [Não publicado] — 2026-09-04 (Atendimento: a restrição não restringia quase nada)
 
 ### Corrigido

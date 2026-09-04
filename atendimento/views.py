@@ -234,6 +234,11 @@ def conversation_detail(request, conversation_id):
         else:
             limite = m.created_at + timedelta(minutes=ConversationService.JANELA_EDICAO_MIN)
             m.editavel_ate = limite.isoformat() if limite > agora else ''
+        # `excluivel` não tem par "…_ate": a janela de apagar é do WhatsApp e
+        # muda com o tempo, então o botão fica e o clique explica se recusar
+        # (ver ConversationService.pode_excluir). Mensagem já apagada perde o
+        # botão porque não há segunda exclusão.
+        m.excluivel, _motivo_del = ConversationService.pode_excluir(m, request.user)
 
     # Atualiza status de leitura das mensagens do cliente e avisa outras abas/dispositivos
     _marcar_mensagens_lidas(conversation)
@@ -751,6 +756,40 @@ def api_edit_message(request, message_id):
         })
     except Exception as e:
         logger.error(f"Erro ao editar mensagem {message_id}: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_delete_message(request, message_id):
+    """Apaga uma mensagem para todos — no WhatsApp e no CRM.
+
+    Síncrono pelo mesmo motivo da edição: o WhatsApp é chamado primeiro e, se
+    recusar, nada muda no CRM. Marcar como apagada aqui enquanto o cliente
+    continua com a mensagem no celular seria mentir para o atendente.
+    """
+    try:
+        message = get_object_or_404(
+            Message.objects.select_related('conversation__group'), id=message_id)
+        if not pode_ver_conversation(request.user, message.conversation):
+            return JsonResponse({'success': False, 'error': 'Conversa de outra instância.'}, status=403)
+
+        pode, motivo = ConversationService.pode_excluir(message, request.user)
+        if not pode:
+            return JsonResponse({'success': False, 'error': motivo}, status=403)
+
+        ok, resultado = ConversationService.delete_message(message, request.user)
+        if not ok:
+            return JsonResponse({'success': False, 'error': resultado}, status=400)
+
+        message.refresh_from_db()
+        return JsonResponse({
+            'success': True,
+            'message_id': str(message.id),
+            'deleted_at': timezone.localtime(message.deleted_at).strftime('%H:%M'),
+        })
+    except Exception as e:
+        logger.error(f"Erro ao apagar mensagem {message_id}: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
@@ -2507,13 +2546,18 @@ def api_conversation_messages(request, conversation_id):
     for m in msgs:
         data.append({
             'id': m.id,
-            'content': m.content,
+            # Mensagem apagada volta sem conteúdo e sem anexo. Este endpoint é
+            # o fallback de quem está com o WebSocket fora do ar: devolver o
+            # texto aqui ressuscitaria na tela, com mídia e tudo, exatamente o
+            # que acabou de ser apagado dos dois lados.
+            'content': '' if m.deleted_at else m.content,
+            'deleted': bool(m.deleted_at),
             'sender_type': m.sender_type,
             'sender_name': m.sender_name or (m.sender.first_name if m.sender else 'Agente'),
             'created_at': timezone.localtime(m.created_at).strftime('%H:%M'),
             'created_at_iso': m.created_at.isoformat(),
             'message_type': m.message_type,
-            'attachment_url': m.attachment_url or '',
+            'attachment_url': '' if m.deleted_at else (m.attachment_url or ''),
             # Quem escreveu: a tela usa isso para decidir se mostra o lápis
             # de editar (o servidor revalida na hora de salvar).
             'sender_id': m.sender_id,
@@ -3335,7 +3379,10 @@ def api_my_conversations(request):
     data = []
     for c in convs:
         unread = c.unread_count
-        last_msg = Message.objects.filter(conversation=c).order_by('-created_at').first()
+        # Mensagem apagada não serve de prévia: o texto apareceria na lista
+        # lateral depois de sumir da conversa.
+        last_msg = Message.objects.filter(
+            conversation=c, deleted_at__isnull=True).order_by('-created_at').first()
         last_customer_msg = Message.objects.filter(
             conversation=c, sender_type='customer',
         ).order_by('-created_at').first()

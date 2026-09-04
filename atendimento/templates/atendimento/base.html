@@ -1015,6 +1015,59 @@ body {
     background:rgba(0,0,0,.45); border-color:rgba(245,196,0,0.3);
 }
 
+/* Lixeira de apagar: mesmo desenho do lápis, empilhada logo acima dele — as
+   duas ações vivem no mesmo canto e a coluna de 24px à esquerda comporta as
+   duas sem invadir o balão. Quando só existe uma delas (mídia, por exemplo,
+   que dá para apagar mas não editar), ela assume sozinha o centro. */
+.msg-del-btn {
+    position:absolute; top:50%; transform:translateY(-50%); left:-30px;
+    width:24px; height:24px; border-radius:50%; padding:0;
+    background:var(--wa-panel); border:1px solid var(--border);
+    color:var(--wa-text-muted); font-size:10px;
+    cursor:pointer; opacity:0; transition:opacity .12s, color .12s, border-color .12s;
+    z-index:3; display:flex; align-items:center; justify-content:center;
+}
+.msg:hover .msg-del-btn, .msg-del-btn:focus-visible { opacity:1; }
+.msg-del-btn:hover { color:#f87171; border-color:#f87171; }
+@media (hover: none) { .msg-del-btn { opacity:.55; } }
+/* Com lápis E lixeira: uma acima da outra, ambas fora do balão. */
+.msg-block:has(.msg-edit-btn) .msg-del-btn { top:calc(50% + 15px); }
+.msg-block:has(.msg-del-btn) .msg-edit-btn { top:calc(50% - 15px); }
+.msg.internal .msg-del-btn {
+    left:auto; right:2px; top:2px; transform:none;
+    background:rgba(0,0,0,.45); border-color:rgba(248,113,113,0.35);
+}
+.msg.internal .msg-block:has(.msg-edit-btn) .msg-del-btn { right:30px; top:2px; }
+.msg.internal .msg-block:has(.msg-del-btn) .msg-edit-btn { top:2px; }
+
+/* Confirmação de apagar, no lugar do balão. Não usa `confirm()` do navegador
+   de propósito: apagar é irreversível dos dois lados e o diálogo nativo não
+   diz de qual mensagem se trata — aqui o balão continua à vista enquanto a
+   pessoa decide. */
+.msg-del-box {
+    display:flex; flex-direction:column; gap:7px; width:min(340px, 70vw);
+    background:var(--wa-panel); border:1px solid rgba(248,113,113,.45);
+    border-radius:8px; padding:9px 11px;
+    animation:msgIn .18s cubic-bezier(0.23,1,0.32,1);
+}
+.msg-del-texto { font-size:12px; color:var(--wa-text); line-height:1.45; }
+.msg-del-acoes { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+.msg-del-acoes button { border:none; border-radius:6px; padding:5px 12px; font-size:12px; cursor:pointer; }
+.msg-del-confirmar { background:#dc2626; color:#fff; font-weight:600; }
+.msg-del-confirmar[disabled] { opacity:.6; cursor:default; }
+.msg-del-cancelar { background:transparent; color:var(--wa-text-muted); }
+.msg-del-cancelar:hover { color:var(--wa-text); }
+.msg-del-erro { font-size:11px; color:#f87171; text-align:left; flex:1; }
+
+/* Mensagem apagada: fica o rastro, como no WhatsApp. Sumir com o balão
+   inteiro faria a conversa "pular" e esconderia que algo foi removido —
+   num registro de atendimento isso importa. */
+.msg-apagada {
+    font-size:12.5px; font-style:italic; opacity:.65;
+    display:flex; align-items:center; gap:6px;
+}
+.msg-apagada i { font-size:11px; }
+
 /* Por que não dá pra editar (prazo do WhatsApp vencido). Aparece no lugar do
    balão por alguns segundos: o lápis continua existindo, então o clique
    precisa dizer alguma coisa. */
