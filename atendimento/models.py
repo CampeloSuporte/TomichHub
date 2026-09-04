@@ -697,3 +697,36 @@ class SystemSettings(models.Model):
 
     def __str__(self):
         return self.key
+
+
+class GroupMemberName(models.Model):
+    """Nome de quem escreve nos grupos, aprendido pelo webhook.
+
+    A Evolution devolve `name` nulo para quase todo participante em
+    `/group/participants` (só vem preenchido para contas Business ou
+    contatos salvos na agenda da instância), o que deixava o autocomplete
+    do "@" listando número cru. O `pushName` que chega junto de cada
+    mensagem de grupo, esse sim, quase sempre traz o nome — então cada
+    mensagem recebida alimenta esta tabela e o autocomplete passa a
+    conhecer todo mundo que já falou no grupo.
+
+    `jid` é o remetente real dentro do grupo, como vem no webhook: hoje o
+    WhatsApp usa o formato "<id>@lid" (o mesmo `id` de
+    `/group/participants`), mas contas antigas ainda mandam
+    "<numero>@s.whatsapp.net" — guardamos o que vier e o cruzamento tenta
+    as duas chaves.
+    """
+    connection = models.ForeignKey(
+        WhatsAppConnection, on_delete=models.CASCADE, related_name='member_names'
+    )
+    jid = models.CharField(max_length=100, db_index=True)
+    name = models.CharField(max_length=255)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Nome de participante de grupo'
+        verbose_name_plural = 'Nomes de participantes de grupo'
+        unique_together = ('connection', 'jid')
+
+    def __str__(self):
+        return f'{self.jid} → {self.name}'

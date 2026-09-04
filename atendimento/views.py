@@ -703,10 +703,24 @@ def api_conversation_participants(request, conversation_id):
     if not group or not group.connection or not group.jid:
         return JsonResponse({'success': True, 'participantes': []})
 
+    from .services import completar_nomes_participantes
+
     chave = f'grp_participantes_{group.id}'
-    participantes = None if request.GET.get('refresh') else cache.get(chave)
+    refresh = bool(request.GET.get('refresh'))
+    if refresh:
+        # `?refresh=1` também descarta a agenda da instância: quem acabou de
+        # entrar no grupo normalmente também é um contato novo.
+        cache.delete(f'evo_contatos_{group.connection_id}')
+    participantes = None if refresh else cache.get(chave)
     if participantes is None:
         participantes = EvolutionAPIClient(group.connection).get_group_participants_info(group.jid)
+        # A Evolution devolve `name` nulo para quase todo participante; sem
+        # este passo a lista do "@" fica só com telefone e não dá para saber
+        # quem é quem.
+        participantes = completar_nomes_participantes(group.connection, participantes)
+        # Quem tem nome primeiro, em ordem alfabética; os números soltos vão
+        # para o fim da lista, onde atrapalham menos.
+        participantes.sort(key=lambda p: (not p.get('nome'), (p.get('nome') or '').lower()))
         # Guarda mesmo quando vem vazio (grupo sem retorno da Evolution),
         # senão toda tecla "@" tentaria de novo uma chamada que já falhou —
         # só que por bem menos tempo, para se recuperar sozinho.

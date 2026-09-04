@@ -13,7 +13,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .models import (
     WhatsAppConnection, ContactGroup, Conversation, Message, MessageReaction,
-    ConversationActivity, ChatFlow, ChatFlowSession, Category,
+    ConversationActivity, ChatFlow, ChatFlowSession, Category, GroupMemberName,
 )
 from clientes.models import Cliente
 
@@ -111,6 +111,118 @@ def _notify_new_open_conversation(conversation, connection) -> None:
             conversation.save(update_fields=['notif_aberto_enviada'])
     except Exception as e:
         logger.warning(f"Falha ao enviar notificação de novo chamado: {e}")
+
+
+def aprender_nome_participante(connection, participant_jid: str, push_name: str) -> None:
+    """Guarda o `pushName` de quem escreveu no grupo, para o autocomplete do
+    "@" conseguir mostrar nome em vez de número.
+
+    É chamada em toda mensagem de grupo recebida, então nunca pode custar
+    caro: um cache em memória de 12h evita reescrever a mesma linha a cada
+    mensagem da mesma pessoa — só vai ao banco quando o nome muda (ou quando
+    o cache esfria). Falha aqui é irrelevante para a mensagem em si, então
+    qualquer erro é engolido com log.
+    """
+    if not connection or not participant_jid or not push_name:
+        return
+    nome = push_name.strip()[:255]
+    jid = participant_jid.strip()[:100]
+    if not nome or not jid:
+        return
+    from django.core.cache import cache
+    chave = f'gmn_{connection.id}_{jid}'
+    if cache.get(chave) == nome:
+        return
+    try:
+        GroupMemberName.objects.update_or_create(
+            connection=connection, jid=jid, defaults={'name': nome}
+        )
+        cache.set(chave, nome, 43200)
+    except Exception as e:
+        logger.debug(f"Falha ao registrar nome de participante {jid}: {e}")
+
+
+def completar_nomes_participantes(connection, participantes: List[Dict]) -> List[Dict]:
+    """Preenche o `nome` de cada participante do grupo cruzando três fontes,
+    da mais confiável para a menos.
+
+    A lista que a Evolution devolve em `/group/participants` vem quase toda
+    com `name: null` — é por isso que o autocomplete do "@" mostrava só
+    telefone e ninguém sabia quem era quem. Aqui cada participante ainda sem
+    nome é procurado em:
+
+    1. contatos da instância (`/chat/findContacts`) — cobre quem está salvo
+       na agenda do WhatsApp ou já teve o pushName visto pela Evolution;
+    2. `GroupMemberName` — nomes que o próprio CRM aprendeu do `pushName` de
+       quem já escreveu em algum grupo;
+    3. `AttendantContact` — números da nossa equipe, que viram o nome do
+       usuário do CRM.
+
+    Quem continuar sem nome sai com `nome` vazio de propósito: a tela mostra
+    o número formatado, em vez de repetir o telefone como se fosse nome.
+    """
+    if not participantes:
+        return participantes
+
+    faltando = [p for p in participantes if not p.get('nome')]
+    if not faltando:
+        return participantes
+
+    def _chaves(p):
+        """Todo jeito conhecido de identificar o mesmo participante."""
+        phone = p.get('phone') or ''
+        lid = p.get('lid') or ''
+        # Jids completos primeiro: os números puros são ambíguos (um `lid` é
+        # só dígitos, igual a um telefone) e servem só de último recurso,
+        # para versões da Evolution que devolvem o id sem o sufixo.
+        return [k for k in (lid, f'{phone}@s.whatsapp.net',
+                            lid.split('@')[0] if lid else '', phone) if k]
+
+    # 1. Contatos da instância — uma chamada só, em cache de 10 min.
+    if connection:
+        from django.core.cache import cache
+        chave_cache = f'evo_contatos_{connection.id}'
+        contatos = cache.get(chave_cache)
+        if contatos is None:
+            contatos = EvolutionAPIClient(connection).get_contacts_map()
+            cache.set(chave_cache, contatos, 600 if contatos else 60)
+        for p in faltando:
+            for k in _chaves(p):
+                if contatos.get(k):
+                    p['nome'] = contatos[k]
+                    break
+
+    # 2. Nomes aprendidos das mensagens dos grupos.
+    faltando = [p for p in faltando if not p.get('nome')]
+    if faltando and connection:
+        chaves = {k for p in faltando for k in _chaves(p)}
+        aprendidos = dict(
+            GroupMemberName.objects.filter(connection=connection, jid__in=chaves)
+            .values_list('jid', 'name')
+        )
+        if aprendidos:
+            for p in faltando:
+                for k in _chaves(p):
+                    if aprendidos.get(k):
+                        p['nome'] = aprendidos[k]
+                        break
+
+    # 3. Nossa própria equipe: número do atendente vira o nome dele no CRM.
+    faltando = [p for p in faltando if not p.get('nome')]
+    if faltando:
+        from .models import AttendantContact, normalizar_telefone_br
+        equipe = {}
+        for ac in AttendantContact.objects.select_related('user').all():
+            chave = normalizar_telefone_br(ac.phone)
+            if chave:
+                equipe[chave] = ac.user.get_full_name() or ac.user.username
+        if equipe:
+            for p in faltando:
+                nome = equipe.get(normalizar_telefone_br(p.get('phone') or ''))
+                if nome:
+                    p['nome'] = nome
+
+    return participantes
 
 
 def _detectar_atendente_pessoal(participant_jid: str):
@@ -727,13 +839,17 @@ class EvolutionAPIClient:
         return []
 
     def get_group_participants_info(self, group_jid: str) -> List[Dict]:
-        """Participantes do grupo com nome, para o "@" do chat marcar gente
-        pelo nome em vez do número cru.
+        """Participantes do grupo para o "@" do chat, com tudo que a Evolution
+        souber sobre cada um: número, id interno (`@lid`), nome e foto.
+
+        Cada item traz `phone` (número real), `lid` (identificador que o
+        WhatsApp usa hoje dentro do grupo e que também vem no `participant`
+        dos webhooks), `nome` (vazio quando a Evolution não sabe — quem
+        completa é `completar_nomes_participantes`) e `foto`.
 
         A Evolution não é consistente no nome dos campos entre versões
         (`phoneNumber`/`id`/`jid`, `name`/`pushName`/`notify`), então lê todos
-        e usa o primeiro que vier. Sem nome nenhum, o próprio número serve de
-        rótulo — melhor que uma linha vazia na lista.
+        e usa o primeiro que vier.
         """
         try:
             r = self._get(f"/group/participants/{self.instance}", params={"groupJid": group_jid})
@@ -745,17 +861,53 @@ class EvolutionAPIClient:
                 phone = bruto.split("@")[0].split(":")[0].strip()
                 if not phone:
                     continue
+                # `id` costuma vir como "<id>@lid": é a chave que casa com o
+                # `participant` dos webhooks e com o `remoteJid` dos contatos.
+                lid = (p.get("id") or "").strip()
                 nome = (p.get("name") or p.get("pushName") or p.get("notify")
                         or p.get("verifiedName") or "").strip()
                 itens.append({
                     "phone": phone,
-                    "nome": nome or phone,
+                    "lid": lid,
+                    "nome": nome,
+                    "foto": (p.get("imgUrl") or p.get("pictureUrl") or "").strip(),
                     "admin": bool(p.get("admin")),
                 })
             return itens
         except Exception as e:
             logger.warning(f"Erro ao buscar participantes (com nome) do grupo {group_jid}: {e}")
             return []
+
+    def get_contacts_map(self) -> Dict[str, str]:
+        """Mapa jid -> nome de todos os contatos que a instância conhece.
+
+        `/group/participants` devolve `name` nulo para quase todo mundo, mas
+        `/chat/findContacts` traz o `pushName` que a instância já viu — é o
+        que transforma a lista do "@" de números crus em gente identificável.
+        Uma chamada só cobre o grupo inteiro (é a lista completa da
+        instância), então sai bem mais barato que consultar contato a
+        contato.
+
+        As chaves saem em dois formatos, porque o participante pode ser
+        identificado por qualquer um deles: o jid como veio
+        ("...@lid"/"...@s.whatsapp.net") e o número puro.
+        """
+        try:
+            r = self._post(f"/chat/findContacts/{self.instance}", {})
+            if not r.ok:
+                return {}
+            mapa = {}
+            for c in r.json() or []:
+                jid = (c.get("remoteJid") or c.get("id") or "").strip()
+                nome = (c.get("pushName") or c.get("name") or "").strip()
+                if not jid or not nome or jid.endswith("@g.us"):
+                    continue
+                mapa[jid] = nome
+                mapa.setdefault(jid.split("@")[0], nome)
+            return mapa
+        except Exception as e:
+            logger.warning(f"Erro ao buscar contatos da instância {self.instance}: {e}")
+            return {}
 
     def send_text(self, jid: str, text: str, mentions: List[str] = None,
                   everyone: bool = False) -> Tuple[bool, str]:
@@ -1065,6 +1217,11 @@ class ConversationService:
             # ── Extrai conteúdo e detecta tipo de mídia ───────────────────
             msg_content = event_data.get("message", {})
             push_name = event_data.get("pushName") or ""
+
+            # Todo mundo que fala no grupo passa a ser conhecido pelo nome no
+            # autocomplete do "@" — a Evolution não devolve nome na lista de
+            # participantes, mas manda o pushName em cada mensagem.
+            aprender_nome_participante(connection, participant, push_name)
 
             # ── Reações: anexam à mensagem alvo, não viram balão ───────────
             # Sem isto caíam no fallback "[sem conteúdo]" e poluíam a conversa
