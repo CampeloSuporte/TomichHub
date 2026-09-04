@@ -382,6 +382,7 @@ class ConversationActivity(models.Model):
         ('status_changed', 'Status alterado'),
         ('note_added', 'Nota adicionada'),
         ('message_sent', 'Mensagem enviada'),
+        ('message_edited', 'Mensagem editada'),
         ('closed', 'Fechado'),
         ('resolved', 'Resolvido'),
         ('reopened', 'Reaberto'),

@@ -2108,6 +2108,293 @@ class NomeDosParticipantesTest(TestCase):
         self.assertFalse(GroupMemberName.objects.exists())
 
 
+class EditarMensagemTest(TestCase):
+    """Editar mensagem já enviada precisa mudar os dois lados: o balão do CRM
+    e a mensagem no WhatsApp. Se um dos dois não mudar, a tela passa a mentir
+    sobre o que o cliente leu."""
+
+    def setUp(self):
+        from clientes.models import Cliente
+        from usuario.models import Instancia, PerfilUsuario
+        self.conversation = _criar_conversa()
+        self.agent = _criar_agente_staff('bia')
+        self.outro = _criar_agente_staff('caio')
+        # Sem PerfilUsuario, `perms.get_role` trata qualquer is_staff como
+        # "admin legado" — e o teste de "mensagem de outro atendente" passaria
+        # à toa. Estes dois são operadores da instância principal, como um
+        # atendente de verdade (o Atendimento é exclusivo dela).
+        principal = Instancia.objects.create(nome='Principal', principal=True)
+        for u in (self.agent, self.outro):
+            PerfilUsuario.objects.create(
+                usuario=u, role=PerfilUsuario.ROLE_OPERADOR, instancia=principal)
+        # Operador só enxerga conversa ligada a um Cliente da instância dele
+        # (atendimento/scope.py); sem isso a API responderia 403 por escopo e
+        # o teste não chegaria a exercitar a edição.
+        cliente = Cliente.objects.create(
+            nome_empresa='Cliente Teste Edicao', cnpj='11.222.333/0001-99',
+            endereco='Rua X', email='edicao@example.com', instancia=principal,
+        )
+        self.conversation.group.cliente = cliente
+        self.conversation.group.save(update_fields=['cliente'])
+
+    def _msg(self, **kw):
+        campos = dict(
+            conversation=self.conversation, sender_type='agent', sender=self.agent,
+            sender_name='Bia', message_type='text', content='texto original',
+            external_id='wamid.ORIGINAL', is_internal=False,
+        )
+        campos.update(kw)
+        return Message.objects.create(**campos)
+
+    # ── Quem pode editar o quê ──────────────────────────────────────────
+
+    def test_mensagem_do_cliente_nao_pode_ser_editada(self):
+        msg = self._msg(sender_type='customer', sender=None)
+
+        pode, motivo = ConversationService.pode_editar(msg, self.agent)
+
+        self.assertFalse(pode)
+        self.assertIn('cliente', motivo)
+
+    def test_mensagem_de_outro_atendente_nao_pode_ser_editada(self):
+        msg = self._msg()
+
+        pode, motivo = ConversationService.pode_editar(msg, self.outro)
+
+        self.assertFalse(pode)
+        self.assertIn('outro atendente', motivo)
+
+    def test_admin_edita_mensagem_de_outro(self):
+        from unittest import mock as _mock
+        msg = self._msg()
+
+        with _mock.patch('usuario.perms.is_admin', return_value=True):
+            pode, _motivo = ConversationService.pode_editar(msg, self.outro)
+
+        self.assertTrue(pode)
+
+    def test_mensagem_automatica_sem_autor_nao_pode_ser_editada(self):
+        # IA e fluxo escrevem sem `sender`; editar o texto no CRM só criaria
+        # divergência com o que de fato saiu.
+        msg = self._msg(sender=None, sender_type='internal', is_internal=True)
+
+        pode, motivo = ConversationService.pode_editar(msg, self.agent)
+
+        self.assertFalse(pode)
+        self.assertIn('automática', motivo)
+
+    def test_audio_nao_pode_ser_editado(self):
+        msg = self._msg(message_type='audio')
+
+        pode, motivo = ConversationService.pode_editar(msg, self.agent)
+
+        self.assertFalse(pode)
+        self.assertIn('texto', motivo)
+
+    def test_fora_da_janela_de_15_min_nao_pode(self):
+        msg = self._msg()
+        Message.objects.filter(id=msg.id).update(
+            created_at=timezone.now() - timedelta(minutes=16))
+        msg.refresh_from_db()
+
+        pode, motivo = ConversationService.pode_editar(msg, self.agent)
+
+        self.assertFalse(pode)
+        self.assertIn('15 minutos', motivo)
+
+    def test_nota_interna_nao_tem_prazo(self):
+        # Nunca saiu do CRM: não há mensagem no WhatsApp para o prazo valer.
+        msg = self._msg(sender_type='internal', is_internal=True, external_id='local_nota_1')
+        Message.objects.filter(id=msg.id).update(
+            created_at=timezone.now() - timedelta(days=3))
+        msg.refresh_from_db()
+
+        pode, _motivo = ConversationService.pode_editar(msg, self.agent)
+
+        self.assertTrue(pode)
+
+    def test_sem_id_do_whatsapp_ainda_nao_pode(self):
+        # Ainda no ar: o envio em background não confirmou o wamid.
+        msg = self._msg(external_id='sending_123_abc')
+
+        pode, motivo = ConversationService.pode_editar(msg, self.agent)
+
+        self.assertFalse(pode)
+        self.assertIn('confirmada', motivo)
+
+    # ── O que chega ao WhatsApp ─────────────────────────────────────────
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_edicao_vai_ao_whatsapp_com_a_assinatura_original(self, mock_client_cls):
+        # O grupo vê "*Bia*" em todas as mensagens; a editada não pode
+        # aparecer sem a assinatura nem com o nome de quem editou.
+        mock_client_cls.return_value.edit_text.return_value = (True, '')
+        msg = self._msg()
+
+        ok, _r = ConversationService.edit_message(msg, 'texto corrigido', self.agent)
+
+        self.assertTrue(ok)
+        args, kwargs = mock_client_cls.return_value.edit_text.call_args
+        self.assertEqual(args[1], 'wamid.ORIGINAL')
+        self.assertEqual(args[2], '*Bia*\n\ntexto corrigido')
+        msg.refresh_from_db()
+        self.assertEqual(msg.content, 'texto corrigido')
+        self.assertIsNotNone(msg.edited_at)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_mencao_na_edicao_vira_numero_no_texto(self, mock_client_cls):
+        # O corpo que vai pro grupo troca o nome pelo número, igual ao envio,
+        # para a mensagem editada ficar igual às outras. O que NÃO vai é o
+        # `mentioned`: `updateMessage` não aceita esse campo (o controller da
+        # Evolution ignora), então editar não notifica ninguém.
+        mock_client_cls.return_value.edit_text.return_value = (True, '')
+        msg = self._msg()
+
+        ConversationService.edit_message(
+            msg, '@João Silva confere', self.agent,
+            mentions=[{'nome': 'João Silva', 'phone': '5511999998888'}])
+
+        args, kwargs = mock_client_cls.return_value.edit_text.call_args
+        self.assertIn('@5511999998888', args[2])
+        self.assertNotIn('mentions', kwargs)
+        # No CRM a mensagem continua legível, com o nome.
+        msg.refresh_from_db()
+        self.assertEqual(msg.content, '@João Silva confere')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_whatsapp_recusando_nao_muda_o_crm(self, mock_client_cls):
+        # O ponto do recurso: se a edição não pegou lá, o balão daqui NÃO pode
+        # mostrar um texto que o cliente nunca viu.
+        mock_client_cls.return_value.edit_text.return_value = (False, 'Message not compatible')
+        msg = self._msg()
+
+        ok, erro = ConversationService.edit_message(msg, 'texto corrigido', self.agent)
+
+        self.assertFalse(ok)
+        self.assertIn('Message not compatible', erro)
+        msg.refresh_from_db()
+        self.assertEqual(msg.content, 'texto original')
+        self.assertIsNone(msg.edited_at)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_nota_interna_edita_sem_falar_com_o_whatsapp(self, mock_client_cls):
+        msg = self._msg(sender_type='internal', is_internal=True, external_id='local_nota_2')
+
+        ok, _r = ConversationService.edit_message(msg, 'nota corrigida', self.agent)
+
+        self.assertTrue(ok)
+        mock_client_cls.return_value.edit_text.assert_not_called()
+        msg.refresh_from_db()
+        self.assertEqual(msg.content, 'nota corrigida')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_texto_igual_nao_chama_o_whatsapp(self, mock_client_cls):
+        msg = self._msg()
+
+        ok, _r = ConversationService.edit_message(msg, 'texto original', self.agent)
+
+        self.assertTrue(ok)
+        mock_client_cls.return_value.edit_text.assert_not_called()
+
+    # ── Edição vinda do WhatsApp (cliente editou no celular) ────────────
+
+    def _webhook_edicao(self, alvo_id, texto):
+        return {
+            'event': 'MESSAGES_UPSERT',
+            'instance': self.conversation.group.connection.instance_name,
+            'data': {
+                'key': {'remoteJid': '120363000000000000@g.us', 'fromMe': False, 'id': 'wamid.EDIT'},
+                'pushName': 'Cliente',
+                'message': {
+                    'protocolMessage': {
+                        'key': {'id': alvo_id},
+                        'type': 'MESSAGE_EDIT',
+                        'editedMessage': {'conversation': texto},
+                    }
+                },
+            },
+        }
+
+    def test_cliente_editando_no_celular_atualiza_o_balao(self):
+        grupo = self.conversation.group
+        grupo.jid = '120363000000000000@g.us'
+        grupo.save(update_fields=['jid'])
+        msg = self._msg(sender_type='customer', sender=None, sender_name='Cliente',
+                        external_id='wamid.DOCLIENTE', content='mensagem com erro')
+
+        ConversationService.process_webhook(self._webhook_edicao('wamid.DOCLIENTE', 'mensagem certa'))
+
+        msg.refresh_from_db()
+        self.assertEqual(msg.content, 'mensagem certa')
+        self.assertIsNotNone(msg.edited_at)
+
+    def test_edicao_recebida_nao_cria_balao_novo(self):
+        # Era o estrago antigo das reações: evento sem texto reconhecível
+        # virava um balão "[sem conteúdo]" no meio da conversa.
+        grupo = self.conversation.group
+        grupo.jid = '120363000000000000@g.us'
+        grupo.save(update_fields=['jid'])
+        self._msg(sender_type='customer', sender=None, external_id='wamid.DOCLIENTE',
+                  content='mensagem com erro')
+        antes = Message.objects.filter(conversation=self.conversation).count()
+
+        ConversationService.process_webhook(self._webhook_edicao('wamid.DOCLIENTE', 'mensagem certa'))
+
+        self.assertEqual(Message.objects.filter(conversation=self.conversation).count(), antes)
+
+    def test_edicao_de_mensagem_desconhecida_e_ignorada(self):
+        grupo = self.conversation.group
+        grupo.jid = '120363000000000000@g.us'
+        grupo.save(update_fields=['jid'])
+        antes = Message.objects.count()
+
+        r = ConversationService.process_webhook(self._webhook_edicao('wamid.NUNCAVISTA', 'oi'))
+
+        self.assertTrue(r['success'])
+        self.assertEqual(Message.objects.count(), antes)
+
+    # ── API ─────────────────────────────────────────────────────────────
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_api_edita_e_devolve_o_texto_novo(self, mock_client_cls):
+        mock_client_cls.return_value.edit_text.return_value = (True, '')
+        msg = self._msg()
+        self.client.force_login(self.agent)
+        url = reverse('atendimento:api_edit_message', args=[msg.id])
+
+        resp = self.client.post(url, json.dumps({'content': 'agora sim'}),
+                                content_type='application/json')
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['content'], 'agora sim')
+        msg.refresh_from_db()
+        self.assertEqual(msg.content, 'agora sim')
+
+    def test_api_recusa_mensagem_de_outro_atendente(self):
+        msg = self._msg()
+        self.client.force_login(self.outro)
+        url = reverse('atendimento:api_edit_message', args=[msg.id])
+
+        resp = self.client.post(url, json.dumps({'content': 'não é minha'}),
+                                content_type='application/json')
+
+        self.assertEqual(resp.status_code, 403)
+        msg.refresh_from_db()
+        self.assertEqual(msg.content, 'texto original')
+
+    def test_api_recusa_texto_vazio(self):
+        msg = self._msg()
+        self.client.force_login(self.agent)
+        url = reverse('atendimento:api_edit_message', args=[msg.id])
+
+        resp = self.client.post(url, json.dumps({'content': '   '}),
+                                content_type='application/json')
+
+        self.assertEqual(resp.status_code, 400)
+        msg.refresh_from_db()
+        self.assertEqual(msg.content, 'texto original')
+
+
 def _dar_2fa(user):
     """`Forcar2FAMiddleware` redireciona quem não tem TOTP confirmado — sem
     isso todo request do teste vira 302 e as asserções passariam à toa

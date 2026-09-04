@@ -672,6 +672,44 @@ def _extrair_reacao(msg_content: dict):
     return None
 
 
+def _extrair_edicao(msg_content: dict):
+    """Detecta que o WhatsApp mandou a EDIÇÃO de uma mensagem já recebida e
+    devolve {'alvo': id_da_original, 'texto': novo_texto}.
+
+    Quando alguém edita no celular, o que chega não é uma mensagem nova: é um
+    `protocolMessage` do tipo MESSAGE_EDIT carregando a `key` da original e o
+    texto novo. Sem tratar isso, cai no extrator de conteúdo, não bate com
+    nada e vira um balão "[sem conteúdo]" no meio da conversa — o mesmo
+    estrago que as reações faziam antes de terem tratamento próprio.
+
+    O formato varia entre versões (o `protocolMessage` pode vir na raiz ou
+    dentro de um `editedMessage`), então tenta os dois.
+    """
+    candidatos = [
+        msg_content.get("protocolMessage"),
+        ((msg_content.get("editedMessage") or {}).get("message") or {}).get("protocolMessage"),
+    ]
+    for proto in candidatos:
+        if not proto:
+            continue
+        # `type` vem como string nas versões novas e como o enum (14) nas antigas.
+        tipo = proto.get("type")
+        if tipo not in ("MESSAGE_EDIT", 14):
+            continue
+        alvo = (proto.get("key") or {}).get("id")
+        editada = proto.get("editedMessage") or {}
+        texto = (
+            editada.get("conversation")
+            or (editada.get("extendedTextMessage") or {}).get("text")
+            or (editada.get("imageMessage") or {}).get("caption")
+            or (editada.get("videoMessage") or {}).get("caption")
+            or ""
+        )
+        if alvo and texto:
+            return {"alvo": alvo, "texto": texto}
+    return None
+
+
 def auto_assign_on_reply(conversation: Conversation, agent) -> bool:
     """Atribui a conversa a quem respondeu, quando ela ainda não tem dono.
 
@@ -908,6 +946,48 @@ class EvolutionAPIClient:
         except Exception as e:
             logger.warning(f"Erro ao buscar contatos da instância {self.instance}: {e}")
             return {}
+
+    def edit_text(self, jid: str, message_id: str, text: str) -> Tuple[bool, str]:
+        """Reescreve uma mensagem já entregue no WhatsApp. Retorna (ok, erro).
+
+        Evolution 2.x expõe isso em `POST /chat/updateMessage/{instance}` com
+        a `key` da mensagem original — o mesmo `id` que guardamos em
+        `Message.external_id` depois do envio. `fromMe: True` porque o
+        WhatsApp só deixa editar mensagem própria.
+
+        Não existe `mentioned` aqui, ao contrário do `send_text`: o
+        `updateMessageSchema` da Evolution só carrega `number`, `text` e
+        `key`, e o controller ignora qualquer outro campo. Ou seja, **editar
+        não dispara notificação de menção** — o texto pode ganhar um
+        "@número", mas ninguém é avisado por causa da edição. Mandar o campo
+        assim mesmo só daria a impressão de que funciona.
+
+        O WhatsApp recusa edição fora da janela dele (15 min) e em mensagem
+        que não seja de texto; nesses casos a Evolution responde 400 com
+        "Message not compatible". O chamador já barra os dois casos antes de
+        chegar aqui — isto aqui é a última linha de defesa, e devolve o
+        motivo em vez de estourar.
+        """
+        body = {
+            "number": jid,
+            "text": text,
+            "key": {"id": message_id, "remoteJid": jid, "fromMe": True},
+        }
+        try:
+            r = self._post(f"/chat/updateMessage/{self.instance}", body)
+            if r.ok:
+                return True, ""
+            detalhe = ""
+            try:
+                resposta = r.json().get("response", {}).get("message")
+                detalhe = "; ".join(resposta) if isinstance(resposta, list) else str(resposta or "")
+            except Exception:
+                detalhe = r.text[:200]
+            logger.error(f"Erro ao editar mensagem {message_id} em {jid}: {r.status_code} {detalhe}")
+            return False, detalhe or f"Evolution respondeu {r.status_code}"
+        except Exception as e:
+            logger.error(f"Erro ao editar mensagem {message_id} em {jid}: {e}")
+            return False, str(e)
 
     def send_text(self, jid: str, text: str, mentions: List[str] = None,
                   everyone: bool = False) -> Tuple[bool, str]:
@@ -1233,6 +1313,14 @@ class ConversationService:
                     reacao, push_name_override or push_name, participant
                 )
 
+            # ── Edição feita pelo cliente no celular ───────────────────────
+            # Não é mensagem nova: é a reescrita de uma que já está na tela.
+            # Sem isto viraria um balão "[sem conteúdo]" e o balão original
+            # continuaria mostrando o texto antigo.
+            edicao = _extrair_edicao(msg_content)
+            if edicao:
+                return ConversationService._registrar_edicao_recebida(edicao)
+
             # Eventos sem conteúdo pra mostrar. Viravam balão "[sem conteúdo]".
             #  - albumMessage: cabeçalho de álbum; as fotos chegam depois, cada
             #    uma no seu próprio evento.
@@ -1469,6 +1557,31 @@ class ConversationService:
         return None
 
     @staticmethod
+    def _registrar_edicao_recebida(edicao: dict) -> Dict:
+        """Aplica no CRM a edição que o cliente fez no WhatsApp."""
+        alvo = Message.objects.filter(external_id=edicao["alvo"]).first()
+        if not alvo:
+            # Mensagem anterior ao CRM (ou nunca sincronizada): não há balão
+            # para atualizar, e criar um novo mostraria a conversa fora de
+            # ordem. Melhor ignorar do que inventar.
+            return {"success": True, "message": "edicao de mensagem desconhecida"}
+
+        agora = timezone.now()
+        alvo.content = edicao["texto"]
+        alvo.edited_at = agora
+        alvo.save(update_fields=["content", "edited_at"])
+
+        _ws_send_conversation(str(alvo.conversation_id), {
+            "type": "message_edited",
+            "message": {
+                "id": str(alvo.id),
+                "content": alvo.content,
+                "edited_at": timezone.localtime(agora).strftime("%H:%M"),
+            },
+        })
+        return {"success": True, "message": "edicao aplicada"}
+
+    @staticmethod
     def _registrar_reacao(reacao: dict, push_name: str, participant: str) -> Dict:
         """Anexa a reação à mensagem alvo e avisa a tela por WebSocket.
 
@@ -1546,6 +1659,7 @@ class ConversationService:
                 "created_at_iso": msg.created_at.isoformat(),
                 "message_type": msg.message_type,
                 "attachment_url": msg.attachment_url or "",
+                "sender_id": msg.sender_id,
             },
             "conversation": {
                 "id": str(conversation.id),
@@ -1748,6 +1862,10 @@ class ConversationService:
                     "sender_name": display_name,
                     "created_at": local_time.strftime("%H:%M"),
                     "created_at_iso": msg.created_at.isoformat(),
+                    "message_type": "text",
+                    # Quem escreveu: a tela usa para decidir se mostra o lápis
+                    # de editar (o servidor revalida na hora de salvar).
+                    "sender_id": agent.id if agent else None,
                 },
             })
 
@@ -1786,6 +1904,118 @@ class ConversationService:
         except Exception as e:
             logger.error(f"Erro ao enviar mensagem: {e}")
             return False, str(e)
+
+    # O WhatsApp só aceita editar mensagem própria e dentro de 15 min do
+    # envio — depois disso o próprio aplicativo esconde a opção. Manter o
+    # mesmo número aqui evita prometer na tela uma edição que a Evolution
+    # vai recusar com "Message not compatible".
+    JANELA_EDICAO_MIN = 15
+
+    @staticmethod
+    def pode_editar(message, user) -> Tuple[bool, str]:
+        """Diz se `user` pode editar `message` agora, e por que não quando não
+        pode. Uma função só, usada pela API e pelo que a tela exibe — assim o
+        botão de editar e o backend nunca discordam.
+        """
+        from usuario import perms
+
+        if message.sender_type not in ('agent', 'internal'):
+            return False, 'Só dá para editar mensagem enviada por você — a do cliente é dele.'
+        # O nome de quem escreveu vai no corpo da mensagem do WhatsApp
+        # (*Fulano*), então reescrever a fala de outra pessoa sob o nome dela
+        # é coisa de supervisão, não de qualquer atendente. Sem autor
+        # (mensagem do agente IA ou de fluxo) ninguém edita: o texto é gerado,
+        # e mudá-lo no CRM só criaria divergência com o que foi enviado.
+        if not message.sender_id:
+            return False, 'Mensagem automática não pode ser editada.'
+        if message.sender_id != user.id and not perms.is_admin(user):
+            return False, 'Essa mensagem é de outro atendente.'
+        if message.message_type != 'text':
+            return False, 'O WhatsApp só permite editar mensagem de texto.'
+        if message.is_internal:
+            # Nota interna nunca saiu do CRM: sem prazo e sem WhatsApp.
+            return True, ''
+        limite = message.created_at + timedelta(minutes=ConversationService.JANELA_EDICAO_MIN)
+        if timezone.now() > limite:
+            return False, (f'O WhatsApp só deixa editar até '
+                           f'{ConversationService.JANELA_EDICAO_MIN} minutos depois do envio.')
+        # O `external_id` só é a key do WhatsApp depois que o envio em
+        # background confirma o wamid (`3EB0…`); antes disso, e nas mensagens
+        # que o CRM cria por conta própria, ele é um id interno — não há o que
+        # editar do outro lado.
+        ids_internos = ('sending_', 'ia_', 'flow_', 'local_media_', 'concluido_', 'reac_')
+        if not message.external_id or message.external_id.startswith(ids_internos):
+            return False, 'Essa mensagem ainda não foi confirmada pelo WhatsApp.'
+        return True, ''
+
+    @staticmethod
+    def edit_message(message, novo_texto: str, agent=None, mentions=None) -> Tuple[bool, str]:
+        """Reescreve uma mensagem já enviada, no CRM e no WhatsApp.
+
+        A edição no WhatsApp precisa sair com o MESMO cabeçalho do envio
+        original (`*NomeDoAtendente*`), senão a mensagem editada apareceria
+        no grupo sem a assinatura que todas as outras têm — e o nome usado é
+        o de quem escreveu, não o de quem está editando.
+
+        Ao contrário do envio, aqui o WhatsApp é chamado de forma síncrona: o
+        atendente precisa saber na hora se a edição pegou de verdade lá. Uma
+        edição que falha em silêncio é pior que não editar — o CRM mostraria
+        um texto que o cliente nunca viu.
+        """
+        novo_texto = (novo_texto or '').strip()
+        if not novo_texto:
+            return False, 'Mensagem vazia'
+        if novo_texto == message.content:
+            return True, str(message.id)   # nada mudou, nada a fazer
+
+        pode, motivo = ConversationService.pode_editar(message, agent) if agent else (True, '')
+        if not pode:
+            return False, motivo
+
+        # O texto que vai pro grupo continua trocando "@Fulano" pelo número,
+        # para a mensagem editada ficar igual às outras. O que NÃO acontece é
+        # a notificação: `updateMessage` não aceita `mentioned` (ver
+        # `EvolutionAPIClient.edit_text`), então marcar alguém novo na edição
+        # não avisa essa pessoa.
+        texto_wa, _numeros = aplicar_mencoes(novo_texto, mentions)
+
+        if not message.is_internal:
+            conversation = message.conversation
+            group = conversation.group
+            if not group or not group.connection or not group.jid:
+                return False, 'Conversa sem grupo do WhatsApp configurado.'
+            # O cabeçalho é o de quem ESCREVEU (o WhatsApp já mostra esse
+            # nome no grupo); quem edita não se apropria da fala.
+            assinatura = message.sender_name or ConversationService.get_agent_display_name(message.sender)
+            ok, erro = EvolutionAPIClient(group.connection).edit_text(
+                group.jid, message.external_id, f"*{assinatura}*\n\n{texto_wa}")
+            if not ok:
+                return False, f'O WhatsApp recusou a edição: {erro}'
+
+        agora = timezone.now()
+        message.content = novo_texto
+        message.edited_at = agora
+        message.save(update_fields=['content', 'edited_at'])
+
+        ConversationActivity.objects.create(
+            conversation=message.conversation,
+            actor=agent,
+            action='message_edited',
+            description=novo_texto[:100],
+        )
+
+        # Só a conversa: a lista lateral mostra o nome do cliente, não um
+        # trecho da última mensagem, então não há nada para atualizar lá.
+        _ws_send_conversation(str(message.conversation_id), {
+            'type': 'message_edited',
+            'message': {
+                'id': str(message.id),
+                'content': novo_texto,
+                'edited_at': timezone.localtime(agora).strftime('%H:%M'),
+            },
+        })
+
+        return True, str(message.id)
 
     @staticmethod
     def send_media(conversation: Conversation, media_base64: str, media_type: str,
