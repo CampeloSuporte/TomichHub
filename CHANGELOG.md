@@ -5,6 +5,43 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-04 (BGP: peer com outro ASN na mesma sessão de IX)
+
+### Adicionado
+
+- **Subir IX/PTT com o looking glass junto**: o formulário de "Subir sessão" ganhou o bloco
+  **"Peer com outro ASN nesta mesma sessão"** (ASN, rótulo da descrição e IPs v4/v6). É o que a
+  carta de ativação do IX.br pede — os route servers vêm sob um ASN e o LG sob outro:
+
+  ```
+  AS20121 lgc.saopaulo.sp.ix.br 187.16.216.252 - 2001:12f8::252
+  AS26162 rs1.saopaulo.sp.ix.br 187.16.216.253 - 2001:12f8::253
+  AS26162 rs2.saopaulo.sp.ix.br 187.16.216.254 - 2001:12f8::254
+  ```
+
+  Antes só cabia **um** ASN por sessão: o LG tinha que ser configurado na mão ou gastar um slot
+  e um grupo de community só dele, sujando o catálogo. Agora ele sai na mesma config, **fora do
+  peer-group** dos route servers (`peer <IP> as-number 20121` sem `peer <IP> group`) e com as
+  **mesmas route-policies** de entrada e saída aplicadas nele mesmo — o arranjo de um peer
+  individual apontando para as policies do IX. A descrição segue o padrão dos RS
+  (`LGC.PTT-SP`, `LGC.PTT-SP-V6`).
+
+  Como o vínculo circuito ↔ sessão é feito pela export policy, o LG volta do backup como mais
+  uma sessão do mesmo `ix-NN`, e não como circuito solto. O ASN do circuito continua sendo o
+  dos route servers. Vale também para operadora e CDN (lá não há grupo — é só mais um peer com
+  as policies do circuito).
+
+  Proteções: IP repetido entre o grupo e o ASN separado é recusado; ASN sem IP (ou IP sem ASN)
+  é recusado em vez de gerar config pela metade; e se o peer extra tem uma família que a sessão
+  não tem (um LG só IPv6), a route-policy daquela família é criada junto, senão o
+  `peer … route-policy` apontaria para um nome inexistente.
+
+  Arquivos: `clientes/bgp_community_auto.py` (`_peers_do_asn_extra`, `_bloco_sessao`,
+  `_peers_das_opcoes`, `_registrar_criacao_local`), `clientes/templates/bgp_automacao.html`,
+  `clientes/tests_bgp_community_auto.py` (8 testes novos), `docs/bgp_automacao.md`.
+
+---
+
 ## [Não publicado] — 2026-09-04 (Repositório: `.pyc` versionado travava o merge do deploy)
 
 ### Corrigido

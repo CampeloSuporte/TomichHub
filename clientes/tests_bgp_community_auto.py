@@ -564,6 +564,82 @@ class CriarCircuitoTest(SimpleTestCase):
         self.assertIn('peer EBGP-PTT-CE-V4 public-as-only', cmds)
         self.assertNotIn('peer 45.68.79.253 route-policy AS26162-PTT-CE-V4-IN import', cmds)
 
+    def test_ix_com_asn_separado_sobe_o_peer_fora_do_grupo(self):
+        # Carta do IX.br: AS20121 lgc + AS26162 rs1/rs2 na MESMA sessão.
+        cmds = self._criar(
+            'ix-02', nome='PTT-MG', peer_as='26162',
+            v4={'peers': [{'ip': '45.68.79.253'}, {'ip': '45.68.79.254'}]},
+            asn_extra={'peer_as': '20121', 'rotulo': 'LGC',
+                       'v4': {'peers': [{'ip': '45.68.79.252'}]}},
+        )
+        self.assertIn('peer 45.68.79.252 as-number 20121', cmds)
+        self.assertIn('peer 45.68.79.252 description LGC.PTT-MG', cmds)
+        # fora do peer-group dos route servers…
+        self.assertNotIn('peer 45.68.79.252 group EBGP-PTT-MG-V4', cmds)
+        self.assertIn('peer 45.68.79.253 group EBGP-PTT-MG-V4', cmds)
+        # …mas com as MESMAS route-policies, aplicadas nele mesmo
+        self.assertIn('peer 45.68.79.252 route-policy AS26162-PTT-MG-V4-IN import', cmds)
+        self.assertIn('peer 45.68.79.252 route-policy AS26162-PTT-MG-V4-OUT export', cmds)
+        self.assertIn('peer EBGP-PTT-MG-V4 route-policy AS26162-PTT-MG-V4-OUT export', cmds)
+        # e só um par de policies no total (o ASN separado não cria circuito novo)
+        self.assertEqual(len([c for c in cmds if c.startswith('route-policy AS26162-PTT-MG-V4-IN permit')]), 1)
+
+    def test_asn_separado_em_v6_sai_da_family_v4(self):
+        cmds = self._criar(
+            'ix-03', nome='PTT-POA', peer_as='26162',
+            v4={'peers': [{'ip': '192.0.2.60'}]},
+            v6={'peers': [{'ip': '2001:db8:1::253'}]},
+            asn_extra={'peer_as': '20121', 'rotulo': 'LGC',
+                       'v6': {'peers': [{'ip': '2001:db8:1::252'}]}},
+        )
+        self.assertIn('undo peer 2001:db8:1::252 enable', cmds)
+        self.assertLess(cmds.index('ipv4-family unicast'),
+                        cmds.index('undo peer 2001:db8:1::252 enable'))
+        self.assertIn('peer 2001:db8:1::252 description LGC.PTT-POA-V6', cmds)
+        self.assertIn('peer 2001:db8:1::252 route-policy AS26162-PTT-POA-V6-IN import', cmds)
+
+    def test_asn_separado_so_numa_familia_ainda_cria_a_policy_dela(self):
+        # LG só em IPv6 num IX que está subindo só em IPv4: sem a policy V6 o
+        # `peer ... route-policy` apontaria pra nome inexistente.
+        cmds = self._criar(
+            'ix-04', nome='PTT-BA', peer_as='26162',
+            v4={'peers': [{'ip': '192.0.2.61'}]},
+            asn_extra={'peer_as': '20121', 'v6': {'peers': [{'ip': '2001:db8:2::252'}]}},
+        )
+        self.assertIn('route-policy AS26162-PTT-BA-V6-IN permit node 10', cmds)
+        self.assertIn('peer 2001:db8:2::252 route-policy AS26162-PTT-BA-V6-OUT export', cmds)
+        # o grupo só existe na família que tem route server
+        self.assertIn('group EBGP-PTT-BA-V4 external', cmds)
+        self.assertNotIn('group EBGP-PTT-BA-V6 external', cmds)
+        self.assertIn('peer 2001:db8:2::252 description AS20121.PTT-BA-V6', cmds)
+
+    def test_recusa_asn_separado_sem_ip(self):
+        with self.assertRaises(AcaoBgpNaoSuportada) as ctx:
+            self._criar('ix-02', nome='PTT-SP', peer_as='26162',
+                        asn_extra={'peer_as': '20121'})
+        self.assertIn('AS20121', str(ctx.exception))
+
+    def test_recusa_asn_separado_sem_numero(self):
+        with self.assertRaises(AcaoBgpNaoSuportada):
+            self._criar('ix-02', nome='PTT-SP', peer_as='26162',
+                        asn_extra={'peer_as': 'lgc', 'v4': {'peers': [{'ip': '192.0.2.62'}]}})
+
+    def test_recusa_ip_repetido_entre_o_grupo_e_o_asn_separado(self):
+        with self.assertRaises(AcaoBgpNaoSuportada) as ctx:
+            self._criar('ix-02', nome='PTT-SP', peer_as='26162',
+                        v4={'peers': [{'ip': '192.0.2.63'}]},
+                        asn_extra={'peer_as': '20121', 'v4': {'peers': [{'ip': '192.0.2.63'}]}})
+        self.assertIn('192.0.2.63', str(ctx.exception))
+
+    def test_upstream_tambem_aceita_peer_de_outro_asn(self):
+        cmds = self._criar('c-02', nome='BR-DIGITAL', peer_as='14840',
+                           v4={'peers': [{'ip': '192.0.2.70'}]},
+                           asn_extra={'peer_as': '65123',
+                                      'v4': {'peers': [{'ip': '192.0.2.71'}]}})
+        self.assertIn('peer 192.0.2.71 as-number 65123', cmds)
+        self.assertIn('peer 192.0.2.71 description EBGP-AS65123-BR-DIGITAL-V4', cmds)
+        self.assertIn('peer 192.0.2.71 route-policy AS14840-BR-DIGITAL-V4-OUT export', cmds)
+
     def test_peer_v6_e_tirado_da_family_v4(self):
         cmds = self._criar('c-03', v6={'peers': [{'ip': '2001:db8::1'}]})
         self.assertIn('undo peer 2001:db8::1 enable', cmds)
@@ -718,6 +794,25 @@ class CriacaoOtimistaTest(SimpleTestCase):
         self.assertEqual(len(c['sessoes']), 1)
         self.assertEqual(c['faltando'], [])
         self.assertNotIn('ix-02', {v['id'] for v in mapa['slots_vagos']})
+
+    def test_peer_de_asn_separado_entra_no_snapshot_com_o_asn_dele(self):
+        dados = dados_base()
+        aplicar_efeito_local(dados, 'criar_circuito_community', 'ix-02', {
+            'destino': 'ix-02', 'opcoes': {
+                'nome': 'PTT-CE', 'peer_as': '26162', 'grupo': '602',
+                'asn_community': ASN, 'prepend_as': '268080',
+                'v4': {'peers': [{'ip': '45.68.79.253'}, {'ip': '45.68.79.254'}]},
+                'asn_extra': {'peer_as': '20121', 'rotulo': 'LGC',
+                              'v4': {'peers': [{'ip': '45.68.79.252'}]}}}})
+        mapa = montar_mapa(dados)
+        c = mapa['circuitos']['ix-02']
+        # o LG é sessão DO MESMO circuito (mesma policy de saída), não outro slot
+        self.assertEqual(len(c['sessoes']), 3)
+        por_ip = {s['peer_ip']: s for s in c['sessoes']}
+        self.assertEqual(por_ip['45.68.79.252']['peer_as'], '20121')
+        self.assertEqual(por_ip['45.68.79.253']['peer_as'], '26162')
+        # e o ASN do circuito continua sendo o dos route servers
+        self.assertEqual(c['peer_as'], '26162')
 
     def test_downstream_novo_aparece_com_os_destinos(self):
         dados = _dados_com_cliente()

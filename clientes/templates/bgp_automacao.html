@@ -556,6 +556,41 @@
             </div>
         </div>
 
+        <div class="cs2-fam" data-ativa="0" id="caSessaoFamExtra">
+            <label class="cs2-fam-head">
+                <input type="checkbox" id="caSessaoExtraOn" onchange="caSessaoToggleExtra()">
+                Peer com outro ASN nesta mesma sessão
+                <span class="tag" id="caSessaoTagExtra">fora do grupo, mesmas route-policies</span>
+            </label>
+            <div class="cs2-fam-corpo">
+                <div class="cs2-sub" id="caSessaoExtraSub"></div>
+                <div class="cs2-grid">
+                    <div class="cs2-campo">
+                        <label for="caSessaoExtraAs">ASN deste peer</label>
+                        <input type="text" id="caSessaoExtraAs" placeholder="20121"
+                               oninput="caSessaoAtualizarResumo()">
+                    </div>
+                    <div class="cs2-campo">
+                        <label for="caSessaoExtraRotulo">Rótulo na descrição</label>
+                        <input type="text" id="caSessaoExtraRotulo" placeholder="LGC">
+                        <span class="dica" id="caSessaoExtraRotuloDica"></span>
+                    </div>
+                </div>
+                <div class="cs2-campo" id="caSessaoExtraWrapV4">
+                    <label>IPv4 deste peer</label>
+                    <div id="caSessaoPeersExtraV4"></div>
+                    <button type="button" class="cs2-add"
+                            onclick="caSessaoAddPeer('v4', 'caSessaoPeersExtra')">＋ outro IPv4</button>
+                </div>
+                <div class="cs2-campo" id="caSessaoExtraWrapV6">
+                    <label>IPv6 deste peer</label>
+                    <div id="caSessaoPeersExtraV6"></div>
+                    <button type="button" class="cs2-add"
+                            onclick="caSessaoAddPeer('v6', 'caSessaoPeersExtra')">＋ outro IPv6</button>
+                </div>
+            </div>
+        </div>
+
         <div id="caSessaoDestinosWrap" style="display:none;">
             <div class="ca-bloco-titulo">Reanunciar os prefixos do cliente para</div>
             <div class="cs2-sub">As policies de saída terminam em <code>deny node 999</code>: sem uma community de anúncio, as rotas do cliente ficariam só neste equipamento.</div>
@@ -1844,6 +1879,25 @@ function caAbrirSessao(destinoId, tipoNovo) {
     document.getElementById('caSessaoErro').textContent = '';
     caSessaoToggleFake();
 
+    // Peer de ASN separado: só faz sentido nos circuitos do catálogo — no
+    // downstream o ASN é o do cliente e é ele que define a prefix-list.
+    document.getElementById('caSessaoFamExtra').style.display =
+        tipo === 'downstream' ? 'none' : '';
+    document.getElementById('caSessaoExtraOn').checked = false;
+    document.getElementById('caSessaoExtraAs').value = '';
+    document.getElementById('caSessaoExtraRotulo').value = '';
+    ['V4', 'V6'].forEach(f => { document.getElementById(`caSessaoPeersExtra${f}`).innerHTML = ''; });
+    document.getElementById('caSessaoExtraSub').innerHTML = tipo === 'ix'
+        ? 'A carta do IX entrega o looking glass num ASN e os route servers em outro '
+          + '(<code>AS20121 lgc</code> + <code>AS26162 rs1/rs2</code>). Aqui o LG entra na '
+          + 'mesma sessão, com as mesmas route-policies, mas <b>fora do peer-group</b> '
+          + '— as policies saem nele mesmo.'
+        : 'Um peer a mais nesta sessão, com ASN próprio e as mesmas route-policies '
+          + 'do circuito — não gasta outro slot nem outro grupo de community.';
+    document.getElementById('caSessaoExtraRotuloDica').innerHTML = tipo === 'ix'
+        ? 'vira <code>LGC.&lt;NOME&gt;</code>, no lugar de <code>RS1.&lt;NOME&gt;</code>'
+        : 'entra na descrição do peer';
+
     ['v4', 'v6'].forEach(fam => {
         document.getElementById(`caSessaoPeers${fam.toUpperCase()}`).innerHTML = '';
         document.getElementById(`caSessaoPrefixos${fam.toUpperCase()}`).value = '';
@@ -1856,6 +1910,8 @@ function caAbrirSessao(destinoId, tipoNovo) {
             tipo === 'ix' ? 'route servers do IX' : '';
         for (let i = 0; i < texto.peers; i++) caSessaoAddPeer(fam);
     });
+
+    caSessaoToggleExtra();
 
     const wrapDestinos = document.getElementById('caSessaoDestinosWrap');
     wrapDestinos.style.display = tipo === 'downstream' ? '' : 'none';
@@ -1938,11 +1994,37 @@ function caSessaoToggleFamilia(fam) {
     if (ligada && !document.querySelectorAll(`#caSessaoPeers${fam.toUpperCase()} input`).length) {
         caSessaoAddPeer(fam);
     }
+    caSessaoSincronizarExtra();
     caSessaoAtualizarResumo();
 }
 
-function caSessaoAddPeer(fam) {
-    const alvo = document.getElementById(`caSessaoPeers${fam.toUpperCase()}`);
+/** Peer de ASN separado: o IX.br entrega o looking glass num ASN e os route
+ *  servers em outro (AS20121 lgc + AS26162 rs1/rs2) na MESMA sessão. Ele fica
+ *  fora do peer-group — grupo é o dos RS — mas com as mesmas route-policies. */
+function caSessaoToggleExtra() {
+    const ligado = document.getElementById('caSessaoExtraOn').checked;
+    document.getElementById('caSessaoFamExtra').dataset.ativa = ligado ? '1' : '0';
+    caSessaoSincronizarExtra();
+    if (ligado) document.getElementById('caSessaoExtraAs').focus();
+    caSessaoAtualizarResumo();
+}
+
+/** As famílias do peer separado acompanham as da sessão: não faz sentido pedir
+ *  um IPv6 do LG numa sessão que está subindo só em IPv4. */
+function caSessaoSincronizarExtra() {
+    const ligado = document.getElementById('caSessaoExtraOn').checked;
+    ['v4', 'v6'].forEach(fam => {
+        const FAM = fam.toUpperCase();
+        const ativa = document.getElementById(`caSessao${FAM}`).checked;
+        document.getElementById(`caSessaoExtraWrap${FAM}`).style.display = ativa ? '' : 'none';
+        if (ligado && ativa && !document.querySelectorAll(`#caSessaoPeersExtra${FAM} input`).length) {
+            caSessaoAddPeer(fam, 'caSessaoPeersExtra');
+        }
+    });
+}
+
+function caSessaoAddPeer(fam, base) {
+    const alvo = document.getElementById(`${base || 'caSessaoPeers'}${fam.toUpperCase()}`);
     const linha = document.createElement('div');
     linha.className = 'cs2-peer';
     linha.innerHTML = `
@@ -2003,6 +2085,9 @@ function caSessaoAtualizarResumo() {
             partes.push(`policies <code>AS${peerAs}-${nome}-V4-IN/OUT</code>`);
         }
         if (CA_SESSAO.tipo === 'ix') partes.push(`peer-group <code>EBGP-${nome}-V4</code>`);
+        const extraAs = document.getElementById('caSessaoExtraOn').checked
+            ? document.getElementById('caSessaoExtraAs').value.trim() : '';
+        if (extraAs) partes.push(`+ <b>AS${escapeHtml(extraAs)}</b> fora do grupo`);
     }
     partes.push(`famílias ${familias.map(f => f.toUpperCase()).join(' + ') || '—'}`);
     document.getElementById('caSessaoResumo').innerHTML = partes.join(' · ');
@@ -2029,6 +2114,32 @@ function caConfirmarSessao() {
         fake_as: usaFake ? fakeAs : '',
         habilitar: document.getElementById('caSessaoHabilitar').checked,
     };
+
+    // Peer de ASN separado (o LG do IX): mesma sessão, mesmas policies, fora
+    // do peer-group — o backend o emite peer a peer (`asn_extra`).
+    if (document.getElementById('caSessaoExtraOn').checked) {
+        const extraAs = document.getElementById('caSessaoExtraAs').value.trim();
+        if (!/^\d+$/.test(extraAs)) {
+            erro.textContent = 'Informe o ASN do peer separado (só números) ou desmarque a opção.';
+            return;
+        }
+        const extra = { peer_as: extraAs,
+                        rotulo: document.getElementById('caSessaoExtraRotulo').value.trim() };
+        let algumExtra = false;
+        ['v4', 'v6'].forEach(fam => {
+            if (!document.getElementById(`caSessao${fam.toUpperCase()}`).checked) return;
+            const ips = [...document.querySelectorAll(`#caSessaoPeersExtra${fam.toUpperCase()} input`)]
+                .map(i => i.value.trim()).filter(Boolean);
+            if (!ips.length) return;
+            algumExtra = true;
+            extra[fam] = { peers: ips.map(ip => ({ ip })) };
+        });
+        if (!algumExtra) {
+            erro.textContent = `Informe pelo menos um IP do peer AS${extraAs} ou desmarque a opção.`;
+            return;
+        }
+        opcoes.asn_extra = extra;
+    }
     let algumPeer = false;
     ['v4', 'v6'].forEach(fam => {
         if (!document.getElementById(`caSessao${fam.toUpperCase()}`).checked) return;
