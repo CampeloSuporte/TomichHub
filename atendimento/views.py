@@ -219,8 +219,14 @@ def conversation_detail(request, conversation_id):
     # sem a tela ter que reimplementar a regra.
     agora = timezone.now()
     for m in messages:
-        pode, _motivo = ConversationService.pode_editar(m, request.user)
-        if not pode:
+        # `editavel`: a mensagem é sua e é de texto — o lápis aparece.
+        # `editavel_ate`: até quando o WhatsApp ainda aceita a edição.
+        # São dois estados diferentes de propósito: passado o prazo o lápis
+        # continua lá e o clique explica o motivo, em vez de o botão sumir
+        # sem dizer nada.
+        m.editavel, _motivo = ConversationService.pode_editar(
+            m, request.user, ignorar_prazo=True)
+        if not m.editavel:
             m.editavel_ate = ''
         elif m.is_internal:
             m.editavel_ate = 'sempre'   # nota interna nunca saiu do CRM

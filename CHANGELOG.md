@@ -5,6 +5,38 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-04 (Atendimento: o lápis de editar não era achável)
+
+### Corrigido
+
+- **"Não consegui editar a mensagem"** — o recurso funcionava, mas o botão não era achável
+  (`_chat_content.html`, `base.html`, `views.py`, `services.py`). Confirmado nos logs do
+  Gunicorn: **nenhum POST chegou** a `/atendimento/api/message/<id>/edit/` — o clique nunca
+  aconteceu. Três causas somadas, todas de descoberta:
+  - o lápis era um ícone **sem contorno com `opacity:0`**, 28px à esquerda do balão, visível só
+    no hover exato da mensagem. Agora tem borda, fundo sólido e 24px;
+  - **em toque não existe hover**, então no celular/tablet ele nunca aparecia — o recurso
+    simplesmente não existia ali. Sob `@media (hover: none)` fica sempre visível, mais discreto;
+  - **passados os 15 minutos o botão sumia**, sem dizer nada. Quem tentasse editar uma mensagem
+    um pouco mais velha não via botão nenhum e não tinha como saber se o recurso existia, se
+    tinha quebrado ou se estava fazendo algo errado. Agora o lápis fica, e o clique responde
+    "O WhatsApp só deixa editar até 15 minutos depois do envio".
+- **Duplo-clique na própria mensagem** também abre a edição — é o gesto que se tenta antes de
+  procurar botão, e não depende de hover.
+
+`ConversationService.pode_editar()` ganhou `ignorar_prazo=True`, usado **só** pela tela para
+decidir se mostra o lápis. Quem autoriza a edição continua sendo a API, com a regra completa:
+o botão aparecer não afrouxa nada (3 testes novos cobrem exatamente isso — inclusive que
+`ignorar_prazo` não libera mensagem de outro atendente, mídia nem mensagem do cliente).
+
+- **Guard de comentário vazado estava frouxo demais** (`ChatRenderTest`). O teste que impede um
+  `{# … #}` multilinha de vazar pra tela procurava a frase `"de propósito"` em qualquer ponto
+  do HTML — prosa comum, que um comentário legítimo de CSS pode conter (foi o que aconteceu
+  com o comentário do lápis de editar). Passou a checar o sinal estrutural (`{#` e `{%` no HTML
+  renderizado) mais a frase exata do bloco `{% comment %}` que de fato vazou na época.
+
+---
+
 ## [Não publicado] — 2026-09-04 (Atendimento: editar mensagem enviada)
 
 ### Adicionado

@@ -1912,10 +1912,16 @@ class ConversationService:
     JANELA_EDICAO_MIN = 15
 
     @staticmethod
-    def pode_editar(message, user) -> Tuple[bool, str]:
+    def pode_editar(message, user, ignorar_prazo: bool = False) -> Tuple[bool, str]:
         """Diz se `user` pode editar `message` agora, e por que não quando não
         pode. Uma função só, usada pela API e pelo que a tela exibe — assim o
         botão de editar e o backend nunca discordam.
+
+        `ignorar_prazo=True` responde "seria sua para editar, se estivesse no
+        prazo". A tela usa isso para continuar mostrando o lápis depois dos 15
+        minutos: some o botão e o atendente fica sem saber se o recurso existe,
+        se não funciona ou se ele fez algo errado. Com o lápis lá, o clique
+        explica o motivo.
         """
         from usuario import perms
 
@@ -1936,7 +1942,7 @@ class ConversationService:
             # Nota interna nunca saiu do CRM: sem prazo e sem WhatsApp.
             return True, ''
         limite = message.created_at + timedelta(minutes=ConversationService.JANELA_EDICAO_MIN)
-        if timezone.now() > limite:
+        if not ignorar_prazo and timezone.now() > limite:
             return False, (f'O WhatsApp só deixa editar até '
                            f'{ConversationService.JANELA_EDICAO_MIN} minutos depois do envio.')
         # O `external_id` só é a key do WhatsApp depois que o envio em

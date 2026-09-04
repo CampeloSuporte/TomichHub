@@ -987,23 +987,41 @@ body {
    versão anterior, então o marcador é o único sinal de que o texto mudou. */
 .msg-edited { font-size:10.5px; font-style:italic; opacity:.8; }
 
-/* Lápis de editar: fica fora do balão, aparece só no hover da mensagem.
-   Dentro do balão ele brigaria com o texto e com a hora flutuante. */
+/* Lápis de editar: fica fora do balão, à esquerda. Dentro do balão brigaria
+   com o texto e com a hora flutuante. Tem borda e fundo sólido de propósito —
+   na primeira versão era um ícone sem contorno com opacidade 0, e ninguém
+   achava o botão. */
 .msg-block { position:relative; }
 .msg-edit-btn {
-    position:absolute; top:50%; transform:translateY(-50%); left:-28px;
-    width:22px; height:22px; border-radius:50%; border:none; padding:0;
-    background:var(--wa-panel); color:var(--wa-text-muted); font-size:10px;
-    cursor:pointer; opacity:0; transition:opacity .12s, color .12s; z-index:3;
+    position:absolute; top:50%; transform:translateY(-50%); left:-30px;
+    width:24px; height:24px; border-radius:50%; padding:0;
+    background:var(--wa-panel); border:1px solid var(--border);
+    color:var(--wa-text-muted); font-size:10px;
+    cursor:pointer; opacity:0; transition:opacity .12s, color .12s, border-color .12s;
+    z-index:3; display:flex; align-items:center; justify-content:center;
 }
 .msg:hover .msg-edit-btn, .msg-edit-btn:focus-visible { opacity:1; }
-.msg-edit-btn:hover { color:var(--wa-green-light); }
-/* Nota interna é centralizada e ocupa 85% da largura: não sobra os 28px de
+.msg-edit-btn:hover { color:var(--wa-green-light); border-color:var(--wa-green-light); }
+/* Onde não existe hover (celular, tablet) o botão nunca apareceria — some o
+   recurso inteiro no toque. Ali ele fica sempre visível, só mais discreto. */
+@media (hover: none) {
+    .msg-edit-btn { opacity:.55; }
+}
+/* Nota interna é centralizada e ocupa 85% da largura: não sobra os 30px de
    folga que a mensagem do atendente tem à esquerda (ela vai a 68%, alinhada
    à direita). Então aqui o lápis fica por cima do próprio balão, no canto. */
 .msg.internal .msg-edit-btn {
     left:auto; right:2px; top:2px; transform:none;
-    background:rgba(0,0,0,.35); border:1px solid rgba(245,196,0,0.25);
+    background:rgba(0,0,0,.45); border-color:rgba(245,196,0,0.3);
+}
+
+/* Por que não dá pra editar (prazo do WhatsApp vencido). Aparece no lugar do
+   balão por alguns segundos: o lápis continua existindo, então o clique
+   precisa dizer alguma coisa. */
+.msg-edit-aviso {
+    font-size:11px; color:var(--wa-text-muted); background:var(--wa-panel);
+    border:1px solid var(--border); border-radius:8px; padding:4px 9px; margin-top:3px;
+    animation:msgIn .18s cubic-bezier(0.23,1,0.32,1);
 }
 
 /* Edição no lugar do balão: o textarea assume o mesmo espaço, para o olho

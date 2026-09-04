@@ -170,7 +170,7 @@
                 (white-space:pre-wrap), então qualquer indentação do template
                 aqui dentro vira linha em branco e recuo dentro do balão.
                 {% endcomment %}
-                <div class="msg-bubble">{% if message.message_type == 'image' and message.attachment_url %}<img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'audio' and message.attachment_url %}<audio controls class="msg-audio-player" preload="none"><source src="{{ message.attachment_url }}"></audio>{% elif message.message_type == 'video' and message.attachment_url %}<video controls class="msg-video-player" preload="none"><source src="{{ message.attachment_url }}"></video>{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'document' and message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}</a>{% else %}<span class="msg-text">{{ message.content|urlize }}</span>{% endif %}<span class="msg-meta">{% if message.edited_at %}<span class="msg-edited" title="Editada às {{ message.edited_at|date:"H:i" }}">editada</span>{% endif %}<span class="msg-time">{{ message.created_at|date:"H:i" }}</span>{% if message.sender_type == 'agent' %}<i class="fas fa-check-double msg-tick"></i>{% endif %}</span></div>{% if message.editavel_ate %}<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>{% endif %}
+                <div class="msg-bubble">{% if message.message_type == 'image' and message.attachment_url %}<img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'audio' and message.attachment_url %}<audio controls class="msg-audio-player" preload="none"><source src="{{ message.attachment_url }}"></audio>{% elif message.message_type == 'video' and message.attachment_url %}<video controls class="msg-video-player" preload="none"><source src="{{ message.attachment_url }}"></video>{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'document' and message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}</a>{% else %}<span class="msg-text">{{ message.content|urlize }}</span>{% endif %}<span class="msg-meta">{% if message.edited_at %}<span class="msg-edited" title="Editada às {{ message.edited_at|date:"H:i" }}">editada</span>{% endif %}<span class="msg-time">{{ message.created_at|date:"H:i" }}</span>{% if message.sender_type == 'agent' %}<i class="fas fa-check-double msg-tick"></i>{% endif %}</span></div>{% if message.editavel %}<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>{% endif %}
                 {% with reacoes=message.reactions.all %}{% if reacoes %}
                 <div class="msg-reactions" data-reactions-for="{{ message.id }}">
                     {% for r in reacoes %}
@@ -1583,6 +1583,10 @@
         if (cls === 'system') {
             el.innerHTML = '<div class="msg-system-text">' + escapeHTML(msg.content) + ' · ' + escapeHTML(msg.created_at) + '</div>';
         } else {
+            /* `prazo` vazio = mensagem de outro/mídia/automática: nem lápis.
+               Mensagem recém-chegada nunca está fora da janela, então aqui os
+               dois estados andam juntos (no template server-side não: lá há
+               mensagem antiga, com lápis e sem prazo). */
             var prazo = prazoDeEdicao(msg);
             if (prazo) el.dataset.editavelAte = prazo;
             el.innerHTML =
@@ -1609,28 +1613,43 @@
         return chatMsgs.querySelector('.msg[data-msg-id="' + id + '"]');
     }
 
-    /* O prazo do WhatsApp corre enquanto a tela está aberta: quem deixou a
-       conversa aberta por 20 min não pode continuar vendo um lápis que só
-       vai dar erro. Uma varredura por minuto resolve sem timer por mensagem. */
+    /* O prazo do WhatsApp corre enquanto a tela está aberta. Ao vencer, o
+       lápis CONTINUA lá — só perde o prazo. Fazer o botão sumir deixava o
+       atendente sem saber se o recurso existe, se quebrou ou se ele fez algo
+       errado; agora o clique explica. Uma varredura por minuto resolve sem
+       um timer por mensagem. */
     function limparLapisVencidos() {
         var agora = Date.now();
         chatMsgs.querySelectorAll('.msg[data-editavel-ate]').forEach(function(el) {
             var ate = el.dataset.editavelAte;
             if (ate === 'sempre') return;
-            if (!ate || new Date(ate).getTime() <= agora) {
-                el.removeAttribute('data-editavel-ate');
-                var btn = el.querySelector('.msg-edit-btn');
-                if (btn && _editando !== el.dataset.msgId) btn.remove();
-            }
+            if (!ate || new Date(ate).getTime() <= agora) el.removeAttribute('data-editavel-ate');
         });
     }
     var _lapisTimer = setInterval(limparLapisVencidos, 60000);
     limparLapisVencidos();
 
+    /* Mostra por que não dá para editar, no lugar do balão, por alguns
+       segundos. Só o prazo é checado aqui: as outras regras (mensagem de
+       outro, mídia, automática) fazem o lápis nem existir. */
+    function avisarPrazoVencido(el) {
+        if (el.querySelector('.msg-edit-aviso')) return;
+        var aviso = document.createElement('div');
+        aviso.className = 'msg-edit-aviso';
+        aviso.textContent = 'O WhatsApp só deixa editar até ' +
+            (JANELA_EDICAO_MS / 60000) + ' minutos depois do envio.';
+        var bloco = el.querySelector('.msg-block');
+        if (!bloco) return;
+        bloco.appendChild(aviso);
+        setTimeout(function() { aviso.remove(); }, 4000);
+    }
+
     function abrirEdicao(id) {
         if (_editando && _editando !== id) fecharEdicao(_editando);
         var el = balaoDaMensagem(id);
         if (!el) return;
+        limparLapisVencidos();
+        if (!el.dataset.editavelAte) { avisarPrazoVencido(el); return; }
         var bolha = el.querySelector('.msg-bubble');
         var texto = el.querySelector('.msg-text');
         if (!bolha || !texto) return;
@@ -1755,6 +1774,17 @@
         e.preventDefault();
         if (_editando === el.dataset.msgId) fecharEdicao(el.dataset.msgId);
         else abrirEdicao(el.dataset.msgId);
+    });
+
+    /* Duplo-clique na própria mensagem também abre a edição: é o gesto que a
+       pessoa tenta antes de procurar botão, e no celular não existe hover
+       para o lápis aparecer. */
+    chatMsgs.addEventListener('dblclick', function(e) {
+        var el = e.target.closest('.msg[data-msg-id]');
+        if (!el || !el.querySelector('.msg-edit-btn')) return;
+        if (window.getSelection && String(window.getSelection()).length) return;  /* selecionando texto */
+        e.preventDefault();
+        abrirEdicao(el.dataset.msgId);
     });
 
     /* ── Menção "@" (marcar participante do grupo) ──────────────────────
