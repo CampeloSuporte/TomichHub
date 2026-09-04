@@ -276,6 +276,9 @@ Módulo completo de gestão financeira para provedores:
 - Sistema de tarefas e lembretes pessoais
 - Relatório por assunto e categoria
 - Notificações em tempo real (toast + badge) para chamados sem atendente
+- **Contato de telefone (1:1)** além dos grupos do WhatsApp, criado à mão em *Grupos / Contatos*. Só número cadastrado abre chamado — quem não estiver na lista continua sendo ignorado
+- **Quem atende cada contato/grupo** — sem ninguém marcado o chamado cai em "Chamados abertos" para toda a equipe; marcando alguém, só essas pessoas veem os chamados dele, em qualquer tela (inclusive administrador). O administrador continua enxergando o *contato* na tela Grupos/Contatos, para poder mudar a lista
+- **Editar e apagar mensagem enviada** — a mudança vale nos dois lados: editar reescreve também no WhatsApp do cliente (janela de 15 min), apagar remove para todos e deixa o rastro "Mensagem apagada". Se o WhatsApp recusar, nada muda no CRM
 
 ### Agent NOC (IA)
 
