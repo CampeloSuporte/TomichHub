@@ -579,6 +579,35 @@ def _save_media_file(b64_data: str, mimetype: str) -> str:
     return f"{settings.MEDIA_URL}atendimento/media/{filename}"
 
 
+def _remover_arquivo_de_midia(message) -> None:
+    """Apaga do disco o arquivo de uma mensagem de mídia excluída.
+
+    Sem isto a exclusão seria só de fachada: a linha some da conversa, mas o
+    arquivo continua servido em `attachment_url` para quem tiver o link — e
+    "mandei o documento errado" é justamente o motivo mais comum de apagar.
+
+    Silencioso por opção: a mensagem já foi apagada no WhatsApp e marcada no
+    CRM quando chegamos aqui, e falhar em remover um arquivo (já removido,
+    permissão, caminho fora do MEDIA_ROOT) não pode desfazer nada disso.
+    """
+    url = getattr(message, 'attachment_url', '') or ''
+    if not url or not url.startswith(settings.MEDIA_URL):
+        return
+    try:
+        relativo = url[len(settings.MEDIA_URL):]
+        caminho = os.path.normpath(os.path.join(settings.MEDIA_ROOT, relativo))
+        # Guarda contra "../" num attachment_url adulterado: só apaga dentro
+        # do MEDIA_ROOT.
+        raiz = os.path.normpath(settings.MEDIA_ROOT)
+        if not caminho.startswith(raiz + os.sep):
+            logger.warning(f"attachment_url fora do MEDIA_ROOT, não removido: {url}")
+            return
+        if os.path.isfile(caminho):
+            os.remove(caminho)
+    except Exception as e:
+        logger.warning(f"Falha ao remover mídia de mensagem apagada ({url}): {e}")
+
+
 def _read_attachment_as_base64(attachment_url: str) -> str:
     """Lê de volta um arquivo salvo por _save_media_file e devolve em
     base64 — usado pra reenviar a mídia de uma mensagem agendada, que só
@@ -797,6 +826,11 @@ class EvolutionAPIClient:
     def _post(self, path: str, payload=None, timeout=30) -> requests.Response:
         return self.session.post(f"{self.base_url}{path}", json=payload or {}, timeout=timeout)
 
+    def _delete(self, path: str, payload=None, timeout=30) -> requests.Response:
+        # A Evolution espera o corpo num DELETE (não é query string) — é o
+        # formato do `deleteMessageForEveryone`.
+        return self.session.delete(f"{self.base_url}{path}", json=payload or {}, timeout=timeout)
+
     # ── Conectividade ────────────────────────────────────────────────────────
 
     def test_connection(self) -> Tuple[bool, str]:
@@ -995,6 +1029,41 @@ class EvolutionAPIClient:
             return False, detalhe or f"Evolution respondeu {r.status_code}"
         except Exception as e:
             logger.error(f"Erro ao editar mensagem {message_id} em {jid}: {e}")
+            return False, str(e)
+
+    def delete_message(self, jid: str, message_id: str, participant: str = "") -> Tuple[bool, str]:
+        """Apaga para todos uma mensagem já entregue. Retorna (ok, erro).
+
+        Evolution 2.x: `DELETE /chat/deleteMessageForEveryone/{instance}`. O
+        corpo aqui é **plano** (`id`, `remoteJid`, `fromMe` no topo), ao
+        contrário do `updateMessage`, que aninha os mesmos campos dentro de
+        `key` — schema confirmado contra a instância 2.3.7 em produção.
+        Mandar no formato errado devolve 400 reclamando das três propriedades.
+
+        `participant` só existe em grupo (quem enviou dentro do grupo); em
+        conversa 1:1 vai vazio e o campo é omitido.
+
+        Ao contrário da edição, o WhatsApp aceita apagar **mídia** também, e a
+        janela de "apagar para todos" é bem mais longa que os 15 min da
+        edição — quem decide é ele, e o motivo da recusa volta para a tela.
+        """
+        body = {"id": message_id, "remoteJid": jid, "fromMe": True}
+        if participant:
+            body["participant"] = participant
+        try:
+            r = self._delete(f"/chat/deleteMessageForEveryone/{self.instance}", body)
+            if r.ok:
+                return True, ""
+            detalhe = ""
+            try:
+                resposta = r.json().get("response", {}).get("message")
+                detalhe = "; ".join(map(str, resposta)) if isinstance(resposta, list) else str(resposta or "")
+            except Exception:
+                detalhe = r.text[:200]
+            logger.error(f"Erro ao apagar mensagem {message_id} em {jid}: {r.status_code} {detalhe}")
+            return False, detalhe or f"Evolution respondeu {r.status_code}"
+        except Exception as e:
+            logger.error(f"Erro ao apagar mensagem {message_id} em {jid}: {e}")
             return False, str(e)
 
     def send_text(self, jid: str, text: str, mentions: List[str] = None,
@@ -2055,6 +2124,105 @@ class ConversationService:
                 'id': str(message.id),
                 'content': novo_texto,
                 'edited_at': timezone.localtime(agora).strftime('%H:%M'),
+            },
+        })
+
+        return True, str(message.id)
+
+    # ── Exclusão de mensagem ──────────────────────────────────────────────
+
+    #: ids que o CRM inventa antes (ou no lugar) do wamid do WhatsApp. Mensagem
+    #: com um desses nunca existiu do outro lado — não há o que apagar lá.
+    IDS_INTERNOS = ('sending_', 'ia_', 'flow_', 'local_media_', 'concluido_', 'reac_')
+
+    @staticmethod
+    def pode_excluir(message, user) -> Tuple[bool, str]:
+        """Diz se `user` pode apagar `message`, e por que não quando não pode.
+        Uma função só, usada pela API e pelo que a tela exibe — assim o botão
+        e o backend nunca discordam (mesmo desenho de `pode_editar`).
+
+        Difere da edição em dois pontos, de propósito:
+
+        - **Mídia pode ser apagada.** A edição é só texto porque o WhatsApp não
+          reescreve mídia, mas apagar ele aceita — e mandar o arquivo errado é
+          justamente o caso em que apagar mais importa.
+        - **Não há prazo do lado do CRM.** A janela de "apagar para todos" é
+          bem maior que os 15 min da edição e o WhatsApp já mudou esse número
+          mais de uma vez; fixar um limite aqui só criaria um botão que recusa
+          o que o WhatsApp aceitaria. Quem decide é ele, e o motivo da recusa
+          vai para a tela.
+        """
+        from usuario import perms
+
+        if message.deleted_at:
+            return False, 'Essa mensagem já foi apagada.'
+        if message.sender_type not in ('agent', 'internal'):
+            return False, 'Só dá para apagar mensagem enviada por você — a do cliente é dele.'
+        if message.sender_id and message.sender_id != user.id and not perms.is_admin(user):
+            return False, 'Essa mensagem é de outro atendente.'
+        # Sem autor (agente IA, fluxo automático): só administrador. Ao
+        # contrário da edição — que é proibida porque reescreveria um texto
+        # gerado — apagar uma resposta errada do bot é operação legítima, mas
+        # é decisão de supervisão, não de quem estiver com o chat aberto.
+        if not message.sender_id and not perms.is_admin(user):
+            return False, 'Mensagem automática só pode ser apagada por um administrador.'
+        if message.is_internal:
+            # Nota interna nunca saiu do CRM: nada a pedir ao WhatsApp.
+            return True, ''
+        if not message.external_id or message.external_id.startswith(
+                ConversationService.IDS_INTERNOS):
+            return False, 'Essa mensagem ainda não foi confirmada pelo WhatsApp.'
+        return True, ''
+
+    @staticmethod
+    def delete_message(message, agent=None) -> Tuple[bool, str]:
+        """Apaga a mensagem para todos: primeiro no WhatsApp, depois no CRM.
+
+        **Nessa ordem, e síncrono.** Se o WhatsApp recusar (mensagem velha
+        demais, tipo incompatível), nada é marcado no CRM — senão o atendente
+        veria "Mensagem apagada" na tela enquanto o cliente continua com o
+        texto no celular, que é a pior das duas telas possíveis. É a mesma
+        razão pela qual `edit_message` também é síncrono.
+
+        Não há caminho de "apagar só no CRM": esconder do supervisor o que o
+        cliente ainda tem na mão não é apagar, é maquiar o registro.
+
+        O arquivo de mídia sai do disco junto. Deixá-lo servido em
+        `attachment_url` faria a exclusão ser só de fachada — quem tivesse a
+        URL continuaria baixando o documento enviado por engano.
+        """
+        if message.deleted_at:
+            return True, str(message.id)      # já apagada, nada a fazer
+
+        if not message.is_internal:
+            conversation = message.conversation
+            group = conversation.group
+            if not group or not group.connection or not group.jid:
+                return False, 'Conversa sem grupo do WhatsApp configurado.'
+            ok, erro = EvolutionAPIClient(group.connection).delete_message(
+                group.jid, message.external_id)
+            if not ok:
+                return False, f'O WhatsApp recusou apagar: {erro}'
+
+        agora = timezone.now()
+        message.deleted_at = agora
+        message.deleted_by = agent
+        message.save(update_fields=['deleted_at', 'deleted_by'])
+
+        _remover_arquivo_de_midia(message)
+
+        ConversationActivity.objects.create(
+            conversation=message.conversation,
+            actor=agent,
+            action='message_deleted',
+            description=(message.content or '')[:100],
+        )
+
+        _ws_send_conversation(str(message.conversation_id), {
+            'type': 'message_deleted',
+            'message': {
+                'id': str(message.id),
+                'deleted_at': timezone.localtime(agora).strftime('%H:%M'),
             },
         })
 

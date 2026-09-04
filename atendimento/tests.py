@@ -15,7 +15,9 @@ from atendimento.models import (
     WhatsAppConnection, ContactGroup, Conversation, Message, ScheduledMessage,
     SystemSetting,
 )
-from atendimento.services import ConversationService, _save_media_file, _read_attachment_as_base64
+from atendimento.services import (
+    ConversationService, EvolutionAPIClient, _save_media_file, _read_attachment_as_base64,
+)
 from atendimento.tasks import enviar_mensagens_agendadas
 
 
@@ -3125,3 +3127,286 @@ class ContatoTelefoneVisibilidadeTest(TestCase):
             },
         })
         self.assertFalse(ContactGroup.objects.get(jid='5534999998888@s.whatsapp.net').is_group)
+
+
+class ApagarMensagemTest(TestCase):
+    """Apagar mensagem tem que valer dos dois lados: sai do WhatsApp do cliente
+    e vira "Mensagem apagada" no CRM. Se só um lado mudar, ou a tela mente
+    para o atendente, ou o registro do chamado mente para o supervisor.
+    """
+
+    def setUp(self):
+        from clientes.models import Cliente
+        from usuario.models import Instancia, PerfilUsuario
+        self.conversation = _criar_conversa()
+        self.agent = _criar_agente_staff('dora')
+        self.outro = _criar_agente_staff('elias')
+        # Sem PerfilUsuario todo is_staff vira "admin legado" e os testes de
+        # "mensagem de outro atendente" passariam à toa.
+        principal = Instancia.objects.create(nome='Principal', principal=True)
+        for u in (self.agent, self.outro):
+            PerfilUsuario.objects.create(
+                usuario=u, role=PerfilUsuario.ROLE_OPERADOR, instancia=principal)
+        cliente = Cliente.objects.create(
+            nome_empresa='Cliente Teste Exclusao', cnpj='22.333.444/0001-88',
+            endereco='Rua Y', email='exclusao@example.com', instancia=principal,
+        )
+        self.conversation.group.cliente = cliente
+        self.conversation.group.save(update_fields=['cliente'])
+
+    def _msg(self, **kw):
+        campos = dict(
+            conversation=self.conversation, sender_type='agent', sender=self.agent,
+            sender_name='Dora', message_type='text', content='texto a apagar',
+            external_id='wamid.APAGAR', is_internal=False,
+        )
+        campos.update(kw)
+        return Message.objects.create(**campos)
+
+    # ── Quem pode apagar o quê ──────────────────────────────────────────
+
+    def test_mensagem_do_cliente_nao_pode_ser_apagada(self):
+        msg = self._msg(sender_type='customer', sender=None)
+
+        pode, motivo = ConversationService.pode_excluir(msg, self.agent)
+
+        self.assertFalse(pode)
+        self.assertIn('cliente', motivo)
+
+    def test_mensagem_de_outro_atendente_nao_pode_ser_apagada(self):
+        msg = self._msg()
+
+        pode, motivo = ConversationService.pode_excluir(msg, self.outro)
+
+        self.assertFalse(pode)
+        self.assertIn('outro atendente', motivo)
+
+    def test_admin_apaga_mensagem_de_outro(self):
+        msg = self._msg()
+
+        with mock.patch('usuario.perms.is_admin', return_value=True):
+            pode, _motivo = ConversationService.pode_excluir(msg, self.outro)
+
+        self.assertTrue(pode)
+
+    def test_midia_pode_ser_apagada_mesmo_nao_podendo_ser_editada(self):
+        """Diferença deliberada em relação à edição: o WhatsApp não reescreve
+        mídia, mas apaga — e mandar o arquivo errado é o caso em que apagar
+        mais importa."""
+        msg = self._msg(message_type='document', attachment_url='/media/x.pdf')
+
+        pode_editar, _ = ConversationService.pode_editar(msg, self.agent)
+        pode_apagar, _ = ConversationService.pode_excluir(msg, self.agent)
+
+        self.assertFalse(pode_editar)
+        self.assertTrue(pode_apagar)
+
+    def test_mensagem_automatica_so_admin_apaga(self):
+        msg = self._msg(sender=None, sender_name='Tomichinho')
+
+        pode, motivo = ConversationService.pode_excluir(msg, self.agent)
+        self.assertFalse(pode)
+        self.assertIn('automática', motivo)
+
+        with mock.patch('usuario.perms.is_admin', return_value=True):
+            pode_admin, _ = ConversationService.pode_excluir(msg, self.agent)
+        self.assertTrue(pode_admin)
+
+    def test_mensagem_sem_confirmacao_do_whatsapp_nao_pode_ser_apagada(self):
+        msg = self._msg(external_id='sending_12345_abc')
+
+        pode, motivo = ConversationService.pode_excluir(msg, self.agent)
+
+        self.assertFalse(pode)
+        self.assertIn('confirmada', motivo)
+
+    def test_mensagem_ja_apagada_nao_apaga_de_novo(self):
+        msg = self._msg(deleted_at=timezone.now())
+
+        pode, motivo = ConversationService.pode_excluir(msg, self.agent)
+
+        self.assertFalse(pode)
+        self.assertIn('já foi apagada', motivo)
+
+    # ── O que acontece ao apagar ────────────────────────────────────────
+
+    @mock.patch.object(EvolutionAPIClient, 'delete_message', return_value=(True, ''))
+    def test_apagar_chama_o_whatsapp_e_marca_no_crm(self, mock_del):
+        msg = self._msg()
+
+        ok, _ = ConversationService.delete_message(msg, self.agent)
+
+        self.assertTrue(ok)
+        msg.refresh_from_db()
+        self.assertIsNotNone(msg.deleted_at)
+        self.assertEqual(msg.deleted_by, self.agent)
+        self.assertTrue(msg.excluida)
+        mock_del.assert_called_once()
+        # A key enviada é a do WhatsApp, não o id interno do CRM.
+        self.assertEqual(mock_del.call_args[0][1], 'wamid.APAGAR')
+
+    @mock.patch.object(EvolutionAPIClient, 'delete_message',
+                       return_value=(False, 'Message not compatible'))
+    def test_whatsapp_recusando_nao_marca_nada_no_crm(self, _mock_del):
+        """O ponto todo de ser síncrono: marcar como apagada aqui enquanto o
+        cliente segue com a mensagem no celular é a pior das duas telas."""
+        msg = self._msg()
+
+        ok, erro = ConversationService.delete_message(msg, self.agent)
+
+        self.assertFalse(ok)
+        self.assertIn('Message not compatible', erro)
+        msg.refresh_from_db()
+        self.assertIsNone(msg.deleted_at)
+        self.assertFalse(msg.excluida)
+
+    def test_nota_interna_apaga_sem_falar_com_o_whatsapp(self):
+        msg = self._msg(sender_type='internal', is_internal=True,
+                        external_id='local_nota_1')
+
+        with mock.patch.object(EvolutionAPIClient, 'delete_message') as m:
+            ok, _ = ConversationService.delete_message(msg, self.agent)
+
+        self.assertTrue(ok)
+        m.assert_not_called()
+        msg.refresh_from_db()
+        self.assertIsNotNone(msg.deleted_at)
+
+    @mock.patch.object(EvolutionAPIClient, 'delete_message', return_value=(True, ''))
+    def test_a_linha_fica_no_banco(self, _mock_del):
+        """Soft delete: apagar a linha destruiria o histórico do chamado e
+        liberaria o `external_id`, que é unique e é a chave lá no WhatsApp."""
+        msg = self._msg()
+
+        ConversationService.delete_message(msg, self.agent)
+
+        self.assertTrue(Message.objects.filter(id=msg.id).exists())
+        self.assertEqual(Message.objects.get(id=msg.id).content, 'texto a apagar')
+
+    @mock.patch.object(EvolutionAPIClient, 'delete_message', return_value=(True, ''))
+    def test_arquivo_de_midia_sai_do_disco(self, _mock_del):
+        """Sem isso a exclusão seria de fachada: quem tivesse a URL continuaria
+        baixando o documento enviado por engano."""
+        import os as _os
+        from django.conf import settings as _settings
+
+        pasta = _os.path.join(_settings.MEDIA_ROOT, 'atendimento', 'media')
+        _os.makedirs(pasta, exist_ok=True)
+        caminho = _os.path.join(pasta, 'teste_exclusao.pdf')
+        with open(caminho, 'wb') as f:
+            f.write(b'conteudo')
+        url = f"{_settings.MEDIA_URL}atendimento/media/teste_exclusao.pdf"
+
+        msg = self._msg(message_type='document', attachment_url=url)
+        try:
+            ConversationService.delete_message(msg, self.agent)
+            self.assertFalse(_os.path.exists(caminho))
+        finally:
+            if _os.path.exists(caminho):
+                _os.remove(caminho)
+
+    @mock.patch.object(EvolutionAPIClient, 'delete_message', return_value=(True, ''))
+    def test_attachment_url_com_path_traversal_nao_apaga_fora_do_media_root(self, _mock_del):
+        from django.conf import settings as _settings
+        msg = self._msg(message_type='document',
+                        attachment_url=f"{_settings.MEDIA_URL}../../etc/passwd")
+
+        ok, _ = ConversationService.delete_message(msg, self.agent)
+
+        self.assertTrue(ok)                      # a exclusão em si não falha
+        self.assertTrue(os.path.exists('/etc/passwd'))
+
+    @mock.patch.object(EvolutionAPIClient, 'delete_message', return_value=(True, ''))
+    def test_atividade_registra_quem_apagou(self, _mock_del):
+        from atendimento.models import ConversationActivity
+        msg = self._msg()
+
+        ConversationService.delete_message(msg, self.agent)
+
+        act = ConversationActivity.objects.get(
+            conversation=self.conversation, action='message_deleted')
+        self.assertEqual(act.actor, self.agent)
+
+    # ── API ─────────────────────────────────────────────────────────────
+
+    @mock.patch.object(EvolutionAPIClient, 'delete_message', return_value=(True, ''))
+    def test_api_apaga(self, _mock_del):
+        msg = self._msg()
+        self.client.force_login(self.agent)
+
+        r = self.client.post(reverse('atendimento:api_delete_message', args=[msg.id]))
+
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.json()['success'])
+        msg.refresh_from_db()
+        self.assertIsNotNone(msg.deleted_at)
+
+    def test_api_recusa_mensagem_de_outro_atendente(self):
+        msg = self._msg()
+        self.client.force_login(self.outro)
+
+        r = self.client.post(reverse('atendimento:api_delete_message', args=[msg.id]))
+
+        self.assertEqual(r.status_code, 403)
+        msg.refresh_from_db()
+        self.assertIsNone(msg.deleted_at)
+
+    @mock.patch.object(EvolutionAPIClient, 'delete_message',
+                       return_value=(False, 'Message not compatible'))
+    def test_api_devolve_o_motivo_do_whatsapp(self, _mock_del):
+        """O motivo da recusa é justamente o que o atendente precisa ler."""
+        msg = self._msg()
+        self.client.force_login(self.agent)
+
+        r = self.client.post(reverse('atendimento:api_delete_message', args=[msg.id]))
+
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('Message not compatible', r.json()['error'])
+
+    # ── O apagado não pode voltar por outro caminho ─────────────────────
+
+    @mock.patch.object(EvolutionAPIClient, 'delete_message', return_value=(True, ''))
+    def test_polling_devolve_a_mensagem_sem_conteudo(self, _mock_del):
+        """Fallback de quem está sem WebSocket: devolver o texto aqui
+        ressuscitaria na tela o que acabou de ser apagado dos dois lados."""
+        msg = self._msg(message_type='document', attachment_url='/media/x.pdf')
+        ConversationService.delete_message(msg, self.agent)
+        self.client.force_login(self.agent)
+
+        r = self.client.get(
+            reverse('atendimento:api_conversation_messages', args=[self.conversation.id]))
+
+        linha = [m for m in r.json()['messages'] if m['id'] == str(msg.id)][0]
+        self.assertEqual(linha['content'], '')
+        self.assertEqual(linha['attachment_url'], '')
+        self.assertTrue(linha['deleted'])
+
+    @mock.patch.object(EvolutionAPIClient, 'delete_message', return_value=(True, ''))
+    def test_contexto_da_ia_ignora_mensagem_apagada(self, _mock_del):
+        """A IA reescreveria o conteúdo numa resolução ou num resumo,
+        trazendo de volta por escrito o que se quis tirar."""
+        from atendimento.tasks import _contexto_conversa
+        msg = self._msg(content='segredo que foi apagado')
+        Message.objects.create(
+            conversation=self.conversation, sender_type='customer',
+            content='mensagem que fica', external_id='wamid.FICA')
+        ConversationService.delete_message(msg, self.agent)
+
+        texto, historico = _contexto_conversa(self.conversation)
+
+        self.assertNotIn('segredo que foi apagado', texto)
+        self.assertIn('mensagem que fica', texto)
+        self.assertNotIn(msg.id, [m.id for m in historico])
+
+    @mock.patch.object(EvolutionAPIClient, 'delete_message', return_value=(True, ''))
+    def test_balao_vira_o_rastro_na_tela(self, _mock_del):
+        msg = self._msg(content='some daqui')
+        ConversationService.delete_message(msg, self.agent)
+        self.client.force_login(self.agent)
+
+        html = self.client.get(
+            reverse('atendimento:conversation_detail', args=[self.conversation.id])
+        ).content.decode()
+
+        self.assertIn('Mensagem apagada', html)
+        self.assertNotIn('some daqui', html)

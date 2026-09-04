@@ -80,11 +80,15 @@ def _contexto_conversa(conv, limite=12, incluir_inicio=0):
 
     Devolve (texto, historico), com `historico` em ordem cronológica.
     """
-    fim = list(conv.messages.order_by('-created_at')[:limite])[::-1]
+    # Mensagem apagada fica fora do contexto: ela foi removida da conversa de
+    # propósito, e a IA reescreveria o conteúdo dela numa resolução ou num
+    # resumo — trazendo de volta, por escrito, o que se quis tirar.
+    vivas = conv.messages.filter(deleted_at__isnull=True)
+    fim = list(vivas.order_by('-created_at')[:limite])[::-1]
     inicio = []
     if incluir_inicio:
         ids_fim = {m.id for m in fim}
-        inicio = [m for m in conv.messages.order_by('created_at')[:incluir_inicio]
+        inicio = [m for m in vivas.order_by('created_at')[:incluir_inicio]
                   if m.id not in ids_fim]
 
     def _linha(m):

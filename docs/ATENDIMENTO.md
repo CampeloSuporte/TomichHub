@@ -19,6 +19,7 @@ Plataforma de atendimento ao cliente integrada ao CRM, similar ao Chatwoot. Cent
 | Chat | Visual estilo **WhatsApp Dark** — bolhas com rabicho, ✓✓ de enviado, campo em pílula; envio de mídia, tags, transferência, terminal de hosts |
 | **Tarefas** | Board em 4 colunas com vinculação de conversas e lembretes automáticos |
 | **Contatos 1:1** | Além dos grupos, contato de telefone criado à mão — e a escolha de **quem atende** cada contato/grupo (ninguém marcado = atendimento geral) |
+| **Editar / apagar** | Mensagem enviada pode ser reescrita (15 min) ou **apagada para todos** — nos dois casos o WhatsApp muda junto |
 | Auto Atendimento | Fluxo de boas-vindas que coleta assunto e categoria automaticamente |
 | **Mensagens Agendadas** | Programa envio de mensagem/mídia para data e hora futuras, com painel para cancelar |
 | Relatórios | Tabela + PDF com assunto, categoria, agente, duração por empresa/período |
@@ -1877,3 +1878,108 @@ vários atendentes marcados, contato restrito **não** derrubando os chamados do
 contatos abertos, inbox e detalhe, criação e validações, lista vazia voltando ao
 geral, operador barrado, id inválido ignorado, payload do WebSocket, aviso do
 WhatsApp pulando o restrito e o webhook (privada ignorada × contato cadastrado).
+
+---
+
+## 🗑️ Apagar mensagem enviada (04/09/2026)
+
+Irmã da edição (`api_edit_message`), com as mesmas garantias e três diferenças
+que valem entender.
+
+### A regra
+
+> **Apagar é para todos.** A mensagem sai do WhatsApp do cliente e vira
+> "Mensagem apagada" no CRM. **Não existe "apagar só no CRM"** — esconder do
+> supervisor o que o cliente ainda tem na mão não é apagar, é maquiar o
+> registro do atendimento.
+
+### Ordem das operações, e por que é síncrono
+
+`ConversationService.delete_message` chama o **WhatsApp primeiro**. Só se ele
+aceitar é que o CRM marca. Se recusar, **nada muda aqui** e o motivo vai para a
+tela. É a mesma razão pela qual `edit_message` é síncrono: marcar como apagada
+enquanto o cliente segue com a mensagem no celular é a pior das duas telas
+possíveis.
+
+### Soft delete: a linha fica
+
+A `Message` **não é removida do banco** — ganha `deleted_at` e `deleted_by`:
+
+- apagar a linha destruiria o histórico do chamado, que é o registro do
+  atendimento;
+- `external_id` é `unique` e é a chave da mensagem lá no WhatsApp — liberá-lo
+  convida a colisão;
+- o balão vira o rastro *"Mensagem apagada"*, como o WhatsApp faz. Sumir com o
+  balão inteiro faria a conversa "pular" e esconderia que algo foi removido.
+
+> **O `content` continua no banco**, visível só por admin/shell. Isso é
+> deliberado, mas não é "apagado de tudo": `ConversationActivity` já guardava
+> um trecho de 100 caracteres de toda mensagem enviada, então zerar o campo não
+> apagaria o rastro — só daria a impressão de ter apagado.
+
+### Três diferenças em relação à edição
+
+| | Editar | Apagar |
+|---|---|---|
+| Mídia | ❌ o WhatsApp não reescreve | ✅ **funciona** — mandar o arquivo errado é o caso em que apagar mais importa |
+| Prazo no CRM | 15 min (`JANELA_EDICAO_MIN`) | **nenhum** — a janela de "apagar para todos" é bem maior e o WhatsApp já mudou esse número; quem recusa é ele, e o motivo aparece na confirmação |
+| Mensagem automática (sem `sender`) | ❌ ninguém edita | ✅ **só administrador** — apagar resposta errada do bot é operação legítima, mas é supervisão |
+
+Igual à edição: mensagem do cliente é dele (não dá), mensagem de outro
+atendente só admin, e mensagem ainda não confirmada pelo WhatsApp
+(`sending_`, `ia_`, `flow_`, …) não tem o que apagar do outro lado.
+
+### O arquivo de mídia sai do disco
+
+`_remover_arquivo_de_midia` apaga o arquivo em `MEDIA_ROOT`. Sem isso a
+exclusão seria de fachada: a linha some da conversa e quem tivesse a URL
+continuaria baixando o documento enviado por engano. Tem guarda contra `../`
+num `attachment_url` adulterado (só apaga dentro do `MEDIA_ROOT`) e falha em
+silêncio — a mensagem já foi apagada dos dois lados quando chega ali, e um
+arquivo que não sai não pode desfazer isso.
+
+### Os quatro caminhos em que o apagado poderia voltar
+
+Exclusão que vale numa tela e falha em outra não exclui nada:
+
+| Caminho | O que foi feito |
+|---|---|
+| Balão do chat | Vira "Mensagem apagada" (template + `aplicarExclusao` no JS) |
+| WebSocket | Evento `message_deleted` → as outras abas trocam o balão na hora |
+| **Polling** (fallback sem WebSocket) | `content` e `attachment_url` voltam **vazios**, com `deleted: true` — devolver o texto aqui ressuscitaria na tela o que acabou de ser apagado |
+| **Contexto da IA** (`_contexto_conversa`) | Mensagem apagada fica **fora** — senão a IA reescreveria o conteúdo numa resolução ou num resumo, trazendo de volta por escrito o que se quis tirar |
+| Prévia da lista lateral (`api_my_conversations`) | Não usa mensagem apagada como última mensagem |
+
+### Interface
+
+Lixeira ao lado do lápis, mesmo desenho (fora do balão, à esquerda; empilhadas
+quando as duas existem; sempre visível onde não há hover). O clique abre uma
+confirmação **no lugar do balão**, não um `confirm()` do navegador: apagar é
+irreversível dos dois lados e o diálogo nativo não diz de qual mensagem se
+trata — aqui a mensagem continua à vista enquanto a pessoa decide.
+
+### API
+
+| Método | Rota | Resposta |
+|---|---|---|
+| POST | `/atendimento/api/message/<uuid>/delete/` | `{success, message_id, deleted_at}` ou `{success: false, error}` com o motivo do WhatsApp |
+
+### Endpoint da Evolution
+
+`DELETE /chat/deleteMessageForEveryone/{instance}`, corpo **plano**:
+
+```json
+{"id": "wamid…", "remoteJid": "…@s.whatsapp.net", "fromMe": true}
+```
+
+> Atenção: é diferente do `updateMessage` (edição), que aninha os mesmos campos
+> dentro de `key`. Schema confirmado contra a instância **2.3.7** em produção —
+> mandar no formato errado devolve 400 reclamando das três propriedades.
+
+### Testes
+
+`ApagarMensagemTest` (20 casos): quem pode apagar o quê, mídia podendo ser
+apagada mas não editada, WhatsApp recusando **não** marcar nada no CRM, nota
+interna não falando com o WhatsApp, a linha ficando no banco, o arquivo saindo
+do disco, path traversal barrado, o registro em `ConversationActivity`, a API, e
+os caminhos de vazamento (polling e contexto da IA).
