@@ -5,6 +5,61 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-04 (Atendimento: menção com nome, silenciar a sala, arraste da tela)
+
+### Adicionado
+
+- **Botão "não escutar a sala"** na Sala Virtual (`atendimento/templates/atendimento/sala_virtual.html`).
+  Corta todo o áudio que chega — voz de todos os atendentes e som da tela compartilhada — sem
+  mexer no microfone, para atender alguém no telefone sem sair da sala. Muta o **elemento de
+  saída**, não a track: o áudio volta na hora, sem renegociar offer/answer com cada peer. Quem
+  entra depois também entra mudo, e a preferência fica no `localStorage` (é de quem escuta, não
+  um estado da sala).
+- **Zoom e arraste (pan) da tela compartilhada** na Sala Virtual: roda do mouse dá zoom de 1× a
+  6× ancorado no ponto sob o cursor, arraste move de verdade (pointer events com
+  `setPointerCapture`), com barra de zoom +/−, enquadrar e tela cheia. O deslocamento é clampado
+  pela caixa real da imagem (não pelo elemento), senão dava para arrastar até sobrar só a tarja
+  preta do `object-fit:contain` na tela.
+- **`GroupMemberName`** (migração `atendimento/0014`): o CRM passa a aprender o nome de quem
+  escreve nos grupos a partir do `pushName` de cada webhook, alimentando o autocomplete do "@".
+  A gravação tem cache em memória de 12 h por pessoa — é chamada em toda mensagem recebida.
+
+### Corrigido
+
+- **Menção "@" no chat listava só telefone**, sem dar para saber quem era quem
+  (`atendimento/services.py`, `views.py`, `_chat_content.html`). O `/group/participants` da
+  Evolution devolve `name: null` para praticamente todo participante — só vem preenchido para
+  conta Business ou contato salvo na agenda —, e o código caía para "usa o número como rótulo".
+  Medido ao vivo: **1 nome por grupo**, de 11 a 13 participantes.
+  `completar_nomes_participantes()` agora cruza três fontes, nesta ordem: a agenda da instância
+  (`/chat/findContacts`, uma chamada resolve o grupo inteiro, cache de 10 min), os nomes
+  aprendidos das mensagens (`GroupMemberName`) e os números da própria equipe
+  (`AttendantContact` → nome do usuário do CRM). O cruzamento tenta todas as chaves do mesmo
+  participante (`<id>@lid`, o `lid` puro, `<numero>@s.whatsapp.net` e o número), porque o
+  WhatsApp identifica gente de grupo pelo **`@lid`** — o mesmo valor do campo `participant` dos
+  webhooks. Resultado medido nos grupos reais: **de 1 para 8–12 nomes** por grupo. Na tela: nome
+  em cima, número formatado embaixo (`+55 (27) 98176-1251`), foto do WhatsApp no avatar (com
+  fallback para a inicial quando a URL expira), selo de `admin`, ordenação alfabética com os
+  desconhecidos no fim, busca por nome **ou** por número ignorando a máscara, e botão para
+  reler os participantes (o cache é de 5 min).
+- **Arrastar a tela compartilhada "travava"** na Sala Virtual, dos dois lados. Quem assistia
+  disparava o *drag nativo* do navegador (imagem fantasma no cursor) porque o `<video>` tinha
+  `cursor:zoom-in` e nenhum comportamento por trás — `dragstart` agora é barrado, com
+  `user-select`/`-webkit-user-drag` desligados e `touch-action:none` para o toque não virar
+  scroll. Quem compartilhava capturava a 15 fps e sem ajuste de encoder: metade dos quadros do
+  movimento se perdia e o navegador derrubava a resolução sozinho para caber na banda, borrando
+  o texto. Agora a captura é a 30 fps (máx. 1920×1080), a track vai com
+  `contentHint = 'detail'` e cada `RTCRtpSender` recebe `degradationPreference =
+  'maintain-resolution'` com teto de 3 Mbps — inclusive para quem entra na sala no meio de um
+  compartilhamento.
+
+**Testes:** `NomeDosParticipantesTest` (8 casos) — cada uma das três fontes de nome, nome vindo da
+Evolution não sobrescrito (sem consultar a agenda à toa), participante desconhecido saindo com
+nome vazio de propósito, aprendizado idempotente pelo webhook, troca de nome e `pushName` vazio
+não gravando nada. Suíte do módulo: 155 testes, tudo verde.
+
+---
+
 ## [Não publicado] — 2026-09-03 (Terminal: equipamento com SSH legado e senha recusada)
 
 ### Corrigido

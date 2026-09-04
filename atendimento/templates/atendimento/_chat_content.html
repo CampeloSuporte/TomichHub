@@ -373,7 +373,10 @@
 
         <!-- Autocomplete do "@" (marcar participante do grupo) -->
         <div class="mention-box" id="mentionBox" style="display:none;">
-            <div class="mention-head"><i class="fas fa-at"></i> Marcar no grupo</div>
+            <div class="mention-head">
+                <span><i class="fas fa-at"></i> Marcar no grupo</span>
+                <button type="button" id="mentionRefresh" title="Reler participantes do grupo"><i class="fas fa-rotate"></i></button>
+            </div>
             <div id="mentionList"></div>
         </div>
 
@@ -1200,8 +1203,17 @@
 .mention-head {
     font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted);
     padding: 7px 12px; border-bottom: 1px solid var(--border); position: sticky; top: 0;
-    background: #161d30;
+    background: #161d30; display: flex; align-items: center; justify-content: space-between; gap: 8px;
 }
+/* A lista fica 5 min em cache; quem acabou de entrar no grupo só aparece
+   depois de forçar a releitura por aqui. */
+#mentionRefresh {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 11px; padding: 2px 4px; line-height: 1;
+}
+#mentionRefresh:hover { color: var(--text); }
+#mentionRefresh.girando i { animation: mentionSpin .8s linear infinite; }
+@keyframes mentionSpin { to { transform: rotate(360deg); } }
 .mention-item {
     display: flex; align-items: center; gap: 9px; padding: 8px 12px; cursor: pointer;
     font-size: 12.5px; color: var(--text); border-bottom: 1px solid rgba(255,255,255,.03);
@@ -1209,12 +1221,24 @@
 .mention-item:last-child { border-bottom: none; }
 .mention-item:hover, .mention-item.active { background: rgba(88,166,255,.12); }
 .mention-avatar {
-    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; overflow: hidden;
     background: linear-gradient(135deg,#0ea5e9,#6366f1); color: #fff;
     display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600;
 }
-.mention-nome { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mention-phone { font-size: 10.5px; color: var(--muted); flex-shrink: 0; }
+.mention-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* Nome em cima, número embaixo: dá para achar tanto por quem é quanto pelo
+   número, sem que um esconda o outro. */
+.mention-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.mention-nome {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500;
+}
+.mention-nome.sem-nome { color: var(--muted); font-weight: 400; font-style: italic; }
+.mention-phone { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.mention-admin {
+    font-size: 9px; text-transform: uppercase; letter-spacing: .4px; flex-shrink: 0;
+    color: #7dd3a0; background: rgba(63,185,80,.13); border: 1px solid rgba(63,185,80,.3);
+    border-radius: 6px; padding: 1px 5px;
+}
 .mention-vazio { padding: 12px; font-size: 12px; color: var(--muted); text-align: center; }
 
 /* Botão "voltar pra lista" — só existe no mobile (ver base.html, padrão
@@ -1563,12 +1587,27 @@
     var _mentionInicio = -1;        /* posição do "@" que abriu a lista */
     var _mentionFiltrados = [];
 
-    function carregarParticipantes() {
-        if (_participantes !== null) return Promise.resolve(_participantes);
-        return fetch(API_PART)
+    function carregarParticipantes(forcar) {
+        if (_participantes !== null && !forcar) return Promise.resolve(_participantes);
+        return fetch(API_PART + (forcar ? '?refresh=1' : ''))
             .then(function(r){ return r.json(); })
             .then(function(d){ _participantes = d.participantes || []; return _participantes; })
             .catch(function(){ _participantes = []; return _participantes; });
+    }
+
+    var mentionRefresh = document.getElementById('mentionRefresh');
+    if (mentionRefresh) {
+        /* mousedown pelo mesmo motivo dos itens: o click viria depois do blur
+           do textarea e a lista já teria fechado. */
+        mentionRefresh.addEventListener('mousedown', function(ev) {
+            ev.preventDefault();
+            mentionRefresh.classList.add('girando');
+            carregarParticipantes(true).then(function() {
+                mentionRefresh.classList.remove('girando');
+                atualizarMention();
+                msgInput.focus();
+            });
+        });
     }
 
     function fecharMention() {
@@ -1599,10 +1638,14 @@
             var atual = _termoDeMencao();
             if (!atual) { fecharMention(); return; }
             var termo = atual.termo.toLowerCase();
+            /* Buscar por número tem que funcionar do jeito que a pessoa lê o
+               telefone — "(74) 9925" e "74 9925" precisam achar 557499255512. */
+            var digitos = termo.replace(/\D/g, '');
             _mentionInicio = atual.inicio;
             _mentionFiltrados = lista.filter(function(p) {
-                return !termo || (p.nome || '').toLowerCase().indexOf(termo) !== -1
-                    || (p.phone || '').indexOf(termo) !== -1;
+                if (!termo) return true;
+                if ((p.nome || '').toLowerCase().indexOf(termo) !== -1) return true;
+                return !!digitos && (p.phone || '').indexOf(digitos) !== -1;
             }).slice(0, 30);
             renderMention();
         });
@@ -1619,11 +1662,22 @@
         }
         if (_mentionAtivo < 0 || _mentionAtivo >= _mentionFiltrados.length) _mentionAtivo = 0;
         mentionList.innerHTML = _mentionFiltrados.map(function(p, i) {
-            var inicial = (p.nome || p.phone || '?').trim().charAt(0).toUpperCase();
-            return '<div class="mention-item' + (i === _mentionAtivo ? ' active' : '') + '" data-i="' + i + '">' +
-                   '<div class="mention-avatar">' + escapeHTML(inicial) + '</div>' +
-                   '<div class="mention-nome">' + escapeHTML(p.nome || p.phone) + '</div>' +
-                   '<div class="mention-phone">' + escapeHTML(p.phone) + '</div>' +
+            var nome = (p.nome || '').trim();
+            var rotulo = nome || formatarTelefone(p.phone);
+            var inicial = (rotulo || '?').charAt(0).toUpperCase();
+            /* Foto do WhatsApp quando a Evolution mandou; o fallback pra
+               inicial (link expirado) é ligado logo abaixo, no listener. */
+            var avatar = p.foto
+                ? '<img src="' + escapeHTML(p.foto) + '" alt="">'
+                : escapeHTML(inicial);
+            return '<div class="mention-item' + (i === _mentionAtivo ? ' active' : '') + '" data-i="' + i + '"' +
+                   ' data-inicial="' + escapeHTML(inicial) + '">' +
+                   '<div class="mention-avatar">' + avatar + '</div>' +
+                   '<div class="mention-info">' +
+                     '<div class="mention-nome' + (nome ? '' : ' sem-nome') + '">' + escapeHTML(rotulo) + '</div>' +
+                     (nome ? '<div class="mention-phone">' + escapeHTML(formatarTelefone(p.phone)) + '</div>' : '') +
+                   '</div>' +
+                   (p.admin ? '<span class="mention-admin">admin</span>' : '') +
                    '</div>';
         }).join('');
         Array.prototype.forEach.call(mentionList.querySelectorAll('.mention-item'), function(el) {
@@ -1633,8 +1687,30 @@
                 ev.preventDefault();
                 escolherMention(parseInt(el.dataset.i, 10));
             });
+            var img = el.querySelector('.mention-avatar img');
+            if (img) {
+                /* As URLs de foto do WhatsApp expiram; sem isso a lista
+                   ficaria com quadradinhos de imagem quebrada. */
+                img.addEventListener('error', function() {
+                    img.parentNode.textContent = el.dataset.inicial || '?';
+                });
+            }
         });
         mentionBox.style.display = 'block';
+    }
+
+    /* 5527981761251 -> "+55 (27) 98176-1251". Só cosmético: o que vai pro
+       WhatsApp continua sendo o número puro (o backend troca na hora do envio). */
+    function formatarTelefone(phone) {
+        var d = String(phone || '').replace(/\D/g, '');
+        if (d.length === 12 || d.length === 13) {
+            /* Os 4 últimos são sempre o sufixo; o que sobra é o prefixo (4
+               dígitos em fixo, 5 em celular com o nono dígito). */
+            var resto = d.slice(4);
+            return '+' + d.slice(0, 2) + ' (' + d.slice(2, 4) + ') ' +
+                   resto.slice(0, -4) + '-' + resto.slice(-4);
+        }
+        return d ? '+' + d : '';
     }
 
     function escolherMention(i) {

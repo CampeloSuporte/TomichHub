@@ -417,6 +417,9 @@ systemctl restart gunicorn daphne celery
 | 05/08/2026 | **Visual estilo WhatsApp Dark** no chat e na lista de conversas |
 | 05/08/2026 | **Correção UI**: barra de rolagem visível nas abas do Inbox; aba "Tarefas" movida pro menu principal |
 | 31/08/2026 | **Correção "Iniciar conversa"** — chamado criado pela plataforma só aparecia em "Assumidos" após F5 (WS `conversation_created`); chamado anterior encerrado junto virava item fantasma na lista |
+| 04/09/2026 | **Menção "@" mostra quem é quem** — lista vinha só com telefone; nome vem de 3 fontes (agenda da instância, `pushName` aprendido dos grupos, equipe), com foto, selo de admin e número formatado |
+| 04/09/2026 | **Sala Virtual** — botão para não escutar ninguém (silenciar a sala sem desligar o microfone) |
+| 04/09/2026 | **Sala Virtual** — arrastar a tela compartilhada travava: zoom/pan de verdade no vídeo e captura em 30 fps com resolução preservada ao mover janelas |
 
 ---
 
@@ -473,6 +476,61 @@ volta.
 Em redes com NAT simétrico/firewalls muito restritivos, a conexão direta pode não ser
 estabelecida mesmo com a renegociação corrigida — um TURN de apoio resolveria esse
 caso residual, mas está fora do escopo desta correção.
+
+
+### Silenciar a sala — não escutar ninguém (04/09/2026)
+
+Botão de fone (`#ctrl-deafen`) na barra de controles, ao lado do microfone. Corta **todo** o
+áudio que chega — voz de todos os atendentes e o som da tela compartilhada — sem mexer no
+microfone: dá para continuar falando na sala enquanto se atende alguém no telefone.
+
+Implementado mutando o **elemento de saída** (`audioEl.muted`, `<video>.muted`), não a track nem
+a `RTCPeerConnection`. O áudio continua chegando e volta na hora em que a pessoa desliga o botão,
+sem renegociar nada com os outros participantes — desligar as tracks obrigaria a uma rodada de
+offer/answer com cada peer só para voltar a ouvir.
+
+- Quem entra na sala **depois** do botão ligado também entra mudo (`aplicarSurdez()` roda no
+  `ontrack` e sempre que a área de tela aparece).
+- A preferência fica no `localStorage` (`sala_deafen`): é do ouvinte, não um estado da sala, então
+  não é transmitida aos outros participantes.
+- A tela que **eu** compartilho continua sempre muda no meu `<video>`, senão eu ouviria meu
+  próprio som de volta.
+
+### Arrastar a tela compartilhada travava (04/09/2026)
+
+Eram dois problemas somados, um de cada lado da conexão.
+
+**Do lado de quem assiste:** o `<video>` tinha `cursor:zoom-in` e **nenhum comportamento por
+trás**. Quem tentava arrastar para ver um canto da tela do outro disparava o *drag nativo* do
+navegador — a imagem fantasma grudada no cursor, seleção de página junto — e parecia que o
+compartilhamento tinha travado. Agora:
+
+- `dragstart` barrado explicitamente, mais `user-select`/`-webkit-user-drag` desligados e
+  `touch-action:none` (no toque, o pan chegava como scroll da página).
+- **Roda do mouse dá zoom** (1× a 6×) ancorado no ponto sob o cursor — o pixel embaixo do cursor
+  continua embaixo do cursor, que é o que faz o gesto não "pular".
+- **Arraste move de verdade** (pan), via pointer events com `setPointerCapture`: o movimento
+  continua mesmo quando o cursor sai da área do vídeo.
+- O deslocamento é **clampado pela caixa real da imagem**, não pelo elemento: com
+  `object-fit:contain` sobra tarja preta nas laterais, e clampar pelo elemento deixaria arrastar
+  até sobrar só tarja na tela — parecendo, de novo, que o compartilhamento caiu.
+- Barra com **zoom +/−, enquadrar (100%) e tela cheia**, mais um indicador de percentual. O zoom
+  zera sozinho quando o compartilhamento começa, troca de dono ou termina, e é reaplicado ao
+  entrar/sair da tela cheia e ao redimensionar a janela (o tamanho do vídeo muda e com ele os
+  limites do pan).
+
+**Do lado de quem compartilha:** a captura estava em `frameRate: 15` e sem nenhum ajuste de
+encoder. Ao arrastar uma janela, metade dos quadros do movimento não era capturada e o navegador,
+para caber na banda, derrubava a resolução por conta própria — o texto virava borrão. Agora:
+
+- captura em **30 fps** (`ideal`/`max`), limitada a 1920×1080;
+- `contentHint = 'detail'` na track de vídeo: prioriza nitidez sobre fluidez (o padrão `'motion'`
+  é o que borrava tudo);
+- `degradationPreference = 'maintain-resolution'` e teto de banda de 3 Mbps em cada `RTCRtpSender`
+  (`ajustarEnvioTela()`), aplicado também a quem **entra na sala no meio** de um compartilhamento.
+
+`setParameters()` fica dentro de `try`: navegador sem suporte a algum desses campos continua
+compartilhando, só sem o ajuste fino.
 
 ---
 
@@ -1299,7 +1357,8 @@ WhatsApp, com o nome destacado na mensagem.
 
 | Camada | O quê |
 |---|---|
-| `EvolutionAPIClient.get_group_participants_info()` | participantes com nome — lê `phoneNumber`/`id`/`jid` e `name`/`pushName`/`notify`, que variam entre versões da Evolution; sem nome, o número vira o rótulo |
+| `EvolutionAPIClient.get_group_participants_info()` | participantes com número, `lid`, nome (quando a Evolution sabe), foto e flag de admin |
+| `services.completar_nomes_participantes()` | preenche quem veio sem nome, cruzando três fontes (ver abaixo) |
 | `GET /atendimento/api/conversation/<id>/participants/` | alimenta o autocomplete; cache de 5 min por grupo (`?refresh=1` força releitura) |
 | `services.aplicar_mencoes()` | troca `@Nome` por `@<número>` no texto que vai pro WhatsApp e devolve os números |
 | `ConversationService.send_message(..., mentions=[{nome, phone}])` | salva o texto legível no CRM e envia com `mentioned` pra Evolution |
@@ -1327,6 +1386,62 @@ carrega o número — mesma coisa que o WhatsApp Web faz.
 intacto sem menção, envio guardando o nome no CRM e mandando o número com `mentions`, nota interna
 sem `send_text`, API repassando as menções e o endpoint de participantes servindo do cache na
 segunda chamada.
+
+---
+
+## 🙋 Menção do "@" passa a mostrar quem é quem (04/09/2026)
+
+**Sintoma:** a lista aberta pelo `@` vinha só com telefone. Sem saber de cor o número de cada
+pessoa do grupo do cliente, não dava para escolher quem marcar.
+
+**Causa:** `/group/participants` da Evolution devolve `name: null` para praticamente todo
+participante — só vem preenchido para conta Business ou contato salvo na agenda da instância.
+Como o código caía para "sem nome, usa o número como rótulo", o resultado era uma lista de
+números repetidos em nome e em telefone. Medido ao vivo: dos 11 a 13 participantes de cada
+grupo, **1 tinha nome**.
+
+### As três fontes de nome
+
+`services.completar_nomes_participantes()` completa quem veio sem nome, na ordem:
+
+| # | Fonte | Cobre |
+|---|---|---|
+| 1 | `/chat/findContacts` da instância (`get_contacts_map()`) | quem está salvo na agenda do WhatsApp ou já teve o `pushName` visto pela Evolution — uma chamada só resolve o grupo inteiro, em cache de 10 min |
+| 2 | `GroupMemberName` | nomes que o próprio CRM aprendeu do `pushName` de quem já escreveu em algum grupo |
+| 3 | `AttendantContact` | números da nossa equipe, que viram o nome do usuário do CRM |
+
+O cruzamento tenta todas as chaves possíveis do mesmo participante (`<id>@lid`, o `lid` puro,
+`<numero>@s.whatsapp.net` e o número), porque o WhatsApp hoje identifica gente de grupo pelo
+**`@lid`** e não pelo telefone — é o mesmo valor que chega no campo `participant` dos webhooks.
+
+Resultado medido nos grupos reais: de 1 nome por grupo para **8 a 12 de 11 a 13**.
+
+### Nomes aprendidos das mensagens (`GroupMemberName`)
+
+Migração `0014_groupmembername`. Toda mensagem de grupo recebida passa por
+`services.aprender_nome_participante(connection, participant, push_name)`, que grava o par
+`jid → nome`. É chamada em **todo** webhook de mensagem, então tem um cache em memória de 12 h
+por pessoa: só vai ao banco quando o nome muda. A lista vai ficando mais completa sozinha,
+conforme o pessoal do grupo escreve.
+
+### Na tela
+
+- **Nome em cima, número formatado embaixo** (`+55 (27) 98176-1251`) — dá para achar tanto pela
+  pessoa quanto pelo número, e a busca aceita as duas coisas (digitando número, a máscara é
+  ignorada: `74 9925` acha `557499255512`).
+- **Foto do WhatsApp** no avatar quando a Evolution manda (`imgUrl`); essas URLs expiram, então
+  o `error` da `<img>` devolve a inicial em vez de deixar ícone quebrado.
+- **Selo `admin`** em quem administra o grupo.
+- **Ordenação**: quem tem nome primeiro, em ordem alfabética; os números sem dono vão para o fim.
+- **Quem continua sem nome aparece só com o número formatado, em itálico** — de propósito.
+  Repetir o telefone no lugar do nome era exatamente o que confundia.
+- **Botão de releitura** no cabeçalho da lista: o cache é de 5 min, então quem acabou de entrar
+  no grupo só aparece forçando (`?refresh=1`, que também descarta a agenda da instância).
+
+**Testes:** `NomeDosParticipantesTest` — cada uma das três fontes preenchendo o nome, nome que já
+veio da Evolution não sendo sobrescrito (e nem consultando a agenda à toa), participante
+desconhecido saindo com nome vazio, aprendizado idempotente pelo webhook, troca de nome e
+`pushName` vazio não gravando nada.
 
 ---
 

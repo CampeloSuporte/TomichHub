@@ -32,13 +32,23 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;he
 #room-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
 #screen-area{flex:1;background:#0a0f14;position:relative;overflow:hidden;display:none}
 #screen-area.active{display:flex;align-items:center;justify-content:center}
-#screen-video{width:100%;height:100%;object-fit:contain;border-radius:8px;background:#000;cursor:zoom-in}
+/* `user-select`/`-webkit-user-drag` desligados: sem isso, arrastar sobre o
+   vídeo dispara o drag nativo do navegador (fantasma da imagem colado no
+   cursor) em vez do pan, e a tela parece travar. `touch-action:none` deixa
+   o pan por toque chegar aos pointer events em vez de virar scroll. */
+#screen-video{width:100%;height:100%;object-fit:contain;border-radius:8px;background:#000;
+  cursor:zoom-in;user-select:none;-webkit-user-drag:none;touch-action:none;
+  transform-origin:center center;will-change:transform}
+#screen-video.zoomed{cursor:grab}
+#screen-video.panning{cursor:grabbing}
 #screen-area:fullscreen{background:#000}
 #screen-area:fullscreen #screen-video{border-radius:0}
 #screen-label{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);color:var(--text);font-size:.75rem;padding:4px 12px;border-radius:12px;pointer-events:none}
-#screen-fs-btn{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.6);border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:8px;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:.85rem;z-index:2}
-#screen-area.active #screen-fs-btn{display:flex}
-#screen-fs-btn:hover{background:rgba(0,0,0,.85);color:var(--blue)}
+#screen-tools{position:absolute;top:12px;right:12px;display:none;gap:6px;z-index:2}
+#screen-area.active #screen-tools{display:flex}
+#screen-tools button{background:rgba(0,0,0,.6);border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem}
+#screen-tools button:hover{background:rgba(0,0,0,.85);color:var(--blue)}
+#screen-zoom-badge{position:absolute;top:12px;left:12px;background:rgba(0,0,0,.6);border:1px solid var(--border);color:var(--muted);font-size:.7rem;padding:3px 9px;border-radius:8px;z-index:2;display:none;pointer-events:none}
 #peers-strip{display:flex;gap:12px;padding:16px;overflow-x:auto;flex-shrink:0;align-items:center;justify-content:center;flex:1}
 #screen-area.active ~ #peers-strip{flex:0 0 auto}
 
@@ -139,8 +149,14 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;he
   <div id="room-area">
     <!-- Screen share area (hidden by default) -->
     <div id="screen-area">
-      <video id="screen-video" autoplay playsinline muted></video>
-      <button id="screen-fs-btn" title="Tela cheia"><i class="fas fa-expand"></i></button>
+      <video id="screen-video" autoplay playsinline muted draggable="false"></video>
+      <div id="screen-zoom-badge">100%</div>
+      <div id="screen-tools">
+        <button id="screen-zoom-out" title="Diminuir zoom"><i class="fas fa-magnifying-glass-minus"></i></button>
+        <button id="screen-zoom-in" title="Aumentar zoom"><i class="fas fa-magnifying-glass-plus"></i></button>
+        <button id="screen-zoom-reset" title="Enquadrar (100%)"><i class="fas fa-crop-simple"></i></button>
+        <button id="screen-fs-btn" title="Tela cheia"><i class="fas fa-expand"></i></button>
+      </div>
       <div id="screen-label"></div>
     </div>
     <!-- Participant cards -->
@@ -163,6 +179,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;he
 <!-- Controls -->
 <div id="controls">
   <button class="ctrl-btn off" id="ctrl-mic" title="Microfone"><i class="fas fa-microphone-slash"></i></button>
+  <button class="ctrl-btn" id="ctrl-deafen" title="Silenciar a sala (não escutar ninguém)"><i class="fas fa-headphones"></i></button>
   <button class="ctrl-btn" id="ctrl-screen" title="Compartilhar tela"><i class="fas fa-desktop"></i></button>
   <button class="ctrl-btn" id="ctrl-chat-btn" title="Chat">
     <i class="fas fa-comment"></i>
@@ -182,6 +199,11 @@ let screenStream = null;
 let myId = null;
 let micOn = false;
 let screenOn = false;
+// "Silenciar a sala": corta TODO o áudio que chega (voz dos atendentes e som
+// da tela compartilhada) sem mexer no microfone — dá pra continuar falando
+// enquanto se atende alguém no telefone. Fica salvo no navegador porque é
+// uma preferência de quem escuta, não um estado da sala.
+let deafened = (localStorage.getItem('sala_deafen') === '1');
 let chatOpen = false;
 let unreadChat = 0;
 
@@ -351,12 +373,14 @@ function createPeerConnection(peerId) {
         audioEl.autoplay = true;
         peers[peerId].audioEl = audioEl;
       }
+      // Quem chega depois do botão ligado também tem que entrar mudo.
+      audioEl.muted = deafened;
       audioEl.srcObject = streams[0];
     } else if (track.kind === 'video') {
       // Remote screen share
       const vid = document.getElementById('screen-video');
       vid.srcObject = streams[0];
-      vid.muted = false;
+      vid.muted = deafened;
       showScreenArea(peerId);
       peers[peerId].screenTrackId = track.id;
       track.onended = () => hideScreenIfFrom(peerId);
@@ -395,7 +419,12 @@ function createPeerConnection(peerId) {
   }
 
   if (screenStream) {
-    screenStream.getTracks().forEach(t => pc.addTrack(t, screenStream));
+    // Quem entra na sala no meio de um compartilhamento precisa receber a
+    // tela com a mesma qualidade de quem já estava.
+    screenStream.getTracks().forEach(t => {
+      const sender = pc.addTrack(t, screenStream);
+      if (t.kind === 'video') ajustarEnvioTela(sender);
+    });
   }
 
   return pc;
@@ -457,9 +486,19 @@ document.getElementById('ctrl-screen').onclick = async () => {
   } else {
     try {
       screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: {frameRate: 15, displaySurface: 'monitor'},
+        // 15 fps deixava a imagem picotar feio a cada janela arrastada:
+        // metade dos quadros do movimento simplesmente não era capturada.
+        video: {
+          frameRate: {ideal: 30, max: 30},
+          width: {max: 1920}, height: {max: 1080},
+          displaySurface: 'monitor',
+        },
         audio: true,
       });
+      // 'detail' = prioriza nitidez sobre fluidez: ao mover uma janela o
+      // navegador prefere segurar a resolução a borrar tudo (o padrão
+      // 'motion' derruba a resolução e é o que deixava o texto ilegível).
+      screenStream.getVideoTracks().forEach(t => { try { t.contentHint = 'detail'; } catch (e) {} });
       screenOn = true;
       const btn = document.getElementById('ctrl-screen');
       btn.className = 'ctrl-btn screen-on';
@@ -475,7 +514,7 @@ document.getElementById('ctrl-screen').onclick = async () => {
       // Add to all peer connections
       screenStream.getVideoTracks().forEach(track => {
         Object.values(peers).forEach(p => {
-          if (p.pc) p.pc.addTrack(track, screenStream);
+          if (p.pc) ajustarEnvioTela(p.pc.addTrack(track, screenStream));
         });
         track.onended = () => stopScreen();
       });
@@ -495,6 +534,27 @@ document.getElementById('ctrl-screen').onclick = async () => {
   }
 };
 
+/* Sem isto o navegador escolhe sozinho como degradar quando a banda aperta —
+   e a escolha padrão para vídeo é derrubar a resolução, exatamente o que faz
+   a tela "borrar/bugar" no instante em que alguém arrasta uma janela.
+   'maintain-resolution' troca fluidez por nitidez, que é o que importa numa
+   tela compartilhada, e o teto de banda maior evita a queda em primeiro
+   lugar. */
+async function ajustarEnvioTela(sender) {
+  if (!sender || !sender.track || sender.track.kind !== 'video') return;
+  try {
+    const p = sender.getParameters();
+    if (!p.encodings || !p.encodings.length) p.encodings = [{}];
+    p.degradationPreference = 'maintain-resolution';
+    p.encodings[0].maxBitrate = 3000000;
+    p.encodings[0].maxFramerate = 30;
+    await sender.setParameters(p);
+  } catch (e) {
+    // Navegador sem suporte a algum destes campos — o compartilhamento
+    // continua funcionando, só sem o ajuste fino.
+  }
+}
+
 function stopScreen() {
   if (screenStream) {
     screenStream.getTracks().forEach(t => t.stop());
@@ -513,6 +573,29 @@ function sendMediaState() {
   wsSend({type: 'media_state', audio: micOn, screen: screenOn});
 }
 
+// ── Silenciar a sala (não escutar ninguém) ────────────────────────
+function aplicarSurdez() {
+  // Mudo no elemento de saída, não na track: assim o áudio continua
+  // chegando e volta na hora em que a pessoa desliga o botão, sem
+  // renegociar nada com os outros participantes.
+  Object.values(peers).forEach(p => { if (p.audioEl) p.audioEl.muted = deafened; });
+  const vid = document.getElementById('screen-video');
+  // A tela que EU compartilho sempre fica muda aqui (senão eu ouviria meu
+  // próprio som de volta); a dos outros segue o botão.
+  vid.muted = deafened || screenSharer === myId || screenSharer === null;
+  const btn = document.getElementById('ctrl-deafen');
+  btn.className = deafened ? 'ctrl-btn off' : 'ctrl-btn';
+  btn.innerHTML = deafened ? '<i class="fas fa-volume-xmark"></i>' : '<i class="fas fa-headphones"></i>';
+  btn.title = deafened ? 'Voltar a escutar a sala' : 'Silenciar a sala (não escutar ninguém)';
+}
+
+document.getElementById('ctrl-deafen').onclick = () => {
+  deafened = !deafened;
+  localStorage.setItem('sala_deafen', deafened ? '1' : '0');
+  aplicarSurdez();
+  toast(deafened ? 'Você não está escutando a sala' : 'Você voltou a escutar a sala');
+};
+
 // ── Screen area ───────────────────────────────────────────────────
 let screenSharer = null;
 function showScreenArea(peerId) {
@@ -522,6 +605,8 @@ function showScreenArea(peerId) {
     const info = peerInfo[peerId];
     document.getElementById('screen-label').textContent = (info ? info.display_name : 'Alguém') + ' está compartilhando';
   }
+  resetZoom();
+  aplicarSurdez();
 }
 function hideScreenIfFrom(peerId) {
   if (screenSharer === peerId) {
@@ -532,8 +617,119 @@ function hideScreenIfFrom(peerId) {
     const vid = document.getElementById('screen-video');
     vid.srcObject = null;
     document.getElementById('screen-label').textContent = '';
+    resetZoom();
   }
 }
+
+// ── Zoom e arraste (pan) da tela compartilhada ────────────────────
+// Antes o vídeo só tinha `cursor:zoom-in` sem nenhum comportamento: quem
+// tentava arrastar para ver um canto da tela do outro acabava disparando o
+// arraste nativo do navegador (fantasma da imagem grudado no cursor, seleção
+// de página), e parecia que a tela tinha travado. Agora a roda dá zoom no
+// ponto do cursor e o arraste move de verdade.
+const ZOOM_MIN = 1, ZOOM_MAX = 6;
+let zoomEscala = 1, zoomX = 0, zoomY = 0;
+let arrastando = false, arrastePid = null, arrasteX0 = 0, arrasteY0 = 0;
+
+const screenVideo = document.getElementById('screen-video');
+
+/* Tamanho real da imagem dentro do <video>: com `object-fit:contain` sobra
+   tarja preta nas laterais, e clampar pelo elemento deixaria arrastar até
+   sobrar só tarja na tela. */
+function caixaConteudo() {
+  const w = screenVideo.clientWidth, h = screenVideo.clientHeight;
+  const vw = screenVideo.videoWidth, vh = screenVideo.videoHeight;
+  if (!vw || !vh) return {w, h, caixaW: w, caixaH: h};
+  const f = Math.min(w / vw, h / vh);
+  return {w, h, caixaW: vw * f, caixaH: vh * f};
+}
+
+function aplicarZoom() {
+  // Com origem no centro, a imagem só pode deslizar metade do que sobrou de
+  // cada lado — clampar aqui evita arrastar até a tela sair de vista e dar a
+  // impressão de que o compartilhamento caiu.
+  const c = caixaConteudo();
+  const limiteX = Math.max(0, (c.caixaW * zoomEscala - c.w) / 2);
+  const limiteY = Math.max(0, (c.caixaH * zoomEscala - c.h) / 2);
+  zoomX = Math.min(limiteX, Math.max(-limiteX, zoomX));
+  zoomY = Math.min(limiteY, Math.max(-limiteY, zoomY));
+  screenVideo.style.transform = `translate(${zoomX}px, ${zoomY}px) scale(${zoomEscala})`;
+  screenVideo.classList.toggle('zoomed', zoomEscala > 1);
+  const badge = document.getElementById('screen-zoom-badge');
+  badge.textContent = Math.round(zoomEscala * 100) + '%';
+  badge.style.display = zoomEscala > 1 ? 'block' : 'none';
+}
+
+function resetZoom() {
+  zoomEscala = 1; zoomX = 0; zoomY = 0;
+  aplicarZoom();
+}
+
+/* Zoom ancorado num ponto da tela (cursor ou centro): o pixel que está sob o
+   cursor continua sob o cursor depois do zoom — é o que faz o gesto parecer
+   natural em vez de "pular". */
+function zoomPara(novaEscala, clienteX, clienteY) {
+  novaEscala = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, novaEscala));
+  // `getBoundingClientRect()` já vem COM a transformação aplicada, então o
+  // centro que ele reporta é o centro visual (deslocado pelo pan). O cálculo
+  // abaixo precisa do centro de layout — daí descontar o deslocamento atual.
+  const r = screenVideo.getBoundingClientRect();
+  const centroX = r.left + r.width / 2 - zoomX;
+  const centroY = r.top + r.height / 2 - zoomY;
+  const cx = (clienteX === undefined ? centroX : clienteX) - centroX;
+  const cy = (clienteY === undefined ? centroY : clienteY) - centroY;
+  zoomX = cx - (cx - zoomX) * (novaEscala / zoomEscala);
+  zoomY = cy - (cy - zoomY) * (novaEscala / zoomEscala);
+  zoomEscala = novaEscala;
+  if (zoomEscala === 1) { zoomX = 0; zoomY = 0; }
+  aplicarZoom();
+}
+
+screenVideo.addEventListener('wheel', e => {
+  if (!document.getElementById('screen-area').classList.contains('active')) return;
+  e.preventDefault();
+  zoomPara(zoomEscala * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY);
+}, {passive: false});
+
+// O drag nativo do navegador (imagem fantasma seguindo o cursor) é o que
+// fazia a tela "bugar" ao arrastar — barrado explicitamente.
+screenVideo.addEventListener('dragstart', e => e.preventDefault());
+
+screenVideo.addEventListener('pointerdown', e => {
+  if (zoomEscala <= 1 || e.button !== 0) return;
+  e.preventDefault();
+  arrastando = true; arrastePid = e.pointerId;
+  arrasteX0 = e.clientX - zoomX; arrasteY0 = e.clientY - zoomY;
+  // Captura do ponteiro: o arraste continua funcionando mesmo quando o
+  // cursor sai da área do vídeo no meio do movimento.
+  screenVideo.setPointerCapture(e.pointerId);
+  screenVideo.classList.add('panning');
+});
+
+screenVideo.addEventListener('pointermove', e => {
+  if (!arrastando || e.pointerId !== arrastePid) return;
+  e.preventDefault();
+  zoomX = e.clientX - arrasteX0;
+  zoomY = e.clientY - arrasteY0;
+  aplicarZoom();
+});
+
+function fimDoArraste(e) {
+  if (!arrastando || (e && e.pointerId !== arrastePid)) return;
+  arrastando = false; arrastePid = null;
+  screenVideo.classList.remove('panning');
+  if (e) { try { screenVideo.releasePointerCapture(e.pointerId); } catch (err) {} }
+}
+screenVideo.addEventListener('pointerup', fimDoArraste);
+screenVideo.addEventListener('pointercancel', fimDoArraste);
+
+document.getElementById('screen-zoom-in').onclick = () => zoomPara(zoomEscala * 1.25);
+document.getElementById('screen-zoom-out').onclick = () => zoomPara(zoomEscala / 1.25);
+document.getElementById('screen-zoom-reset').onclick = resetZoom;
+
+// Sair da tela cheia (ou redimensionar a janela) muda o tamanho do vídeo e
+// com ele os limites do pan — sem reaplicar, a imagem fica deslocada.
+window.addEventListener('resize', aplicarZoom);
 
 // Tela cheia da área de compartilhamento (botão ou duplo-clique no vídeo)
 function toggleScreenFullscreen() {
@@ -546,10 +742,12 @@ function toggleScreenFullscreen() {
   }
 }
 document.getElementById('screen-fs-btn').onclick = toggleScreenFullscreen;
-document.getElementById('screen-video').addEventListener('dblclick', toggleScreenFullscreen);
+screenVideo.addEventListener('dblclick', toggleScreenFullscreen);
 document.addEventListener('fullscreenchange', () => {
   const icon = document.querySelector('#screen-fs-btn i');
   if (icon) icon.className = document.fullscreenElement ? 'fas fa-compress' : 'fas fa-expand';
+  // O vídeo muda de tamanho ao entrar/sair da tela cheia.
+  setTimeout(aplicarZoom, 60);
 });
 
 // ── Peer cards UI ─────────────────────────────────────────────────
@@ -678,6 +876,9 @@ window.addEventListener('beforeunload', cleanup);
 function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+// Estado inicial do botão de silenciar (a preferência fica no navegador).
+aplicarSurdez();
 
 function toast(msg, err=false) {
   const t = document.getElementById('status-toast');

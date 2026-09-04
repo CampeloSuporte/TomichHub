@@ -1207,7 +1207,7 @@ apaga** logins já salvos indevidamente — isso precisa ser removido manualment
 | Documentação | Tema |
 |--------------|------|
 | **[agent_noc.md](agent_noc.md)** | API Key por grupo, fix Datacom, fix erro 500 ao salvar config |
-| **[ATENDIMENTO.md](ATENDIMENTO.md)** | Sala Virtual — Perfect Negotiation, buffer de candidatos ICE |
+| **[ATENDIMENTO.md](ATENDIMENTO.md)** | Sala Virtual — Perfect Negotiation, buffer de candidatos ICE, silenciar a sala, zoom/pan da tela compartilhada |
 | **[HOTSPOT_CAPTIVE_PORTAL.md](HOTSPOT_CAPTIVE_PORTAL.md)** | Entrega de `login.html` via SFTP |
 | **[FINANCEIRO.md](FINANCEIRO.md)** | Diagnóstico cobrança WhatsApp, fix vínculo venda de equipamento |
 
@@ -1617,6 +1617,7 @@ existente).
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 04/09/2026 | Atendimento: menção "@" no chat deixou de listar só telefone — o nome vem de três fontes (agenda da instância via `/chat/findContacts`, `pushName` que o CRM aprende de quem escreve nos grupos e os números da própria equipe), com foto do WhatsApp, selo de admin, número formatado e busca por nome ou número; Sala Virtual ganhou botão para **não escutar ninguém** (sem desligar o microfone) e o arraste da tela compartilhada virou zoom/pan de verdade, com captura em 30 fps e resolução preservada ao mover janelas | ATENDIMENTO.md |
 | 03/09/2026 | Terminal: fallback para o `ssh` do sistema quando o equipamento só fala `ssh-dss` (Paramiko 4 removeu DSA — diagnosticado no OLT-CDJD 172.16.0.86, banner `SSH-1.99-IPSSH-6.6.0`) e senha recusada deixou de virar "conectado" no caminho pexpect+proxy | terminal_ssh.md |
 | 03/09/2026 | Terminal: queda da sessão com o terminal aberto deixou de ser silenciosa (aviso único em amarelo + bolinha da aba apagada, no lugar de um `Socket is closed` por tecla), `set_keepalive(20)` no transporte que fala com o equipamento (o pool só cuidava do proxy), trava contra abrir duas abas/dois logins VTY do mesmo host e `motivo=` no log dizendo por que o loop de leitura terminou | terminal_ssh.md |
 | 27/08/2026 | Topologia: fix do rótulo do enlace (nome da interface cobria o IP em links quase verticais — afastamento passou a ser perpendicular à linha) e novo item "Área" na paleta — retângulo de fundo com rótulo no topo, cor e cantos de redimensionar, desenhado atrás de links/equipamentos para documentar POP/sala/borda sem virar um "device" | topologia.md |

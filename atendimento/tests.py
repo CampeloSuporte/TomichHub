@@ -1985,6 +1985,129 @@ class MencaoNoChatTest(TestCase):
         self.assertEqual(mock_client_cls.return_value.get_group_participants_info.call_count, 1)
 
 
+class NomeDosParticipantesTest(TestCase):
+    """A Evolution devolve `name` nulo para quase todo participante de grupo,
+    e a lista do "@" virava um monte de número solto. Aqui garantimos que as
+    três fontes de nome (contatos da instância, nomes aprendidos das
+    mensagens e a própria equipe) entram no lugar certo."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.connection = self.conversation.group.connection
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_contato_da_instancia_preenche_o_nome(self, mock_client_cls):
+        from django.core.cache import cache
+        from atendimento.services import completar_nomes_participantes
+        cache.clear()
+        mock_client_cls.return_value.get_contacts_map.return_value = {
+            '44809544802320@lid': 'Sara Campelo',
+        }
+
+        [p] = completar_nomes_participantes(self.connection, [
+            {'phone': '557499255512', 'lid': '44809544802320@lid', 'nome': '', 'admin': False},
+        ])
+
+        self.assertEqual(p['nome'], 'Sara Campelo')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_nome_aprendido_das_mensagens_do_grupo(self, mock_client_cls):
+        from django.core.cache import cache
+        from atendimento.models import GroupMemberName
+        from atendimento.services import completar_nomes_participantes
+        cache.clear()
+        mock_client_cls.return_value.get_contacts_map.return_value = {}
+        GroupMemberName.objects.create(
+            connection=self.connection, jid='13486750957720@lid', name='Humberto Gusmão')
+
+        [p] = completar_nomes_participantes(self.connection, [
+            {'phone': '5527988887777', 'lid': '13486750957720@lid', 'nome': '', 'admin': False},
+        ])
+
+        self.assertEqual(p['nome'], 'Humberto Gusmão')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_atendente_da_equipe_vira_nome_do_usuario(self, mock_client_cls):
+        from django.core.cache import cache
+        from atendimento.models import AttendantContact
+        from atendimento.services import completar_nomes_participantes
+        cache.clear()
+        mock_client_cls.return_value.get_contacts_map.return_value = {}
+        agente = _criar_agente_staff('lucas')
+        agente.first_name, agente.last_name = 'Lucas', 'Campelo'
+        agente.save()
+        AttendantContact.objects.create(user=agente, phone='557488737970')
+
+        [p] = completar_nomes_participantes(self.connection, [
+            {'phone': '557488737970', 'lid': '', 'nome': '', 'admin': False},
+        ])
+
+        self.assertEqual(p['nome'], 'Lucas Campelo')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_sem_nome_em_lugar_nenhum_fica_vazio(self, mock_client_cls):
+        # Vazio de propósito: a tela mostra o número formatado. Repetir o
+        # telefone no lugar do nome era justamente o que confundia.
+        from django.core.cache import cache
+        from atendimento.services import completar_nomes_participantes
+        cache.clear()
+        mock_client_cls.return_value.get_contacts_map.return_value = {}
+
+        [p] = completar_nomes_participantes(self.connection, [
+            {'phone': '553291594943', 'lid': '99@lid', 'nome': '', 'admin': False},
+        ])
+
+        self.assertEqual(p['nome'], '')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_nome_que_ja_veio_da_evolution_nao_e_sobrescrito(self, mock_client_cls):
+        from django.core.cache import cache
+        from atendimento.services import completar_nomes_participantes
+        cache.clear()
+        mock_client_cls.return_value.get_contacts_map.return_value = {'1@lid': 'Nome Errado'}
+
+        [p] = completar_nomes_participantes(self.connection, [
+            {'phone': '5511999998888', 'lid': '1@lid', 'nome': 'Nome Certo', 'admin': False},
+        ])
+
+        self.assertEqual(p['nome'], 'Nome Certo')
+        # Nem chega a consultar a agenda quando todo mundo já tem nome.
+        mock_client_cls.return_value.get_contacts_map.assert_not_called()
+
+    def test_webhook_aprende_o_nome_de_quem_escreve(self):
+        from django.core.cache import cache
+        from atendimento.models import GroupMemberName
+        from atendimento.services import aprender_nome_participante
+        cache.clear()
+
+        aprender_nome_participante(self.connection, '44809544802320@lid', 'Sara Campelo')
+        aprender_nome_participante(self.connection, '44809544802320@lid', 'Sara Campelo')
+
+        self.assertEqual(
+            GroupMemberName.objects.filter(connection=self.connection).count(), 1)
+        self.assertEqual(
+            GroupMemberName.objects.get(jid='44809544802320@lid').name, 'Sara Campelo')
+
+    def test_webhook_atualiza_nome_quando_a_pessoa_troca(self):
+        from django.core.cache import cache
+        from atendimento.models import GroupMemberName
+        from atendimento.services import aprender_nome_participante
+        cache.clear()
+
+        aprender_nome_participante(self.connection, '77@lid', 'Zé')
+        aprender_nome_participante(self.connection, '77@lid', 'José da Silva')
+
+        self.assertEqual(GroupMemberName.objects.get(jid='77@lid').name, 'José da Silva')
+
+    def test_sem_push_name_nao_grava_nada(self):
+        from atendimento.models import GroupMemberName
+        from atendimento.services import aprender_nome_participante
+
+        aprender_nome_participante(self.connection, '77@lid', '')
+
+        self.assertFalse(GroupMemberName.objects.exists())
+
+
 def _dar_2fa(user):
     """`Forcar2FAMiddleware` redireciona quem não tem TOTP confirmado — sem
     isso todo request do teste vira 302 e as asserções passariam à toa
