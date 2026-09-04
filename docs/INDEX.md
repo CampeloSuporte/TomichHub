@@ -1580,6 +1580,28 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 ### "Por que o áudio da sala virtual cai depois de um tempo?"
 → [ATENDIMENTO.md](ATENDIMENTO.md) — Seção "Sala Virtual de Atendentes — WebRTC"
 
+### "Marquei um atendente no contato e os outros continuam vendo o chamado"
+→ [ATENDIMENTO.md](ATENDIMENTO.md) — Seção "A restrição vale para todo mundo — inclusive administrador".
+Antes de 04/09/2026 o admin passava direto, e quase toda a equipe é admin **por perfil ausente**
+(`perms.get_role` trata `is_staff` sem `PerfilUsuario` como admin legado). Confira o papel efetivo
+de quem está vendo antes de suspeitar da regra.
+
+### "Por que o administrador ainda vê o contato restrito na tela Grupos/Contatos?"
+→ [ATENDIMENTO.md](ATENDIMENTO.md) — Seção "A válvula de escape: contato ≠ chamado". Ele vê o
+**contato** (para mudar a lista ou tirar a restrição) mas não os **chamados** dele — sem isso,
+contato marcado para quem sai da empresa ficaria sem volta.
+
+### "Não consigo apagar uma mensagem antiga do chat"
+→ [ATENDIMENTO.md](ATENDIMENTO.md) — Seção "Apagar mensagem enviada". Quem recusa é o WhatsApp, não
+o CRM: não há prazo do lado daqui, e o motivo da recusa aparece na própria confirmação. Se a
+mensagem ainda não foi confirmada pelo WhatsApp (`external_id` começando com `sending_`, `ia_`,
+`flow_`…), não há o que apagar do outro lado.
+
+### "O editor de topologia deixa a página do cliente lenta"
+→ [topologia.md](topologia.md) — Seção "Desempenho com o mapa PARADO". O editor roda num `<iframe>`
+dentro da aba Topologia do cadastro, então o custo dele é pago pela página inteira. Mapas grandes
+abrem em modo leve; o botão "Efeitos" liga os enfeites de volta e a escolha fica guardada.
+
 ### "Por que o alerta de cobrança WhatsApp não está sendo enviado?"
 → [FINANCEIRO.md](FINANCEIRO.md) — Seção "Cobrança via WhatsApp — Diagnóstico e Correção"
 
@@ -1617,6 +1639,10 @@ existente).
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 04/09/2026 | Atendimento: **apagar mensagem enviada** — lixeira ao lado do lápis, e apagar é sempre *para todos* (o WhatsApp é chamado primeiro e de forma síncrona; se recusar, nada muda no CRM). *Soft delete*: a linha fica com `deleted_at`/`deleted_by` e o balão vira "Mensagem apagada", porque apagar a linha destruiria o histórico e liberaria o `external_id` (unique, é a chave lá no WhatsApp). Difere da edição em três pontos: mídia **pode** ser apagada, não há prazo no lado do CRM e mensagem automática só admin apaga. O arquivo de mídia sai do disco, e o apagado não volta pelo polling nem pelo contexto da IA | ATENDIMENTO.md |
+| 04/09/2026 | Atendimento: **contato de telefone (1:1)** ao lado dos grupos, e a escolha de **quem atende** cada contato/grupo — ninguém marcado = cai no atendimento geral para toda a equipe; alguém marcado = só essas pessoas veem os chamados. A regra é a ausência de linhas em `UserGroupPermission`, modelo que existia desde o começo do módulo mas que **nenhuma consulta jamais usou**. Mensagem privada passou a abrir chamado, mas só de número cadastrado | ATENDIMENTO.md |
+| 04/09/2026 | Atendimento: a restrição por atendente **não restringia quase nada** — a exceção "admin vê tudo" engolia a regra, porque `perms.get_role` trata todo `is_staff` sem `PerfilUsuario` como *admin legado* e 8 dos 12 usuários caíam nisso (6 sem ninguém ter decidido). Agora vale para todos; o admin perde os **chamados** do contato restrito mas continua vendo o **contato** na tela Grupos/Contatos, senão a restrição viraria irreversível | ATENDIMENTO.md |
+| 04/09/2026 | Topologia: o editor **queimava CPU com o mapa parado** — a animação de fluxo dos enlaces nunca para e, num `<svg>` único, cada quadro invalida a cena inteira com todos os filtros junto (blur por enlace, `mix-blend-mode`, `drop-shadow` no chassi/ícone/LED de cada host, `backdrop-filter` em 6 painéis). Como o editor roda num `<iframe>` dentro do cadastro do cliente, derrubava a página inteira. Nenhum filtro roda mais em repouso, e mapas grandes abrem em modo leve automático | topologia.md |
 | 04/09/2026 | Atendimento: o lápis de editar não era achável — ícone sem contorno com `opacity:0` visível só no hover (inexistente no toque) e que ainda sumia depois dos 15 min sem explicar nada; agora tem contorno, fica sempre visível onde não há hover, permanece após o prazo respondendo o motivo ao clique, e duplo-clique na própria mensagem também abre a edição | ATENDIMENTO.md |
 | 04/09/2026 | Atendimento: **editar mensagem já enviada** — a correção feita no balão do chat reescreve também a mensagem no grupo do WhatsApp (`/chat/updateMessage`), com as regras do próprio WhatsApp (só mensagem sua, só texto, 15 min) numa função única usada pela API e pela tela; edição feita pelo cliente no celular passou a atualizar o balão em vez de virar "[sem conteúdo]" | ATENDIMENTO.md |
 | 04/09/2026 | Atendimento: menção "@" no chat deixou de listar só telefone — o nome vem de três fontes (agenda da instância via `/chat/findContacts`, `pushName` que o CRM aprende de quem escreve nos grupos e os números da própria equipe), com foto do WhatsApp, selo de admin, número formatado e busca por nome ou número; Sala Virtual ganhou botão para **não escutar ninguém** (sem desligar o microfone) e o arraste da tela compartilhada virou zoom/pan de verdade, com captura em 30 fps e resolução preservada ao mover janelas | ATENDIMENTO.md |
