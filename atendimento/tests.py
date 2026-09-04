@@ -806,14 +806,26 @@ class ChatRenderTest(TestCase):
 
     def test_pagina_nao_vaza_comentario_de_template(self):
         """{# ... #} do Django é comentário de UMA linha só; em várias linhas
-        o texto vaza pra tela. Comentários multilinha usam {% comment %}."""
+        o texto vaza pra tela — junto com o literal "{#". Comentários
+        multilinha usam {% comment %}, que some do HTML por completo.
+
+        A checagem por texto usa a frase EXATA do bloco {% comment %} do
+        template. A versão anterior procurava só "de propósito", que é prosa
+        comum: um comentário legítimo de CSS com essas duas palavras quebrava
+        o teste sem que nada tivesse vazado (aconteceu em 04/09/2026, com o
+        comentário do lápis de editar).
+        """
         Message.objects.create(
             conversation=self.conversation, sender_type='customer',
             message_type='text', content='oi', external_id='ext-c',
         )
         html = self._html()
+        # O sinal estrutural: um {# multilinha deixa o próprio literal na tela.
         self.assertNotIn('{#', html)
-        self.assertNotIn('de propósito', html)
+        self.assertNotIn('{%', html)
+        # E a frase do {% comment %} do _chat_content.html, que é o bloco que
+        # de fato vazou na época.
+        self.assertNotIn('o conteúdo é emitido colado nas tags', html)
 
 
     def test_balao_mostra_pilula_de_reacao(self):
@@ -2295,6 +2307,50 @@ class EditarMensagemTest(TestCase):
 
         self.assertTrue(ok)
         mock_client_cls.return_value.edit_text.assert_not_called()
+
+    def test_lapis_continua_depois_do_prazo(self):
+        # A tela mostra o lápis mesmo fora da janela (`ignorar_prazo=True`) e
+        # o clique explica o motivo. Some o botão e o atendente fica sem saber
+        # se o recurso existe, se quebrou ou se ele fez algo errado.
+        msg = self._msg()
+        Message.objects.filter(id=msg.id).update(
+            created_at=timezone.now() - timedelta(minutes=40))
+        msg.refresh_from_db()
+
+        pode_agora, motivo = ConversationService.pode_editar(msg, self.agent)
+        mostra_lapis, _ = ConversationService.pode_editar(msg, self.agent, ignorar_prazo=True)
+
+        self.assertFalse(pode_agora)
+        self.assertIn('15 minutos', motivo)
+        self.assertTrue(mostra_lapis)
+
+    def test_ignorar_prazo_nao_afrouxa_as_outras_regras(self):
+        # `ignorar_prazo` é só sobre tempo: mensagem de outro atendente, mídia
+        # e mensagem do cliente continuam fora, senão a tela ofereceria um
+        # lápis que a API vai recusar.
+        de_outro = self._msg(external_id='wamid.A')
+        audio = self._msg(external_id='wamid.B', message_type='audio')
+        do_cliente = self._msg(external_id='wamid.C', sender_type='customer', sender=None)
+
+        self.assertFalse(ConversationService.pode_editar(de_outro, self.outro, ignorar_prazo=True)[0])
+        self.assertFalse(ConversationService.pode_editar(audio, self.agent, ignorar_prazo=True)[0])
+        self.assertFalse(ConversationService.pode_editar(do_cliente, self.agent, ignorar_prazo=True)[0])
+
+    def test_api_continua_barrando_fora_do_prazo(self):
+        # O lápis aparecer não pode virar edição de verdade: quem manda é a API.
+        msg = self._msg()
+        Message.objects.filter(id=msg.id).update(
+            created_at=timezone.now() - timedelta(minutes=40))
+        self.client.force_login(self.agent)
+        url = reverse('atendimento:api_edit_message', args=[msg.id])
+
+        resp = self.client.post(url, json.dumps({'content': 'tarde demais'}),
+                                content_type='application/json')
+
+        self.assertEqual(resp.status_code, 403)
+        self.assertIn('15 minutos', resp.json()['error'])
+        msg.refresh_from_db()
+        self.assertEqual(msg.content, 'texto original')
 
     # ── Edição vinda do WhatsApp (cliente editou no celular) ────────────
 

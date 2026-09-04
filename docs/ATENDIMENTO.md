@@ -1509,8 +1509,20 @@ o que a 2.3.7 usa.
 
 ### Na tela
 
-- Lápis no hover da mensagem, fora do balão (dentro brigaria com o texto e com
-  a hora flutuante); só aparece em mensagem que o usuário pode editar de fato.
+- Lápis no hover da mensagem, fora do balão à esquerda (dentro brigaria com o
+  texto e com a hora flutuante), com borda e fundo sólido. **Duplo-clique na
+  própria mensagem também abre a edição** — é o gesto que a pessoa tenta antes
+  de procurar botão.
+- Onde não existe hover (celular, tablet) o lápis fica **sempre visível**
+  (`@media (hover: none)`), só mais discreto: a primeira versão era um ícone
+  sem contorno com `opacity:0`, invisível no toque e difícil de achar no
+  desktop — na prática o recurso não existia para quem não passasse o mouse
+  exatamente ali.
+- **O lápis não some quando o prazo vence.** Ele continua na mensagem e o
+  clique explica o motivo ("O WhatsApp só deixa editar até 15 minutos depois do
+  envio"). Sumir deixava o atendente sem saber se o recurso existe, se quebrou
+  ou se ele fez algo errado. Quem decide é a API, que continua recusando —
+  `pode_editar(..., ignorar_prazo=True)` serve só para a tela mostrar o botão.
 - Ao clicar, o balão dá lugar a um textarea no mesmo espaço — **Enter salva,
   Esc cancela**, e o botão trava enquanto espera a Evolution.
 - Selo **"editada"** antes da hora, como no WhatsApp. O histórico não guarda a
