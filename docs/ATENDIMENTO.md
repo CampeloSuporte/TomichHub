@@ -420,6 +420,7 @@ systemctl restart gunicorn daphne celery
 | 04/09/2026 | **Menção "@" mostra quem é quem** — lista vinha só com telefone; nome vem de 3 fontes (agenda da instância, `pushName` aprendido dos grupos, equipe), com foto, selo de admin e número formatado |
 | 04/09/2026 | **Sala Virtual** — botão para não escutar ninguém (silenciar a sala sem desligar o microfone) |
 | 04/09/2026 | **Sala Virtual** — arrastar a tela compartilhada travava: zoom/pan de verdade no vídeo e captura em 30 fps com resolução preservada ao mover janelas |
+| 04/09/2026 | **Editar mensagem enviada** — corrige o balão no CRM e reescreve a mensagem no WhatsApp do grupo (janela de 15 min, só do autor, só texto); edição feita pelo cliente no celular passou a atualizar o balão em vez de virar "[sem conteúdo]" |
 
 ---
 
@@ -1442,6 +1443,95 @@ conforme o pessoal do grupo escreve.
 veio da Evolution não sendo sobrescrito (e nem consultando a agenda à toa), participante
 desconhecido saindo com nome vazio, aprendizado idempotente pelo webhook, troca de nome e
 `pushName` vazio não gravando nada.
+
+---
+
+## ✏️ Editar mensagem já enviada — no CRM e no WhatsApp (04/09/2026)
+
+O atendente corrige o que escreveu direto no balão do chat, e a correção vale
+**também no WhatsApp do grupo** — o cliente vê a mensagem reescrita com o selo
+"Editada", igual a uma edição feita pelo celular.
+
+### Como funciona
+
+| Camada | O quê |
+|---|---|
+| `ConversationService.pode_editar(msg, user)` | única fonte da regra: quem pode, o quê e até quando. Usada pela API **e** pelo que a tela mostra, para o lápis e o backend nunca discordarem |
+| `ConversationService.edit_message(msg, texto, agent, mentions)` | reescreve no WhatsApp e, **só se der certo lá**, no CRM |
+| `EvolutionAPIClient.edit_text(jid, message_id, texto, mentions)` | `POST /chat/updateMessage/{instance}` com a `key` da mensagem original |
+| `POST /atendimento/api/message/<id>/edit/` | endpoint da tela; devolve o texto novo e a hora da edição |
+| WS `message_edited` | atualiza o balão nas outras abas e nas telas dos outros atendentes |
+
+### Regras (e o porquê de cada uma)
+
+- **Só mensagem sua.** O corpo da mensagem no grupo leva a assinatura de quem
+  escreveu (`*Fulano*`); reescrever a fala de outra pessoa sob o nome dela é
+  coisa de supervisão, então **só o autor — ou um Administrador** — edita.
+- **Só texto.** O WhatsApp não permite editar áudio, imagem ou documento.
+- **15 minutos.** É a janela do próprio WhatsApp
+  (`ConversationService.JANELA_EDICAO_MIN`). Passado o prazo a Evolution
+  responde `Message not compatible`; o lápis some sozinho da tela, sem precisar
+  recarregar (varredura de 1 min sobre `data-editavel-ate`).
+- **Mensagem automática não se edita.** IA e fluxo escrevem sem `sender`;
+  mudar o texto no CRM só criaria divergência com o que de fato saiu.
+- **Nota interna não tem prazo** e não fala com o WhatsApp — nunca saiu do CRM.
+- **Mensagem ainda não confirmada não se edita.** Enquanto o envio em
+  background não devolve o `wamid`, o `external_id` é um id interno
+  (`sending_…`) e não existe `key` para editar lá.
+
+### Por que o salvamento é síncrono
+
+O envio de mensagem vai para uma thread em background (não travar a resposta
+HTTP). A **edição não**: se a Evolution recusar e o CRM tivesse gravado assim
+mesmo, a tela passaria a mostrar um texto que o cliente nunca viu — o oposto do
+que o recurso existe para resolver. Falhou lá, não muda aqui, e o motivo da
+recusa aparece embaixo do campo de edição.
+
+### A assinatura continua a mesma
+
+A edição sai com `*NomeDeQuemEscreveu*` — não o de quem editou. Senão a
+mensagem corrigida apareceria no grupo sem a assinatura que todas as outras
+têm, ou assinada por quem não a escreveu.
+
+### Quando o cliente edita no celular
+
+`_extrair_edicao()` reconhece o `protocolMessage` do tipo `MESSAGE_EDIT` que
+chega no `MESSAGES_UPSERT` e atualiza o balão existente
+(`_registrar_edicao_recebida`) em vez de criar um novo. Sem isso o evento não
+batia com nenhum extrator de conteúdo e virava um balão **"[sem conteúdo]"** no
+meio da conversa — o mesmo estrago que as reações faziam antes de ganharem
+tratamento próprio.
+
+**Limitação conhecida:** o webhook assina apenas `MESSAGES_UPSERT`. Se a versão
+da Evolution mandar a edição como `MESSAGES_UPDATE`, ela não chega ao CRM — o
+balão continua com o texto antigo (sem quebrar nada). O formato tratado aqui é
+o que a 2.3.7 usa.
+
+### Na tela
+
+- Lápis no hover da mensagem, fora do balão (dentro brigaria com o texto e com
+  a hora flutuante); só aparece em mensagem que o usuário pode editar de fato.
+- Ao clicar, o balão dá lugar a um textarea no mesmo espaço — **Enter salva,
+  Esc cancela**, e o botão trava enquanto espera a Evolution.
+- Selo **"editada"** antes da hora, como no WhatsApp. O histórico não guarda a
+  versão anterior: o selo é o único sinal de que o texto mudou.
+- Menção com `@` funciona na edição igual ao envio — o CRM guarda `@Fulano` e o
+  corpo que vai pro grupo leva o número, para a mensagem editada ficar igual às
+  outras. **Mas editar não notifica ninguém:** o `updateMessageSchema` da
+  Evolution só carrega `number`, `text` e `key`, e o controller ignora
+  `mentioned`. Marcar alguém novo numa edição não avisa essa pessoa — mandar o
+  campo assim mesmo só daria a impressão de que funciona.
+
+**Validado ao vivo** (04/09/2026) contra a instância `atendimento_n3`, no chat da própria
+instância: mensagem enviada (`3EB0ED87234BD07B0EC86B`), editada por `edit_text` e conferida em
+`/chat/findMessages` — o histórico do WhatsApp passou a devolver o texto novo. A mensagem de
+teste foi removida em seguida.
+
+**Testes:** `EditarMensagemTest` (19 casos) — cada regra de `pode_editar`,
+assinatura original preservada, menção virando número, **Evolution recusando
+não muda o CRM**, nota interna sem chamada ao WhatsApp, texto igual não chama
+ninguém, edição vinda do cliente atualizando o balão sem criar mensagem nova, e
+a API recusando mensagem de outro atendente e texto vazio.
 
 ---
 

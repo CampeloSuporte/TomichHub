@@ -6,6 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q, Count, F
 from django.utils import timezone
 from django.core.paginator import Paginator
+from datetime import timedelta
 import json
 import logging
 import re
@@ -209,7 +210,23 @@ def conversation_detail(request, conversation_id):
             notify_reassignment(conversation, old_assigned_to_id)
 
     # Mensagens
-    messages = conversation.messages.select_related('sender').prefetch_related('reactions').order_by('created_at')
+    messages = list(
+        conversation.messages.select_related('sender').prefetch_related('reactions').order_by('created_at')
+    )
+    # Quem pode editar o quê é decidido no servidor (uma regra só, em
+    # ConversationService.pode_editar) e vai pro template como um instante
+    # limite — assim o lápis some sozinho quando a janela do WhatsApp fecha,
+    # sem a tela ter que reimplementar a regra.
+    agora = timezone.now()
+    for m in messages:
+        pode, _motivo = ConversationService.pode_editar(m, request.user)
+        if not pode:
+            m.editavel_ate = ''
+        elif m.is_internal:
+            m.editavel_ate = 'sempre'   # nota interna nunca saiu do CRM
+        else:
+            limite = m.created_at + timedelta(minutes=ConversationService.JANELA_EDICAO_MIN)
+            m.editavel_ate = limite.isoformat() if limite > agora else ''
 
     # Atualiza status de leitura das mensagens do cliente e avisa outras abas/dispositivos
     _marcar_mensagens_lidas(conversation)
@@ -258,6 +275,9 @@ def conversation_detail(request, conversation_id):
         'conv_tasks': conv_tasks,
         'agents_list': agents_list,
         'scheduled_count': scheduled_count,
+        # A tela reusa o mesmo prazo do backend para esconder o lápis quando
+        # a janela do WhatsApp fecha, sem repetir o número no JS.
+        'janela_edicao_min': ConversationService.JANELA_EDICAO_MIN,
     }
 
     return render(request, 'atendimento/conversation_detail.html', context)
@@ -682,6 +702,49 @@ def api_update_conversation(request, conversation_id):
             'success': False,
             'error': str(e)
         }, status=400)
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_edit_message(request, message_id):
+    """Reescreve uma mensagem já enviada — no CRM e no WhatsApp do grupo.
+
+    Síncrono de propósito (o envio é que vai em background): editar sem saber
+    se pegou no WhatsApp deixaria o CRM mostrando um texto que o cliente
+    nunca viu. O erro da Evolution volta como está para a tela, porque os
+    motivos de recusa (janela de 15 min, tipo de mensagem) são justamente o
+    que o atendente precisa ler.
+    """
+    try:
+        message = get_object_or_404(Message.objects.select_related('conversation__group'), id=message_id)
+        if not pode_ver_conversation(request.user, message.conversation):
+            return JsonResponse({'success': False, 'error': 'Conversa de outra instância.'}, status=403)
+
+        pode, motivo = ConversationService.pode_editar(message, request.user)
+        if not pode:
+            return JsonResponse({'success': False, 'error': motivo}, status=403)
+
+        data = json.loads(request.body)
+        novo_texto = (data.get('content') or '').strip()
+        mentions = data.get('mentions') or []
+        if not novo_texto:
+            return JsonResponse({'success': False, 'error': 'Mensagem vazia'}, status=400)
+
+        ok, resultado = ConversationService.edit_message(
+            message, novo_texto, request.user, mentions=mentions)
+        if not ok:
+            return JsonResponse({'success': False, 'error': resultado}, status=400)
+
+        message.refresh_from_db()
+        return JsonResponse({
+            'success': True,
+            'message_id': str(message.id),
+            'content': message.content,
+            'edited_at': timezone.localtime(message.edited_at).strftime('%H:%M') if message.edited_at else '',
+        })
+    except Exception as e:
+        logger.error(f"Erro ao editar mensagem {message_id}: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @staff_required
@@ -2300,6 +2363,10 @@ def api_conversation_messages(request, conversation_id):
             'created_at_iso': m.created_at.isoformat(),
             'message_type': m.message_type,
             'attachment_url': m.attachment_url or '',
+            # Quem escreveu: a tela usa isso para decidir se mostra o lápis
+            # de editar (o servidor revalida na hora de salvar).
+            'sender_id': m.sender_id,
+            'edited_at': timezone.localtime(m.edited_at).strftime('%H:%M') if m.edited_at else '',
         })
 
     # Usuário está vendo a conversa (mini-chat flutuante) → marca como lida

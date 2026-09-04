@@ -983,6 +983,47 @@ body {
    confirmação real de entrega/leitura do WhatsApp, por isso cinza (não
    azul, que no WhatsApp real significa "lida pelo cliente"). */
 .msg-tick { font-size:11px; opacity:0.75; }
+/* "editada" antes da hora, como o WhatsApp faz — o histórico não guarda a
+   versão anterior, então o marcador é o único sinal de que o texto mudou. */
+.msg-edited { font-size:10.5px; font-style:italic; opacity:.8; }
+
+/* Lápis de editar: fica fora do balão, aparece só no hover da mensagem.
+   Dentro do balão ele brigaria com o texto e com a hora flutuante. */
+.msg-block { position:relative; }
+.msg-edit-btn {
+    position:absolute; top:50%; transform:translateY(-50%); left:-28px;
+    width:22px; height:22px; border-radius:50%; border:none; padding:0;
+    background:var(--wa-panel); color:var(--wa-text-muted); font-size:10px;
+    cursor:pointer; opacity:0; transition:opacity .12s, color .12s; z-index:3;
+}
+.msg:hover .msg-edit-btn, .msg-edit-btn:focus-visible { opacity:1; }
+.msg-edit-btn:hover { color:var(--wa-green-light); }
+/* Nota interna é centralizada e ocupa 85% da largura: não sobra os 28px de
+   folga que a mensagem do atendente tem à esquerda (ela vai a 68%, alinhada
+   à direita). Então aqui o lápis fica por cima do próprio balão, no canto. */
+.msg.internal .msg-edit-btn {
+    left:auto; right:2px; top:2px; transform:none;
+    background:rgba(0,0,0,.35); border:1px solid rgba(245,196,0,0.25);
+}
+
+/* Edição no lugar do balão: o textarea assume o mesmo espaço, para o olho
+   não perder a mensagem de vista enquanto reescreve. */
+.msg-edit-box { display:flex; flex-direction:column; gap:6px; width:min(420px, 70vw); }
+.msg-edit-box textarea {
+    width:100%; min-height:56px; resize:vertical; background:var(--wa-panel);
+    border:1px solid var(--wa-green-light); border-radius:8px; padding:8px 10px;
+    color:var(--wa-text); font-family:inherit; font-size:13.5px; line-height:1.45; outline:none;
+}
+.msg-edit-acoes { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+.msg-edit-acoes button {
+    border:none; border-radius:6px; padding:5px 12px; font-size:12px; cursor:pointer;
+}
+.msg-edit-salvar { background:var(--wa-green-light); color:#0b141a; font-weight:600; }
+.msg-edit-salvar[disabled] { opacity:.6; cursor:default; }
+.msg-edit-cancelar { background:transparent; color:var(--wa-text-muted); }
+.msg-edit-cancelar:hover { color:var(--wa-text); }
+.msg-edit-erro { font-size:11px; color:#f87171; text-align:left; flex:1; }
+.msg-edit-dica { font-size:10.5px; color:var(--wa-text-muted); text-align:left; flex:1; }
 .msg.agent .msg-meta { color:rgba(233,237,239,0.6); }
 .msg.internal .msg-meta { color:rgba(251,191,36,0.6); }
 .msg-system-text { font-size:11px; color:var(--wa-text-muted); background:var(--wa-panel); border-radius:20px; padding:3px 12px; }

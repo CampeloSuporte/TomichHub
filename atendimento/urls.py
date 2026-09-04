@@ -35,6 +35,7 @@ urlpatterns = [
     path('api/scheduled-message/<uuid:scheduled_id>/cancel/', views.api_cancel_scheduled_message, name='api_cancel_scheduled_message'),
     path('api/conversation/<uuid:conversation_id>/update/', views.api_update_conversation, name='api_update_conversation'),
     path('api/conversation/<uuid:conversation_id>/participants/', views.api_conversation_participants, name='api_conversation_participants'),
+    path('api/message/<uuid:message_id>/edit/', views.api_edit_message, name='api_edit_message'),
     path('api/conversation/<uuid:conversation_id>/merge/', views.api_merge_conversation, name='api_merge_conversation'),
     path('api/conversations/search/', views.api_search_conversations, name='api_search_conversations'),
     path('api/cliente/<int:cliente_id>/conversations/', views.api_cliente_conversations, name='api_cliente_conversations'),

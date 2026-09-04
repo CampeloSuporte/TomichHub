@@ -152,7 +152,7 @@
         {% ifchanged message.created_at|date:"Y-m-d" %}
         <div class="day-divider"><span>{{ message.created_at|date:"d/m/Y" }}</span></div>
         {% endifchanged %}
-        <div class="msg {% if message.sender_type == 'agent' %}agent{% elif message.sender_type == 'internal' %}internal{% elif message.sender_type == 'system' %}system{% else %}customer{% endif %}{% ifchanged message.sender_type message.sender_name message.created_at|date:"Y-m-d" %}{% else %} grouped{% endifchanged %}" data-msg-id="{{ message.id }}" data-sender-key="{% if message.sender_type == 'agent' %}agent{% elif message.sender_type == 'internal' %}internal{% elif message.sender_type == 'system' %}system{% else %}customer{% endif %}|{{ message.sender_name|default:'' }}">
+        <div class="msg {% if message.sender_type == 'agent' %}agent{% elif message.sender_type == 'internal' %}internal{% elif message.sender_type == 'system' %}system{% else %}customer{% endif %}{% ifchanged message.sender_type message.sender_name message.created_at|date:"Y-m-d" %}{% else %} grouped{% endifchanged %}" data-msg-id="{{ message.id }}"{% if message.editavel_ate %} data-editavel-ate="{{ message.editavel_ate }}"{% endif %} data-sender-key="{% if message.sender_type == 'agent' %}agent{% elif message.sender_type == 'internal' %}internal{% elif message.sender_type == 'system' %}system{% else %}customer{% endif %}|{{ message.sender_name|default:'' }}">
             {% if message.sender_type == 'system' %}
             <div class="msg-system-text">{{ message.content }} · {{ message.created_at|date:"H:i" }}</div>
             {% else %}
@@ -170,7 +170,7 @@
                 (white-space:pre-wrap), então qualquer indentação do template
                 aqui dentro vira linha em branco e recuo dentro do balão.
                 {% endcomment %}
-                <div class="msg-bubble">{% if message.message_type == 'image' and message.attachment_url %}<img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'audio' and message.attachment_url %}<audio controls class="msg-audio-player" preload="none"><source src="{{ message.attachment_url }}"></audio>{% elif message.message_type == 'video' and message.attachment_url %}<video controls class="msg-video-player" preload="none"><source src="{{ message.attachment_url }}"></video>{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'document' and message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}</a>{% else %}<span class="msg-text">{{ message.content|urlize }}</span>{% endif %}<span class="msg-meta"><span class="msg-time">{{ message.created_at|date:"H:i" }}</span>{% if message.sender_type == 'agent' %}<i class="fas fa-check-double msg-tick"></i>{% endif %}</span></div>
+                <div class="msg-bubble">{% if message.message_type == 'image' and message.attachment_url %}<img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'audio' and message.attachment_url %}<audio controls class="msg-audio-player" preload="none"><source src="{{ message.attachment_url }}"></audio>{% elif message.message_type == 'video' and message.attachment_url %}<video controls class="msg-video-player" preload="none"><source src="{{ message.attachment_url }}"></video>{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'document' and message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}</a>{% else %}<span class="msg-text">{{ message.content|urlize }}</span>{% endif %}<span class="msg-meta">{% if message.edited_at %}<span class="msg-edited" title="Editada às {{ message.edited_at|date:"H:i" }}">editada</span>{% endif %}<span class="msg-time">{{ message.created_at|date:"H:i" }}</span>{% if message.sender_type == 'agent' %}<i class="fas fa-check-double msg-tick"></i>{% endif %}</span></div>{% if message.editavel_ate %}<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>{% endif %}
                 {% with reacoes=message.reactions.all %}{% if reacoes %}
                 <div class="msg-reactions" data-reactions-for="{{ message.id }}">
                     {% for r in reacoes %}
@@ -1265,6 +1265,10 @@
     var API_MEDIA = '{% url "atendimento:api_send_media" conversation.id %}';
     var API_UPD   = '{% url "atendimento:api_update_conversation" conversation.id %}';
     var API_PART  = '{% url "atendimento:api_conversation_participants" conversation.id %}';
+    /* Editar mensagem: a URL leva o id da MENSAGEM, então é montada na hora. */
+    var API_EDIT  = function(id) { return '/atendimento/api/message/' + id + '/edit/'; };
+    var MEU_ID    = '{{ request.user.id }}';
+    var JANELA_EDICAO_MS = {{ janela_edicao_min|default:15 }} * 60 * 1000;
 
     var msgInput  = document.getElementById('msgInput');
     var sendBtn   = document.getElementById('sendBtn');
@@ -1535,9 +1539,24 @@
     }
 
     /* Hora + tick dentro do balão, mesmo HTML que o template server-side. */
-    function renderMeta(cls, timeText) {
-        return '<span class="msg-meta"><span class="msg-time">' + escapeHTML(timeText || '') + '</span>' +
+    function renderMeta(cls, timeText, editadaEm) {
+        return '<span class="msg-meta">' +
+               (editadaEm ? '<span class="msg-edited" title="Editada às ' + escapeHTML(editadaEm) + '">editada</span>' : '') +
+               '<span class="msg-time">' + escapeHTML(timeText || '') + '</span>' +
                (cls === 'agent' ? '<i class="fas fa-check-double msg-tick"></i>' : '') + '</span>';
+    }
+
+    /* Até quando esta mensagem pode ser editada, do ponto de vista da tela.
+       É só para decidir se o lápis aparece — quem manda de verdade é o
+       servidor, que revalida tudo em /api/message/<id>/edit/. */
+    function prazoDeEdicao(msg) {
+        var tipo = msg.sender_type;
+        if (tipo !== 'agent' && tipo !== 'internal') return '';
+        if ((msg.message_type || 'text') !== 'text') return '';
+        if (!msg.sender_id || String(msg.sender_id) !== String(MEU_ID)) return '';
+        if (tipo === 'internal') return 'sempre';   /* nota interna não foi pro WhatsApp */
+        var criada = msg.created_at_iso ? new Date(msg.created_at_iso) : new Date();
+        return new Date(criada.getTime() + JANELA_EDICAO_MS).toISOString();
     }
 
     function renderMessage(msg) {
@@ -1564,16 +1583,179 @@
         if (cls === 'system') {
             el.innerHTML = '<div class="msg-system-text">' + escapeHTML(msg.content) + ' · ' + escapeHTML(msg.created_at) + '</div>';
         } else {
+            var prazo = prazoDeEdicao(msg);
+            if (prazo) el.dataset.editavelAte = prazo;
             el.innerHTML =
                 '<div class="msg-block' + (cls === 'internal' ? ' internal-block' : '') + '">' +
                 '<div class="msg-sender-name' + (cls === 'agent' ? ' agent-name' : '') + '">' + nameText + '</div>' +
-                '<div class="msg-bubble">' + renderMediaBubble(msg) + renderMeta(cls, msg.created_at) + '</div>' +
+                '<div class="msg-bubble">' + renderMediaBubble(msg) + renderMeta(cls, msg.created_at, msg.edited_at) + '</div>' +
+                (prazo ? '<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>' : '') +
                 '</div>';
         }
         _renderedIds.add(String(msg.id));
         chatMsgs.appendChild(el);
         scrollBottom();
     }
+
+    /* ── Editar mensagem já enviada ─────────────────────────────────────
+       O CRM e o WhatsApp têm que contar a mesma história: salvar aqui
+       reescreve os dois (`/chat/updateMessage` da Evolution). Por isso o
+       salvamento é síncrono e o botão fica travado até a resposta — se o
+       WhatsApp recusar, o balão do CRM NÃO muda, senão a tela mostraria um
+       texto que o cliente nunca viu. */
+    var _editando = null;   /* id da mensagem em edição (uma por vez) */
+
+    function balaoDaMensagem(id) {
+        return chatMsgs.querySelector('.msg[data-msg-id="' + id + '"]');
+    }
+
+    /* O prazo do WhatsApp corre enquanto a tela está aberta: quem deixou a
+       conversa aberta por 20 min não pode continuar vendo um lápis que só
+       vai dar erro. Uma varredura por minuto resolve sem timer por mensagem. */
+    function limparLapisVencidos() {
+        var agora = Date.now();
+        chatMsgs.querySelectorAll('.msg[data-editavel-ate]').forEach(function(el) {
+            var ate = el.dataset.editavelAte;
+            if (ate === 'sempre') return;
+            if (!ate || new Date(ate).getTime() <= agora) {
+                el.removeAttribute('data-editavel-ate');
+                var btn = el.querySelector('.msg-edit-btn');
+                if (btn && _editando !== el.dataset.msgId) btn.remove();
+            }
+        });
+    }
+    var _lapisTimer = setInterval(limparLapisVencidos, 60000);
+    limparLapisVencidos();
+
+    function abrirEdicao(id) {
+        if (_editando && _editando !== id) fecharEdicao(_editando);
+        var el = balaoDaMensagem(id);
+        if (!el) return;
+        var bolha = el.querySelector('.msg-bubble');
+        var texto = el.querySelector('.msg-text');
+        if (!bolha || !texto) return;
+
+        _editando = id;
+        el.dataset.textoOriginal = texto.textContent;
+        bolha.style.display = 'none';
+
+        var box = document.createElement('div');
+        box.className = 'msg-edit-box';
+        box.innerHTML =
+            '<textarea class="msg-edit-input"></textarea>' +
+            '<div class="msg-edit-acoes">' +
+              '<span class="msg-edit-dica">Enter salva · Esc cancela</span>' +
+              '<button type="button" class="msg-edit-cancelar">Cancelar</button>' +
+              '<button type="button" class="msg-edit-salvar">Salvar</button>' +
+            '</div>';
+        bolha.parentNode.insertBefore(box, bolha.nextSibling);
+
+        var input = box.querySelector('.msg-edit-input');
+        input.value = el.dataset.textoOriginal;
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 220) + 'px';
+
+        input.addEventListener('keydown', function(ev) {
+            if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); salvarEdicao(id); }
+            else if (ev.key === 'Escape') { ev.preventDefault(); fecharEdicao(id); }
+        });
+        box.querySelector('.msg-edit-cancelar').onclick = function() { fecharEdicao(id); };
+        box.querySelector('.msg-edit-salvar').onclick = function() { salvarEdicao(id); };
+    }
+
+    function fecharEdicao(id) {
+        var el = balaoDaMensagem(id);
+        if (el) {
+            var box = el.querySelector('.msg-edit-box');
+            if (box) box.remove();
+            var bolha = el.querySelector('.msg-bubble');
+            if (bolha) bolha.style.display = '';
+            delete el.dataset.textoOriginal;
+        }
+        if (_editando === id) _editando = null;
+        limparLapisVencidos();
+    }
+
+    function mostrarErroEdicao(id, texto) {
+        var el = balaoDaMensagem(id);
+        if (!el) return;
+        var acoes = el.querySelector('.msg-edit-acoes');
+        if (!acoes) return;
+        var dica = acoes.querySelector('.msg-edit-dica, .msg-edit-erro');
+        if (dica) {
+            dica.className = 'msg-edit-erro';
+            dica.textContent = texto;
+        }
+    }
+
+    function salvarEdicao(id) {
+        var el = balaoDaMensagem(id);
+        if (!el) return;
+        var input = el.querySelector('.msg-edit-input');
+        var btn = el.querySelector('.msg-edit-salvar');
+        if (!input) return;
+        var novo = input.value.trim();
+        if (!novo) { mostrarErroEdicao(id, 'A mensagem não pode ficar vazia.'); return; }
+        if (novo === (el.dataset.textoOriginal || '')) { fecharEdicao(id); return; }
+
+        btn.disabled = true;
+        btn.textContent = 'Salvando…';
+        fetch(API_EDIT(id), {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+            credentials: 'same-origin',
+            body: JSON.stringify({content: novo, mentions: mencoesDoTexto(novo)})
+        })
+        .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, d: d}; }); })
+        .then(function(res) {
+            if (!res.ok || !res.d.success) {
+                btn.disabled = false;
+                btn.textContent = 'Salvar';
+                mostrarErroEdicao(id, res.d.error || 'Não foi possível editar.');
+                return;
+            }
+            aplicarEdicao(id, res.d.content, res.d.edited_at);
+            fecharEdicao(id);
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.textContent = 'Salvar';
+            mostrarErroEdicao(id, 'Falha de conexão ao editar.');
+        });
+    }
+
+    /* Aplica o texto novo no balão. Serve tanto para quem editou quanto para
+       as outras abas, que recebem a edição pelo WebSocket. */
+    function aplicarEdicao(id, conteudo, horaEdicao) {
+        var el = balaoDaMensagem(id);
+        if (!el) return;
+        var texto = el.querySelector('.msg-text');
+        /* Mesmo tratamento do balão original (|urlize no template, linkify no
+           JS): sem isso um link editado viraria texto morto até dar F5. */
+        if (texto) texto.innerHTML = linkify(escapeHTML(conteudo));
+        var meta = el.querySelector('.msg-meta');
+        if (meta && !meta.querySelector('.msg-edited')) {
+            var marca = document.createElement('span');
+            marca.className = 'msg-edited';
+            marca.textContent = 'editada';
+            if (horaEdicao) marca.title = 'Editada às ' + horaEdicao;
+            meta.insertBefore(marca, meta.firstChild);
+        }
+    }
+
+    /* Delegação: os balões nascem do template e do JS, e mensagens novas
+       chegam o tempo todo — um listener no container cobre todos. */
+    chatMsgs.addEventListener('click', function(e) {
+        var btn = e.target.closest('.msg-edit-btn');
+        if (!btn) return;
+        var el = btn.closest('.msg[data-msg-id]');
+        if (!el) return;
+        e.preventDefault();
+        if (_editando === el.dataset.msgId) fecharEdicao(el.dataset.msgId);
+        else abrirEdicao(el.dataset.msgId);
+    });
 
     /* ── Menção "@" (marcar participante do grupo) ──────────────────────
        O CRM guarda o texto legível ("@João Silva"); ao enviar, o backend
@@ -1962,6 +2144,14 @@
                 try {
                     var p=JSON.parse(e.data);
                     if(p.type==='reactions'&&p.message_id) { applyReactions(p.message_id, p.reactions||[]); return; }
+                    /* Edição feita em outra aba ou por um supervisor: o balão
+                       aqui tem que acompanhar, senão duas telas mostrariam
+                       textos diferentes da MESMA mensagem do WhatsApp. */
+                    if(p.type==='message_edited'&&p.message) {
+                        if (_editando === String(p.message.id)) fecharEdicao(String(p.message.id));
+                        aplicarEdicao(String(p.message.id), p.message.content, p.message.edited_at);
+                        return;
+                    }
                     if(p.type==='new_message'&&p.message) {
                         var msgId = String(p.message.id);
                         if(!_renderedIds.has(msgId)) {
@@ -2472,6 +2662,7 @@
             if(ws){ws.onclose=null;ws.close();ws=null;}
             _pollDestroyed = true;
             clearTimeout(wsTimer); clearInterval(recTimer); clearTimeout(pollTimer);
+            clearInterval(_lapisTimer);
             document.removeEventListener('click', docClick);
         }
     };

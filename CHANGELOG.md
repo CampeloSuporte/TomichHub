@@ -5,6 +5,52 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-04 (Atendimento: editar mensagem enviada)
+
+### Adicionado
+
+- **Editar mensagem já enviada, no CRM e no WhatsApp** (`atendimento/services.py`,
+  `views.py`, `_chat_content.html`, `base.html`). O atendente corrige o texto direto no balão
+  do chat e a correção vale também no grupo do WhatsApp — o cliente vê a mensagem reescrita
+  com o selo "Editada". Lápis no hover, textarea no lugar do balão (Enter salva, Esc cancela),
+  selo "editada" antes da hora e `POST /atendimento/api/message/<id>/edit/`
+  (`EvolutionAPIClient.edit_text` → `POST /chat/updateMessage/{instance}`).
+  As regras vivem em `ConversationService.pode_editar()`, usada tanto pela API quanto pelo que
+  a tela mostra, para o botão e o backend nunca discordarem: **só mensagem sua** (ou de um
+  Administrador — a assinatura `*Fulano*` no corpo da mensagem é de quem escreveu), **só
+  texto**, **até 15 minutos** (a janela do próprio WhatsApp — passado o prazo o lápis some
+  sozinho da tela), nada de mensagem automática (IA/fluxo escrevem sem autor) e nada de
+  mensagem cujo envio ainda não devolveu o `wamid`. Nota interna edita sem prazo e sem falar
+  com o WhatsApp — nunca saiu do CRM.
+  Ao contrário do envio, que roda em background, **a edição é síncrona**: se a Evolution
+  recusar, o CRM não grava. Gravar assim mesmo faria a tela mostrar um texto que o cliente
+  nunca viu, que é o oposto do que o recurso resolve. A edição sai com a assinatura de quem
+  **escreveu**, não de quem editou. Menção com `@` troca o nome pelo número no corpo que vai
+  pro grupo, como no envio, mas **não notifica**: o `updateMessageSchema` da Evolution só
+  carrega `number`, `text` e `key` e o controller ignora `mentioned` — mandar o campo assim
+  mesmo só daria a impressão de que funciona.
+  Novo evento WebSocket `message_edited` mantém as outras abas e os outros atendentes em dia.
+
+### Corrigido
+
+- **Cliente editando a mensagem no celular virava um balão "[sem conteúdo]"**
+  (`atendimento/services.py`). O que chega nesse caso não é mensagem nova, é um
+  `protocolMessage` do tipo `MESSAGE_EDIT` com a `key` da original — não batia com nenhum
+  extrator de conteúdo e caía no fallback, poluindo a conversa e deixando o balão original com
+  o texto antigo. `_extrair_edicao()` reconhece as duas formas do payload (na raiz e dentro de
+  `editedMessage`) e `_registrar_edicao_recebida()` atualiza o balão que já existe. Mesmo
+  estrago, e mesmo tratamento, que as reações receberam em 12/08/2026.
+  *Limitação conhecida:* o webhook assina apenas `MESSAGES_UPSERT`; se a versão da Evolution
+  mandar a edição como `MESSAGES_UPDATE`, ela não chega ao CRM (o balão fica com o texto
+  antigo, sem quebrar nada). O formato tratado é o da 2.3.7, que é a instalada.
+
+**Testes:** `EditarMensagemTest` (19 casos) — cada regra de permissão e prazo, assinatura
+original preservada no WhatsApp, menção virando número, Evolution recusando não mudando o CRM,
+nota interna sem chamada externa, edição do cliente atualizando o balão sem criar mensagem
+nova, e a API barrando mensagem de outro atendente e texto vazio.
+
+---
+
 ## [Não publicado] — 2026-09-04 (Atendimento: menção com nome, silenciar a sala, arraste da tela)
 
 ### Adicionado
