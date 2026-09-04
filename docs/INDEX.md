@@ -1577,6 +1577,13 @@ Criar item → Marcar checkbox 🔒 Privada → Salvar
 ### "Como pegar o sinal óptico de um equipamento Datacom?"
 → [agent_noc.md](agent_noc.md) — Seção "Sinal Óptico Datacom (DmOS)"
 
+### "O IX pediu sessão com dois ASNs (route servers e looking glass) — como subo?"
+→ [bgp_automacao.md](bgp_automacao.md) — Seção "Peer com outro ASN na mesma sessão (o LG do IX)".
+No formulário de "Subir IX/PTT", marque **"Peer com outro ASN nesta mesma sessão"** e informe o ASN
+do LG (`AS20121`, no IX-SP), um rótulo (`LGC`) e os IPs dele. Ele sai **fora do peer-group** dos
+route servers, mas com as **mesmas route-policies** — não é um circuito novo e não gasta slot nem
+grupo de community.
+
 ### "Por que o áudio da sala virtual cai depois de um tempo?"
 → [ATENDIMENTO.md](ATENDIMENTO.md) — Seção "Sala Virtual de Atendentes — WebRTC"
 
@@ -1639,6 +1646,7 @@ existente).
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 04/09/2026 | Automação BGP: **subir IX/PTT com peer de outro ASN na mesma sessão** — a carta do IX.br entrega os route servers sob um ASN e o looking glass sob outro (`AS26162 rs1/rs2` + `AS20121 lgc`), e o formulário só aceitava um. O peer extra sai **fora do peer-group** (`peer <IP> as-number 20121` sem `peer <IP> group`) e com as **mesmas route-policies** aplicadas nele mesmo; como o vínculo circuito ↔ sessão é feito pela export policy, ele volta do backup como mais uma sessão do mesmo `ix-NN`, sem gastar slot nem grupo de community. Vale também para operadora e CDN | bgp_automacao.md |
 | 04/09/2026 | Atendimento: **apagar mensagem enviada** — lixeira ao lado do lápis, e apagar é sempre *para todos* (o WhatsApp é chamado primeiro e de forma síncrona; se recusar, nada muda no CRM). *Soft delete*: a linha fica com `deleted_at`/`deleted_by` e o balão vira "Mensagem apagada", porque apagar a linha destruiria o histórico e liberaria o `external_id` (unique, é a chave lá no WhatsApp). Difere da edição em três pontos: mídia **pode** ser apagada, não há prazo no lado do CRM e mensagem automática só admin apaga. O arquivo de mídia sai do disco, e o apagado não volta pelo polling nem pelo contexto da IA | ATENDIMENTO.md |
 | 04/09/2026 | Atendimento: **contato de telefone (1:1)** ao lado dos grupos, e a escolha de **quem atende** cada contato/grupo — ninguém marcado = cai no atendimento geral para toda a equipe; alguém marcado = só essas pessoas veem os chamados. A regra é a ausência de linhas em `UserGroupPermission`, modelo que existia desde o começo do módulo mas que **nenhuma consulta jamais usou**. Mensagem privada passou a abrir chamado, mas só de número cadastrado | ATENDIMENTO.md |
 | 04/09/2026 | Atendimento: a restrição por atendente **não restringia quase nada** — a exceção "admin vê tudo" engolia a regra, porque `perms.get_role` trata todo `is_staff` sem `PerfilUsuario` como *admin legado* e 8 dos 12 usuários caíam nisso (6 sem ninguém ter decidido). Agora vale para todos; o admin perde os **chamados** do contato restrito mas continua vendo o **contato** na tela Grupos/Contatos, senão a restrição viraria irreversível | ATENDIMENTO.md |
