@@ -17,6 +17,30 @@ def _pode_atendimento(user):
     return pode_acessar_atendimento(user)
 
 
+@database_sync_to_async
+def _e_admin(user):
+    """Administrador recebe tudo — mesma regra do `scope._tudo`."""
+    from usuario import perms
+    return perms.is_admin(user)
+
+
+@database_sync_to_async
+def _pode_ver_conversa(user, conversation_id):
+    """Mesma regra da porta HTTP (`scope.pode_ver_conversation`): instância do
+    cliente + atendentes escolhidos no contato/grupo. Sem isso, bastava
+    conhecer o UUID da conversa para assinar o canal dela e receber cada
+    mensagem em tempo real, contornando as duas restrições."""
+    from .models import Conversation
+    from .scope import pode_ver_conversation
+    conv = (Conversation.objects
+            .select_related('group', 'cliente')
+            .filter(id=conversation_id)
+            .first())
+    if conv is None:
+        return False
+    return pode_ver_conversation(user, conv)
+
+
 class ConversationConsumer(AsyncWebsocketConsumer):
     """
     WebSocket para tempo real na conversa.
@@ -30,6 +54,10 @@ class ConversationConsumer(AsyncWebsocketConsumer):
             return
 
         self.conversation_id = self.scope["url_route"]["kwargs"]["conversation_id"]
+        if not await _pode_ver_conversa(self.scope["user"], self.conversation_id):
+            await self.close()
+            return
+
         self.group_name = f"atendimento_conv_{self.conversation_id}"
 
         await self.channel_layer.group_add(self.group_name, self.channel_name)
@@ -57,6 +85,8 @@ class InboxConsumer(AsyncWebsocketConsumer):
             await self.close()
             return
 
+        self.user_id = self.scope["user"].id
+        self.is_admin = await _e_admin(self.scope["user"])
         self.group_name = "atendimento_inbox"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
@@ -66,7 +96,24 @@ class InboxConsumer(AsyncWebsocketConsumer):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def inbox_update(self, event):
-        await self.send(text_data=json.dumps(event["data"]))
+        """Todo mundo assina o MESMO grupo de canal ("atendimento_inbox"), então
+        o pacote chega igual para todos e o filtro tem que ser aqui, na saída.
+
+        `allowed_user_ids` vem do `_broadcast_msg` (ver
+        `scope.atendentes_do_chamado`): `None`/ausente = chamado aberto, entrega
+        para todos — que é o caso da esmagadora maioria e o comportamento de
+        sempre. Com lista, só entrega para quem está nela; administrador passa
+        direto, como em todas as outras telas.
+
+        Um pacote antigo (enfileirado antes deste deploy) não traz a chave e é
+        tratado como aberto — nunca some da tela de ninguém por causa disso.
+        """
+        data = event["data"]
+        if not self.is_admin:
+            permitidos = (data.get("conversation") or {}).get("allowed_user_ids")
+            if permitidos and self.user_id not in permitidos:
+                return
+        await self.send(text_data=json.dumps(data))
 
 class VirtualRoomConsumer(AsyncWebsocketConsumer):
     """

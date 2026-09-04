@@ -15,6 +15,7 @@ from .models import (
     WhatsAppConnection, ContactGroup, Conversation, Message, MessageReaction,
     ConversationActivity, ChatFlow, ChatFlowSession, Category, GroupMemberName,
 )
+from .scope import atendentes_do_chamado
 from clientes.models import Cliente
 
 logger = logging.getLogger(__name__)
@@ -80,10 +81,17 @@ def _notify_new_open_conversation(conversation, connection) -> None:
 
     Avisa UMA ÚNICA VEZ por chamado (marca conversation.notif_aberto_enviada).
     Sem isso, cada nova mensagem do cliente num chamado sem atendente gerava
-    uma notificação nova — virando spam no grupo."""
+    uma notificação nova — virando spam no grupo.
+
+    Chamado de contato restrito NÃO é avisado: a mensagem vai para um grupo do
+    WhatsApp que a equipe inteira lê, e ela carrega o nome do contato — seria
+    justamente o vazamento que a restrição quer evitar. Quem tem acesso
+    continua vendo o chamado na tela do sistema."""
     try:
         from .models import SystemSetting
         if SystemSetting.get('notif_abertos_enabled', 'false') != 'true':
+            return
+        if conversation.group_id and conversation.group.restrito:
             return
         # Já avisado uma vez — não repete a cada mensagem do cliente
         if getattr(conversation, 'notif_aberto_enviada', False):
@@ -1232,9 +1240,20 @@ class ConversationService:
                 logger.warning(f"Webhook sem JID. event_data keys: {list(event_data.keys())}")
                 return {"success": False, "message": "JID não encontrado"}
 
-            # Só processa grupos (@g.us)
+            # ── Grupo (@g.us) ou contato 1:1 cadastrado ────────────────────
+            # Grupo sempre entra. Conversa privada só entra se aquele número
+            # estiver CADASTRADO como contato em Grupos/Contatos — senão
+            # qualquer pessoa que mandasse mensagem para o número do WhatsApp
+            # abriria um chamado (spam, engano, cliente pedindo outra coisa).
+            # Cadastrar o contato é o ato explícito de dizer "esse número é
+            # atendimento"; até 04/09/2026 nenhuma mensagem privada passava.
             if not jid.endswith("@g.us"):
-                return {"success": True, "message": "Mensagem privada ignorada"}
+                if not ContactGroup.objects.filter(
+                    jid=jid,
+                    connection__instance_name=instance_name,
+                    connection__is_active=True,
+                ).exclude(status='deleted').exists():
+                    return {"success": True, "message": "Privada de número não cadastrado ignorada"}
 
             from_me = key.get("fromMe", False)
 
@@ -1248,6 +1267,14 @@ class ConversationService:
             # `remoteJid`, que é o JID do grupo). Se bater com o telefone de
             # um atendente cadastrado em Contatos Atendentes, tratamos como
             # mensagem do agente (não do cliente) e avisamos o grupo do NOC.
+            # Em grupo, `participant` é o remetente real dentro do grupo, e a
+            # detecção abaixo serve para saber se quem falou foi um ATENDENTE
+            # pelo WhatsApp pessoal (em vez do cliente). Numa conversa 1:1 esse
+            # campo não vem e a detecção não se aplica: do outro lado está o
+            # contato, sempre — é ele o cliente daquele chamado. Preencher
+            # `participant` com o próprio `remoteJid` aqui faria um contato
+            # cadastrado com o número de um atendente virar "mensagem de
+            # agente", e o chamado ficaria sem nenhuma fala do cliente.
             participant = event_data.get("participant") or key.get("participant") or ""
             atendente_pessoal = _detectar_atendente_pessoal(participant)
             sender_type = 'agent' if atendente_pessoal else 'customer'
@@ -1289,9 +1316,12 @@ class ConversationService:
             # ──────────────────────────────────────────────────────────────
 
             # ── Grupo e conversa ───────────────────────────────────────────
+            # `is_group` vai no defaults: sem isso todo contato 1:1 nascia com
+            # o default do campo (True) e se passava por grupo no admin, nos
+            # filtros e na tela de Grupos/Contatos.
             group, _ = ContactGroup.objects.get_or_create(
                 jid=jid, connection=connection,
-                defaults={"name": jid.split("@")[0]}
+                defaults={"name": jid.split("@")[0], "is_group": jid.endswith("@g.us")}
             )
 
             # ── Extrai conteúdo e detecta tipo de mídia ───────────────────
@@ -1668,6 +1698,13 @@ class ConversationService:
                 "group_name": group.name,
                 "last_message_at": local_now.strftime("%H:%M"),
                 "assigned_to_id": conversation.assigned_to_id,
+                # Atendentes que podem ver este chamado (None = todos). O
+                # InboxConsumer é UM grupo de canal só ("atendimento_inbox"),
+                # ou seja, todo mundo logado recebe o mesmo pacote — sem esta
+                # lista, um chamado de contato restrito apareceria na caixa de
+                # entrada de quem não pode vê-lo, com nome e tudo. Ver
+                # consumers.InboxConsumer.inbox_update.
+                "allowed_user_ids": atendentes_do_chamado(conversation),
             },
         }
         _ws_send_conversation(str(conversation.id), payload)

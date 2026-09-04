@@ -62,6 +62,7 @@ from .models import (
     WhatsAppConnection, ContactGroup, Conversation, Message,
     ConversationActivity, AgentStatus, ChatbotConfig,
     Task, TaskConversation, AttendantContact, ScheduledMessage,
+    telefone_para_jid,
 )
 from .services import EvolutionAPIClient, ConversationService
 from .scope import (
@@ -2268,13 +2269,21 @@ def grupos(request):
     if search:
         groups = groups.filter(Q(name__icontains=search) | Q(jid__icontains=search))
 
+    # Quantos atendentes cada contato/grupo tem marcado — 0 = aberto para
+    # todos. Anotação (e não `group.restrito` no template) para não fazer uma
+    # query por linha da tabela.
+    groups = groups.annotate(qtd_atendentes=Count('user_permissions', distinct=True))
+
+    from django.contrib.auth.models import User as _User
     from clientes.models import Cliente as CRMCliente
     context = {
         **_base_ctx(request),
         'groups': groups,
         'connections': WhatsAppConnection.objects.all(),
+        'connections_ativas': WhatsAppConnection.objects.filter(is_active=True).order_by('name'),
         'companies': Company.objects.all().order_by('name'),
         'clientes': clientes_visiveis(request.user).order_by('nome_empresa'),
+        'equipe': _User.objects.filter(is_active=True, is_staff=True).order_by('first_name', 'username'),
         'connection_filter': connection_id,
         'search': search,
     }
@@ -2328,6 +2337,142 @@ def api_group_set_company(request, group_id):
         return JsonResponse({'success': True, 'company_name': group.company.name if group.company else None})
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
+
+
+# ============ CONTATOS DE TELEFONE (1:1) ============
+
+@staff_required
+@require_http_methods(["POST"])
+def api_criar_contato(request):
+    """Cadastra um contato de telefone (conversa 1:1), irmão do grupo do
+    WhatsApp: mesmo modelo `ContactGroup`, com `is_group=False`.
+
+    O cadastro é o que LIBERA aquele número: o webhook só abre chamado de
+    conversa privada se o número já estiver aqui (ver
+    `ConversationService.processar_webhook`) — sem isso, qualquer pessoa que
+    mandasse mensagem para o WhatsApp da empresa abriria um chamado.
+
+    `atendentes` (lista de ids) é opcional e define quem vê os chamados deste
+    contato. **Lista vazia = contato aberto**: cai no atendimento geral e
+    aparece em "Chamados abertos" para toda a equipe, que é o padrão.
+    """
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Body inválido'}, status=400)
+
+    nome = (data.get('nome') or '').strip()
+    telefone = (data.get('telefone') or '').strip()
+    if not nome:
+        return JsonResponse({'success': False, 'error': 'Informe o nome do contato.'}, status=400)
+
+    jid = telefone_para_jid(telefone)
+    if not jid:
+        return JsonResponse(
+            {'success': False,
+             'error': 'Telefone inválido. Use DDD + número (ex.: 34 99999-8888) '
+                      'ou o formato internacional com "+".'},
+            status=400)
+
+    connection = WhatsAppConnection.objects.filter(
+        id=data.get('connection_id'), is_active=True).first()
+    if not connection:
+        return JsonResponse({'success': False, 'error': 'Selecione uma conexão WhatsApp ativa.'}, status=400)
+
+    if ContactGroup.objects.filter(jid=jid, connection=connection).exists():
+        return JsonResponse(
+            {'success': False, 'error': f'Já existe um contato com o número {jid.split("@")[0]} nesta conexão.'},
+            status=400)
+
+    cliente = None
+    if data.get('cliente_id'):
+        cliente = clientes_visiveis(request.user).filter(id=data['cliente_id']).first()
+        if cliente is None:
+            return JsonResponse({'success': False, 'error': 'Cliente inválido.'}, status=400)
+
+    contato = ContactGroup.objects.create(
+        jid=jid, connection=connection, name=nome,
+        is_group=False, cliente=cliente, status='active',
+    )
+    _aplicar_atendentes(contato, data.get('atendentes') or [])
+
+    return JsonResponse({
+        'success': True,
+        'id': contato.id,
+        'nome': contato.name,
+        'telefone': contato.telefone,
+        'restrito': contato.restrito,
+    })
+
+
+def _aplicar_atendentes(group, ids):
+    """Deixa os atendentes de `group` exatamente iguais a `ids`.
+
+    Lista vazia apaga todas as linhas — e é assim que o contato volta a ser
+    aberto para todo mundo. Só entram usuários que de fato podem atender
+    (`is_staff`); um id solto de cliente do portal viraria uma restrição que
+    ninguém consegue satisfazer, escondendo o chamado de toda a equipe.
+    """
+    from django.contrib.auth.models import User
+    from .models import UserGroupPermission
+
+    validos = set(
+        User.objects.filter(id__in=[i for i in ids if i], is_active=True, is_staff=True)
+        .values_list('id', flat=True)
+    )
+    atuais = group.atendentes_ids()
+
+    UserGroupPermission.objects.filter(group=group).exclude(user_id__in=validos).delete()
+    for uid in validos - atuais:
+        UserGroupPermission.objects.get_or_create(group=group, user_id=uid)
+    return validos
+
+
+@staff_required
+@require_http_methods(["GET", "POST"])
+def api_group_atendentes(request, group_id):
+    """Lê/grava quem pode ver os chamados de um contato ou grupo.
+
+    GET devolve a equipe inteira com quem já está marcado. POST recebe
+    `{'atendentes': [id, ...]}` e substitui a lista — **vazia devolve o
+    contato para o atendimento geral**.
+
+    Só administrador altera: é uma regra de visibilidade, e um operador
+    podendo se auto-remover (ou remover os outros) de um contato restrito
+    tiraria o sentido da restrição.
+    """
+    from django.contrib.auth.models import User
+    from usuario.perms import is_admin
+
+    group = get_object_or_404(ContactGroup, id=group_id)
+    if not pode_ver_group(request.user, group):
+        return JsonResponse({'success': False, 'error': 'Contato de outra instância.'}, status=403)
+
+    if request.method == 'GET':
+        marcados = group.atendentes_ids()
+        equipe = User.objects.filter(is_active=True, is_staff=True).order_by('first_name', 'username')
+        return JsonResponse({
+            'success': True,
+            'nome': group.name,
+            'restrito': bool(marcados),
+            'atendentes': [
+                {'id': u.id,
+                 'nome': u.get_full_name() or u.username,
+                 'marcado': u.id in marcados}
+                for u in equipe
+            ],
+        })
+
+    if not is_admin(request.user):
+        return JsonResponse(
+            {'success': False, 'error': 'Só administrador altera quem vê os chamados.'}, status=403)
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Body inválido'}, status=400)
+
+    validos = _aplicar_atendentes(group, data.get('atendentes') or [])
+    return JsonResponse({'success': True, 'restrito': bool(validos), 'total': len(validos)})
 
 
 @staff_required

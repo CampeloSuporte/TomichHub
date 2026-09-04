@@ -4,7 +4,7 @@
 
 Plataforma de atendimento ao cliente integrada ao CRM, similar ao Chatwoot. Centraliza o gerenciamento de tickets de suporte via WhatsApp (Evolution API v2), com tarefas, alertas automáticos, lembretes pessoais e relatórios completos.
 
-**Última atualização:** 12/08/2026  
+**Última atualização:** 04/09/2026  
 **Status:** ✅ FUNCIONAL  
 **Stack:** Django, PostgreSQL, Celery, WebSocket (Django Channels), JavaScript vanilla
 
@@ -18,6 +18,7 @@ Plataforma de atendimento ao cliente integrada ao CRM, similar ao Chatwoot. Cent
 | Inbox | 3 abas: Assumidos / Abertos / Em Andamento — **indicador de mensagem não lida** em tempo real |
 | Chat | Visual estilo **WhatsApp Dark** — bolhas com rabicho, ✓✓ de enviado, campo em pílula; envio de mídia, tags, transferência, terminal de hosts |
 | **Tarefas** | Board em 4 colunas com vinculação de conversas e lembretes automáticos |
+| **Contatos 1:1** | Além dos grupos, contato de telefone criado à mão — e a escolha de **quem atende** cada contato/grupo (ninguém marcado = atendimento geral) |
 | Auto Atendimento | Fluxo de boas-vindas que coleta assunto e categoria automaticamente |
 | **Mensagens Agendadas** | Programa envio de mensagem/mídia para data e hora futuras, com painel para cancelar |
 | Relatórios | Tabela + PDF com assunto, categoria, agente, duração por empresa/período |
@@ -1693,3 +1694,144 @@ confirmou que se tratava de problema no link… Protocolo #1508."*
 **Testes:** `FecharChamadoIATaskTest` ganhou 5 casos — fallback não usa o pedido de fechamento,
 aviso da IA fora na confirmação, relato do cliente quando não há fala do atendente, IA devolvendo o
 gatilho cai no fallback, e o relato original chegando ao prompt em conversa longa.
+
+---
+
+## 📵 Contato de telefone e "quem atende" (04/09/2026)
+
+### O que passou a existir
+
+1. **Contato de telefone (conversa 1:1)**, além dos grupos do WhatsApp. Botão
+   **"Novo contato"** em *Grupos / Contatos*.
+2. **Escolha de quem atende** cada contato **ou grupo** — botão 👤✓ na coluna
+   *Quem atende*. Ninguém marcado = atendimento geral (o padrão de sempre).
+
+### A regra, em uma frase
+
+> **Contato sem ninguém marcado cai em "Chamados abertos" para toda a equipe.
+> Marcando alguém, só essas pessoas — e os administradores — veem os chamados
+> dele, em qualquer tela.**
+
+### Onde isso mora
+
+Não existe flag de "restrito". A regra é a **ausência de linhas** em
+`UserGroupPermission` (`user` × `group`), e ela vale tanto para contato quanto
+para grupo. Dois lugares guardando o mesmo fato saem de sincronia: marcar
+"restrito" e esquecer de escolher alguém esconderia o chamado de todo mundo.
+
+> `UserGroupPermission` **já existia** desde o começo do módulo, editável na
+> tela de Configurações — mas **nenhuma consulta jamais a usou**. Era uma tela
+> que parecia dar permissão e não dava nada. A tabela estava vazia (0 linhas)
+> quando isto foi implementado, então ligar a regra não mudou nada do que já
+> estava no ar.
+
+### Administrador vê tudo
+
+A escolha serve para **dividir o trabalho entre atendentes**, não para esconder
+do dono do sistema — um chamado que ninguém com poder de supervisionar consegue
+ver é pior que um chamado exposto. Vale para Consultor e Operador; o
+Administrador passa direto, igual ao escopo por instância que já existia.
+
+### Todos os caminhos onde a regra é aplicada
+
+Restrição que vale em uma tela e falha em outra não restringe nada. Os pontos:
+
+| Onde | O que faz | Arquivo |
+|---|---|---|
+| Listagens (inbox, dashboard, kanban, histórico, relatórios, busca) | `conversations_visiveis` ganhou `_restricao_q` | `scope.py` |
+| Abrir um chamado | `pode_ver_conversation` → 403 | `scope.py` |
+| Lista de Grupos/Contatos e filtros | `groups_visiveis` / `pode_ver_group` — o **nome** do contato restrito também some | `scope.py` |
+| WebSocket da caixa de entrada | pacote carrega `allowed_user_ids`; o consumer descarta para quem não pode | `services.py` + `consumers.py` |
+| WebSocket da conversa | `connect` passou a checar `pode_ver_conversation` | `consumers.py` |
+| Aviso "chamado sem atendimento" (WhatsApp) | chamado restrito não é avisado | `tasks.py` |
+| Resumo diário (WhatsApp) | idem, nas duas listas | `tasks.py` |
+
+**Por que os avisos do WhatsApp ficaram de fora:** eles vão para um grupo que a
+equipe inteira lê e carregam o **nome do contato** — avisar ali vazaria
+exatamente o que a restrição existe para proteger. Quem tem acesso continua
+vendo o chamado na tela.
+
+**Por que o WebSocket precisou de tratamento próprio:** o `InboxConsumer` é
+**um grupo de canal só** (`atendimento_inbox`) — todo mundo logado recebe o
+mesmo pacote. Sem filtrar na saída, o chamado restrito apareceria na caixa de
+entrada de quem não pode vê-lo, com nome e tudo, mesmo com o HTTP correto.
+Pacote antigo (enfileirado antes do deploy) não traz a chave e é tratado como
+aberto — nunca some da tela de ninguém por causa disso.
+
+### Detalhe de SQL que importa
+
+`_restricao_q` usa **dois `Exists` correlacionados**, não um `filter()` no
+relacionamento:
+
+```python
+ref = OuterRef('pk') if not campo_group else OuterRef(f'{campo_group}_id')
+tem_dono = UserGroupPermission.objects.filter(group_id=ref)
+sou_dono  = UserGroupPermission.objects.filter(group_id=ref, user=user)
+return Q(~Exists(tem_dono) | Exists(sou_dono))
+```
+
+Um join simples **multiplicaria a linha do chamado** por atendente autorizado
+(chamado com 2 atendentes apareceria 2× na lista), e a negação via `exclude()`
+mataria junto os contatos **abertos**, que são a maioria. Há teste para os dois
+casos.
+
+### O cadastro é o que libera o número
+
+Até 04/09/2026 o webhook **descartava toda mensagem privada** (`if not
+jid.endswith("@g.us"): return`). Agora ela entra — **mas só se aquele número já
+estiver cadastrado como contato**. Sem esse recorte, qualquer pessoa que
+mandasse mensagem para o WhatsApp da empresa (engano, spam, cliente pedindo
+outra coisa) abriria um chamado. Cadastrar o contato é o ato explícito de dizer
+"esse número é atendimento".
+
+Dois detalhes que vieram junto:
+
+- **`is_group` passou a ir no `defaults`** do `get_or_create`. Sem isso o
+  contato 1:1 nascia com o default do campo (`True`) e se passava por grupo no
+  admin, nos filtros e na tela.
+- **A detecção de "atendente respondendo pelo WhatsApp pessoal" continua só em
+  grupo.** Numa conversa 1:1 quem está do outro lado é o contato, sempre — usar
+  o `remoteJid` como participante faria um contato cadastrado com o número de um
+  atendente virar "mensagem de agente", e o chamado ficaria sem nenhuma fala do
+  cliente.
+
+### Telefone digitado à mão → JID
+
+`telefone_para_jid` (em `models.py`) aceita as formas que a pessoa digita
+(`(34) 99999-8888`, `+55 34 99999-8888`, `5534999998888`) e assume **DDI 55**
+quando vêm só 10 ou 11 dígitos.
+
+O **`+` na frente desliga o palpite do 55**: quem escreve `+1 415 555 2671` está
+dizendo qual é o país, e prefixar 55 ali geraria o JID de um número brasileiro
+que não existe.
+
+> Não confundir com `normalizar_telefone_br`, que serve só para **comparar** e
+> por isso derruba o nono dígito. Aqui o número precisa sair inteiro — é o
+> endereço real de envio.
+
+### Quem pode mexer
+
+- **Criar contato:** qualquer back-office da instância (`@staff_required`).
+- **Alterar quem atende:** **só administrador**. Um operador podendo se
+  auto-remover (ou remover os outros) de um contato restrito esvaziaria a
+  restrição. Ler a lista é liberado para o back-office.
+- Id que não é atendente (`is_staff=False` — login de portal, por exemplo) é
+  **ignorado** ao salvar: viraria uma restrição que ninguém satisfaz, e o
+  chamado sumiria para a equipe inteira.
+
+### APIs
+
+| Método | Rota | O que faz |
+|---|---|---|
+| POST | `/atendimento/api/contatos/criar/` | Cria o contato 1:1. Campos: `nome`, `telefone`, `connection_id`, `cliente_id` (opcional), `atendentes` (lista de ids, opcional) |
+| GET | `/atendimento/api/groups/<id>/atendentes/` | Equipe com quem já está marcado |
+| POST | `/atendimento/api/groups/<id>/atendentes/` | Substitui a lista. `{'atendentes': []}` devolve o contato ao atendimento geral |
+
+### Testes
+
+`ContatoTelefoneVisibilidadeTest` (22 casos) cobre: normalização do telefone,
+contato aberto × restrito, admin vendo tudo, o chamado **não** duplicando com
+vários atendentes marcados, contato restrito **não** derrubando os chamados dos
+contatos abertos, inbox e detalhe, criação e validações, lista vazia voltando ao
+geral, operador barrado, id inválido ignorado, payload do WebSocket, aviso do
+WhatsApp pulando o restrito e o webhook (privada ignorada × contato cadastrado).

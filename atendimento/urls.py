@@ -81,6 +81,9 @@ urlpatterns = [
     path('api/groups/<int:group_id>/toggle-ai/', views.api_group_toggle_ai, name='api_group_toggle_ai'),
     path('api/groups/<int:group_id>/toggle-auto-atendimento/', views.api_group_toggle_auto_atendimento, name='api_group_toggle_auto_atendimento'),
     path('api/groups/<int:group_id>/set-company/', views.api_group_set_company, name='api_group_set_company'),
+    # Contato de telefone (1:1) e quem pode ver os chamados dele
+    path('api/contatos/criar/', views.api_criar_contato, name='api_criar_contato'),
+    path('api/groups/<int:group_id>/atendentes/', views.api_group_atendentes, name='api_group_atendentes'),
 
     # API Clientes (empresas) → grupos
     path('api/empresas/auto-vincular/', views.api_auto_vincular, name='api_auto_vincular'),

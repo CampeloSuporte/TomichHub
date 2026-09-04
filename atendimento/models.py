@@ -22,6 +22,33 @@ def normalizar_telefone_br(numero: str) -> str:
     return digits
 
 
+def telefone_para_jid(numero: str) -> str:
+    """Monta o JID de WhatsApp 1:1 a partir de um telefone digitado à mão.
+
+    Ao contrário de `normalizar_telefone_br` (que serve só para COMPARAR e por
+    isso derruba o nono dígito), aqui o número tem que sair inteiro — é o
+    endereço real usado para enviar. Aceita as formas que a pessoa digita
+    ("(34) 99999-8888", "+55 34 99999-8888", "5534999998888") e assume DDI 55
+    quando vierem só 10 ou 11 dígitos, que é o telefone brasileiro sem país.
+
+    O '+' na frente desliga o palpite do 55: quem escreve "+1 415 555 2671"
+    está dizendo qual é o país, e prefixar 55 aí geraria um JID de um número
+    brasileiro que não existe.
+
+    Retorna '' quando não sobra número plausível — quem chama decide o que
+    fazer com isso (a view devolve erro de validação).
+    """
+    bruto = (numero or '').strip()
+    digits = re.sub(r'\D', '', bruto)
+    if not digits:
+        return ''
+    if not bruto.startswith('+') and len(digits) in (10, 11):  # DDD + número, sem DDI
+        digits = '55' + digits
+    if len(digits) < 11 or len(digits) > 15:  # 11 = menor E.164 real (EUA: 1+10)
+        return ''
+    return f'{digits}@s.whatsapp.net'
+
+
 class WhatsAppConnection(models.Model):
     """Configuração de instância Evolution API"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
@@ -105,20 +132,55 @@ class ContactGroup(models.Model):
     def __str__(self):
         return self.name
 
+    # ── Visibilidade por atendente ────────────────────────────────────────
+    # Quem pode ver os chamados deste contato/grupo sai de UserGroupPermission
+    # (ver o docstring de lá). Sem nenhuma linha = aberto para toda a equipe.
+
+    @property
+    def restrito(self) -> bool:
+        """True quando alguém foi escolhido — daí só essas pessoas (e os
+        administradores) veem os chamados deste contato/grupo."""
+        return self.user_permissions.exists()
+
+    def atendentes_ids(self) -> set:
+        """Ids dos atendentes escolhidos. Vazio = aberto para todos."""
+        return set(self.user_permissions.values_list('user_id', flat=True))
+
+    @property
+    def telefone(self) -> str:
+        """Só o número, para exibir contato 1:1 sem o sufixo do WhatsApp."""
+        return self.jid.split('@')[0] if not self.is_group else ''
+
 
 class UserGroupPermission(models.Model):
-    """Permissão de atendente para visualizar um grupo"""
+    """Atendente autorizado a ver os chamados de um contato/grupo.
+
+    A REGRA É A AUSÊNCIA DE LINHAS: contato/grupo sem nenhuma linha aqui é
+    aberto — cai no atendimento geral e aparece em "Chamados abertos" para
+    toda a equipe da instância, que é como o sistema sempre funcionou. Basta
+    marcar uma pessoa para o contato virar restrito: a partir daí só quem
+    está nesta tabela (mais os administradores, que veem tudo) enxerga os
+    chamados dele, em qualquer tela.
+
+    Não existe flag de "restrito" separada de propósito — dois lugares
+    guardando o mesmo fato saem de sincronia (marcar restrito e esquecer de
+    escolher alguém esconderia o chamado de todo mundo).
+
+    Onde isso é aplicado: `atendimento/scope.py` (listagens e telas),
+    `InboxConsumer` (WebSocket) e as tarefas de aviso no WhatsApp. Ver
+    docs/ATENDIMENTO.md → "Contatos restritos a atendentes".
+    """
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='group_permissions')
     group = models.ForeignKey(ContactGroup, on_delete=models.CASCADE, related_name='user_permissions')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         unique_together = ('user', 'group')
-        verbose_name = "Permissão de Grupo"
-        verbose_name_plural = "Permissões de Grupos"
+        verbose_name = "Atendente do contato/grupo"
+        verbose_name_plural = "Atendentes por contato/grupo"
 
     def __str__(self):
-        return f"{self.user.get_full_name()} → {self.group.name}"
+        return f"{self.user.get_full_name() or self.user.username} → {self.group.name}"
 
 
 class Category(models.Model):

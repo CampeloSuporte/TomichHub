@@ -2743,3 +2743,342 @@ class IniciarConversaTempoRealTest(TestCase):
 
         self.assertIn('data-conv-id="%s"' % nova.id, html)
         self.assertNotIn('data-conv-id="%s"' % self.anterior.id, html)
+
+
+class ContatoTelefoneVisibilidadeTest(TestCase):
+    """Contato de telefone (1:1) e a restrição de visibilidade por atendente.
+
+    A regra vive na AUSÊNCIA de linhas em `UserGroupPermission`: contato sem
+    ninguém marcado é aberto (cai no atendimento geral, como sempre foi);
+    marcando alguém, só essas pessoas — e os administradores — veem os
+    chamados dele, em qualquer tela. Estes testes existem porque a restrição
+    tem que valer em TODOS os caminhos: listagem, detalhe, WebSocket e os
+    avisos que saem para um grupo do WhatsApp.
+    """
+
+    def setUp(self):
+        from usuario.models import Instancia, PerfilUsuario
+        from clientes.models import Cliente
+
+        self.principal = Instancia.objects.create(nome='Principal', principal=True)
+
+        def cria(username, role):
+            u = User.objects.create_user(
+                username=username, email=f'{username}@example.com', password='x',
+                is_staff=True, is_active=True,
+            )
+            PerfilUsuario.objects.create(usuario=u, role=role, instancia=self.principal)
+            return _dar_2fa(u)
+
+        self.ana = cria('ana_op', PerfilUsuario.ROLE_OPERADOR)
+        self.bruno = cria('bruno_op', PerfilUsuario.ROLE_OPERADOR)
+        self.admin = _dar_2fa(User.objects.create_user(
+            username='admin_visib', email='av@example.com', password='x',
+            is_staff=True, is_superuser=True, is_active=True,
+        ))
+
+        self.cliente = Cliente.objects.create(nome_empresa='Prefeitura', instancia=self.principal)
+        self.connection = WhatsAppConnection.objects.create(
+            name='Conexao Visib', evolution_url='https://evolution.example.com',
+            api_key='k', instance_name='visib',
+        )
+
+    def _contato(self, jid='5534999998888@s.whatsapp.net', nome='João'):
+        return ContactGroup.objects.create(
+            jid=jid, connection=self.connection, name=nome,
+            is_group=False, cliente=self.cliente,
+        )
+
+    def _restringir(self, group, *users):
+        from atendimento.models import UserGroupPermission
+        for u in users:
+            UserGroupPermission.objects.create(group=group, user=u)
+
+    # ── Modelo ────────────────────────────────────────────────────────────
+
+    def test_telefone_para_jid_aceita_o_que_a_pessoa_digita(self):
+        from atendimento.models import telefone_para_jid
+        self.assertEqual(telefone_para_jid('(34) 99999-8888'), '5534999998888@s.whatsapp.net')
+        self.assertEqual(telefone_para_jid('+55 34 99999-8888'), '5534999998888@s.whatsapp.net')
+        self.assertEqual(telefone_para_jid('34999998888'), '5534999998888@s.whatsapp.net')
+        # O "+" desliga o palpite do DDI 55 — sem isso um número dos EUA
+        # virava um JID brasileiro inexistente.
+        self.assertEqual(telefone_para_jid('+1 415 555 2671'), '14155552671@s.whatsapp.net')
+        self.assertEqual(telefone_para_jid('123'), '')
+        self.assertEqual(telefone_para_jid(''), '')
+
+    def test_contato_sem_ninguem_marcado_e_aberto(self):
+        contato = self._contato()
+        self.assertFalse(contato.restrito)
+        self.assertEqual(contato.atendentes_ids(), set())
+
+    def test_marcar_alguem_torna_o_contato_restrito(self):
+        contato = self._contato()
+        self._restringir(contato, self.ana)
+        self.assertTrue(contato.restrito)
+        self.assertEqual(contato.atendentes_ids(), {self.ana.id})
+
+    # ── Escopo ────────────────────────────────────────────────────────────
+
+    def test_chamado_de_contato_aberto_aparece_para_toda_a_equipe(self):
+        from atendimento.scope import conversations_visiveis
+        conv = Conversation.objects.create(group=self._contato(), cliente=self.cliente)
+        for user in (self.ana, self.bruno, self.admin):
+            with self.subTest(user=user.username):
+                self.assertIn(conv, conversations_visiveis(user))
+
+    def test_chamado_restrito_some_para_quem_nao_foi_marcado(self):
+        from atendimento.scope import conversations_visiveis, pode_ver_conversation
+        contato = self._contato()
+        self._restringir(contato, self.ana)
+        conv = Conversation.objects.create(group=contato, cliente=self.cliente)
+
+        self.assertIn(conv, conversations_visiveis(self.ana))
+        self.assertTrue(pode_ver_conversation(self.ana, conv))
+
+        self.assertNotIn(conv, conversations_visiveis(self.bruno))
+        self.assertFalse(pode_ver_conversation(self.bruno, conv))
+
+    def test_administrador_ve_chamado_restrito_mesmo_sem_estar_marcado(self):
+        from atendimento.scope import conversations_visiveis, pode_ver_conversation
+        contato = self._contato()
+        self._restringir(contato, self.ana)
+        conv = Conversation.objects.create(group=contato, cliente=self.cliente)
+
+        self.assertIn(conv, conversations_visiveis(self.admin))
+        self.assertTrue(pode_ver_conversation(self.admin, conv))
+
+    def test_restricao_nao_derruba_os_chamados_abertos_dos_outros_contatos(self):
+        """O `Exists` negado tem que valer por contato, não por consulta: um
+        contato restrito no banco não pode sumir com os chamados dos contatos
+        abertos, que são a maioria."""
+        from atendimento.scope import conversations_visiveis
+        restrito = self._contato(jid='5534111112222@s.whatsapp.net', nome='Sigiloso')
+        self._restringir(restrito, self.ana)
+        Conversation.objects.create(group=restrito, cliente=self.cliente)
+
+        aberto = self._contato(jid='5534333334444@s.whatsapp.net', nome='Comum')
+        conv_aberta = Conversation.objects.create(group=aberto, cliente=self.cliente)
+
+        visiveis = conversations_visiveis(self.bruno)
+        self.assertIn(conv_aberta, visiveis)
+        self.assertEqual(visiveis.count(), 1)
+
+    def test_um_chamado_nao_duplica_com_varios_atendentes_marcados(self):
+        """Join simples multiplicaria a linha do chamado por atendente
+        autorizado — dois marcados fariam o chamado aparecer duas vezes."""
+        from atendimento.scope import conversations_visiveis
+        contato = self._contato()
+        self._restringir(contato, self.ana, self.bruno)
+        Conversation.objects.create(group=contato, cliente=self.cliente)
+
+        self.assertEqual(conversations_visiveis(self.ana).count(), 1)
+
+    def test_contato_restrito_some_da_lista_de_grupos(self):
+        from atendimento.scope import groups_visiveis, pode_ver_group
+        contato = self._contato()
+        self._restringir(contato, self.ana)
+
+        self.assertIn(contato, groups_visiveis(self.ana))
+        self.assertTrue(pode_ver_group(self.ana, contato))
+        self.assertNotIn(contato, groups_visiveis(self.bruno))
+        self.assertFalse(pode_ver_group(self.bruno, contato))
+        self.assertIn(contato, groups_visiveis(self.admin))
+
+    # ── Telas ─────────────────────────────────────────────────────────────
+
+    def test_inbox_nao_mostra_o_chamado_restrito(self):
+        contato = self._contato()
+        self._restringir(contato, self.ana)
+        conv = Conversation.objects.create(group=contato, cliente=self.cliente, status='open')
+
+        self.client.force_login(self.bruno)
+        html = self.client.get(reverse('atendimento:inbox') + '?tab=open').content.decode()
+        self.assertNotIn(str(conv.id), html)
+        self.assertNotIn('João', html)
+
+        self.client.force_login(self.ana)
+        html = self.client.get(reverse('atendimento:inbox') + '?tab=open').content.decode()
+        self.assertIn(str(conv.id), html)
+
+    def test_detalhe_do_chamado_restrito_e_403_para_quem_nao_pode(self):
+        contato = self._contato()
+        self._restringir(contato, self.ana)
+        conv = Conversation.objects.create(group=contato, cliente=self.cliente)
+
+        self.client.force_login(self.bruno)
+        r = self.client.get(reverse('atendimento:conversation_detail', args=[conv.id]))
+        self.assertEqual(r.status_code, 403)
+
+        self.client.force_login(self.ana)
+        r = self.client.get(reverse('atendimento:conversation_detail', args=[conv.id]))
+        self.assertEqual(r.status_code, 200)
+
+    # ── API de criação ────────────────────────────────────────────────────
+
+    def _criar_via_api(self, **campos):
+        payload = {
+            'nome': 'João da Silva',
+            'telefone': '34 99999-8888',
+            'connection_id': str(self.connection.id),
+        }
+        payload.update(campos)
+        return self.client.post(
+            reverse('atendimento:api_criar_contato'),
+            data=json.dumps(payload), content_type='application/json',
+        )
+
+    def test_api_cria_contato_aberto_por_padrao(self):
+        self.client.force_login(self.admin)
+        r = self._criar_via_api()
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.json()['success'])
+
+        contato = ContactGroup.objects.get(jid='5534999998888@s.whatsapp.net')
+        self.assertFalse(contato.is_group)
+        self.assertFalse(contato.restrito)
+        self.assertEqual(contato.telefone, '5534999998888')
+
+    def test_api_cria_contato_ja_restrito(self):
+        self.client.force_login(self.admin)
+        r = self._criar_via_api(atendentes=[self.ana.id])
+        self.assertEqual(r.status_code, 200)
+
+        contato = ContactGroup.objects.get(jid='5534999998888@s.whatsapp.net')
+        self.assertEqual(contato.atendentes_ids(), {self.ana.id})
+
+    def test_api_recusa_telefone_invalido_e_duplicado(self):
+        self.client.force_login(self.admin)
+        r = self._criar_via_api(telefone='123')
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('Telefone', r.json()['error'])
+
+        self._criar_via_api()
+        r = self._criar_via_api()
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('Já existe', r.json()['error'])
+
+    def test_lista_vazia_devolve_o_contato_para_o_atendimento_geral(self):
+        contato = self._contato()
+        self._restringir(contato, self.ana)
+
+        self.client.force_login(self.admin)
+        r = self.client.post(
+            reverse('atendimento:api_group_atendentes', args=[contato.id]),
+            data=json.dumps({'atendentes': []}), content_type='application/json',
+        )
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(r.json()['restrito'])
+        self.assertFalse(contato.restrito)
+
+    def test_operador_nao_altera_quem_atende(self):
+        """É regra de visibilidade: um operador podendo se auto-remover (ou
+        remover os outros) esvaziaria a restrição."""
+        contato = self._contato()
+        self._restringir(contato, self.ana)
+
+        self.client.force_login(self.ana)
+        r = self.client.post(
+            reverse('atendimento:api_group_atendentes', args=[contato.id]),
+            data=json.dumps({'atendentes': []}), content_type='application/json',
+        )
+        self.assertEqual(r.status_code, 403)
+        self.assertTrue(contato.restrito)
+
+    def test_id_de_nao_atendente_e_ignorado(self):
+        """Um id de login de portal viraria uma restrição que ninguém
+        satisfaz — o chamado sumiria para a equipe inteira."""
+        portal = User.objects.create_user(username='portal_x', password='x', is_active=True)
+        contato = self._contato()
+
+        self.client.force_login(self.admin)
+        self.client.post(
+            reverse('atendimento:api_group_atendentes', args=[contato.id]),
+            data=json.dumps({'atendentes': [portal.id]}), content_type='application/json',
+        )
+        self.assertFalse(contato.restrito)
+
+    # ── Vazamentos ────────────────────────────────────────────────────────
+
+    def test_websocket_do_inbox_carrega_a_lista_de_quem_pode_ver(self):
+        """Todo mundo assina o mesmo grupo de canal, então o pacote precisa
+        dizer para quem vale — senão o chamado restrito aparece na caixa de
+        entrada de quem não pode vê-lo."""
+        from atendimento.scope import atendentes_do_chamado
+        contato = self._contato()
+        conv = Conversation.objects.create(group=contato, cliente=self.cliente)
+        self.assertIsNone(atendentes_do_chamado(conv))
+
+        self._restringir(contato, self.ana)
+        conv.refresh_from_db()
+        self.assertEqual(atendentes_do_chamado(conv), [self.ana.id])
+
+    def test_aviso_de_chamado_sem_atendimento_pula_contato_restrito(self):
+        """A mensagem vai para um grupo do WhatsApp que a equipe inteira lê e
+        carrega o NOME do contato — avisar ali vazaria o que a restrição
+        existe para proteger."""
+        from atendimento.tasks import notificar_chamados_abertos
+
+        contato = self._contato(nome='Assunto Sigiloso')
+        self._restringir(contato, self.ana)
+        antigo = timezone.now() - timedelta(minutes=30)
+        Conversation.objects.create(
+            group=contato, cliente=self.cliente, status='open', last_message_at=antigo)
+
+        SystemSetting.set('notif_abertos_enabled', 'true')
+        grupo_notif = ContactGroup.objects.create(
+            jid='120363000@g.us', connection=self.connection, name='NOC')
+        SystemSetting.set('notif_abertos_group_id', str(grupo_notif.id))
+
+        with mock.patch('atendimento.tasks._get_notif_client_and_jid') as m:
+            cliente_fake = mock.Mock()
+            cliente_fake.send_text.return_value = (True, 'id')
+            m.return_value = (cliente_fake, grupo_notif.jid)
+            resultado = notificar_chamados_abertos()
+
+        self.assertEqual(resultado.get('notified', 0), 0)
+        cliente_fake.send_text.assert_not_called()
+
+    def test_webhook_ignora_privada_de_numero_nao_cadastrado(self):
+        """Sem isso, qualquer pessoa que mandasse mensagem para o WhatsApp da
+        empresa abriria um chamado."""
+        antes = Conversation.objects.count()
+        r = ConversationService.process_webhook({
+            'event': 'MESSAGES_UPSERT', 'instance': 'visib',
+            'data': {
+                'key': {'remoteJid': '5534777776666@s.whatsapp.net', 'fromMe': False, 'id': 'M1'},
+                'pushName': 'Desconhecido',
+                'message': {'conversation': 'oi'},
+            },
+        })
+        self.assertTrue(r['success'])
+        self.assertEqual(Conversation.objects.count(), antes)
+
+    def test_webhook_abre_chamado_para_contato_cadastrado(self):
+        contato = self._contato()
+        r = ConversationService.process_webhook({
+            'event': 'MESSAGES_UPSERT', 'instance': 'visib',
+            'data': {
+                'key': {'remoteJid': contato.jid, 'fromMe': False, 'id': 'M2'},
+                'pushName': 'João',
+                'message': {'conversation': 'preciso de ajuda'},
+            },
+        })
+        self.assertTrue(r['success'])
+        conv = Conversation.objects.get(group=contato)
+        self.assertEqual(conv.status, 'open')
+        msg = Message.objects.get(conversation=conv)
+        self.assertEqual(msg.sender_type, 'customer')
+        self.assertEqual(msg.content, 'preciso de ajuda')
+
+    def test_webhook_marca_contato_1_a_1_como_nao_grupo(self):
+        """`is_group` não ia no `defaults` do get_or_create: todo contato 1:1
+        nascia com o default do campo (True) e se passava por grupo."""
+        ConversationService.process_webhook({
+            'event': 'MESSAGES_UPSERT', 'instance': 'visib',
+            'data': {
+                'key': {'remoteJid': self._contato().jid, 'fromMe': False, 'id': 'M3'},
+                'message': {'conversation': 'oi'},
+            },
+        })
+        self.assertFalse(ContactGroup.objects.get(jid='5534999998888@s.whatsapp.net').is_group)
