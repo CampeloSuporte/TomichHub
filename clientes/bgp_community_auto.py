@@ -1912,7 +1912,7 @@ def _bloco_policy_in(nome_policy, familia, bogons, aceita, communities,
 
 
 def _bloco_sessao(as_local, familias, peers_por_familia, policies, grupos=None,
-                  public_as_only=False, habilitar=True, fake_as=''):
+                  public_as_only=False, habilitar=True, fake_as='', avulsos=None):
     """
     O bloco `bgp <ASN>` de uma sessão nova, no formato das caixas em produção.
 
@@ -1921,37 +1921,56 @@ def _bloco_sessao(as_local, familias, peers_por_familia, policies, grupos=None,
     external` com as policies NO GRUPO e os route servers como membros — que é
     como o IX.br é configurado e o que o parser lê de volta.
 
+    `avulsos` são peers DA MESMA sessão que ficam FORA do grupo, com as
+    route-policies aplicadas neles mesmos. É o caso do IX.br, que na carta de
+    ativação entrega os route servers sob um ASN e o looking glass sob outro
+    (`AS26162 rs1/rs2` + `AS20121 lgc`): o LG não é membro do peer-group dos
+    RS, mas tem que receber exatamente as mesmas policies de entrada e saída.
+
     Detalhe de VRP que não pode faltar: um peer nasce habilitado na
     `ipv4-family unicast`, mesmo sendo IPv6. Por isso todo peer/grupo v6 leva
     um `undo peer … enable` na family v4 além do `enable` na v6 — sem isso o
     peer v6 fica pendurado na family errada.
     """
     grupos = grupos or {}
+    avulsos = avulsos or {}
+
+    def linhas_do_peer(peer, grupo):
+        linhas = [f'peer {peer["ip"]} as-number {peer["as"]}']
+        if grupo:
+            linhas.append(f'peer {peer["ip"]} group {grupo}')
+        if peer.get('descricao'):
+            linhas.append(f'peer {peer["ip"]} description {peer["descricao"]}')
+        if fake_as:
+            # Por peer, e não no grupo: é assim que o parser lê o fake-as
+            # de volta (`peer <IP> fake-as N`), então é assim que o painel
+            # continua sabendo qual ASN este vizinho enxerga.
+            linhas.append(f'peer {peer["ip"]} fake-as {fake_as}')
+        if not habilitar:
+            # No VRP um peer nasce ATIVO — deixar de emitir `enable` não o
+            # segura. Quem segura é `peer … ignore`, o mesmo comando que o
+            # botão Ativar/Desativar do painel desfaz
+            # (`bgp_actions.comandos_toggle_sessao`).
+            linhas.append(f'peer {peer["ip"]} ignore')
+        return linhas
+
     comandos = [f'bgp {as_local}']
     for familia in familias:
         grupo = grupos.get(familia, '')
         if grupo:
             comandos.append(f'group {grupo} external')
-        for peer in peers_por_familia[familia]:
-            comandos.append(f'peer {peer["ip"]} as-number {peer["as"]}')
-            if grupo:
-                comandos.append(f'peer {peer["ip"]} group {grupo}')
-            if peer.get('descricao'):
-                comandos.append(f'peer {peer["ip"]} description {peer["descricao"]}')
-            if fake_as:
-                # Por peer, e não no grupo: é assim que o parser lê o fake-as
-                # de volta (`peer <IP> fake-as N`), então é assim que o painel
-                # continua sabendo qual ASN este vizinho enxerga.
-                comandos.append(f'peer {peer["ip"]} fake-as {fake_as}')
-            if not habilitar:
-                # No VRP um peer nasce ATIVO — deixar de emitir `enable` não o
-                # segura. Quem segura é `peer … ignore`, o mesmo comando que o
-                # botão Ativar/Desativar do painel desfaz
-                # (`bgp_actions.comandos_toggle_sessao`).
-                comandos.append(f'peer {peer["ip"]} ignore')
+        for peer in (peers_por_familia.get(familia) or []):
+            comandos += linhas_do_peer(peer, grupo)
+        for peer in (avulsos.get(familia) or []):
+            comandos += linhas_do_peer(peer, '')
 
-    v6_na_family_v4 = ([grupos.get('v6')] if grupos.get('v6') else
-                       [p['ip'] for p in peers_por_familia.get('v6', [])]) if 'v6' in familias else []
+    # Quem precisa sair da `ipv4-family` por ser v6: o grupo (quando os peers
+    # estão nele) ou cada peer solto — os avulsos são sempre peer a peer.
+    v6_na_family_v4 = []
+    if 'v6' in familias:
+        v6_na_family_v4 = ([grupos['v6']] if grupos.get('v6')
+                           else [p['ip'] for p in (peers_por_familia.get('v6') or [])])
+        v6_na_family_v4 += [p['ip'] for p in (avulsos.get('v6') or [])]
     if v6_na_family_v4 and 'v4' not in familias:
         # Sessão só-IPv6: ainda assim é preciso entrar na family v4 pra tirar
         # de lá o peer que nasceu habilitado nela.
@@ -1964,7 +1983,13 @@ def _bloco_sessao(as_local, familias, peers_por_familia, policies, grupos=None,
         if familia == 'v4':
             comandos += [f'undo peer {alvo} enable' for alvo in v6_na_family_v4]
         grupo = grupos.get(familia, '')
-        for nome_alvo in ([grupo] if grupo else [p['ip'] for p in peers_por_familia[familia]]):
+        # Onde as policies são aplicadas: no grupo (IX) ou em cada peer. Os
+        # avulsos entram sempre um a um — é o que os mantém com as MESMAS
+        # policies estando fora do grupo.
+        alvos_policy = ([grupo] if grupo else
+                        [p['ip'] for p in (peers_por_familia.get(familia) or [])])
+        alvos_policy += [p['ip'] for p in (avulsos.get(familia) or [])]
+        for nome_alvo in alvos_policy:
             comandos.append(f'peer {nome_alvo} enable')
             if public_as_only:
                 comandos.append(f'peer {nome_alvo} public-as-only')
@@ -1975,16 +2000,21 @@ def _bloco_sessao(as_local, familias, peers_por_familia, policies, grupos=None,
         if grupo:
             # Membros do grupo: habilitar e prender ao grupo — as policies já
             # valem pra todos eles através dele.
-            for peer in peers_por_familia[familia]:
+            for peer in (peers_por_familia.get(familia) or []):
                 comandos.append(f'peer {peer["ip"]} enable')
                 comandos.append(f'peer {peer["ip"]} group {grupo}')
         comandos.append('quit')
     comandos.append('quit')
     return comandos
-def _peers_das_opcoes(dados, opcoes, ja_usados, sufixo_descricao, prefixo_rs=''):
+def _peers_das_opcoes(dados, opcoes, ja_usados, sufixo_descricao, prefixo_rs='',
+                      marcador='RS', numerar_sempre=True):
     """`opcoes['v4']['peers']` → lista validada por família, com a descrição
     já montada. `prefixo_rs` liga a numeração de route server dos IX
-    (`RS1.PTT-CE`, `RS2.PTT-CE`) — nos demais tipos a descrição é a do peer."""
+    (`RS1.PTT-CE`, `RS2.PTT-CE`) — nos demais tipos a descrição é a do peer.
+
+    `marcador`/`numerar_sempre` servem ao peer de ASN separado do mesmo IX (o
+    looking glass): lá o rótulo é outro (`LGC.PTT-SP`) e, sendo um peer só, não
+    faz sentido numerar — os RS continuam numerados desde o primeiro."""
     familias, peers = [], {}
     for familia in ('v4', 'v6'):
         entradas = ((opcoes.get(familia) or {}).get('peers')) or []
@@ -1997,7 +2027,9 @@ def _peers_das_opcoes(dados, opcoes, ja_usados, sufixo_descricao, prefixo_rs='')
             descricao = (entrada.get('descricao') or '').strip()
             if not descricao:
                 if prefixo_rs:
-                    descricao = f'RS{i}.{prefixo_rs}' + ('-V6' if familia == 'v6' else '')
+                    numero = i if (numerar_sempre or len(entradas) > 1) else ''
+                    descricao = (f'{marcador}{numero}.{prefixo_rs}'
+                                 + ('-V6' if familia == 'v6' else ''))
                 else:
                     descricao = f'{sufixo_descricao}-{familia.upper()}'
                     if len(entradas) > 1:
@@ -2008,6 +2040,54 @@ def _peers_das_opcoes(dados, opcoes, ja_usados, sufixo_descricao, prefixo_rs='')
             familias.append(familia)
             peers[familia] = lista
     return familias, peers
+
+
+def _peers_do_asn_extra(dados, opcoes, ja_usados, nome, eh_ix=False):
+    """
+    Peer(s) da MESMA sessão sob OUTRO ASN — `opcoes['asn_extra']`.
+
+    O caso que pediu isso é a carta de ativação do IX.br, que entrega os route
+    servers e o looking glass em ASNs diferentes:
+
+        AS20121 lgc.saopaulo.sp.ix.br 187.16.216.252 - 2001:12f8::252
+        AS26162 rs1.saopaulo.sp.ix.br 187.16.216.253 - 2001:12f8::253
+        AS26162 rs2.saopaulo.sp.ix.br 187.16.216.254 - 2001:12f8::254
+
+    O LG não entra no peer-group dos RS (`peer <IP> group` casaria o ASN do
+    grupo), mas é o mesmo circuito e recebe as MESMAS route-policies — por isso
+    ele sai como peer solto com as policies nele mesmo (ver `_bloco_sessao`), e
+    não como um circuito à parte que gastaria um slot e um grupo de community.
+
+    Devolve `(familias, peers_por_familia, peer_as)`; tudo vazio quando o
+    formulário não pediu ASN separado.
+    """
+    extra = opcoes.get('asn_extra') or {}
+    peer_as = str(extra.get('peer_as') or '').strip()
+    tem_ip = any(((extra.get(f) or {}).get('peers')) for f in ('v4', 'v6'))
+    if not peer_as and not tem_ip:
+        return [], {}, ''
+    if not peer_as.isdigit():
+        raise AcaoBgpNaoSuportada(
+            'Informe o ASN do peer separado (só números) ou tire os IPs dele.'
+        )
+    rotulo = _RE_NOME_LIMPO.sub('-', str(extra.get('rotulo') or '').upper()).strip('-')
+    if rotulo or eh_ix:
+        # `LGC.PTT-SP` / `LGC.PTT-SP-V6`, no mesmo desenho de descrição dos RS.
+        prefixo_rs, marcador = nome, (rotulo or f'AS{peer_as}')
+    else:
+        prefixo_rs, marcador = '', ''
+    familias, peers = _peers_das_opcoes(
+        dados, extra, ja_usados, f'EBGP-AS{peer_as}-{nome}',
+        prefixo_rs=prefixo_rs, marcador=marcador, numerar_sempre=False,
+    )
+    if not familias:
+        raise AcaoBgpNaoSuportada(
+            f'Informe pelo menos um IP do peer AS{peer_as} ou tire o ASN separado.'
+        )
+    for familia in familias:
+        for peer in peers[familia]:
+            peer['as'] = peer['as'] or peer_as
+    return familias, peers, peer_as
 
 
 def _recusar_colisao_de_nomes(dados, circuito_id, policies, grupos_peer):
@@ -2120,10 +2200,17 @@ def comandos_criar_circuito(dados, mapa, circuito_id, opcoes=None):
         for peer in peers[familia]:
             peer['as'] = peer['as'] or peer_as
 
+    familias_extra, peers_extra, peer_as_extra = _peers_do_asn_extra(
+        dados, opcoes, ja_usados, nome, eh_ix=slot['tipo'] == 'ix')
+    # Famílias de verdade da config = as do circuito + as que só o peer de ASN
+    # separado tem (um LG só-IPv6 num IX que subiu só em IPv4, por exemplo):
+    # sem isso a policy da família dele não seria criada.
+    familias_todas = [f for f in ('v4', 'v6') if f in familias or f in familias_extra]
+
     # Nomes: os que a caixa já usa pra este circuito têm prioridade sobre a
     # convenção — completar um circuito não pode criar uma policy paralela.
     policies = {}
-    for familia in familias:
+    for familia in familias_todas:
         base = f'AS{peer_as}-{nome}-{familia.upper()}'
         atuais = (circuito or {}).get('policies', {})
         policies[f'{familia}_in'] = (opcoes.get(f'policy_{familia}_in')
@@ -2144,7 +2231,7 @@ def comandos_criar_circuito(dados, mapa, circuito_id, opcoes=None):
 
     # 1) prefix-lists de apoio (bogons e tabela cheia), só se faltarem
     listas = {}
-    for familia in familias:
+    for familia in familias_todas:
         bogons, cmd_bogons = _prefix_list_bogons(dados, familia)
         full, cmd_full = _prefix_list_full_routing(dados, familia)
         listas[familia] = {'bogons': bogons, 'full': full}
@@ -2166,7 +2253,7 @@ def comandos_criar_circuito(dados, mapa, circuito_id, opcoes=None):
         )
 
     # 3) policies de entrada e saída
-    for familia in familias:
+    for familia in familias_todas:
         nome_in = policies[f'{familia}_in']
         if nome_in not in policies_existentes:
             comandos += _bloco_policy_in(
@@ -2179,9 +2266,10 @@ def comandos_criar_circuito(dados, mapa, circuito_id, opcoes=None):
 
     # 4) a sessão em si
     comandos += _bloco_sessao(
-        as_local, familias, peers, policies, grupos=grupos_peer,
+        as_local, familias_todas, peers, policies, grupos=grupos_peer,
         public_as_only=bool(opcoes.get('public_as_only', slot['tipo'] == 'ix')),
         habilitar=bool(opcoes.get('habilitar', True)), fake_as=fake_as,
+        avulsos=peers_extra,
     )
     return comandos + ['commit']
 
@@ -2457,7 +2545,19 @@ def _registrar_criacao_local(dados, tipo, alvo, params):
     if not nome or not peer_as:
         return
 
-    familias = [f for f in ('v4', 'v6') if ((opcoes.get(f) or {}).get('peers'))]
+    # O peer de ASN separado (o LG do IX, §`_peers_do_asn_extra`) é peer desta
+    # mesma sessão: entra no snapshot junto, só com o ASN dele.
+    extra = opcoes.get('asn_extra') or {}
+    peer_as_extra = str(extra.get('peer_as') or '')
+
+    def peers_da_familia(familia):
+        lista = list(((opcoes.get(familia) or {}).get('peers')) or [])
+        if peer_as_extra:
+            lista += [dict(p, peer_as=(p.get('peer_as') or peer_as_extra))
+                      for p in (((extra.get(familia) or {}).get('peers')) or [])]
+        return lista
+
+    familias = [f for f in ('v4', 'v6') if peers_da_familia(f)]
     if tipo == 'criar_circuito_community':
         cid = _destino_dos_params(params) or (alvo or '')
         slot = slot_padrao(cid)
@@ -2562,7 +2662,7 @@ def _registrar_criacao_local(dados, tipo, alvo, params):
     ips_existentes = {s.get('peer_ip') for s in sessoes}
     for familia in familias:
         base = f'{prefixo_policy}-{familia.upper()}'
-        for peer in ((opcoes.get(familia) or {}).get('peers')) or []:
+        for peer in peers_da_familia(familia):
             ip = str(peer.get('ip') or '').strip()
             if not ip or ip in ips_existentes:
                 continue

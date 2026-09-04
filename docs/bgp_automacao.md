@@ -1474,6 +1474,59 @@ ipv4-family unicast
  peer 45.68.79.253 group EBGP-PTT-CE-V4
 ```
 
+#### Peer com outro ASN na mesma sessão (o LG do IX)
+
+A carta de ativação do IX.br não entrega um ASN só. A de São Paulo pede:
+
+```
+AS20121 lgc.saopaulo.sp.ix.br 187.16.216.252 - 2001:12f8::252
+AS26162 rs1.saopaulo.sp.ix.br 187.16.216.253 - 2001:12f8::253
+AS26162 rs2.saopaulo.sp.ix.br 187.16.216.254 - 2001:12f8::254
+```
+
+Os route servers vêm sob `AS26162` e o looking glass sob `AS20121` — mesma
+VLAN, mesmo circuito, mesmas policies. Até 04/09/2026 o formulário só aceitava
+um ASN por sessão, e o LG só entrava na mão (ou gastando um slot e um grupo de
+community à toa, o que sujaria o catálogo do §6/§7).
+
+O bloco **"Peer com outro ASN nesta mesma sessão"** resolve isso: ASN próprio,
+rótulo da descrição e os IPs dele, nas mesmas famílias que a sessão está
+subindo. O peer sai **fora do peer-group** (o grupo é o dos route servers) e
+com as route-policies **nele mesmo** — exatamente o arranjo de um upstream,
+apontando para as policies do IX:
+
+```
+group EBGP-PTT-SP-V4 external
+peer 187.16.216.253 as-number 26162
+peer 187.16.216.253 group EBGP-PTT-SP-V4
+peer 187.16.216.253 description RS1.PTT-SP
+peer 187.16.216.252 as-number 20121          ← o LG, sem `group`
+peer 187.16.216.252 description LGC.PTT-SP
+ipv4-family unicast
+ peer EBGP-PTT-SP-V4 route-policy AS26162-PTT-SP-V4-IN import
+ peer EBGP-PTT-SP-V4 route-policy AS26162-PTT-SP-V4-OUT export
+ peer 187.16.216.252 route-policy AS26162-PTT-SP-V4-IN import
+ peer 187.16.216.252 route-policy AS26162-PTT-SP-V4-OUT export
+```
+
+Como o vínculo circuito ↔ sessão é feito pela **export policy** (§"Descoberta"),
+o LG volta do backup como mais uma sessão do mesmo `ix-NN` — não como circuito
+solto, e sem deixar o slot aparecendo como vago. O ASN do circuito continua
+sendo o dos route servers.
+
+Detalhes que o backend cuida (`_peers_do_asn_extra`):
+
+- a descrição segue o desenho dos RS: `LGC.PTT-SP`, `LGC.PTT-SP-V6` (rótulo
+  vazio vira `AS20121.PTT-SP`; fora de IX, a descrição padrão do peer);
+- IP repetido entre o grupo e o ASN separado é recusado, como qualquer peer
+  repetido;
+- ASN separado sem IP (ou IP sem ASN) é recusado em vez de sair pela metade;
+- se o peer de ASN separado tem uma família que a sessão não tem (um LG só
+  IPv6), a policy daquela família é criada junto — senão o `peer … route-policy`
+  apontaria para um nome inexistente;
+- vale para operadora e CDN também, não só IX: lá não há grupo, o peer extra é
+  só mais um peer com as policies do circuito.
+
 **Detalhe de VRP que não pode faltar:** um peer nasce habilitado na
 `ipv4-family unicast`, mesmo sendo IPv6. Por isso todo peer/grupo v6 gerado
 leva um `undo peer … enable` na family v4 além do `enable` na v6 — é o que as
