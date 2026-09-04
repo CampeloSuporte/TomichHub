@@ -116,9 +116,9 @@ html:-webkit-full-screen body{height:100%}
    a paleta abre no botão da borda, o painel de propriedades abre sozinho
    quando algo é selecionado. */
 #main{display:flex;flex:1;overflow:hidden;position:relative}
-.panel-card{position:absolute;top:12px;bottom:12px;z-index:6;background:rgba(18,24,31,.94);backdrop-filter:blur(14px);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;transition:transform .26s var(--ease-out),opacity .2s var(--ease-out)}
+.panel-card{position:absolute;top:12px;bottom:12px;z-index:6;background:rgba(18,24,31,.97);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;transition:transform .26s var(--ease-out),opacity .2s var(--ease-out)}
 /* Botão da borda que traz o painel de volta */
-.rail-btn{position:absolute;z-index:5;display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(18,24,31,.92);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:11px;color:var(--muted);font-size:.75rem;font-weight:600;cursor:pointer;box-shadow:var(--shadow-md);transition:transform .22s var(--ease-out),opacity .18s var(--ease-out),color .15s,border-color .15s}
+.rail-btn{position:absolute;z-index:5;display:flex;align-items:center;gap:8px;padding:9px 13px;background:rgba(18,24,31,.96);border:1px solid var(--border);border-radius:11px;color:var(--muted);font-size:.75rem;font-weight:600;cursor:pointer;box-shadow:var(--shadow-md);transition:transform .22s var(--ease-out),opacity .18s var(--ease-out),color .15s,border-color .15s}
 .rail-btn:hover{color:var(--text);border-color:#3a4757}
 .rail-btn:active{transform:scale(.96)}
 body:not(.props-off) #zoom-ctl{right:292px}
@@ -161,11 +161,16 @@ body:not(.pal-off) #btn-palette{transform:translateX(-10px);opacity:0;pointer-ev
 #canvas-wrap>*:not(#canvas-svg){z-index:2}
 #canvas-svg{width:100%;height:100%;cursor:default}
 .grid-bg{fill:url(#grid-pattern)}
-.canvas-hint{position:absolute;top:16px;left:50%;transform:translateX(-50%) translateY(-4px);font-size:.73rem;color:var(--muted);background:rgba(18,24,31,.9);backdrop-filter:blur(8px);border:1px solid var(--border);padding:7px 16px;border-radius:20px;pointer-events:none;opacity:0;transition:opacity .28s var(--ease-out),transform .28s var(--ease-out);box-shadow:var(--shadow-md)}
+.canvas-hint{position:absolute;top:16px;left:50%;transform:translateX(-50%) translateY(-4px);font-size:.73rem;color:var(--muted);background:rgba(18,24,31,.96);border:1px solid var(--border);padding:7px 16px;border-radius:20px;pointer-events:none;opacity:0;transition:opacity .28s var(--ease-out),transform .28s var(--ease-out);box-shadow:var(--shadow-md)}
 .canvas-hint.show{opacity:1;transform:translateX(-50%) translateY(0)}
 /* Node styles */
 .node{cursor:move;user-select:none}
-.node-body{transition:filter .18s var(--ease-out);filter:drop-shadow(0 3px 7px rgba(0,0,0,.5))}
+/* Profundidade do chassi em repouso vem dos gradientes `node-gloss`/`node-shade`
+   (nos <defs>), NÃO de um drop-shadow por node. Filtro SVG não é cacheado entre
+   repaints: com 80+ nodes na tela, cada quadro do mapa re-rasterizava 80 sombras
+   — sozinho isso segurava a aba em ~15fps mesmo com o mapa parado. Sombra ficou
+   só no hover e na seleção, onde no máximo 1-2 elementos a usam por vez. */
+.node-body{transition:filter .18s var(--ease-out)}
 .node:hover .node-body{filter:drop-shadow(0 4px 12px rgba(0,0,0,.6))}
 .node.selected .node-body{filter:drop-shadow(0 0 10px currentColor)}
 .node.selected .node-ring{stroke-opacity:.95!important}
@@ -177,10 +182,11 @@ body:not(.pal-off) #btn-palette{transform:translateX(-10px);opacity:0;pointer-ev
 .anchor{cursor:crosshair;opacity:0;transform-box:fill-box;transform-origin:center;transition:opacity .18s var(--ease-out),transform .18s var(--ease-out);pointer-events:all}
 .node:hover .anchor,.node.selected .anchor{opacity:1}
 .anchor:hover{transform:scale(1.35)}
-.node-led{filter:drop-shadow(0 0 4px #3fb950)}
-body.effects-off .node-led{filter:none}
-/* Ícone: leve brilho na cor do device, mais forte no hover/seleção */
-.node-icon{filter:drop-shadow(0 0 2px currentColor);transition:filter .18s var(--ease-out)}
+/* LED de "host do CRM": o brilho era um drop-shadow por node — mesmo problema
+   das sombras do chassi. O anel externo (stroke) dá o mesmo halo de graça. */
+.node-led{stroke:#3fb950;stroke-opacity:.35;stroke-width:2.4}
+/* Ícone: brilho só no hover/seleção, pelo mesmo motivo (ver .node-body). */
+.node-icon{transition:filter .18s var(--ease-out)}
 .node:hover .node-icon{filter:drop-shadow(0 0 5px currentColor)}
 .node.selected .node-icon{filter:drop-shadow(0 0 7px currentColor)}
 /* Anel pulsante — só em nodes vinculados a um Acesso do CRM (node.acesso_id),
@@ -200,27 +206,32 @@ body.effects-off .node[data-live="1"] .node-ring{animation:none}
    IMPORTANTE: o traço é claro (quase branco) de propósito. Enquanto herdava
    o `stroke` do próprio link, os tracinhos ficavam da MESMA cor da linha
    sólida desenhada logo abaixo — ou seja, a animação existia mas era
-   invisível. O `mix-blend-mode:screen` deixa o dash "acender" sobre a linha
-   colorida, e o drop-shadow usa currentColor (definido no JS com a cor do
-   link) pra manter o brilho na cor do enlace. */
+   invisível.
+   Não usa mais `mix-blend-mode:screen` nem `drop-shadow`: os dois obrigavam o
+   navegador a isolar e re-rasterizar cada enlace a cada quadro da animação (que
+   roda sempre, mesmo com o mapa parado) — com 40 enlaces era o item mais caro
+   da tela depois do blur do halo. Claro sobre linha colorida já acende
+   sozinho, sem blend. */
 .link-flow{
   fill:none;pointer-events:none;
   stroke:#eaf6ff;stroke-linecap:round;
-  stroke-dasharray:6 14;opacity:.85;
-  mix-blend-mode:screen;
-  filter:drop-shadow(0 0 3px currentColor);
+  stroke-dasharray:6 14;opacity:.9;
   animation:link-flow .95s linear infinite;
 }
 @keyframes link-flow{to{stroke-dashoffset:-20}}
 body.effects-off .link-flow{display:none}
-/* Halo suave por baixo do fluxo — dá "corpo" ao tráfego sem engordar a linha
-   sólida (que carrega a semântica de banda via stroke-width). */
-.link-glow{fill:none;pointer-events:none;opacity:.22;filter:blur(2.5px);
+/* Halo suave por baixo do fluxo — traço mais grosso e translúcido, sem
+   `filter:blur()`. O blur era um raster completo por enlace POR QUADRO (a
+   animação de dash nunca para), e é o que mais pesava com 40 enlaces. */
+.link-glow{fill:none;pointer-events:none;opacity:.14;stroke-linecap:round;
   stroke-dasharray:6 14;animation:link-flow .95s linear infinite}
 body.effects-off .link-glow{display:none}
-/* "Pacotes" viajando pelo link (<animateMotion>, ver _renderLink) — o brilho
-   dá a impressão de um pulso de luz/dado passando, tipo tráfego de verdade. */
-.link-packet{pointer-events:none;filter:drop-shadow(0 0 5px currentColor) drop-shadow(0 0 2px #fff)}
+/* "Pacotes" viajando pelo link (<animateMotion>, ver _renderLink) — dão a
+   impressão de um pulso de luz/dado passando, tipo tráfego de verdade.
+   Sem drop-shadow: eram DOIS filtros por pacote, dois pacotes por enlace, todos
+   em movimento permanente. O anel branco sobre o disco na cor do link dá o
+   mesmo brilho sem filtro nenhum. */
+.link-packet{pointer-events:none;stroke:#fff;stroke-opacity:.8;stroke-width:1.2}
 body.effects-off .link-packet{display:none}
 /* ── Modo navegação (body.nav-busy) ─────────────────────────────────────────
    Ligado enquanto o mapa é arrastado, ampliado ou tem um host sendo movido, e
@@ -235,7 +246,6 @@ body.nav-busy .link-glow,
 body.nav-busy .link-packet{display:none}
 body.nav-busy .node-body,
 body.nav-busy .node-icon,
-body.nav-busy .node-led,
 body.nav-busy .link.selected,
 body.nav-busy .node.selected .node-body,
 body.nav-busy .node.multi-selected .node-body{filter:none}
@@ -245,14 +255,11 @@ body.nav-busy .node-body,
 body.nav-busy .node-icon,
 body.nav-busy .anchor,
 body.nav-busy .link{transition:none}
-/* backdrop-filter: o desfoque é recalculado a cada frame porque o que está
-   ATRÁS do painel (o mapa) está se mexendo — é o item mais caro da tela. */
-body.nav-busy .panel-card,
-body.nav-busy .rail-btn,
-body.nav-busy .canvas-hint,
-body.nav-busy #zoom-ctl,
-body.nav-busy #legend-panel,
-body.nav-busy #toast{backdrop-filter:none}
+/* Os painéis não usam mais `backdrop-filter`: o desfoque era recalculado a cada
+   quadro porque o que está ATRÁS deles (o mapa) se mexe — e não só durante o
+   arraste, também com o mapa parado, já que o fluxo dos enlaces nunca para. A
+   ~96% de opacidade o desfoque não aparecia mesmo; ficou só no `.modal-overlay`,
+   que é transitório e onde o efeito de fato se vê. */
 .link-label-bg{fill:var(--surface);rx:4}
 .link-label{font-size:10px;fill:#9fb0c0;text-anchor:middle;pointer-events:none;font-weight:500}
 .link-arrow{overflow:visible}
@@ -304,7 +311,7 @@ body.props-off #props{transform:translateX(calc(100% + 20px));opacity:0;pointer-
 #st-mode{padding:2px 9px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--border-soft);font-size:.66rem}
 #st-save{margin-left:auto;transition:color .2s}
 /* ── Zoom flutuante (canto inferior direito do canvas) ── */
-#zoom-ctl{position:absolute;bottom:12px;right:12px;transition:right .26s var(--ease-out);display:flex;align-items:center;gap:2px;padding:3px;background:rgba(18,24,31,.9);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:11px;box-shadow:var(--shadow-md)}
+#zoom-ctl{position:absolute;bottom:12px;right:12px;transition:right .26s var(--ease-out);display:flex;align-items:center;gap:2px;padding:3px;background:rgba(18,24,31,.96);border:1px solid var(--border);border-radius:11px;box-shadow:var(--shadow-md)}
 #zoom-ctl button{width:28px;height:28px;border:none;background:transparent;color:var(--muted);border-radius:8px;cursor:pointer;font-size:.75rem;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,transform .13s var(--ease-out)}
 #zoom-ctl button:hover{background:rgba(255,255,255,.08);color:var(--text)}
 #zoom-ctl button:active{transform:scale(.92)}
@@ -514,7 +521,7 @@ body.props-off #props{transform:translateX(calc(100% + 20px));opacity:0;pointer-
 .area-node.selected .area-handle{opacity:1;pointer-events:all}
 body.nav-busy .area-node.selected .area-rect{filter:none}
 /* Toast */
-#toast{position:fixed;bottom:52px;left:50%;transform:translateX(-50%) translateY(10px) scale(.97);background:rgba(18,24,31,.96);backdrop-filter:blur(8px);border:1px solid rgba(63,185,80,.5);color:var(--green);padding:10px 20px;border-radius:22px;font-size:.8rem;font-weight:600;z-index:200;opacity:0;transition:opacity .22s var(--ease-out),transform .22s var(--ease-out);pointer-events:none;box-shadow:var(--shadow-lg)}
+#toast{position:fixed;bottom:52px;left:50%;transform:translateX(-50%) translateY(10px) scale(.97);background:rgba(18,24,31,.97);border:1px solid rgba(63,185,80,.5);color:var(--green);padding:10px 20px;border-radius:22px;font-size:.8rem;font-weight:600;z-index:200;opacity:0;transition:opacity .22s var(--ease-out),transform .22s var(--ease-out);pointer-events:none;box-shadow:var(--shadow-lg)}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
 /* Waypoint handles */
 .wp-handle{pointer-events:all}
@@ -522,7 +529,7 @@ body.nav-busy .area-node.selected .area-rect{filter:none}
 .wp-mid{cursor:crosshair;opacity:.7;transition:opacity .15s}
 .wp-mid:hover{opacity:1;r:7}
 /* Legenda de interfaces */
-#legend-panel{position:absolute;bottom:12px;left:12px;background:rgba(22,27,34,.92);backdrop-filter:blur(4px);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:.7rem;color:var(--muted);box-shadow:var(--shadow-md);max-width:200px;transform-origin:bottom left;opacity:0;transform:scale(.95) translateY(4px);pointer-events:none;transition:opacity .16s var(--ease-out),transform .16s var(--ease-out),left .26s var(--ease-out)}
+#legend-panel{position:absolute;bottom:12px;left:12px;background:rgba(22,27,34,.96);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:.7rem;color:var(--muted);box-shadow:var(--shadow-md);max-width:200px;transform-origin:bottom left;opacity:0;transform:scale(.95) translateY(4px);pointer-events:none;transition:opacity .16s var(--ease-out),transform .16s var(--ease-out),left .26s var(--ease-out)}
 #legend-panel.show{opacity:1;transform:scale(1) translateY(0);pointer-events:auto}
 body:not(.pal-off) #legend-panel{left:236px}
 #legend-panel .legend-title{font-size:.68rem;color:var(--cyan);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -641,7 +648,11 @@ body:not(.pal-off) #legend-panel{left:236px}
           <stop offset="100%" stop-color="#000000" stop-opacity=".22"/>
         </linearGradient>
       </defs>
-      <rect id="grid-bg" width="20000" height="20000" x="-10000" y="-10000" class="grid-bg"/>
+      <!-- O grid fica FORA do #viewport (não recebe pan/zoom), então cobrir a área
+           visível basta: era um retângulo de 20000x20000 e o navegador levava a
+           área toda em conta ao invalidar a pintura do SVG. O `patternUnits` é
+           userSpaceOnUse, ancorado na origem — a fase dos pontos não muda. -->
+      <rect id="grid-bg" x="0" y="0" width="100%" height="100%" class="grid-bg"/>
       <g id="viewport">
         <path id="connect-preview" d="" style="display:none"/>
         <g id="links-layer"></g>
@@ -695,6 +706,6 @@ body:not(.pal-off) #legend-panel{left:236px}
   }
 </script>
 <script src="/static/js/topo_engine.js?v=26"></script>
-<script src="/static/js/topo_main.js?v=45"></script>
+<script src="/static/js/topo_main.js?v=46"></script>
 </body>
 </html>

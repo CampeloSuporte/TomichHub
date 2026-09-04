@@ -5,6 +5,53 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-04 (Topologia: o editor ficava pesado só de estar aberto)
+
+### Corrigido
+
+- **"O módulo topologia está pesado, quando eu entro fica lento"** — o editor queimava CPU sem
+  parar **com o mapa parado**, e como ele roda num `<iframe>` dentro da aba Topologia do cadastro
+  do cliente, derrubava a página do cliente em volta junto (`topologia_editor.html`,
+  `topo_main.js`). O passe de desempenho de 2026-08-26 tinha atacado só o custo **do movimento**
+  (`body.nav-busy`); o custo de repouso continuava inteiro.
+
+  O mapa é **um `<svg>` só** e a animação de fluxo dos enlaces nunca para — cada quadro invalida
+  a cena inteira, com todos os filtros de todos os hosts junto. Num mapa real (89 hosts num
+  cliente, 41 enlaces em outro) isso somava, **a 60 quadros por segundo, para sempre**:
+  - `filter:blur(2.5px)` no halo de cada enlace — um raster de blur por enlace, por quadro;
+  - `mix-blend-mode:screen` + `drop-shadow` no fluxo de cada enlace;
+  - dois `drop-shadow` em cada um dos 2 "pacotes" animados por enlace (~164 filtros em
+    movimento);
+  - `drop-shadow` no chassi, no ícone e no LED de **cada host** em repouso (~267 filtros);
+  - `backdrop-filter:blur()` na paleta, no painel de propriedades, na dica, no zoom, na legenda
+    e no toast — o desfoque é recalculado a cada quadro porque o que está *atrás* deles (o mapa)
+    se mexe sempre.
+
+  Agora **nenhum filtro roda em repouso**: `drop-shadow` ficou só no hover e na seleção (1–2
+  elementos por vez), o volume do chassi vem dos gradientes que já existiam nos `<defs>`, o LED
+  usa `stroke` no lugar do brilho, o halo do enlace é um traço translúcido sem blur e o fluxo
+  perdeu o blend. O `backdrop-filter` saiu dos painéis (todos a ≥90% de opacidade — o desfoque
+  não aparecia mesmo) e ficou só no overlay de modal. O `#grid-bg` deixou de ser um retângulo de
+  20000×20000 (ele fica fora do `#viewport`, então `100%` cobre o mesmo).
+
+### Adicionado
+
+- **Modo leve automático** no editor de topologia. O botão "Efeitos" já existia mas ninguém
+  achava, e o mapa sempre abria com tudo ligado. A decisão passou a ser tomada **antes do
+  primeiro desenho**, nesta ordem: escolha explícita da pessoa (guardada em
+  `localStorage['topo_efeitos']` pelo próprio botão) → `prefers-reduced-motion` do SO → **peso do
+  mapa** (`hosts + enlaces × 3 > 60`). Mapa pequeno continua com fluxo e pacotes; backbone abre
+  leve, com o botão dizendo *"Efeitos desligados (mapa grande) — clique para ligar"*.
+  `_revisarPeso()` refaz a conta depois de "Importar Hosts" (mapa vazio abre com peso zero e pode
+  ganhar 80 hosts de uma vez) — só desliga, nunca liga sozinho.
+- Com os efeitos desligados os enfeites **não são mais criados no DOM**. Antes nasciam sempre e
+  eram escondidos com `display:none`: sumia a pintura, mas ficavam 4 elementos por enlace — e,
+  no caso dos pacotes, uma linha do tempo **SMIL viva** por elemento.
+
+Detalhes em [docs/topologia.md](docs/topologia.md) → "Desempenho com o mapa PARADO — 2026-09-04".
+
+---
+
 ## [Não publicado] — 2026-09-04 (Atendimento: o lápis de editar não era achável)
 
 ### Corrigido
