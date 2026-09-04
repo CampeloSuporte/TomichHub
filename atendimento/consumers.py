@@ -18,13 +18,6 @@ def _pode_atendimento(user):
 
 
 @database_sync_to_async
-def _e_admin(user):
-    """Administrador recebe tudo — mesma regra do `scope._tudo`."""
-    from usuario import perms
-    return perms.is_admin(user)
-
-
-@database_sync_to_async
 def _pode_ver_conversa(user, conversation_id):
     """Mesma regra da porta HTTP (`scope.pode_ver_conversation`): instância do
     cliente + atendentes escolhidos no contato/grupo. Sem isso, bastava
@@ -86,7 +79,6 @@ class InboxConsumer(AsyncWebsocketConsumer):
             return
 
         self.user_id = self.scope["user"].id
-        self.is_admin = await _e_admin(self.scope["user"])
         self.group_name = "atendimento_inbox"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
@@ -102,17 +94,16 @@ class InboxConsumer(AsyncWebsocketConsumer):
         `allowed_user_ids` vem do `_broadcast_msg` (ver
         `scope.atendentes_do_chamado`): `None`/ausente = chamado aberto, entrega
         para todos — que é o caso da esmagadora maioria e o comportamento de
-        sempre. Com lista, só entrega para quem está nela; administrador passa
-        direto, como em todas as outras telas.
+        sempre. Com lista, só entrega para quem está nela — **sem exceção para
+        administrador**, igual ao HTTP (ver o cabeçalho de `scope.py`).
 
         Um pacote antigo (enfileirado antes deste deploy) não traz a chave e é
         tratado como aberto — nunca some da tela de ninguém por causa disso.
         """
         data = event["data"]
-        if not self.is_admin:
-            permitidos = (data.get("conversation") or {}).get("allowed_user_ids")
-            if permitidos and self.user_id not in permitidos:
-                return
+        permitidos = (data.get("conversation") or {}).get("allowed_user_ids")
+        if permitidos and self.user_id not in permitidos:
+            return
         await self.send(text_data=json.dumps(data))
 
 class VirtualRoomConsumer(AsyncWebsocketConsumer):
