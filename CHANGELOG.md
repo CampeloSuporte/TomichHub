@@ -5,6 +5,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-06 (Arquivos/Firmware: renomear pasta)
+
+### Adicionado
+
+- **Renomear pastas em Ferramentas → Arquivos e Firmware**: a linha da pasta ganhou um botão de
+  lápis ao lado da lixeira, abrindo um modal com o nome atual já selecionado. Antes só dava para
+  criar e excluir — corrigir um nome errado significava criar a pasta certa, subir tudo de novo
+  e apagar a antiga.
+
+  Renomear não é só trocar o `nome` no banco, porque três coisas dependem dele:
+
+  - o **diretório real** em `media/firmware/<caminho>`, movido com `os.rename`;
+  - o **caminho gravado** no `FileField` de cada `FirmwareArquivo` da pasta **e de todas as
+    subpastas** (`caminho_completo` é calculado, mas `arquivo.name` é literal) — sem isso os
+    arquivos ficariam apontando para um diretório que não existe mais;
+  - os **symlinks do root do TFTP/FTP**, que são relativos e passariam a apontar para o caminho
+    antigo. Só os links que ficaram quebrados são refeitos, para não roubar o link de um arquivo
+    de mesmo nome que esteja em outra pasta.
+
+  Recusa nome vazio, nome já usado por outra pasta irmã e diretório de destino já existente no
+  disco — nesse último caso antes de mover qualquer coisa. `/` e `..` são higienizados como na
+  criação.
+
+  Arquivos: `clientes/firmware_views.py` (`firmware_renomear_pasta`), `clientes/urls.py`,
+  `clientes/templates/firmware.html`.
+
+---
+
 ## [Não publicado] — 2026-09-04 (BGP: peer com outro ASN na mesma sessão de IX)
 
 ### Adicionado
