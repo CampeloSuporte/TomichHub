@@ -210,6 +210,7 @@ urlpatterns = [
     path('firmware/upload-url/progresso/<str:task_id>/',    fw.firmware_upload_url_progresso,   name='firmware_upload_url_progresso'),
     path('firmware/arquivo/<int:arquivo_id>/deletar/',      fw.firmware_deletar_arquivo,  name='firmware_deletar_arquivo'),
     path('firmware/pasta/<int:pasta_id>/deletar/',          fw.firmware_deletar_pasta,    name='firmware_deletar_pasta'),
+    path('firmware/pasta/<int:pasta_id>/renomear/',         fw.firmware_renomear_pasta,   name='firmware_renomear_pasta'),
     path('firmware/arquivo/<int:arquivo_id>/compartilhar/', fw.firmware_compartilhar,     name='firmware_compartilhar'),
     path('firmware/arquivo/<int:arquivo_id>/links/',        fw.firmware_links_ativos,     name='firmware_links_ativos'),
     path('firmware/link/<int:comp_id>/revogar/',            fw.firmware_revogar_link,     name='firmware_revogar_link'),

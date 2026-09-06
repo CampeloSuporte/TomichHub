@@ -156,6 +156,30 @@
   </div>
 </div>
 
+<!-- ══ Modal: Renomear Pasta ══════════════════════════════════════════════ -->
+<div class="modal fade" id="modalRenomearPasta" tabindex="-1">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content" style="background:#161b22;border:1px solid #30363d">
+      <div class="modal-header" style="border-color:#30363d">
+        <h5 class="modal-title" style="font-size:.95rem"><i class="fas fa-pen me-2" style="color:#ffaa00"></i>Renomear Pasta</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input id="renomear-pasta-nome" type="text" class="form-control" placeholder="Nome da pasta"
+          onkeydown="if(event.key==='Enter')fwRenomearPasta()">
+        <div id="renomear-pasta-erro" style="display:none;margin-top:8px;padding:6px 12px;border-radius:6px;background:rgba(224,96,96,.1);border:1px solid rgba(224,96,96,.3);color:#e06060;font-size:.82rem"></div>
+      </div>
+      <div class="modal-footer" style="border-color:#30363d">
+        <button class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-sm" onclick="fwRenomearPasta()"
+          style="background:rgba(255,170,0,.15);border:1px solid #ffaa00;color:#ffaa00">
+          <i class="fas fa-check me-1"></i>Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ Modal: Compartilhar ════════════════════════════════════════════════ -->
 <div class="modal fade" id="modalCompartilhar" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
@@ -307,6 +331,7 @@
 .fw-btn:hover { background:rgba(255,255,255,.07); }
 .fw-btn-share { color:#00d9ff; }
 .fw-btn-delete { color:#e06060; }
+.fw-btn-rename { color:#ffaa00; }
 .fw-btn-links  { color:#3fb950; }
 #fw-dropzone.drag-over { border-color:#00d9ff !important; background:rgba(0,217,255,.04); }
 .proto-row { margin-bottom:10px; }
@@ -381,7 +406,10 @@ function fwRenderizar(d) {
             <td style="color:#555">—</td>
             <td style="color:#555">—</td>
             <td style="text-align:right" onclick="event.stopPropagation()">
-                <button class="fw-btn fw-btn-delete" onclick="fwDeletarPasta(${p.id},'${p.nome}')" title="Excluir pasta">
+                <button class="fw-btn fw-btn-rename" data-id="${p.id}" data-nome="${p.nome}" onclick="fwAbrirRenomearPasta(this.dataset.id, this.dataset.nome)" title="Renomear pasta">
+                    <i class="fas fa-pen"></i>
+                </button>
+                <button class="fw-btn fw-btn-delete" data-id="${p.id}" data-nome="${p.nome}" onclick="fwDeletarPasta(this.dataset.id, this.dataset.nome)" title="Excluir pasta">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -474,6 +502,59 @@ async function fwCriarPasta() {
         _modalNovaPasta.hide();
     } else {
         erroEl.textContent = d.erro || 'Erro ao criar pasta';
+        erroEl.style.display = '';
+    }
+}
+
+// ── Renomear Pasta ────────────────────────────────────────────────────────
+let _modalRenomearPasta = null;
+let _renomearPastaId    = null;
+let _pastaRenomeadaNome = null;
+
+function fwAbrirRenomearPasta(id, nome) {
+    _renomearPastaId = id;
+    _pastaRenomeadaNome = null;
+    const input = document.getElementById('renomear-pasta-nome');
+    input.value = nome;
+    document.getElementById('renomear-pasta-erro').style.display = 'none';
+    if (!_modalRenomearPasta) {
+        const el = document.getElementById('modalRenomearPasta');
+        _modalRenomearPasta = bootstrap.Modal.getOrCreateInstance(el);
+        el.addEventListener('hidden.bs.modal', () => {
+            if (_pastaRenomeadaNome) {
+                fwNavegar(FW_PASTA_ATUAL);
+                uiToast(`Pasta renomeada para "${_pastaRenomeadaNome}"`);
+                _pastaRenomeadaNome = null;
+            }
+        });
+    }
+    _modalRenomearPasta.show();
+    setTimeout(() => { input.focus(); input.select(); }, 300);
+}
+
+async function fwRenomearPasta() {
+    const nome = document.getElementById('renomear-pasta-nome').value.trim();
+    if (!nome || !_renomearPastaId) return;
+    const erroEl = document.getElementById('renomear-pasta-erro');
+    erroEl.style.display = 'none';
+    const btn = document.querySelector('#modalRenomearPasta .modal-footer .btn:last-child');
+    btn.disabled = true;
+    let d;
+    try {
+        const r = await fetch(`/clientes/firmware/pasta/${_renomearPastaId}/renomear/`, {
+            method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
+            body: JSON.stringify({nome})
+        });
+        d = await r.json();
+    } catch (e) {
+        d = {ok: false, erro: 'Falha de comunicação com o servidor'};
+    }
+    btn.disabled = false;
+    if (d.ok) {
+        _pastaRenomeadaNome = d.pasta ? d.pasta.nome : nome;
+        _modalRenomearPasta.hide();
+    } else {
+        erroEl.textContent = d.erro || 'Erro ao renomear pasta';
         erroEl.style.display = '';
     }
 }

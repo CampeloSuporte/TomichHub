@@ -321,6 +321,8 @@ Base de conhecimento interna:
 
 **Gerenciador de Arquivos / Firmware:**
 - Armazenamento hierárquico de firmwares e arquivos de configuração
+- Pastas podem ser renomeadas: o diretório é movido no disco, o caminho dos arquivos das
+  subpastas é reescrito e os symlinks do TFTP que quebraram são refeitos
 - Upload múltiplo com progresso em tempo real, drag & drop
 - Download remoto via URL (o servidor faz o download sem passar pelo navegador)
 - Sistema de compartilhamento com links temporários em 10 formatos:

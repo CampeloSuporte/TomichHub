@@ -170,6 +170,67 @@ def firmware_criar_pasta(request):
 @login_required(login_url='login')
 @ferramenta_instancia_required('firmware')
 @require_POST
+def firmware_renomear_pasta(request, pasta_id):
+    """Renomeia uma pasta: move o diretório no FS e reescreve o caminho dos arquivos filhos."""
+    pasta = get_object_or_404(FirmwarePasta, pk=pasta_id)
+
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'ok': False, 'erro': 'Requisicao invalida'}, status=400)
+
+    nome = (data.get('nome') or '').strip().replace('/', '_').replace('..', '_')
+    if not nome:
+        return JsonResponse({'ok': False, 'erro': 'Nome inválido'}, status=400)
+
+    if nome == pasta.nome:
+        return JsonResponse({'ok': True, 'pasta': _serialize_pasta(pasta)})
+
+    if FirmwarePasta.objects.filter(nome=nome, pai_id=pasta.pai_id).exclude(pk=pasta.pk).exists():
+        return JsonResponse({'ok': False, 'erro': 'Já existe uma pasta com esse nome aqui'}, status=400)
+
+    caminho_antigo = pasta.caminho_completo
+    dir_antigo     = os.path.join(FIRMWARE_ROOT, caminho_antigo)
+
+    pasta.nome = nome
+    caminho_novo = pasta.caminho_completo
+    dir_novo     = os.path.join(FIRMWARE_ROOT, caminho_novo)
+
+    if os.path.exists(dir_novo):
+        return JsonResponse({'ok': False, 'erro': 'Já existe um diretório com esse nome no servidor'}, status=400)
+
+    # Move o diretório real (se ainda não existir, apenas cria o novo)
+    if os.path.isdir(dir_antigo):
+        try:
+            os.rename(dir_antigo, dir_novo)
+        except Exception as e:
+            return JsonResponse({'ok': False, 'erro': f'Erro ao renomear no disco: {e}'}, status=500)
+    else:
+        os.makedirs(dir_novo, exist_ok=True)
+
+    pasta.save(update_fields=['nome'])
+
+    # Reescreve o caminho armazenado nos arquivos da pasta e de todas as subpastas
+    prefixo_antigo = os.path.join('firmware', caminho_antigo) + '/'
+    prefixo_novo   = os.path.join('firmware', caminho_novo) + '/'
+    ids = _pasta_filhas_ids(pasta)
+    for arq in FirmwareArquivo.objects.filter(pasta_id__in=ids):
+        nome_atual = (arq.arquivo.name or '').replace('\\', '/')
+        if not nome_atual.startswith(prefixo_antigo):
+            continue
+        arq.arquivo.name = prefixo_novo + nome_atual[len(prefixo_antigo):]
+        arq.save(update_fields=['arquivo'])
+        # Symlink no root do TFTP ficou quebrado apontando para o caminho antigo
+        link_path = os.path.join(FIRMWARE_ROOT, arq.nome)
+        if os.path.islink(link_path) and not os.path.exists(link_path):
+            _criar_symlink_tftp(os.path.join(settings.MEDIA_ROOT, arq.arquivo.name), arq.nome)
+
+    return JsonResponse({'ok': True, 'pasta': _serialize_pasta(pasta)})
+
+
+@login_required(login_url='login')
+@ferramenta_instancia_required('firmware')
+@require_POST
 def firmware_upload(request):
     """Upload de arquivo (suporta grandes arquivos via streaming)."""
     pasta_id = request.POST.get('pasta_id') or None

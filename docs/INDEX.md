@@ -1646,6 +1646,7 @@ existente).
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 06/09/2026 | Arquivos/Firmware: **renomear pasta** — botão de lápis na linha da pasta; só dava para criar e excluir, então corrigir um nome errado significava recriar e subir tudo de novo. Renomear mexe em três lugares além do banco: move o diretório em `media/firmware/`, reescreve o `arquivo.name` de **todos os arquivos das subpastas** (`caminho_completo` é calculado, mas o `FileField` guarda o caminho literal) e refaz os **symlinks relativos do root do TFTP/FTP** que quebraram — só os quebrados, para não roubar o link de um arquivo homônimo em outra pasta. Recusa nome duplicado entre irmãs e diretório de destino já existente, antes de mover qualquer coisa | README.md |
 | 04/09/2026 | Automação BGP: **subir IX/PTT com peer de outro ASN na mesma sessão** — a carta do IX.br entrega os route servers sob um ASN e o looking glass sob outro (`AS26162 rs1/rs2` + `AS20121 lgc`), e o formulário só aceitava um. O peer extra sai **fora do peer-group** (`peer <IP> as-number 20121` sem `peer <IP> group`) e com as **mesmas route-policies** aplicadas nele mesmo; como o vínculo circuito ↔ sessão é feito pela export policy, ele volta do backup como mais uma sessão do mesmo `ix-NN`, sem gastar slot nem grupo de community. Vale também para operadora e CDN | bgp_automacao.md |
 | 04/09/2026 | Atendimento: **apagar mensagem enviada** — lixeira ao lado do lápis, e apagar é sempre *para todos* (o WhatsApp é chamado primeiro e de forma síncrona; se recusar, nada muda no CRM). *Soft delete*: a linha fica com `deleted_at`/`deleted_by` e o balão vira "Mensagem apagada", porque apagar a linha destruiria o histórico e liberaria o `external_id` (unique, é a chave lá no WhatsApp). Difere da edição em três pontos: mídia **pode** ser apagada, não há prazo no lado do CRM e mensagem automática só admin apaga. O arquivo de mídia sai do disco, e o apagado não volta pelo polling nem pelo contexto da IA | ATENDIMENTO.md |
 | 04/09/2026 | Atendimento: **contato de telefone (1:1)** ao lado dos grupos, e a escolha de **quem atende** cada contato/grupo — ninguém marcado = cai no atendimento geral para toda a equipe; alguém marcado = só essas pessoas veem os chamados. A regra é a ausência de linhas em `UserGroupPermission`, modelo que existia desde o começo do módulo mas que **nenhuma consulta jamais usou**. Mensagem privada passou a abrir chamado, mas só de número cadastrado | ATENDIMENTO.md |
@@ -1717,7 +1718,7 @@ existente).
 
 ---
 
-**Última atualização:** 27/08/2026  
+**Última atualização:** 06/09/2026  
 **Versão:** 2.1  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)
