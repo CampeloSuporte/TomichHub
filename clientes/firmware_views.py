@@ -70,9 +70,17 @@ def _progress_get(task_id: str):
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
-def _server_base(request):
-    """Retorna a URL base do servidor (http/https)."""
-    return request.build_absolute_uri('/').rstrip('/')
+def _host_porta(request):
+    """
+    Separa host e porta da requisição.
+
+    A porta só é devolvida quando não for a padrão (80/443) — os links são
+    montados com IP e as portas padrão não entram na URL.
+    """
+    host, _, porta = request.get_host().partition(':')
+    if porta in ('', '80', '443'):
+        porta = ''
+    return host, porta
 
 
 def _pasta_filhas_ids(pasta):
@@ -354,8 +362,7 @@ def firmware_compartilhar(request, arquivo_id):
         ftp_senha=ftp_senha,
     )
 
-    base = _server_base(request)
-    host = request.get_host().split(':')[0]
+    host, porta = _host_porta(request)
 
     return JsonResponse({
         'ok': True,
@@ -367,8 +374,8 @@ def firmware_compartilhar(request, arquivo_id):
         'tamanho': arq.tamanho_legivel(),
         'ftp_user': ftp_user,
         'ftp_senha': ftp_senha,
-        'links': _gerar_links(base, host, token, arq.nome, ftp_user, ftp_senha,
-                              tftp_path=arq.caminho_relativo),
+        'links': _gerar_links(host, token, arq.nome, ftp_user, ftp_senha,
+                              tftp_path=arq.caminho_relativo, porta=porta),
     })
 
 
@@ -384,30 +391,36 @@ def _resolver_ip(host: str) -> str:
         return host  # fallback: mantém o host original
 
 
-def _gerar_links(base, host, token, nome_arquivo, ftp_user='', ftp_senha='',
-                  tftp_path: str = ''):
+def _gerar_links(host, token, nome_arquivo, ftp_user='', ftp_senha='',
+                  tftp_path: str = '', porta: str = ''):
     """
     Gera os links e comandos de download para todos os protocolos.
+
+    Todos os links saem com o IP do servidor, nunca com o domínio: OLTs e
+    roteadores (Huawei, Datacom, Cisco, Mikrotik) frequentemente não têm DNS
+    configurado e falham ao resolver o hostname.
 
     tftp_path: caminho relativo do arquivo dentro do TFTP root
                (= FirmwareArquivo.caminho_relativo, ex: 'Firmware Huawei/MA5800.bin').
                Se vazio, usa apenas o nome_arquivo.
+    porta:     porta não padrão da requisição, se houver (ex: '8000').
     """
     from django.urls import reverse
 
-    path_dl   = reverse('firmware_download', kwargs={'token': token, 'nome_arquivo': nome_arquivo})
-    url_http  = base + path_dl
-    url_https = url_http.replace('http://', 'https://')
-
     # IP resolvido — OLTs não aceitam hostname
     host_ip = _resolver_ip(host)
+    autoridade = f'{host_ip}:{porta}' if porta else host_ip
+
+    path_dl   = reverse('firmware_download', kwargs={'token': token, 'nome_arquivo': nome_arquivo})
+    url_http  = f'http://{autoridade}{path_dl}'
+    url_https = f'https://{autoridade}{path_dl}'
 
     if ftp_user and ftp_senha:
-        url_ftp  = f'ftp://{ftp_user}:{ftp_senha}@{host}/{nome_arquivo}'
-        url_sftp = f'sftp://{ftp_user}:{ftp_senha}@{host}/{nome_arquivo}'
+        url_ftp  = f'ftp://{ftp_user}:{ftp_senha}@{host_ip}/{nome_arquivo}'
+        url_sftp = f'sftp://{ftp_user}:{ftp_senha}@{host_ip}/{nome_arquivo}'
     else:
-        url_ftp  = f'ftp://{host}/{nome_arquivo}'
-        url_sftp = f'sftp://{host}/{nome_arquivo}'
+        url_ftp  = f'ftp://{host_ip}/{nome_arquivo}'
+        url_sftp = f'sftp://{host_ip}/{nome_arquivo}'
 
     # Caminho para o TFTP — usa caminho_relativo se disponível
     tftp_nome = tftp_path if tftp_path else nome_arquivo
@@ -443,9 +456,9 @@ def _gerar_links(base, host, token, nome_arquivo, ftp_user='', ftp_senha='',
         'sftp':        url_sftp,
         'tftp':        url_tftp,
         'cisco':       (
-            f'copy ftp://{ftp_user}:{ftp_senha}@{host}/{nome_arquivo} flash:'
+            f'copy ftp://{ftp_user}:{ftp_senha}@{host_ip}/{nome_arquivo} flash:'
             if ftp_user
-            else f'copy http://{host}/ferramentas/firmware/dl/{token}/{nome_arquivo} flash:'
+            else f'copy {url_http} flash:'
         ),
         'mikrotik':    f'/tool fetch url="{url_http}" dst-path="{nome_arquivo}"',
         'huawei':      huawei_sftp,
@@ -886,8 +899,7 @@ def firmware_upload_url_progresso(request, task_id):
 def firmware_links_ativos(request, arquivo_id):
     arq   = get_object_or_404(FirmwareArquivo, pk=arquivo_id)
     comps = arq.compartilhamentos.filter(expira_em__gt=timezone.now())
-    base  = _server_base(request)
-    host  = request.get_host().split(':')[0]
+    host, porta = _host_porta(request)
     result = []
     for c in comps:
         result.append({
@@ -897,7 +909,7 @@ def firmware_links_ativos(request, arquivo_id):
             'acessos': c.acessos,
             'ftp_user': c.ftp_user,
             'ftp_senha': c.ftp_senha,
-            'links': _gerar_links(base, host, c.token, arq.nome, c.ftp_user, c.ftp_senha,
-                                  tftp_path=arq.caminho_relativo),
+            'links': _gerar_links(host, c.token, arq.nome, c.ftp_user, c.ftp_senha,
+                                  tftp_path=arq.caminho_relativo, porta=porta),
         })
     return JsonResponse({'ok': True, 'compartilhamentos': result})

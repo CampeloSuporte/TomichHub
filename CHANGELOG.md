@@ -5,6 +5,39 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-08 (Arquivos/Firmware: links de compartilhamento por IP)
+
+### Corrigido
+
+- **Link de compartilhamento sai com IP, e o HTTP é HTTP de verdade**: a lista de protocolos do
+  modal montava HTTP, HTTPS, FTP, SFTP e o comando Cisco com o **domínio** (`crm.tomich.com.br`),
+  vindo de `request.build_absolute_uri()`. Dois problemas:
+
+  - a linha rotulada **HTTP** aparecia como `https://…`, porque a URL já nascia HTTPS (o acesso ao
+    CRM é por HTTPS) e o `replace('http://', 'https://')` que gerava a linha HTTPS não tinha o que
+    trocar — as duas linhas saíam idênticas;
+  - OLT e roteador raramente têm DNS configurado, então o hostname não resolvia no equipamento.
+    TFTP e os comandos Huawei já usavam o IP resolvido (`_resolver_ip`); o resto não.
+
+  Agora `_gerar_links` monta **todos** os links a partir do IP resolvido, e HTTP e HTTPS são
+  montados separadamente em vez de um derivar do outro. A porta só entra na URL quando não for
+  80/443 (útil no `runserver`). O comando Cisco sem credenciais também deixou de repetir o caminho
+  `/ferramentas/firmware/dl/…` na mão — estava **sem o prefixo `home`** do `include` da rota, ou
+  seja, apontava para uma URL que não existe; passou a reusar a URL HTTP já pronta.
+
+  Como o link HTTP por IP caía no `return 301 https://$host` do nginx e o certificado é do domínio,
+  o equipamento quebrava na validação. A rota de download ganhou exceção no servidor da porta 80
+  (`location ~ ^/homeferramentas/firmware/dl/`), do mesmo jeito que o portal do hotspot, com
+  `proxy_buffering off` para não bufferizar imagem de firmware inteira.
+
+  O HTTPS por IP continua batendo em certificado do domínio — para navegador, use o HTTPS e troque
+  o IP pelo domínio; para equipamento, o link indicado é o HTTP.
+
+  Arquivos: `clientes/firmware_views.py` (`_gerar_links`, `_host_porta`),
+  `/etc/nginx/sites-enabled/crm`.
+
+---
+
 ## [Não publicado] — 2026-09-06 (Arquivos/Firmware: renomear pasta)
 
 ### Adicionado
