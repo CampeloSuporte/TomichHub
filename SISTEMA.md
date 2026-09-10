@@ -293,9 +293,13 @@ Os banimentos do fail2ban **não** têm modelo: a fonte da verdade é o `fail2ba
 ### VPN
 
 **OpenVPN:**
-- Configuração automática de servidor no MikroTik
+- Configuração automática de servidor no MikroTik (`clientes/openvpn_manager.py`)
 - Geração de certificados e scripts de instalação
+- Usuário no profile PPP de VPN que a RB já usa (`OpenVPNConfig.ppp_profile`); pool próprio
+  `OPEN_VPN` opcional (`usar_profile_existente`), com checagem de colisão de rotas
+- Aborta sem alterar a RB se já houver `ovpn-server` do cliente
 - Gestão de usuários/peers com download de configs
+- Ver `docs/openvpn_mikrotik_servidor.md`
 
 **Túnel OpenVPN por cliente (CRM como servidor):**
 - Instância systemd dedicada por túnel (porta, `tun-crm-N` e `/29` próprios)
