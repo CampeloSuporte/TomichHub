@@ -5,6 +5,42 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-10 (OpenVPN no MikroTik: usuário no profile de VPN da RB)
+
+### Corrigido
+
+- **OpenVPN gerado pela aba VPN não alcançava rotas que o L2TP da mesma RB alcançava**: o túnel
+  subia, mas o usuário caía no profile `OPEN_VPN`, com pool fixo `192.168.250.128-254` e regra
+  `NAT_OpenVPN` mascarando **tudo** para o IP público, sem exceção para destino interno. A rede
+  do cliente é montada em cima do pool do L2TP: na CONECTONLINE (192.140.66.160) o NAT do L2TP isenta
+  `LOOPBACKVPNS`, as loopbacks dos sites Starlink ligados por L2TP. O usuário OpenVPN chegava nesses
+  sites com origem pública e a resposta saía pela internet do site. Na 45.180.36.1, o tráfego pela
+  `Procyon-VPN` sai sem NAT e a outra ponta não conhece o 192.168.250.x.
+
+  Agora, por padrão, o usuário entra no **profile PPP de VPN que a RB já usa**
+  (`_detectar_profile_vpn`: o mais usado pelos secrets L2TP/PPTP/SSTP/OVPN, com local-address e
+  pool). Plano de assinante nunca é escolhido: ficam de fora o default-profile dos pppoe-servers,
+  profiles usados por secrets pppoe e profiles com rate-limit. Na ALTA RADIO, um secret pptp
+  apontava para o profile `pppoe`. Na dúvida, cai no pool próprio. Nesse modo, pool, profile e NAT
+  próprios não são criados. O pool próprio (`OPEN_VPN`) virou
+  opção em *Configurações avançadas → Profile PPP dos usuários*, e antes de criá-lo a plataforma
+  confere se ele se sobrepõe a rotas da RB (`_rotas_no_pool`). Novos campos
+  `OpenVPNConfig.usar_profile_existente` e `ppp_profile` (migração 0114); o profile usado aparece
+  no card, e usuários adicionais entram no mesmo profile.
+- **Servidor OpenVPN do cliente era sobrescrito**: no RouterOS v6 (e na maioria dos v7) só existe um
+  `ovpn-server`, e o `set` trocava porta, certificado e profile do servidor que o cliente já usava
+  (na 45.180.36.1 o servidor próprio da 51194 virou o da plataforma na 61194). Nos v7 com lista de
+  instâncias, `remove [find]` apagava todas. Agora a execução aborta, sem alterar nada, se houver
+  servidor ativo com certificado que não é o da plataforma. Em modo lista, remove só as instâncias
+  da plataforma.
+- **`_pool_cidr` sempre usava "IP inicial + /25"**: num pool `.2-.254` o NAT cobria só `.0/25`.
+  Passou a usar o menor prefixo que cobre o pool inteiro.
+
+Configurações antigas continuam como estão nas RBs: nada é reconfigurado sozinho. Doc:
+[docs/openvpn_mikrotik_servidor.md](docs/openvpn_mikrotik_servidor.md).
+
+---
+
 ## [Não publicado] — 2026-09-08 (Arquivos/Firmware: links de compartilhamento por IP)
 
 ### Corrigido

@@ -3,17 +3,29 @@ openvpn_manager.py — Criação automatizada de OpenVPN Server em MikroTik
 Suporta RouterOS v6 e v7.
 """
 import io
+import ipaddress
 import os
 import re
 import time
 import secrets
 import string
 import logging
+from collections import Counter
+
 import paramiko
 
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+# Nomes que a plataforma cria na RB — servem também para reconhecer o que é
+# dela (e o que é do cliente) ao reconfigurar.
+PROFILE_PLATAFORMA = 'OPEN_VPN'
+CERT_SERVIDOR      = 'Servidor-OPEN'
+
+# Serviços PPP que são VPN de acesso remoto (pppoe/any ficam de fora: num
+# concentrador os profiles deles são os planos dos assinantes).
+VPN_SERVICOS = ('l2tp', 'pptp', 'sstp', 'ovpn')
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -26,16 +38,43 @@ def gerar_senha(tamanho=16):
     return ''.join(secrets.choice(alfabeto) for _ in range(tamanho))
 
 
+def _pool_redes(pool_ranges):
+    """Blocos CIDR exatos de um pool no formato do RouterOS: 'a-b', vários
+    separados por vírgula, CIDR ou IP solto."""
+    redes = []
+    for parte in (pool_ranges or '').split(','):
+        parte = parte.strip()
+        if not parte:
+            continue
+        if '-' in parte:
+            ini, fim = (ipaddress.ip_address(p.strip()) for p in parte.split('-', 1))
+            redes.extend(ipaddress.summarize_address_range(ini, fim))
+        else:
+            redes.append(ipaddress.ip_network(parte, strict=False))
+    return redes
+
+
+def _cobertura(redes):
+    """Menor prefixo único que contém todas as redes."""
+    menor = min(r.network_address for r in redes)
+    maior = max(r.broadcast_address for r in redes)
+    prefixo = menor.max_prefixlen
+    while True:
+        rede = ipaddress.ip_network(f'{menor}/{prefixo}', strict=False)
+        if maior in rede:
+            return rede
+        prefixo -= 1
+
+
 def _pool_cidr(pool_ranges):
     """
-    Dado '192.168.250.128-192.168.250.254', calcula o CIDR
-    do primeiro endereço com /25 (padrão do script de referência).
-    Usa o IP de início + /25.
+    src-address da regra NAT_OpenVPN: o menor prefixo que cobre o pool
+    inteiro. Antes era sempre "IP inicial + /25" (herança do script de
+    referência), que só acerta o pool padrão .128-.254 — num pool
+    '.2-.254' o NAT cobria só .0/25 e quem recebia IP de .128 pra cima
+    ficava sem NAT.
     """
-    inicio = pool_ranges.split('-')[0].strip()
-    partes = inicio.split('.')
-    # O /25 começa no octeto .128 → 192.168.250.128/25
-    return f"{partes[0]}.{partes[1]}.{partes[2]}.{partes[3]}/25"
+    return str(_cobertura(_pool_redes(pool_ranges)))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -46,6 +85,11 @@ def _cmds_base(cfg):
     """
     Gera a lista de comandos compartilhados entre v6 e v7.
     Marcadores '__DELAY_N__' são tratados como time.sleep(N) no executor.
+
+    `cfg['criar_pool']` False = o usuário entra num profile de VPN que a RB
+    já tem (`cfg['ppp_profile']`, achado por `_detectar_profile_vpn`): nada
+    de pool, profile ou NAT próprios — é a faixa desse profile que a rede do
+    cliente já roteia e trata no NAT.
     """
     nome       = cfg['nome_vpn']
     ip_pub     = cfg['ip_publico']
@@ -56,9 +100,9 @@ def _cmds_base(cfg):
     password   = cfg['vpn_password']
     passphrase = cfg['cert_passphrase']
     rate_limit = cfg['rate_limit']
-    pool_cidr  = _pool_cidr(pool)
+    profile    = cfg['ppp_profile']
 
-    return [
+    cmds = [
         # ── Limpar arquivos exportados anteriores ─────────────────────────
         f'/file remove [find name="CA.crt"]',
         f'/file remove [find name="{nome}.crt"]',
@@ -95,27 +139,32 @@ def _cmds_base(cfg):
         '__DELAY_3__',
         f'/certificate export-certificate {nome} type=pem file-name={nome} export-passphrase={passphrase}',
         '__DELAY_3__',                      # aguarda escrita dos arquivos
+    ]
 
-        # ── NAT ───────────────────────────────────────────────────────────
-        f'/ip firewall nat remove [find comment="NAT_OpenVPN"]',
-        f'/ip firewall nat add chain=srcnat action=src-nat '
-        f'comment="NAT_OpenVPN" '
-        f'src-address={pool_cidr} to-addresses={ip_pub}',
+    if cfg['criar_pool']:
+        cmds += [
+            # ── NAT ───────────────────────────────────────────────────────
+            f'/ip firewall nat remove [find comment="NAT_OpenVPN"]',
+            f'/ip firewall nat add chain=srcnat action=src-nat '
+            f'comment="NAT_OpenVPN" '
+            f'src-address={_pool_cidr(pool)} to-addresses={ip_pub}',
 
-        # ── Pool de IPs ───────────────────────────────────────────────────
-        f'/ip pool remove [find name=POOL_OpenVPN]',
-        f'/ip pool add name=POOL_OpenVPN ranges={pool}',
+            # ── Pool de IPs ───────────────────────────────────────────────
+            f'/ip pool remove [find name=POOL_OpenVPN]',
+            f'/ip pool add name=POOL_OpenVPN ranges={pool}',
 
-        # ── Profile PPP ───────────────────────────────────────────────────
-        f'/ppp profile remove [find name=OPEN_VPN]',
-        f'/ppp profile add name=OPEN_VPN local-address={local_ip} '
-        f'remote-address=POOL_OpenVPN rate-limit={rate_limit} '
-        f'change-tcp-mss=yes use-encryption=yes',
+            # ── Profile PPP ───────────────────────────────────────────────
+            f'/ppp profile remove [find name={PROFILE_PLATAFORMA}]',
+            f'/ppp profile add name={PROFILE_PLATAFORMA} local-address={local_ip} '
+            f'remote-address=POOL_OpenVPN rate-limit={rate_limit} '
+            f'change-tcp-mss=yes use-encryption=yes',
+        ]
 
+    return cmds + [
         # ── Usuário VPN ───────────────────────────────────────────────────
         f'/ppp secret remove [find name={username}]',
         f'/ppp secret add name={username} password={password} '
-        f'service=ovpn profile=OPEN_VPN',
+        f'service=ovpn profile="{profile}"',
 
         # ── Firewall ──────────────────────────────────────────────────────
         f'/ip firewall filter remove [find comment="OPENVPN SERVER"]',
@@ -136,20 +185,24 @@ def _gerar_mac():
     return ':'.join(f'{b:02X}' for b in mac)
 
 
-def _cmd_ovpn_server_lista(cfg):
+def _cmd_ovpn_server_lista(cfg, remover=()):
     """`/interface ovpn-server server` como LISTA (`add`) — suporte a
     múltiplas instâncias, que só existe em builds recentes do v7 (não achamos
     um número de versão fixo confiável; ver `_ovpn_server_suporta_lista`,
-    que detecta isso direto no equipamento em vez de assumir pela versão)."""
+    que detecta isso direto no equipamento em vez de assumir pela versão).
+
+    Remove só as instâncias da própria plataforma (`remover`, vindas de
+    `_checar_servidor_existente`) e a de mesmo nome — antes era
+    `remove [find]`, que apagava junto qualquer servidor OpenVPN do cliente."""
     porta  = cfg['porta']
     nome   = cfg['nome_vpn']
     mac    = _gerar_mac()
+    nomes  = list(dict.fromkeys([*remover, nome]))
     return [
-        # Remove todas as instâncias anteriores (evita conflito de porta/protocolo)
-        f'/interface ovpn-server server remove [find]',
+        *(f'/interface ovpn-server server remove [find name="{n}"]' for n in nomes),
         f'/interface ovpn-server server add name={nome} port={porta} '
         f'auth=sha1 cipher=aes256-cbc disabled=no mac-address={mac} '
-        f'certificate=Servidor-OPEN default-profile=OPEN_VPN '
+        f'certificate={CERT_SERVIDOR} default-profile="{cfg["ppp_profile"]}" '
         f'require-client-certificate=yes',
     ]
 
@@ -165,7 +218,7 @@ def _cmd_ovpn_server_singleton_v7(cfg):
     return [
         f'__PTY__/interface ovpn-server server set enabled=yes port={porta} '
         f'auth=sha1 cipher=aes256-cbc '
-        f'certificate=Servidor-OPEN default-profile=OPEN_VPN '
+        f'certificate={CERT_SERVIDOR} default-profile="{cfg["ppp_profile"]}" '
         f'require-client-certificate=yes',
     ]
 
@@ -184,7 +237,7 @@ def comandos_ros6(cfg):
     cmds.append(
         f'__PTY__/interface ovpn-server server set enabled=yes port={porta} '
         f'auth=sha1 cipher=aes256 '
-        f'certificate=Servidor-OPEN default-profile=OPEN_VPN '
+        f'certificate={CERT_SERVIDOR} default-profile="{cfg["ppp_profile"]}" '
         f'require-client-certificate=yes'
     )
     return cmds
@@ -237,6 +290,190 @@ def _ovpn_server_suporta_lista(client):
     count-only` só é um comando válido em menus de lista."""
     out, err = _exec(client, '/interface ovpn-server server print count-only', timeout=15)
     return not _erro_mikrotik(out) and not _erro_mikrotik(err)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Checagens prévias — só leitura, rodam antes de qualquer alteração na RB
+# ─────────────────────────────────────────────────────────────────────────────
+
+_KV_RE = re.compile(r'([\w-]+)=("[^"]*"|\S*)')
+
+
+def _ler_ovpn_server(client, usa_lista):
+    """Estado atual do(s) servidor(es) OpenVPN da RB:
+    [{'nome', 'ativo', 'certificado', 'porta'}]."""
+    if usa_lista:
+        out, _ = _exec(client, '/interface ovpn-server server print terse', timeout=20)
+        instancias = []
+        for linha in out.splitlines():
+            pares = list(_KV_RE.finditer(linha))
+            kv = {m.group(1): m.group(2).strip('"') for m in pares}
+            if 'name' not in kv:
+                continue
+            flags = linha[:pares[0].start()]
+            instancias.append({
+                'nome':        kv['name'],
+                'ativo':       'X' not in flags and kv.get('disabled') != 'yes',
+                'certificado': kv.get('certificate', ''),
+                'porta':       kv.get('port', ''),
+            })
+        return instancias
+
+    out, _ = _exec(client, '/interface ovpn-server server print', timeout=20)
+    kv = {}
+    for linha in out.splitlines():
+        chave, sep, valor = linha.partition(':')
+        if sep:
+            kv[chave.strip()] = valor.strip()
+    return [{
+        'nome':        '',
+        'ativo':       kv.get('enabled') == 'yes',
+        'certificado': kv.get('certificate', ''),
+        'porta':       kv.get('port', ''),
+    }]
+
+
+def _checar_servidor_existente(instancias, porta, usa_lista):
+    """
+    Retorna (erro, instâncias_da_plataforma_a_remover).
+
+    No v6 (e na maioria dos v7) só existe UM ovpn-server: o `set` da
+    plataforma trocava porta, certificado e profile do servidor que o cliente
+    já usava. Achado real (CONECTONLINE, 45.180.36.1): servidor próprio na
+    51194 com certificados `ovpn-server`/`ovpn-ca` virou o da plataforma na
+    61194. Servidor ativo com certificado que não é o da plataforma = do
+    cliente → não mexe. Em modo lista só barra se a porta colidir.
+    """
+    alheios = [i for i in instancias
+               if i['ativo'] and i['certificado'] not in (CERT_SERVIDOR, 'none', '')]
+    if not usa_lista:
+        if alheios:
+            i = alheios[0]
+            return (
+                f'A RB já tem um servidor OpenVPN próprio ativo (porta {i["porta"]}, '
+                f'certificado "{i["certificado"]}"). Esta versão do RouterOS só tem um '
+                f'ovpn-server: configurar por cima derrubaria a VPN que o cliente já usa. '
+                f'Nada foi alterado na RB.'
+            ), []
+        return '', []
+
+    for i in alheios:
+        if str(i['porta']) == str(porta):
+            return (
+                f'A instância OpenVPN "{i["nome"]}" da RB (certificado '
+                f'"{i["certificado"]}") já usa a porta {porta}. Escolha outra porta. '
+                f'Nada foi alterado na RB.'
+            ), []
+    return '', [i['nome'] for i in instancias if i['certificado'] == CERT_SERVIDOR and i['nome']]
+
+
+def _detectar_profile_vpn(client):
+    """
+    Profile PPP de VPN que a RB já usa — o dos secrets L2TP/PPTP/SSTP/OVPN do
+    próprio cliente, o mais usado que tenha local-address e remote-address
+    apontando para um pool. Retorna {'nome', 'secrets', 'local', 'pool'} ou
+    None (aí o chamador cai no pool próprio, o comportamento antigo).
+
+    Plano de assinante nunca serve, mesmo que algum secret de VPN aponte para
+    ele — ficam de fora o default-profile dos pppoe-servers, profiles usados
+    por secrets pppoe e profiles com rate-limit. Achado real (ALTA RADIO): um
+    secret pptp usava o profile "pppoe" (IP público local, pool CGNAT_01), que
+    é o default-profile dos 12 pppoe-servers da RB.
+
+    Por que: o profile OPEN_VPN com pool fixo 192.168.250.x é uma faixa que
+    a rede do cliente não conhece. Achado real (CONECTONLINE, 192.140.66.160):
+    o NAT do L2TP isenta `LOOPBACKVPNS` (loopbacks dos sites Starlink ligados
+    por L2TP) e a rede roteia 10.190.180.0/24 de volta; o usuário OpenVPN,
+    em 192.168.250.x e com NAT_OpenVPN mascarando tudo para o IP público,
+    chegava nos sites com origem pública e a resposta saía pela internet do
+    site. Mesma RB, L2TP acessava e OpenVPN não. Caindo no profile do L2TP,
+    o OpenVPN herda o roteamento e o NAT que já funcionam.
+    """
+    out, err = _exec(
+        client,
+        ':foreach i in=[/ppp secret find where service!=pppoe and service!=any] do={'
+        ':put ([/ppp secret get $i service] . "|" . [/ppp secret get $i profile])}',
+        timeout=60)
+    if _erro_mikrotik(out) or _erro_mikrotik(err):
+        return None
+    uso = Counter()
+    for linha in out.splitlines():
+        servico, _, profile = linha.strip().partition('|')
+        if servico in VPN_SERVICOS and profile and profile != PROFILE_PLATAFORMA:
+            uso[profile] += 1
+    if not uso:
+        return None
+
+    out, _ = _exec(
+        client,
+        ':foreach i in=[/ppp profile find] do={:put ([/ppp profile get $i name] . "|" . '
+        '[/ppp profile get $i local-address] . "|" . [/ppp profile get $i remote-address] . "|" . '
+        '[/ppp profile get $i rate-limit])}',
+        timeout=30)
+    perfis = {}
+    for linha in out.splitlines():
+        partes = linha.strip().split('|')
+        if len(partes) == 4:
+            perfis[partes[0]] = partes[1:]
+
+    out, _ = _exec(client, ':foreach i in=[/ip pool find] do={:put [/ip pool get $i name]}',
+                   timeout=30)
+    pools = {l.strip() for l in out.splitlines() if l.strip()}
+
+    out, _ = _exec(
+        client,
+        ':foreach i in=[/interface pppoe-server server find] do={'
+        ':put [/interface pppoe-server server get $i default-profile]}',
+        timeout=30)
+    de_pppoe = {l.strip() for l in out.splitlines() if l.strip()}
+
+    for nome, qtd in uso.most_common():
+        local, remoto, rate_limit = perfis.get(nome, ('', '', ''))
+        if not local or remoto not in pools or rate_limit or nome in de_pppoe:
+            continue
+        # Contagem feita no próprio RouterOS: num concentrador são milhares de secrets.
+        out, _ = _exec(client, f'/ppp secret print count-only where profile="{nome}" and service=pppoe',
+                       timeout=30)
+        if out.strip() != '0':
+            continue
+        return {'nome': nome, 'secrets': qtd, 'local': local, 'pool': remoto}
+    return None
+
+
+def _rotas_no_pool(client, pool, local_ip):
+    """
+    Rotas da RB que se sobrepõem ao pool próprio (ou ao IP local) — sinal de
+    que a faixa já é usada na rede do cliente. Retorna ['dst via gw', ...],
+    [] se livre, ou None se não deu para conferir. Rotas desabilitadas e as
+    dinâmicas de sessões OpenVPN (reexecução com usuários conectados) não
+    contam — no PROMOFI, uma estática desabilitada 192.168.250.0/24 barrava
+    a reexecução à toa.
+    """
+    try:
+        redes = _pool_redes(pool) + [ipaddress.ip_network(f'{local_ip}/32')]
+        cobertura = _cobertura(redes)
+    except ValueError:
+        return None
+    out, err = _exec(client, f'/ip route print terse where dst-address in {cobertura}',
+                     timeout=30)
+    if _erro_mikrotik(out) or _erro_mikrotik(err):
+        return None
+    conflitos = []
+    for linha in out.splitlines():
+        pares = list(_KV_RE.finditer(linha))
+        if not pares or 'X' in linha[:pares[0].start()]:
+            continue
+        kv = {m.group(1): m.group(2).strip('"') for m in pares}
+        gateway = kv.get('gateway', '')
+        if 'dst-address' not in kv or 'ovpn-' in gateway:
+            continue
+        try:
+            dst = ipaddress.ip_network(kv['dst-address'], strict=False)
+        except ValueError:
+            continue
+        if any(dst.overlaps(r) for r in redes):
+            conflitos.append(f'{dst} via {gateway or "?"}')
+    return conflitos
 
 
 def _exec_pty(client, cmd, timeout=60):
@@ -405,6 +642,14 @@ def gerar_ovpn(ip_pub, porta, ca_pem, cert_pem, key_pem, passphrase=''):
 # Tarefa principal — chamada em thread separada
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _falhar(config, logs, msg):
+    config.logs     = '\n'.join(logs)
+    config.status   = 'erro'
+    config.erro_msg = msg
+    config.save(update_fields=['logs', 'status', 'erro_msg'])
+    logger.error(f'OpenVPN [{config.id}]: {msg}')
+
+
 def executar_config_openvpn(config_id):
     """
     Conecta ao MikroTik, aplica a configuração de OpenVPN,
@@ -437,10 +682,9 @@ def executar_config_openvpn(config_id):
             'rate_limit':     config.rate_limit,
         }
 
-        cmds = comandos_ros7(cfg) if config.ros_version == '7' else comandos_ros6(cfg)
-        # v7: o comando final (`add` em lista vs `set` em objeto único)
-        # depende de sondar o equipamento — só dá pra decidir depois de
-        # conectar (ver bloco após `client.connect`, abaixo).
+        # Os comandos só são montados depois de conectar: profile PPP, pool
+        # próprio e, no v7, `add` em lista vs `set` em objeto único dependem
+        # de sondar o equipamento (checagens prévias, abaixo).
 
         # ── Conectar via SSH ──────────────────────────────────────────────
         host_conexao  = acesso.host
@@ -479,16 +723,58 @@ def executar_config_openvpn(config_id):
         client.get_transport().set_keepalive(10)
         logger.info(f'OpenVPN [{config_id}]: SSH conectado a {acesso.host}')
 
+        usa_lista = config.ros_version == '7' and _ovpn_server_suporta_lista(client)
         if config.ros_version == '7':
-            usa_lista = _ovpn_server_suporta_lista(client)
-            cmds += _cmd_ovpn_server_lista(cfg) if usa_lista else _cmd_ovpn_server_singleton_v7(cfg)
             logger.info(
                 f'OpenVPN [{config_id}]: /interface ovpn-server server '
                 f'{"suporta lista (add)" if usa_lista else "é objeto único (set)"}'
             )
 
-        # ── Executar comandos ─────────────────────────────────────────────
+        # ── Checagens prévias (só leitura) ────────────────────────────────
+        # Se alguma barrar, retorna antes do primeiro comando: a RB fica
+        # exatamente como estava.
         logs = []
+        erro, remover = _checar_servidor_existente(
+            _ler_ovpn_server(client, usa_lista), config.porta, usa_lista)
+        if erro:
+            _falhar(config, logs, erro)
+            return
+
+        perfil = _detectar_profile_vpn(client) if config.usar_profile_existente else None
+        if perfil:
+            cfg['ppp_profile'], cfg['criar_pool'] = perfil['nome'], False
+            logs.append(
+                f'# Profile PPP "{perfil["nome"]}" (já usado por {perfil["secrets"]} '
+                f'secret(s) de VPN desta RB; local {perfil["local"]}, pool {perfil["pool"]}).\n'
+                f'# O usuário OpenVPN cai na mesma faixa do L2TP/demais VPNs, que a rede já\n'
+                f'# roteia e trata no NAT. Pool, profile e NAT próprios (POOL_OpenVPN,\n'
+                f'# {PROFILE_PLATAFORMA}, NAT_OpenVPN) não são criados; o rate-limit do cadastro não se aplica.\n'
+            )
+        else:
+            cfg['ppp_profile'], cfg['criar_pool'] = PROFILE_PLATAFORMA, True
+            motivo = ('pool próprio escolhido no cadastro' if not config.usar_profile_existente
+                      else 'nenhum profile de VPN reaproveitável na RB')
+            logs.append(f'# Profile PPP {PROFILE_PLATAFORMA} com pool {cfg["vpn_pool"]} ({motivo}).\n')
+            conflitos = _rotas_no_pool(client, cfg['vpn_pool'], cfg['vpn_local_ip'])
+            if conflitos:
+                _falhar(config, logs,
+                        f'O pool {cfg["vpn_pool"]} (IP local {cfg["vpn_local_ip"]}) se sobrepõe a '
+                        f'rotas que já existem na RB: {", ".join(conflitos[:5])}. Essa faixa já é '
+                        f'usada na rede do cliente — escolha outro pool nas Configurações '
+                        f'avançadas. Nada foi alterado na RB.')
+                return
+            if conflitos is None:
+                logs.append('# Aviso: não deu para conferir se o pool colide com rotas da RB.\n')
+
+        config.ppp_profile = cfg['ppp_profile']
+        config.save(update_fields=['ppp_profile'])
+
+        cmds = comandos_ros7(cfg) if config.ros_version == '7' else comandos_ros6(cfg)
+        if config.ros_version == '7':
+            cmds += (_cmd_ovpn_server_lista(cfg, remover) if usa_lista
+                     else _cmd_ovpn_server_singleton_v7(cfg))
+
+        # ── Executar comandos ─────────────────────────────────────────────
         for cmd in cmds:
             if cmd.startswith('__DELAY_'):
                 secs = int(cmd.split('_')[3])
@@ -649,7 +935,9 @@ def adicionar_usuario_openvpn(usuario_id):
             '__DELAY_3__',
             # Remove usuário PPP anterior e recria
             f'/ppp secret remove [find name={username}]',
-            f'/ppp secret add name={username} password={password} service=ovpn profile=OPEN_VPN',
+            # Mesmo profile do usuário principal (o de VPN da RB ou OPEN_VPN)
+            f'/ppp secret add name={username} password={password} service=ovpn '
+            f'profile="{config.ppp_profile or PROFILE_PLATAFORMA}"',
         ]
 
         logs = []

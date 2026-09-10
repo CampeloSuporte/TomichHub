@@ -2013,6 +2013,18 @@
                         </div>
                         <div id="ovpn-avancado" style="display:none;" class="col-12">
                             <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label text-muted" style="font-size:.82rem">Profile PPP dos usuários</label>
+                                    <select id="ovpn-profile-modo" class="form-select form-select-sm"
+                                        style="background:var(--card-bg);color:var(--text-light);border-color:var(--border);">
+                                        <option value="existente" style="background-color:var(--card-bg);color:var(--text-light);">Usar o profile de VPN que a RB já usa (recomendado)</option>
+                                        <option value="proprio" style="background-color:var(--card-bg);color:var(--text-light);">Criar pool e profile próprios (OPEN_VPN)</option>
+                                    </select>
+                                    <div style="font-size:.74rem;color:rgba(88,166,255,.45);margin-top:4px;">
+                                        No recomendado o usuário OpenVPN recebe IP da mesma faixa do L2TP da RB, que a rede já roteia e trata no NAT.
+                                        Pool, IP local e rate limit abaixo só valem no pool próprio — ou quando a RB não tem profile de VPN.
+                                    </div>
+                                </div>
                                 <div class="col-md-6">
                                     <label class="form-label text-muted" style="font-size:.82rem">Pool de IPs VPN</label>
                                     <input id="ovpn-pool" type="text" class="form-control form-control-sm"
@@ -8845,6 +8857,7 @@ function getCsrfToken(){
         const pool      = document.getElementById('ovpn-pool').value.trim();
         const localIp   = document.getElementById('ovpn-local-ip').value.trim();
         const rate      = document.getElementById('ovpn-rate').value.trim();
+        const usarProf  = document.getElementById('ovpn-profile-modo').value !== 'proprio';
         const erroDiv   = document.getElementById('ovpn-modal-erro');
 
         if(!acessoId || !ipPub || !nome) {
@@ -8864,6 +8877,7 @@ function getCsrfToken(){
                 body: JSON.stringify({
                     acesso_id: acessoId, ip_publico: ipPub, porta, nome_vpn: nome,
                     ros_version: rosVer, vpn_pool: pool, vpn_local_ip: localIp, rate_limit: rate,
+                    usar_profile_existente: usarProf,
                 }),
             });
             const d = await r.json();
@@ -8937,6 +8951,8 @@ function getCsrfToken(){
                                 <i class="fas fa-user me-1"></i>Usuário: <code style="color:#ffaa00">${c.vpn_username}</code>
                                 &nbsp;·&nbsp;
                                 <i class="fas fa-key me-1"></i>Senha: <code style="color:#ffaa00">${c.vpn_password}</code>
+                                &nbsp;·&nbsp;
+                                <i class="fas fa-network-wired me-1"></i>Profile: <code style="color:var(--accent-cyan)">${String(c.ppp_profile||'').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}</code>
                             </div>` : ''}
                             <div style="margin-top:6px;">
                                 <i class="fas fa-circle me-1" style="color:${statusColor};font-size:.65rem;"></i>

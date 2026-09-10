@@ -8042,6 +8042,8 @@ def openvpn_listar(request, cliente_id):
             'acesso_tipo': c.acesso.tipo if c.acesso else '',
             'vpn_username': c.vpn_username,
             'vpn_password': c.vpn_password,
+            'ppp_profile': c.ppp_profile,
+            'usar_profile_existente': c.usar_profile_existente,
             'tem_arquivo': bool(c.ovpn_path),
             'criado_em':   c.criado_em.strftime('%d/%m/%Y %H:%M'),
             'usuarios':    usuarios,
@@ -8087,6 +8089,7 @@ def openvpn_criar(request, cliente_id):
             vpn_password    = body.get('vpn_password') or gerar_senha(14),
             cert_passphrase = body.get('cert_passphrase') or gerar_senha(10),
             rate_limit      = body.get('rate_limit', '50M/50M'),
+            usar_profile_existente = body.get('usar_profile_existente', True) is not False,
             status          = 'configurando',
         )
 
