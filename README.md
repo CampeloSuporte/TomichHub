@@ -198,10 +198,13 @@ Recursos adicionais:
 - Detalhes em [docs/tunel_openvpn_mikrotik.md](docs/tunel_openvpn_mikrotik.md)
 
 **OpenVPN Server no MikroTik do cliente (acesso remoto do NOC):**
-- Configuração automática do servidor no MikroTik via Netmiko
+- Configuração automática do servidor no MikroTik via SSH (Paramiko), RouterOS v6 e v7
 - Geração de certificados CA, server e cliente
-- Scripts de instalação para Windows, Linux e Android
+- Usuário OpenVPN entra no **profile PPP de VPN que a RB já usa** (o do L2TP), herdando roteamento
+  e NAT da rede do cliente; pool próprio (`OPEN_VPN`) é opcional e checa colisão com as rotas da RB
+- Checagens prévias só leitura: não sobrescreve servidor OpenVPN que o cliente já tenha
 - Gestão de usuários/peers com download de arquivos `.ovpn`
+- Detalhes em [docs/openvpn_mikrotik_servidor.md](docs/openvpn_mikrotik_servidor.md)
 
 ### RPKI e IRR
 
