@@ -2,6 +2,28 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 49 — 10/09/2026: OpenVPN no MikroTik — usuário caía numa faixa que a rede não conhece
+
+**O que foi implementado?**
+- 🐛 **OpenVPN gerado não alcançava rotas que o L2TP da mesma RB alcançava** (CONECTONLINE). O
+  usuário caía no profile `OPEN_VPN`, com pool fixo `192.168.250.x` e NAT de tudo para o IP público,
+  enquanto a rede do cliente foi montada em cima do pool do L2TP (`10.190.180.0/24`, com exceções
+  de NAT como `!LOOPBACKVPNS`). Agora, por padrão, o usuário OpenVPN entra no **profile de VPN que a
+  RB já usa** (`_detectar_profile_vpn`) e herda roteamento e NAT. O pool próprio fica como opção
+  nas Configurações avançadas e só é criado depois de conferir colisão com as rotas da RB.
+- 🛡️ **Não sobrescreve mais o servidor OpenVPN do cliente**: no v6 o `set` trocava porta e
+  certificado do servidor existente; nos v7 com lista, `remove [find]` apagava todas as instâncias.
+  Agora aborta (v6/objeto único) ou remove só as instâncias da plataforma (lista).
+- 🐛 `_pool_cidr` era sempre "IP inicial + /25": pools fora do padrão ficavam com metade sem NAT.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[openvpn_mikrotik_servidor.md](openvpn_mikrotik_servidor.md)** | Novo — fluxo, escolha do profile PPP, servidor existente, configurações antigas, diagnóstico |
+
+---
+
 ### Sessão 48 — 27/08/2026: Topologia — rótulos sobrepostos e Áreas de documentação
 
 **O que foi implementado?**

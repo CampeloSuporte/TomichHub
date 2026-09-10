@@ -990,6 +990,12 @@ class OpenVPNConfig(models.Model):
     vpn_password    = models.CharField(max_length=100)
     cert_passphrase = models.CharField(max_length=100)
     rate_limit      = models.CharField(max_length=50, default='50M/50M')
+    # True = o usuário OpenVPN entra no profile PPP de VPN que a RB já usa
+    # (o do L2TP, em geral), caindo na faixa que a rede do cliente já roteia
+    # e trata no NAT. Pool/profile/NAT próprios (OPEN_VPN) só quando a RB
+    # não tem nenhum ou o operador pedir. Ver docs/openvpn_mikrotik_servidor.md.
+    usar_profile_existente = models.BooleanField(default=True)
+    ppp_profile     = models.CharField(max_length=100, blank=True, default='OPEN_VPN')
     ovpn_path       = models.CharField(max_length=500, blank=True)
     status          = models.CharField(max_length=20, choices=STATUS,
                                        default='configurando')
