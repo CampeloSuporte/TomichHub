@@ -352,9 +352,31 @@
                                         </div>
                                     </div>
                                     <ul class="nav nav-tabs mb-3">
-                                        <li class="nav-item"><a class="nav-link active" href="#">Padrão</a></li>
-                                        <li class="nav-item"><a class="nav-link" href="#"><i class="fas fa-plus"></i></a></li>
+                                        <li class="nav-item"><a class="nav-link active" href="#" onclick="event.preventDefault(); toggleNovoProtocolo(this, false)">Padrão</a></li>
+                                        <li class="nav-item"><a class="nav-link" href="#" title="Adicionar protocolo de acesso (mesmo IP)" onclick="event.preventDefault(); toggleNovoProtocolo(this)"><i class="fas fa-plus"></i></a></li>
                                     </ul>
+                                    <div class="novo-proto-form" data-padrao="{{ acesso.protocolo|upper }}" hidden>
+                                        <div class="np-campo">
+                                            <label>Hostname/IP</label>
+                                            <input type="text" value="{{ acesso.host }}" readonly tabindex="-1" title="O IP é o mesmo do acesso padrão">
+                                        </div>
+                                        <div class="np-campo">
+                                            <label>Porta</label>
+                                            <input type="number" class="np-porta" min="1" max="65535"
+                                                   onkeydown="if (event.key === 'Enter') { event.preventDefault(); salvarNovoProtocolo(this, {{ acesso.id }}); } else if (event.key === 'Escape') { toggleNovoProtocolo(this, false); }">
+                                        </div>
+                                        <div class="np-campo">
+                                            <label>Protocolo</label>
+                                            <select class="np-protocolo" onchange="sugerirPortaProtocolo(this)">
+                                                <option value="SSH">SSH</option>
+                                                <option value="TELNET">Telnet</option>
+                                                <option value="HTTP">HTTP</option>
+                                                <option value="HTTPS">HTTPS</option>
+                                                <option value="RDP">RDP</option>
+                                            </select>
+                                        </div>
+                                        <button type="button" class="np-salvar" title="Adicionar protocolo" onclick="salvarNovoProtocolo(this, {{ acesso.id }})"><i class="fas fa-plus"></i></button>
+                                    </div>
                                     <div class="info-row">
                                         <span class="info-label">Modelo</span>
                                         <span class="info-value">{{ acesso.modelo }}</span>
@@ -378,6 +400,10 @@
                                     <div class="info-row">
                                         <span class="info-label">Protocolo</span>
                                         <span class="info-value">{{ acesso.protocolo }}</span>
+                                    </div>
+                                    <div class="info-row protos-extras-row" {% if not acesso.protocolos_extras.all %}hidden{% endif %}>
+                                        <span class="info-label">Outros acessos</span>
+                                        <span class="protos-extras-lista">{% for p in acesso.protocolos_extras.all %}<span class="proto-chip" data-pid="{{ p.id }}" data-protocolo="{{ p.protocolo }}" data-porta="{{ p.porta }}">{{ p.protocolo }} {{ p.porta }}<button type="button" class="proto-chip-x" title="Remover {{ p.protocolo }} {{ p.porta }}" onclick="removerProtocoloExtra({{ p.id }}, this)">&times;</button></span>{% endfor %}</span>
                                     </div>
                                     <div class="info-row">
                                         <span class="info-label">winbox</span>
@@ -405,9 +431,13 @@
                                     {% endif %}
                                 <div class="mt-4">
                                 <button class="btn btn-access mb-2" 
-                                        onclick="acessarEquipamento('{{ acesso.protocolo|escapejs }}', '{{ acesso.host|escapejs }}', '{{ acesso.porta|escapejs }}', '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }})">
+                                        data-protocolo="{{ acesso.protocolo|upper }}" data-porta="{{ acesso.porta|default_if_none:'' }}"
+                                        onclick="acessarHost(this,
+                                            () => acessarEquipamento('{{ acesso.protocolo|escapejs }}', '{{ acesso.host|escapejs }}', '{{ acesso.porta|escapejs }}', '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}),
+                                            (proto, porta, pid) => acessarProtocoloExtra(proto, '{{ acesso.host|escapejs }}', porta, '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}, pid, {{ acesso.host_eh_privado|yesno:'true,false' }}))">
                                     <i class="fas fa-sign-in-alt me-2"></i> Acessar
                                 </button>
+                                <div class="acesso-escolha" hidden></div>
                                 {% if acesso.winbox %}
                                 <button class="btn btn-winbox mb-2"
                                         onclick="abrirWinboxWeb({{ acesso.id }})"
@@ -6503,7 +6533,211 @@ function getCsrfToken(){
     }
     </script>
 
-    <script src="{% static 'js/terminal_tab_manager.js' %}"></script>
+    <script src="{% static 'js/terminal_tab_manager.js' %}?v=protos1"></script>
+
+    <style>
+        /* Protocolos extras do host (aba "+" do card) */
+        .novo-proto-form {
+            display: grid;
+            grid-template-columns: minmax(0, 1.35fr) minmax(0, .85fr) minmax(0, 1fr) auto;
+            gap: 6px; align-items: end;
+            margin: -6px 0 12px; padding: 10px 12px 12px;
+            border: 1px solid var(--border); border-radius: 6px;
+            background: rgba(4, 8, 20, .55);
+        }
+        .novo-proto-form[hidden], .protos-extras-row[hidden], .acesso-escolha[hidden] { display: none !important; }
+        .np-campo label {
+            display: block; margin-bottom: 4px;
+            font-family: 'Inter', sans-serif; font-size: 11px; color: var(--text-muted); white-space: nowrap;
+        }
+        .np-campo input, .np-campo select, .np-salvar {
+            height: 32px; border: 1px solid var(--border); border-radius: 4px;
+            background: rgba(4, 8, 20, .9); color: var(--text-light); font-size: 12px; outline: none;
+        }
+        .np-campo input, .np-campo select { width: 100%; padding: 4px 8px; }
+        .np-campo input:focus, .np-campo select:focus { border-color: var(--cyan); }
+        .np-campo input[readonly] { color: var(--text-muted); cursor: default; }
+        .np-salvar { width: 32px; color: var(--text-muted); transition: color .15s, border-color .15s; }
+        .np-salvar:hover:not(:disabled) { color: var(--cyan); border-color: var(--cyan); }
+        .np-salvar:disabled { opacity: .5; cursor: wait; }
+
+        .protos-extras-lista { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+        .proto-chip {
+            display: inline-flex; align-items: center; gap: 4px; padding: 2px 3px 2px 8px;
+            border: 1px solid rgba(88, 166, 255, .35); border-radius: 10px;
+            background: rgba(88, 166, 255, .06); color: var(--cyan); font-size: 11px; white-space: nowrap;
+        }
+        .proto-chip-x { padding: 0 4px; border: none; background: none; color: var(--text-muted); font-size: 13px; line-height: 1; }
+        .proto-chip-x:hover { color: #e06060; }
+
+        .acesso-escolha {
+            display: flex; flex-direction: column; gap: 2px;
+            margin: -4px 0 8px; padding: 4px;
+            border: 1px solid var(--border); border-radius: 6px; background: rgba(4, 8, 20, .9);
+        }
+        .acesso-escolha-op {
+            display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px;
+            border: 1px solid transparent; border-radius: 4px; background: none;
+            color: var(--text-light); font-size: 12px; text-align: left;
+            transition: color .15s, border-color .15s, background-color .15s;
+        }
+        .acesso-escolha-op:hover { border-color: var(--cyan); background: rgba(88, 166, 255, .08); color: var(--cyan); }
+        .acesso-escolha-op i { width: 14px; text-align: center; color: var(--cyan); }
+        .aeo-proto { min-width: 52px; font-weight: 600; }
+        .aeo-porta { margin-left: auto; color: var(--text-muted); font-size: 11px; }
+    </style>
+    <script>
+    // ============================================
+    // PROTOCOLOS EXTRAS DO HOST (AcessoProtocolo)
+    // ============================================
+    // Aba "+" do card: protocolo + porta no mesmo IP, sem modal. Tudo é
+    // buscado a partir do card do botão clicado (nada de id), porque a busca
+    // de acessos exibe cópias dos cards.
+    const _PORTA_PADRAO_PROTO = {SSH: 22, TELNET: 23, HTTP: 80, HTTPS: 443, RDP: 3389};
+    const _ICONE_PROTO = {SSH: 'fa-terminal', TELNET: 'fa-terminal', HTTP: 'fa-globe', HTTPS: 'fa-lock', RDP: 'fa-desktop', WINBOX: 'fa-network-wired'};
+
+    function toggleNovoProtocolo(el, abrir) {
+        const card = el.closest('.card');
+        const form = card.querySelector('.novo-proto-form');
+        const vaiAbrir = abrir === undefined ? form.hidden : abrir;
+        form.hidden = !vaiAbrir;
+        const abas = card.querySelectorAll('.nav-tabs .nav-link');
+        abas[0].classList.toggle('active', !vaiAbrir);
+        abas[abas.length - 1].classList.toggle('active', vaiAbrir);
+        if (!vaiAbrir) return;
+
+        const porta = form.querySelector('.np-porta');
+        if (!porta.value) {
+            // Sugere o "outro lado" do padrão: host web ganha SSH e vice-versa
+            const sel = form.querySelector('.np-protocolo');
+            sel.value = ['SSH', 'TELNET'].includes(form.dataset.padrao) ? 'HTTPS' : 'SSH';
+            sugerirPortaProtocolo(sel);
+        }
+        porta.focus();
+        porta.select();
+    }
+
+    function sugerirPortaProtocolo(sel) {
+        const porta = sel.closest('.novo-proto-form').querySelector('.np-porta');
+        const sugerida = _PORTA_PADRAO_PROTO[sel.value];
+        porta.placeholder = sugerida;
+        // Só troca se o campo está vazio ou ainda com a sugestão de outro protocolo
+        if (!porta.value || Object.values(_PORTA_PADRAO_PROTO).includes(parseInt(porta.value, 10))) {
+            porta.value = sugerida;
+        }
+    }
+
+    async function _postProtocolo(url, body) {
+        const r = await fetch(url, {
+            method: 'POST',
+            headers: {'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest'},
+            body,
+        });
+        // Sessão expirada vira 302 → HTML do login, não JSON
+        const data = await r.json().catch(() => null);
+        if (!data) throw new Error('Sessão expirada ou sem permissão. Recarregue a página.');
+        if (!data.success) throw new Error(data.error || 'Operação não concluída.');
+        return data;
+    }
+
+    async function salvarNovoProtocolo(el, acessoId) {
+        const card = el.closest('.card');
+        const form = card.querySelector('.novo-proto-form');
+        const btn = form.querySelector('.np-salvar');
+        const portaInput = form.querySelector('.np-porta');
+        if (!portaInput.value.trim()) { portaInput.focus(); return; }
+
+        const body = new FormData();
+        body.append('protocolo', form.querySelector('.np-protocolo').value);
+        body.append('porta', portaInput.value.trim());
+        btn.disabled = true;
+        try {
+            const data = await _postProtocolo(`/clientes/acessos/${acessoId}/protocolos/adicionar/`, body);
+            _adicionarChipProtocolo(card, data.protocolo);
+            portaInput.value = '';
+            toggleNovoProtocolo(card, false);
+        } catch (e) {
+            uiAlert({titulo: 'Protocolo de acesso', msg: e.message, icone: 'fas fa-exclamation-triangle', iconeCor: '#e0a060'});
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function _adicionarChipProtocolo(card, p) {
+        const chip = document.createElement('span');
+        chip.className = 'proto-chip';
+        chip.dataset.pid = p.id;
+        chip.dataset.protocolo = p.protocolo;
+        chip.dataset.porta = p.porta;
+        chip.textContent = `${p.protocolo} ${p.porta}`;
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'proto-chip-x';
+        x.title = `Remover ${p.protocolo} ${p.porta}`;
+        x.innerHTML = '&times;';
+        // Atributo (não .onclick) para sobreviver à cópia do card na busca
+        x.setAttribute('onclick', `removerProtocoloExtra(${Number(p.id)}, this)`);
+        chip.appendChild(x);
+        const row = card.querySelector('.protos-extras-row');
+        row.querySelector('.protos-extras-lista').appendChild(chip);
+        row.hidden = false;
+    }
+
+    async function removerProtocoloExtra(pid, btn) {
+        const chip = btn.closest('.proto-chip');
+        const ok = await uiConfirm({
+            titulo: 'Remover protocolo',
+            msg: `Remover o acesso ${chip.dataset.protocolo} na porta ${chip.dataset.porta}?`,
+            icone: 'fas fa-trash', iconeCor: '#e06060', btnLabel: 'Remover',
+        });
+        if (!ok) return;
+        try {
+            await _postProtocolo(`/clientes/acessos/protocolos/${pid}/remover/`, new FormData());
+            const row = chip.closest('.protos-extras-row');
+            chip.remove();
+            if (!row.querySelector('.proto-chip')) row.hidden = true;
+        } catch (e) {
+            uiAlert({titulo: 'Protocolo de acesso', msg: e.message, icone: 'fas fa-exclamation-triangle', iconeCor: '#e0a060'});
+        }
+    }
+
+    // "Acessar": sem protocolo extra abre direto como sempre; com extras,
+    // mostra no próprio card a lista para escolher por onde entrar.
+    function acessarHost(btn, principal, extra) {
+        const chips = btn.closest('.card').querySelectorAll('.proto-chip');
+        if (!chips.length) { principal(); return; }
+
+        const menu = btn.nextElementSibling;
+        if (!menu.hidden) { menu.hidden = true; return; }
+        menu.replaceChildren();
+        const opcao = (proto, rotulo, acao) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'acesso-escolha-op';
+            const icone = document.createElement('i');
+            icone.className = `fas ${_ICONE_PROTO[proto] || 'fa-plug'}`;
+            const nome = document.createElement('span');
+            nome.className = 'aeo-proto';
+            nome.textContent = proto;
+            const porta = document.createElement('span');
+            porta.className = 'aeo-porta';
+            porta.textContent = rotulo;
+            b.append(icone, nome, porta);
+            b.onclick = () => { menu.hidden = true; acao(); };
+            menu.appendChild(b);
+        };
+        opcao(btn.dataset.protocolo, `porta ${btn.dataset.porta} · padrão`, principal);
+        chips.forEach(c => opcao(c.dataset.protocolo, `porta ${c.dataset.porta}`,
+            () => extra(c.dataset.protocolo, c.dataset.porta, c.dataset.pid)));
+        menu.hidden = false;
+    }
+
+    document.addEventListener('click', (e) => {
+        document.querySelectorAll('.acesso-escolha:not([hidden])').forEach((menu) => {
+            if (!menu.contains(e.target) && !menu.previousElementSibling.contains(e.target)) menu.hidden = true;
+        });
+    });
+    </script>
 
 
     <script src="{% static 'js/main.js' %}?v=funcaotab3fix"></script>

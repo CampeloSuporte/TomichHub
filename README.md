@@ -120,6 +120,9 @@ Cadastro completo de clientes com todas as informações necessárias para um pr
 
 - Dados empresariais (CNPJ, endereço, contatos, e-mail, WhatsApp)
 - **Acessos** — credenciais por equipamento: SSH, Telnet, HTTP, WinBox, API RouterOS
+- **Protocolos extras por host** — aba **+** do card: outro protocolo e porta no mesmo IP (ex.:
+  HTTP como padrão e SSH extra). O **Acessar** passa a perguntar por onde entrar. A rota é a do
+  padrão: IP privado passa pelo proxy/OpenVPN do cliente e IP público vai direto
 - **ProxyServer** — configuração do túnel SSH por cliente
 - Histórico de comentários por acesso
 - Upload de documentos
@@ -165,6 +168,7 @@ Usuário conecta ao WiFi
 ### Backups Automatizados
 
 - Templates de comandos configuráveis por fabricante (Cisco, Huawei, MikroTik, Datacom, Juniper...)
+- Backup é sempre por SSH: se o protocolo padrão do host não é SSH, usa o SSH cadastrado como protocolo extra
 - Agendamento via Celery Beat (diário, semanal, por cliente)
 - Histórico com download dos arquivos de configuração
 - Hash SHA-256 para detectar alterações entre backups

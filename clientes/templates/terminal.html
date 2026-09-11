@@ -1781,6 +1781,7 @@
             const agoraMs = Date.now();
             for (const t of this.terminals.values()) {
                 if (t.acesso && String(t.acesso.id) === String(acessoData.id) &&
+                    String(t.acesso.protocolo_id || '') === String(acessoData.protocolo_id || '') &&
                     (agoraMs - (t.criadoEm || 0)) < 5000) {
                     this.ativarTerminal(t.id);
                     return;
@@ -1873,9 +1874,11 @@
             const tab = document.createElement('div');
             tab.className = 'terminal-tab active'; tab.id = `tab-${terminalId}`;
             // No mobile: texto mais curto na aba
+            // Protocolo extra do host: deixa claro na aba qual porta está aberta
+            const sufixo = acessoData.protocolo_id ? ` [${acessoData.protocolo} ${acessoData.porta}]` : '';
             const label = isMobile()
-                ? acessoData.host
-                : `${acessoData.tipo} - ${acessoData.host}`;
+                ? acessoData.host + sufixo
+                : `${acessoData.tipo} - ${acessoData.host}${sufixo}`;
             tab.innerHTML = `
                 <div class="terminal-tab-status connected"></div>
                 <span>${label}</span>
@@ -1970,6 +1973,7 @@
                     try { tObj.fitAddon.fit(); } catch(e) {}
                     tObj.socket.send(JSON.stringify({
                         action: 'connect', acesso_id: tObj.acesso.id,
+                        protocolo_id: tObj.acesso.protocolo_id || null,
                         cols: tObj.terminal.cols, rows: tObj.terminal.rows,
                     }));
                 };

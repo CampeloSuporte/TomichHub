@@ -21,7 +21,7 @@ class TerminalTabManager {
         }, 1000);
     }
     
-    abrirTerminal(acessoId, host, porta, usuario, senha, protocolo, tipo, clienteId) {
+    abrirTerminal(acessoId, host, porta, usuario, senha, protocolo, tipo, clienteId, protocoloId) {
         console.log(`🔌 Abrindo terminal para: ${tipo} - ${host}:${porta}`);
 
         const acessoData = {
@@ -33,6 +33,8 @@ class TerminalTabManager {
             protocolo: protocolo,
             tipo: tipo,
             cliente_id: clienteId || null,
+            // AcessoProtocolo (protocolo extra do host); null = acesso padrão
+            protocolo_id: protocoloId || null,
         };
 
         if (this.terminalWindow && !this.terminalWindow.closed) {
@@ -180,6 +182,45 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
         tipo,
         clienteId || null
     );
+}
+
+// ============================================
+// PROTOCOLO EXTRA DO HOST (AcessoProtocolo)
+// ============================================
+// Mesmo IP e credenciais do acesso, outro protocolo/porta. Segue a regra do
+// acesso padrão: IP privado passa pelo CRM (proxy SSH ou OpenVPN do
+// cliente), IP público vai direto.
+
+function acessarProtocoloExtra(protocolo, host, porta, usuario, senha, acessoId, tipo, clienteId, protocoloId, hostPrivado) {
+    const proto = String(protocolo).toUpperCase().trim();
+    const portaNum = parseInt(String(porta).trim(), 10);
+    const opcoes = 'width=1400,height=800,menubar=no,toolbar=no,location=no,status=no';
+
+    if (proto === 'HTTP' || proto === 'HTTPS') {
+        const scheme = proto.toLowerCase();
+        if (hostPrivado) {
+            window.open(`/clientes/acessos/${acessoId}/web/?porta=${portaNum}&scheme=${scheme}&path=/`, '_blank');
+            return;
+        }
+        // Host pode ter caminho fixo ("1.2.3.4/zabbix"): a porta entra antes dele
+        let h = String(host).trim().replace(/^https?:\/\//i, '');
+        const barra = h.indexOf('/');
+        const caminho = barra >= 0 ? h.slice(barra) : '';
+        if (barra >= 0) h = h.slice(0, barra);
+        const portaPadrao = (scheme === 'http' && portaNum === 80) || (scheme === 'https' && portaNum === 443);
+        window.open(`${scheme}://${h}${portaPadrao ? '' : ':' + portaNum}${caminho}`, '_blank');
+        return;
+    }
+
+    if (proto === 'RDP') {
+        window.open(`/clientes/rdp/${acessoId}/?pid=${encodeURIComponent(protocoloId)}`, `RDP_${acessoId}_${protocoloId}`, opcoes);
+        return;
+    }
+
+    // SSH/Telnet: o consumer lê porta e protocolo do AcessoProtocolo pelo id
+    // e decide proxy x direto pelo IP do host, como no acesso padrão.
+    const hostLimpo = String(host).trim().split('/')[0];
+    terminalTabManager.abrirTerminal(acessoId, hostLimpo, portaNum, usuario, senha, proto, tipo, clienteId || null, protocoloId);
 }
 
 // ============================================
