@@ -291,3 +291,43 @@ class RotaloopExecutarParaClienteTest(TestCase):
         execucao = _rotaloop_executar_para_cliente(cliente_vazio)
         self.assertTrue(execucao.sucesso)
         self.assertEqual(execucao.total_blocos_testados, 0)
+
+
+class EdicaoClienteUsuariosAdicionaisTest(TestCase):
+    """O botão Editar da lista de clientes leva os usuários adicionais para o
+    modal. Antes o `editarCliente` do JS ignorava esse argumento: o modal
+    abria com as tags vazias e o salvar gravava a lista vazia — editar
+    qualquer campo do cliente desvinculava todos os adicionais."""
+
+    def setUp(self):
+        from django.contrib.auth.models import User
+        from usuario.models import TOTPDevice
+
+        self.admin = User.objects.create_user(
+            username='admin_edicao', password='x', is_staff=True, is_superuser=True,
+        )
+        TOTPDevice.objects.create(usuario=self.admin, secret='A' * 32, confirmado=True)
+        self.extra = User.objects.create_user(username='tecnico_extra', password='x')
+        self.cliente = Cliente.objects.create(
+            nome_empresa='DS Teste', cnpj='33.333.333/0001-33',
+            endereco='Rua Teste, 3', email='ds.teste@example.com',
+        )
+        self.cliente.usuarios_adicionais.add(self.extra)
+
+    def test_botao_editar_leva_id_e_nome_dos_adicionais(self):
+        # O nome vai junto: a lista `usuarios` do Consultor/Operador exclui
+        # quem já está vinculado a um cliente, então o JS não acharia o nome.
+        from django.urls import reverse
+
+        self.client.force_login(self.admin)
+        r = self.client.get(reverse('cadastrar_cliente'))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, f"{{id: {self.extra.id}, username: 'tecnico_extra'}}")
+
+    def test_editar_cliente_do_js_preenche_as_tags(self):
+        from pathlib import Path
+        from django.conf import settings
+
+        js = (Path(settings.BASE_DIR) / 'staticfiles' / 'js' / 'cadastrar_cliente.js').read_text()
+        self.assertIn('usuarioId, notas, usuariosAdicionais)', js)
+        self.assertIn('seletorAdicionaisEdicao.setSelecionados(usuariosAdicionais', js)
