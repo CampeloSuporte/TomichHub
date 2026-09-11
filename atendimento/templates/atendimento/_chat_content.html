@@ -2348,7 +2348,12 @@
         _pollRunning = true;
         fetch('/atendimento/api/conversation/'+CONV_ID+'/messages/?after_ts='+encodeURIComponent(lastMsgTs), {
             headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'
-        }).then(function(r){return r.ok?r.json():null;}).then(function(d){
+        }).then(function(r){
+            /* 401/403: a sessão acabou ou outra conta logou neste navegador.
+               Consultar de novo não muda a resposta — para o polling. */
+            if (r.status === 401 || r.status === 403) { _pollDestroyed = true; return null; }
+            return r.ok?r.json():null;
+        }).then(function(d){
             if(!d||!d.messages) return;
             d.messages.forEach(function(msg){
                 if(!_renderedIds.has(String(msg.id))) {
