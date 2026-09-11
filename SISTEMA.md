@@ -283,7 +283,8 @@ Os banimentos do fail2ban **não** têm modelo: a fonte da verdade é o `fail2ba
   externo fica só no acesso padrão. HTTP/HTTPS com IP privado tenta primeiro o proxy web e, se ele
   falhar, abre direto no navegador. Falha é página de erro com header `X-CRM-Proxy-Falha`, erro
   de rede ou mais de 15 s (`abrirWebProxyComFallback`). Com IP público, abre direto. Vale também
-  para o Acessar padrão e o ícone de interface web. RDP passa `?pid=` até o `WinboxVNCConsumer`
+  para o Acessar padrão. A barra de ícones do card não tem mais terminal, Winbox, 3.43 nem
+  interface web: tudo sai pelo Acessar RDP passa `?pid=` até o `WinboxVNCConsumer`
 
 ### Backups Automatizados
 

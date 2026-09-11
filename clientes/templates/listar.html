@@ -293,19 +293,6 @@
                                                     title="Ping">
                                                 <i class="fas fa-globe"></i>
                                             </button>
-                                            <button class="icon-btn btn-sm" title="Acessar Terminal" onclick="acessarEquipamento('{{ acesso.protocolo|escapejs }}', '{{ acesso.host|escapejs }}', '{{ acesso.porta|escapejs }}', '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }})"><i class="fas fa-code"></i></button>
-                                            {% if acesso.winbox %}
-                                            <button class="icon-btn btn-sm" title="Winbox Web 4.2 (porta {{ acesso.winbox }})"
-                                                    onclick="abrirWinboxWeb({{ acesso.id }})"
-                                                    style="color: var(--warning-orange);">
-                                                <i class="fas fa-network-wired"></i>
-                                            </button>
-                                            <button class="icon-btn btn-sm" title="Winbox Web 3.43 (legado)"
-                                                    onclick="abrirWinboxWeb({{ acesso.id }}, '3')"
-                                                    style="color: #d29922; font-size: 10px; font-weight: 700;">
-                                                3.43
-                                            </button>
-                                            {% endif %}
                                             {% if acesso.backup_habilitado %}
                                             <button class="icon-btn btn-sm backup-btn" 
                                                     onclick="executarBackup({{ acesso.id }}, '{{ acesso.tipo }}')" 
@@ -339,12 +326,6 @@
                                         
                                             <button class="icon-btn btn-sm" onclick="abrirModalEditarAcesso({{ acesso.id }})">
                                                 <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="icon-btn btn-sm"
-                                                    onclick="abrirWebAcesso({{ acesso.id }}, '{{ acesso.host }}', '{{ acesso.porta }}', '{{ acesso.protocolo|escapejs }}')"
-                                                    title="Abrir Interface Web (Proxy)"
-                                                    style="color:#58a6ff;">
-                                                <i class="fas fa-display"></i>
                                             </button>
 
 
@@ -6348,36 +6329,6 @@ function getCsrfToken(){
 
     let _webAcessoId   = null;
     let _webAcessoHost = null;
-
-    function abrirWebAcesso(acessoId, host, portaOriginal, protocolo) {
-        const p = parseInt(portaOriginal);
-        const webPorta = p;
-        let webScheme;
-
-        // Protocolo salvo no acesso (HTTP/HTTPS) manda — a porta só serve de
-        // fallback para acessos legados sem protocolo HTTP/HTTPS definido.
-        const protocoloLower = (protocolo || '').toLowerCase();
-        if (protocoloLower === 'https') {
-            webScheme = 'https';
-        } else if (protocoloLower === 'http') {
-            webScheme = 'http';
-        } else if ([443, 8443, 4443].includes(p)) {
-            webScheme = 'https';
-        } else {
-            webScheme = 'http';
-        }
-
-        // IP privado: proxy primeiro, conexão direta se o proxy falhar
-        if (_hostEhPrivado(host)) {
-            abrirWebProxyComFallback(acessoId, webScheme, webPorta, host);
-            return;
-        }
-
-        const proxyUrl = `/clientes/acessos/${acessoId}/web/?porta=${webPorta}&scheme=${webScheme}&path=/`;
-        
-        // Abre diretamente no navegador em nova aba
-        window.open(proxyUrl, '_blank');
-    }
 
     function abrirWebfigVNC(acessoId) {
         const url = `/clientes/webfig-vnc/${acessoId}/`;
