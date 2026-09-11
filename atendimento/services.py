@@ -1066,6 +1066,67 @@ class EvolutionAPIClient:
             logger.error(f"Erro ao apagar mensagem {message_id} em {jid}: {e}")
             return False, str(e)
 
+    def find_message_key(self, message_id: str) -> Optional[Dict]:
+        """A `key` da mensagem como o WhatsApp a conhece (`id`, `remoteJid`,
+        `fromMe` e, em grupo, `participant`), ou None se a Evolution não tiver
+        a mensagem.
+
+        Reagir em grupo exige o `participant` (quem mandou a mensagem alvo), e
+        o CRM não guarda isso na `Message`. `POST /chat/findMessages` devolve
+        a key completa a partir do id. Resposta confirmada na 2.3.7 em
+        produção: `{"messages": {"records": [{"key": {...}}]}}`.
+        """
+        try:
+            r = self._post(f"/chat/findMessages/{self.instance}",
+                           {"where": {"key": {"id": message_id}}}, timeout=15)
+            if not r.ok:
+                return None
+            dados = r.json() or {}
+            registros = (dados.get("messages") or {}).get("records") or []
+            for registro in registros:
+                key = registro.get("key") or {}
+                if key.get("id") == message_id:
+                    return key
+        except Exception as e:
+            logger.warning(f"Erro ao buscar a key da mensagem {message_id}: {e}")
+        return None
+
+    def send_reaction(self, jid: str, message_id: str, emoji: str, from_me: bool,
+                      participant: str = "") -> Tuple[bool, str]:
+        """Reage a uma mensagem com um emoji. Retorna (ok, id_da_reação | erro).
+
+        Evolution 2.x: `POST /message/sendReaction/{instance}`, com a `key` da
+        mensagem alvo **aninhada** (como no `updateMessage`, ao contrário do
+        corpo plano do `deleteMessageForEveryone`). Schema confirmado na
+        2.3.7: corpo vazio devolve 400 pedindo `key` e `reaction`.
+
+        `emoji` vazio remove a reação, que é o que o próprio WhatsApp manda
+        quando alguém desfaz. `participant` só vai quando existe (grupo): sem
+        ele o WhatsApp não liga a reação à mensagem de outra pessoa.
+        """
+        key = {"id": message_id, "remoteJid": jid, "fromMe": bool(from_me)}
+        if participant:
+            key["participant"] = participant
+        try:
+            r = self._post(f"/message/sendReaction/{self.instance}",
+                           {"key": key, "reaction": emoji})
+            if r.ok:
+                try:
+                    return True, ((r.json() or {}).get("key") or {}).get("id") or ""
+                except Exception:
+                    return True, ""
+            detalhe = ""
+            try:
+                resposta = r.json().get("response", {}).get("message")
+                detalhe = "; ".join(map(str, resposta)) if isinstance(resposta, list) else str(resposta or "")
+            except Exception:
+                detalhe = r.text[:200]
+            logger.error(f"Erro ao reagir à mensagem {message_id} em {jid}: {r.status_code} {detalhe}")
+            return False, detalhe or f"Evolution respondeu {r.status_code}"
+        except Exception as e:
+            logger.error(f"Erro ao reagir à mensagem {message_id} em {jid}: {e}")
+            return False, str(e)
+
     def send_text(self, jid: str, text: str, mentions: List[str] = None,
                   everyone: bool = False) -> Tuple[bool, str]:
         """Envia mensagem de texto. Retorna (sucesso, message_id_evolution).
@@ -1716,15 +1777,21 @@ class ConversationService:
         return {"success": True, "message": "reaction saved"}
 
     @staticmethod
+    def reacoes_payload(msg: Message) -> List[Dict]:
+        """Reações da mensagem no formato que a tela entende. `nossa` marca a
+        reação enviada pelo CRM: a tela a destaca e deixa tirar com um clique."""
+        return [
+            {"emoji": r.emoji, "sender_name": r.sender_name, "nossa": r.nossa}
+            for r in msg.reactions.all()
+        ]
+
+    @staticmethod
     def _broadcast_reacoes(msg: Message):
         """Manda a lista atualizada de reações da mensagem para a tela."""
         _ws_send_conversation(str(msg.conversation_id), {
             "type": "reactions",
             "message_id": str(msg.id),
-            "reactions": [
-                {"emoji": r.emoji, "sender_name": r.sender_name}
-                for r in msg.reactions.all()
-            ],
+            "reactions": ConversationService.reacoes_payload(msg),
         })
 
     @staticmethod
@@ -2227,6 +2294,107 @@ class ConversationService:
         })
 
         return True, str(message.id)
+
+    # ── Reação (emoji) a uma mensagem ─────────────────────────────────────
+
+    @staticmethod
+    def pode_reagir(message) -> Tuple[bool, str]:
+        """Diz se dá para reagir a `message`, e por que não quando não dá.
+
+        Ao contrário de editar e apagar, não importa quem é o atendente: a
+        reação sai pela conta do WhatsApp da instância, e reagir à mensagem
+        do cliente é justamente o caso principal. O que importa é a mensagem
+        existir do outro lado.
+        """
+        if message.deleted_at:
+            return False, 'Não dá para reagir a uma mensagem apagada.'
+        if message.sender_type == 'system':
+            return False, 'Aviso do sistema não recebe reação.'
+        if message.is_internal or message.sender_type == 'internal':
+            return False, 'Nota interna não foi para o WhatsApp, então não há onde reagir.'
+        # `local_` é o id que o webhook inventa quando a Evolution não manda
+        # a key: não existe mensagem com esse id no WhatsApp.
+        if not message.external_id or message.external_id.startswith(
+                ConversationService.IDS_INTERNOS + ('local_',)):
+            return False, 'Essa mensagem ainda não foi confirmada pelo WhatsApp.'
+        return True, ''
+
+    @staticmethod
+    def react_message(message, emoji: str, agent=None) -> Tuple[bool, str]:
+        """Reage a uma mensagem com `emoji` (vazio = tira a reação), no
+        WhatsApp e no CRM.
+
+        **Síncrono, e o WhatsApp primeiro**, pelo mesmo motivo de editar e
+        apagar: se o WhatsApp recusar, a pílula não aparece aqui. Senão o
+        atendente veria uma reação que o cliente nunca recebeu.
+
+        Uma reação por conta: a instância é um número só, e o WhatsApp guarda
+        uma reação por número em cada mensagem. Reagir de novo troca a
+        anterior (mesmo que a anterior seja de outro atendente), igual ao que
+        acontece no celular do cliente.
+
+        O eco do webhook (a nossa própria reação voltando como `fromMe`) é
+        descartado em `process_webhook`, então gravar aqui não duplica.
+        """
+        emoji = (emoji or '').strip()
+        if len(emoji) > 16 or any(c.isspace() for c in emoji):
+            return False, 'Reação inválida.'
+
+        pode, motivo = ConversationService.pode_reagir(message)
+        if not pode:
+            return False, motivo
+
+        conversation = message.conversation
+        group = conversation.group
+        if not group or not group.connection or not group.jid:
+            return False, 'Conversa sem grupo do WhatsApp configurado.'
+
+        remetente = MessageReaction.REMETENTE_CRM
+        atual = message.reactions.filter(sender_jid=remetente).first()
+        if (atual.emoji if atual else '') == emoji:
+            return True, ''      # nada muda: mesma reação, ou tirar o que não existe
+
+        cliente = EvolutionAPIClient(group.connection)
+        # A key vem da Evolution porque o CRM não guarda o `participant` (quem
+        # mandou a mensagem dentro do grupo), e sem ele o WhatsApp não liga a
+        # reação à mensagem de outra pessoa.
+        key = cliente.find_message_key(message.external_id)
+        if key:
+            remote_jid = key.get('remoteJid') or group.jid
+            from_me = bool(key.get('fromMe'))
+            participant = key.get('participant') or ''
+        else:
+            # Mandada pelo CRM: a key é nossa e não precisa de participant.
+            # Mensagem de outra pessoa em grupo, sem participant, o WhatsApp
+            # aceita mas não mostra para ninguém, e o CRM exibiria uma reação
+            # que só existe aqui. Nesse caso, recusar.
+            remote_jid = group.jid
+            from_me = bool(message.sender_id) and message.sender_type == 'agent'
+            participant = ''
+            if not from_me and group.jid.endswith('@g.us'):
+                return False, ('Não encontrei essa mensagem no WhatsApp para reagir. '
+                               'Ela pode ser anterior à conexão atual.')
+
+        ok, resultado = cliente.send_reaction(
+            remote_jid, message.external_id, emoji, from_me, participant)
+        if not ok:
+            return False, f'O WhatsApp recusou a reação: {resultado}'
+
+        message.reactions.filter(sender_jid=remetente).delete()
+        if emoji:
+            nome = ConversationService.get_agent_display_name(agent) if agent else ''
+            MessageReaction.objects.update_or_create(
+                external_id=resultado or f'reac_crm_{uuid.uuid4().hex}',
+                defaults={
+                    'message': message,
+                    'emoji': emoji,
+                    'sender_name': nome,
+                    'sender_jid': remetente,
+                },
+            )
+
+        ConversationService._broadcast_reacoes(message)
+        return True, ''
 
     @staticmethod
     def send_media(conversation: Conversation, media_base64: str, media_type: str,

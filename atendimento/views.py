@@ -256,6 +256,9 @@ def conversation_detail(request, conversation_id):
         # (ver ConversationService.pode_excluir). Mensagem já apagada perde o
         # botão porque não há segunda exclusão.
         m.excluivel, _motivo_del = ConversationService.pode_excluir(m, request.user)
+        # Reagir não depende de quem é o atendente (a reação sai pela conta do
+        # WhatsApp da instância), só da mensagem existir lá do outro lado.
+        m.reagivel, _motivo_reac = ConversationService.pode_reagir(m)
 
     # Atualiza status de leitura das mensagens do cliente e avisa outras abas/dispositivos
     _marcar_mensagens_lidas(conversation)
@@ -807,6 +810,42 @@ def api_delete_message(request, message_id):
         })
     except Exception as e:
         logger.error(f"Erro ao apagar mensagem {message_id}: {e}")
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@staff_required
+@require_http_methods(["POST"])
+def api_react_message(request, message_id):
+    """Reage a uma mensagem com um emoji, no WhatsApp e no CRM.
+
+    Corpo: `{"emoji": "👍"}`. Emoji vazio tira a reação. Síncrono como editar
+    e apagar: se o WhatsApp recusar, nada muda aqui e o motivo volta para a
+    tela. A resposta traz a lista de reações da mensagem, para a aba que
+    reagiu se atualizar mesmo sem WebSocket.
+    """
+    try:
+        message = get_object_or_404(
+            Message.objects.select_related('conversation__group__connection'), id=message_id)
+        if not pode_ver_conversation(request.user, message.conversation):
+            return JsonResponse({'success': False, 'error': 'Conversa de outra instância.'}, status=403)
+
+        pode, motivo = ConversationService.pode_reagir(message)
+        if not pode:
+            return JsonResponse({'success': False, 'error': motivo}, status=403)
+
+        data = json.loads(request.body or '{}')
+        ok, erro = ConversationService.react_message(
+            message, data.get('emoji') or '', request.user)
+        if not ok:
+            return JsonResponse({'success': False, 'error': erro}, status=400)
+
+        return JsonResponse({
+            'success': True,
+            'message_id': str(message.id),
+            'reactions': ConversationService.reacoes_payload(message),
+        })
+    except Exception as e:
+        logger.error(f"Erro ao reagir à mensagem {message_id}: {e}")
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 

@@ -1113,6 +1113,49 @@ body {
 /* Reação criptografada: sabemos que houve, não qual emoji. */
 .msg-reaction.unknown { color:var(--wa-text-muted); font-size:10px; }
 .msg-reaction .count { font-size:10px; color:var(--wa-text-muted); }
+/* A reação que o CRM mandou: contorno verde e clicável, porque clicar nela
+   desfaz a reação, como no WhatsApp. */
+.msg-reaction.mine { border-color:var(--wa-green-light); cursor:pointer; }
+
+/* Carinha de reagir: no lado de fora do balão, como no WhatsApp. Na mensagem
+   do cliente fica à direita, onde sobra espaço. Na do atendente fica à
+   esquerda, numa segunda coluna quando o lápis ou a lixeira já ocupam a
+   primeira. */
+.msg-react-btn {
+    position:absolute; top:50%; transform:translateY(-50%); right:-30px;
+    width:24px; height:24px; border-radius:50%; padding:0;
+    background:var(--wa-panel); border:1px solid var(--border);
+    color:var(--wa-text-muted); font-size:12px;
+    cursor:pointer; opacity:0; transition:opacity .12s, color .12s, border-color .12s;
+    z-index:3; display:flex; align-items:center; justify-content:center;
+}
+.msg:hover .msg-react-btn, .msg-react-btn:focus-visible, .msg-block.reagindo .msg-react-btn { opacity:1; }
+.msg-react-btn:hover { color:var(--wa-green-light); border-color:var(--wa-green-light); }
+@media (hover: none) { .msg-react-btn { opacity:.55; } }
+.msg.agent .msg-react-btn { right:auto; left:-30px; }
+.msg.agent .msg-block:has(.msg-edit-btn, .msg-del-btn) .msg-react-btn { left:-58px; }
+
+/* Barra de emojis, por cima do balão (ou por baixo, quando a mensagem está
+   colada no topo da conversa e a barra seria cortada). */
+.msg-react-picker {
+    position:absolute; bottom:calc(100% + 4px); left:0; z-index:6;
+    display:flex; flex-wrap:wrap; align-items:center; gap:2px; max-width:min(300px, 80vw);
+    background:var(--wa-panel); border:1px solid var(--border); border-radius:22px;
+    padding:4px 6px; box-shadow:0 4px 14px rgba(0,0,0,.45);
+    animation:msgIn .15s cubic-bezier(0.23,1,0.32,1);
+}
+.msg.agent .msg-react-picker { left:auto; right:0; }
+.msg-react-picker.abaixo { bottom:auto; top:calc(100% + 4px); }
+.msg-react-picker.aberto { border-radius:14px; }
+.msg-react-picker button {
+    width:32px; height:32px; border:none; border-radius:50%; padding:0;
+    background:transparent; font-size:20px; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:background .1s;
+}
+.msg-react-picker button:hover, .msg-react-picker button:focus-visible { background:rgba(255,255,255,.08); outline:none; }
+.msg-react-picker button.atual { background:rgba(0,168,132,.28); }
+.msg-react-picker .mais { font-size:14px; color:var(--wa-text-muted); }
+.msg-react-picker[aria-busy="true"] button { opacity:.45; pointer-events:none; }
 
 /* ── Área de input (estilo WhatsApp) ── */
 .chat-input-area { background:var(--wa-panel); border-top:1px solid var(--wa-border); flex-shrink:0; }

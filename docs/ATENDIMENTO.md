@@ -423,6 +423,7 @@ systemctl restart gunicorn daphne celery
 | 04/09/2026 | **Sala Virtual** — botão para não escutar ninguém (silenciar a sala sem desligar o microfone) |
 | 04/09/2026 | **Sala Virtual** — arrastar a tela compartilhada travava: zoom/pan de verdade no vídeo e captura em 30 fps com resolução preservada ao mover janelas |
 | 04/09/2026 | **Editar mensagem enviada** — corrige o balão no CRM e reescreve a mensagem no WhatsApp do grupo (janela de 15 min, só do autor, só texto); edição feita pelo cliente no celular passou a atualizar o balão em vez de virar "[sem conteúdo]" |
+| 11/09/2026 | **Reagir com emoji** — carinha ao lado do balão, as seis reações do WhatsApp + "+"; a reação chega ao celular do cliente e vira pílula no CRM (uma por conta, clicar tira); em grupo a key com `participant` vem do `findMessages` da Evolution |
 
 ---
 
@@ -2006,3 +2007,95 @@ apagada mas não editada, WhatsApp recusando **não** marcar nada no CRM, nota
 interna não falando com o WhatsApp, a linha ficando no banco, o arquivo saindo
 do disco, path traversal barrado, o registro em `ConversationActivity`, a API, e
 os caminhos de vazamento (polling e contexto da IA).
+
+---
+
+## 😀 Reagir a uma mensagem com emoji (11/09/2026)
+
+O atendente reage a uma mensagem do cliente (ou a uma nossa) do mesmo jeito que
+no WhatsApp. A reação chega ao celular do cliente e aparece como pílula embaixo
+do balão no CRM. Receber reação já funcionava desde 12/08/2026 (seção
+"reações do cliente viravam balão"); agora dá também para mandar.
+
+### Interface
+
+- Uma **carinha** aparece do lado de fora do balão ao passar o mouse. Na
+  mensagem do cliente ela fica à direita. Na do atendente fica à esquerda, numa
+  segunda coluna quando o lápis/lixeira já estão lá. Onde não há hover
+  (celular) ela fica sempre visível, mais discreta.
+- O clique abre a barra com as **seis reações do WhatsApp** (👍 ❤️ 😂 😮 😢 🙏)
+  e um **+** que mostra mais 24.
+- A reação enviada pelo CRM ganha **contorno verde**. Clicar nela, ou no mesmo
+  emoji na barra, **tira a reação**, como no WhatsApp.
+- Se o WhatsApp recusar, o motivo aparece embaixo do balão por 5 s e nada muda.
+
+### A regra: uma reação por conta, não por atendente
+
+A instância é **um número de WhatsApp só**, e o WhatsApp guarda **uma reação por
+número** em cada mensagem. Por isso o CRM também guarda uma só: se a Rita reage
+👍 e depois o Sérgio reage ❤️, fica ❤️ (com o nome do Sérgio), igual ao que o
+cliente vê no celular. A reação do CRM é a `MessageReaction` com
+`sender_jid = 'crm'` (`MessageReaction.REMETENTE_CRM`; sem "@", não colide com
+jid real). As reações do pessoal do grupo ficam intactas.
+
+### Ordem das operações
+
+`ConversationService.react_message` é **síncrono e chama o WhatsApp primeiro**,
+como editar e apagar. Só se ele aceitar a pílula é gravada. O eco da reação
+(volta pelo webhook como `fromMe`) já é descartado em `process_webhook`, então
+não duplica.
+
+### O `participant`: por que a key vem da Evolution
+
+Para reagir em **grupo** à mensagem de outra pessoa, o WhatsApp exige na key o
+`participant` (quem mandou a mensagem alvo). Sem ele a Evolution **aceita** mas
+a reação não aparece para ninguém. O CRM não guarda o `participant` na
+`Message`, então `EvolutionAPIClient.find_message_key` busca a key completa em
+`POST /chat/findMessages/{instance}` (`{"where": {"key": {"id": …}}}`). Não
+precisou de migração.
+
+Se a Evolution não tiver a mensagem:
+
+| Mensagem | O que acontece |
+|---|---|
+| Nossa (enviada pelo CRM) | Vai com `fromMe: true`, sem `participant`, que não é necessário |
+| Do cliente, em grupo | **Recusa** com "Não encontrei essa mensagem no WhatsApp". Mandar sem `participant` deixaria no CRM uma reação que só existe aqui |
+| Do cliente, conversa 1:1 | Vai sem `participant`, que não existe em 1:1 |
+
+### Onde dá para reagir (`pode_reagir`)
+
+Qualquer atendente que vê a conversa reage, porque a reação sai pela conta da
+instância e não em nome de alguém. **Não** dá em: nota interna (não foi para o
+WhatsApp), aviso do sistema, mensagem apagada, e mensagem sem wamid confirmado
+(`sending_`, `ia_`, `flow_`, `local_`, …).
+
+### API
+
+| Método | Rota | Corpo | Resposta |
+|---|---|---|---|
+| POST | `/atendimento/api/message/<uuid>/react/` | `{"emoji": "👍"}` (vazio tira) | `{success, message_id, reactions: [{emoji, sender_name, nossa}]}` ou `{success: false, error}` |
+
+O evento `reactions` do WebSocket passou a levar `nossa` em cada item, para as
+outras abas destacarem a pílula também.
+
+### Endpoints da Evolution (2.3.7, confirmados em produção)
+
+```json
+POST /message/sendReaction/{instance}
+{"key": {"id": "3EB0…", "remoteJid": "…@g.us", "fromMe": false,
+         "participant": "…@lid"},
+ "reaction": "👍"}
+```
+
+A key vai **aninhada**, como no `updateMessage` (edição) e ao contrário do corpo
+plano do `deleteMessageForEveryone`. Corpo vazio devolve 400 pedindo `key` e
+`reaction`, dá para sondar sem reagir a nada. A resposta traz `key.id` da
+reação, que vira o `external_id` da `MessageReaction`.
+
+### Testes
+
+`ReagirMensagemTest` (17 casos): onde dá e onde não dá para reagir, a key com
+`participant` indo para a Evolution, uma reação por conta (troca, e emoji vazio
+tira), mesma reação sem chamar o WhatsApp, recusa do WhatsApp sem gravar nada,
+recusa sem key em grupo, reação do cliente intacta, eco do webhook sem
+duplicar, formato do `sendReaction` e do `findMessages`, a API e a tela.
