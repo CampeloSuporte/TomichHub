@@ -1440,6 +1440,22 @@ existir, e nada existente é reemitido:
 5. **a sessão**, no formato do fabricante conforme o papel (abaixo);
 6. `commit`.
 
+**IX sai clonado de um PTT no ar.** Desde 11/09/2026 as policies de um IX
+novo não vêm do template acima: `_modelo_de_ptt()` escolhe um IX desta caixa
+que tem sessão e cujas policies estão no snapshot em texto (o de mais
+famílias; no empate, o de menor número — na caixa de referência, ix-01
+PTT-SP), e `_clonar_policy()` copia a IN e a OUT node a node. Troca só o que
+é do circuito: o nome da policy, os community-filters `ix-01-*` → `ix-NN-*`,
+o ASN do prepend (quando o novo usa fake-as) e a local-preference do
+formulário. O resto vai como o modelo tem — na caixa de referência, IN com
+`if-match ip-prefix BOGONS-V4` e `apply community 65109:60100` sem
+`additive`. Prefix-list de apoio não é criada para a família clonada (o
+modelo já usa as da caixa), e community-filter que o modelo case fora do
+catálogo é recusado em vez de ficar apontando para nada. O texto vem de
+`route_policies_texto`, que `parse_huawei` guarda desde a mesma data:
+snapshot mais antigo (ou família que o modelo não tem) cai no template.
+Operadora e CDN continuam no template.
+
 **Slot preparado para outro circuito.** Na caixa de referência (BDR SINOP) os
 slots ix-02 (PTT-RJ), ix-06 (PTT-ES) e ix-07 (PTT-BA) já têm community-filters
 e policies IN/OUT, mas nenhuma sessão. Subir num deles com o MESMO nome

@@ -10,6 +10,7 @@ saber pelo glob que a policy de saída referencia.
 """
 from django.test import SimpleTestCase
 
+from clientes.backup_parser import parse_huawei
 from clientes.bgp_actions import AcaoBgpNaoSuportada
 from clientes.bgp_community_auto import (
     GRUPOS_CANONICOS,
@@ -744,6 +745,78 @@ class CriarCircuitoTest(SimpleTestCase):
         self._preparar_slot_para_outro_ptt()
         cmds = self._criar('ix-06', nome='PTT-ES', peer_as='26162')
         self.assertIn('peer EBGP-PTT-ES-V4 route-policy AS26162-PTT-ES-V4-OUT export', cmds)
+
+    def _com_modelo_de_ptt(self):
+        # PTT-SP no ar com as policies em texto, como o parser guarda. A IN usa
+        # a BOGONS-V4 da caixa e `apply community` sem `additive` — diferente
+        # do template deste módulo de propósito, pra provar que é clone.
+        self.dados['sessoes'][1]['policy_in'] = 'AS26162-PTT-SP-V4-IN'
+        self.dados['route_policies_texto'] = {
+            'AS26162-PTT-SP-V4-IN': [
+                ['route-policy AS26162-PTT-SP-V4-IN deny node 5', 'if-match ip-prefix BOGONS-V4'],
+                ['route-policy AS26162-PTT-SP-V4-IN permit node 10', 'if-match ip-prefix FULL-ROUTING',
+                 'apply local-preference 3000', f'apply community {ASN}:60100'],
+                ['route-policy AS26162-PTT-SP-V4-IN deny node 999'],
+            ],
+            'AS26162-PTT-SP-V4-OUT': [
+                ['route-policy AS26162-PTT-SP-V4-OUT deny node 9',
+                 'if-match community-filter ix-01-export-bl'],
+                ['route-policy AS26162-PTT-SP-V4-OUT permit node 11',
+                 'if-match community-filter ix-01-export'],
+                ['route-policy AS26162-PTT-SP-V4-OUT permit node 12',
+                 'if-match community-filter glob-all-ptts-ixbr'],
+                ['route-policy AS26162-PTT-SP-V4-OUT permit node 14',
+                 'if-match community-filter ix-01-export-2p', 'apply as-path 268080 268080 additive'],
+                ['route-policy AS26162-PTT-SP-V4-OUT deny node 999'],
+            ],
+        }
+        self.mapa = montar_mapa(self.dados)
+
+    def test_ptt_novo_sai_clonado_do_ptt_que_esta_no_ar(self):
+        self._com_modelo_de_ptt()
+        cmds = self._criar('ix-02', nome='PTT-CUIABA', peer_as='26162')
+        i = cmds.index('route-policy AS26162-PTT-CUIABA-V4-IN deny node 5')
+        self.assertEqual(cmds[i + 1], 'if-match ip-prefix BOGONS-V4')
+        self.assertIn(f'apply community {ASN}:60100', cmds)
+        i = cmds.index('route-policy AS26162-PTT-CUIABA-V4-OUT permit node 14')
+        self.assertEqual(cmds[i + 1:i + 3], ['if-match community-filter ix-02-export-2p',
+                                             'apply as-path 268080 268080 additive'])
+        self.assertIn('if-match community-filter glob-all-ptts-ixbr', cmds)
+        self.assertFalse([c for c in cmds if 'ix-01' in c or 'PTT-SP' in c])
+        # nada do template: nem prefix-list de apoio, nem node que o modelo não tem
+        self.assertFalse([c for c in cmds if c.startswith('ip ip-prefix')])
+        self.assertNotIn('route-policy AS26162-PTT-CUIABA-V4-OUT permit node 13', cmds)
+        # os filtros do slot novo entram antes das policies que os casam
+        self.assertLess(cmds.index(f'ip community-filter basic ix-02-export index 10 permit {ASN}:60201'),
+                        cmds.index('route-policy AS26162-PTT-CUIABA-V4-OUT permit node 11'))
+
+    def test_clone_troca_o_asn_do_prepend_pelo_fake_as(self):
+        self._com_modelo_de_ptt()
+        cmds = self._criar('ix-02', nome='PTT-CUIABA', peer_as='26162', fake_as='52995')
+        self.assertIn('apply as-path 52995 52995 additive', cmds)
+
+    def test_familia_que_o_modelo_nao_tem_sai_do_template(self):
+        self._com_modelo_de_ptt()
+        cmds = self._criar('ix-02', nome='PTT-CUIABA', peer_as='26162',
+                           v6={'peers': [{'ip': '2001:db8:9::1'}]})
+        self.assertIn('if-match ipv6 address prefix-list BOGONS-V6-IN', cmds)
+        self.assertIn('route-policy AS26162-PTT-CUIABA-V6-OUT permit node 13', cmds)
+        self.assertIn('if-match ip-prefix BOGONS-V4', cmds)   # a v4 continua clonada
+
+    def test_parser_guarda_o_texto_de_cada_node(self):
+        dados = parse_huawei(
+            'route-policy AS26162-PTT-SP-V4-IN deny node 5\n'
+            ' if-match ip-prefix BOGONS-V4\n'
+            '#\n'
+            'route-policy AS26162-PTT-SP-V4-IN permit node 10\n'
+            ' if-match ip-prefix FULL-ROUTING\n'
+            ' apply community 65109:60100\n'
+            '#\n', 'teste')
+        self.assertEqual(dados['route_policies_texto']['AS26162-PTT-SP-V4-IN'], [
+            ['route-policy AS26162-PTT-SP-V4-IN deny node 5', 'if-match ip-prefix BOGONS-V4'],
+            ['route-policy AS26162-PTT-SP-V4-IN permit node 10', 'if-match ip-prefix FULL-ROUTING',
+             'apply community 65109:60100'],
+        ])
 
 
 class CriarDownstreamTest(SimpleTestCase):

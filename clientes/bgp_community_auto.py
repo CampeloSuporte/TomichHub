@@ -2175,6 +2175,84 @@ def _slot_livre(mapa, tipo):
     return min(livres, key=lambda cid: slot_padrao(cid)['numero']) if livres else ''
 
 
+def _filtros_do_texto(blocos):
+    return [f for bloco in blocos for linha in bloco[1:]
+            if linha.startswith('if-match community-filter ') for f in linha.split()[2:]]
+
+
+def _modelo_de_ptt(dados, mapa, circuito_id):
+    """
+    O PTT que serve de modelo para um novo: um IX desta caixa que está no ar
+    (tem sessão) e cujas policies de entrada e saída estão no snapshot em
+    texto (`route_policies_texto`) — o de mais famílias e, no empate, o de
+    menor número (na caixa de referência, ix-01 PTT-SP).
+
+    A saída só serve de modelo se todo community-filter dela for do próprio
+    circuito ou global: clonar uma policy que casa filtro de OUTRO circuito
+    levaria esse circuito junto.
+
+    Devolve `{'id': 'ix-01', 'familias': {'v4': (policy_in, policy_out)}}`
+    ou None (caixa sem PTT no ar, snapshot anterior ao texto das policies).
+    """
+    texto = dados.get('route_policies_texto') or {}
+    candidatos = []
+    for cid, c in (mapa.get('circuitos') or {}).items():
+        padrao = slot_padrao(cid)
+        if cid == circuito_id or not padrao or padrao['tipo'] != 'ix' or not c.get('sessoes'):
+            continue
+        pols = c.get('policies') or {}
+        familias = {}
+        for familia in ('v4', 'v6'):
+            nome_in, nome_out = pols.get(f'{familia}_in'), pols.get(f'{familia}_out')
+            if nome_in not in texto or nome_out not in texto:
+                continue
+            filtros = _filtros_do_texto(texto[nome_out])
+            if filtros and all(f.startswith(f'{cid}-') or f.startswith(PREFIXO_DESTINO_GLOBAL)
+                               for f in filtros):
+                familias[familia] = (nome_in, nome_out)
+        if familias:
+            candidatos.append((-len(familias), padrao['numero'], cid, familias))
+    if not candidatos:
+        return None
+    _, _, cid, familias = min(candidatos)
+    return {'id': cid, 'familias': familias}
+
+
+def _clonar_policy(dados, nome_modelo, nome_novo, cid_modelo, cid_novo,
+                   prepend_as='', local_preference=''):
+    """
+    A route-policy `nome_modelo` reescrita como `nome_novo`, node a node, do
+    jeito que está na caixa. Troca só o que é do circuito: o nome, os
+    community-filters `<cid_modelo>-*` → `<cid_novo>-*`, o ASN do prepend
+    (quando o circuito novo prepende outro, ex: fake-as) e a local-preference
+    informada no formulário. O resto — prefix-lists, `apply community`,
+    `additive` ou não — vai como o modelo tem.
+
+    Devolve `(linhas, filtros_do_circuito_novo_usados)`.
+    """
+    linhas, usados = [], []
+    for bloco in (dados.get('route_policies_texto') or {}).get(nome_modelo) or []:
+        m = re.match(r'route-policy \S+ (permit|deny) node (\d+)', bloco[0])
+        if not m:
+            continue
+        linhas.append(f'route-policy {nome_novo} {m.group(1)} node {m.group(2)}')
+        for corpo in bloco[1:]:
+            if corpo.startswith('if-match community-filter '):
+                partes = corpo.split()
+                novos = [f'{cid_novo}-{t[len(cid_modelo) + 1:]}' if t.startswith(f'{cid_modelo}-') else t
+                         for t in partes[2:]]
+                usados += [t for t in novos if t.startswith(f'{cid_novo}-')]
+                corpo = ' '.join(partes[:2] + novos)
+            elif prepend_as and re.match(r'^apply as-path [\d ]+ additive$', corpo):
+                vezes = len(corpo.split()) - 3
+                corpo = f'apply as-path {" ".join([prepend_as] * vezes)} additive'
+            elif local_preference and corpo.startswith('apply local-preference '):
+                corpo = f'apply local-preference {local_preference}'
+            linhas.append(corpo)
+        linhas.append('quit')
+    return linhas, usados
+
+
 def comandos_criar_circuito(dados, mapa, circuito_id, opcoes=None):
     """
     Sobe um circuito INTEIRO — o que o operador vê como "clicar num slot vago
@@ -2189,6 +2267,11 @@ def comandos_criar_circuito(dados, mapa, circuito_id, opcoes=None):
       membros, `public-as-only` e as policies NO GRUPO — é assim que o IX.br é
       configurado nas caixas em produção, e é dessa forma que o parser
       consegue ler a sessão de volta.
+
+    As policies de um IX saem CLONADAS de um PTT que já está no ar nesta caixa
+    (`_modelo_de_ptt` + `_clonar_policy`): o PTT novo fica no mesmo modelo
+    dos demais, só com o nome e os community-filters dele. O template deste
+    módulo vale para operadora/CDN e para IX quando não há modelo.
 
     O grupo de community não é perguntado: sai do próprio slot (`c-02` → 502,
     §6). Nada existente é sobrescrito — o que já estiver configurado é pulado,
@@ -2293,44 +2376,79 @@ def comandos_criar_circuito(dados, mapa, circuito_id, opcoes=None):
                                     or f'EBGP-{nome}-{familia.upper()}')
 
     filtros = dados.get('community_filters') or {}
-    policies_existentes = set(dados.get('community_nodes') or {}) | set(dados.get('policies') or {})
+    policies_existentes = (set(dados.get('community_nodes') or {}) | set(dados.get('policies') or {})
+                           | set(dados.get('route_policies_texto') or {}))
     _recusar_colisao_de_nomes(dados, circuito_id, policies, grupos_peer)
-    comandos = []
+    glob_id = f'{PREFIXO_DESTINO_GLOBAL}{tipo["glob_slug"]}'
 
-    # 1) prefix-lists de apoio (bogons e tabela cheia), só se faltarem
-    listas = {}
+    # IX sai no modelo dos PTTs que a caixa já tem no ar — é o que vale ali,
+    # não o template deste módulo (pedido do operador, 11/09/2026: a IN do
+    # PTT-SP usa a BOGONS-V4 da caixa e `apply community` sem `additive`).
+    modelo = _modelo_de_ptt(dados, mapa, circuito_id) if slot['tipo'] == 'ix' else None
+    pares_modelo = (modelo or {}).get('familias') or {}
+
+    # 1) policies de entrada e saída — montadas primeiro porque decidem quais
+    # prefix-lists e filtros precisam entrar ANTES delas no commit
+    listas, blocos, filtros_do_modelo = {}, [], []
     for familia in familias_todas:
-        bogons, cmd_bogons = _prefix_list_bogons(dados, familia)
-        full, cmd_full = _prefix_list_full_routing(dados, familia)
-        listas[familia] = {'bogons': bogons, 'full': full}
-        comandos += cmd_bogons + cmd_full
+        nome_in, nome_out = policies[f'{familia}_in'], policies[f'{familia}_out']
+        par = pares_modelo.get(familia)
+        if nome_in not in policies_existentes:
+            if par:
+                linhas, usados = _clonar_policy(dados, par[0], nome_in, modelo['id'], circuito_id,
+                                                local_preference=local_preference)
+                blocos += linhas
+                filtros_do_modelo += usados
+            else:
+                bogons, cmd_bogons = _prefix_list_bogons(dados, familia)
+                full, cmd_full = _prefix_list_full_routing(dados, familia)
+                listas[familia] = cmd_bogons + cmd_full
+                blocos += _bloco_policy_in(
+                    nome_in, familia, bogons, full,
+                    [community_de(asn_community, grupo, 'import-rr')],
+                    local_preference=local_preference,
+                )
+        if par and nome_out not in policies_existentes:
+            linhas, usados = _clonar_policy(dados, par[1], nome_out, modelo['id'], circuito_id,
+                                            prepend_as=prepend_as)
+            blocos += linhas
+            filtros_do_modelo += usados
+        else:
+            blocos += _blocos_policy_out(dados, circuito_id, nome_out, prepend_as, glob_id)
 
-    # 2) community-filters do circuito e o do grupo global do tipo
-    for acao in ACOES_PROVISIONAVEIS:
-        nome_filtro = f'{circuito_id}-{acao["chave"]}'
+    comandos = []
+    # 2) prefix-lists de apoio (bogons e tabela cheia) da entrada que saiu do
+    # template, só se faltarem — a clonada usa as listas que o modelo já usa
+    for familia in familias_todas:
+        comandos += listas.get(familia, [])
+
+    # 3) community-filters do circuito (os do catálogo e qualquer outro que o
+    # modelo case) e o do grupo global do tipo
+    chaves = [a['chave'] for a in ACOES_PROVISIONAVEIS]
+    for nome_filtro in filtros_do_modelo:
+        chave = nome_filtro[len(circuito_id) + 1:]
+        if chave in chaves:
+            continue
+        if chave not in ACOES_POR_CHAVE:
+            raise AcaoBgpNaoSuportada(
+                f'O modelo {modelo["id"]} casa o community-filter "{modelo["id"]}-{chave}", que não '
+                f'é do catálogo — não dá para criar o "{nome_filtro}" equivalente sozinho. '
+                f'Crie o filtro à mão ou ajuste a policy do modelo.'
+            )
+        chaves.append(chave)
+    for chave in chaves:
+        nome_filtro = f'{circuito_id}-{chave}'
         if nome_filtro not in filtros:
             comandos.append(
                 f'ip community-filter basic {nome_filtro} index 10 permit '
-                f'{community_de(asn_community, grupo, acao["chave"])}'
+                f'{community_de(asn_community, grupo, chave)}'
             )
-    glob_id = f'{PREFIXO_DESTINO_GLOBAL}{tipo["glob_slug"]}'
     if glob_id not in filtros:
         comandos.append(
             f'ip community-filter basic {glob_id} index 10 permit '
             f'{asn_community}:{tipo["glob_community"]}'
         )
-
-    # 3) policies de entrada e saída
-    for familia in familias_todas:
-        nome_in = policies[f'{familia}_in']
-        if nome_in not in policies_existentes:
-            comandos += _bloco_policy_in(
-                nome_in, familia, listas[familia]['bogons'], listas[familia]['full'],
-                [community_de(asn_community, grupo, 'import-rr')],
-                local_preference=local_preference,
-            )
-        comandos += _blocos_policy_out(dados, circuito_id, policies[f'{familia}_out'],
-                                       prepend_as, glob_id)
+    comandos += blocos
 
     # 4) a sessão em si
     comandos += _bloco_sessao(
