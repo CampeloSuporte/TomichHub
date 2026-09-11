@@ -679,6 +679,25 @@ class CriarCircuitoTest(SimpleTestCase):
             self._criar('c-02', v4={'peers': [{'ip': '10.0.0.1'}]})
         self.assertIn('Já existe uma sessão', str(ctx.exception))
 
+    def test_recusa_peer_v6_ja_configurado_mesmo_escrito_diferente(self):
+        # A Huawei grava IPv6 em maiúsculas; o operador digita como quiser.
+        self.dados['sessoes'].append({
+            'nome': '2001:DB8:0:26::253', 'peer_ip': '2001:DB8:0:26::253',
+            'peer_as': '26162', 'descricao': 'PTT-TITANIA-V6-RS1',
+        })
+        for digitado in ('2001:db8:0:26::253', '2001:db8:0:26:0:0:0:253'):
+            with self.assertRaises(AcaoBgpNaoSuportada) as ctx:
+                self._criar('ix-02', nome='PTT-CUIABA', peer_as='26162',
+                            v6={'peers': [{'ip': digitado}]})
+            # e diz de quem é a sessão, pra ficar claro que é resto de config antiga
+            self.assertIn('(PTT-TITANIA-V6-RS1, AS26162)', str(ctx.exception))
+
+    def test_ip_repetido_no_formulario_tem_mensagem_propria(self):
+        with self.assertRaises(AcaoBgpNaoSuportada) as ctx:
+            self._criar('ix-02', nome='PTT-SP', peer_as='26162',
+                        v4={'peers': [{'ip': '192.0.2.64'}, {'ip': '192.0.2.64'}]})
+        self.assertIn('duas vezes neste formulário', str(ctx.exception))
+
     def test_recusa_ip_na_familia_errada(self):
         with self.assertRaises(AcaoBgpNaoSuportada):
             self._criar('c-02', v6={'peers': [{'ip': '192.0.2.9'}]})
