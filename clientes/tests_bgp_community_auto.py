@@ -838,6 +838,18 @@ class CriarDownstreamTest(SimpleTestCase):
         self.assertEqual(cmds[i + 1], 'if-match ip-prefix PL-DOWNSTREAM-ACME-V4')
         self.assertIn('route-policy DOWNSTREAM-ACME-V4-IN deny node 999', cmds)
 
+    def test_entrada_do_cliente_leva_local_preference_9000_por_padrao(self):
+        # Sem nada no campo, o padrão vai na config mesmo assim.
+        cmds = self._criar()
+        i = cmds.index('route-policy DOWNSTREAM-ACME-V4-IN permit node 10')
+        self.assertEqual(cmds[i + 1:i + 3], ['if-match ip-prefix PL-DOWNSTREAM-ACME-V4',
+                                             'apply local-preference 9000'])
+
+    def test_local_preference_do_formulario_troca_o_padrao(self):
+        cmds = self._criar(local_preference='8000')
+        self.assertIn('apply local-preference 8000', cmds)
+        self.assertNotIn('apply local-preference 9000', cmds)
+
     def test_saida_manda_a_tabela_cheia(self):
         cmds = self._criar()
         i = cmds.index('route-policy DOWNSTREAM-ACME-V4-OUT permit node 10')

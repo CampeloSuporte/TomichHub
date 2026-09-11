@@ -1599,7 +1599,10 @@ Downstream não é circuito de community — para um cliente não se escolhe
 - **entrada**: só passam os prefixos dele. Os blocos informados no formulário
   viram `PL-DOWNSTREAM-<NOME>-V4/V6` (com `greater-equal <len> less-equal 24`,
   /48 em IPv6, para o cliente poder desagregar) e é essa lista que a policy de
-  entrada casa — sem node de bogons, que aqui nunca casaria.
+  entrada casa — sem node de bogons, que aqui nunca casaria. A entrada sempre
+  leva `apply local-preference 9000` (`LOCAL_PREFERENCE_PADRAO['downstream']`,
+  era 4000 até 11/09/2026): com o campo do formulário vazio o padrão vai mesmo
+  assim, e só um valor informado ali o troca.
 
 E o pulo do gato: **as communities de reanúncio entram na policy de ENTRADA.**
 As policies de saída dos upstreams terminam em `deny node 999`, que só deixa
