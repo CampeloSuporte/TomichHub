@@ -275,8 +275,9 @@ Os banimentos do fail2ban **não** têm modelo: a fonte da verdade é o `fail2ba
 - VNC proxy para interface gráfica do MikroTik (Winbox) no navegador
 - Proxy HTTP/HTTPS para WebFig e outras interfaces web de equipamentos
 - Tunelamento por porta específica
-- Protocolos extras por host (`AcessoProtocolo`): com extra cadastrado, o **Acessar** do card lista
-  o padrão e os extras. SSH/Telnet abrem o terminal com `protocolo_id`, e o `SSHConsumer` troca
+- Protocolos extras por host (`AcessoProtocolo`): com extra cadastrado ou porta Winbox, o
+  **Acessar** do card escurece o card e lista no meio dele o padrão, os extras e o Winbox Web (4.2
+  e 3.43 legado). SSH/Telnet abrem o terminal com `protocolo_id`, e o `SSHConsumer` troca
   porta e protocolo só em memória (`Acesso.aplicar_protocolo_extra`), mantendo o caminho
   proxy/OpenVPN/direto. A sessão compartilhada usa a chave `(acesso_id, protocolo_id)`, e o link
   externo fica só no acesso padrão. HTTP/HTTPS com IP privado tenta primeiro o proxy web e, se ele
