@@ -103,11 +103,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 - **Winbox na escolha do Acessar**: host com porta Winbox também abre o painel de escolha no
   **Acessar**, com "Winbox" (Web 4.2) e "Winbox 3.43" (legado) ao lado do padrão e dos extras.
-  Os dois botões grandes de Winbox Web embaixo do Acessar saíram do card. Os ícones rápidos do
-  topo continuam.
+  Os dois botões grandes de Winbox Web embaixo do Acessar saíram do card. Da barra de ícones
+  também saíram `</>` (terminal), Winbox, 3.43 e interface web (proxy), todos cobertos pelo
+  **Acessar**.
 - **Acesso web com IP privado: proxy primeiro, direto se falhar**: HTTP/HTTPS de host com IP
   privado passa a tentar primeiro o proxy web do CRM, tanto no **Acessar** padrão quanto no
-  protocolo extra e no ícone de interface web. Se o proxy falha, a mesma aba abre a conexão
+  protocolo extra. Se o proxy falha, a mesma aba abre a conexão
   direta no navegador. Contam como falha: nenhum proxy SSH/OpenVPN, equipamento sem resposta,
   erro interno ou mais de 15 s. As páginas de erro do proxy levam o header `X-CRM-Proxy-Falha`,
   que separa falha do proxy de resposta do equipamento (um 401 ou 404 do device conta como proxy

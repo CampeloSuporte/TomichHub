@@ -168,8 +168,12 @@ class ProtocoloExtraViewsTest(_Base):
         html = self.client.get(reverse('listar_clientes') + f'?id={self.cliente.id}').content.decode()
         self.assertIn('data-winbox="58291"', html)
         self.assertIn(f'(versao) => abrirWinboxWeb({self.acesso.id}, versao)', html)
-        # Os botões grandes de Winbox saíram do card: agora é pela escolha do Acessar
+        # Botões grandes de Winbox e ícones de terminal/Winbox/3.43/interface web
+        # saíram do card: agora é tudo pela escolha do Acessar
         self.assertNotIn('class="btn btn-winbox', html)
+        for icone in ('title="Acessar Terminal"', 'title="Winbox Web 4.2', 'title="Winbox Web 3.43',
+                      'title="Abrir Interface Web (Proxy)"'):
+            self.assertNotIn(icone, html)
 
 
 class PaginaVncRotuloTest(_Base):
