@@ -722,6 +722,29 @@ class CriarCircuitoTest(SimpleTestCase):
         self.assertFalse([c for c in cmds if c.startswith('route-policy AS14840-BRD-V4-IN')])
         self.assertIn('peer 192.0.2.5 as-number 14840', cmds)
 
+    def _preparar_slot_para_outro_ptt(self):
+        # ix-06 com filtros e policy de saída do PTT-ES, nenhuma sessão — o
+        # desenho da caixa de referência (ix-02 RJ, ix-06 ES, ix-07 BA).
+        self.dados['community_filters'].update(_filtros('ix-06', '606'))
+        self.dados['community_nodes']['AS26162-PTT-ES-V4-OUT'] = _policy_out(
+            'AS26162-PTT-ES-V4-OUT', 'ix-06', 'glob-all-ptts-ixbr')
+        self.mapa = montar_mapa(self.dados)
+
+    def test_recusa_ptt_novo_em_slot_preparado_para_outro(self):
+        # Caso real: PTT-CUIABA no ix-02 do PTT-RJ saía com a policy de saída do RJ.
+        self._preparar_slot_para_outro_ptt()
+        with self.assertRaises(AcaoBgpNaoSuportada) as ctx:
+            self._criar('ix-06', nome='PTT-CUIABA', peer_as='26162')
+        msg = str(ctx.exception)
+        self.assertIn('preparado para o PTT-ES', msg)
+        self.assertIn('AS26162-PTT-ES-V4-OUT', msg)
+        self.assertIn('slot livre ix-02', msg)
+
+    def test_slot_preparado_com_o_proprio_nome_reaproveita_a_saida(self):
+        self._preparar_slot_para_outro_ptt()
+        cmds = self._criar('ix-06', nome='PTT-ES', peer_as='26162')
+        self.assertIn('peer EBGP-PTT-ES-V4 route-policy AS26162-PTT-ES-V4-OUT export', cmds)
+
 
 class CriarDownstreamTest(SimpleTestCase):
     def setUp(self):

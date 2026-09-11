@@ -1857,8 +1857,13 @@ function caAbrirSessao(destinoId, tipoNovo) {
                 escapeHtml(v.grupo)}xx${v.vago ? ' · slot livre'
                     : ' · config pronta' + (v.nome ? ' (' + escapeHtml(v.nome) + ')' : '') + ', sem sessão'}</option>`
         ).join('');
-        CA_SESSAO.destino = disponiveis[0].id;
-        CA_SESSAO.circuito = CA_MAPA.circuitos[disponiveis[0].id] || null;
+        // Começa no primeiro slot LIVRE, não no primeiro da lista: um slot com
+        // config pronta de outro PTT (ix-02 = PTT-RJ) vinha selecionado e o
+        // circuito novo caía nas communities e na policy de saída dele.
+        const inicial = disponiveis.find(v => v.vago || !v.nome) || disponiveis[0];
+        document.getElementById('caSessaoSlot').value = inicial.id;
+        CA_SESSAO.destino = inicial.id;
+        CA_SESSAO.circuito = CA_MAPA.circuitos[inicial.id] || null;
     }
 
     const texto = CA_TIPO_TEXTO[tipo] || CA_TIPO_TEXTO.upstream;
@@ -1937,11 +1942,18 @@ function caDisponiveis(tipo) {
 function caSessaoTrocarSlot() {
     if (!CA_SESSAO) return;
     const id = document.getElementById('caSessaoSlot').value;
+    const anterior = CA_SESSAO.circuito;
     CA_SESSAO.destino = id;
     CA_SESSAO.circuito = CA_MAPA.circuitos[id] || null;
     const c = CA_SESSAO.circuito;
-    document.getElementById('caSessaoNome').value = (c && c.nome) || '';
-    document.getElementById('caSessaoPeerAs').value = (c && c.peer_as) || '';
+    // O que veio do slot anterior é trocado; o que o operador digitou fica —
+    // ir para um slot livre não pode apagar o nome do PTT novo.
+    const trocar = (campo, novo, velho) => {
+        const el = document.getElementById(campo);
+        if (novo || el.value.trim() === (velho || '')) el.value = novo || '';
+    };
+    trocar('caSessaoNome', c && c.nome, anterior && anterior.nome);
+    trocar('caSessaoPeerAs', c && c.peer_as, anterior && anterior.peer_as);
     if (!document.getElementById('caSessaoFakeOn').checked) {
         document.getElementById('caSessaoPrepend').value =
             (c && c.prepend_as) || CA_MAPA.as_local || '';
@@ -2079,7 +2091,12 @@ function caSessaoAtualizarResumo() {
         // operador saber disso aqui do que descobrir lendo o preview.
         const atuais = (CA_SESSAO.circuito || {}).policies || {};
         const saida = atuais.v4_out || atuais.v4_out_orfa || atuais.v6_out || atuais.v6_out_orfa || '';
-        if (saida && saida !== `AS${peerAs}-${nome}-V4-OUT` && saida !== `AS${peerAs}-${nome}-V6-OUT`) {
+        const nomeAtual = ((CA_SESSAO.circuito || {}).nome || '').toUpperCase();
+        if (nomeAtual && nome !== '<NOME>' && nome !== nomeAtual) {
+            // Mesma trava do backend (`comandos_criar_circuito`), antes do preview.
+            partes.push(`<span style="color:#f59e0b">⚠ ${escapeHtml(destino)} já está preparado para `
+                + `<b>${escapeHtml(nomeAtual)}</b> — para ${escapeHtml(nome)}, escolha um slot livre</span>`);
+        } else if (saida && saida !== `AS${peerAs}-${nome}-V4-OUT` && saida !== `AS${peerAs}-${nome}-V6-OUT`) {
             partes.push(`saída <b>já existente</b> <code>${escapeHtml(saida)}</code> (reaproveitada)`);
         } else {
             partes.push(`policies <code>AS${peerAs}-${nome}-V4-IN/OUT</code>`);

@@ -2163,6 +2163,18 @@ def _recusar_colisao_de_nomes(dados, circuito_id, policies, grupos_peer):
             )
 
 
+def _slot_livre(mapa, tipo):
+    """Primeiro slot do tipo sem sessão e sem config de outro circuito: slot
+    do template nunca usado, ou só com os community-filters (o ix-08 da caixa
+    de referência)."""
+    livres = [v['id'] for v in (mapa.get('slots_vagos') or []) if v['tipo'] == tipo]
+    for cid, c in (mapa.get('circuitos') or {}).items():
+        padrao = slot_padrao(cid)
+        if padrao and padrao['tipo'] == tipo and not c.get('sessoes') and not c.get('nome'):
+            livres.append(cid)
+    return min(livres, key=lambda cid: slot_padrao(cid)['numero']) if livres else ''
+
+
 def comandos_criar_circuito(dados, mapa, circuito_id, opcoes=None):
     """
     Sobe um circuito INTEIRO — o que o operador vê como "clicar num slot vago
@@ -2224,6 +2236,26 @@ def comandos_criar_circuito(dados, mapa, circuito_id, opcoes=None):
     local_preference = str(opcoes.get('local_preference') or '').strip()
     if local_preference and not local_preference.isdigit():
         raise AcaoBgpNaoSuportada('A local-preference tem que ser um número.')
+
+    # Slot com config pronta para OUTRO circuito. Caso real: ix-02 preparado
+    # como PTT-RJ (filtros + policies, nenhuma sessão) e o operador subindo o
+    # PTT-CUIABA nele — seguir reaproveitaria a policy de saída do RJ e poria
+    # o Cuiabá nas communities 602xx, que são do RJ. Circuito novo, com
+    # policies próprias, só num slot livre.
+    nome_atual = _RE_NOME_LIMPO.sub('-', str((circuito or {}).get('nome') or '').upper()).strip('-')
+    if nome_atual and nome_atual != nome:
+        policies_atuais = (circuito or {}).get('policies') or {}
+        policy_atual = next((policies_atuais[k] for k in ('v4_out', 'v4_out_orfa', 'v6_out', 'v6_out_orfa')
+                             if policies_atuais.get(k)), '')
+        detalhe = f', policy {policy_atual}' if policy_atual else ''
+        livre = _slot_livre(mapa, slot['tipo'])
+        saida = (f'Escolha o slot livre {livre} para o {nome} ganhar policies próprias'
+                 if livre else f'Não sobrou slot livre deste tipo para o {nome}')
+        raise AcaoBgpNaoSuportada(
+            f'O {circuito_id} já está preparado para o {nome_atual} (communities '
+            f'{asn_community}:{grupo}xx{detalhe}) e subir o {nome} nele misturaria os dois. '
+            f'{saida}, ou mantenha o nome {nome_atual} se é mesmo ele.'
+        )
 
     ja_usados = _sessoes_por_ip(dados)
     familias, peers = _peers_das_opcoes(
