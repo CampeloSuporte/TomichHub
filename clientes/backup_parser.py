@@ -608,6 +608,12 @@ def parse_huawei(conteudo, nome_equip=''):
     # route-policy pertence a qual circuito e quais communities cada
     # prefixo local carrega hoje.
     community_nodes = {}
+    # Texto de cada node como está na caixa (cabeçalho + corpo, sem o `#`).
+    # É o que a automação clona ao subir um PTT novo no mesmo modelo dos que
+    # já estão no ar (`bgp_community_auto._modelo_de_ptt`) — os dicts acima
+    # perdem detalhe que importa pra isso (`additive`, apply não interpretado).
+    route_policies_texto = {}
+    bloco_texto = None
     termo_atual = None
     node_com_atual = None
     for linha in conteudo.splitlines():
@@ -631,9 +637,13 @@ def parse_huawei(conteudo, nome_equip=''):
             # descartados no final (evita comparar dicts por valor a cada
             # linha só pra saber se este nó já entrou na lista).
             community_nodes.setdefault(nome_rp, []).append(node_com_atual)
+            bloco_texto = [linha.strip()]
+            route_policies_texto.setdefault(nome_rp, []).append(bloco_texto)
             continue
         if termo_atual is None:
             continue
+        if linha.startswith((' ', '\t')) and linha.strip():
+            bloco_texto.append(linha.strip())
         m_if_v4 = re.match(r'\s+if-match ip-prefix (\S+)', linha)
         m_if_v6 = re.match(r'\s+if-match ipv6 address prefix-list (\S+)', linha)
         if m_if_v4 or m_if_v6:
@@ -860,6 +870,7 @@ def parse_huawei(conteudo, nome_equip=''):
         # Só Huawei por enquanto — a automação de anúncios por community
         # (clientes/bgp_community_auto.py) é escrita contra a gramática VRP.
         'community_filters': community_filters, 'community_nodes': community_nodes,
+        'route_policies_texto': route_policies_texto,
     }
 
 

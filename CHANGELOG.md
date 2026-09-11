@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-11 (PTT novo no modelo dos PTTs da caixa)
+
+### Alterado
+
+- **PTT novo sai clonado de um PTT que já está no ar**: as route-policies de um IX novo
+  deixaram de vir do template do código. Agora são copiadas, node a node, das policies de um
+  PTT da própria caixa. Na caixa de referência, o modelo é o ix-01 (PTT-SP). A cópia troca só o
+  nome, os community-filters `ix-01-*` pelos do slot novo, o ASN do prepend (com fake-as) e a
+  local-preference do formulário. O resto sai igual ao modelo, como `BOGONS-V4` e
+  `apply community 65109:60100` sem `additive`. O parser Huawei passou a guardar o texto de cada
+  node da route-policy no snapshot (`route_policies_texto`). Operadora e CDN continuam no
+  template, assim como o IX quando a caixa não tem PTT no ar ou o snapshot é anterior a isso.
+
+---
+
 ## [Não publicado] — 2026-09-11 (PTT novo em slot preparado para outro)
 
 ### Corrigido
