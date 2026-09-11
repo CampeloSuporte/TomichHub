@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-11 (Reagir a mensagem com emoji no atendimento)
+
+### Adicionado
+
+- **Reação com emoji no chat do atendimento, igual ao WhatsApp**: uma carinha ao lado do balão
+  abre as seis reações do WhatsApp (👍 ❤️ 😂 😮 😢 🙏) e um "+" com mais 24. A reação chega ao
+  celular do cliente (`POST /message/sendReaction` da Evolution) e aparece como pílula com
+  contorno verde. Clicar nela tira a reação. É síncrono e o WhatsApp é chamado primeiro: se
+  recusar, nada aparece no CRM. Uma reação por conta, porque a instância é um número só e o
+  WhatsApp guarda uma reação por número; reagir de novo troca a anterior, mesmo sendo de outro
+  atendente. Em grupo, o WhatsApp só liga a reação à mensagem do cliente com o `participant` na
+  key, e o CRM não guardava esse dado. A key completa passou a vir do `/chat/findMessages` da
+  Evolution, então não houve migração. Sem a key, a reação à mensagem do cliente em grupo é
+  recusada em vez de ficar só no CRM. Rota nova `POST /atendimento/api/message/<uuid>/react/`,
+  `ReagirMensagemTest` com 17 casos. Detalhes em `docs/ATENDIMENTO.md` → "Reagir a uma
+  mensagem com emoji".
+
+---
+
 ## [Não publicado] — 2026-09-11 (Usuários adicionais somiam na edição do cliente)
 
 ### Corrigido

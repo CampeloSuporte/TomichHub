@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from atendimento.models import (
-    WhatsAppConnection, ContactGroup, Conversation, Message, ScheduledMessage,
+    WhatsAppConnection, ContactGroup, Conversation, Message, MessageReaction, ScheduledMessage,
     SystemSetting,
 )
 from atendimento.services import (
@@ -3436,3 +3436,263 @@ class ApagarMensagemTest(TestCase):
 
         self.assertIn('Mensagem apagada', html)
         self.assertNotIn('some daqui', html)
+
+
+class ReagirMensagemTest(TestCase):
+    """Reagir com emoji tem que valer dos dois lados: a reação chega ao
+    WhatsApp do cliente e aparece como pílula no CRM. Se só o CRM mudar, o
+    atendente vê uma reação que o cliente nunca recebeu.
+    """
+
+    def setUp(self):
+        from clientes.models import Cliente
+        from usuario.models import Instancia, PerfilUsuario
+        self.conversation = _criar_conversa()
+        self.group = self.conversation.group
+        self.group.jid = '120363424696737223@g.us'
+        self.group.save(update_fields=['jid'])
+        self.agent = _criar_agente_staff('rita')
+        self.agent.first_name = 'Rita'
+        self.agent.save(update_fields=['first_name'])
+        principal = Instancia.objects.create(nome='Principal', principal=True)
+        PerfilUsuario.objects.create(
+            usuario=self.agent, role=PerfilUsuario.ROLE_OPERADOR, instancia=principal)
+        cliente = Cliente.objects.create(
+            nome_empresa='Cliente Teste Reacao', cnpj='33.444.555/0001-99',
+            endereco='Rua Z', email='reacao@example.com', instancia=principal,
+        )
+        self.group.cliente = cliente
+        self.group.save(update_fields=['cliente'])
+        self.msg = self._msg()
+
+    def _msg(self, **kw):
+        campos = dict(
+            conversation=self.conversation, sender_type='customer',
+            sender_name='Douglas', message_type='text', content='Eu vejo aqui',
+            external_id='3EB015306B1CBD33E413F2',
+        )
+        campos.update(kw)
+        return Message.objects.create(**campos)
+
+    #: key como o `findMessages` da Evolution 2.3.7 devolve (capturada em produção)
+    KEY_DO_CLIENTE = {
+        'id': '3EB015306B1CBD33E413F2', 'fromMe': False,
+        'remoteJid': '120363424696737223@g.us', 'participant': '258668834611317@lid',
+        'addressingMode': 'lid', 'participantAlt': '5522996123934@s.whatsapp.net',
+    }
+
+    # ── Em que mensagem dá para reagir ──────────────────────────────────
+
+    def test_da_para_reagir_a_mensagem_do_cliente(self):
+        self.assertEqual(ConversationService.pode_reagir(self.msg), (True, ''))
+
+    def test_nao_reage_a_nota_interna_aviso_apagada_ou_sem_confirmacao(self):
+        casos = {
+            'Nota interna': self._msg(sender_type='internal', is_internal=True, external_id='n1'),
+            'sistema': self._msg(sender_type='system', external_id='s1'),
+            'apagada': self._msg(deleted_at=timezone.now(), external_id='a1'),
+            'confirmada': self._msg(sender_type='agent', external_id='sending_123_abc'),
+        }
+        casos['confirmada '] = self._msg(external_id='local_1789159311.1')
+        for trecho, msg in casos.items():
+            pode, motivo = ConversationService.pode_reagir(msg)
+            self.assertFalse(pode, trecho)
+            self.assertIn(trecho.strip(), motivo)
+
+    # ── O que acontece ao reagir ────────────────────────────────────────
+
+    @mock.patch.object(EvolutionAPIClient, 'send_reaction', return_value=(True, 'REAC1'))
+    @mock.patch.object(EvolutionAPIClient, 'find_message_key')
+    def test_reagir_manda_a_key_com_participant_e_grava_a_pilula(self, mock_key, mock_reac):
+        mock_key.return_value = self.KEY_DO_CLIENTE
+
+        ok, _ = ConversationService.react_message(self.msg, '👍', self.agent)
+
+        self.assertTrue(ok)
+        mock_reac.assert_called_once_with(
+            '120363424696737223@g.us', '3EB015306B1CBD33E413F2', '👍', False,
+            '258668834611317@lid')
+        reacao = self.msg.reactions.get()
+        self.assertEqual(reacao.emoji, '👍')
+        self.assertTrue(reacao.nossa)
+        self.assertEqual(reacao.external_id, 'REAC1')
+        self.assertEqual(reacao.sender_name, 'Rita')
+
+    @mock.patch.object(EvolutionAPIClient, 'send_reaction', side_effect=[(True, 'R1'), (True, 'R2')])
+    @mock.patch.object(EvolutionAPIClient, 'find_message_key')
+    def test_reagir_de_novo_troca_a_reacao_uma_por_conta(self, mock_key, _mock_reac):
+        """A instância é um número só: o WhatsApp guarda uma reação por conta,
+        então a segunda troca a primeira, mesmo vinda de outro atendente."""
+        mock_key.return_value = self.KEY_DO_CLIENTE
+        outro = _criar_agente_staff('sergio')
+
+        ConversationService.react_message(self.msg, '👍', self.agent)
+        ConversationService.react_message(self.msg, '❤️', outro)
+
+        self.assertEqual(self.msg.reactions.count(), 1)
+        self.assertEqual(self.msg.reactions.get().emoji, '❤️')
+
+    @mock.patch.object(EvolutionAPIClient, 'send_reaction', return_value=(True, ''))
+    @mock.patch.object(EvolutionAPIClient, 'find_message_key')
+    def test_emoji_vazio_tira_a_reacao(self, mock_key, mock_reac):
+        mock_key.return_value = self.KEY_DO_CLIENTE
+        MessageReaction.objects.create(message=self.msg, emoji='👍', external_id='R0',
+                                       sender_jid=MessageReaction.REMETENTE_CRM)
+
+        ok, _ = ConversationService.react_message(self.msg, '', self.agent)
+
+        self.assertTrue(ok)
+        self.assertEqual(mock_reac.call_args.args[2], '')
+        self.assertFalse(self.msg.reactions.exists())
+
+    @mock.patch.object(EvolutionAPIClient, 'send_reaction')
+    def test_mesma_reacao_nao_chama_o_whatsapp(self, mock_reac):
+        MessageReaction.objects.create(message=self.msg, emoji='👍', external_id='R0',
+                                       sender_jid=MessageReaction.REMETENTE_CRM)
+
+        ok, _ = ConversationService.react_message(self.msg, '👍', self.agent)
+
+        self.assertTrue(ok)
+        mock_reac.assert_not_called()
+
+    @mock.patch.object(EvolutionAPIClient, 'send_reaction', return_value=(False, 'Message not found'))
+    @mock.patch.object(EvolutionAPIClient, 'find_message_key')
+    def test_whatsapp_recusando_nao_grava_nada(self, mock_key, _mock_reac):
+        mock_key.return_value = self.KEY_DO_CLIENTE
+
+        ok, erro = ConversationService.react_message(self.msg, '👍', self.agent)
+
+        self.assertFalse(ok)
+        self.assertIn('Message not found', erro)
+        self.assertFalse(self.msg.reactions.exists())
+
+    @mock.patch.object(EvolutionAPIClient, 'send_reaction')
+    @mock.patch.object(EvolutionAPIClient, 'find_message_key', return_value=None)
+    def test_sem_key_nao_reage_a_mensagem_do_cliente_em_grupo(self, _mock_key, mock_reac):
+        """Sem participant o WhatsApp aceita a reação mas ninguém a vê: o CRM
+        mostraria uma reação que só existe aqui."""
+        ok, erro = ConversationService.react_message(self.msg, '👍', self.agent)
+
+        self.assertFalse(ok)
+        self.assertIn('Não encontrei', erro)
+        mock_reac.assert_not_called()
+
+    @mock.patch.object(EvolutionAPIClient, 'send_reaction', return_value=(True, 'R1'))
+    @mock.patch.object(EvolutionAPIClient, 'find_message_key', return_value=None)
+    def test_sem_key_mensagem_nossa_vai_como_fromme(self, _mock_key, mock_reac):
+        nossa = self._msg(sender_type='agent', sender=self.agent, external_id='3EB0NOSSA')
+
+        ok, _ = ConversationService.react_message(nossa, '🙏', self.agent)
+
+        self.assertTrue(ok)
+        mock_reac.assert_called_once_with(self.group.jid, '3EB0NOSSA', '🙏', True, '')
+
+    @mock.patch.object(EvolutionAPIClient, 'send_reaction', return_value=(True, 'R1'))
+    @mock.patch.object(EvolutionAPIClient, 'find_message_key')
+    def test_nao_mexe_na_reacao_do_cliente(self, mock_key, _mock_reac):
+        mock_key.return_value = self.KEY_DO_CLIENTE
+        MessageReaction.objects.create(message=self.msg, emoji='😂', external_id='RC',
+                                       sender_jid='55279@lid', sender_name='Douglas')
+
+        ConversationService.react_message(self.msg, '👍', self.agent)
+
+        self.assertEqual(sorted(r.emoji for r in self.msg.reactions.all()), ['👍', '😂'])
+
+    def test_reacao_invalida_e_recusada(self):
+        ok, erro = ConversationService.react_message(self.msg, 'oi tudo bem', self.agent)
+        self.assertFalse(ok)
+        self.assertIn('inválida', erro)
+
+    @mock.patch.object(EvolutionAPIClient, 'send_reaction', return_value=(True, 'REAC1'))
+    @mock.patch.object(EvolutionAPIClient, 'find_message_key')
+    def test_eco_do_webhook_nao_duplica(self, mock_key, _mock_reac):
+        """A nossa reação volta pelo webhook como fromMe; não pode virar uma
+        segunda pílula nem um balão."""
+        mock_key.return_value = self.KEY_DO_CLIENTE
+        ConversationService.react_message(self.msg, '👍', self.agent)
+        antes = Message.objects.count()
+
+        ConversationService.process_webhook({
+            'event': 'MESSAGES_UPSERT',
+            'instance': self.group.connection.instance_name,
+            'data': {
+                'key': {'id': 'REAC1', 'fromMe': True, 'remoteJid': self.group.jid},
+                'message': {'reactionMessage': {
+                    'key': self.KEY_DO_CLIENTE, 'text': '👍'}},
+            },
+        })
+
+        self.assertEqual(Message.objects.count(), antes)
+        self.assertEqual(self.msg.reactions.count(), 1)
+
+    # ── Cliente da Evolution ────────────────────────────────────────────
+
+    def test_send_reaction_aninha_a_key_e_manda_o_participant(self):
+        cliente = EvolutionAPIClient(self.group.connection)
+        resposta = mock.Mock(ok=True)
+        resposta.json.return_value = {'key': {'id': 'REAC9'}}
+        with mock.patch.object(cliente, '_post', return_value=resposta) as mock_post:
+            ok, reac_id = cliente.send_reaction(
+                self.group.jid, 'MSG1', '👍', False, '258668834611317@lid')
+
+        self.assertEqual((ok, reac_id), (True, 'REAC9'))
+        path, body = mock_post.call_args.args
+        self.assertEqual(path, '/message/sendReaction/teste')
+        self.assertEqual(body, {
+            'key': {'id': 'MSG1', 'remoteJid': self.group.jid, 'fromMe': False,
+                    'participant': '258668834611317@lid'},
+            'reaction': '👍',
+        })
+
+    def test_find_message_key_le_o_formato_da_evolution(self):
+        cliente = EvolutionAPIClient(self.group.connection)
+        resposta = mock.Mock(ok=True)
+        resposta.json.return_value = {'messages': {'total': 1, 'records': [
+            {'id': 'cmtx', 'key': self.KEY_DO_CLIENTE, 'pushName': 'Douglas'}]}}
+        with mock.patch.object(cliente, '_post', return_value=resposta):
+            key = cliente.find_message_key('3EB015306B1CBD33E413F2')
+
+        self.assertEqual(key['participant'], '258668834611317@lid')
+
+    # ── API e tela ──────────────────────────────────────────────────────
+
+    @mock.patch.object(EvolutionAPIClient, 'send_reaction', return_value=(True, 'REAC1'))
+    @mock.patch.object(EvolutionAPIClient, 'find_message_key')
+    def test_api_reage_e_devolve_as_reacoes(self, mock_key, _mock_reac):
+        mock_key.return_value = self.KEY_DO_CLIENTE
+        self.client.force_login(self.agent)
+
+        r = self.client.post(reverse('atendimento:api_react_message', args=[self.msg.id]),
+                             data=json.dumps({'emoji': '👍'}), content_type='application/json')
+
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()['reactions'],
+                         [{'emoji': '👍', 'sender_name': 'Rita', 'nossa': True}])
+
+    def test_api_recusa_nota_interna(self):
+        nota = self._msg(sender_type='internal', is_internal=True, external_id='n1')
+        self.client.force_login(self.agent)
+
+        r = self.client.post(reverse('atendimento:api_react_message', args=[nota.id]),
+                             data=json.dumps({'emoji': '👍'}), content_type='application/json')
+
+        self.assertEqual(r.status_code, 403)
+
+    def test_tela_mostra_a_carinha_e_destaca_a_nossa_reacao(self):
+        nota = self._msg(sender_type='internal', is_internal=True, external_id='n1')
+        self._msg(external_id='3EB0DEPOIS')
+        MessageReaction.objects.create(message=self.msg, emoji='🙏', external_id='R0',
+                                       sender_jid=MessageReaction.REMETENTE_CRM,
+                                       sender_name='Rita')
+        self.client.force_login(self.agent)
+
+        html = self.client.get(
+            reverse('atendimento:conversation_detail', args=[self.conversation.id])
+        ).content.decode()
+
+        botao = 'class="msg-react-btn"'
+        bloco_cliente = html.split(f'data-msg-id="{self.msg.id}"', 1)[1].split('data-msg-id=', 1)[0]
+        bloco_nota = html.split(f'data-msg-id="{nota.id}"', 1)[1].split('data-msg-id=', 1)[0]
+        self.assertIn(botao, bloco_cliente)
+        self.assertNotIn(botao, bloco_nota)
+        self.assertIn('msg-reaction mine" data-emoji="🙏"', bloco_cliente)

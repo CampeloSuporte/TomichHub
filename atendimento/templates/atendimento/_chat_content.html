@@ -170,11 +170,13 @@
                 (white-space:pre-wrap), então qualquer indentação do template
                 aqui dentro vira linha em branco e recuo dentro do balão.
                 {% endcomment %}
-                <div class="msg-bubble">{% if message.excluida %}<span class="msg-apagada"><i class="fas fa-ban"></i>Mensagem apagada</span><span class="msg-meta"><span class="msg-time">{{ message.created_at|date:"H:i" }}</span></span>{% else %}{% if message.message_type == 'image' and message.attachment_url %}<img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'audio' and message.attachment_url %}<audio controls class="msg-audio-player" preload="none"><source src="{{ message.attachment_url }}"></audio>{% elif message.message_type == 'video' and message.attachment_url %}<video controls class="msg-video-player" preload="none"><source src="{{ message.attachment_url }}"></video>{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'document' and message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}</a>{% else %}<span class="msg-text">{{ message.content|urlize }}</span>{% endif %}<span class="msg-meta">{% if message.edited_at %}<span class="msg-edited" title="Editada às {{ message.edited_at|date:"H:i" }}">editada</span>{% endif %}<span class="msg-time">{{ message.created_at|date:"H:i" }}</span>{% if message.sender_type == 'agent' %}<i class="fas fa-check-double msg-tick"></i>{% endif %}</span>{% endif %}</div>{% if message.editavel and not message.excluida %}<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>{% endif %}{% if message.excluivel %}<button type="button" class="msg-del-btn" title="Apagar mensagem"><i class="fas fa-trash"></i></button>{% endif %}
+                <div class="msg-bubble">{% if message.excluida %}<span class="msg-apagada"><i class="fas fa-ban"></i>Mensagem apagada</span><span class="msg-meta"><span class="msg-time">{{ message.created_at|date:"H:i" }}</span></span>{% else %}{% if message.message_type == 'image' and message.attachment_url %}<img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'audio' and message.attachment_url %}<audio controls class="msg-audio-player" preload="none"><source src="{{ message.attachment_url }}"></audio>{% elif message.message_type == 'video' and message.attachment_url %}<video controls class="msg-video-player" preload="none"><source src="{{ message.attachment_url }}"></video>{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'document' and message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}</a>{% else %}<span class="msg-text">{{ message.content|urlize }}</span>{% endif %}<span class="msg-meta">{% if message.edited_at %}<span class="msg-edited" title="Editada às {{ message.edited_at|date:"H:i" }}">editada</span>{% endif %}<span class="msg-time">{{ message.created_at|date:"H:i" }}</span>{% if message.sender_type == 'agent' %}<i class="fas fa-check-double msg-tick"></i>{% endif %}</span>{% endif %}</div>{% if message.editavel and not message.excluida %}<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>{% endif %}{% if message.excluivel %}<button type="button" class="msg-del-btn" title="Apagar mensagem"><i class="fas fa-trash"></i></button>{% endif %}{% if message.reagivel %}<button type="button" class="msg-react-btn" title="Reagir" aria-label="Reagir à mensagem"><i class="far fa-smile"></i></button>{% endif %}
                 {% with reacoes=message.reactions.all %}{% if reacoes %}
                 <div class="msg-reactions" data-reactions-for="{{ message.id }}">
                     {% for r in reacoes %}
-                    {% if r.emoji %}
+                    {% if r.nossa and r.emoji %}
+                    <span class="msg-reaction mine" data-emoji="{{ r.emoji }}" title="{{ r.sender_name|default:'Atendimento' }} reagiu pelo CRM. Clique para tirar">{{ r.emoji }}</span>
+                    {% elif r.emoji %}
                     <span class="msg-reaction" title="{{ r.sender_name|default:'Alguém' }} reagiu">{{ r.emoji }}</span>
                     {% else %}
                     <span class="msg-reaction unknown" title="{{ r.sender_name|default:'Alguém' }} reagiu — o WhatsApp criptografa reações a mensagens que enviamos, então o emoji não fica disponível">reagiu</span>
@@ -1268,6 +1270,11 @@
     /* Editar mensagem: a URL leva o id da MENSAGEM, então é montada na hora. */
     var API_EDIT  = function(id) { return '/atendimento/api/message/' + id + '/edit/'; };
     var API_DEL   = function(id) { return '/atendimento/api/message/' + id + '/delete/'; };
+    var API_REACT = function(id) { return '/atendimento/api/message/' + id + '/react/'; };
+    /* As seis do WhatsApp, na mesma ordem. O "+" abre as demais. */
+    var REACOES_RAPIDAS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+    var REACOES_MAIS = ['👏', '🙌', '🎉', '🔥', '✅', '👌', '🤝', '💪', '😊', '😁',
+                        '😅', '🤔', '😬', '😡', '👀', '💯', '⚠️', '❌', '🚀', '⏳', '🙂', '😍', '🥳', '👎'];
     var MEU_ID    = '{{ request.user.id }}';
     var JANELA_EDICAO_MS = {{ janela_edicao_min|default:15 }} * 60 * 1000;
 
@@ -1532,12 +1539,142 @@
             block.appendChild(box);
         }
         box.innerHTML = reactions.map(function(r) {
+            if (r.nossa && r.emoji) {
+                return '<span class="msg-reaction mine" data-emoji="' + escapeHTML(r.emoji) + '" title="' +
+                       escapeHTML(r.sender_name || 'Atendimento') + ' reagiu pelo CRM. Clique para tirar">' +
+                       escapeHTML(r.emoji) + '</span>';
+            }
             var quem = escapeHTML(r.sender_name || 'Alguém');
             return r.emoji
                 ? '<span class="msg-reaction" title="' + quem + ' reagiu">' + escapeHTML(r.emoji) + '</span>'
                 : '<span class="msg-reaction unknown" title="' + quem + ' reagiu — o WhatsApp criptografa reações a mensagens que enviamos">reagiu</span>';
         }).join('');
     }
+
+    /* ── Reagir a uma mensagem (emoji) ──────────────────────────────────
+       Igual ao WhatsApp: carinha do lado de fora do balão, barra com as seis
+       reações de sempre e "+" para as demais. Clicar na reação que já é a
+       nossa tira a reação. O servidor fala com o WhatsApp antes de gravar,
+       então a pílula só aparece se a reação chegou de fato ao cliente. */
+    var _reagindo = null;   /* id da mensagem com a barra aberta */
+
+    /* Espelha `ConversationService.pode_reagir` para balões que nascem no JS.
+       O servidor revalida no clique (mensagem ainda sem confirmação do
+       WhatsApp, por exemplo, volta com o motivo). */
+    function podeReagir(msg) {
+        return msg.sender_type === 'customer' || msg.sender_type === 'agent';
+    }
+
+    function reacaoAtual(el) {
+        var mine = el.querySelector('.msg-reaction.mine');
+        return mine ? (mine.dataset.emoji || '') : '';
+    }
+
+    function botoesDeReacao(lista, atual) {
+        return lista.map(function(emo) {
+            return '<button type="button" data-emoji="' + emo + '"' +
+                   (emo === atual ? ' class="atual" title="Tirar reação"' : ' title="Reagir com ' + emo + '"') +
+                   '>' + emo + '</button>';
+        }).join('');
+    }
+
+    function abrirReacoes(id) {
+        if (_reagindo && _reagindo !== id) fecharReacoes();
+        var el = balaoDaMensagem(id);
+        if (!el) return;
+        var bloco = el.querySelector('.msg-block');
+        if (!bloco || bloco.querySelector('.msg-react-picker')) return;
+
+        _reagindo = id;
+        var atual = reacaoAtual(el);
+        var picker = document.createElement('div');
+        picker.className = 'msg-react-picker';
+        picker.setAttribute('role', 'menu');
+        picker.innerHTML = botoesDeReacao(REACOES_RAPIDAS, atual) +
+            '<button type="button" class="mais" title="Mais reações"><i class="fas fa-plus"></i></button>';
+        /* A barra vai por cima do balão. Colada no topo da conversa ela seria
+           cortada pela área de rolagem, então abre por baixo. */
+        if (bloco.getBoundingClientRect().top - chatMsgs.getBoundingClientRect().top < 56) {
+            picker.classList.add('abaixo');
+        }
+        bloco.appendChild(picker);
+        bloco.classList.add('reagindo');
+        var primeiro = picker.querySelector('button');
+        if (primeiro) primeiro.focus();
+    }
+
+    function expandirReacoes(picker, el) {
+        var mais = picker.querySelector('.mais');
+        if (mais) mais.remove();
+        picker.insertAdjacentHTML('beforeend', botoesDeReacao(REACOES_MAIS, reacaoAtual(el)));
+        picker.classList.add('aberto');
+    }
+
+    function fecharReacoes() {
+        if (!_reagindo) return;
+        var el = balaoDaMensagem(_reagindo);
+        if (el) {
+            var picker = el.querySelector('.msg-react-picker');
+            if (picker) picker.remove();
+            var bloco = el.querySelector('.msg-block');
+            if (bloco) bloco.classList.remove('reagindo');
+        }
+        _reagindo = null;
+    }
+
+    function avisarNoBalao(el, texto) {
+        var bloco = el.querySelector('.msg-block');
+        if (!bloco) return;
+        var velho = bloco.querySelector('.msg-edit-aviso');
+        if (velho) velho.remove();
+        var aviso = document.createElement('div');
+        aviso.className = 'msg-edit-aviso';
+        aviso.textContent = texto;
+        bloco.appendChild(aviso);
+        setTimeout(function() { aviso.remove(); }, 5000);
+    }
+
+    function reagir(id, emoji) {
+        var el = balaoDaMensagem(id);
+        if (!el) return;
+        /* Mesmo emoji que já é o nosso = tirar, como no WhatsApp. */
+        var enviar = (emoji && emoji === reacaoAtual(el)) ? '' : emoji;
+        var picker = el.querySelector('.msg-react-picker');
+        if (picker) picker.setAttribute('aria-busy', 'true');
+        fetch(API_REACT(id), {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+            credentials: 'same-origin',
+            body: JSON.stringify({emoji: enviar})
+        })
+        .then(function(r) { return r.json().then(function(d) { return {ok: r.ok, d: d}; }); })
+        .then(function(res) {
+            if (_reagindo === id) fecharReacoes();
+            if (!res.ok || !res.d.success) {
+                avisarNoBalao(el, res.d.error || 'Não foi possível reagir.');
+                return;
+            }
+            applyReactions(id, res.d.reactions || []);
+        })
+        .catch(function() {
+            if (_reagindo === id) fecharReacoes();
+            avisarNoBalao(el, 'Falha de conexão ao reagir.');
+        });
+    }
+
+    /* Fecha a barra ao clicar fora dela. Fica no document (o compositor e o
+       cabeçalho estão fora do chatMsgs) e sai no destroy(). */
+    var reacaoDocClick = function(e) {
+        if (!_reagindo) return;
+        if (e.target.closest('.msg-react-picker, .msg-react-btn')) return;
+        fecharReacoes();
+    };
+    document.addEventListener('click', reacaoDocClick);
+    /* Esc fecha a barra (o foco vai para o primeiro emoji ao abrir). O
+       listener fica no chatMsgs, que é recriado a cada navegação. */
+    chatMsgs.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && _reagindo) { e.preventDefault(); fecharReacoes(); }
+    });
 
     /* Hora + tick dentro do balão, mesmo HTML que o template server-side. */
     function renderMeta(cls, timeText, editadaEm) {
@@ -1608,6 +1745,7 @@
                 '<div class="msg-bubble">' + renderMediaBubble(msg) + renderMeta(cls, msg.created_at, msg.edited_at) + '</div>' +
                 (prazo ? '<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>' : '') +
                 (podeApagar(msg) ? '<button type="button" class="msg-del-btn" title="Apagar mensagem"><i class="fas fa-trash"></i></button>' : '') +
+                (podeReagir(msg) ? '<button type="button" class="msg-react-btn" title="Reagir" aria-label="Reagir à mensagem"><i class="far fa-smile"></i></button>' : '') +
                 '</div>';
         }
         _renderedIds.add(String(msg.id));
@@ -1875,6 +2013,9 @@
         var btnE = el.querySelector('.msg-edit-btn'); if (btnE) btnE.remove();
         var btnD = el.querySelector('.msg-del-btn');  if (btnD) btnD.remove();
         var boxE = el.querySelector('.msg-edit-box'); if (boxE) boxE.remove();
+        /* Mensagem apagada não recebe reação (o servidor também recusa). */
+        if (_reagindo === id) fecharReacoes();
+        var btnR = el.querySelector('.msg-react-btn'); if (btnR) btnR.remove();
         el.removeAttribute('data-editavel-ate');
         if (_editando === id) _editando = null;
     }
@@ -1882,6 +2023,32 @@
     /* Delegação: os balões nascem do template e do JS, e mensagens novas
        chegam o tempo todo — um listener no container cobre todos. */
     chatMsgs.addEventListener('click', function(e) {
+        /* Reação: carinha, emoji da barra, "+" e a pílula verde (tirar). */
+        var alvoMsg = e.target.closest('.msg[data-msg-id]');
+        var emoBtn = e.target.closest('.msg-react-picker button');
+        if (emoBtn && alvoMsg) {
+            e.preventDefault();
+            if (emoBtn.classList.contains('mais')) {
+                expandirReacoes(emoBtn.closest('.msg-react-picker'), alvoMsg);
+            } else {
+                reagir(alvoMsg.dataset.msgId, emoBtn.dataset.emoji || '');
+            }
+            return;
+        }
+        var reactBtn = e.target.closest('.msg-react-btn');
+        if (reactBtn && alvoMsg) {
+            e.preventDefault();
+            if (_reagindo === alvoMsg.dataset.msgId) fecharReacoes();
+            else abrirReacoes(alvoMsg.dataset.msgId);
+            return;
+        }
+        var minha = e.target.closest('.msg-reaction.mine');
+        if (minha && alvoMsg) {
+            e.preventDefault();
+            reagir(alvoMsg.dataset.msgId, minha.dataset.emoji || '');
+            return;
+        }
+
         var del = e.target.closest('.msg-del-btn');
         if (del) {
             var elDel = del.closest('.msg[data-msg-id]');
@@ -2832,6 +2999,7 @@
             clearTimeout(wsTimer); clearInterval(recTimer); clearTimeout(pollTimer);
             clearInterval(_lapisTimer);
             document.removeEventListener('click', docClick);
+            document.removeEventListener('click', reacaoDocClick);
         }
     };
 })();

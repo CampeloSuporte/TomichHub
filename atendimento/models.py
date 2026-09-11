@@ -431,7 +431,17 @@ class MessageReaction(models.Model):
     como decifrar o segundo (a chave é o messageSecret da mensagem original,
     que não guardamos), por isso `emoji` pode ficar vazio: sabemos que houve
     reação e a qual mensagem, mas não qual emoji.
+
+    A reação que o CRM manda fica gravada com `sender_jid = REMETENTE_CRM`.
+    A instância é UMA conta do WhatsApp, e o WhatsApp guarda uma reação por
+    conta em cada mensagem, então é uma reação só, não uma por atendente:
+    se dois atendentes reagem, a segunda troca a primeira, igual acontece no
+    celular do cliente. `sender_name` guarda quem reagiu por último.
     """
+    #: Marca da reação enviada pelo CRM. Não tem "@", então nunca colide com o
+    #: jid de um participante real (`…@lid`, `…@s.whatsapp.net`).
+    REMETENTE_CRM = 'crm'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4)
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='reactions')
     emoji = models.CharField(max_length=32, blank=True, default='')
@@ -449,6 +459,11 @@ class MessageReaction(models.Model):
 
     def __str__(self):
         return f"{self.emoji or '?'} em {self.message_id}"
+
+    @property
+    def nossa(self) -> bool:
+        """Reação enviada pelo CRM (não por alguém do grupo)."""
+        return self.sender_jid == self.REMETENTE_CRM
 
 
 class ConversationActivity(models.Model):
