@@ -161,6 +161,27 @@ class ProtocoloExtraViewsTest(_Base):
         self.assertIn(', pid, true))', html)
 
 
+class PaginaVncRotuloTest(_Base):
+    """winbox.html serve Winbox Web, WebFig e RDP: o texto tem de seguir o modo."""
+
+    def setUp(self):
+        super().setUp()
+        self.admin = User.objects.create_user('admin_vnc', password='x', is_staff=True, is_superuser=True)
+        TOTPDevice.objects.create(usuario=self.admin, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+        self.client.force_login(self.admin)
+
+    def test_rdp_nao_aparece_como_winbox(self):
+        html = self.client.get(reverse('rdp_page', args=[self.acesso.id])).content.decode()
+        self.assertIn('Preparando acesso RDP', html)
+        self.assertIn(f'<title>RDP · {self.acesso.host}</title>', html)
+        self.assertNotIn('Preparando WinBox', html)
+
+    def test_winbox_continua_winbox(self):
+        html = self.client.get(reverse('winbox_page', args=[self.acesso.id])).content.decode()
+        self.assertIn('Preparando WinBox', html)
+        self.assertNotIn('Preparando acesso RDP', html)
+
+
 class BackupUsaSshExtraTest(_Base):
     def setUp(self):
         super().setUp()
