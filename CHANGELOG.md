@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-11 (Peer repetido na automação BGP)
+
+### Corrigido
+
+- **Peer IPv6 repetido passava pela checagem**: ao subir circuito ou downstream, o IP do peer
+  era comparado como texto com o do backup. A Huawei grava IPv6 em maiúsculas
+  (`2001:12F8:0:26::253`), então o mesmo peer digitado em minúsculas ou por extenso não era
+  reconhecido. Os comandos iam para a caixa e o peer já existente entrava no grupo novo, mas as
+  route-policies antigas, configuradas nele próprio, continuavam valendo no lugar das do grupo.
+  A comparação agora usa o IP normalizado, tanto na checagem quanto no registro otimista do
+  snapshot.
+
+### Alterado
+
+- **Erro de peer repetido diz de quem é a sessão**: a mensagem traz a descrição e o ASN da
+  sessão encontrada no último backup, por exemplo `(PTT-TITANIA-V4-RS2, AS26162)`, e orienta a
+  gerar backup novo caso ela já tenha sido removida. Assim fica claro na hora quando sobrou peer
+  de uma config antiga. O mesmo IP informado duas vezes no formulário ganhou mensagem própria.
+
+---
+
 ## [Não publicado] — 2026-09-11 (Protocolos extras de acesso no host)
 
 ### Adicionado

@@ -1611,7 +1611,12 @@ config feita à mão antes desta automação).
 ### Proteções
 
 - **peer repetido**: IP já configurado no equipamento é recusado (erro de
-  digitação, não intenção);
+  digitação, não intenção). A comparação usa o IP normalizado
+  (`_sessoes_por_ip()`): a Huawei grava IPv6 em maiúsculas e o operador digita
+  como quiser, então comparar texto deixava passar o mesmo peer. O erro traz a
+  descrição e o ASN da sessão achada no backup (ex: `PTT-TITANIA-V4-RS2,
+  AS26162`), o que mostra na hora quando é resto de uma config antiga removida
+  pela metade;
 - **família errada**: IPv6 informado no campo de IPv4 é recusado;
 - **nome que colide**: subir `ix-05` chamando de "PTT-SP" quando
   `AS26162-PTT-SP-V4-OUT` já é do `ix-01` faria os nodes do circuito novo

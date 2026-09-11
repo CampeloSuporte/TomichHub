@@ -1862,10 +1862,33 @@ def _nome_limpo(valor, campo):
     return nome
 
 
+def _ip_normalizado(valor):
+    valor = str(valor or '').strip()
+    try:
+        return str(ipaddress.ip_address(valor))
+    except ValueError:
+        return valor
+
+
+def _sessoes_por_ip(dados):
+    """IP normalizado → sessão já configurada. A comparação não pode ser de
+    texto: a Huawei grava IPv6 em maiúsculas (`2001:12F8:0:26::253`) e o
+    formulário recebe o que o operador digitou (`2001:12f8:0:26::253`)."""
+    por_ip = {}
+    for sessao in dados.get('sessoes') or []:
+        chave = _ip_normalizado(sessao.get('peer_ip'))
+        if chave:
+            por_ip.setdefault(chave, sessao)
+    return por_ip
+
+
 def _validar_peer(dados, peer_ip, familia, ja_usados):
     """Peer válido, da família certa e ainda não configurado neste
     equipamento — configurar duas vezes o mesmo peer é erro de digitação, não
-    intenção."""
+    intenção.
+
+    `ja_usados` vem de `_sessoes_por_ip` e vai recebendo os IPs já aceitos do
+    próprio formulário (com `None`, que é o que separa as duas mensagens)."""
     try:
         ip = ipaddress.ip_address(peer_ip)
     except ValueError:
@@ -1874,10 +1897,23 @@ def _validar_peer(dados, peer_ip, familia, ja_usados):
         raise AcaoBgpNaoSuportada(
             f'O peer "{peer_ip}" não é {familia.upper()} — confira a família em que ele foi informado.'
         )
-    if peer_ip in ja_usados:
-        raise AcaoBgpNaoSuportada(f'Já existe uma sessão com o peer "{peer_ip}" neste equipamento.')
-    ja_usados.add(peer_ip)
-    return str(ip)
+    chave = str(ip)
+    if chave in ja_usados:
+        sessao = ja_usados[chave]
+        if sessao is None:
+            raise AcaoBgpNaoSuportada(f'O peer "{peer_ip}" foi informado duas vezes neste formulário.')
+        # Dizer DE QUEM é a sessão é o que mostra ao operador que sobrou um
+        # peer de config antiga (caso real: PTT removido pela metade na mão).
+        quem = ', '.join(x for x in (sessao.get('descricao') or '',
+                                     f'AS{sessao["peer_as"]}' if sessao.get('peer_as') else '') if x)
+        raise AcaoBgpNaoSuportada(
+            f'Já existe uma sessão com o peer "{peer_ip}" neste equipamento'
+            + (f' ({quem})' if quem else '')
+            + ', segundo o último backup. Remova-a no equipamento antes; se já removeu, '
+              'gere um backup novo e clique em Atualizar.'
+        )
+    ja_usados[chave] = None
+    return chave
 
 
 def _bloco_policy_in(nome_policy, familia, bogons, aceita, communities,
@@ -2189,7 +2225,7 @@ def comandos_criar_circuito(dados, mapa, circuito_id, opcoes=None):
     if local_preference and not local_preference.isdigit():
         raise AcaoBgpNaoSuportada('A local-preference tem que ser um número.')
 
-    ja_usados = {s.get('peer_ip') for s in (dados.get('sessoes') or [])}
+    ja_usados = _sessoes_por_ip(dados)
     familias, peers = _peers_das_opcoes(
         dados, opcoes, ja_usados, f'EBGP-AS{peer_as}-{nome}',
         prefixo_rs=nome if slot['tipo'] == 'ix' else '',
@@ -2310,7 +2346,7 @@ def comandos_criar_downstream(dados, mapa, opcoes=None):
     if fake_as and not fake_as.isdigit():
         raise AcaoBgpNaoSuportada('O fake-AS tem que ser um número.')
 
-    ja_usados = {s.get('peer_ip') for s in (dados.get('sessoes') or [])}
+    ja_usados = _sessoes_por_ip(dados)
     familias, peers = _peers_das_opcoes(dados, opcoes, ja_usados, f'EBGP-DOWNSTREAM-{nome}')
     if not familias:
         raise AcaoBgpNaoSuportada('Informe pelo menos um peer IPv4 ou IPv6 do cliente.')
@@ -2659,12 +2695,12 @@ def _registrar_criacao_local(dados, tipo, alvo, params):
                 'prepend_as': [], 'local_preference': None,
             }])
 
-    ips_existentes = {s.get('peer_ip') for s in sessoes}
+    ips_existentes = set(_sessoes_por_ip(dados))
     for familia in familias:
         base = f'{prefixo_policy}-{familia.upper()}'
         for peer in peers_da_familia(familia):
             ip = str(peer.get('ip') or '').strip()
-            if not ip or ip in ips_existentes:
+            if not ip or _ip_normalizado(ip) in ips_existentes:
                 continue
             sessoes.append({
                 'peer_ip': ip, 'nome': ip, 'peer_as': peer.get('peer_as') or peer_as,
@@ -2676,5 +2712,5 @@ def _registrar_criacao_local(dados, tipo, alvo, params):
                 'fake_as': str(opcoes.get('fake_as') or ''),
                 'prepend_as': str(opcoes.get('fake_as') or '') or as_local,
             })
-            ips_existentes.add(ip)
+            ips_existentes.add(_ip_normalizado(ip))
 
