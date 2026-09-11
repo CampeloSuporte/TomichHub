@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-11 (Aviso de permissão repetido no portal)
+
+### Corrigido
+
+- **Login do portal recebia "Você não possui permissão para acessar esta página." sem motivo**:
+  uma aba do atendimento de outra conta, esquecida aberta no mesmo navegador, continuava fazendo
+  polling depois do login do portal. Cada consulta era redirecionada para o `quadro_geral`, cujo
+  `admin_required` enfileirava o aviso na sessão nova. Resultado: uma pilha de avisos no dashboard
+  do cliente, a cada 8 s. Agora o `staff_required` do atendimento responde API/AJAX com 401
+  (sem sessão) ou 403 (sem acesso), sem redirect e sem aviso, e o polling do chat para ao receber
+  esses status. O login do portal que abre uma tela do atendimento vai direto para o próprio
+  dashboard, sem passar pelo `quadro_geral`.
+
+---
+
 ## [Não publicado] — 2026-09-11 (Local-preference 9000 no downstream)
 
 ### Alterado

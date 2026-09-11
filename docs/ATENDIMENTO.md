@@ -1591,6 +1591,29 @@ deles: quebraria scripts e firmware. Quem decide é o papel + a instância.
   toda mensagem que passasse pelo módulo, mesmo sem conseguir abrir a tela.
 - **Menu**: `templates/base.html` usa `pode_atendimento_bo` (context processor de `usuario`).
 
+### Quem é barrado: tela redireciona, API responde com status
+
+O `staff_required` separa a chamada de API/AJAX (caminho com `/api/` ou header
+`X-Requested-With: XMLHttpRequest`) da navegação de tela:
+
+```
+                         sem sessão                 logado sem acesso
+API / fetch              401 JSON                   403 JSON
+Tela, Consultor/Operador /auth/login/?next=…        quadro_instancia
+Tela, login do portal    /auth/login/?next=…        cliente_dashboard
+```
+
+O polling das telas (`_chat_content.html` a cada 4–8 s, chat global do `base.html` a cada 20 s)
+**para sozinho** ao receber 401/403.
+
+Motivo: uma aba do atendimento esquecida aberta continua consultando depois que outra conta loga
+no mesmo navegador. Antes a API redirecionava, e a cadeia `quadro_geral` → `admin_required` →
+login enfileirava "Você não possui permissão para acessar esta página." a cada ciclo **na sessão
+da conta nova**. Em 11/09/2026 um login do portal, entrando para testar a restrição de hosts por
+função, ficou com a pilha de avisos no dashboard sem ter clicado em nada que fosse barrado. O
+login do portal que abre uma tela do atendimento também deixou de passar pelo `quadro_geral`: vai
+direto para o próprio dashboard, sem o aviso.
+
 Dois endpoints estavam sem gate nenhum do módulo e foram corrigidos junto: as sete APIs de
 **kanban** (só `@login_required` — qualquer conta logada lia e escrevia nos quadros) e
 `api_tags_list`, que **não tinha decorator algum**.

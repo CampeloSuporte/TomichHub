@@ -32,16 +32,33 @@ def staff_required(view_func):
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         from usuario.perms import pode_acessar_atendimento, is_backoffice, is_admin
+        # Polling/fetch das telas do atendimento responde com status, nunca
+        # com redirect. Uma aba do atendimento esquecida aberta continua
+        # consultando depois que outra conta loga no mesmo navegador; o
+        # redirect corria a cadeia quadro_geral → admin_required → login, e
+        # cada ciclo enfileirava "Você não possui permissão para acessar esta
+        # página." na sessão da conta nova. O login do portal via a pilha de
+        # avisos sem ter clicado em nada.
+        quer_json = (
+            '/api/' in request.path
+            or request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        )
         if not request.user.is_authenticated:
+            if quer_json:
+                return JsonResponse({'error': 'Sessão expirada. Faça login novamente.'}, status=401)
             login_url = getattr(_settings, 'LOGIN_URL', '/auth/login/')
             return redirect(f'{login_url}?next={request.path}')
         if not pode_acessar_atendimento(request.user):
+            if quer_json:
+                return JsonResponse({'error': 'Sem acesso ao Atendimento.'}, status=403)
             # Consultor/Operador de revenda: o dashboard deles é o da
             # instância. Mandar pro `quadro_geral` (que hoje é só do
             # Administrador) só empurraria o redirect adiante.
             if is_backoffice(request.user) and not is_admin(request.user):
                 return redirect('quadro_instancia')
-            return redirect('quadro_geral')
+            # Login do portal: direto pro dashboard dele. Pelo `quadro_geral`
+            # levava o aviso de permissão do `admin_required` de brinde.
+            return redirect('cliente_dashboard')
         return view_func(request, *args, **kwargs)
     return wrapper
 

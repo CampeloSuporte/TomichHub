@@ -2533,8 +2533,8 @@ class AtendimentoExclusivoDaPrincipalTest(TestCase):
     def test_apis_de_kanban_e_tags_exigem_o_modulo(self):
         # Eram `@login_required` (kanban) e sem decorator nenhum (tags).
         self.client.force_login(self.consultor)
-        self.assertEqual(self.client.get(reverse('atendimento:api_kanban_boards')).status_code, 302)
-        self.assertEqual(self.client.get(reverse('atendimento:api_tags_list')).status_code, 302)
+        self.assertEqual(self.client.get(reverse('atendimento:api_kanban_boards')).status_code, 403)
+        self.assertEqual(self.client.get(reverse('atendimento:api_tags_list')).status_code, 403)
 
         self.client.force_login(self.operador_principal)
         self.assertEqual(self.client.get(reverse('atendimento:api_kanban_boards')).status_code, 200)
@@ -2543,6 +2543,32 @@ class AtendimentoExclusivoDaPrincipalTest(TestCase):
     def test_login_de_portal_nao_entra(self):
         self.client.force_login(self.portal)
         self.assertNotEqual(self.client.get(reverse('atendimento:inbox')).status_code, 200)
+
+    def test_login_de_portal_na_tela_vai_direto_pro_dashboard_dele(self):
+        # Antes ia pro `quadro_geral`, cujo `admin_required` enfileirava
+        # "Você não possui permissão..." antes de mandar pro login.
+        self.client.force_login(self.portal)
+        r = self.client.get(reverse('atendimento:inbox'))
+        self.assertRedirects(r, reverse('cliente_dashboard'), fetch_redirect_response=False)
+
+    def test_polling_de_aba_esquecida_nao_enche_o_portal_de_avisos(self):
+        # Aba do atendimento de outra conta ficou aberta no navegador e o
+        # login do portal herdou o polling. Cada ciclo corria 302 →
+        # quadro_geral → login e deixava um aviso de permissão na sessão.
+        from django.contrib.messages import get_messages
+        self.client.force_login(self.portal)
+        for _ in range(3):
+            r = self.client.get(
+                '/atendimento/api/my-conversations/',
+                HTTP_X_REQUESTED_WITH='XMLHttpRequest', follow=True,
+            )
+            self.assertEqual(r.status_code, 403)
+            self.assertEqual(r.redirect_chain, [])
+            self.assertEqual(list(get_messages(r.wsgi_request)), [])
+
+    def test_api_sem_sessao_responde_401_em_vez_de_redirect(self):
+        r = self.client.get('/atendimento/api/my-conversations/', HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(r.status_code, 401)
 
     def test_websocket_do_inbox_usa_a_mesma_regra_da_porta_http(self):
         # Os consumers chamam `perms.pode_acessar_atendimento` (envelopado em

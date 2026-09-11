@@ -4112,7 +4112,7 @@ function gcmConnectWS(convId){
     _gcPollTimer=setInterval(function(){
         if(!_gcConvId||_gcConvId!==convId){clearInterval(_gcPollTimer);return;}
         fetch('/atendimento/api/conversation/'+convId+'/messages/?after_ts='+encodeURIComponent(_gcLastTs),{headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'})
-        .then(function(r){return r.ok?r.json():null;}).then(function(d){if(!d||!d.messages)return;d.messages.forEach(function(m){gcmRenderMsg(m);});if(d.messages.length){var _lm=d.messages[d.messages.length-1];_gcLastTs=(_lm&&_lm.created_at_iso)||_gcLastTs;}}).catch(function(){});
+        .then(function(r){if(r.status===401||r.status===403){clearInterval(_gcPollTimer);return null;}return r.ok?r.json():null;}).then(function(d){if(!d||!d.messages)return;d.messages.forEach(function(m){gcmRenderMsg(m);});if(d.messages.length){var _lm=d.messages[d.messages.length-1];_gcLastTs=(_lm&&_lm.created_at_iso)||_gcLastTs;}}).catch(function(){});
     },20000);
 }
 
