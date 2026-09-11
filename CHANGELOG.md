@@ -5,6 +5,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-11 (PTT novo em slot preparado para outro)
+
+### Corrigido
+
+- **PTT novo saía com a policy de saída de outro PTT**: no "＋" de IX, o seletor abria no
+  primeiro slot da lista, e ali estava o ix-02, que tem config pronta para o PTT-RJ mas nenhuma
+  sessão. Ao subir o PTT-CUIABA nele, a policy de entrada saía com o nome novo, mas a de saída
+  era a `AS26162-PTT-RJ-V4-OUT`, e o Cuiabá ficava nas communities 602xx do RJ. Agora o backend
+  recusa um nome diferente do nome do slot preparado e indica o primeiro slot livre do tipo. No
+  slot livre, as policies IN e OUT saem com o nome novo e o layout completo dos demais PTTs.
+  Com o mesmo nome, o slot preparado continua sendo completado como antes.
+
+### Alterado
+
+- **Formulário "＋" começa num slot livre**: pré-seleciona o primeiro slot sem sessão e sem
+  config de outro circuito, e não mais o primeiro da lista. Ao trocar para um slot sem nome, o
+  nome digitado é mantido. Se o nome não bater com o do slot, o resumo avisa antes do preview.
+
+---
+
 ## [Não publicado] — 2026-09-11 (Peer repetido na automação BGP)
 
 ### Corrigido

@@ -1440,6 +1440,20 @@ existir, e nada existente é reemitido:
 5. **a sessão**, no formato do fabricante conforme o papel (abaixo);
 6. `commit`.
 
+**Slot preparado para outro circuito.** Na caixa de referência (BDR SINOP) os
+slots ix-02 (PTT-RJ), ix-06 (PTT-ES) e ix-07 (PTT-BA) já têm community-filters
+e policies IN/OUT, mas nenhuma sessão. Subir num deles com o MESMO nome
+completa o circuito e reaproveita a policy de saída pronta. Com outro nome,
+`comandos_criar_circuito` recusa e indica o primeiro slot livre do tipo
+(`_slot_livre()`): seguir poria o circuito novo nas communities do outro
+(602xx é do RJ) e na policy de saída dele. Foi o que aconteceu com o
+PTT-CUIABA no ix-02 em 11/09/2026 — a IN saía com o nome novo e a OUT era a
+`AS26162-PTT-RJ-V4-OUT`. No slot livre, IN e OUT saem com o nome novo e o
+layout completo do item 4. O formulário "＋" também passou a pré-selecionar o
+primeiro slot livre (antes era o primeiro da lista), mantém o nome digitado ao
+trocar para um slot sem nome e avisa no resumo quando o nome não bate com o do
+slot.
+
 ### Operadora/CDN x IX: dois arranjos de sessão
 
 Operadora e CDN levam peer individual com as policies **no peer**:
