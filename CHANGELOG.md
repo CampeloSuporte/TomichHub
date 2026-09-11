@@ -91,6 +91,13 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   memória (`Acesso.aplicar_protocolo_extra`). Sessão compartilhada de protocolo extra tem chave
   própria, e o link externo continua só no acesso padrão.
 
+### Corrigido
+
+- **Acesso RDP aparecia como Winbox Web**: a página de RDP reaproveita o `winbox.html`, que
+  mostrava "Preparando WinBox" fixo no carregamento e só o IP no título da aba. Agora título e
+  splash seguem o modo: "RDP · IP" e "Preparando acesso RDP" (e "WebFig" no WebFig via VNC).
+  A conexão em si já era RDP (xfreerdp); só o texto estava errado.
+
 ### Alterado
 
 - **Backup busca o SSH do host**: `realizar_backup` usa `Acesso.porta_ssh()`, que dá a porta

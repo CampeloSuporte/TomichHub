@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ acesso.host }}</title>
+    {# Mesma página serve Winbox Web, WebFig (VNC) e RDP — os textos seguem o modo #}
+    <title>{% if vnc_mode == 'rdp' %}RDP{% elif vnc_mode == 'browser' %}WebFig{% else %}WinBox{% endif %} · {{ acesso.host }}</title>
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -408,8 +409,16 @@
     <!-- Splash de carregamento -->
     <div id="wb-splash">
         <div class="splash-ring"></div>
+        {% if vnc_mode == 'rdp' %}
+        <div class="splash-title">Preparando acesso RDP</div>
+        <div class="splash-sub">Conectando à área de trabalho remota de {{ acesso.host }}...</div>
+        {% elif vnc_mode == 'browser' %}
+        <div class="splash-title">Preparando WebFig</div>
+        <div class="splash-sub">Criando sessao segura...</div>
+        {% else %}
         <div class="splash-title">Preparando WinBox</div>
         <div class="splash-sub">Criando sessao segura...</div>
+        {% endif %}
     </div>
 
     <!-- Canvas noVNC - ocupa 100% da tela -->
