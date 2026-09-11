@@ -381,3 +381,11 @@ Comando: show running-config
 - **Novos equipamentos**: ao cadastrar um novo acesso SSH, o modelo é detectado
   automaticamente no próximo ciclo de 3 dias da detecção, e o backup é habilitado
   no próximo ciclo diário.
+
+## Porta SSH do backup (`porta_ssh`) — Adicionado em 2026-09-11
+
+O backup é sempre por SSH. `realizar_backup` usa `Acesso.porta_ssh()`: a porta padrão quando o
+protocolo padrão é SSH; senão, a do primeiro SSH cadastrado como protocolo extra do host
+(`AcessoProtocolo`); sem SSH em lugar nenhum, o comportamento antigo (porta padrão, ou 22). Um host
+com HTTP como padrão e SSH extra passa a fazer backup pelo SSH extra, e o log mostra
+`🔑 SSH do protocolo extra: porta N`. Ver [acessos_protocolos_extras.md](acessos_protocolos_extras.md).

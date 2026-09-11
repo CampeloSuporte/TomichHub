@@ -390,3 +390,15 @@ Botão **🌐 Link Externo** (rodapé + menu mobile) abre um modal (`#linkExtern
 de duração (15/30/60/120 min), botão "Gerar link" (`gerarLinkExterno()` → `criar_link_externo`),
 campo com a URL pronta pra copiar e botão **"Revogar agora"**
 (`revogarLinkExterno()` → `revogar_link_externo`).
+
+## Protocolo extra do host (`protocolo_id`) — Adicionado em 2026-09-11
+
+O `connect` pode trazer `protocolo_id`, um `AcessoProtocolo` do host (ex.: SSH na 22 de um
+equipamento com HTTP como padrão). `conectar_acesso` chama
+`acesso.aplicar_protocolo_extra(..., permitidos=('SSH', 'TELNET'))`, que troca porta e protocolo
+**só em memória**; o resto do fluxo (proxy, OpenVPN, direto, Huawei, Parks, SSH legado) não muda.
+No extra, o protocolo é o cadastrado; no padrão, continua `detect_protocol(porta)`.
+
+A sessão compartilhada de um extra usa a chave `(acesso_id, protocolo_id)`
+(`_SharedTerminalSession.chave`), separada da sessão do padrão. Link externo só no acesso padrão.
+Ver [acessos_protocolos_extras.md](acessos_protocolos_extras.md).
