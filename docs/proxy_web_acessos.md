@@ -60,6 +60,17 @@ para o que já foi corrigido e o que ainda falta.
 
 ---
 
+## Falha do proxy e conexão direta (`X-CRM-Proxy-Falha`) — Adicionado em 11/09/2026
+
+As páginas de erro geradas pelo **próprio proxy** saem por `_falha_proxy_web` com o header
+`X-CRM-Proxy-Falha: 1`: 400 (IP privado sem ProxyServer ativo e sem OpenVPN cobrindo o IP), 502
+(sem resposta do equipamento) e 500 (erro interno). Resposta do equipamento, com qualquer status,
+nunca leva o header.
+
+O card usa esse header em HTTP/HTTPS com IP privado (`abrirWebProxyComFallback`): testa o proxy e,
+se vier o header, der erro de rede ou passarem 15 s sem resposta, abre a conexão direta no
+navegador. Detalhes em [acessos_protocolos_extras.md](acessos_protocolos_extras.md).
+
 ## Problemas Conhecidos e Soluções
 
 ### Login funciona mas a página fica voltando pra tela de login (loop) — Corrigido em 04/08/2026

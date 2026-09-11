@@ -122,7 +122,8 @@ Cadastro completo de clientes com todas as informações necessárias para um pr
 - **Acessos** — credenciais por equipamento: SSH, Telnet, HTTP, WinBox, API RouterOS
 - **Protocolos extras por host** — aba **+** do card: outro protocolo e porta no mesmo IP (ex.:
   HTTP como padrão e SSH extra). O **Acessar** passa a perguntar por onde entrar. A rota é a do
-  padrão: IP privado passa pelo proxy/OpenVPN do cliente e IP público vai direto
+  padrão: IP privado passa pelo proxy/OpenVPN do cliente e IP público vai direto. Com porta
+  Winbox, a escolha também traz Winbox Web 4.2 e 3.43 ([doc](docs/acessos_protocolos_extras.md))
 - **ProxyServer** — configuração do túnel SSH por cliente
 - Histórico de comentários por acesso
 - Upload de documentos
@@ -638,6 +639,7 @@ sudo -u postgres psql crm_db < backup_20260101.sql
 | [docs/winbox_vnc.md](docs/winbox_vnc.md) | WinBox Web via VNC no navegador |
 | [docs/terminal_ssh.md](docs/terminal_ssh.md) | Terminal SSH/Telnet web |
 | [docs/backup_automatico.md](docs/backup_automatico.md) | Sistema de backup automático |
+| [docs/acessos_protocolos_extras.md](docs/acessos_protocolos_extras.md) | Protocolos extras por host, escolha no Acessar (inclui Winbox), web com IP privado proxy→direto, SSH do backup |
 | [docs/ipam.md](docs/ipam.md) | IPAM nativo |
 | [docs/topologia.md](docs/topologia.md) | Topologia de rede interativa |
 | [docs/bgp_automacao.md](docs/bgp_automacao.md) | Automação BGP — subir circuito/IX (inclusive com peer de outro ASN), anúncios por community, prepend, modo trial |

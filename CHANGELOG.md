@@ -83,13 +83,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   Os protocolos cadastrados aparecem na linha "Outros acessos", com × para remover. Novo modelo
   `AcessoProtocolo` (migração 0115), com rotas `acessos/<id>/protocolos/adicionar/` e
   `acessos/protocolos/<id>/remover/`.
-- **Acessar com escolha**: se o host tem protocolo extra, o botão **Acessar** escurece o card e
+- **Acessar com escolha**: se o host tem protocolo extra (ou porta Winbox, ver *Alterado*), o
+  botão **Acessar** escurece o card e
   mostra no meio dele o padrão e os extras para escolher (clique fora, × ou Esc fecham); sem
   extra, abre direto como antes. A rota segue a regra do acesso padrão.
   SSH, Telnet e RDP com IP privado passam pelo proxy SSH ou pelo OpenVPN do cliente; com IP
-  público, vão direto. HTTP/HTTPS com IP privado tenta primeiro o proxy web
-  do CRM e, se ele falhar, abre direto; com IP público, abre no navegador. O terminal manda `protocolo_id` e o consumer troca porta e protocolo só em
-  memória (`Acesso.aplicar_protocolo_extra`). Sessão compartilhada de protocolo extra tem chave
+  público, vão direto. HTTP/HTTPS com IP privado tenta primeiro o proxy web do CRM e, se ele
+  falhar, abre direto; com IP público, abre no navegador. O terminal manda `protocolo_id` e o
+  consumer troca porta e protocolo só em memória (`Acesso.aplicar_protocolo_extra`). Sessão compartilhada de protocolo extra tem chave
   própria, e o link externo continua só no acesso padrão.
 
 ### Corrigido
@@ -117,6 +118,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **Backup busca o SSH do host**: `realizar_backup` usa `Acesso.porta_ssh()`, que dá a porta
   principal quando o protocolo principal é SSH e, se não for, a do primeiro SSH extra. Um host
   com HTTP como principal passa a fazer backup pelo SSH extra. Sem SSH cadastrado, nada muda.
+
+Doc: [docs/acessos_protocolos_extras.md](docs/acessos_protocolos_extras.md).
 
 ---
 

@@ -116,6 +116,16 @@ Binário do WinBox 4: `/opt/crm/static/winbox4/WinBox` (ELF 64-bit)
 
 ---
 
+## RDP de protocolo extra e textos por modo — Adicionado em 11/09/2026
+
+- `rdp_page` aceita `?pid=<AcessoProtocolo>`. O `winbox.html` repassa o `pid` na URL do WebSocket e
+  o `WinboxVNCConsumer` usa a porta desse RDP extra
+  (`aplicar_protocolo_extra(pid, permitidos=('RDP',))`).
+- Título e splash seguem o `vnc_mode`: `RDP · IP` e "Preparando acesso RDP", `WebFig · IP` e
+  "Preparando WebFig", `WinBox · IP` e "Preparando WinBox". Antes o RDP também mostrava "Preparando
+  WinBox", o que parecia um Winbox Web aberto no lugar do RDP.
+- No card, Winbox Web 4.2 e 3.43 saem pela escolha do **Acessar** ([acessos_protocolos_extras.md](acessos_protocolos_extras.md)).
+
 ## Problemas Conhecidos e Soluções
 
 ### WinBox abre pequeno no browser
@@ -145,7 +155,7 @@ def __init__(self, host, port, user, password,
 
 ---
 
-### Sessão não inicia (fica no splash "Preparando WinBox")
+### Sessão não inicia (fica no splash "Preparando WinBox", "Preparando acesso RDP" ou "Preparando WebFig")
 
 **Causas possíveis:**
 1. Parâmetros faltando no `__init__` (ver acima)

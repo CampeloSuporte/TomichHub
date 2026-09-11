@@ -2,6 +2,33 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 50 — 11/09/2026: Protocolos extras de acesso no host
+
+**O que foi implementado?**
+- ➕ **Mais de um protocolo no mesmo host**: a aba **+** do card (ao lado de "Padrão") cadastra, sem
+  modal, protocolo e porta extras no mesmo IP e com as mesmas credenciais (SSH, Telnet, HTTP, HTTPS,
+  RDP). Novo modelo `AcessoProtocolo` (migração 0115).
+- 🎯 **Acessar com escolha no meio do card**: com extra ou porta Winbox, o **Acessar** escurece o
+  card e mostra o padrão, os extras e o Winbox Web (4.2 e 3.43). Os ícones `</>`, Winbox, 3.43 e
+  interface web saíram da barra do card, junto com os botões grandes de Winbox.
+- 🌐 **Web com IP privado: proxy primeiro, direto se falhar**: as páginas de erro do proxy levam
+  `X-CRM-Proxy-Falha`. O navegador testa o proxy e, na falha (ou depois de 15 s), abre a conexão
+  direta.
+- 💾 **Backup busca o SSH do host**: `Acesso.porta_ssh()` usa o SSH extra quando o padrão não é SSH.
+- 🐛 **RDP aparecia como "Preparando WinBox"**: título e splash do `winbox.html` seguem o modo.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[acessos_protocolos_extras.md](acessos_protocolos_extras.md)** | Novo — modelo, cadastro, escolha do Acessar, rota por protocolo, terminal, web proxy→direto, RDP, backup, diagnóstico |
+| [proxy_web_acessos.md](proxy_web_acessos.md) | Nova seção "Falha do proxy e conexão direta (`X-CRM-Proxy-Falha`)" |
+| [terminal_ssh.md](terminal_ssh.md) | Nova seção "Protocolo extra do host (`protocolo_id`)" |
+| [winbox_vnc.md](winbox_vnc.md) | Nova seção "RDP de protocolo extra e textos por modo" |
+| [backup_automatico.md](backup_automatico.md) | Nova seção "Porta SSH do backup (`porta_ssh`)" |
+
+---
+
 ### Sessão 49 — 10/09/2026: OpenVPN no MikroTik — usuário caía numa faixa que a rede não conhece
 
 **O que foi implementado?**
