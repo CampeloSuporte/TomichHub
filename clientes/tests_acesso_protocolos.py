@@ -159,7 +159,17 @@ class ProtocoloExtraViewsTest(_Base):
         self.assertIn('class="novo-proto-form"', html)
         self.assertIn('acessarHost(this,', html)
         # host 172.24.x é privado: o extra HTTP/HTTPS iria pelo proxy web
-        self.assertIn(', pid, true))', html)
+        self.assertIn(', pid, true),', html)
+        self.assertIn('data-winbox=""', html)
+
+    def test_winbox_entra_na_escolha_do_acessar(self):
+        self.acesso.winbox = 58291
+        self.acesso.save()
+        html = self.client.get(reverse('listar_clientes') + f'?id={self.cliente.id}').content.decode()
+        self.assertIn('data-winbox="58291"', html)
+        self.assertIn(f'(versao) => abrirWinboxWeb({self.acesso.id}, versao)', html)
+        # Os botões grandes de Winbox saíram do card: agora é pela escolha do Acessar
+        self.assertNotIn('class="btn btn-winbox', html)
 
 
 class PaginaVncRotuloTest(_Base):

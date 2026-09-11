@@ -431,25 +431,13 @@
                                     {% endif %}
                                 <div class="mt-4">
                                 <button class="btn btn-access mb-2" 
-                                        data-protocolo="{{ acesso.protocolo|upper }}" data-porta="{{ acesso.porta|default_if_none:'' }}"
+                                        data-protocolo="{{ acesso.protocolo|upper }}" data-porta="{{ acesso.porta|default_if_none:'' }}" data-winbox="{{ acesso.winbox|default_if_none:'' }}"
                                         onclick="acessarHost(this,
                                             () => acessarEquipamento('{{ acesso.protocolo|escapejs }}', '{{ acesso.host|escapejs }}', '{{ acesso.porta|escapejs }}', '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}),
-                                            (proto, porta, pid) => acessarProtocoloExtra(proto, '{{ acesso.host|escapejs }}', porta, '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}, pid, {{ acesso.host_eh_privado|yesno:'true,false' }}))">
+                                            (proto, porta, pid) => acessarProtocoloExtra(proto, '{{ acesso.host|escapejs }}', porta, '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}, pid, {{ acesso.host_eh_privado|yesno:'true,false' }}),
+                                            (versao) => abrirWinboxWeb({{ acesso.id }}, versao))">
                                     <i class="fas fa-sign-in-alt me-2"></i> Acessar
                                 </button>
-                                {% if acesso.winbox %}
-                                <button class="btn btn-winbox mb-2"
-                                        onclick="abrirWinboxWeb({{ acesso.id }})"
-                                        title="Abrir Winbox Web Terminal (porta {{ acesso.winbox }})">
-                                    <i class="fas fa-network-wired me-2"></i> Winbox Web
-                                </button>
-                                <button class="btn btn-winbox mb-2"
-                                        onclick="abrirWinboxWeb({{ acesso.id }}, '3')"
-                                        title="Abrir Winbox Web 3.43 (legado)"
-                                        style="opacity:.85;">
-                                    <i class="fas fa-network-wired me-2"></i> Winbox Web 3.43 (legado)
-                                </button>
-                                {% endif %}
 
 
 
@@ -6608,6 +6596,7 @@ function getCsrfToken(){
         }
         .acesso-escolha-op:active { transform: scale(.98); }
         .acesso-escolha-op i { width: 16px; text-align: center; color: var(--cyan); }
+        .acesso-escolha-op i.fa-network-wired { color: #d29922; }
         .aeo-proto { min-width: 52px; font-weight: 600; }
         .aeo-porta { margin-left: auto; color: var(--text-muted); font-size: 11px; }
         @keyframes aeo-fade { from { opacity: 0; } }
@@ -6731,12 +6720,13 @@ function getCsrfToken(){
         }
     }
 
-    // "Acessar": sem protocolo extra abre direto como sempre; com extras,
-    // escurece o card e mostra no meio dele as opções de acesso.
-    function acessarHost(btn, principal, extra) {
+    // "Acessar": sem protocolo extra nem Winbox abre direto como sempre; com
+    // algum deles, escurece o card e mostra no meio dele as opções de acesso.
+    function acessarHost(btn, principal, extra, winbox) {
         const card = btn.closest('.card');
         const chips = card.querySelectorAll('.proto-chip');
-        if (!chips.length) { principal(); return; }
+        const portaWinbox = btn.dataset.winbox;
+        if (!chips.length && !portaWinbox) { principal(); return; }
 
         fecharEscolhaAcesso();
         if (getComputedStyle(card).position === 'static') card.style.position = 'relative';
@@ -6768,12 +6758,12 @@ function getCsrfToken(){
         cabecalho.append(textos, fechar);
 
         const opcoes = el('div', 'aeo-opcoes');
-        const opcao = (proto, rotulo, acao) => {
+        const opcao = (proto, rotulo, acao, nome = proto) => {
             const b = el('button', 'acesso-escolha-op');
             b.type = 'button';
             b.append(
                 el('i', `fas ${_ICONE_PROTO[proto] || 'fa-plug'}`),
-                el('span', 'aeo-proto', proto),
+                el('span', 'aeo-proto', nome),
                 el('span', 'aeo-porta', rotulo),
             );
             b.onclick = () => { fecharEscolhaAcesso(); acao(); };
@@ -6782,6 +6772,10 @@ function getCsrfToken(){
         opcao(btn.dataset.protocolo, `porta ${btn.dataset.porta} · padrão`, principal);
         chips.forEach(c => opcao(c.dataset.protocolo, `porta ${c.dataset.porta}`,
             () => extra(c.dataset.protocolo, c.dataset.porta, c.dataset.pid)));
+        if (portaWinbox) {
+            opcao('WINBOX', `porta ${portaWinbox} · Web 4.2`, () => winbox(), 'Winbox');
+            opcao('WINBOX', `porta ${portaWinbox} · legado`, () => winbox('3'), 'Winbox 3.43');
+        }
 
         painel.append(cabecalho, opcoes);
         overlay.appendChild(painel);

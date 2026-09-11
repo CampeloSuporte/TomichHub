@@ -33,6 +33,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Alterado
 
+- **Winbox na escolha do Acessar**: host com porta Winbox também abre o painel de escolha no
+  **Acessar**, com "Winbox" (Web 4.2) e "Winbox 3.43" (legado) ao lado do padrão e dos extras.
+  Os dois botões grandes de Winbox Web embaixo do Acessar saíram do card. Os ícones rápidos do
+  topo continuam.
 - **Acesso web com IP privado: proxy primeiro, direto se falhar**: HTTP/HTTPS de host com IP
   privado passa a tentar primeiro o proxy web do CRM, tanto no **Acessar** padrão quanto no
   protocolo extra e no ícone de interface web. Se o proxy falha, a mesma aba abre a conexão
