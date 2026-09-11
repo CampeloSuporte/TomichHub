@@ -1875,6 +1875,10 @@ function caAbrirSessao(destinoId, tipoNovo) {
     document.getElementById('caSessaoPeerAs').value = (circuito && circuito.peer_as) || '';
     document.getElementById('caSessaoLp').value =
         ((CA_MAPA.padroes || {}).local_preference || {})[tipo] || '';
+    // No downstream a local-preference é obrigatória: vazio aplica o padrão.
+    document.getElementById('caSessaoLp').placeholder = tipo === 'downstream'
+        ? `vazio = padrão ${((CA_MAPA.padroes || {}).local_preference || {}).downstream || ''}`
+        : 'deixe vazio para não aplicar';
     document.getElementById('caSessaoPrepend').value =
         (circuito && circuito.prepend_as) || CA_MAPA.as_local || '';
     document.getElementById('caSessaoPrependWrap').style.display = tipo === 'downstream' ? 'none' : '';

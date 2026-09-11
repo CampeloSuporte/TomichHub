@@ -144,7 +144,7 @@ ROTULOS_GLOBAIS = {
 # vence a mesma rota aprendida via IX, que vence a via upstream — e são
 # editáveis no modal antes de aplicar.
 LOCAL_PREFERENCE_PADRAO = {'upstream': '1000', 'ix': '3000', 'cdn': '2000',
-                           'downstream': '4000'}
+                           'downstream': '9000'}
 
 NODE_CATCHALL = 999          # `deny node 999` — bloqueio final da policy OUT
 NODE_GLOBAL = 12             # node do `if-match community-filter glob-all-*`
@@ -2489,8 +2489,10 @@ def comandos_criar_downstream(dados, mapa, opcoes=None):
         as_local = (dados.get('sessoes') or [{}])[0].get('as_local', '') or dados.get('as_local', '')
     if not as_local:
         raise AcaoBgpNaoSuportada('Não foi possível identificar o ASN local (`bgp <ASN>`) deste equipamento.')
-    local_preference = str(opcoes.get('local_preference') or '').strip()
-    if local_preference and not local_preference.isdigit():
+    # Rota de cliente sempre entra com local-preference: o padrão (9000) sai
+    # mesmo com o campo vazio — só um valor informado no formulário o troca.
+    local_preference = str(opcoes.get('local_preference') or LOCAL_PREFERENCE_PADRAO['downstream']).strip()
+    if not local_preference.isdigit():
         raise AcaoBgpNaoSuportada('A local-preference tem que ser um número.')
     fake_as = str(opcoes.get('fake_as') or '').strip()
     if fake_as and not fake_as.isdigit():
@@ -2842,7 +2844,9 @@ def _registrar_criacao_local(dados, tipo, alvo, params):
                 'policy': f'{base}-IN', 'node': NODE_LOCAL, 'acao': 'permit',
                 'community_filters': [], 'apply_community': communities,
                 'apply_community_extra': [], 'prefix_lists': [nome_pl],
-                'prepend_as': [], 'local_preference': None,
+                'prepend_as': [], 'local_preference': int(
+                    str(opcoes.get('local_preference') or LOCAL_PREFERENCE_PADRAO['downstream']).strip()
+                    or 0) or None,
             }])
 
     ips_existentes = set(_sessoes_por_ip(dados))

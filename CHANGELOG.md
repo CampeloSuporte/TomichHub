@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-11 (Local-preference 9000 no downstream)
+
+### Alterado
+
+- **Sessão de cliente (downstream) entra com local-preference 9000 por padrão**: a
+  route-policy de entrada gerada ao subir um downstream sempre leva
+  `apply local-preference 9000`, mesmo com o campo vazio no formulário. Antes o padrão
+  sugerido era 4000, e o campo vazio fazia a policy sair sem local-preference. Um valor
+  informado no formulário continua valendo no lugar do padrão.
+
+---
+
 ## [Não publicado] — 2026-09-11 (PTT novo no modelo dos PTTs da caixa)
 
 ### Alterado
