@@ -6379,6 +6379,12 @@ function getCsrfToken(){
             webScheme = 'http';
         }
 
+        // IP privado: proxy primeiro, conexão direta se o proxy falhar
+        if (_hostEhPrivado(host)) {
+            abrirWebProxyComFallback(acessoId, webScheme, webPorta, host);
+            return;
+        }
+
         const proxyUrl = `/clientes/acessos/${acessoId}/web/?porta=${webPorta}&scheme=${webScheme}&path=/`;
         
         // Abre diretamente no navegador em nova aba
@@ -6532,7 +6538,7 @@ function getCsrfToken(){
     }
     </script>
 
-    <script src="{% static 'js/terminal_tab_manager.js' %}?v=protos1"></script>
+    <script src="{% static 'js/terminal_tab_manager.js' %}?v=protos2"></script>
 
     <style>
         /* Protocolos extras do host (aba "+" do card) */

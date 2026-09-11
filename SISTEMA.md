@@ -279,8 +279,10 @@ Os banimentos do fail2ban **não** têm modelo: a fonte da verdade é o `fail2ba
   o padrão e os extras. SSH/Telnet abrem o terminal com `protocolo_id`, e o `SSHConsumer` troca
   porta e protocolo só em memória (`Acesso.aplicar_protocolo_extra`), mantendo o caminho
   proxy/OpenVPN/direto. A sessão compartilhada usa a chave `(acesso_id, protocolo_id)`, e o link
-  externo fica só no acesso padrão. HTTP/HTTPS com IP privado abre pelo proxy web e com IP público
-  abre direto. RDP passa `?pid=` até o `WinboxVNCConsumer`
+  externo fica só no acesso padrão. HTTP/HTTPS com IP privado tenta primeiro o proxy web e, se ele
+  falhar, abre direto no navegador. Falha é página de erro com header `X-CRM-Proxy-Falha`, erro
+  de rede ou mais de 15 s (`abrirWebProxyComFallback`). Com IP público, abre direto. Vale também
+  para o Acessar padrão e o ícone de interface web. RDP passa `?pid=` até o `WinboxVNCConsumer`
 
 ### Backups Automatizados
 

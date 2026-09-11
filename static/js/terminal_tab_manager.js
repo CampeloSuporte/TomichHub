@@ -101,6 +101,12 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
     
     if (proto === 'HTTPS' || proto === 'HTTP') {
         console.log('🌐 Protocolo WEB detectado:', proto);
+
+        // IP privado: proxy do CRM primeiro, conexão direta se ele falhar
+        if (acessoId && _hostEhPrivado(host)) {
+            abrirWebProxyComFallback(acessoId, proto.toLowerCase(), portaNum, host);
+            return;
+        }
         
         // ✅ Construir URL mantendo o host e caminho intacto
         let url = `${proto.toLowerCase()}://${host}`;
@@ -185,6 +191,92 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
 }
 
 // ============================================
+// ACESSO WEB (HTTP/HTTPS) — IP PRIVADO: PROXY PRIMEIRO
+// ============================================
+
+// Mesmo critério de ipaddress.is_private do backend (views.is_private_ip):
+// host com porta ou nome de DNS não é IP → não privado
+function _hostEhPrivado(host) {
+    const h = String(host || '').trim().replace(/^[a-z]+:\/\//i, '').split('/')[0];
+    const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (v4) {
+        const [a, b, c] = v4.slice(1).map(Number);
+        return a === 0 || a === 10 || a === 127 || a >= 240
+            || (a === 172 && b >= 16 && b <= 31)
+            || (a === 192 && b === 168)
+            || (a === 169 && b === 254)
+            || (a === 198 && (b === 18 || b === 19))
+            || (a === 192 && b === 0 && (c === 0 || c === 2))
+            || (a === 198 && b === 51 && c === 100)
+            || (a === 203 && b === 0 && c === 113);
+    }
+    const v6 = h.replace(/^\[|\]$/g, '').toLowerCase();
+    return v6.includes(':') && (v6 === '::1' || /^f[cd]/.test(v6) || /^fe[89ab]/.test(v6));
+}
+
+// Host pode ter caminho fixo ("1.2.3.4/zabbix"): a porta entra antes dele
+function _urlWebDireta(scheme, host, porta) {
+    let h = String(host).trim().replace(/^https?:\/\//i, '');
+    const barra = h.indexOf('/');
+    const caminho = barra >= 0 ? h.slice(barra) : '';
+    if (barra >= 0) h = h.slice(0, barra);
+    const portaPadrao = (scheme === 'http' && porta === 80) || (scheme === 'https' && porta === 443);
+    return `${scheme}://${h}${portaPadrao || !porta ? '' : ':' + porta}${caminho}`;
+}
+
+const _WEB_PROXY_TIMEOUT_MS = 15000;
+
+// IP privado: tenta o proxy web do CRM (túnel SSH ou OpenVPN do cliente). Se
+// ele falhar (página de erro do proxy com X-CRM-Proxy-Falha, erro de rede ou
+// demora além do limite), abre a conexão direta no navegador, que funciona
+// quando o PC do operador alcança a rede do cliente. Resposta do equipamento,
+// com qualquer status, conta como proxy funcionando.
+async function abrirWebProxyComFallback(acessoId, scheme, porta, host) {
+    porta = porta || (scheme === 'https' ? 443 : 80);
+    const urlProxy = `/clientes/acessos/${acessoId}/web/${porta}/${scheme}/`;
+    const urlDireta = _urlWebDireta(scheme, host, porta);
+
+    // Aba aberta já no clique: depois do await o navegador bloquearia o popup
+    const janela = window.open('', '_blank');
+    if (!janela) {
+        alert('⚠️ Não foi possível abrir a nova aba. Verifique se bloqueadores de popup estão desabilitados.');
+        return;
+    }
+    _avisoJanelaWeb(janela, `Conectando via proxy do CRM a ${host}:${porta}…`);
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), _WEB_PROXY_TIMEOUT_MS);
+    let proxyOk = false;
+    try {
+        const r = await fetch(urlProxy, {credentials: 'same-origin', cache: 'no-store', signal: ctrl.signal});
+        proxyOk = !r.headers.get('X-CRM-Proxy-Falha');
+    } catch (e) {
+        proxyOk = false;
+    } finally {
+        clearTimeout(timer);
+        ctrl.abort();   // só interessa o status, não o corpo
+    }
+
+    if (janela.closed) return;
+    if (proxyOk) {
+        janela.location.href = urlProxy;
+        return;
+    }
+    console.warn(`Proxy web falhou para ${host}:${porta}; tentando conexão direta ${urlDireta}`);
+    _avisoJanelaWeb(janela, `Proxy indisponível. Tentando conexão direta a ${urlDireta}…`);
+    janela.location.href = urlDireta;
+}
+
+function _avisoJanelaWeb(janela, texto) {
+    try {
+        janela.document.title = 'Conectando…';
+        janela.document.body.style.cssText = 'margin:0;display:flex;align-items:center;justify-content:center;'
+            + 'height:100vh;background:#0d1117;color:#8b949e;font:14px system-ui,sans-serif';
+        janela.document.body.textContent = texto;
+    } catch (e) { /* a aba já saiu do about:blank */ }
+}
+
+// ============================================
 // PROTOCOLO EXTRA DO HOST (AcessoProtocolo)
 // ============================================
 // Mesmo IP e credenciais do acesso, outro protocolo/porta. Segue a regra do
@@ -199,16 +291,10 @@ function acessarProtocoloExtra(protocolo, host, porta, usuario, senha, acessoId,
     if (proto === 'HTTP' || proto === 'HTTPS') {
         const scheme = proto.toLowerCase();
         if (hostPrivado) {
-            window.open(`/clientes/acessos/${acessoId}/web/?porta=${portaNum}&scheme=${scheme}&path=/`, '_blank');
+            abrirWebProxyComFallback(acessoId, scheme, portaNum, host);
             return;
         }
-        // Host pode ter caminho fixo ("1.2.3.4/zabbix"): a porta entra antes dele
-        let h = String(host).trim().replace(/^https?:\/\//i, '');
-        const barra = h.indexOf('/');
-        const caminho = barra >= 0 ? h.slice(barra) : '';
-        if (barra >= 0) h = h.slice(0, barra);
-        const portaPadrao = (scheme === 'http' && portaNum === 80) || (scheme === 'https' && portaNum === 443);
-        window.open(`${scheme}://${h}${portaPadrao ? '' : ':' + portaNum}${caminho}`, '_blank');
+        window.open(_urlWebDireta(scheme, host, portaNum), '_blank');
         return;
     }
 
