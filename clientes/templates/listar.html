@@ -437,7 +437,6 @@
                                             (proto, porta, pid) => acessarProtocoloExtra(proto, '{{ acesso.host|escapejs }}', porta, '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}, pid, {{ acesso.host_eh_privado|yesno:'true,false' }}))">
                                     <i class="fas fa-sign-in-alt me-2"></i> Acessar
                                 </button>
-                                <div class="acesso-escolha" hidden></div>
                                 {% if acesso.winbox %}
                                 <button class="btn btn-winbox mb-2"
                                         onclick="abrirWinboxWeb({{ acesso.id }})"
@@ -6545,7 +6544,7 @@ function getCsrfToken(){
             border: 1px solid var(--border); border-radius: 6px;
             background: rgba(4, 8, 20, .55);
         }
-        .novo-proto-form[hidden], .protos-extras-row[hidden], .acesso-escolha[hidden] { display: none !important; }
+        .novo-proto-form[hidden], .protos-extras-row[hidden] { display: none !important; }
         .np-campo label {
             display: block; margin-bottom: 4px;
             font-family: 'Inter', sans-serif; font-size: 11px; color: var(--text-muted); white-space: nowrap;
@@ -6570,21 +6569,46 @@ function getCsrfToken(){
         .proto-chip-x { padding: 0 4px; border: none; background: none; color: var(--text-muted); font-size: 13px; line-height: 1; }
         .proto-chip-x:hover { color: #e06060; }
 
+        /* Escolha do "Acessar": cobre o card inteiro (escurecido) e centraliza
+           as opções. Só existe no DOM enquanto está aberta. */
         .acesso-escolha {
-            display: flex; flex-direction: column; gap: 2px;
-            margin: -4px 0 8px; padding: 4px;
-            border: 1px solid var(--border); border-radius: 6px; background: rgba(4, 8, 20, .9);
+            position: absolute; inset: 0; z-index: 20;
+            display: flex; align-items: center; justify-content: center; padding: 16px;
+            border-radius: inherit;
+            background: rgba(1, 4, 12, .8);
+            animation: aeo-fade .16s ease-out;
         }
+        .acesso-escolha-painel {
+            width: 100%; max-width: 290px; padding: 14px;
+            border: 1px solid var(--border); border-radius: 8px;
+            background: #0d1117;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
+            animation: aeo-entrar .2s cubic-bezier(.2, .8, .2, 1);
+        }
+        .aeo-cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+        .aeo-titulo { color: var(--text-light); font-size: 13px; font-weight: 600; word-break: break-word; }
+        .aeo-sub { margin-top: 2px; color: var(--text-muted); font-size: 11px; }
+        .aeo-fechar { padding: 0 2px; border: none; background: none; color: var(--text-muted); font-size: 18px; line-height: 1; }
+        .aeo-fechar:hover { color: var(--text-light); }
+        .aeo-opcoes { display: flex; flex-direction: column; gap: 6px; }
         .acesso-escolha-op {
-            display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px;
-            border: 1px solid transparent; border-radius: 4px; background: none;
-            color: var(--text-light); font-size: 12px; text-align: left;
+            display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px;
+            border: 1px solid var(--border); border-radius: 6px; background: rgba(88, 166, 255, .04);
+            color: var(--text-light); font-size: 13px; text-align: left;
             transition: color .15s, border-color .15s, background-color .15s;
         }
-        .acesso-escolha-op:hover { border-color: var(--cyan); background: rgba(88, 166, 255, .08); color: var(--cyan); }
-        .acesso-escolha-op i { width: 14px; text-align: center; color: var(--cyan); }
+        .acesso-escolha-op:hover, .acesso-escolha-op:focus-visible {
+            border-color: var(--cyan); background: rgba(88, 166, 255, .1); color: var(--cyan); outline: none;
+        }
+        .acesso-escolha-op:active { transform: scale(.98); }
+        .acesso-escolha-op i { width: 16px; text-align: center; color: var(--cyan); }
         .aeo-proto { min-width: 52px; font-weight: 600; }
         .aeo-porta { margin-left: auto; color: var(--text-muted); font-size: 11px; }
+        @keyframes aeo-fade { from { opacity: 0; } }
+        @keyframes aeo-entrar { from { opacity: 0; transform: scale(.96); } }
+        @media (prefers-reduced-motion: reduce) {
+            .acesso-escolha, .acesso-escolha-painel { animation: none; }
+        }
     </style>
     <script>
     // ============================================
@@ -6702,40 +6726,71 @@ function getCsrfToken(){
     }
 
     // "Acessar": sem protocolo extra abre direto como sempre; com extras,
-    // mostra no próprio card a lista para escolher por onde entrar.
+    // escurece o card e mostra no meio dele as opções de acesso.
     function acessarHost(btn, principal, extra) {
-        const chips = btn.closest('.card').querySelectorAll('.proto-chip');
+        const card = btn.closest('.card');
+        const chips = card.querySelectorAll('.proto-chip');
         if (!chips.length) { principal(); return; }
 
-        const menu = btn.nextElementSibling;
-        if (!menu.hidden) { menu.hidden = true; return; }
-        menu.replaceChildren();
+        fecharEscolhaAcesso();
+        if (getComputedStyle(card).position === 'static') card.style.position = 'relative';
+
+        const el = (tag, classe, texto) => {
+            const n = document.createElement(tag);
+            if (classe) n.className = classe;
+            if (texto !== undefined) n.textContent = texto;
+            return n;
+        };
+        const overlay = el('div', 'acesso-escolha');
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-label', 'Escolher modo de acesso');
+        // Clique na parte escurecida (fora do painel) fecha
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) fecharEscolhaAcesso(); });
+
+        const painel = el('div', 'acesso-escolha-painel');
+        const cabecalho = el('div', 'aeo-cabecalho');
+        const textos = el('div');
+        textos.append(
+            el('div', 'aeo-titulo', (card.querySelector('h5')?.textContent || '').trim()),
+            el('div', 'aeo-sub', 'Escolha por onde acessar'),
+        );
+        const fechar = el('button', 'aeo-fechar');
+        fechar.type = 'button';
+        fechar.title = 'Fechar (Esc)';
+        fechar.innerHTML = '&times;';
+        fechar.onclick = fecharEscolhaAcesso;
+        cabecalho.append(textos, fechar);
+
+        const opcoes = el('div', 'aeo-opcoes');
         const opcao = (proto, rotulo, acao) => {
-            const b = document.createElement('button');
+            const b = el('button', 'acesso-escolha-op');
             b.type = 'button';
-            b.className = 'acesso-escolha-op';
-            const icone = document.createElement('i');
-            icone.className = `fas ${_ICONE_PROTO[proto] || 'fa-plug'}`;
-            const nome = document.createElement('span');
-            nome.className = 'aeo-proto';
-            nome.textContent = proto;
-            const porta = document.createElement('span');
-            porta.className = 'aeo-porta';
-            porta.textContent = rotulo;
-            b.append(icone, nome, porta);
-            b.onclick = () => { menu.hidden = true; acao(); };
-            menu.appendChild(b);
+            b.append(
+                el('i', `fas ${_ICONE_PROTO[proto] || 'fa-plug'}`),
+                el('span', 'aeo-proto', proto),
+                el('span', 'aeo-porta', rotulo),
+            );
+            b.onclick = () => { fecharEscolhaAcesso(); acao(); };
+            opcoes.appendChild(b);
         };
         opcao(btn.dataset.protocolo, `porta ${btn.dataset.porta} · padrão`, principal);
         chips.forEach(c => opcao(c.dataset.protocolo, `porta ${c.dataset.porta}`,
             () => extra(c.dataset.protocolo, c.dataset.porta, c.dataset.pid)));
-        menu.hidden = false;
+
+        painel.append(cabecalho, opcoes);
+        overlay.appendChild(painel);
+        card.appendChild(overlay);
+        // Card alto: garante o painel na tela sem pular a página à toa
+        painel.scrollIntoView({block: 'nearest'});
+        opcoes.firstElementChild.focus({preventScroll: true});
     }
 
-    document.addEventListener('click', (e) => {
-        document.querySelectorAll('.acesso-escolha:not([hidden])').forEach((menu) => {
-            if (!menu.contains(e.target) && !menu.previousElementSibling.contains(e.target)) menu.hidden = true;
-        });
+    function fecharEscolhaAcesso() {
+        document.querySelectorAll('.acesso-escolha').forEach((o) => o.remove());
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') fecharEscolhaAcesso();
     });
     </script>
 
