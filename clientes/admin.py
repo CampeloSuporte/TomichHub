@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Cliente, Acesso
+from .models import Cliente, Acesso, AcessoProtocolo
 from .models import ProxyServer
 from .models import (
     IPAMVlan, IPAMPrefixo, IPAMSubRede, IPAMEndereco, IPAMVpnDoc,
@@ -31,11 +31,18 @@ class ClienteAdmin(admin.ModelAdmin):
     search_fields = ('nome_empresa', 'cnpj')
     filter_horizontal = ('usuarios_adicionais',)
 
+class AcessoProtocoloInline(admin.TabularInline):
+    model = AcessoProtocolo
+    extra = 0
+    readonly_fields = ['criado_em']
+
+
 @admin.register(Acesso)
 class AcessoAdmin(admin.ModelAdmin):
     list_display = ('tipo', 'host', 'porta', 'protocolo', 'cliente')
     list_filter = ('tipo', 'protocolo')
     search_fields = ('host', 'cliente__nome_empresa')
+    inlines = [AcessoProtocoloInline]
 
 
 

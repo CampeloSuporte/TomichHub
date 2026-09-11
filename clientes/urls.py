@@ -20,6 +20,8 @@ urlpatterns = [
     path('acessos/buscar/<int:acesso_id>/', views.buscar_acesso, name='buscar_acesso'),
     path('acessos/editar/<int:acesso_id>/', views.editar_acesso, name='editar_acesso'),
     path('acessos/deletar/<int:acesso_id>/', views.deletar_acesso, name='deletar_acesso'),
+    path('acessos/<int:acesso_id>/protocolos/adicionar/', views.adicionar_protocolo_acesso, name='adicionar_protocolo_acesso'),
+    path('acessos/protocolos/<int:protocolo_id>/remover/', views.remover_protocolo_acesso, name='remover_protocolo_acesso'),
     path('upload_documento/', views.upload_documento, name='upload_documento'),
     path('deletar_documento/<int:documento_id>/', views.deletar_documento, name='deletar_documento'),
 

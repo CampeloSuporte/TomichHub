@@ -16,7 +16,7 @@ from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Cat
 from .models import AcaoL2vpn
 from .models import AcaoOltPon
 from .models import ProxyServer
-from .models import AcessoSessao, AcessoComando, TerminalLinkExterno
+from .models import AcessoSessao, AcessoComando, TerminalLinkExterno, AcessoProtocolo
 from .proxy_engine import ProxyEngine
 from .decorators import admin_required, cliente_login_required
 from usuario import perms as _perms
@@ -102,6 +102,7 @@ def listar_clientes(request):
         acessos = acessos_do_cliente.filter(funcao=funcao_selecionada)
     else:
         acessos = acessos_do_cliente
+    acessos = acessos.prefetch_related('protocolos_extras')
 
     documentos = Documento.objects.filter(cliente=cliente).order_by('-data_upload')
     arquivos_vpn = ArquivoVPN.objects.filter(cliente=cliente).order_by('-data_upload')
@@ -1026,6 +1027,48 @@ def editar_acesso(request, acesso_id):
 
     return redirect('listar_clientes')
 
+
+@login_required(login_url='login')
+@modulo_habilitado_required('acessos')
+@require_http_methods(['POST'])
+def adicionar_protocolo_acesso(request, acesso_id):
+    """Protocolo extra (protocolo + porta) no mesmo IP do host — formulário
+    inline do card, sem modal."""
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+    if not _perms.pode_acessar_acesso(request.user, acesso):
+        return JsonResponse({'success': False, 'error': 'Sem permissão'}, status=403)
+
+    protocolo = (request.POST.get('protocolo') or '').strip().upper()
+    if protocolo not in AcessoProtocolo.PROTOCOLOS:
+        return JsonResponse({'success': False, 'error': 'Protocolo inválido.'}, status=400)
+    try:
+        porta = int(request.POST.get('porta'))
+    except (TypeError, ValueError):
+        porta = 0
+    if not 1 <= porta <= 65535:
+        return JsonResponse({'success': False, 'error': 'Porta inválida (1 a 65535).'}, status=400)
+
+    if (acesso.protocolo or '').upper() == protocolo and acesso.porta == porta:
+        return JsonResponse({'success': False, 'error': 'Esse já é o acesso padrão do host.'}, status=400)
+
+    extra, criado = AcessoProtocolo.objects.get_or_create(acesso=acesso, protocolo=protocolo, porta=porta)
+    if not criado:
+        return JsonResponse({'success': False, 'error': f'{protocolo} na porta {porta} já está cadastrado neste host.'}, status=400)
+
+    return JsonResponse({'success': True, 'protocolo': {
+        'id': extra.id, 'protocolo': extra.protocolo, 'porta': extra.porta,
+    }})
+
+
+@login_required(login_url='login')
+@modulo_habilitado_required('acessos')
+@require_http_methods(['POST'])
+def remover_protocolo_acesso(request, protocolo_id):
+    extra = get_object_or_404(AcessoProtocolo.objects.select_related('acesso__cliente'), id=protocolo_id)
+    if not _perms.pode_acessar_acesso(request.user, extra.acesso):
+        return JsonResponse({'success': False, 'error': 'Sem permissão'}, status=403)
+    extra.delete()
+    return JsonResponse({'success': True})
 
 
 @login_required(login_url='login')
@@ -1967,7 +2010,14 @@ def realizar_backup(acesso, usuario=None):
         print(f"🔍 IP Privado? {eh_privado}")
 
         host_conexao = acesso.host
-        porta_conexao = int(acesso.porta) if acesso.porta else 22
+        # Backup é sempre SSH: com o principal em outro protocolo (ex: HTTP),
+        # vale o SSH cadastrado como protocolo extra do host. Sem SSH em lugar
+        # nenhum, fica como sempre foi (porta principal, ou 22).
+        porta_ssh = acesso.porta_ssh()
+        porta_conexao = porta_ssh or (int(acesso.porta) if acesso.porta else 22)
+        porta_alvo = porta_conexao
+        if porta_ssh and porta_ssh != acesso.porta:
+            print(f"🔑 SSH do protocolo extra: porta {porta_ssh}")
 
         # ✅ Detectar fabricante — combina modelo.fabricante + modelo.nome +
         # acesso.tipo (não só modelo.nome) porque o Modelo_equipamento
@@ -2032,7 +2082,7 @@ def realizar_backup(acesso, usuario=None):
                 host_conexao = ssh_tunnel['local_host']
                 porta_conexao = ssh_tunnel['local_port']
 
-                print(f"✅ Túnel criado: localhost:{porta_conexao} → {acesso.host}:{acesso.porta}")
+                print(f"✅ Túnel criado: localhost:{porta_conexao} → {acesso.host}:{porta_alvo}")
                 time.sleep(1)
 
         # ✅ Preparar diretório de backup
@@ -2209,7 +2259,7 @@ def realizar_backup(acesso, usuario=None):
             f.write(f"{marcador}{'='*80}\n")
             _linha(f"Cliente: {acesso.cliente.nome_empresa}")
             _linha(f"Equipamento: {acesso.tipo}")
-            _linha(f"Host: {acesso.host}:{acesso.porta}")
+            _linha(f"Host: {acesso.host}:{porta_alvo}")
             _linha(f"Acesso: {'VIA PROXY SSH' if eh_privado else 'DIRETO'}")
             _linha(f"Modelo: {acesso.modelo}")
             _linha(f"Template: {acesso.backup_template.nome}")

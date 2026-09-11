@@ -158,7 +158,9 @@
             setStatus('status-connecting', 'Conectando...');
 
             const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = proto + '//' + location.host + '/ws/vnc/' + acessoId + '/?mode=' + vncMode + '&v=' + _winboxVersion + '&w=' + _initW + '&h=' + _initH;
+            // pid = protocolo extra do host (AcessoProtocolo), ex.: RDP em outra porta
+            const _pid = _up.get('pid');
+            const wsUrl = proto + '//' + location.host + '/ws/vnc/' + acessoId + '/?mode=' + vncMode + '&v=' + _winboxVersion + '&w=' + _initW + '&h=' + _initH + (_pid ? '&pid=' + encodeURIComponent(_pid) : '');
             const container = document.getElementById('vnc-container');
 
             rfb = new RFB(container, wsUrl, {

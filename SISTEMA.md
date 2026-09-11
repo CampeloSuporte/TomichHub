@@ -178,6 +178,7 @@ Os banimentos do fail2ban **não** têm modelo: a fonte da verdade é o `fail2ba
 |---|---|
 | `Cliente` | Empresa cliente com CNPJ, endereço, contatos. `instancia` (FK, nullable) — vazio = cliente da plataforma (só o Administrador vê) |
 | `Acesso` | Credenciais de acesso a equipamento (SSH, Telnet, HTTP, Winbox) |
+| `AcessoProtocolo` | Protocolo extra de um host: protocolo e porta no mesmo IP/credenciais do `Acesso` (aba **+** do card) |
 | `ProxyServer` | Túnel SSH para acesso a redes privadas de clientes |
 | `Documento` | Arquivos anexados ao cliente |
 
@@ -274,10 +275,18 @@ Os banimentos do fail2ban **não** têm modelo: a fonte da verdade é o `fail2ba
 - VNC proxy para interface gráfica do MikroTik (Winbox) no navegador
 - Proxy HTTP/HTTPS para WebFig e outras interfaces web de equipamentos
 - Tunelamento por porta específica
+- Protocolos extras por host (`AcessoProtocolo`): com extra cadastrado, o **Acessar** do card lista
+  o padrão e os extras. SSH/Telnet abrem o terminal com `protocolo_id`, e o `SSHConsumer` troca
+  porta e protocolo só em memória (`Acesso.aplicar_protocolo_extra`), mantendo o caminho
+  proxy/OpenVPN/direto. A sessão compartilhada usa a chave `(acesso_id, protocolo_id)`, e o link
+  externo fica só no acesso padrão. HTTP/HTTPS com IP privado abre pelo proxy web e com IP público
+  abre direto. RDP passa `?pid=` até o `WinboxVNCConsumer`
 
 ### Backups Automatizados
 
 - Templates de comandos configuráveis por fabricante
+- Sempre por SSH: `Acesso.porta_ssh()` dá a porta padrão quando o protocolo padrão é SSH e, se
+  não for, a do SSH extra. Sem SSH cadastrado, usa a porta padrão (ou 22), como antes
 - Execução agendada via Celery Beat
 - Histórico com download dos arquivos
 - Suporte a MikroTik, Cisco, Huawei, Datacom, Juniper, entre outros

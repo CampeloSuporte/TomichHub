@@ -170,8 +170,11 @@ class _SharedTerminalSession:
     atual" na UI) e é promovido para o próximo espectador quando quem
     compartilhou originalmente sai."""
 
-    def __init__(self, acesso_id, physical_consumer, label):
+    def __init__(self, acesso_id, physical_consumer, label, chave=None):
         self.acesso_id = acesso_id
+        # Chave no registro: o acesso_id no acesso padrão; (acesso_id, id do
+        # AcessoProtocolo) num protocolo extra, que é outro shell no host.
+        self.chave = acesso_id if chave is None else chave
         self.physical = physical_consumer
         self.owner_label = label
         self.lock = threading.Lock()
@@ -214,20 +217,20 @@ class _TerminalSessionRegistry:
         self._lock = threading.Lock()
         self._sessions = {}
 
-    def share(self, acesso_id, physical_consumer, label):
+    def share(self, acesso_id, physical_consumer, label, chave=None):
         with self._lock:
-            session = _SharedTerminalSession(acesso_id, physical_consumer, label)
-            self._sessions[acesso_id] = session
+            session = _SharedTerminalSession(acesso_id, physical_consumer, label, chave)
+            self._sessions[session.chave] = session
             return session
 
-    def get(self, acesso_id):
+    def get(self, chave):
         with self._lock:
-            return self._sessions.get(acesso_id)
+            return self._sessions.get(chave)
 
-    def drop(self, acesso_id, session):
+    def drop(self, chave, session):
         with self._lock:
-            if self._sessions.get(acesso_id) is session:
-                del self._sessions[acesso_id]
+            if self._sessions.get(chave) is session:
+                del self._sessions[chave]
 
 
 _terminal_sessions = _TerminalSessionRegistry()
@@ -495,6 +498,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         self.is_huawei        = False
         self.is_parks         = False
         self.acessoId         = None
+        self._chave_sessao    = None
         # Tamanho do terminal (cols×rows) informado pelo frontend (xterm/fit).
         # Mantém o PTY do host em sincronia com o que é exibido — sem isso,
         # apps full-screen (nano, htop, vim) desenham na largura errada e o
@@ -554,7 +558,9 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
 
             if action == 'connect':
                 acesso_id = data.get('acesso_id')
-                logger.info(f"📋 Conectar acesso {acesso_id}")
+                # Protocolo extra do host (AcessoProtocolo) — ausente = padrão
+                protocolo_id = data.get('protocolo_id') or None
+                logger.info(f"📋 Conectar acesso {acesso_id}" + (f" (protocolo extra {protocolo_id})" if protocolo_id else ''))
                 self.limpar_recursos()
                 self._set_term_size(data.get('cols'), data.get('rows'))
                 try:
@@ -565,11 +571,12 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                 if not self._usuario_pode_acessar(acesso):
                     self.send_error('Você não tem permissão para acessar este host.')
                     return
-                sessao_compartilhada = None if data.get('independente') else _terminal_sessions.get(acesso_id)
+                self._chave_sessao = (acesso_id, str(protocolo_id)) if protocolo_id else acesso_id
+                sessao_compartilhada = None if data.get('independente') else _terminal_sessions.get(self._chave_sessao)
                 if sessao_compartilhada:
                     self._entrar_em_sessao_compartilhada(sessao_compartilhada)
                 else:
-                    self.conectar_acesso(acesso_id)
+                    self.conectar_acesso(acesso_id, protocolo_id)
 
             elif action == 'command':
                 command = data.get('command', '')
@@ -714,7 +721,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             self.send_error('Esta sessão já está compartilhada.')
             return
         label = self._label_usuario()
-        session = _terminal_sessions.share(self.acessoId, self, label)
+        session = _terminal_sessions.share(self.acessoId, self, label, getattr(self, '_chave_sessao', None))
         self._shared_session = session
         self.send_json({'type': 'share_started', 'acesso_id': self.acessoId, 'viewers': [label]})
 
@@ -740,7 +747,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             # ele não está mais em `session.viewers` então não recebe mais
             # nenhum output: ficaria "digitando às cegas" sem ver resposta.
             consumer._shared_session = None
-        _terminal_sessions.drop(session.acesso_id, session)
+        _terminal_sessions.drop(session.chave, session)
         self._shared_session = None
         self.send_json({'type': 'share_stopped'})
 
@@ -755,6 +762,11 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         user = getattr(self, '_crm_user', None)
         if not user or not getattr(user, 'is_authenticated', False):
             self.send_error('Apenas usuários do CRM podem gerar links externos.')
+            return
+        # O TerminalLinkExterno só guarda o host: quem entra pelo link cai na
+        # sessão do acesso padrão, nunca na de um protocolo extra.
+        if isinstance(getattr(self, '_chave_sessao', None), tuple):
+            self.send_error('Link externo só está disponível no acesso padrão do host.')
             return
 
         session = getattr(self, '_shared_session', None)
@@ -833,6 +845,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         self._shared_session = session
         self._sessao_encerrada_avisada = False
         self.acessoId         = session.acesso_id
+        self._chave_sessao    = session.chave
         self.protocol         = session.physical.protocol
         self.is_huawei        = session.physical.is_huawei
         self.is_parks         = session.physical.is_parks
@@ -887,7 +900,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             self._shared_session = None
 
         if not ainda_ativa:
-            _terminal_sessions.drop(session.acesso_id, session)
+            _terminal_sessions.drop(session.chave, session)
             if session.physical is not self:
                 # O dono físico já havia desconectado antes (ver comentário em
                 # _fechar_recursos_fisicos) — como este era o último
@@ -903,14 +916,23 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         })
         return manter_vivo
 
-    def conectar_acesso(self, acesso_id):
+    def conectar_acesso(self, acesso_id, protocolo_id=None):
         try:
             self.acessoId = acesso_id
             acesso        = Acesso.objects.get(id=acesso_id)
             if not self._usuario_pode_acessar(acesso):
                 self.send_error('Você não tem permissão para acessar este host.')
                 return
-            protocol      = self.detect_protocol(acesso.porta)
+            protocolo_extra = None
+            if protocolo_id:
+                extra = acesso.aplicar_protocolo_extra(protocolo_id, permitidos=('SSH', 'TELNET'))
+                if not extra:
+                    self.send_error('Protocolo de acesso não encontrado neste host.')
+                    return
+                protocolo_extra = extra.protocolo.lower()
+            # No protocolo extra, SSH/Telnet foi escolhido no cadastro; no
+            # padrão continua deduzido pela porta, como sempre foi.
+            protocol      = protocolo_extra or self.detect_protocol(acesso.porta)
             self.protocol = protocol
 
             self._sessao_auditoria = AcessoSessao.objects.create(
@@ -2441,6 +2463,11 @@ class WinboxVNCConsumer(SSHConsumer):
             
             acesso = Acesso.objects.get(id=acesso_id)
             host = acesso.host
+            # RDP de um protocolo extra do host (?pid=): troca só a porta, em
+            # memória; proxy x direto abaixo segue igual ao acesso padrão.
+            pid = params.get('pid', [None])[0]
+            if pid and mode == 'rdp':
+                acesso.aplicar_protocolo_extra(pid, permitidos=('RDP',))
 
             _tipo_sessao = 'webfig' if mode == 'browser' else ('rdp' if mode == 'rdp' else 'winbox')
             self._sessao_auditoria = AcessoSessao.objects.create(

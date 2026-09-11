@@ -5,6 +5,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-11 (Protocolos extras de acesso no host)
+
+### Adicionado
+
+- **Mais de um protocolo de acesso no mesmo host**: a aba **+** do card do host fica ao lado de
+  "Padrão" e até aqui não fazia nada. Agora ela abre no próprio card, sem modal, um formulário de
+  Porta e Protocolo (SSH, Telnet, HTTP, HTTPS, RDP). IP e credenciais são os do acesso padrão.
+  Os protocolos cadastrados aparecem na linha "Outros acessos", com × para remover. Novo modelo
+  `AcessoProtocolo` (migração 0115), com rotas `acessos/<id>/protocolos/adicionar/` e
+  `acessos/protocolos/<id>/remover/`.
+- **Acessar com escolha**: se o host tem protocolo extra, o botão **Acessar** lista no card o
+  padrão e os extras; sem extra, abre direto como antes. A rota segue a regra do acesso padrão.
+  SSH, Telnet e RDP com IP privado passam pelo proxy SSH ou pelo OpenVPN do cliente; com IP
+  público, vão direto. HTTP/HTTPS com IP privado abre pelo proxy web do CRM, e com IP público
+  abre no navegador. O terminal manda `protocolo_id` e o consumer troca porta e protocolo só em
+  memória (`Acesso.aplicar_protocolo_extra`). Sessão compartilhada de protocolo extra tem chave
+  própria, e o link externo continua só no acesso padrão.
+
+### Alterado
+
+- **Backup busca o SSH do host**: `realizar_backup` usa `Acesso.porta_ssh()`, que dá a porta
+  principal quando o protocolo principal é SSH e, se não for, a do primeiro SSH extra. Um host
+  com HTTP como principal passa a fazer backup pelo SSH extra. Sem SSH cadastrado, nada muda.
+
+---
+
 ## [Não publicado] — 2026-09-10 (OpenVPN no MikroTik: usuário no profile de VPN da RB)
 
 ### Corrigido

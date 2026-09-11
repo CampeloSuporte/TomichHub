@@ -151,6 +151,71 @@ class Acesso(models.Model):
     def __str__(self):
         return f"{self.tipo} - {self.host}:{self.porta} ({self.cliente.nome_empresa})"
 
+    @property
+    def host_eh_privado(self):
+        """Mesmo critério de `views.is_private_ip`, tolerando host cadastrado
+        com esquema ou caminho (ex: "198.18.1.13/zabbix")."""
+        import ipaddress
+        h = (self.host or '').strip()
+        if '://' in h:
+            h = h.split('://', 1)[1]
+        h = h.split('/', 1)[0]
+        try:
+            return ipaddress.ip_address(h).is_private
+        except ValueError:
+            return False
+
+    def porta_ssh(self):
+        """Porta SSH do host: a do acesso principal quando ele é SSH, senão a
+        do primeiro SSH cadastrado em `protocolos_extras`. None = nenhum SSH."""
+        if (self.protocolo or '').upper() == 'SSH' and self.porta:
+            return int(self.porta)
+        extra = self.protocolos_extras.filter(protocolo='SSH').order_by('id').first()
+        return extra.porta if extra else None
+
+    def aplicar_protocolo_extra(self, protocolo_id, permitidos=None):
+        """Troca, só em memória (nunca salva), porta e protocolo deste objeto
+        pelos de um `AcessoProtocolo` do host. O fluxo de conexão existente
+        continua lendo `acesso.host`/`acesso.porta` — IP privado via proxy
+        SSH/OpenVPN, público direto — sem saber que é um protocolo extra.
+        Retorna o AcessoProtocolo aplicado, ou None se não existir/não for
+        de um dos `permitidos`."""
+        try:
+            protocolo_id = int(protocolo_id)
+        except (TypeError, ValueError):
+            return None
+        qs = self.protocolos_extras.filter(id=protocolo_id)
+        if permitidos:
+            qs = qs.filter(protocolo__in=permitidos)
+        extra = qs.first()
+        if extra:
+            self.porta = extra.porta
+            self.protocolo = extra.protocolo
+        return extra
+
+
+class AcessoProtocolo(models.Model):
+    """Protocolo de acesso adicional de um host: mesmo IP e credenciais do
+    `Acesso`, só muda protocolo e porta (ex: HTTP como principal e SSH
+    extra). O backup usa o SSH daqui quando o principal não é SSH
+    (`Acesso.porta_ssh`)."""
+
+    PROTOCOLOS = ('SSH', 'TELNET', 'HTTP', 'HTTPS', 'RDP')
+
+    acesso    = models.ForeignKey(Acesso, on_delete=models.CASCADE, related_name='protocolos_extras')
+    protocolo = models.CharField(max_length=10, choices=[(p, p) for p in PROTOCOLOS])
+    porta     = models.PositiveIntegerField()
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Protocolo extra de acesso'
+        verbose_name_plural = 'Protocolos extras de acesso'
+        ordering = ['id']
+        unique_together = ('acesso', 'protocolo', 'porta')
+
+    def __str__(self):
+        return f"{self.protocolo}:{self.porta} ({self.acesso.tipo})"
+
 
 class ComentarioAcesso(models.Model):
     """Comentários para acessos de equipamento"""
