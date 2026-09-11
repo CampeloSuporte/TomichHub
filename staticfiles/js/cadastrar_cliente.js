@@ -126,7 +126,7 @@ function confirmarDelete(id) {
 // ============================================
 // FUNÇÃO DE EDIÇÃO DE CLIENTE
 // ============================================
-function editarCliente(id, nomeEmpresa, cnpj, cep, endereco, estado, cidade, telefone, email, usuarioId, notas) {
+function editarCliente(id, nomeEmpresa, cnpj, cep, endereco, estado, cidade, telefone, email, usuarioId, notas, usuariosAdicionais) {
     // Preenche os campos do modal com os dados do cliente
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_nome_empresa').value = nomeEmpresa;
@@ -147,6 +147,15 @@ function editarCliente(id, nomeEmpresa, cnpj, cep, endereco, estado, cidade, tel
     const usuarioSelecionado = usuarios.find(u => u.id === usuarioId);
     if (usuarioSelecionado) {
         document.getElementById('edit_usuario_search').value = usuarioSelecionado.username;
+    }
+
+    // Usuários adicionais ({id, username} vindos do template). Sem isto o
+    // modal abria com as tags vazias e o salvar mandava a lista vazia:
+    // editar qualquer campo do cliente desvinculava todos os adicionais.
+    // O nome vem junto porque a lista `usuarios` do Consultor/Operador
+    // exclui quem já está vinculado a um cliente — não serve pra achá-lo.
+    if (window.seletorAdicionaisEdicao) {
+        window.seletorAdicionaisEdicao.setSelecionados(usuariosAdicionais || []);
     }
 
     // Abre o modal

@@ -142,7 +142,7 @@
                                         <td>{{cliente.email}}</td>
                                         <td>
                                             <div class="action-buttons">
-                                                <button class="btn-action btn-edit" onclick="editarCliente({{cliente.id}}, '{{cliente.nome_empresa|escapejs}}', '{{cliente.cnpj|escapejs}}', '{{cliente.cep|escapejs}}', '{{cliente.endereco|escapejs}}', '{{cliente.estado|escapejs}}', '{{cliente.cidade|escapejs}}', '{{cliente.telefone|escapejs}}', '{{cliente.email|escapejs}}', {{cliente.usuario_id|default_if_none:'null'}}, '{{cliente.notas|escapejs}}', [{% for u in cliente.usuarios_adicionais.all %}{{ u.id }}{% if not forloop.last %},{% endif %}{% endfor %}])" title="Editar">
+                                                <button class="btn-action btn-edit" onclick="editarCliente({{cliente.id}}, '{{cliente.nome_empresa|escapejs}}', '{{cliente.cnpj|escapejs}}', '{{cliente.cep|escapejs}}', '{{cliente.endereco|escapejs}}', '{{cliente.estado|escapejs}}', '{{cliente.cidade|escapejs}}', '{{cliente.telefone|escapejs}}', '{{cliente.email|escapejs}}', {{cliente.usuario_id|default_if_none:'null'}}, '{{cliente.notas|escapejs}}', [{% for u in cliente.usuarios_adicionais.all %}{id: {{ u.id }}, username: '{{ u.username|escapejs }}'}{% if not forloop.last %},{% endif %}{% endfor %}])" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                                 <button class="btn-action btn-delete" onclick="confirmarDelete({{cliente.id}})" title="Excluir">
@@ -452,7 +452,7 @@
     </script>
 
     <!-- Seu script que usa a variável usuarios -->
-    <script src="{% static 'js/cadastrar_cliente.js' %}"></script>
+    <script src="{% static 'js/cadastrar_cliente.js' %}?v=20260911"></script>
 
     <!-- ============================================= -->
     <!-- SISTEMA DE MENSAGENS -->

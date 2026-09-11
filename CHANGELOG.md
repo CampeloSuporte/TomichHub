@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-11 (Usuários adicionais somiam na edição do cliente)
+
+### Corrigido
+
+- **Editar um cliente desvinculava os usuários adicionais**: o modal de edição abria com as tags
+  de "Usuários adicionais" vazias, porque o `editarCliente` de `static/js/cadastrar_cliente.js`
+  aceitava 11 argumentos e ignorava o 12º, a lista que o template já mandava. Como o salvar grava
+  exatamente o que está nas tags, qualquer edição (telefone, notas...) apagava todos os
+  adicionais. Agora o template manda `{id, username}` de cada adicional e o JS preenche as tags.
+  O nome vai junto porque a lista de usuários do Consultor/Operador exclui quem já está vinculado
+  a um cliente. O script ganhou `?v=` para o navegador não reaproveitar a versão antiga.
+
+---
+
 ## [Não publicado] — 2026-09-11 (Aviso de permissão repetido no portal)
 
 ### Corrigido

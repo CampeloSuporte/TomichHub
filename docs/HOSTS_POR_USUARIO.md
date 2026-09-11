@@ -104,6 +104,11 @@ O vínculo login ↔ cliente continua sendo feito na tela **Clientes** (campo "U
 "Usuários adicionais"). Enquanto não existe vínculo não há o que escolher: o modal de
 cadastro traz só o aviso explicando isso, e a seção do modal de edição mostra o mesmo texto.
 
+> Até 11/09/2026 o modal de edição do cliente abria com as tags de "Usuários adicionais"
+> vazias, e salvar qualquer campo **desvinculava** todos eles: o login perdia o cliente e,
+> com ele, a tela de hosts liberados. Se um adicional "sumir" do cliente, confira
+> `Cliente.usuarios_adicionais` no banco antes de caçar bug na restrição de hosts.
+
 ---
 
 ## Onde a restrição é aplicada
