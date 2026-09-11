@@ -83,8 +83,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   Os protocolos cadastrados aparecem na linha "Outros acessos", com × para remover. Novo modelo
   `AcessoProtocolo` (migração 0115), com rotas `acessos/<id>/protocolos/adicionar/` e
   `acessos/protocolos/<id>/remover/`.
-- **Acessar com escolha**: se o host tem protocolo extra, o botão **Acessar** lista no card o
-  padrão e os extras; sem extra, abre direto como antes. A rota segue a regra do acesso padrão.
+- **Acessar com escolha**: se o host tem protocolo extra, o botão **Acessar** escurece o card e
+  mostra no meio dele o padrão e os extras para escolher (clique fora, × ou Esc fecham); sem
+  extra, abre direto como antes. A rota segue a regra do acesso padrão.
   SSH, Telnet e RDP com IP privado passam pelo proxy SSH ou pelo OpenVPN do cliente; com IP
   público, vão direto. HTTP/HTTPS com IP privado abre pelo proxy web do CRM, e com IP público
   abre no navegador. O terminal manda `protocolo_id` e o consumer troca porta e protocolo só em
