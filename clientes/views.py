@@ -6507,13 +6507,13 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
             if vpn_cobre_ip(acesso.cliente, target_host):
                 pass  # VPN ativa cobre este IP — acesso direto sem proxy
             else:
-                return HttpResponse(
+                return _falha_proxy_web(
                     ProxyEngine.get_error_page(
                         f'IP privado (<code>{target_host}</code>) sem proxy SSH ativo e sem '
                         f'túnel OpenVPN cobrindo esse IP.<br>'
                         f'Configure um dos dois na aba "Túneis" deste cliente.'
                     ),
-                    content_type='text/html', status=400
+                    400
                 )
 
     # ── Executar Requisição via ProxyEngine ───────────────────────────
@@ -6573,7 +6573,7 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
         if resp is None:
             proxy_info = (f' via proxy <code>{proxy_srv.nome}</code> ({proxy_srv.host})'
                           if proxy_srv else '')
-            return HttpResponse(
+            return _falha_proxy_web(
                 ProxyEngine.get_error_page(
                     f'Sem resposta de <code>{scheme}://{target_host}:{porta_web}</code>{proxy_info}.<br><br>'
                     f'Verifique:<br>'
@@ -6581,7 +6581,7 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
                     f'&bull; Se a porta {porta_web} e o protocolo {scheme.upper()} est&atilde;o corretos<br>'
                     f'&bull; Os logs do servidor para mais detalhes'
                 ),
-                content_type='text/html', status=502
+                502
             )
 
         # ── Tratar Redirects cross-port (ex: http→https) ─────────────
@@ -6686,10 +6686,20 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
 
     except Exception as e:
         logger.exception("Erro no ProxyEngine acesso_id=%s: %s", acesso_id, e)
-        return HttpResponse(
+        return _falha_proxy_web(
             ProxyEngine.get_error_page(f"Erro interno no proxy: <code>{str(e)}</code>"),
-            content_type='text/html', status=500
+            500
         )
+
+
+def _falha_proxy_web(html, status):
+    """Página de erro do próprio proxy, não do equipamento. O header deixa o
+    acesso web do card separar falha do proxy de resposta do device (um 401
+    ou 404 do equipamento é proxy funcionando) e, com IP privado, cair para
+    a conexão direta no navegador (`abrirWebProxyComFallback`)."""
+    resp = HttpResponse(html, content_type='text/html', status=status)
+    resp['X-CRM-Proxy-Falha'] = '1'
+    return resp
 
 
 

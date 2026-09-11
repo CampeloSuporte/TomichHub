@@ -1,6 +1,7 @@
 """Protocolos extras de um host (AcessoProtocolo): cadastro pela aba "+" do
 card, escolha no "Acessar" e o SSH que o backup usa."""
 import tempfile
+from types import SimpleNamespace
 from unittest import mock
 
 from django.contrib.auth.models import User
@@ -180,6 +181,44 @@ class PaginaVncRotuloTest(_Base):
         html = self.client.get(reverse('winbox_page', args=[self.acesso.id])).content.decode()
         self.assertIn('Preparando WinBox', html)
         self.assertNotIn('Preparando acesso RDP', html)
+
+
+class ProxyWebFalhaTest(_Base):
+    """Página de erro do próprio proxy leva X-CRM-Proxy-Falha: é o que o
+    acesso web usa para, com IP privado, cair para a conexão direta."""
+
+    def setUp(self):
+        super().setUp()
+        self.admin = User.objects.create_user('admin_web', password='x', is_staff=True, is_superuser=True)
+        TOTPDevice.objects.create(usuario=self.admin, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+        self.client.force_login(self.admin)
+
+    def _get(self):
+        return self.client.get(f'/clientes/acessos/{self.acesso.id}/web/80/http/')
+
+    def test_ip_privado_sem_proxy_nem_vpn_marca_falha(self):
+        r = self._get()   # 172.24.67.194 e nenhum ProxyServer
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(r['X-CRM-Proxy-Falha'], '1')
+
+    @mock.patch('clientes.views.ProxyEngine.do_request', return_value=None)
+    def test_sem_resposta_marca_falha(self, _):
+        self.acesso.host = '45.228.195.1'
+        self.acesso.save()
+        r = self._get()
+        self.assertEqual(r.status_code, 502)
+        self.assertEqual(r['X-CRM-Proxy-Falha'], '1')
+
+    @mock.patch('clientes.views.ProxyEngine.do_request')
+    def test_resposta_do_equipamento_nao_marca_falha(self, do_request):
+        do_request.return_value = SimpleNamespace(
+            status_code=401, headers={'Content-Type': 'text/plain'}, content=b'auth', cookies_raw=[],
+        )
+        self.acesso.host = '45.228.195.1'
+        self.acesso.save()
+        r = self._get()
+        self.assertEqual(r.status_code, 401)
+        self.assertNotIn('X-CRM-Proxy-Falha', r)
 
 
 class BackupUsaSshExtraTest(_Base):

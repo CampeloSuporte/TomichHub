@@ -144,6 +144,8 @@ Acesso SSH e Telnet diretamente no navegador, sem instalar nenhum cliente:
 
 - **WinBox VNC:** abre a interface gráfica do MikroTik no navegador via Xvfb + noVNC
 - **WebFig:** proxy HTTP/HTTPS para a interface web de qualquer equipamento
+- **Acesso web com IP privado:** tenta primeiro o proxy do CRM; se ele falhar (sem proxy/OpenVPN,
+  sem resposta ou erro), abre a conexão direta no navegador
 - Acesso por porta específica com tunelamento automático pelo ProxyServer
 
 ### Hotspot MikroTik

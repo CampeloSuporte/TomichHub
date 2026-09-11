@@ -87,8 +87,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   mostra no meio dele o padrão e os extras para escolher (clique fora, × ou Esc fecham); sem
   extra, abre direto como antes. A rota segue a regra do acesso padrão.
   SSH, Telnet e RDP com IP privado passam pelo proxy SSH ou pelo OpenVPN do cliente; com IP
-  público, vão direto. HTTP/HTTPS com IP privado abre pelo proxy web do CRM, e com IP público
-  abre no navegador. O terminal manda `protocolo_id` e o consumer troca porta e protocolo só em
+  público, vão direto. HTTP/HTTPS com IP privado tenta primeiro o proxy web
+  do CRM e, se ele falhar, abre direto; com IP público, abre no navegador. O terminal manda `protocolo_id` e o consumer troca porta e protocolo só em
   memória (`Acesso.aplicar_protocolo_extra`). Sessão compartilhada de protocolo extra tem chave
   própria, e o link externo continua só no acesso padrão.
 
@@ -101,6 +101,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Alterado
 
+- **Acesso web com IP privado: proxy primeiro, direto se falhar**: HTTP/HTTPS de host com IP
+  privado passa a tentar primeiro o proxy web do CRM, tanto no **Acessar** padrão quanto no
+  protocolo extra e no ícone de interface web. Se o proxy falha, a mesma aba abre a conexão
+  direta no navegador. Contam como falha: nenhum proxy SSH/OpenVPN, equipamento sem resposta,
+  erro interno ou mais de 15 s. As páginas de erro do proxy levam o header `X-CRM-Proxy-Falha`,
+  que separa falha do proxy de resposta do equipamento (um 401 ou 404 do device conta como proxy
+  funcionando). Antes, o **Acessar** padrão abria sempre direto e o ícone de interface web ia
+  sempre pelo proxy.
 - **Backup busca o SSH do host**: `realizar_backup` usa `Acesso.porta_ssh()`, que dá a porta
   principal quando o protocolo principal é SSH e, se não for, a do primeiro SSH extra. Um host
   com HTTP como principal passa a fazer backup pelo SSH extra. Sem SSH cadastrado, nada muda.
