@@ -2,6 +2,27 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 51 — 14/09/2026: Novo card de acesso
+
+**O que foi implementado?**
+- 🎨 **Card de acesso redesenhado**: nome em fonte mono com modelo e IP embaixo, três blocos (Ping,
+  porta, Último acesso), linhas enxutas com botão de copiar e uma linha **Acessos** em pílulas
+  (padrão, extras e Winbox). O card ficou com cerca de metade da altura.
+- 🔘 **Acessar com contador**: o botão mostra quantas opções a escolha vai ter. A escolha no meio do
+  card não mudou.
+- 📡 **Teste de ping e porta sob demanda**: `GET /clientes/acessos/status/<id>/`, pelo mesmo caminho
+  do ping (proxy SSH, túnel ou direto). Só roda no clique.
+- 🕒 **Último acesso e "acessado por"** vêm da auditoria (`AcessoSessao`), por subquery.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[frontend_acessos.md](frontend_acessos.md)** | Nova seção "Card de Acesso — Redesenhado em 2026-09-14" |
+| [acessos_protocolos_extras.md](acessos_protocolos_extras.md) | Extras na linha "Acessos" e contador do Acessar |
+
+---
+
 ### Sessão 50 — 11/09/2026: Protocolos extras de acesso no host
 
 **O que foi implementado?**

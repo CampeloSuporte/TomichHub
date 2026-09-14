@@ -102,7 +102,12 @@ def listar_clientes(request):
         acessos = acessos_do_cliente.filter(funcao=funcao_selecionada)
     else:
         acessos = acessos_do_cliente
-    acessos = acessos.prefetch_related('protocolos_extras')
+    # Último acesso do card vem da auditoria (AcessoSessao), numa subquery só
+    ultima_sessao = AcessoSessao.objects.filter(acesso=OuterRef('pk')).order_by('-iniciada_em')
+    acessos = acessos.prefetch_related('protocolos_extras').annotate(
+        ultimo_acesso_em=Subquery(ultima_sessao.values('iniciada_em')[:1]),
+        ultimo_acesso_por=Subquery(ultima_sessao.values('usuario__username')[:1]),
+    )
 
     documentos = Documento.objects.filter(cliente=cliente).order_by('-data_upload')
     arquivos_vpn = ArquivoVPN.objects.filter(cliente=cliente).order_by('-data_upload')
@@ -4324,6 +4329,99 @@ def ping_acesso(request, acesso_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+@login_required(login_url='login')
+@modulo_habilitado_required('acessos')
+def status_acesso(request, acesso_id):
+    """Blocos Ping e porta do card de acesso: ping curto (3 pacotes) e teste
+    TCP na porta do acesso padrão, pelo mesmo caminho do ping_acesso (proxy
+    SSH para IP privado, túnel OpenVPN ou direto). Só roda quando alguém
+    clica no bloco, nunca ao abrir a página."""
+    try:
+        acesso = Acesso.objects.select_related('cliente').get(id=acesso_id)
+    except Acesso.DoesNotExist:
+        return JsonResponse({'error': 'Acesso não encontrado'}, status=404)
+    if not _perms.pode_acessar_acesso(request.user, acesso):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    # Mesmo critério de Acesso.host_eh_privado: tolera esquema e caminho
+    host = (acesso.host or '').strip()
+    if '://' in host:
+        host = host.split('://', 1)[1]
+    host = host.split('/', 1)[0]
+    porta = acesso.porta
+
+    proxy = None
+    if is_private_ip(host):
+        proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+        if not proxy and not vpn_cobre_ip(acesso.cliente, host):
+            return JsonResponse({'error': 'IP privado sem proxy SSH ativo'}, status=400)
+
+    try:
+        if proxy:
+            ping, porta_aberta = _status_via_proxy(proxy, host, porta)
+        else:
+            ping, porta_aberta = _status_direto(host, porta)
+    except Exception as e:
+        logging.getLogger(__name__).warning('status_acesso %s: %s', acesso_id, e)
+        return JsonResponse({'error': f'Não foi possível testar pelo proxy: {e}'}, status=502)
+
+    return JsonResponse({
+        'responde': ping.get('status') == 'sucesso',
+        'ping_ms': (ping.get('tempos') or {}).get('avg'),
+        'porta': porta,
+        'porta_aberta': porta_aberta,
+    })
+
+
+_PING_CURTO = ['ping', '-c', '3', '-i', '0.5', '-W', '1']
+
+
+def _status_direto(host, porta):
+    """(resultado do ping, porta aberta?) sem proxy. Porta None = sem porta."""
+    import subprocess
+    try:
+        r = subprocess.run(_PING_CURTO + [host], capture_output=True, text=True, timeout=10)
+        ping = parsear_output_ping(r.stdout, host, r.returncode)
+    except (subprocess.TimeoutExpired, OSError):
+        ping = {'status': 'timeout'}
+
+    porta_aberta = None
+    if porta:
+        try:
+            with socket.create_connection((host, int(porta)), timeout=3):
+                porta_aberta = True
+        except OSError:
+            porta_aberta = False
+    return ping, porta_aberta
+
+
+def _status_via_proxy(proxy, host, porta):
+    """Igual a _status_direto, numa conexão só com o proxy: ping executado
+    nele e porta testada abrindo um canal direct-tcpip até o host."""
+    import shlex
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(hostname=proxy.host, port=proxy.porta, username=proxy.usuario, password=proxy.senha,
+                timeout=10, look_for_keys=False, allow_agent=False)
+    try:
+        _, stdout, _ = ssh.exec_command(' '.join(_PING_CURTO + [shlex.quote(host)]), timeout=10)
+        saida = stdout.read().decode('utf-8', errors='ignore')
+        ping = parsear_output_ping(saida, host, stdout.channel.recv_exit_status())
+
+        porta_aberta = None
+        if porta:
+            try:
+                canal = ssh.get_transport().open_channel(
+                    'direct-tcpip', (host, int(porta)), ('127.0.0.1', 0), timeout=5)
+                canal.close()
+                porta_aberta = True
+            except (paramiko.SSHException, OSError, EOFError):
+                porta_aberta = False
+        return ping, porta_aberta
+    finally:
+        ssh.close()
+
+
 def ping_direto(host, packets=10):
     """
     ✅ Ping direto para IP público
@@ -4463,8 +4561,8 @@ def parsear_output_ping(output, host, return_code):
             recebidos = int(match_linux.group(2))
             perdidos = enviados - recebidos
 
-            # ✅ Procurar tempo
-            time_pattern = r'min/avg/max(?:/stddev)?\s*=\s*([0-9.]+)/([0-9.]+)/([0-9.]+)'
+            # ✅ Procurar tempo (Linux imprime min/avg/max/mdev, macOS .../stddev)
+            time_pattern = r'min/avg/max(?:/(?:stddev|mdev))?\s*=\s*([0-9.]+)/([0-9.]+)/([0-9.]+)'
             match_time = re.search(time_pattern, output)
 
             tempos = {}

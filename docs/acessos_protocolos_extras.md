@@ -42,8 +42,9 @@ A aba **+** ao lado de "Padrão" abre no card, sem modal, uma linha com **Hostna
 - `POST /clientes/acessos/<id>/protocolos/adicionar/` (`protocolo`, `porta`) devolve JSON. Responde
   400 para protocolo fora da lista, porta fora de 1 a 65535, protocolo e porta iguais aos do padrão,
   e protocolo e porta já cadastrados no host.
-- Os extras aparecem na linha **Outros acessos** (`SSH 22 ×`). O × chama
-  `POST /clientes/acessos/protocolos/<id>/remover/`.
+- Os extras aparecem na linha **Acessos** do card, entre o padrão e o Winbox (`SSH 22 ×`). O ×
+  chama `POST /clientes/acessos/protocolos/<id>/remover/`. O contador do **Acessar** é atualizado na
+  hora (ver [frontend_acessos.md](frontend_acessos.md) → "Card de Acesso").
 - Permissão: `@modulo_habilitado_required('acessos')` e `pode_acessar_acesso`, as mesmas regras de
   quem vê o host. Sessão expirada vira 302 para o login, e o JS mostra "Sessão expirada ou sem
   permissão".
