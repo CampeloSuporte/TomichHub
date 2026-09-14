@@ -292,11 +292,6 @@
                                             </form>
                                         
                                             
-                                            <button class="icon-btn btn-sm" 
-                                                    onclick="realizarPing({{ acesso.id }}, '{{ acesso.host }}')" 
-                                                    title="Ping">
-                                                <i class="fas fa-globe"></i>
-                                            </button>
                                             {% if acesso.backup_habilitado %}
                                             <button class="icon-btn btn-sm backup-btn" 
                                                     onclick="executarBackup({{ acesso.id }}, '{{ acesso.tipo }}')" 

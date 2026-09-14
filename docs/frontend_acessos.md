@@ -8,8 +8,8 @@
 ## Visão Geral
 
 A aba de Acessos exibe todos os `Acesso` do cliente agrupados por função (ex: Roteadores,
-Switches, OLTs). Cada acesso é representado por um card com ações rápidas: terminal, ping,
-editar, duplicar, excluir, Winbox, etc.
+Switches, OLTs). Cada acesso é representado por um card com ações rápidas: backup, comentários, auditoria,
+BGP, duplicar, editar e excluir.
 
 ---
 
@@ -96,7 +96,9 @@ O card deixou de ser uma tabela de `// RÓTULO … valor`, com uma linha por cam
 - **Cabeçalho**: nome do host em fonte mono, modelo e IP embaixo (clicar no IP copia), e um ponto
   de status no canto. O ponto fica cinza até alguém testar; depois fica verde (ping e porta OK),
   amarelo (só um dos dois) ou vermelho (nenhum). A barra de ícones e as abas **Padrão / +**
-  continuam logo abaixo.
+  continuam logo abaixo. O ícone de ping (globo, `realizarPing`) saiu da barra: o bloco **Ping**
+  substitui. Com ele saiu o único acesso ao modal de ping/traceroute (`#modalPingResult`), cujo
+  código continua em `static/js/listar_acesso.js`.
 - **Três blocos**:
   - **Ping** e **porta** (o rótulo é o protocolo padrão, ex: `SSH`) começam com "testar". Um
     clique em qualquer um dos dois testa ambos (`testarStatusAcesso`).
