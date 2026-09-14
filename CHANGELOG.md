@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-14 (Card de acesso piscava sem estilo ao carregar)
+
+### Corrigido
+
+- **Cards de acesso apareciam feios por alguns segundos ao abrir a página ou depois de editar**: o
+  CSS do card novo estava num `<style>` perto da linha 6450 de `listar.html`, depois de todos os cards
+  e de um `<script src>` que trava o parser. O navegador desenhava os cards só com o `style.css`
+  antigo até chegar nesse bloco. Editar um acesso faz `location.reload()`, então acontecia também aí.
+  O bloco foi para `{% block extra_css %}` (no `<head>`), sem mudar nenhuma regra. Teste
+  `test_css_do_card_vem_antes_dos_cards`; detalhes em `docs/frontend_acessos.md` → "CSS no `<head>`".
+
+---
+
 ## [Não publicado] — 2026-09-14 (Card de acesso: cor do fabricante e rodapé de ações)
 
 ### Alterado

@@ -1,5 +1,205 @@
     {% extends "base.html" %}
     {% load static %}
+    {% block extra_css %}
+    {% comment %}
+       CSS dos cards de acesso no <head>: no fim da página ele só chegava depois
+       de ~6 mil linhas e de um <script src>, e o card aparecia sem estilo por uns
+       segundos a cada carregamento (inclusive no reload depois de editar).
+    {% endcomment %}
+    <style>
+        /* Protocolos extras do host (aba "+" do card) */
+        .novo-proto-form {
+            display: grid;
+            grid-template-columns: minmax(0, 1.35fr) minmax(0, .85fr) minmax(0, 1fr) auto;
+            gap: 6px; align-items: end;
+            margin: -6px 0 12px; padding: 10px 12px 12px;
+            border: 1px solid var(--border); border-radius: 6px;
+            background: rgba(4, 8, 20, .55);
+        }
+        .novo-proto-form[hidden], .protos-extras-row[hidden] { display: none !important; }
+        .np-campo label {
+            display: block; margin-bottom: 4px;
+            font-family: 'Inter', sans-serif; font-size: 11px; color: var(--text-muted); white-space: nowrap;
+        }
+        .np-campo input, .np-campo select, .np-salvar {
+            height: 32px; border: 1px solid var(--border); border-radius: 4px;
+            background: rgba(4, 8, 20, .9); color: var(--text-light); font-size: 12px; outline: none;
+        }
+        .np-campo input, .np-campo select { width: 100%; padding: 4px 8px; }
+        .np-campo input:focus, .np-campo select:focus { border-color: var(--cyan); }
+        .np-campo input[readonly] { color: var(--text-muted); cursor: default; }
+        .np-salvar { width: 32px; color: var(--text-muted); transition: color .15s, border-color .15s; }
+        .np-salvar:hover:not(:disabled) { color: var(--cyan); border-color: var(--cyan); }
+        .np-salvar:disabled { opacity: .5; cursor: wait; }
+
+        .protos-extras-lista { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+        .proto-chip {
+            display: inline-flex; align-items: center; gap: 4px; padding: 2px 3px 2px 8px;
+            border: 1px solid rgba(88, 166, 255, .35); border-radius: 10px;
+            background: rgba(88, 166, 255, .06); color: var(--cyan); font-size: 11px; white-space: nowrap;
+        }
+        .proto-chip-x { padding: 0 4px; border: none; background: none; color: var(--text-muted); font-size: 13px; line-height: 1; }
+        .proto-chip-x:hover { color: #e06060; }
+
+        /* Card de acesso: cabeçalho, blocos Ping/porta/último acesso, linhas e Acessar */
+        /* Cor da marca: faixa no topo, fundo do ícone e nome do fabricante.
+           Vem de Modelo_equipamento.fabricante (slug); sem mapeamento fica ciano. */
+        .ac-card { --ac-marca: var(--cyan); border-top: 3px solid var(--ac-marca); }
+        .ac-card[data-fabricante="huawei"] { --ac-marca: #f85149; }
+        .ac-card[data-fabricante="zte"] { --ac-marca: #2f81f7; }
+        .ac-card[data-fabricante="cisco"] { --ac-marca: #1fb6e8; }
+        .ac-card[data-fabricante="juniper"] { --ac-marca: #7ee787; }
+        .ac-card[data-fabricante="mikrotik"] { --ac-marca: #db61a2; }
+        .ac-card[data-fabricante="datacom"] { --ac-marca: #39c5cf; }
+        .ac-card[data-fabricante="intelbras"] { --ac-marca: #3fb950; }
+        .ac-card[data-fabricante="parks"] { --ac-marca: #f0883e; }
+        .ac-card[data-fabricante="vsol"], .ac-card[data-fabricante="shoreline"] { --ac-marca: #d29922; }
+        .ac-card[data-fabricante="tp-link"] { --ac-marca: #4ac2c9; }
+        .ac-card[data-fabricante="nokia"] { --ac-marca: #4493f8; }
+        .ac-card[data-fabricante="raisecom"] { --ac-marca: #a371f7; }
+        .ac-card[data-fabricante="a10"] { --ac-marca: #f778ba; }
+        .ac-card[data-fabricante="ubiquit"], .ac-card[data-fabricante="ubiquiti"] { --ac-marca: #6cb6ff; }
+        .ac-card[data-fabricante="cdata"] { --ac-marca: #e3b341; }
+        .ac-card[data-fabricante="proxmox"], .ac-card[data-fabricante="ubuntu"] { --ac-marca: #f0883e; }
+        .ac-card[data-fabricante="debian"] { --ac-marca: #e5534b; }
+        .ac-card[data-fabricante="windows"], .ac-card[data-fabricante="dell"] { --ac-marca: #58a6ff; }
+        .ac-card .card-body { display: flex; flex-direction: column; }
+        .ac-cabecalho { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .ac-icone {
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 36px; height: 36px;
+            border-radius: 8px; background: color-mix(in srgb, var(--ac-marca) 16%, transparent); color: var(--ac-marca); font-size: 15px;
+        }
+        .ac-titulo { flex: 1; min-width: 0; }
+        .ac-fabricante { color: var(--ac-marca); font-weight: 500; }
+        .ac-titulo h5 {
+            margin: 0; color: var(--text-light); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 13px; font-weight: 600; letter-spacing: .3px; word-break: break-all;
+        }
+        .ac-sub { margin-top: 3px; color: var(--text-muted); font-size: 12px; }
+        .ac-sub .copyable { cursor: pointer; }
+        .ac-sub .copyable:hover { color: var(--cyan); }
+        .ac-dot { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: var(--border); }
+        .ac-dot.ok { background: var(--green); }
+        .ac-dot.alerta { background: var(--yellow); }
+        .ac-dot.falha { background: var(--red); }
+        .ac-status { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+        .ac-bloco {
+            display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0;
+            padding: 8px 10px; border: 1px solid transparent; border-radius: 6px;
+            background: rgba(4, 8, 20, .6); color: var(--text-light); font-family: 'Inter', sans-serif; text-align: left;
+        }
+        button.ac-bloco { cursor: pointer; transition: border-color .15s; }
+        button.ac-bloco:hover, button.ac-bloco:focus-visible { border-color: var(--border); outline: none; }
+        .ac-bloco-rotulo, .ac-bloco-valor { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ac-bloco-rotulo { color: var(--text-muted); font-size: 11px; }
+        .ac-bloco-valor { font-size: 15px; font-weight: 500; }
+        .ac-bloco-valor.ac-testar, .ac-bloco-valor.ac-vazio { color: var(--text-muted); font-size: 13px; font-weight: 400; }
+        .ac-bloco-valor.ok { color: var(--green); }
+        .ac-bloco-valor.falha { color: var(--red); font-size: 13px; }
+        .ac-bloco-valor.testando { color: var(--text-muted); animation: ac-pulsar 1s ease-in-out infinite; }
+        @keyframes ac-pulsar { 50% { opacity: .4; } }
+        .ac-linhas { margin-bottom: 14px; padding-top: 4px; border-top: 1px solid var(--border); }
+        .ac-linha { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 32px; padding: 5px 0; font-size: 12px; }
+        .ac-rotulo { color: var(--text-muted); white-space: nowrap; }
+        .ac-valor {
+            display: inline-flex; align-items: center; gap: 4px; min-width: 0;
+            color: var(--text-light); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: right; word-break: break-all;
+        }
+        .ac-valor.ac-texto { font-family: 'Inter', sans-serif; }
+        .ac-valor .copyable { padding: 2px 4px; border-radius: 3px; cursor: pointer; }
+        .ac-valor .copyable:hover { background: rgba(88, 166, 255, .08); color: var(--cyan); }
+        .ac-copiar { padding: 2px 4px; border: none; background: none; color: var(--text-muted); font-size: 12px; line-height: 1; }
+        .ac-copiar:hover { color: var(--cyan); }
+        .acesso-chip {
+            display: inline-flex; align-items: center; padding: 2px 8px;
+            border: 1px solid rgba(88, 166, 255, .35); border-radius: 10px;
+            background: rgba(88, 166, 255, .06); color: var(--cyan); font-size: 11px; white-space: nowrap;
+        }
+        .acesso-chip.copyable { cursor: pointer; }
+        .ac-card .btn-access.ac-btn-acessar {
+            display: flex; align-items: center; justify-content: center; gap: 8px; width: auto; padding: 7px 16px;
+            border: none; border-radius: 6px; background: #1f6feb; color: #fff;
+            font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none;
+        }
+        .ac-card .btn-access.ac-btn-acessar::before { display: none; }
+        .ac-card .btn-access.ac-btn-acessar:hover { background: #388bfd; color: #fff; transform: none; }
+        .ac-linhas { margin-bottom: 0; }
+        .ac-card .novo-proto-form { margin: 10px 0 0; }
+        .ac-rodape {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px;
+            border-top: 1px solid var(--border); background: rgba(4, 8, 20, .35);
+            border-bottom-left-radius: var(--bs-card-inner-border-radius); border-bottom-right-radius: var(--bs-card-inner-border-radius);
+        }
+        .ac-acoes { display: flex; align-items: center; gap: 2px; }
+        .ac-acao {
+            display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0;
+            border: none; border-radius: 5px; background: none; color: var(--text-muted); font-size: 13px; cursor: pointer;
+            transition: color .15s, background-color .15s;
+        }
+        .ac-acao:hover, .ac-acao:focus-visible, .ac-menu[open] > .ac-acao { background: rgba(88, 166, 255, .08); color: var(--text-light); outline: none; }
+        .ac-acao.ac-acao-comentarios { color: var(--cyan); }
+        .ac-acao.ac-acao-auditoria { color: #a371f7; }
+        .ac-menu { position: relative; }
+        .ac-menu > summary { list-style: none; }
+        .ac-menu > summary::-webkit-details-marker { display: none; }
+        .ac-menu-lista {
+            position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 15; min-width: 190px; padding: 4px;
+            border: 1px solid var(--border); border-radius: 8px; background: #0d1117; box-shadow: 0 12px 30px rgba(0, 0, 0, .5);
+        }
+        .ac-menu-lista button {
+            display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px;
+            border: none; border-radius: 5px; background: none; color: var(--text-light); font-size: 12px; text-align: left;
+        }
+        .ac-menu-lista button i { width: 14px; color: var(--text-muted); text-align: center; }
+        .ac-menu-lista button:hover, .ac-menu-lista button:focus-visible { background: rgba(88, 166, 255, .08); outline: none; }
+        .ac-menu-lista form { margin: 4px 0 0; padding-top: 4px; border-top: 1px solid var(--border); }
+        .ac-menu-lista .ac-menu-perigo, .ac-menu-lista .ac-menu-perigo i { color: var(--red); }
+        .ac-menu-lista .ac-menu-perigo:hover { background: rgba(248, 81, 73, .1); }
+        .ac-qtd { padding: 0 7px; border-radius: 9px; background: rgba(255, 255, 255, .2); font-size: 11px; font-weight: 500; }
+
+        /* Escolha do "Acessar": cobre o card inteiro (escurecido) e centraliza
+           as opções. Só existe no DOM enquanto está aberta. */
+        .acesso-escolha {
+            position: absolute; inset: 0; z-index: 20;
+            display: flex; align-items: center; justify-content: center; padding: 16px;
+            border-radius: inherit;
+            background: rgba(1, 4, 12, .8);
+            animation: aeo-fade .16s ease-out;
+        }
+        .acesso-escolha-painel {
+            width: 100%; max-width: 290px; padding: 14px;
+            border: 1px solid var(--border); border-radius: 8px;
+            background: #0d1117;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
+            animation: aeo-entrar .2s cubic-bezier(.2, .8, .2, 1);
+        }
+        .aeo-cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+        .aeo-titulo { color: var(--text-light); font-size: 13px; font-weight: 600; word-break: break-word; }
+        .aeo-sub { margin-top: 2px; color: var(--text-muted); font-size: 11px; }
+        .aeo-fechar { padding: 0 2px; border: none; background: none; color: var(--text-muted); font-size: 18px; line-height: 1; }
+        .aeo-fechar:hover { color: var(--text-light); }
+        .aeo-opcoes { display: flex; flex-direction: column; gap: 6px; }
+        .acesso-escolha-op {
+            display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px;
+            border: 1px solid var(--border); border-radius: 6px; background: rgba(88, 166, 255, .04);
+            color: var(--text-light); font-size: 13px; text-align: left;
+            transition: color .15s, border-color .15s, background-color .15s;
+        }
+        .acesso-escolha-op:hover, .acesso-escolha-op:focus-visible {
+            border-color: var(--cyan); background: rgba(88, 166, 255, .1); color: var(--cyan); outline: none;
+        }
+        .acesso-escolha-op:active { transform: scale(.98); }
+        .acesso-escolha-op i { width: 16px; text-align: center; color: var(--cyan); }
+        .acesso-escolha-op i.fa-network-wired { color: #d29922; }
+        .aeo-proto { min-width: 52px; font-weight: 600; }
+        .aeo-porta { margin-left: auto; color: var(--text-muted); font-size: 11px; }
+        @keyframes aeo-fade { from { opacity: 0; } }
+        @keyframes aeo-entrar { from { opacity: 0; transform: scale(.96); } }
+        @media (prefers-reduced-motion: reduce) {
+            .acesso-escolha, .acesso-escolha-painel { animation: none; }
+        }
+    </style>
+    {% endblock %}
     {% block content %}
 
 
@@ -6446,199 +6646,6 @@ function getCsrfToken(){
 
     <script src="{% static 'js/terminal_tab_manager.js' %}?v=protos2"></script>
 
-    <style>
-        /* Protocolos extras do host (aba "+" do card) */
-        .novo-proto-form {
-            display: grid;
-            grid-template-columns: minmax(0, 1.35fr) minmax(0, .85fr) minmax(0, 1fr) auto;
-            gap: 6px; align-items: end;
-            margin: -6px 0 12px; padding: 10px 12px 12px;
-            border: 1px solid var(--border); border-radius: 6px;
-            background: rgba(4, 8, 20, .55);
-        }
-        .novo-proto-form[hidden], .protos-extras-row[hidden] { display: none !important; }
-        .np-campo label {
-            display: block; margin-bottom: 4px;
-            font-family: 'Inter', sans-serif; font-size: 11px; color: var(--text-muted); white-space: nowrap;
-        }
-        .np-campo input, .np-campo select, .np-salvar {
-            height: 32px; border: 1px solid var(--border); border-radius: 4px;
-            background: rgba(4, 8, 20, .9); color: var(--text-light); font-size: 12px; outline: none;
-        }
-        .np-campo input, .np-campo select { width: 100%; padding: 4px 8px; }
-        .np-campo input:focus, .np-campo select:focus { border-color: var(--cyan); }
-        .np-campo input[readonly] { color: var(--text-muted); cursor: default; }
-        .np-salvar { width: 32px; color: var(--text-muted); transition: color .15s, border-color .15s; }
-        .np-salvar:hover:not(:disabled) { color: var(--cyan); border-color: var(--cyan); }
-        .np-salvar:disabled { opacity: .5; cursor: wait; }
-
-        .protos-extras-lista { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
-        .proto-chip {
-            display: inline-flex; align-items: center; gap: 4px; padding: 2px 3px 2px 8px;
-            border: 1px solid rgba(88, 166, 255, .35); border-radius: 10px;
-            background: rgba(88, 166, 255, .06); color: var(--cyan); font-size: 11px; white-space: nowrap;
-        }
-        .proto-chip-x { padding: 0 4px; border: none; background: none; color: var(--text-muted); font-size: 13px; line-height: 1; }
-        .proto-chip-x:hover { color: #e06060; }
-
-        /* Card de acesso: cabeçalho, blocos Ping/porta/último acesso, linhas e Acessar */
-        /* Cor da marca: faixa no topo, fundo do ícone e nome do fabricante.
-           Vem de Modelo_equipamento.fabricante (slug); sem mapeamento fica ciano. */
-        .ac-card { --ac-marca: var(--cyan); border-top: 3px solid var(--ac-marca); }
-        .ac-card[data-fabricante="huawei"] { --ac-marca: #f85149; }
-        .ac-card[data-fabricante="zte"] { --ac-marca: #2f81f7; }
-        .ac-card[data-fabricante="cisco"] { --ac-marca: #1fb6e8; }
-        .ac-card[data-fabricante="juniper"] { --ac-marca: #7ee787; }
-        .ac-card[data-fabricante="mikrotik"] { --ac-marca: #db61a2; }
-        .ac-card[data-fabricante="datacom"] { --ac-marca: #39c5cf; }
-        .ac-card[data-fabricante="intelbras"] { --ac-marca: #3fb950; }
-        .ac-card[data-fabricante="parks"] { --ac-marca: #f0883e; }
-        .ac-card[data-fabricante="vsol"], .ac-card[data-fabricante="shoreline"] { --ac-marca: #d29922; }
-        .ac-card[data-fabricante="tp-link"] { --ac-marca: #4ac2c9; }
-        .ac-card[data-fabricante="nokia"] { --ac-marca: #4493f8; }
-        .ac-card[data-fabricante="raisecom"] { --ac-marca: #a371f7; }
-        .ac-card[data-fabricante="a10"] { --ac-marca: #f778ba; }
-        .ac-card[data-fabricante="ubiquit"], .ac-card[data-fabricante="ubiquiti"] { --ac-marca: #6cb6ff; }
-        .ac-card[data-fabricante="cdata"] { --ac-marca: #e3b341; }
-        .ac-card[data-fabricante="proxmox"], .ac-card[data-fabricante="ubuntu"] { --ac-marca: #f0883e; }
-        .ac-card[data-fabricante="debian"] { --ac-marca: #e5534b; }
-        .ac-card[data-fabricante="windows"], .ac-card[data-fabricante="dell"] { --ac-marca: #58a6ff; }
-        .ac-card .card-body { display: flex; flex-direction: column; }
-        .ac-cabecalho { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-        .ac-icone {
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 36px; height: 36px;
-            border-radius: 8px; background: color-mix(in srgb, var(--ac-marca) 16%, transparent); color: var(--ac-marca); font-size: 15px;
-        }
-        .ac-titulo { flex: 1; min-width: 0; }
-        .ac-fabricante { color: var(--ac-marca); font-weight: 500; }
-        .ac-titulo h5 {
-            margin: 0; color: var(--text-light); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 13px; font-weight: 600; letter-spacing: .3px; word-break: break-all;
-        }
-        .ac-sub { margin-top: 3px; color: var(--text-muted); font-size: 12px; }
-        .ac-sub .copyable { cursor: pointer; }
-        .ac-sub .copyable:hover { color: var(--cyan); }
-        .ac-dot { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: var(--border); }
-        .ac-dot.ok { background: var(--green); }
-        .ac-dot.alerta { background: var(--yellow); }
-        .ac-dot.falha { background: var(--red); }
-        .ac-status { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
-        .ac-bloco {
-            display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0;
-            padding: 8px 10px; border: 1px solid transparent; border-radius: 6px;
-            background: rgba(4, 8, 20, .6); color: var(--text-light); font-family: 'Inter', sans-serif; text-align: left;
-        }
-        button.ac-bloco { cursor: pointer; transition: border-color .15s; }
-        button.ac-bloco:hover, button.ac-bloco:focus-visible { border-color: var(--border); outline: none; }
-        .ac-bloco-rotulo, .ac-bloco-valor { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .ac-bloco-rotulo { color: var(--text-muted); font-size: 11px; }
-        .ac-bloco-valor { font-size: 15px; font-weight: 500; }
-        .ac-bloco-valor.ac-testar, .ac-bloco-valor.ac-vazio { color: var(--text-muted); font-size: 13px; font-weight: 400; }
-        .ac-bloco-valor.ok { color: var(--green); }
-        .ac-bloco-valor.falha { color: var(--red); font-size: 13px; }
-        .ac-bloco-valor.testando { color: var(--text-muted); animation: ac-pulsar 1s ease-in-out infinite; }
-        @keyframes ac-pulsar { 50% { opacity: .4; } }
-        .ac-linhas { margin-bottom: 14px; padding-top: 4px; border-top: 1px solid var(--border); }
-        .ac-linha { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 32px; padding: 5px 0; font-size: 12px; }
-        .ac-rotulo { color: var(--text-muted); white-space: nowrap; }
-        .ac-valor {
-            display: inline-flex; align-items: center; gap: 4px; min-width: 0;
-            color: var(--text-light); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: right; word-break: break-all;
-        }
-        .ac-valor.ac-texto { font-family: 'Inter', sans-serif; }
-        .ac-valor .copyable { padding: 2px 4px; border-radius: 3px; cursor: pointer; }
-        .ac-valor .copyable:hover { background: rgba(88, 166, 255, .08); color: var(--cyan); }
-        .ac-copiar { padding: 2px 4px; border: none; background: none; color: var(--text-muted); font-size: 12px; line-height: 1; }
-        .ac-copiar:hover { color: var(--cyan); }
-        .acesso-chip {
-            display: inline-flex; align-items: center; padding: 2px 8px;
-            border: 1px solid rgba(88, 166, 255, .35); border-radius: 10px;
-            background: rgba(88, 166, 255, .06); color: var(--cyan); font-size: 11px; white-space: nowrap;
-        }
-        .acesso-chip.copyable { cursor: pointer; }
-        .ac-card .btn-access.ac-btn-acessar {
-            display: flex; align-items: center; justify-content: center; gap: 8px; width: auto; padding: 7px 16px;
-            border: none; border-radius: 6px; background: #1f6feb; color: #fff;
-            font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none;
-        }
-        .ac-card .btn-access.ac-btn-acessar::before { display: none; }
-        .ac-card .btn-access.ac-btn-acessar:hover { background: #388bfd; color: #fff; transform: none; }
-        .ac-linhas { margin-bottom: 0; }
-        .ac-card .novo-proto-form { margin: 10px 0 0; }
-        .ac-rodape {
-            display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px;
-            border-top: 1px solid var(--border); background: rgba(4, 8, 20, .35);
-            border-bottom-left-radius: var(--bs-card-inner-border-radius); border-bottom-right-radius: var(--bs-card-inner-border-radius);
-        }
-        .ac-acoes { display: flex; align-items: center; gap: 2px; }
-        .ac-acao {
-            display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0;
-            border: none; border-radius: 5px; background: none; color: var(--text-muted); font-size: 13px; cursor: pointer;
-            transition: color .15s, background-color .15s;
-        }
-        .ac-acao:hover, .ac-acao:focus-visible, .ac-menu[open] > .ac-acao { background: rgba(88, 166, 255, .08); color: var(--text-light); outline: none; }
-        .ac-acao.ac-acao-comentarios { color: var(--cyan); }
-        .ac-acao.ac-acao-auditoria { color: #a371f7; }
-        .ac-menu { position: relative; }
-        .ac-menu > summary { list-style: none; }
-        .ac-menu > summary::-webkit-details-marker { display: none; }
-        .ac-menu-lista {
-            position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 15; min-width: 190px; padding: 4px;
-            border: 1px solid var(--border); border-radius: 8px; background: #0d1117; box-shadow: 0 12px 30px rgba(0, 0, 0, .5);
-        }
-        .ac-menu-lista button {
-            display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px;
-            border: none; border-radius: 5px; background: none; color: var(--text-light); font-size: 12px; text-align: left;
-        }
-        .ac-menu-lista button i { width: 14px; color: var(--text-muted); text-align: center; }
-        .ac-menu-lista button:hover, .ac-menu-lista button:focus-visible { background: rgba(88, 166, 255, .08); outline: none; }
-        .ac-menu-lista form { margin: 4px 0 0; padding-top: 4px; border-top: 1px solid var(--border); }
-        .ac-menu-lista .ac-menu-perigo, .ac-menu-lista .ac-menu-perigo i { color: var(--red); }
-        .ac-menu-lista .ac-menu-perigo:hover { background: rgba(248, 81, 73, .1); }
-        .ac-qtd { padding: 0 7px; border-radius: 9px; background: rgba(255, 255, 255, .2); font-size: 11px; font-weight: 500; }
-
-        /* Escolha do "Acessar": cobre o card inteiro (escurecido) e centraliza
-           as opções. Só existe no DOM enquanto está aberta. */
-        .acesso-escolha {
-            position: absolute; inset: 0; z-index: 20;
-            display: flex; align-items: center; justify-content: center; padding: 16px;
-            border-radius: inherit;
-            background: rgba(1, 4, 12, .8);
-            animation: aeo-fade .16s ease-out;
-        }
-        .acesso-escolha-painel {
-            width: 100%; max-width: 290px; padding: 14px;
-            border: 1px solid var(--border); border-radius: 8px;
-            background: #0d1117;
-            box-shadow: 0 16px 40px rgba(0, 0, 0, .6);
-            animation: aeo-entrar .2s cubic-bezier(.2, .8, .2, 1);
-        }
-        .aeo-cabecalho { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
-        .aeo-titulo { color: var(--text-light); font-size: 13px; font-weight: 600; word-break: break-word; }
-        .aeo-sub { margin-top: 2px; color: var(--text-muted); font-size: 11px; }
-        .aeo-fechar { padding: 0 2px; border: none; background: none; color: var(--text-muted); font-size: 18px; line-height: 1; }
-        .aeo-fechar:hover { color: var(--text-light); }
-        .aeo-opcoes { display: flex; flex-direction: column; gap: 6px; }
-        .acesso-escolha-op {
-            display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 12px;
-            border: 1px solid var(--border); border-radius: 6px; background: rgba(88, 166, 255, .04);
-            color: var(--text-light); font-size: 13px; text-align: left;
-            transition: color .15s, border-color .15s, background-color .15s;
-        }
-        .acesso-escolha-op:hover, .acesso-escolha-op:focus-visible {
-            border-color: var(--cyan); background: rgba(88, 166, 255, .1); color: var(--cyan); outline: none;
-        }
-        .acesso-escolha-op:active { transform: scale(.98); }
-        .acesso-escolha-op i { width: 16px; text-align: center; color: var(--cyan); }
-        .acesso-escolha-op i.fa-network-wired { color: #d29922; }
-        .aeo-proto { min-width: 52px; font-weight: 600; }
-        .aeo-porta { margin-left: auto; color: var(--text-muted); font-size: 11px; }
-        @keyframes aeo-fade { from { opacity: 0; } }
-        @keyframes aeo-entrar { from { opacity: 0; transform: scale(.96); } }
-        @media (prefers-reduced-motion: reduce) {
-            .acesso-escolha, .acesso-escolha-painel { animation: none; }
-        }
-    </style>
     <script>
     // ============================================
     // PROTOCOLOS EXTRAS DO HOST (AcessoProtocolo)

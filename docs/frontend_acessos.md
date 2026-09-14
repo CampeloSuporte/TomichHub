@@ -154,6 +154,15 @@ equipamento reclamar disso (ex: bloqueio de IP no Huawei VRP), é só não clica
 texto curto (`2 h`) é montado no navegador a partir de `data-ts`, então fica relativo à hora de quem
 abriu a página.
 
+### CSS no `<head>` (corrigido em 2026-09-14)
+
+O CSS do card (`.ac-card`, blocos, rodapé, menu ⋯, chips e a escolha do Acessar) fica em
+`{% block extra_css %}` no topo de `listar.html`, que o `base.html` põe no `<head>`. Antes ele era um
+`<style>` perto da linha 6450, depois de todos os cards e de um `<script src>` que trava o parser. A
+cada carregamento, inclusive no `location.reload()` depois de editar um acesso, os cards apareciam por
+uns segundos só com o `style.css` antigo (botão gradiente em caixa alta, sem rodapé) e depois mudavam.
+**CSS novo do card vai nesse bloco, nunca no fim da página.**
+
 ### Classes
 
 | Classe | Papel |
