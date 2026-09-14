@@ -1,7 +1,7 @@
 # Frontend — Aba de Acessos
 
 **Arquivos:** `clientes/templates/listar.html`, `templates/modal_acessos.html`, `clientes/views.py`  
-**Atualizado em:** 2026-08-10
+**Atualizado em:** 2026-09-14
 
 ---
 
@@ -86,6 +86,65 @@ pontual.
 valendo — nenhuma dessas mudanças remove a credencial já salva no navegador do usuário. Se o
 autopreenchimento voltar a incomodar em outro campo, o mesmo padrão `readonly`/`onfocus` resolve
 sem precisar caçar de onde veio o login salvo.
+
+---
+
+## Card de Acesso — Redesenhado em 2026-09-14
+
+O card deixou de ser uma tabela de `// RÓTULO … valor`, com uma linha por campo, e ficou mais baixo:
+
+- **Cabeçalho**: nome do host em fonte mono, modelo e IP embaixo (clicar no IP copia), e um ponto
+  de status no canto. O ponto fica cinza até alguém testar; depois fica verde (ping e porta OK),
+  amarelo (só um dos dois) ou vermelho (nenhum). A barra de ícones e as abas **Padrão / +**
+  continuam logo abaixo.
+- **Três blocos**:
+  - **Ping** e **porta** (o rótulo é o protocolo padrão, ex: `SSH`) começam com "testar". Um
+    clique em qualquer um dos dois testa ambos (`testarStatusAcesso`).
+  - **Último acesso** mostra o tempo desde a sessão mais recente da auditoria (`2 h`, `3 d`), com a
+    data completa no `title`, ou "nunca".
+- **Linhas**: Usuário e Senha (e Senha root para a equipe) com botão de copiar; clicar na senha
+  mostra e copia, como antes. VLAN gerência e IPv6 só aparecem quando preenchidos. **Acessado
+  por** (`joao.noc · 14/09 18:42`, ou "link externo") só para a equipe (`is_admin`).
+- **Acessos**: pílulas com o padrão (`SSH 22`), os protocolos extras (com ×) e `Winbox 8291`
+  (clicar copia a porta). Substitui as linhas Porta, Protocolo, Outros acessos e winbox.
+- **Acessar**: botão azul sólido com um contador de quantas opções a escolha vai mostrar (padrão +
+  extras + 2 do Winbox). O contador some quando só há o padrão, porque aí o Acessar abre direto.
+  A escolha no meio do card não mudou ([acessos_protocolos_extras.md](acessos_protocolos_extras.md)).
+
+### Teste de ping e porta
+
+`GET /clientes/acessos/status/<id>/` (`views.status_acesso`) devolve
+`{responde, ping_ms, porta, porta_aberta}`:
+
+- ping de 3 pacotes (`ping -c 3 -i 0.5 -W 1`) e conexão TCP na porta do acesso padrão
+  (`porta_aberta` é `null` quando o acesso não tem porta);
+- mesmo caminho do `ping_acesso`: IP privado vai pelo `ProxyServer` do cliente (ping executado nele
+  e porta testada com um canal `direct-tcpip`, numa conexão SSH só), ou direto quando um túnel
+  OpenVPN cobre o IP; IP público vai direto. Privado sem proxy nem túnel responde 400;
+- permissão: `@modulo_habilitado_required('acessos')` e `pode_acessar_acesso`.
+
+**Só roda no clique**, nunca ao abrir a página: um cliente com dezenas de hosts privados abriria
+dezenas de SSH no proxy de uma vez. O teste TCP abre e fecha a conexão sem trocar banner. Se um
+equipamento reclamar disso (ex: bloqueio de IP no Huawei VRP), é só não clicar nele.
+
+### Último acesso
+
+`listar_clientes` anota cada acesso com `ultimo_acesso_em` e `ultimo_acesso_por` (username), por
+`Subquery` na `AcessoSessao` mais recente. É uma subquery por coluna, sem consulta extra por card. O
+texto curto (`2 h`) é montado no navegador a partir de `data-ts`, então fica relativo à hora de quem
+abriu a página.
+
+### Classes
+
+| Classe | Papel |
+|--------|-------|
+| `.ac-card` | Card novo (estilos no bloco de CSS dos protocolos extras em `listar.html`) |
+| `.ac-status` / `.ac-ping` / `.ac-porta` / `.ac-relativo` | Blocos de status |
+| `.ac-dot` | Ponto de status do cabeçalho |
+| `.protos-extras-row` / `.acesso-chip` / `.proto-chip` | Linha Acessos. Só `.proto-chip` (extra) conta para a escolha do Acessar |
+| `.ac-btn-acessar` / `.ac-qtd` | Botão Acessar e contador |
+
+A busca de acessos continua clonando os cards: tudo é achado a partir de `closest('.card')`.
 
 ---
 

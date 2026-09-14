@@ -5,6 +5,38 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-14 (Novo card de acesso)
+
+### Alterado
+
+- **Card de acesso redesenhado**: a tabela de `// RÓTULO … valor` (uma linha por campo) virou
+  cabeçalho com nome, modelo e IP; três blocos (Ping, porta e Último acesso); linhas de Usuário,
+  Senha e Senha root com botão de copiar; e uma linha **Acessos** em pílulas (padrão, extras e
+  Winbox), que substitui Porta, Protocolo, Outros acessos e winbox. VLAN e IPv6 só aparecem quando
+  preenchidos. O **Acessar** virou botão azul sólido com contador de opções; a escolha no meio do
+  card continua igual. Ícones e abas Padrão/+ ficaram.
+
+### Adicionado
+
+- **Teste de ping e porta no card**: `GET /clientes/acessos/status/<id>/` (`status_acesso`) faz
+  ping de 3 pacotes e conexão TCP na porta padrão pelo mesmo caminho do ping (proxy SSH com canal
+  `direct-tcpip`, túnel OpenVPN ou direto). Só roda quando alguém clica no bloco, para não abrir um
+  SSH no proxy por card ao carregar a página. O ponto do cabeçalho fica verde, amarelo ou vermelho.
+- **Último acesso e "acessado por"** no card, da `AcessoSessao` mais recente (anotação por
+  `Subquery` em `listar_clientes`). "Acessado por" só para a equipe.
+### Corrigido
+
+- **Latência do ping nunca aparecia no servidor**: `parsear_output_ping` só reconhecia
+  `min/avg/max/stddev` (macOS), e o `ping` do Linux imprime `min/avg/max/mdev`. O modal de ping
+  mostrava só pacotes e perda, sem Min/Avg/Max. O regex aceita os dois formatos.
+
+### Testes
+
+- `clientes/tests_card_acesso.py` com 12 casos. Detalhes em `docs/frontend_acessos.md` → "Card de
+  Acesso".
+
+---
+
 ## [Não publicado] — 2026-09-11 (Reagir a mensagem com emoji no atendimento)
 
 ### Adicionado

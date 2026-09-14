@@ -269,11 +269,15 @@
                         <div class="col-xl-3 col-lg-4 col-md-6 mb-4 acesso-card"
                              data-tipo="{{ acesso.tipo|lower }}"
                              data-host="{{ acesso.host|lower }} {{ acesso.host_ipv6|lower }}">
-                            <div class="card h-100">
+                            <div class="card h-100 ac-card">
                                 <div class="card-body">
-                                    <div class="server-header flex-column align-items-start">
-                                        <div class="d-flex align-items-center justify-content-between w-100 mb-3">
-                                            <h5 class="mb-0">{{ acesso.tipo }}</h5>
+                                    <div class="ac-cabecalho">
+                                        <div class="ac-titulo">
+                                            <div class="ac-titulo-linha">
+                                                <h5 class="mb-0">{{ acesso.tipo }}</h5>
+                                                <span class="ac-dot" title="Clique em Ping para testar"></span>
+                                            </div>
+                                            <div class="ac-sub">{% if acesso.modelo %}{{ acesso.modelo }} · {% endif %}<span class="copyable" title="Copiar IP" onclick="copiarTexto('{{ acesso.host|escapejs }}')">{{ acesso.host }}</span></div>
                                         </div>
                                         <div class="d-flex gap-2 flex-wrap">
                                         
@@ -358,71 +362,70 @@
                                         </div>
                                         <button type="button" class="np-salvar" title="Adicionar protocolo" onclick="salvarNovoProtocolo(this, {{ acesso.id }})"><i class="fas fa-plus"></i></button>
                                     </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Modelo</span>
-                                        <span class="info-value">{{ acesso.modelo }}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Vlan Gerencia</span>
-                                        <span class="info-value copyable" onclick="copiarTexto('{{ acesso.vlan }}')">{{ acesso.vlan }}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">HostName</span>
-                                        <span class="info-value copyable" onclick="copiarTexto('{{ acesso.host }}')">{{ acesso.host }}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">HostName v6</span>
-                                        <span class="info-value copyable" onclick="copiarTexto('{{ acesso.host_ipv6 }}')">{{ acesso.host_ipv6 }}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Porta</span>
-                                        <span class="info-value copyable" onclick="copiarTexto('{{ acesso.porta }}')">{{ acesso.porta }}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Protocolo</span>
-                                        <span class="info-value">{{ acesso.protocolo }}</span>
-                                    </div>
-                                    <div class="info-row protos-extras-row" {% if not acesso.protocolos_extras.all %}hidden{% endif %}>
-                                        <span class="info-label">Outros acessos</span>
-                                        <span class="protos-extras-lista">{% for p in acesso.protocolos_extras.all %}<span class="proto-chip" data-pid="{{ p.id }}" data-protocolo="{{ p.protocolo }}" data-porta="{{ p.porta }}">{{ p.protocolo }} {{ p.porta }}<button type="button" class="proto-chip-x" title="Remover {{ p.protocolo }} {{ p.porta }}" onclick="removerProtocoloExtra({{ p.id }}, this)">&times;</button></span>{% endfor %}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">winbox</span>
-                                        <span class="info-value">
-                                            {% if acesso.winbox %}
-                                                <span class="copyable" onclick="copiarTexto('{{ acesso.winbox }}')">{{ acesso.winbox }}</span>
+                                    <div class="ac-status">
+                                        <button type="button" class="ac-bloco" title="Testar ping e porta agora" onclick="testarStatusAcesso(this, {{ acesso.id }})">
+                                            <span class="ac-bloco-rotulo">Ping</span>
+                                            <span class="ac-bloco-valor ac-ping ac-testar">testar</span>
+                                        </button>
+                                        <button type="button" class="ac-bloco" title="Testar ping e porta agora" onclick="testarStatusAcesso(this, {{ acesso.id }})">
+                                            <span class="ac-bloco-rotulo">{{ acesso.protocolo|upper }}</span>
+                                            <span class="ac-bloco-valor ac-porta ac-testar">testar</span>
+                                        </button>
+                                        <div class="ac-bloco">
+                                            <span class="ac-bloco-rotulo">Último acesso</span>
+                                            {% if acesso.ultimo_acesso_em %}
+                                            <span class="ac-bloco-valor ac-relativo" data-ts="{{ acesso.ultimo_acesso_em|date:'c' }}" title="{{ acesso.ultimo_acesso_em|date:'d/m/Y H:i' }}">{{ acesso.ultimo_acesso_em|date:'d/m' }}</span>
                                             {% else %}
-                                                <span class="text-muted">—</span>
+                                            <span class="ac-bloco-valor ac-vazio">nunca</span>
                                             {% endif %}
-                                        </span>
+                                        </div>
                                     </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Usuário</span>
-                                        <span class="info-value copyable" onclick="copiarTexto('{{ acesso.usuario|escapejs }}')">{{ acesso.usuario }}</span>
+                                    <div class="ac-linhas">
+                                        <div class="ac-linha">
+                                            <span class="ac-rotulo">Usuário</span>
+                                            <span class="ac-valor"><span class="copyable" title="Copiar usuário" onclick="copiarTexto('{{ acesso.usuario|escapejs }}')">{{ acesso.usuario }}</span><button type="button" class="ac-copiar" title="Copiar usuário" onclick="copiarTexto('{{ acesso.usuario|escapejs }}')"><i class="far fa-copy"></i></button></span>
+                                        </div>
+                                        <div class="ac-linha">
+                                            <span class="ac-rotulo">Senha</span>
+                                            <span class="ac-valor"><span class="copyable senha-mascarada" title="Clique para mostrar" onclick="toggleSenha(this, '{{ acesso.senha|escapejs }}')">••••••••</span><button type="button" class="ac-copiar" title="Copiar senha" onclick="copiarTexto('{{ acesso.senha|escapejs }}')"><i class="far fa-copy"></i></button></span>
+                                        </div>
+                                        {% if is_admin %}
+                                        <div class="ac-linha">
+                                            <span class="ac-rotulo">Senha root</span>
+                                            <span class="ac-valor"><span class="copyable senha-mascarada" title="Clique para mostrar" onclick="toggleSenha(this, '{{ acesso.senha_adm|escapejs }}')">••••••••</span><button type="button" class="ac-copiar" title="Copiar senha root" onclick="copiarTexto('{{ acesso.senha_adm|escapejs }}')"><i class="far fa-copy"></i></button></span>
+                                        </div>
+                                        {% endif %}
+                                        {% if acesso.vlan %}
+                                        <div class="ac-linha">
+                                            <span class="ac-rotulo">VLAN gerência</span>
+                                            <span class="ac-valor"><span class="copyable" title="Copiar VLAN" onclick="copiarTexto('{{ acesso.vlan }}')">{{ acesso.vlan }}</span></span>
+                                        </div>
+                                        {% endif %}
+                                        {% if acesso.host_ipv6 %}
+                                        <div class="ac-linha">
+                                            <span class="ac-rotulo">IPv6</span>
+                                            <span class="ac-valor"><span class="copyable" title="Copiar IPv6" onclick="copiarTexto('{{ acesso.host_ipv6 }}')">{{ acesso.host_ipv6 }}</span></span>
+                                        </div>
+                                        {% endif %}
+                                        {% if is_admin and acesso.ultimo_acesso_em %}
+                                        <div class="ac-linha">
+                                            <span class="ac-rotulo">Acessado por</span>
+                                            <span class="ac-valor ac-texto">{{ acesso.ultimo_acesso_por|default:"link externo" }} · {{ acesso.ultimo_acesso_em|date:"d/m H:i" }}</span>
+                                        </div>
+                                        {% endif %}
+                                        <div class="ac-linha protos-extras-row">
+                                            <span class="ac-rotulo">Acessos</span>
+                                            <span class="protos-extras-lista"><span class="acesso-chip">{{ acesso.protocolo|upper }}{% if acesso.porta %} {{ acesso.porta }}{% endif %}</span>{% for p in acesso.protocolos_extras.all %}<span class="proto-chip" data-pid="{{ p.id }}" data-protocolo="{{ p.protocolo }}" data-porta="{{ p.porta }}">{{ p.protocolo }} {{ p.porta }}<button type="button" class="proto-chip-x" title="Remover {{ p.protocolo }} {{ p.porta }}" onclick="removerProtocoloExtra({{ p.id }}, this)">&times;</button></span>{% endfor %}{% if acesso.winbox %}<span class="acesso-chip acesso-chip-winbox copyable" title="Copiar porta Winbox" onclick="copiarTexto('{{ acesso.winbox }}')">Winbox {{ acesso.winbox }}</span>{% endif %}</span>
+                                        </div>
                                     </div>
-                                    <div class="info-row">
-                                        <span class="info-label">Senha</span>
-                                        <span class="info-value copyable senha-mascarada" title="Clique para mostrar" onclick="toggleSenha(this, '{{ acesso.senha|escapejs }}')">••••••••</span>
-                                    </div>
-                                    {% if is_admin %}
-                                    <div class="info-row">
-                                        <span class="info-label">Senha Root</span>
-                                        <span class="info-value copyable senha-mascarada" title="Clique para mostrar" onclick="toggleSenha(this, '{{ acesso.senha_adm|escapejs }}')">••••••••</span>
-                                    </div>
-                                    {% endif %}
-                                <div class="mt-4">
-                                <button class="btn btn-access mb-2" 
-                                        data-protocolo="{{ acesso.protocolo|upper }}" data-porta="{{ acesso.porta|default_if_none:'' }}" data-winbox="{{ acesso.winbox|default_if_none:'' }}"
-                                        onclick="acessarHost(this,
-                                            () => acessarEquipamento('{{ acesso.protocolo|escapejs }}', '{{ acesso.host|escapejs }}', '{{ acesso.porta|escapejs }}', '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}),
-                                            (proto, porta, pid) => acessarProtocoloExtra(proto, '{{ acesso.host|escapejs }}', porta, '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}, pid, {{ acesso.host_eh_privado|yesno:'true,false' }}),
-                                            (versao) => abrirWinboxWeb({{ acesso.id }}, versao))">
-                                    <i class="fas fa-sign-in-alt me-2"></i> Acessar
-                                </button>
-
-
-
-                            </div>
+                                    <button class="btn btn-access ac-btn-acessar"
+                                            data-protocolo="{{ acesso.protocolo|upper }}" data-porta="{{ acesso.porta|default_if_none:'' }}" data-winbox="{{ acesso.winbox|default_if_none:'' }}"
+                                            onclick="acessarHost(this,
+                                                () => acessarEquipamento('{{ acesso.protocolo|escapejs }}', '{{ acesso.host|escapejs }}', '{{ acesso.porta|escapejs }}', '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}),
+                                                (proto, porta, pid) => acessarProtocoloExtra(proto, '{{ acesso.host|escapejs }}', porta, '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}, pid, {{ acesso.host_eh_privado|yesno:'true,false' }}),
+                                                (versao) => abrirWinboxWeb({{ acesso.id }}, versao))">
+                                        <i class="fas fa-sign-in-alt"></i> Acessar <span class="ac-qtd" hidden></span>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -6514,6 +6517,65 @@ function getCsrfToken(){
         .proto-chip-x { padding: 0 4px; border: none; background: none; color: var(--text-muted); font-size: 13px; line-height: 1; }
         .proto-chip-x:hover { color: #e06060; }
 
+        /* Card de acesso: cabeçalho, blocos Ping/porta/último acesso, linhas e Acessar */
+        .ac-card .card-body { display: flex; flex-direction: column; }
+        .ac-cabecalho { margin-bottom: 14px; }
+        .ac-titulo { min-width: 0; margin-bottom: 10px; }
+        .ac-titulo-linha { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .ac-titulo h5 {
+            margin: 0; color: var(--text-light); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 13px; font-weight: 600; letter-spacing: .3px; word-break: break-all;
+        }
+        .ac-sub { margin-top: 3px; color: var(--text-muted); font-size: 12px; }
+        .ac-sub .copyable { cursor: pointer; }
+        .ac-sub .copyable:hover { color: var(--cyan); }
+        .ac-dot { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: var(--border); }
+        .ac-dot.ok { background: var(--green); }
+        .ac-dot.alerta { background: var(--yellow); }
+        .ac-dot.falha { background: var(--red); }
+        .ac-status { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+        .ac-bloco {
+            display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0;
+            padding: 8px 10px; border: 1px solid transparent; border-radius: 6px;
+            background: rgba(4, 8, 20, .6); color: var(--text-light); font-family: 'Inter', sans-serif; text-align: left;
+        }
+        button.ac-bloco { cursor: pointer; transition: border-color .15s; }
+        button.ac-bloco:hover, button.ac-bloco:focus-visible { border-color: var(--border); outline: none; }
+        .ac-bloco-rotulo, .ac-bloco-valor { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ac-bloco-rotulo { color: var(--text-muted); font-size: 11px; }
+        .ac-bloco-valor { font-size: 15px; font-weight: 500; }
+        .ac-bloco-valor.ac-testar, .ac-bloco-valor.ac-vazio { color: var(--text-muted); font-size: 13px; font-weight: 400; }
+        .ac-bloco-valor.ok { color: var(--green); }
+        .ac-bloco-valor.falha { color: var(--red); font-size: 13px; }
+        .ac-bloco-valor.testando { color: var(--text-muted); animation: ac-pulsar 1s ease-in-out infinite; }
+        @keyframes ac-pulsar { 50% { opacity: .4; } }
+        .ac-linhas { margin-bottom: 14px; padding-top: 4px; border-top: 1px solid var(--border); }
+        .ac-linha { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 32px; padding: 5px 0; font-size: 12px; }
+        .ac-rotulo { color: var(--text-muted); white-space: nowrap; }
+        .ac-valor {
+            display: inline-flex; align-items: center; gap: 4px; min-width: 0;
+            color: var(--text-light); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: right; word-break: break-all;
+        }
+        .ac-valor.ac-texto { font-family: 'Inter', sans-serif; }
+        .ac-valor .copyable { padding: 2px 4px; border-radius: 3px; cursor: pointer; }
+        .ac-valor .copyable:hover { background: rgba(88, 166, 255, .08); color: var(--cyan); }
+        .ac-copiar { padding: 2px 4px; border: none; background: none; color: var(--text-muted); font-size: 12px; line-height: 1; }
+        .ac-copiar:hover { color: var(--cyan); }
+        .acesso-chip {
+            display: inline-flex; align-items: center; padding: 2px 8px;
+            border: 1px solid rgba(88, 166, 255, .35); border-radius: 10px;
+            background: rgba(88, 166, 255, .06); color: var(--cyan); font-size: 11px; white-space: nowrap;
+        }
+        .acesso-chip.copyable { cursor: pointer; }
+        .ac-card .btn-access.ac-btn-acessar {
+            display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: auto; padding: 10px;
+            border: none; border-radius: 6px; background: #1f6feb; color: #fff;
+            font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none;
+        }
+        .ac-card .btn-access.ac-btn-acessar::before { display: none; }
+        .ac-card .btn-access.ac-btn-acessar:hover { background: #388bfd; color: #fff; transform: none; }
+        .ac-qtd { padding: 0 7px; border-radius: 9px; background: rgba(255, 255, 255, .2); font-size: 11px; font-weight: 500; }
+
         /* Escolha do "Acessar": cobre o card inteiro (escurecido) e centraliza
            as opções. Só existe no DOM enquanto está aberta. */
         .acesso-escolha {
@@ -6648,9 +6710,10 @@ function getCsrfToken(){
         // Atributo (não .onclick) para sobreviver à cópia do card na busca
         x.setAttribute('onclick', `removerProtocoloExtra(${Number(p.id)}, this)`);
         chip.appendChild(x);
-        const row = card.querySelector('.protos-extras-row');
-        row.querySelector('.protos-extras-lista').appendChild(chip);
-        row.hidden = false;
+        // Extras ficam entre o padrão e o Winbox, na mesma ordem da escolha do Acessar
+        const lista = card.querySelector('.protos-extras-lista');
+        lista.insertBefore(chip, lista.querySelector('.acesso-chip-winbox'));
+        _atualizarQtdAcessos(card);
     }
 
     async function removerProtocoloExtra(pid, btn) {
@@ -6663,11 +6726,88 @@ function getCsrfToken(){
         if (!ok) return;
         try {
             await _postProtocolo(`/clientes/acessos/protocolos/${pid}/remover/`, new FormData());
-            const row = chip.closest('.protos-extras-row');
+            const card = chip.closest('.card');
             chip.remove();
-            if (!row.querySelector('.proto-chip')) row.hidden = true;
+            _atualizarQtdAcessos(card);
         } catch (e) {
             uiAlert({titulo: 'Protocolo de acesso', msg: e.message, icone: 'fas fa-exclamation-triangle', iconeCor: '#e0a060'});
+        }
+    }
+
+    // Contador no "Acessar": quantas opções a escolha vai mostrar (padrão,
+    // extras e as duas versões do Winbox). Com uma só o Acessar abre direto
+    // e o contador some.
+    function _atualizarQtdAcessos(card) {
+        const btn = card.querySelector('.ac-btn-acessar');
+        const qtd = card.querySelector('.ac-qtd');
+        if (!btn || !qtd) return;
+        const n = 1 + card.querySelectorAll('.proto-chip').length + (btn.dataset.winbox ? 2 : 0);
+        qtd.textContent = n;
+        qtd.hidden = n < 2;
+    }
+
+    // "Último acesso" curto (2 h, 3 d); a data completa fica no title
+    function _tempoCurto(iso) {
+        const seg = (Date.now() - new Date(iso).getTime()) / 1000;
+        if (!Number.isFinite(seg)) return null;
+        if (seg < 60) return 'agora';
+        if (seg < 3600) return `${Math.floor(seg / 60)} min`;
+        if (seg < 86400) return `${Math.floor(seg / 3600)} h`;
+        if (seg < 86400 * 30) return `${Math.floor(seg / 86400)} d`;
+        const meses = Math.floor(seg / (86400 * 30));
+        if (meses < 12) return `${meses} ${meses > 1 ? 'meses' : 'mês'}`;
+        const anos = Math.floor(meses / 12);
+        return `${anos} ${anos > 1 ? 'anos' : 'ano'}`;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.ac-card').forEach((card) => {
+            _atualizarQtdAcessos(card);
+            const rel = card.querySelector('.ac-relativo');
+            const curto = rel && _tempoCurto(rel.dataset.ts);
+            if (curto) rel.textContent = curto;
+        });
+    });
+
+    // Blocos Ping e porta: teste sob demanda, um clique testa os dois. Não
+    // roda ao abrir a página: host privado passa por SSH no proxy, e dezenas
+    // de cards abririam dezenas de conexões de uma vez.
+    async function testarStatusAcesso(el, acessoId) {
+        const card = el.closest('.card');
+        const status = card.querySelector('.ac-status');
+        if (status.dataset.testando) return;
+        status.dataset.testando = '1';
+        const ping = status.querySelector('.ac-ping');
+        const porta = status.querySelector('.ac-porta');
+        const dot = card.querySelector('.ac-dot');
+        const marcar = (n, texto, estado) => {
+            n.textContent = texto;
+            n.className = `ac-bloco-valor ${n === ping ? 'ac-ping' : 'ac-porta'} ${estado}`;
+        };
+        marcar(ping, '…', 'testando');
+        marcar(porta, '…', 'testando');
+        try {
+            const r = await fetch(`/clientes/acessos/status/${acessoId}/`, {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+            // Sessão expirada vira 302 → HTML do login, não JSON
+            const data = await r.json().catch(() => null);
+            if (!data) throw new Error('Sessão expirada ou sem permissão. Recarregue a página.');
+            if (data.error) throw new Error(data.error);
+
+            if (data.responde) marcar(ping, data.ping_ms == null ? 'responde' : (data.ping_ms < 1 ? '<1 ms' : `${Math.round(data.ping_ms)} ms`), 'ok');
+            else marcar(ping, 'sem resposta', 'falha');
+            if (data.porta_aberta === null) marcar(porta, '—', 'ac-vazio');
+            else marcar(porta, data.porta_aberta ? 'aberta' : 'fechada', data.porta_aberta ? 'ok' : 'falha');
+
+            const oks = [data.responde, data.porta_aberta].filter((v) => v !== null);
+            const estado = oks.every(Boolean) ? 'ok' : (oks.some(Boolean) ? 'alerta' : 'falha');
+            dot.className = `ac-dot ${estado}`;
+            dot.title = `Testado às ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
+        } catch (e) {
+            marcar(ping, 'testar', 'ac-testar');
+            marcar(porta, 'testar', 'ac-testar');
+            uiAlert({titulo: 'Teste de ping e porta', msg: e.message, icone: 'fas fa-exclamation-triangle', iconeCor: '#e0a060'});
+        } finally {
+            delete status.dataset.testando;
         }
     }
 
