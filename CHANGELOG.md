@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-14 (Proxmox dava 401 depois do login pelo proxy web)
+
+### Corrigido
+
+- **Proxmox Backup Server (e PVE novo) respondia 401 em tudo depois do login pelo proxy web**: as
+  versões novas gravam o ticket pelo servidor (`Set-Cookie: __Host-PBSAuthCookie=PBS:root@pam:…`,
+  HttpOnly), e o proxy copiava o cookie com `set_cookie` do Django, que põe **aspas** em valor com `@`,
+  `/` ou `=`. O browser devolvia as aspas e o PBS não reconhecia o ticket ("Connection error 401:
+  Unauthorized", reproduzido no PBS da Conecta ISP). Novo `_repassar_cookie_do_device`
+  (`clientes/views.py`) grava o valor cru e preserva `Expires`, `Max-Age` e `HttpOnly`; antes o
+  `Expires` era descartado e o cookie de logout nunca expirava. Detalhes em
+  `docs/proxy_web_acessos.md` → "Proxmox (PBS/PVE novos) responde 401".
+
+---
+
 ## [Não publicado] — 2026-09-14 (Card de acesso piscava sem estilo ao carregar)
 
 ### Corrigido

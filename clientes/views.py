@@ -6527,6 +6527,42 @@ def teste_dns_cliente(request, cliente_id):
 
 
 
+def _repassar_cookie_do_device(resposta, set_cookie, cookie_prefix, secure):
+    """Copia um Set-Cookie do equipamento para a resposta do proxy web, com o
+    nome isolado por acesso (a<id>_NOME).
+
+    O valor vai cru. O set_cookie do Django põe aspas em valor com @, /, = e
+    afins (o ticket do Proxmox é "PBS:root@pam:...::<base64>"); o browser
+    devolve com as aspas e o equipamento não reconhece a sessão (PBS/PVE
+    respondiam 401 em tudo depois do login). Expires, Max-Age e HttpOnly são
+    mantidos, para o equipamento conseguir apagar o cookie no logout. Path
+    vira / e Domain some, porque quem guarda o cookie agora é o CRM."""
+    from http.cookies import CookieError
+    partes = [p.strip() for p in set_cookie.replace('\r', '').replace('\n', '').split(';')]
+    if not partes or '=' not in partes[0]:
+        return
+    nome, valor = (x.strip() for x in partes[0].split('=', 1))
+    if not nome:
+        return
+    chave = cookie_prefix + nome
+    try:
+        resposta.set_cookie(chave, '', path='/', samesite='Lax', secure=secure)
+        morsel = resposta.cookies[chave]
+        morsel.set(chave, valor, valor)  # coded_value = valor: sai sem aspas
+    except CookieError:
+        logger.warning('Proxy web: cookie do equipamento ignorado (nome inválido): %r', nome)
+        return
+    for atributo in partes[1:]:
+        k, _, v = atributo.partition('=')
+        k, v = k.strip().lower(), v.strip()
+        if k == 'expires' and v:
+            morsel['expires'] = v
+        elif k == 'max-age' and v.lstrip('-').isdigit():
+            morsel['max-age'] = v
+        elif k == 'httponly':
+            morsel['httponly'] = True
+
+
 @csrf_exempt
 @login_required(login_url='login')
 @modulo_habilitado_required('acessos')
@@ -6713,14 +6749,7 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
                 response['Location'] = location
 
             for cookie_str in getattr(resp, 'cookies_raw', []):
-                parts = cookie_str.split(';')
-                if parts:
-                    nv = parts[0].split('=', 1)
-                    if len(nv) == 2:
-                        response.set_cookie(
-                            cookie_prefix + nv[0].strip(), nv[1].strip(),
-                            path='/', samesite='Lax'
-                        )
+                _repassar_cookie_do_device(response, cookie_str, cookie_prefix, request.is_secure())
             return response
 
         # ── Processar Conteúdo ────────────────────────────────────────
@@ -6770,15 +6799,7 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
 
 
         for cookie_str in getattr(resp, 'cookies_raw', []):
-            parts = cookie_str.split(';')
-            if parts:
-                nv = parts[0].split('=', 1)
-                if len(nv) == 2:
-                    django_resp.set_cookie(
-                        cookie_prefix + nv[0].strip(), nv[1].strip(),
-                        path='/', samesite='Lax',
-                        secure=request.is_secure()
-                    )
+            _repassar_cookie_do_device(django_resp, cookie_str, cookie_prefix, request.is_secure())
 
         return django_resp
 
