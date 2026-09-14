@@ -27,6 +27,8 @@ Equipamento (interface web nativa)
 O HTML/CSS de resposta passa por `ProxyEngine.rewrite_content`, que:
 - Reescreve URLs absolutas do próprio host do equipamento para o `proxy_base` (`/clientes/acessos/<id>/web/<porta>/<scheme>`)
 - Isola cookies por acesso (`a<id>_NOME`) — impede que a sessão de um equipamento vaze pra outro
+  (cookie gravado pelo servidor do equipamento passa por `_repassar_cookie_do_device`, em `views.py`;
+  cookie gravado pelo JS dele passa pelo interceptador de `document.cookie` do script injetado)
 - Injeta um `<script>` que intercepta `fetch`/`XMLHttpRequest`/`location.*`/`history.pushState`/
   `WebSocket`/`window.open`/envio de formulário, reescrevendo qualquer URL que aponte pro mesmo
   origin do CRM mas fora do `proxy_base` — necessário porque a maioria das interfaces web de
@@ -176,6 +178,53 @@ O último caso é deliberado: muito firmware imprime a própria URL canônica se
 servindo numa porta alta, e mandar esse link pra porta 80 quebraria um acesso que funcionava.
 
 Testes em `clientes/tests_proxy_web.py`.
+
+---
+
+### Proxmox (PBS/PVE novos) responde 401 em tudo depois do login — Corrigido em 14/09/2026
+
+**Sintoma:** Proxmox Backup Server da Conecta ISP (acesso 1482, `172.18.234.5:8007`, pelo túnel
+OpenVPN) abria a tela de login e aceitava usuário e senha (`POST /api2/extjs/access/ticket` → 200),
+mas logo depois toda chamada da API voltava **401** e aparecia "Connection error 401: Unauthorized".
+
+**Diagnóstico:** as versões novas do Proxmox não gravam mais o ticket pelo JS
+(`PBSAuthCookie`/`PVEAuthCookie` via `document.cookie`). Quem grava é o servidor, com
+`Set-Cookie: __Host-PBSAuthCookie=PBS:root@pam:…::<assinatura base64>; Secure; HttpOnly; Path=/`.
+O indício no log do nginx é uma rajada de `DELETE /api2/extjs/access/ticket` ao abrir a página (o
+logout que limpa esse cookie HttpOnly). O proxy repassava o cookie com `HttpResponse.set_cookie`, e o
+`SimpleCookie` do Python **põe aspas** em valor com `@`, `/`, `=` etc.:
+
+```
+Set-Cookie: a1482___Host-PBSAuthCookie="PBS:root@pam:…"; Path=/
+```
+
+O browser devolvia o valor com as aspas, o proxy repassava assim, e o PBS não reconhecia o ticket.
+Além disso o `Expires` do equipamento era descartado: o cookie de logout (`Expires=1970`) virava um
+cookie vazio que nunca expirava.
+
+**Fix (`clientes/views.py::_repassar_cookie_do_device`):** os dois pontos que copiam `Set-Cookie`
+(resposta normal e redirect) usam o helper, que:
+
+- mantém o nome isolado por acesso (`a<id>_NOME`);
+- grava o valor **cru**, sem aspas (`Morsel.set(chave, valor, valor)`, o `coded_value` é o próprio
+  valor);
+- preserva `Expires`, `Max-Age` e `HttpOnly`; `Path` sempre `/`, `Domain` descartado, `SameSite=Lax` e
+  `Secure` conforme a requisição;
+- ignora `Set-Cookie` sem `=` e nome que o `SimpleCookie` recusa (log de warning) em vez de estourar
+  500.
+
+Vale para qualquer equipamento cujo cookie de sessão tenha caractere fora do conjunto "seguro" do
+`SimpleCookie` (JWT com `/`/`+`, base64 com `=`, `user@realm`).
+
+**Como conferir o `Set-Cookie` de um equipamento** (sem login; o `DELETE` do ticket só limpa o cookie):
+
+```python
+from clientes.proxy_engine import ProxyEngine
+r = ProxyEngine(None).do_request(method='DELETE', url='https://172.18.234.5:8007/api2/extjs/access/ticket')
+r.cookies_raw   # ['__Host-PBSAuthCookie=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=Lax; HttpOnly; Path=/;']
+```
+
+Com IP privado atrás de ProxyServer SSH, passe o `ProxyServer` do cliente no lugar de `None`.
 
 ---
 

@@ -2,6 +2,21 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 53 — 14/09/2026: Proxmox 401 depois do login pelo proxy web
+
+**O que foi corrigido?**
+- 🍪 **Cookie do equipamento com aspas**: o `set_cookie` do Django punha aspas no ticket do Proxmox
+  (`PBS:root@pam:…`), e o PBS/PVE novo respondia 401 em tudo. `_repassar_cookie_do_device` grava o
+  valor cru e mantém `Expires`, `Max-Age` e `HttpOnly`.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[proxy_web_acessos.md](proxy_web_acessos.md)** | "Proxmox (PBS/PVE novos) responde 401 em tudo depois do login" |
+
+---
+
 ### Sessão 52 — 14/09/2026: Card de acesso com cor do fabricante e rodapé de ações
 
 **O que foi implementado?**
