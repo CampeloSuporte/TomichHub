@@ -14,7 +14,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   Senha e Senha root com botão de copiar; e uma linha **Acessos** em pílulas (padrão, extras e
   Winbox), que substitui Porta, Protocolo, Outros acessos e winbox. VLAN e IPv6 só aparecem quando
   preenchidos. O **Acessar** virou botão azul sólido com contador de opções; a escolha no meio do
-  card continua igual. Ícones e abas Padrão/+ ficaram.
+  card continua igual. Ícones e abas Padrão/+ ficaram, menos o globo de ping: o bloco Ping
+  substitui (o modal de ping/traceroute ficou sem botão).
 
 ### Adicionado
 

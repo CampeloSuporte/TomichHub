@@ -41,6 +41,8 @@ class CardAcessoTest(_Base):
         self.assertIn(f'testarStatusAcesso(this, {self.acesso.id})', html)
         self.assertIn('ac-vazio">nunca', html)
         self.assertNotIn('Acessado por', html)
+        # O ícone de ping (globo) saiu da barra: o bloco Ping do card substitui
+        self.assertNotIn('realizarPing(', html)
 
     def test_ultimo_acesso_vem_da_sessao_mais_recente(self):
         joao = User.objects.create_user('joao.noc')
