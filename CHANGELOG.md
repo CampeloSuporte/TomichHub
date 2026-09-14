@@ -5,6 +5,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-14 (Card de acesso: cor do fabricante e rodapé de ações)
+
+### Alterado
+
+- **Cabeçalho do card de acesso com a marca**: faixa de 3 px no topo, ícone da função do equipamento
+  (OLT, switch, roteador, CGNAT, firewall, VM, rádio…) num quadrado e nome do fabricante na cor da
+  marca. A cor sai de `Modelo_equipamento.fabricante` por CSS (`data-fabricante` + `--ac-marca`), sem
+  migração; fabricante sem cor definida fica ciano. O modelo aparece sem o fabricante repetido
+  (`Modelo_equipamento.nome_sem_fabricante`).
+- **Ações no rodapé**: backup, comentários, auditoria e editar ficam no rodapé, ao lado do
+  **Acessar**. Adicionar protocolo, duplicar, automação BGP e excluir (em vermelho, separado) vão
+  para o menu **⋯**. As abas **Padrão / +** saíram do card.
+
+### Testes
+
+- `tests_card_acesso.py`: cabeçalho com fabricante e ícone, rodapé e menu, card sem modelo nem
+  função, e `nome_sem_fabricante` (15 casos no arquivo).
+
+---
+
 ## [Não publicado] — 2026-09-14 (Novo card de acesso)
 
 ### Alterado

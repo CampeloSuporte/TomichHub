@@ -269,93 +269,15 @@
                         <div class="col-xl-3 col-lg-4 col-md-6 mb-4 acesso-card"
                              data-tipo="{{ acesso.tipo|lower }}"
                              data-host="{{ acesso.host|lower }} {{ acesso.host_ipv6|lower }}">
-                            <div class="card h-100 ac-card">
+                            <div class="card h-100 ac-card" data-fabricante="{{ acesso.modelo.fabricante|default:''|slugify }}">
                                 <div class="card-body">
                                     <div class="ac-cabecalho">
+                                        <span class="ac-icone" title="{{ acesso.funcao|default:'Sem função' }}">{% with f=acesso.funcao.descricao|default:''|upper %}<i class="fas {% if 'OLT' in f %}fa-circle-nodes{% elif 'SWITCH' in f %}fa-arrow-right-arrow-left{% elif 'ROTEADOR' in f or 'BORDA' in f or 'BRAS' in f %}fa-route{% elif 'CGNAT' in f %}fa-shuffle{% elif 'FIREWALL' in f %}fa-fire{% elif 'HIPERVISOR' in f or 'VM' in f %}fa-server{% elif 'RADIO' in f or 'APS' in f %}fa-tower-broadcast{% elif 'MONITORAMENTO' in f %}fa-chart-line{% elif 'EMAIL' in f %}fa-envelope{% elif 'RDP' in f %}fa-desktop{% elif 'WEB' in f or 'DOCUMENTA' in f %}fa-globe{% else %}fa-hard-drive{% endif %}"></i>{% endwith %}</span>
                                         <div class="ac-titulo">
-                                            <div class="ac-titulo-linha">
-                                                <h5 class="mb-0">{{ acesso.tipo }}</h5>
-                                                <span class="ac-dot" title="Clique em Ping para testar"></span>
-                                            </div>
-                                            <div class="ac-sub">{% if acesso.modelo %}{{ acesso.modelo }} · {% endif %}<span class="copyable" title="Copiar IP" onclick="copiarTexto('{{ acesso.host|escapejs }}')">{{ acesso.host }}</span></div>
+                                            <h5 class="mb-0">{{ acesso.tipo }}</h5>
+                                            <div class="ac-sub">{% if acesso.modelo %}<span class="ac-fabricante">{{ acesso.modelo.fabricante }}</span>{% if acesso.modelo.nome_sem_fabricante %} {{ acesso.modelo.nome_sem_fabricante }}{% endif %} · {% endif %}<span class="copyable" title="Copiar IP" onclick="copiarTexto('{{ acesso.host|escapejs }}')">{{ acesso.host }}</span></div>
                                         </div>
-                                        <div class="d-flex gap-2 flex-wrap">
-                                        
-                                            <form method="POST" action="{% url 'deletar_acesso' acesso.id %}"
-                                                style="display: inline;"
-                                                onsubmit="event.preventDefault()">
-                                                {% csrf_token %}
-                                                <button type="submit" class="icon-btn btn-sm" title="Excluir"
-                                                    onclick="uiConfirm({titulo:'Excluir Acesso', msg:'Tem certeza que deseja excluir: {{ acesso.tipo }}?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'}).then(ok => { if(ok) this.closest('form').submit() })">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        
-                                            
-                                            {% if acesso.backup_habilitado %}
-                                            <button class="icon-btn btn-sm backup-btn" 
-                                                    onclick="executarBackup({{ acesso.id }}, '{{ acesso.tipo }}')" 
-                                                    title="Executar Backup">
-                                                <i class="fas fa-database"></i>
-                                            </button>
-                                            {% endif %}
-                                            <button class="icon-btn btn-sm"
-                                                    onclick="abrirModalComentariosAcesso({{ acesso.id }}, '{{ acesso.tipo }}')"
-                                                    title="Comentários"
-                                                    style="color: var(--accent-cyan);">
-                                                <i class="fas fa-comments"></i>
-                                            </button>
-                                            <button class="icon-btn btn-sm"
-                                                    onclick="abrirModalAuditoriaAcesso({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"
-                                                    title="Auditoria de Acessos"
-                                                    style="color: #a371f7;">
-                                                <i class="fas fa-shield-halved"></i>
-                                            </button>
-                                            {% if request.user.is_staff and acesso.bgp_snapshot %}
-                                            <button class="icon-btn btn-sm"
-                                                    onclick="window.open('/clientes/bgp/{{ acesso.id }}/', '_blank')"
-                                                    title="Automação BGP"
-                                                    style="color: #58a6ff;">
-                                                <i class="fas fa-diagram-project"></i>
-                                            </button>
-                                            {% endif %}
-                                            <button class="icon-btn btn-sm" onclick="AbrirmodalDuplicarAcesso({{ acesso.id }})">
-                                                <i class="fas fa-file"></i>
-                                            </button>
-                                        
-                                            <button class="icon-btn btn-sm" onclick="abrirModalEditarAcesso({{ acesso.id }})">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-
-
-                                        
-                                        </div>
-                                    </div>
-                                    <ul class="nav nav-tabs mb-3">
-                                        <li class="nav-item"><a class="nav-link active" href="#" onclick="event.preventDefault(); toggleNovoProtocolo(this, false)">Padrão</a></li>
-                                        <li class="nav-item"><a class="nav-link" href="#" title="Adicionar protocolo de acesso (mesmo IP)" onclick="event.preventDefault(); toggleNovoProtocolo(this)"><i class="fas fa-plus"></i></a></li>
-                                    </ul>
-                                    <div class="novo-proto-form" data-padrao="{{ acesso.protocolo|upper }}" hidden>
-                                        <div class="np-campo">
-                                            <label>Hostname/IP</label>
-                                            <input type="text" value="{{ acesso.host }}" readonly tabindex="-1" title="O IP é o mesmo do acesso padrão">
-                                        </div>
-                                        <div class="np-campo">
-                                            <label>Porta</label>
-                                            <input type="number" class="np-porta" min="1" max="65535"
-                                                   onkeydown="if (event.key === 'Enter') { event.preventDefault(); salvarNovoProtocolo(this, {{ acesso.id }}); } else if (event.key === 'Escape') { toggleNovoProtocolo(this, false); }">
-                                        </div>
-                                        <div class="np-campo">
-                                            <label>Protocolo</label>
-                                            <select class="np-protocolo" onchange="sugerirPortaProtocolo(this)">
-                                                <option value="SSH">SSH</option>
-                                                <option value="TELNET">Telnet</option>
-                                                <option value="HTTP">HTTP</option>
-                                                <option value="HTTPS">HTTPS</option>
-                                                <option value="RDP">RDP</option>
-                                            </select>
-                                        </div>
-                                        <button type="button" class="np-salvar" title="Adicionar protocolo" onclick="salvarNovoProtocolo(this, {{ acesso.id }})"><i class="fas fa-plus"></i></button>
+                                        <span class="ac-dot" title="Clique em Ping para testar"></span>
                                     </div>
                                     <div class="ac-status">
                                         <button type="button" class="ac-bloco" title="Testar ping e porta agora" onclick="testarStatusAcesso(this, {{ acesso.id }})">
@@ -413,14 +335,61 @@
                                             <span class="protos-extras-lista"><span class="acesso-chip">{{ acesso.protocolo|upper }}{% if acesso.porta %} {{ acesso.porta }}{% endif %}</span>{% for p in acesso.protocolos_extras.all %}<span class="proto-chip" data-pid="{{ p.id }}" data-protocolo="{{ p.protocolo }}" data-porta="{{ p.porta }}">{{ p.protocolo }} {{ p.porta }}<button type="button" class="proto-chip-x" title="Remover {{ p.protocolo }} {{ p.porta }}" onclick="removerProtocoloExtra({{ p.id }}, this)">&times;</button></span>{% endfor %}{% if acesso.winbox %}<span class="acesso-chip acesso-chip-winbox copyable" title="Copiar porta Winbox" onclick="copiarTexto('{{ acesso.winbox }}')">Winbox {{ acesso.winbox }}</span>{% endif %}</span>
                                         </div>
                                     </div>
-                                    <button class="btn btn-access ac-btn-acessar"
-                                            data-protocolo="{{ acesso.protocolo|upper }}" data-porta="{{ acesso.porta|default_if_none:'' }}" data-winbox="{{ acesso.winbox|default_if_none:'' }}"
-                                            onclick="acessarHost(this,
-                                                () => acessarEquipamento('{{ acesso.protocolo|escapejs }}', '{{ acesso.host|escapejs }}', '{{ acesso.porta|escapejs }}', '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}),
-                                                (proto, porta, pid) => acessarProtocoloExtra(proto, '{{ acesso.host|escapejs }}', porta, '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}, pid, {{ acesso.host_eh_privado|yesno:'true,false' }}),
-                                                (versao) => abrirWinboxWeb({{ acesso.id }}, versao))">
-                                        <i class="fas fa-sign-in-alt"></i> Acessar <span class="ac-qtd" hidden></span>
-                                    </button>
+                                    <div class="novo-proto-form" data-padrao="{{ acesso.protocolo|upper }}" hidden>
+                                        <div class="np-campo">
+                                            <label>Hostname/IP</label>
+                                            <input type="text" value="{{ acesso.host }}" readonly tabindex="-1" title="O IP é o mesmo do acesso padrão">
+                                        </div>
+                                        <div class="np-campo">
+                                            <label>Porta</label>
+                                            <input type="number" class="np-porta" min="1" max="65535"
+                                                   onkeydown="if (event.key === 'Enter') { event.preventDefault(); salvarNovoProtocolo(this, {{ acesso.id }}); } else if (event.key === 'Escape') { toggleNovoProtocolo(this, false); }">
+                                        </div>
+                                        <div class="np-campo">
+                                            <label>Protocolo</label>
+                                            <select class="np-protocolo" onchange="sugerirPortaProtocolo(this)">
+                                                <option value="SSH">SSH</option>
+                                                <option value="TELNET">Telnet</option>
+                                                <option value="HTTP">HTTP</option>
+                                                <option value="HTTPS">HTTPS</option>
+                                                <option value="RDP">RDP</option>
+                                            </select>
+                                        </div>
+                                        <button type="button" class="np-salvar" title="Adicionar protocolo" onclick="salvarNovoProtocolo(this, {{ acesso.id }})"><i class="fas fa-plus"></i></button>
+                                    </div>
+                                </div>
+                                <div class="ac-rodape">
+                                    <div class="ac-acoes">
+                                        {% if acesso.backup_habilitado %}
+                                        <button type="button" class="ac-acao backup-btn" title="Executar backup" onclick="executarBackup({{ acesso.id }}, '{{ acesso.tipo }}')"><i class="fas fa-database"></i></button>
+                                        {% endif %}
+                                        <button type="button" class="ac-acao ac-acao-comentarios" title="Comentários" onclick="abrirModalComentariosAcesso({{ acesso.id }}, '{{ acesso.tipo }}')"><i class="fas fa-comments"></i></button>
+                                        <button type="button" class="ac-acao ac-acao-auditoria" title="Auditoria de acessos" onclick="abrirModalAuditoriaAcesso({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"><i class="fas fa-shield-halved"></i></button>
+                                        <button type="button" class="ac-acao" title="Editar" onclick="abrirModalEditarAcesso({{ acesso.id }})"><i class="fas fa-pen"></i></button>
+                                        <details class="ac-menu">
+                                            <summary class="ac-acao" title="Mais ações"><i class="fas fa-ellipsis"></i></summary>
+                                            <div class="ac-menu-lista">
+                                                <button type="button" onclick="fecharMenusAcesso(); toggleNovoProtocolo(this)"><i class="fas fa-plus"></i> Adicionar protocolo</button>
+                                                <button type="button" onclick="fecharMenusAcesso(); AbrirmodalDuplicarAcesso({{ acesso.id }})"><i class="fas fa-copy"></i> Duplicar acesso</button>
+                                                {% if request.user.is_staff and acesso.bgp_snapshot %}
+                                                <button type="button" onclick="fecharMenusAcesso(); window.open('/clientes/bgp/{{ acesso.id }}/', '_blank')"><i class="fas fa-diagram-project"></i> Automação BGP</button>
+                                                {% endif %}
+                                                <form method="POST" action="{% url 'deletar_acesso' acesso.id %}" onsubmit="event.preventDefault()">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="ac-menu-perigo"
+                                                        onclick="fecharMenusAcesso(); uiConfirm({titulo:'Excluir Acesso', msg:'Tem certeza que deseja excluir: {{ acesso.tipo }}?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'}).then(ok => { if(ok) this.closest('form').submit() })"><i class="fas fa-trash"></i> Excluir</button>
+                                                </form>
+                                            </div>
+                                        </details>
+                                    </div>
+                                <button class="btn btn-access ac-btn-acessar"
+                                        data-protocolo="{{ acesso.protocolo|upper }}" data-porta="{{ acesso.porta|default_if_none:'' }}" data-winbox="{{ acesso.winbox|default_if_none:'' }}"
+                                        onclick="acessarHost(this,
+                                            () => acessarEquipamento('{{ acesso.protocolo|escapejs }}', '{{ acesso.host|escapejs }}', '{{ acesso.porta|escapejs }}', '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}),
+                                            (proto, porta, pid) => acessarProtocoloExtra(proto, '{{ acesso.host|escapejs }}', porta, '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}, pid, {{ acesso.host_eh_privado|yesno:'true,false' }}),
+                                            (versao) => abrirWinboxWeb({{ acesso.id }}, versao))">
+                                    <i class="fas fa-sign-in-alt"></i> Acessar <span class="ac-qtd" hidden></span>
+                                </button>
                                 </div>
                             </div>
                         </div>
@@ -6513,10 +6482,35 @@ function getCsrfToken(){
         .proto-chip-x:hover { color: #e06060; }
 
         /* Card de acesso: cabeçalho, blocos Ping/porta/último acesso, linhas e Acessar */
+        /* Cor da marca: faixa no topo, fundo do ícone e nome do fabricante.
+           Vem de Modelo_equipamento.fabricante (slug); sem mapeamento fica ciano. */
+        .ac-card { --ac-marca: var(--cyan); border-top: 3px solid var(--ac-marca); }
+        .ac-card[data-fabricante="huawei"] { --ac-marca: #f85149; }
+        .ac-card[data-fabricante="zte"] { --ac-marca: #2f81f7; }
+        .ac-card[data-fabricante="cisco"] { --ac-marca: #1fb6e8; }
+        .ac-card[data-fabricante="juniper"] { --ac-marca: #7ee787; }
+        .ac-card[data-fabricante="mikrotik"] { --ac-marca: #db61a2; }
+        .ac-card[data-fabricante="datacom"] { --ac-marca: #39c5cf; }
+        .ac-card[data-fabricante="intelbras"] { --ac-marca: #3fb950; }
+        .ac-card[data-fabricante="parks"] { --ac-marca: #f0883e; }
+        .ac-card[data-fabricante="vsol"], .ac-card[data-fabricante="shoreline"] { --ac-marca: #d29922; }
+        .ac-card[data-fabricante="tp-link"] { --ac-marca: #4ac2c9; }
+        .ac-card[data-fabricante="nokia"] { --ac-marca: #4493f8; }
+        .ac-card[data-fabricante="raisecom"] { --ac-marca: #a371f7; }
+        .ac-card[data-fabricante="a10"] { --ac-marca: #f778ba; }
+        .ac-card[data-fabricante="ubiquit"], .ac-card[data-fabricante="ubiquiti"] { --ac-marca: #6cb6ff; }
+        .ac-card[data-fabricante="cdata"] { --ac-marca: #e3b341; }
+        .ac-card[data-fabricante="proxmox"], .ac-card[data-fabricante="ubuntu"] { --ac-marca: #f0883e; }
+        .ac-card[data-fabricante="debian"] { --ac-marca: #e5534b; }
+        .ac-card[data-fabricante="windows"], .ac-card[data-fabricante="dell"] { --ac-marca: #58a6ff; }
         .ac-card .card-body { display: flex; flex-direction: column; }
-        .ac-cabecalho { margin-bottom: 14px; }
-        .ac-titulo { min-width: 0; margin-bottom: 10px; }
-        .ac-titulo-linha { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .ac-cabecalho { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .ac-icone {
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 36px; height: 36px;
+            border-radius: 8px; background: color-mix(in srgb, var(--ac-marca) 16%, transparent); color: var(--ac-marca); font-size: 15px;
+        }
+        .ac-titulo { flex: 1; min-width: 0; }
+        .ac-fabricante { color: var(--ac-marca); font-weight: 500; }
         .ac-titulo h5 {
             margin: 0; color: var(--text-light); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
             font-size: 13px; font-weight: 600; letter-spacing: .3px; word-break: break-all;
@@ -6563,12 +6557,44 @@ function getCsrfToken(){
         }
         .acesso-chip.copyable { cursor: pointer; }
         .ac-card .btn-access.ac-btn-acessar {
-            display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: auto; padding: 10px;
+            display: flex; align-items: center; justify-content: center; gap: 8px; width: auto; padding: 7px 16px;
             border: none; border-radius: 6px; background: #1f6feb; color: #fff;
             font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none;
         }
         .ac-card .btn-access.ac-btn-acessar::before { display: none; }
         .ac-card .btn-access.ac-btn-acessar:hover { background: #388bfd; color: #fff; transform: none; }
+        .ac-linhas { margin-bottom: 0; }
+        .ac-card .novo-proto-form { margin: 10px 0 0; }
+        .ac-rodape {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px;
+            border-top: 1px solid var(--border); background: rgba(4, 8, 20, .35);
+            border-bottom-left-radius: var(--bs-card-inner-border-radius); border-bottom-right-radius: var(--bs-card-inner-border-radius);
+        }
+        .ac-acoes { display: flex; align-items: center; gap: 2px; }
+        .ac-acao {
+            display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0;
+            border: none; border-radius: 5px; background: none; color: var(--text-muted); font-size: 13px; cursor: pointer;
+            transition: color .15s, background-color .15s;
+        }
+        .ac-acao:hover, .ac-acao:focus-visible, .ac-menu[open] > .ac-acao { background: rgba(88, 166, 255, .08); color: var(--text-light); outline: none; }
+        .ac-acao.ac-acao-comentarios { color: var(--cyan); }
+        .ac-acao.ac-acao-auditoria { color: #a371f7; }
+        .ac-menu { position: relative; }
+        .ac-menu > summary { list-style: none; }
+        .ac-menu > summary::-webkit-details-marker { display: none; }
+        .ac-menu-lista {
+            position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 15; min-width: 190px; padding: 4px;
+            border: 1px solid var(--border); border-radius: 8px; background: #0d1117; box-shadow: 0 12px 30px rgba(0, 0, 0, .5);
+        }
+        .ac-menu-lista button {
+            display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px;
+            border: none; border-radius: 5px; background: none; color: var(--text-light); font-size: 12px; text-align: left;
+        }
+        .ac-menu-lista button i { width: 14px; color: var(--text-muted); text-align: center; }
+        .ac-menu-lista button:hover, .ac-menu-lista button:focus-visible { background: rgba(88, 166, 255, .08); outline: none; }
+        .ac-menu-lista form { margin: 4px 0 0; padding-top: 4px; border-top: 1px solid var(--border); }
+        .ac-menu-lista .ac-menu-perigo, .ac-menu-lista .ac-menu-perigo i { color: var(--red); }
+        .ac-menu-lista .ac-menu-perigo:hover { background: rgba(248, 81, 73, .1); }
         .ac-qtd { padding: 0 7px; border-radius: 9px; background: rgba(255, 255, 255, .2); font-size: 11px; font-weight: 500; }
 
         /* Escolha do "Acessar": cobre o card inteiro (escurecido) e centraliza
@@ -6628,9 +6654,6 @@ function getCsrfToken(){
         const form = card.querySelector('.novo-proto-form');
         const vaiAbrir = abrir === undefined ? form.hidden : abrir;
         form.hidden = !vaiAbrir;
-        const abas = card.querySelectorAll('.nav-tabs .nav-link');
-        abas[0].classList.toggle('active', !vaiAbrir);
-        abas[abas.length - 1].classList.toggle('active', vaiAbrir);
         if (!vaiAbrir) return;
 
         const porta = form.querySelector('.np-porta');
@@ -6875,8 +6898,17 @@ function getCsrfToken(){
         document.querySelectorAll('.acesso-escolha').forEach((o) => o.remove());
     }
 
+    // Menu ⋯ do rodapé do card (<details>): clique fora ou Esc fecha. Os itens
+    // chamam fecharMenusAcesso() antes da ação.
+    function fecharMenusAcesso(exceto) {
+        document.querySelectorAll('details.ac-menu[open]').forEach((d) => {
+            if (d !== exceto) d.removeAttribute('open');
+        });
+    }
+    document.addEventListener('click', (e) => fecharMenusAcesso(e.target.closest('details.ac-menu')));
+
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') fecharEscolhaAcesso();
+        if (e.key === 'Escape') { fecharEscolhaAcesso(); fecharMenusAcesso(); }
     });
     </script>
 

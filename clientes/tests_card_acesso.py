@@ -10,6 +10,8 @@ from django.urls import reverse
 
 from clientes import views
 from clientes.models import Acesso, AcessoProtocolo, AcessoSessao, Cliente
+from funcao_equipamento.models import Funcao_equipamento
+from modelo_equipamento.models import Modelo_equipamento
 from usuario.models import TOTPDevice
 
 
@@ -43,6 +45,27 @@ class CardAcessoTest(_Base):
         self.assertNotIn('Acessado por', html)
         # O ícone de ping (globo) saiu da barra: o bloco Ping do card substitui
         self.assertNotIn('realizarPing(', html)
+
+    def test_cabecalho_com_fabricante_icone_e_rodape(self):
+        self.acesso.funcao = Funcao_equipamento.objects.create(descricao='SWITCH L2')
+        self.acesso.modelo = Modelo_equipamento.objects.create(nome='SW HUAWEI S6730', fabricante='Huawei')
+        self.acesso.save()
+        html = self._html()
+        self.assertIn('data-fabricante="huawei"', html)
+        self.assertIn('<span class="ac-fabricante">Huawei</span> SW S6730 · ', html)
+        self.assertIn('fa-arrow-right-arrow-left', html)
+        # Ações no rodapé; duplicar, adicionar protocolo e excluir no menu ⋯
+        self.assertIn('<div class="ac-rodape">', html)
+        self.assertIn('<details class="ac-menu">', html)
+        self.assertIn(reverse('deletar_acesso', args=[self.acesso.id]), html)
+        self.assertIn('toggleNovoProtocolo(this)"><i class="fas fa-plus"></i> Adicionar protocolo', html)
+        self.assertNotIn('class="nav nav-tabs mb-3"', html)
+
+    def test_sem_modelo_nem_funcao(self):
+        html = self._html()
+        self.assertIn('data-fabricante=""', html)
+        self.assertIn('fa-hard-drive', html)
+        self.assertNotIn('ac-fabricante', html.split('class="ac-sub"')[1].split('</div>')[0])
 
     def test_ultimo_acesso_vem_da_sessao_mais_recente(self):
         joao = User.objects.create_user('joao.noc')
@@ -143,3 +166,19 @@ class StatusDiretoTest(TestCase):
             _, porta_aberta = views._status_direto('127.0.0.1', None)
         self.assertIsNone(porta_aberta)
         conectar.assert_not_called()
+
+
+class NomeSemFabricanteTest(TestCase):
+    def test_tira_fabricante_repetido_do_nome(self):
+        casos = [
+            ('SW HUAWEI S6730', 'Huawei', 'SW S6730'),
+            ('MIKROTIK CCR1036-8G-2S+', 'Mikrotik', 'CCR1036-8G-2S+'),
+            ('MIMOSA - RADIO C5X', 'MIMOSA', 'RADIO C5X'),
+            ('PROXMOX', 'PROXMOX', ''),
+            ('RB3011', 'Mikrotik', 'RB3011'),
+            ('TP-LINKX 10', 'TP-Link', 'TP-LINKX 10'),
+            ('OLT X', '', 'OLT X'),
+        ]
+        for nome, fabricante, esperado in casos:
+            with self.subTest(nome=nome):
+                self.assertEqual(Modelo_equipamento(nome=nome, fabricante=fabricante).nome_sem_fabricante, esperado)
