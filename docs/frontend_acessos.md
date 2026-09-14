@@ -107,10 +107,11 @@ O card deixou de ser uma tabela de `// RÓTULO … valor`, com uma linha por cam
   por** (`joao.noc · 14/09 18:42`, ou "link externo") só para a equipe (`is_admin`).
 - **Acessos**: pílulas com o padrão (`SSH 22`), os protocolos extras (com ×) e `Winbox 8291`
   (clicar copia a porta). Substitui as linhas Porta, Protocolo, Outros acessos e winbox.
-- **Rodapé**: ações à esquerda e **Acessar** à direita. As ações são backup (se habilitado),
-  comentários, auditoria, editar e o menu **⋯** com Adicionar protocolo, Duplicar acesso, Automação
-  BGP (equipe, com snapshot) e Excluir (em vermelho, separado). O menu é um `<details>`: clique fora
-  ou **Esc** fecha. As abas **Padrão / +** e o ícone de ping (globo) saíram do card; o bloco **Ping**
+- **Rodapé**: todas as ações em ícones na mesma linha, à esquerda, e **Acessar** à direita: backup
+  (se habilitado), comentários, auditoria, editar, adicionar protocolo, duplicar, automação BGP
+  (equipe, com snapshot) e excluir (em vermelho). Sem menu **⋯** (ele existiu por algumas horas em
+  14/09/2026 e saiu a pedido: esconder as ações atrapalhava). Card estreito quebra a linha e o
+  **Acessar** fica sempre à direita (`margin-left: auto`). As abas **Padrão / +** e o ícone de ping (globo) saíram do card; o bloco **Ping**
   substitui o globo, e com ele saiu o único acesso ao modal de ping/traceroute (`#modalPingResult`),
   cujo código continua em `static/js/listar_acesso.js`.
 - **Acessar**: botão azul sólido com um contador de quantas opções a escolha vai mostrar (padrão +
@@ -173,7 +174,7 @@ uns segundos só com o `style.css` antigo (botão gradiente em caixa alta, sem r
 | `.protos-extras-row` / `.acesso-chip` / `.proto-chip` | Linha Acessos. Só `.proto-chip` (extra) conta para a escolha do Acessar |
 | `.ac-btn-acessar` / `.ac-qtd` | Botão Acessar e contador |
 | `.ac-icone` / `.ac-fabricante` / `--ac-marca` | Ícone da função e cor do fabricante |
-| `.ac-rodape` / `.ac-acao` / `details.ac-menu` | Rodapé, ações e menu ⋯ (`fecharMenusAcesso`) |
+| `.ac-rodape` / `.ac-acao` / `.ac-acao-perigo` | Rodapé, ícones de ação e o excluir em vermelho |
 
 A busca de acessos continua clonando os cards: tudo é achado a partir de `closest('.card')`.
 

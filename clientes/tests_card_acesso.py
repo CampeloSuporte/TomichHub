@@ -62,11 +62,13 @@ class CardAcessoTest(_Base):
         self.assertIn('data-fabricante="huawei"', html)
         self.assertIn('<span class="ac-fabricante">Huawei</span> SW S6730 · ', html)
         self.assertIn('fa-arrow-right-arrow-left', html)
-        # Ações no rodapé; duplicar, adicionar protocolo e excluir no menu ⋯
-        self.assertIn('<div class="ac-rodape">', html)
-        self.assertIn('<details class="ac-menu">', html)
-        self.assertIn(reverse('deletar_acesso', args=[self.acesso.id]), html)
-        self.assertIn('toggleNovoProtocolo(this)"><i class="fas fa-plus"></i> Adicionar protocolo', html)
+        # Todas as ações na linha do rodapé, sem menu ⋯
+        rodape = html.split('<div class="ac-rodape">')[1].split('ac-btn-acessar')[0]
+        for acao in ('title="Comentários"', 'title="Auditoria de acessos"', 'title="Editar"',
+                     'title="Adicionar protocolo (mesmo IP)"', 'title="Duplicar acesso"', 'title="Excluir"'):
+            self.assertIn(acao, rodape)
+        self.assertIn(reverse('deletar_acesso', args=[self.acesso.id]), rodape)
+        self.assertNotIn('ac-menu', html)
         self.assertNotIn('class="nav nav-tabs mb-3"', html)
 
     def test_sem_modelo_nem_funcao(self):

@@ -31,15 +31,15 @@ botão **Acessar** abre no meio do card um painel para escolher por onde acessar
 `Acesso`. Winbox não entra aqui porque já tem campo próprio (`Acesso.winbox`). No admin, os extras
 aparecem inline no `Acesso`.
 
-## Cadastro pelo menu ⋯ ("Adicionar protocolo")
+## Cadastro pelo botão + do rodapé ("Adicionar protocolo")
 
-O item **Adicionar protocolo** do menu **⋯**, no rodapé do card, abre no card, sem modal, uma linha
-com **Hostname/IP** (só leitura, é o IP do padrão), **Porta**, **Protocolo** e o botão **+**. Até
+O ícone **+** (**Adicionar protocolo**) no rodapé do card abre no card, sem modal, uma linha com
+**Hostname/IP** (só leitura, é o IP do padrão), **Porta**, **Protocolo** e o botão **+**. Até
 14/09/2026 isso ficava numa aba **+** ao lado de "Padrão"; as abas saíram no redesenho do card.
 
 - A porta é sugerida pelo protocolo (22, 23, 80, 443, 3389) enquanto o campo estiver vazio ou com a
   sugestão de outro protocolo. Host web começa sugerindo SSH; host SSH/Telnet começa sugerindo HTTPS.
-- **Enter** salva. **Esc** ou o mesmo item do menu fecha.
+- **Enter** salva. **Esc** ou o mesmo ícone **+** fecha.
 - `POST /clientes/acessos/<id>/protocolos/adicionar/` (`protocolo`, `porta`) devolve JSON. Responde
   400 para protocolo fora da lista, porta fora de 1 a 65535, protocolo e porta iguais aos do padrão,
   e protocolo e porta já cadastrados no host.
