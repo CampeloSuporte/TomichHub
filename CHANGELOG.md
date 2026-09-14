@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-14 (Ações do card de acesso todas na linha)
+
+### Alterado
+
+- **Rodapé do card de acesso sem o menu ⋯**: adicionar protocolo, duplicar, automação BGP e excluir
+  (em vermelho) voltaram a ser ícones na mesma linha de backup, comentários, auditoria e editar. Ícones
+  de 28 px; card estreito quebra a linha e o **Acessar** continua à direita. Saíram o `<details>` do
+  menu, o CSS `.ac-menu*` e `fecharMenusAcesso`.
+
+---
+
 ## [Não publicado] — 2026-09-14 (Acesso web via proxy mais rápido)
 
 ### Melhorado
