@@ -27,6 +27,7 @@ import threading
 import ipaddress
 import logging
 import http.client
+import http.cookiejar
 from urllib.parse import urlparse
 
 import paramiko
@@ -523,6 +524,32 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
         with cls._tls_session_lock:
             cls._tls_session_cache[(host, port)] = session
 
+    # ── Sessão HTTP compartilhada do caminho direto ─────────────────────────────
+    # requests.request() cria uma Session por chamada: cada asset de uma página
+    # (o Proxmox carrega dezenas) abria TCP e refazia o handshake TLS do zero.
+    # Medido no PBS da Conecta ISP (via OpenVPN): 546 ms por requisição pequena
+    # sem reuso contra 177 ms com a conexão reaproveitada. A sessão é única no
+    # processo (o Daphne atende o proxy web num processo só), com pool por
+    # host:porta. O cookie jar recusa tudo: cookie de equipamento nunca pode
+    # ficar guardado aqui, porque a sessão é compartilhada entre usuários e
+    # acessos — o Cookie de cada requisição vem só do browser (a<id>_NOME).
+    _http_session = None
+    _http_session_lock = threading.Lock()
+
+    @classmethod
+    def _sessao_direta(cls) -> requests.Session:
+        if cls._http_session is not None:
+            return cls._http_session
+        with cls._http_session_lock:
+            if cls._http_session is None:
+                sessao = requests.Session()
+                sessao.cookies.set_policy(http.cookiejar.DefaultCookiePolicy(allowed_domains=[]))
+                adaptador = requests.adapters.HTTPAdapter(pool_connections=64, pool_maxsize=16)
+                sessao.mount('http://', adaptador)
+                sessao.mount('https://', adaptador)
+                cls._http_session = sessao
+            return cls._http_session
+
     # ── Método principal ──────────────────────────────────────────────────────
 
     def do_request(self, method: str, url: str,
@@ -619,7 +646,7 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
             digest_auth = (HTTPDigestAuth(self.device_username, self.device_password)
                            if self.device_username else None)
 
-            r = requests.request(
+            r = self._sessao_direta().request(
                 method=method, url=url, headers=merged,
                 data=body or None, verify=False,
                 allow_redirects=False, timeout=timeout,

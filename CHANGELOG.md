@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-14 (Acesso web via proxy mais rápido)
+
+### Melhorado
+
+- **Caminho direto do proxy web reaproveita a conexão com o equipamento**: `ProxyEngine._direct` usava
+  `requests.request()`, que abre TCP e refaz o handshake TLS a cada asset. Agora usa uma
+  `requests.Session` compartilhada com pool por host (`_sessao_direta`). O cookie jar recusa tudo, para
+  cookie de equipamento nunca passar de um usuário para outro. PBS da Conecta ISP: requisição pequena de
+  ~546 para ~170 ms; 6–7 assets de 6,3 s para 4,2 s na primeira abertura e 2,0 s nas seguintes.
+- **gzip na rota do proxy web no nginx** (`/etc/nginx/sites-enabled/crm`, fora do git): JS, CSS, JSON,
+  XML e SVG dos equipamentos iam crus até o operador (o `ext-all.js` do Proxmox tem 2,3 MB; comprimido,
+  ~670 KB).
+- `clientes/tests_proxy_engine_sessao.py` (reuso de conexão, cookie não fica na sessão, cookie do
+  browser repassado). Detalhes e o que ficou de fora (HTTP/2) em `docs/proxy_web_acessos.md` →
+  "Acesso web demorando para abrir".
+
+---
+
 ## [Não publicado] — 2026-09-14 (Proxmox dava 401 depois do login pelo proxy web)
 
 ### Corrigido

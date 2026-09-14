@@ -228,6 +228,61 @@ Com IP privado atrás de ProxyServer SSH, passe o `ProxyServer` do cliente no lu
 
 ---
 
+### Acesso web demorando para abrir — Melhorado em 14/09/2026
+
+**Medição** (PBS da Conecta ISP, `172.18.234.5:8007`, caminho direto pelo OpenVPN; Proxmox da
+CALLFRAN, `10.201.201.2:8006`, pelo túnel SSH):
+
+| Onde | Antes | Depois |
+|---|---|---|
+| Direto, requisição pequena | ~546 ms (TCP + TLS novos) | ~150–180 ms (conexão reaproveitada) |
+| Direto, 6–7 assets do PBS (1ª vez) | 6,3 s | 4,2 s |
+| Direto, os mesmos assets de novo | 6,3 s | 2,0 s |
+| Túnel SSH, por asset depois do 1º | ~95 ms (já reaproveitava) | igual |
+| Verificações do Django por requisição (`vpn_cobre_ip` + permissão + ProxyServer) | ~7 ms | igual |
+
+**Causas e o que mudou:**
+
+1. **Caminho direto sem reuso de conexão** (`ProxyEngine._direct`): usava `requests.request()`, que cria
+   uma `Session` por chamada, e cada asset abria TCP e refazia o handshake TLS. Agora usa
+   `ProxyEngine._sessao_direta()`, uma `requests.Session` única no processo (o proxy web roda num
+   Daphne só), com `HTTPAdapter(pool_connections=64, pool_maxsize=16)`. **O cookie jar recusa tudo**
+   (`DefaultCookiePolicy(allowed_domains=[])`): a sessão é compartilhada entre usuários e acessos, então
+   o `Cookie` de cada requisição vem só do browser (`a<id>_NOME`), e o `Set-Cookie` do equipamento
+   continua indo para `cookies_raw` e daí para o browser. Testes em
+   `clientes/tests_proxy_engine_sessao.py`.
+2. **JS/CSS iam sem compressão até o operador**: no `nginx.conf`, `gzip_proxied` e `gzip_types` estão
+   comentados, então só `text/html` era comprimido e resposta de proxy nem isso. O `ext-all.js` do
+   Proxmox tem 2,3 MB; com gzip, ~670 KB. A location do proxy web em `/etc/nginx/sites-enabled/crm`
+   (fora do git) ganhou `gzip on; gzip_proxied any; gzip_vary on; gzip_comp_level 5;
+   gzip_min_length 1024;` e `gzip_types` para CSS, JS, JSON, XML e SVG. O `ProxyEngine` já devolve o
+   corpo descomprimido, então não há compressão dupla.
+
+**O que ficou de fora, de propósito:**
+
+- **HTTP/2 no nginx**: tiraria o limite de 6 conexões do browser, mas vale para o site inteiro e faria
+  o browser disparar dezenas de requisições simultâneas contra equipamentos com CPU fraca (cada uma é
+  uma thread no Daphne e, no túnel, um handshake TLS novo acima de 4 sockets ociosos). Se for ativar,
+  antes limitar a concorrência por host no `ProxyEngine`.
+- **gzip entre CRM e equipamento no túnel**: o `ext-all.js` foi de 478 para 411 ms; ganho pequeno, e
+  resposta gzip costuma vir `chunked`, o que impede o reuso do socket (`_reusable` exige
+  `Content-Length`).
+- **Página inicial buscada duas vezes** (o `fetch` de teste do fallback proxy→direto e depois a aba):
+  é só o HTML inicial, poucos KB.
+
+**Como medir de novo** (rodar do diretório do código que se quer medir):
+
+```python
+import time
+from clientes.proxy_engine import ProxyEngine
+e = ProxyEngine(None)   # ou ProxyEngine(proxy_server) para IP privado atrás de SSH
+for p in ['/', '/extjs/ext-all.js', '/js/proxmox-backup-gui.js']:
+    t = time.time(); r = e.do_request(method='GET', url='https://172.18.234.5:8007' + p)
+    print(p, r.status_code, len(r.content), round((time.time() - t) * 1000), 'ms')
+```
+
+---
+
 ## Como Testar Manualmente
 
 ```bash

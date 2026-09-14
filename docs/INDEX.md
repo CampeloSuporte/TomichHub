@@ -2,6 +2,21 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 54 — 14/09/2026: Acesso web via proxy mais rápido
+
+**O que foi melhorado?**
+- ⚡ **Reuso de conexão no caminho direto**: `requests.Session` compartilhada (sem cookie jar) em vez de
+  TCP + TLS novos por asset. PBS: 6,3 s → 4,2 s (1ª abertura) e 2,0 s (seguintes).
+- 🗜️ **gzip no nginx para a rota do proxy web**: JS/CSS dos equipamentos comprimidos até o operador.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[proxy_web_acessos.md](proxy_web_acessos.md)** | "Acesso web demorando para abrir — Melhorado em 14/09/2026" |
+
+---
+
 ### Sessão 53 — 14/09/2026: Proxmox 401 depois do login pelo proxy web
 
 **O que foi corrigido?**
