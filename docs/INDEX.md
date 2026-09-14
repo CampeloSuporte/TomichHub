@@ -2,6 +2,25 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 52 — 14/09/2026: Card de acesso com cor do fabricante e rodapé de ações
+
+**O que foi implementado?**
+- 🎨 **Cor do fabricante**: faixa no topo, ícone e nome do fabricante na cor da marca
+  (`data-fabricante` + `--ac-marca`), sem migração.
+- 🧩 **Ícone pela função** do equipamento (OLT, switch, roteador, CGNAT, firewall, VM…).
+- 🦶 **Rodapé de ações**: backup, comentários, auditoria, editar e menu ⋯ (adicionar protocolo,
+  duplicar, BGP, excluir) ao lado do Acessar. As abas Padrão/+ saíram.
+- 🏷️ `Modelo_equipamento.nome_sem_fabricante` (`SW HUAWEI S6730` → `SW S6730`).
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[frontend_acessos.md](frontend_acessos.md)** | "Card de Acesso": rodapé e "Cor do fabricante e ícone da função" |
+| [acessos_protocolos_extras.md](acessos_protocolos_extras.md) | Cadastro pelo menu ⋯ ("Adicionar protocolo") |
+
+---
+
 ### Sessão 51 — 14/09/2026: Novo card de acesso
 
 **O que foi implementado?**

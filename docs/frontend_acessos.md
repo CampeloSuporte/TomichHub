@@ -93,12 +93,10 @@ sem precisar caçar de onde veio o login salvo.
 
 O card deixou de ser uma tabela de `// RÓTULO … valor`, com uma linha por campo, e ficou mais baixo:
 
-- **Cabeçalho**: nome do host em fonte mono, modelo e IP embaixo (clicar no IP copia), e um ponto
-  de status no canto. O ponto fica cinza até alguém testar; depois fica verde (ping e porta OK),
-  amarelo (só um dos dois) ou vermelho (nenhum). A barra de ícones e as abas **Padrão / +**
-  continuam logo abaixo. O ícone de ping (globo, `realizarPing`) saiu da barra: o bloco **Ping**
-  substitui. Com ele saiu o único acesso ao modal de ping/traceroute (`#modalPingResult`), cujo
-  código continua em `static/js/listar_acesso.js`.
+- **Cabeçalho**: ícone da função do equipamento num quadrado na cor do fabricante, nome do host em
+  fonte mono, e embaixo o fabricante (na cor da marca), o modelo e o IP (clicar no IP copia). Um
+  ponto de status fica no canto: cinza até alguém testar, depois verde (ping e porta OK), amarelo (só
+  um dos dois) ou vermelho (nenhum). O card tem uma faixa de 3 px no topo na cor do fabricante.
 - **Três blocos**:
   - **Ping** e **porta** (o rótulo é o protocolo padrão, ex: `SSH`) começam com "testar". Um
     clique em qualquer um dos dois testa ambos (`testarStatusAcesso`).
@@ -109,9 +107,29 @@ O card deixou de ser uma tabela de `// RÓTULO … valor`, com uma linha por cam
   por** (`joao.noc · 14/09 18:42`, ou "link externo") só para a equipe (`is_admin`).
 - **Acessos**: pílulas com o padrão (`SSH 22`), os protocolos extras (com ×) e `Winbox 8291`
   (clicar copia a porta). Substitui as linhas Porta, Protocolo, Outros acessos e winbox.
+- **Rodapé**: ações à esquerda e **Acessar** à direita. As ações são backup (se habilitado),
+  comentários, auditoria, editar e o menu **⋯** com Adicionar protocolo, Duplicar acesso, Automação
+  BGP (equipe, com snapshot) e Excluir (em vermelho, separado). O menu é um `<details>`: clique fora
+  ou **Esc** fecha. As abas **Padrão / +** e o ícone de ping (globo) saíram do card; o bloco **Ping**
+  substitui o globo, e com ele saiu o único acesso ao modal de ping/traceroute (`#modalPingResult`),
+  cujo código continua em `static/js/listar_acesso.js`.
 - **Acessar**: botão azul sólido com um contador de quantas opções a escolha vai mostrar (padrão +
   extras + 2 do Winbox). O contador some quando só há o padrão, porque aí o Acessar abre direto.
   A escolha no meio do card não mudou ([acessos_protocolos_extras.md](acessos_protocolos_extras.md)).
+
+### Cor do fabricante e ícone da função
+
+- **Cor**: o card leva `data-fabricante="{{ modelo.fabricante|slugify }}"` e o CSS define
+  `--ac-marca` por fabricante (huawei, zte, cisco, juniper, mikrotik, datacom, intelbras, parks, vsol,
+  tp-link, nokia, raisecom, a10, cdata, proxmox, debian, ubuntu, windows, dell…). Sem modelo ou com um
+  fabricante fora da lista, fica o ciano do tema. Fabricante novo = uma linha de CSS no bloco do card
+  em `listar.html`.
+- **Nome do modelo**: `Modelo_equipamento.nome_sem_fabricante` tira o fabricante repetido do nome
+  (`SW HUAWEI S6730` → `SW S6730`), porque o fabricante já aparece antes. Quando o nome é só o
+  fabricante (`PROXMOX`), mostra só o fabricante.
+- **Ícone**: vem de `Funcao_equipamento.descricao` (contém OLT, SWITCH, ROTEADOR/BORDA/BRAS, CGNAT,
+  FIREWALL, HIPERVISOR/VM, RADIO/APS, MONITORAMENTO, EMAIL, RDP, WEB/DOCUMENTAÇÃO). Sem função ou
+  fora da lista: `fa-hard-drive`.
 
 ### Teste de ping e porta
 
@@ -145,6 +163,8 @@ abriu a página.
 | `.ac-dot` | Ponto de status do cabeçalho |
 | `.protos-extras-row` / `.acesso-chip` / `.proto-chip` | Linha Acessos. Só `.proto-chip` (extra) conta para a escolha do Acessar |
 | `.ac-btn-acessar` / `.ac-qtd` | Botão Acessar e contador |
+| `.ac-icone` / `.ac-fabricante` / `--ac-marca` | Ícone da função e cor do fabricante |
+| `.ac-rodape` / `.ac-acao` / `details.ac-menu` | Rodapé, ações e menu ⋯ (`fecharMenusAcesso`) |
 
 A busca de acessos continua clonando os cards: tudo é achado a partir de `closest('.card')`.
 
