@@ -46,6 +46,14 @@ class CardAcessoTest(_Base):
         # O ícone de ping (globo) saiu da barra: o bloco Ping do card substitui
         self.assertNotIn('realizarPing(', html)
 
+    def test_css_do_card_vem_antes_dos_cards(self):
+        # No fim da página o CSS chegava depois dos cards e eles piscavam sem estilo
+        html = self._html()
+        head = html.split('</head>')[0]
+        self.assertIn('.ac-card {', head)
+        self.assertIn('.acesso-escolha {', head)
+        self.assertEqual(html.count('.ac-card {'), 1)
+
     def test_cabecalho_com_fabricante_icone_e_rodape(self):
         self.acesso.funcao = Funcao_equipamento.objects.create(descricao='SWITCH L2')
         self.acesso.modelo = Modelo_equipamento.objects.create(nome='SW HUAWEI S6730', fabricante='Huawei')
