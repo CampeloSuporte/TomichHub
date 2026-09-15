@@ -187,9 +187,39 @@ do `basename` do componente `Router` do react-router 6 (build de produção:
 O JS só é tocado se tiver `basename:` (bundle de SPA tem MB). Quando a reescrita muda o bundle,
 a view tira `ETag`/`Last-Modified`/`Expires` e manda `Cache-Control: no-cache`: o Observer serve
 os assets com `max-age=2592000` (30 dias) e uma cópia antiga no navegador ignoraria a correção.
-Quem abriu o acesso **antes** do fix ainda tem o bundle original em cache — um **Ctrl+F5** uma vez
-resolve. Não dá pra furar esse cache com query no `<script src>`: o Vite importa o mesmo módulo
-por outros chunks sem a query, o React seria carregado duas vezes e a SPA quebraria.
+Isso não alcança quem abriu o acesso **antes** do fix. Ele ainda tem o bundle original em cache, e
+o F5 comum nem pede o JS: no log, logo depois do deploy, o HTML novo veio e o `index-*.js` nem
+apareceu.
+
+**Versão na URL dos scripts (`ProxyEngine._versionar_assets`):** no HTML reescrito, `<script src>`
+e `<link rel="modulepreload">` do próprio device ganham `?crmv=<VERSAO_ASSETS>`. Essa URL nunca
+esteve em cache, então o navegador busca o bundle já reescrito. Query só no `<script type="module">`
+quebraria app Vite com code-split: um chunk que importa `./index-X.js` pediria a URL sem query, o
+módulo seria carregado duas vezes e haveria dois Reacts. Por isso vai junto um **import map**
+(`"<url original>": "<url versionada>"`), inserido antes do primeiro módulo. Toda importação que
+resolver para a URL original cai na versionada, e fica uma instância só. Página com import map
+próprio não é tocada. Script externo (`https://`, `//`) e CSS também não.
+
+Quando uma mudança futura em `rewrite_content` precisar chegar a quem tem cache antigo, suba
+`ProxyEngine.VERSAO_ASSETS`.
+
+Antes disso foi tentado `Clear-Site-Data: "cache"` na primeira navegação. No harness abaixo, o header
+saía, mas o bundle antigo continuava vindo do cache. Como não deu pra comprovar a limpeza, foi
+descartado.
+
+**Confirmado ao vivo** com Chrome headless controlado pelo DevTools Protocol (`--remote-debugging-pipe`
+e `Fetch.requestPaused` respondendo cada requisição pela view real). O Chrome deste servidor não abre
+socket, então a rede dele não é usada. Antes, `#root` vazio. Depois, o app vai sozinho para
+`.../http/login` e mostra a tela de login do Observer, sem exceção no console. O login com as
+credenciais do acesso abre o painel (Home, Hosts, Alertas, tráfego BGP), com toda a API pelo proxy.
+
+O cache foi testado na mesma sessão do Chrome, em 4 cargas:
+
+1. HTML e JS "antigos" (sem versão e com `max-age` de 30 dias): tela em branco.
+2. Igual à carga 1: o JS **nem é pedido** (sai do cache) e a tela continua em branco. É o estado
+   do navegador do usuário depois do primeiro deploy.
+3. Código novo: o navegador pede `index-*.js?crmv=1` e a tela de login aparece.
+4. Código novo de novo: continua abrindo.
 
 Testes em `clientes/tests_proxy_web.py` (`RewriteReactRouterBasenameTest`).
 

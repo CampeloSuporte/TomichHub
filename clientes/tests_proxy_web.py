@@ -3,9 +3,15 @@
 Cobre os dois pontos que quebravam Grafana/Zabbix abertos pelo proxy:
 o sub-path do frontend do Grafana e URLs absolutas em porta não padrão.
 """
-from django.test import SimpleTestCase
+from types import SimpleNamespace
+from unittest import mock
 
+from django.contrib.auth.models import User
+from django.test import SimpleTestCase, TestCase
+
+from clientes.models import Acesso, Cliente
 from clientes.proxy_engine import ProxyEngine
+from usuario.models import TOTPDevice
 
 BASE = '/clientes/acessos/1301/web/3000/http'
 
@@ -110,3 +116,100 @@ class RewriteReactRouterBasenameTest(SimpleTestCase):
             b'<html><head></head><body></body></html>', 'text/html', BASE, '10.0.0.1'
         ).decode()
         self.assertIn('window.__crmRouterBase=function(l)', html)
+
+
+class VersionarAssetsTest(SimpleTestCase):
+    """Bundle antigo em cache (max-age de 30 dias do device) segurava o bug do
+    basename mesmo depois do deploy — o F5 comum nem pedia o JS."""
+
+    def _html(self, html: str) -> str:
+        return ProxyEngine(None).rewrite_content(html.encode(), 'text/html', BASE, '10.0.0.1').decode()
+
+    def test_script_de_modulo_e_modulepreload_ganham_versao_e_import_map(self):
+        out = self._html(
+            '<html><head>'
+            '<script type="module" crossorigin src="/assets/index-A.js"></script>'
+            '<link rel="modulepreload" crossorigin href="/assets/vendor-B.js">'
+            '</head><body></body></html>'
+        )
+        v = ProxyEngine.VERSAO_ASSETS
+        self.assertIn(f'src="{BASE}/assets/index-A.js?crmv={v}"', out)
+        self.assertIn(f'href="{BASE}/assets/vendor-B.js?crmv={v}"', out)
+        # chunk que importa "./index-A.js" cai na mesma URL versionada: uma
+        # instância só do módulo
+        self.assertIn(f'"{BASE}/assets/index-A.js": "{BASE}/assets/index-A.js?crmv={v}"', out)
+        self.assertIn(f'"{BASE}/assets/vendor-B.js": "{BASE}/assets/vendor-B.js?crmv={v}"', out)
+        # import map tem que vir antes do primeiro módulo
+        self.assertLess(out.index('type="importmap"'), out.index('rel="modulepreload"'))
+        self.assertLess(out.index('type="importmap"'), out.index('type="module"'))
+
+    def test_script_classico_ganha_versao_sem_import_map(self):
+        out = self._html('<head><script src="/static/js/main.1.js?x=1"></script></head>')
+        self.assertIn(f'src="{BASE}/static/js/main.1.js?x=1&crmv={ProxyEngine.VERSAO_ASSETS}"', out)
+        self.assertNotIn('importmap', out)
+
+    def test_pagina_com_import_map_proprio_nao_e_tocada(self):
+        out = self._html('<head><script type="importmap">{"imports":{}}</script>'
+                         '<script type="module" src="/a.js"></script></head>')
+        self.assertIn(f'src="{BASE}/a.js"', out)
+        self.assertNotIn('crmv=', out)
+
+    def test_script_externo_e_css_nao_sao_tocados(self):
+        out = self._html('<head><script src="https://cdn.example.com/x.js"></script>'
+                         '<link rel="stylesheet" href="/a.css"></head>')
+        self.assertIn('src="https://cdn.example.com/x.js"', out)
+        self.assertIn(f'href="{BASE}/a.css"', out)
+        self.assertNotIn('crmv=', out)
+
+
+class ProxyWebCacheJsTest(TestCase):
+
+    def setUp(self):
+        cliente = Cliente.objects.create(
+            nome_empresa='Cliente Observer', cnpj='55.555.555/0001-55',
+            endereco='Rua O, 1', email='observer@example.com',
+        )
+        self.acesso = Acesso.objects.create(
+            cliente=cliente, tipo='OBSERVER', host='45.228.195.10',
+            porta=80, protocolo='HTTP', usuario='u', senha='s',
+        )
+        admin = User.objects.create_user('admin_obs', password='x', is_staff=True, is_superuser=True)
+        TOTPDevice.objects.create(usuario=admin, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+        self.client.force_login(admin)
+        self.url = f'/clientes/acessos/{self.acesso.id}/web/80/http/'
+
+    def _resp(self, content_type, content, headers=None):
+        return SimpleNamespace(
+            status_code=200, content=content, cookies_raw=[],
+            headers={'Content-Type': content_type, **(headers or {})},
+        )
+
+    @mock.patch('clientes.views.ProxyEngine.do_request')
+    def test_html_do_proxy_sai_com_script_versionado(self, do_request):
+        do_request.return_value = self._resp(
+            'text/html', b'<html><head><script type="module" src="/assets/index-A.js"></script></head></html>')
+        r = self.client.get(self.url)
+        self.assertIn(f'/assets/index-A.js?crmv={ProxyEngine.VERSAO_ASSETS}', r.content.decode())
+
+    @mock.patch('clientes.views.ProxyEngine.do_request')
+    def test_js_reescrito_sai_sem_cache_longo(self, do_request):
+        do_request.return_value = self._resp(
+            'application/javascript', RewriteReactRouterBasenameTest.ROUTER,
+            {'Cache-Control': 'public, max-age=2592000', 'ETag': '"abc"',
+             'Last-Modified': 'Mon, 14 Sep 2026 23:59:06 GMT'},
+        )
+        r = self.client.get(self.url + 'assets/index-X.js')
+        self.assertIn(b'window.__crmRouterBase', r.content)
+        self.assertEqual(r['Cache-Control'], 'no-cache')
+        self.assertNotIn('ETag', r)
+        self.assertNotIn('Last-Modified', r)
+
+    @mock.patch('clientes.views.ProxyEngine.do_request')
+    def test_js_sem_react_router_mantem_cache_do_device(self, do_request):
+        do_request.return_value = self._resp(
+            'application/javascript', b'console.log(1)',
+            {'Cache-Control': 'public, max-age=2592000', 'ETag': '"abc"'},
+        )
+        r = self.client.get(self.url + 'assets/outro.js')
+        self.assertEqual(r['Cache-Control'], 'public, max-age=2592000')
+        self.assertEqual(r['ETag'], '"abc"')
