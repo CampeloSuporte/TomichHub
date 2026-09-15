@@ -143,6 +143,19 @@ Login do portal **com recorte** (por função ou host a host) só **olha** os ho
 A regra é `perms.acessos_somente_leitura(user)`; `perms.pode_alterar_acesso(user, acesso)` é
 `pode_acessar_acesso` + não estar em somente leitura. Portal sem recorte e back-office não mudam.
 
+**Quem é afetado**, pelo modo gravado em Sistema → Usuário → "Hosts liberados":
+
+| Modo / papel | Somente leitura? |
+|---|---|
+| Somente as funções marcadas (`UsuarioFuncao`) | **Sim** |
+| Somente os hosts marcados (`UsuarioAcesso`) | **Sim** |
+| Todos os hosts do cliente (padrão, sem registro) | Não |
+| Administrador, Consultor, Operador | Não, nunca |
+
+Não existe chave separada de "somente leitura": ela é consequência do recorte. Trocar o login para
+"Todos os hosts do cliente" devolve editar, clonar, comentar e as credenciais na hora. Na
+implantação (15/09/2026) eram 8 logins, todos restritos à função OLT; nenhum usava o modo host.
+
 | O que some / é bloqueado | Tela (`listar.html`, `modal_acessos.html`) | Servidor |
 |---|---|---|
 | Usuário e senha do host | Linhas "Usuário"/"Senha" do card não são renderizadas; o botão **Acessar** recebe usuário/senha vazios | `buscar_acesso`, `listar_acessos_terminal` e `topologia_hosts` devolvem `usuario`/`senha` vazios |
