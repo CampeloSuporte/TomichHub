@@ -20,7 +20,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   injetado no HTML que devolve o `proxy_base` só quando a localização do router está dentro dele
   (HashRouter e basename explícito ficam como estavam).
 - JS reescrito sai com `Cache-Control: no-cache` (sem `ETag`/`Last-Modified`/`Expires`): o
-  device manda `max-age` de 30 dias. Quem já tinha aberto o acesso precisa de um Ctrl+F5 uma vez.
+  device manda `max-age` de 30 dias.
+- **Cache antigo no navegador segurava o bug mesmo depois do deploy**: quem já tinha aberto o
+  acesso continuava com o bundle sem correção (o F5 nem pedia o JS). O HTML reescrito agora
+  versiona `<script src>` e `modulepreload` do device com `?crmv=<versão>` e publica um import map
+  da URL original para a versionada, para que um chunk importando o entry não carregue o módulo
+  duas vezes. Versão em `ProxyEngine.VERSAO_ASSETS`.
 
 Detalhes em [docs/proxy_web_acessos.md](docs/proxy_web_acessos.md) → "SPA React simula abrir mas não abre".
 

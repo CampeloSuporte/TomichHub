@@ -1106,6 +1106,60 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
         # exatamente o formato que o Grafana espera em appSubUrl.
         return cls._RX_APP_SUB_URL.sub(lambda m: f'{m.group(1)}"{proxy_base}"', html)
 
+    # ── Versão dos assets de script no HTML ───────────────────────────────────
+    #
+    # Device serve bundle com hash no nome e max-age longo (o TOMICH OBSERVER
+    # manda 30 dias). Quem abriu o acesso antes de uma mudança em _rewrite_js
+    # segue com o bundle antigo do cache: o F5 comum nem pede o JS, e o fix não
+    # chega. Clear-Site-Data não serviu (não deu pra comprovar a limpeza), então
+    # a URL do script muda: `?crmv=<versão>` em <script src> e modulepreload.
+    #
+    # Query só no <script src> de módulo carregaria o módulo duas vezes quando
+    # um chunk importa o entry por "./index-X.js" (duas URLs = duas instâncias,
+    # dois Reacts). O import map resolve: toda importação que cair na URL
+    # original é mapeada para a versionada — uma instância só. Página que já
+    # tem import map próprio não é tocada.
+    VERSAO_ASSETS = '1'
+
+    _RX_TAG_SCRIPT_OU_LINK = re.compile(r'<script\b[^>]*>|<link\b[^>]*>', re.IGNORECASE)
+    _RX_TEM_IMPORTMAP = re.compile(r'<script\b[^>]*\btype\s*=\s*["\']importmap["\']', re.IGNORECASE)
+
+    @classmethod
+    def _versionar_assets(cls, html: str) -> str:
+        if cls._RX_TEM_IMPORTMAP.search(html):
+            return html
+        mapa = {}
+
+        def _tag(m):
+            tag = m.group(0)
+            if tag[:7].lower() == '<script':
+                attr = 'src'
+                modulo = re.search(r'\btype\s*=\s*["\']module["\']', tag, re.IGNORECASE) is not None
+            elif re.search(r'\brel\s*=\s*["\']modulepreload["\']', tag, re.IGNORECASE):
+                attr, modulo = 'href', True
+            else:
+                return tag
+            ma = re.search(rf'\b{attr}\s*=\s*(["\'])([^"\']+)\1', tag, re.IGNORECASE)
+            if not ma:
+                return tag
+            url = ma.group(2)
+            if ('://' in url or url.startswith(('//', 'data:', 'blob:'))
+                    or 'crmv=' in url):
+                return tag
+            nova = f"{url}{'&' if '?' in url else '?'}crmv={cls.VERSAO_ASSETS}"
+            if modulo:
+                mapa[url] = nova
+            return tag[:ma.start(2)] + nova + tag[ma.end(2):]
+
+        html = cls._RX_TAG_SCRIPT_OU_LINK.sub(_tag, html)
+        if mapa:
+            import json as _json
+            primeira = min(html.find(n) for n in mapa.values())
+            inicio = html.rfind('<', 0, primeira)
+            importmap = f'<script type="importmap">{_json.dumps({"imports": mapa})}</script>\n'
+            html = html[:inicio] + importmap + html[inicio:]
+        return html
+
     def _rewrite_html(self, content: bytes, proxy_base: str, target_host: str,
                       cookie_prefix: str = '', target_port: int = None) -> bytes:
         try:
@@ -1135,6 +1189,8 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
             '<!-- meta-refresh removido pelo proxy -->',
             html, flags=re.IGNORECASE
         )
+
+        html = self._versionar_assets(html)
 
         # NOTA: <base href> foi removido intencionalmente.
         # Com <base href>, URLs relativas no JS (ex: location.href="login.html")
