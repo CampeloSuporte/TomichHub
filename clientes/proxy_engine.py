@@ -997,7 +997,47 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
                                       target_port=target_port)
         if 'text/css' in ct:
             return self._rewrite_css(content, proxy_base)
+        if 'javascript' in ct:
+            return self._rewrite_js(content)
         return content
+
+    # ── React Router: basename da SPA ─────────────────────────────────────────
+    #
+    # SPA React com <BrowserRouter> sem basename (o padrão de quem serve na
+    # raiz) lê as rotas de window.location.pathname — dentro do proxy isso é
+    # "/clientes/acessos/1116/web/80/http/", que não casa com rota nenhuma. O
+    # override de Location.prototype.pathname no script injetado não ajuda: no
+    # Chrome pathname é propriedade própria do objeto location (unforgeable),
+    # não do protótipo, então o router continua vendo o caminho do proxy. Com
+    # rota coringa `<Navigate to="/">` (TOMICH OBSERVER) a tela fica em branco:
+    # o Navigate pede "/", o replaceState injetado recoloca o prefixo e o router
+    # cai no coringa de novo. Tudo responde 200 no log, inclusive a API.
+    #
+    # Mesma ideia do appSubUrl do Grafana, só que no JS: o default `"/"` do
+    # basename do componente Router passa a ser window.__crmRouterBase(location)
+    # (definida no script injetado no HTML), que devolve o proxy_base quando a
+    # localização do router está dentro dele e "/" caso contrário — HashRouter
+    # (localização vem do hash) e basename explícito continuam como estavam, e
+    # fora do proxy (helper ausente) o default segue "/".
+    #
+    # Formato de build de produção do react-router 6:
+    #   function EG(e){let{basename:t="/",children:a=null,location:n,...}=e
+    _RX_ROUTER_BASENAME = re.compile(
+        rb'(function\s*[\w$]+\(([\w$]+)\)\s*\{\s*let\s*\{\s*basename:\s*[\w$]+\s*=\s*)"/"(\s*,\s*children:)'
+    )
+
+    @classmethod
+    def _rewrite_js(cls, content: bytes) -> bytes:
+        # Bundle de SPA tem MB; só entra no regex quem tem o marcador.
+        if b'basename:' not in content:
+            return content
+        return cls._RX_ROUTER_BASENAME.sub(
+            lambda m: (m.group(1)
+                       + b'(window.__crmRouterBase?window.__crmRouterBase('
+                       + m.group(2) + b'.location):"/")'
+                       + m.group(3)),
+            content,
+        )
 
     # ── URLs absolutas que apontam para o próprio device ──────────────────────
     #
@@ -1105,6 +1145,16 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
 (function(){{
   var B='{proxy_base}';
   var P='{cookie_prefix}';
+  // basename do React Router: o JS proxyado chama isto no lugar do default
+  // "/" (ver ProxyEngine._rewrite_js). Só devolve o prefixo do proxy quando a
+  // localização do router está dentro dele — a do HashRouter vem do hash.
+  window.__crmRouterBase=function(l){{
+    try{{
+      var p=typeof l==='string'?l:(l&&l.pathname)||'';
+      p=p.split('?')[0].split('#')[0];
+      return (p===B||p.indexOf(B+'/')===0)?B:'/';
+    }}catch(e){{return '/';}}
+  }};
   // Intercepta document.cookie para isolar cookies por acesso:
   // getter: devolve apenas cookies com prefixo P (sem o prefixo);
   // setter: adiciona prefixo P antes de armazenar.

@@ -76,3 +76,37 @@ class RewriteUrlAbsolutaComPortaTest(SimpleTestCase):
         out = self._rewrite(html, porta=3000)
         self.assertIn('href="/clientes/acessos/1301/web/80/http/a"', out)
         self.assertIn('href="/clientes/acessos/1301/web/443/https/b"', out)
+
+
+class RewriteReactRouterBasenameTest(SimpleTestCase):
+    # Trecho real do bundle do TOMICH OBSERVER (acesso 1116): o componente
+    # Router do react-router 6 minificado, e o BrowserRouter que o chama sem
+    # basename.
+    ROUTER = (b'function EG(e){let{basename:t="/",children:a=null,location:n,'
+              b'navigationType:r=hl.Pop,navigator:o,static:i=!1,future:l}=e;')
+    BROWSER_ROUTER = b'function DG(e){let{basename:t,children:a,future:n,window:r}=e,o=x.useRef();'
+
+    def _js(self, js: bytes) -> bytes:
+        return ProxyEngine(None).rewrite_content(js, 'application/javascript', BASE, '10.0.0.1')
+
+    def test_default_do_basename_passa_pelo_helper_do_proxy(self):
+        out = self._js(self.ROUTER)
+        self.assertIn(
+            b'basename:t=(window.__crmRouterBase?window.__crmRouterBase(e.location):"/"),children:a=null',
+            out,
+        )
+
+    def test_basename_sem_default_nao_e_tocado(self):
+        # BrowserRouter/HashRouter repassam o prop cru; o default que importa
+        # é o do Router, que recebe undefined e aplica o dele.
+        self.assertEqual(self._js(self.BROWSER_ROUTER), self.BROWSER_ROUTER)
+
+    def test_js_sem_react_router_volta_identico(self):
+        js = b'const a={basename:"x"};function f(){return "/"}'
+        self.assertEqual(self._js(js), js)
+
+    def test_html_injetado_define_o_helper(self):
+        html = ProxyEngine(None).rewrite_content(
+            b'<html><head></head><body></body></html>', 'text/html', BASE, '10.0.0.1'
+        ).decode()
+        self.assertIn('window.__crmRouterBase=function(l)', html)

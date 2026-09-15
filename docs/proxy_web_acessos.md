@@ -155,6 +155,50 @@ pra garantir que a mudança não mexeu em quem já funcionava.
 
 ---
 
+### SPA React "simula abrir mas não abre" (TOMICH OBSERVER) — Corrigido em 15/09/2026
+
+**Sintoma:** acesso 1116 (JMA, `172.27.38.117:80`, TOMICH OBSERVER) abre a aba e fica em branco.
+No log do nginx **tudo responde 200**: HTML, `assets/index-*.js`, CSS, logo e até a API
+(`/api/visibility`, `/api/updates`, `/api/license/status`). Nenhuma chamada de login depois disso.
+
+**Diagnóstico:** o Observer é uma SPA React com `<BrowserRouter>` **sem `basename`**, com rotas
+`/login`, `/portal/:slug/*`, ... e o coringa `path:"*"` → `<Navigate to="/" replace>`. O router lê
+`window.location.pathname` (`/clientes/acessos/1116/web/80/http/`), não casa nada e cai no coringa.
+O `Navigate` pede `/`, o `replaceState` injetado recoloca o prefixo do proxy e o router cai no
+coringa de novo — nada renderiza.
+
+O override de `Location.prototype.pathname` do script injetado **não resolve isso**: no Chrome,
+`pathname` é propriedade própria (unforgeable) do objeto `location`, não do protótipo, então
+redefinir no protótipo não muda o que a SPA lê.
+
+**Fix (`ProxyEngine._rewrite_js` + helper `window.__crmRouterBase`):** mesma ideia do `appSubUrl`
+do Grafana, só que no JS. Respostas `*javascript*` passam pela reescrita, que troca o default `"/"`
+do `basename` do componente `Router` do react-router 6 (build de produção:
+`function EG(e){let{basename:t="/",children:...`) por
+`window.__crmRouterBase ? window.__crmRouterBase(e.location) : "/"`.
+
+| Caso | `__crmRouterBase` devolve |
+|---|---|
+| `BrowserRouter` dentro do proxy (pathname começa com o `proxy_base`) | `proxy_base` — rota vira `/`, `/login`; `navigate()`/`<Link>` já saem com o prefixo |
+| `HashRouter` (localização vem do hash, `/login`) | `"/"` — igual a antes |
+| `basename` explícito na SPA | não chamado — o prop tem precedência sobre o default |
+| JS aberto fora do proxy (helper não existe) | `"/"` |
+
+O JS só é tocado se tiver `basename:` (bundle de SPA tem MB). Quando a reescrita muda o bundle,
+a view tira `ETag`/`Last-Modified`/`Expires` e manda `Cache-Control: no-cache`: o Observer serve
+os assets com `max-age=2592000` (30 dias) e uma cópia antiga no navegador ignoraria a correção.
+Quem abriu o acesso **antes** do fix ainda tem o bundle original em cache — um **Ctrl+F5** uma vez
+resolve. Não dá pra furar esse cache com query no `<script src>`: o Vite importa o mesmo módulo
+por outros chunks sem a query, o React seria carregado duas vezes e a SPA quebraria.
+
+Testes em `clientes/tests_proxy_web.py` (`RewriteReactRouterBasenameTest`).
+
+**Não confundir** com o acesso 1455 (DS TECH, mesmo Observer): lá o HTML abre, mas o CSS/JS
+voltam **502** — é MTU 4096 na interface do servidor do proxy SSH num caminho de 1500 (pacote
+grande some), problema de rede do cliente, não do CRM.
+
+---
+
 ### Porta órfã em URL absoluta do device — Corrigido em 24/08/2026
 
 **Sintoma:** link do próprio equipamento apontando pra ele mesmo com porta explícita
