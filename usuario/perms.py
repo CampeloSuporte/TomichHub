@@ -148,6 +148,26 @@ def pode_acessar_acesso(user, acesso):
     return funcoes is not None and acesso.funcao_id in funcoes
 
 
+def acessos_somente_leitura(user):
+    """Login do portal com recorte de hosts (por função ou host a host) só
+    **olha** os equipamentos liberados: não cadastra, edita, clona, exclui,
+    importa nem comenta host, e não recebe usuário/senha dos equipamentos.
+
+    O acesso em si continua (terminal, WinBox, proxy web...) — as
+    credenciais saem do banco no servidor, nunca passam pelo navegador.
+    Back-office e portal sem recorte seguem como sempre.
+    """
+    if not user or not user.is_authenticated or is_backoffice(user):
+        return False
+    return _acessos_permitidos_ids(user) is not None or _funcoes_permitidas_ids(user) is not None
+
+
+def pode_alterar_acesso(user, acesso):
+    """`pode_acessar_acesso` + não estar em modo somente leitura — para
+    editar, excluir, comentar e mexer nos protocolos extras do host."""
+    return pode_acessar_acesso(user, acesso) and not acessos_somente_leitura(user)
+
+
 def filtrar_acessos_visiveis(user, queryset):
     """Recorta um queryset de `clientes.Acesso` pelos hosts liberados ao
     login — a versão em lista de `pode_acessar_acesso`, para as telas e APIs

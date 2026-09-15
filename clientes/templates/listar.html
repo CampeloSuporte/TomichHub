@@ -413,12 +413,14 @@
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
+                    {% if not acessos_somente_leitura %}
                     <button class="btn btn-sm btn-primary" onclick="abrirModalAcesso()">
                         <i class="fas fa-plus me-1"></i> Adicionar
                     </button>
                     <button class="btn btn-sm btn-outline-secondary" onclick="abrirModalImportarCRT()" title="Importar hosts de backup SecureCRT (.xml)">
                         <i class="fas fa-file-import me-1"></i> Importar Host
                     </button>
+                    {% endif %}
                     <a class="btn btn-sm btn-outline-secondary" href="{% url 'auditoria_cliente_view' cliente.id %}"
                        title="Ver todas as sessões de acesso gravadas nos hosts deste cliente"
                        style="color: #a371f7; border-color: rgba(163,113,247,.4);">
@@ -486,6 +488,7 @@
                                         </div>
                                     </div>
                                     <div class="ac-linhas">
+                                        {% if not acessos_somente_leitura %}
                                         <div class="ac-linha">
                                             <span class="ac-rotulo">Usuário</span>
                                             <span class="ac-valor"><span class="copyable" title="Copiar usuário" onclick="copiarTexto('{{ acesso.usuario|escapejs }}')">{{ acesso.usuario }}</span><button type="button" class="ac-copiar" title="Copiar usuário" onclick="copiarTexto('{{ acesso.usuario|escapejs }}')"><i class="far fa-copy"></i></button></span>
@@ -494,6 +497,7 @@
                                             <span class="ac-rotulo">Senha</span>
                                             <span class="ac-valor"><span class="copyable senha-mascarada" title="Clique para mostrar" onclick="toggleSenha(this, '{{ acesso.senha|escapejs }}')">••••••••</span><button type="button" class="ac-copiar" title="Copiar senha" onclick="copiarTexto('{{ acesso.senha|escapejs }}')"><i class="far fa-copy"></i></button></span>
                                         </div>
+                                        {% endif %}
                                         {% if is_admin %}
                                         <div class="ac-linha">
                                             <span class="ac-rotulo">Senha root</span>
@@ -520,7 +524,7 @@
                                         {% endif %}
                                         <div class="ac-linha protos-extras-row">
                                             <span class="ac-rotulo">Acessos</span>
-                                            <span class="protos-extras-lista"><span class="acesso-chip">{{ acesso.protocolo|upper }}{% if acesso.porta %} {{ acesso.porta }}{% endif %}</span>{% for p in acesso.protocolos_extras.all %}<span class="proto-chip" data-pid="{{ p.id }}" data-protocolo="{{ p.protocolo }}" data-porta="{{ p.porta }}">{{ p.protocolo }} {{ p.porta }}<button type="button" class="proto-chip-x" title="Remover {{ p.protocolo }} {{ p.porta }}" onclick="removerProtocoloExtra({{ p.id }}, this)">&times;</button></span>{% endfor %}{% if acesso.winbox %}<span class="acesso-chip acesso-chip-winbox copyable" title="Copiar porta Winbox" onclick="copiarTexto('{{ acesso.winbox }}')">Winbox {{ acesso.winbox }}</span>{% endif %}</span>
+                                            <span class="protos-extras-lista"><span class="acesso-chip">{{ acesso.protocolo|upper }}{% if acesso.porta %} {{ acesso.porta }}{% endif %}</span>{% for p in acesso.protocolos_extras.all %}<span class="proto-chip" data-pid="{{ p.id }}" data-protocolo="{{ p.protocolo }}" data-porta="{{ p.porta }}">{{ p.protocolo }} {{ p.porta }}{% if not acessos_somente_leitura %}<button type="button" class="proto-chip-x" title="Remover {{ p.protocolo }} {{ p.porta }}" onclick="removerProtocoloExtra({{ p.id }}, this)">&times;</button>{% endif %}</span>{% endfor %}{% if acesso.winbox %}<span class="acesso-chip acesso-chip-winbox copyable" title="Copiar porta Winbox" onclick="copiarTexto('{{ acesso.winbox }}')">Winbox {{ acesso.winbox }}</span>{% endif %}</span>
                                         </div>
                                     </div>
                                     <div class="novo-proto-form" data-padrao="{{ acesso.protocolo|upper }}" hidden>
@@ -553,23 +557,27 @@
                                         {% endif %}
                                         <button type="button" class="ac-acao ac-acao-comentarios" title="Comentários" onclick="abrirModalComentariosAcesso({{ acesso.id }}, '{{ acesso.tipo }}')"><i class="fas fa-comments"></i></button>
                                         <button type="button" class="ac-acao ac-acao-auditoria" title="Auditoria de acessos" onclick="abrirModalAuditoriaAcesso({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"><i class="fas fa-shield-halved"></i></button>
+                                        {% if not acessos_somente_leitura %}
                                         <button type="button" class="ac-acao" title="Editar" onclick="abrirModalEditarAcesso({{ acesso.id }})"><i class="fas fa-pen"></i></button>
                                         <button type="button" class="ac-acao" title="Adicionar protocolo (mesmo IP)" onclick="toggleNovoProtocolo(this)"><i class="fas fa-plus"></i></button>
                                         <button type="button" class="ac-acao" title="Duplicar acesso" onclick="AbrirmodalDuplicarAcesso({{ acesso.id }})"><i class="fas fa-copy"></i></button>
+                                        {% endif %}
                                         {% if request.user.is_staff and acesso.bgp_snapshot %}
                                         <button type="button" class="ac-acao ac-acao-bgp" title="Automação BGP" onclick="window.open('/clientes/bgp/{{ acesso.id }}/', '_blank')"><i class="fas fa-diagram-project"></i></button>
                                         {% endif %}
+                                        {% if not acessos_somente_leitura %}
                                         <form method="POST" action="{% url 'deletar_acesso' acesso.id %}" onsubmit="event.preventDefault()">
                                             {% csrf_token %}
                                             <button type="submit" class="ac-acao ac-acao-perigo" title="Excluir"
                                                 onclick="uiConfirm({titulo:'Excluir Acesso', msg:'Tem certeza que deseja excluir: {{ acesso.tipo }}?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'}).then(ok => { if(ok) this.closest('form').submit() })"><i class="fas fa-trash"></i></button>
                                         </form>
+                                        {% endif %}
                                     </div>
                                 <button class="btn btn-access ac-btn-acessar"
                                         data-protocolo="{{ acesso.protocolo|upper }}" data-porta="{{ acesso.porta|default_if_none:'' }}" data-winbox="{{ acesso.winbox|default_if_none:'' }}"
                                         onclick="acessarHost(this,
-                                            () => acessarEquipamento('{{ acesso.protocolo|escapejs }}', '{{ acesso.host|escapejs }}', '{{ acesso.porta|escapejs }}', '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}),
-                                            (proto, porta, pid) => acessarProtocoloExtra(proto, '{{ acesso.host|escapejs }}', porta, '{{ acesso.usuario|escapejs }}', '{{ acesso.senha|escapejs }}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}, pid, {{ acesso.host_eh_privado|yesno:'true,false' }}),
+                                            () => acessarEquipamento('{{ acesso.protocolo|escapejs }}', '{{ acesso.host|escapejs }}', '{{ acesso.porta|escapejs }}', '{% if not acessos_somente_leitura %}{{ acesso.usuario|escapejs }}{% endif %}', '{% if not acessos_somente_leitura %}{{ acesso.senha|escapejs }}{% endif %}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}),
+                                            (proto, porta, pid) => acessarProtocoloExtra(proto, '{{ acesso.host|escapejs }}', porta, '{% if not acessos_somente_leitura %}{{ acesso.usuario|escapejs }}{% endif %}', '{% if not acessos_somente_leitura %}{{ acesso.senha|escapejs }}{% endif %}', {{ acesso.id }}, '{{ acesso.tipo|escapejs }}', {{ acesso.cliente_id }}, pid, {{ acesso.host_eh_privado|yesno:'true,false' }}),
                                             (versao) => abrirWinboxWeb({{ acesso.id }}, versao))">
                                     <i class="fas fa-sign-in-alt"></i> Acessar <span class="ac-qtd" hidden></span>
                                 </button>
