@@ -1200,7 +1200,35 @@
             .kanban-checklist-texto { flex:1; font-size:13px; color:var(--text-light); word-break:break-word; }
             .kanban-checklist-item.verificado .kanban-checklist-texto { color:var(--text-muted); }
             .kanban-checklist-quem { font-size:11px; color:var(--primary-green); white-space:nowrap; }
-            @media (prefers-reduced-motion: reduce) { .kanban-add { transition:none; } }
+            /* O style.css global não centraliza mais o .modal-overlay com flex, mas estes modais abrem
+               com display:flex — sem isto o .modal-acesso estica até 90vh e sobra um vão vazio embaixo. */
+            #tab-tarefas .modal-overlay > .modal-acesso { align-self:flex-start; }
+            .kt-modo { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:3px; background:var(--dark-bg); border:1px solid var(--border); border-radius:8px; margin-bottom:18px; }
+            .kt-modo[hidden] { display:none; }
+            .kt-modo button { display:flex; align-items:center; justify-content:center; gap:7px; padding:7px 8px; font-size:12.5px; font-weight:500; color:var(--text-muted); background:transparent; border:none; border-radius:6px; cursor:pointer; transition:color .15s ease, background-color .15s ease; }
+            .kt-modo button:hover { color:var(--text-light); }
+            .kt-modo button[aria-checked="true"] { background:var(--card-bg); color:var(--text-light); box-shadow:0 0 0 1px var(--border); }
+            .kt-modo button:focus-visible { outline:2px solid var(--accent-cyan); outline-offset:1px; }
+            .kt-rotulo-opcional { font-weight:400; color:var(--text-muted); }
+            .kt-editor { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+            .kt-editor-item { display:flex; align-items:center; gap:8px; }
+            .kt-editor-item > i { color:var(--text-muted); opacity:.6; width:14px; text-align:center; }
+            .kt-remover { width:28px; height:28px; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; border:none; background:none; color:var(--text-muted); border-radius:6px; cursor:pointer; transition:color .15s ease, background-color .15s ease, transform .12s ease-out; }
+            .kt-remover:hover { color:var(--error-red); background:rgba(248,81,73,.08); }
+            .kt-remover:active { transform:scale(.94); }
+            .kt-add-item { margin-top:8px; display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--accent-cyan); background:none; border:none; padding:4px 2px; cursor:pointer; }
+            .kt-add-item:hover { text-decoration:underline; }
+            .kt-dica { font-size:12px; color:var(--text-muted); margin-top:10px; line-height:1.5; padding:8px 10px; border-left:2px solid rgba(163,113,247,.5); background:rgba(163,113,247,.05); border-radius:0 6px 6px 0; }
+            .kt-dica[hidden] { display:none; }
+            .kanban-checklist:empty { display:none; }
+            .kanban-checklist-item { display:flex; align-items:center; }
+            .kanban-checklist-item label { flex:1; min-width:0; }
+            .kt-novo-item { display:flex; gap:6px; margin-top:8px; }
+            .kanban-rotinas { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-bottom:12px; font-size:12px; color:var(--text-muted); }
+            .kanban-rotinas[hidden] { display:none; }
+            .kanban-rotina-chip { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border:1px solid rgba(163,113,247,.3); background:rgba(163,113,247,.08); color:#bc8cff; border-radius:20px; font-size:11.5px; }
+            .kanban-rotina-chip.pausada { opacity:.55; }
+            @media (prefers-reduced-motion: reduce) { .kanban-add, .kt-remover, .kt-modo button { transition:none; } }
         </style>
 
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -1213,6 +1241,8 @@
                 </button>
             </div>
         </div>
+
+        <div class="kanban-rotinas" id="kanbanRotinas" hidden></div>
 
         <div class="kanban-board" id="kanbanBoard">
             <div class="kanban-col kanban-col-atrasada" data-status="atrasada">
@@ -1376,29 +1406,37 @@
             </div>
         </div>
 
-        <!-- Modal Nova Tarefa -->
+        <!-- Modal Nova Tarefa / Rotina mensal -->
         <div id="modalNovaTarefaKanban" class="modal-overlay" style="display:none;">
-            <div class="modal-acesso" style="max-width:520px;">
+            <div class="modal-acesso" style="max-width:560px;">
                 <div class="modal-header-acesso">
-                    <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> Nova Tarefa</h2>
-                    <button class="btn-close-modal" onclick="fecharModalKanban('modalNovaTarefaKanban')"><i class="fas fa-times"></i></button>
+                    <h2 class="modal-title"><span class="terminal-prefix">&gt;</span> <span id="ktModalTitulo">Nova Tarefa</span></h2>
+                    <button class="btn-close-modal" onclick="fecharModalKanban('modalNovaTarefaKanban')" aria-label="Fechar"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body-acesso">
-                    <div class="mb-2">
-                        <label class="form-label">Título</label>
+                    <div class="kt-modo" id="ktModo" role="radiogroup" aria-label="Tipo de tarefa" {% if not is_admin %}hidden{% endif %}>
+                        <button type="button" role="radio" aria-checked="true" data-modo="tarefa" onclick="_ktSetModo('tarefa')"><i class="far fa-square-check"></i> Tarefa única</button>
+                        <button type="button" role="radio" aria-checked="false" data-modo="rotina" onclick="_ktSetModo('rotina')"><i class="fas fa-rotate"></i> Rotina mensal</button>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="ktTitulo">Título</label>
                         <input type="text" id="ktTitulo" class="form-control" maxlength="255" required>
                     </div>
-                    <div class="mb-2">
-                        <label class="form-label">Descrição</label>
-                        <textarea id="ktDescricao" class="form-control" rows="3"></textarea>
+                    <div class="mb-3">
+                        <label class="form-label" for="ktDescricao">Descrição</label>
+                        <textarea id="ktDescricao" class="form-control" rows="2"></textarea>
                     </div>
                     <div class="row">
-                        <div class="col-6 mb-2">
-                            <label class="form-label">Prazo</label>
+                        <div class="col-6 mb-3" data-kt-tarefa>
+                            <label class="form-label" for="ktPrazo">Prazo</label>
                             <input type="datetime-local" id="ktPrazo" class="form-control">
                         </div>
-                        <div class="col-6 mb-2">
-                            <label class="form-label">Prioridade</label>
+                        <div class="col-6 mb-3" data-kt-rotina hidden>
+                            <label class="form-label" for="ktDia">Repetir todo dia</label>
+                            <select id="ktDia" class="form-select"></select>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label" for="ktPrioridade">Prioridade</label>
                             <select id="ktPrioridade" class="form-select">
                                 <option value="baixa">Baixa</option>
                                 <option value="media" selected>Média</option>
@@ -1406,9 +1444,19 @@
                             </select>
                         </div>
                     </div>
+                    <div class="mb-1">
+                        <label class="form-label">Checklist <span class="kt-rotulo-opcional" id="ktChecklistOpcional">(opcional)</span></label>
+                        <ol class="kt-editor" id="ktChecklist"></ol>
+                        <button type="button" class="kt-add-item" onclick="_ktAdicionarItem('', null, true)"><i class="fas fa-plus"></i> Adicionar item</button>
+                        <div class="kt-dica" data-kt-rotina hidden>
+                            Todo mês, no dia escolhido, esta tarefa é criada com o checklist acima para a equipe marcar
+                            cada item como verificado. Com todos marcados, ela é concluída. Em meses sem esse dia (ex.: 31),
+                            cai no último dia.
+                        </div>
+                    </div>
                     <div class="modal-footer-acesso">
                         <button type="button" class="btn-cancel-modal" onclick="fecharModalKanban('modalNovaTarefaKanban')"><i class="fas fa-times me-2"></i>Cancelar</button>
-                        <button type="button" class="btn-submit-modal" onclick="salvarNovaTarefaKanban()"><i class="fas fa-check me-2"></i>Criar Tarefa</button>
+                        <button type="button" class="btn-submit-modal" id="ktSubmit" onclick="salvarNovaTarefaKanban()"><i class="fas fa-check me-2"></i><span id="ktSubmitLabel">Criar Tarefa</span></button>
                     </div>
                 </div>
             </div>
@@ -1423,10 +1471,6 @@
                 </div>
                 <div class="modal-body-acesso">
                     <input type="hidden" id="ketId">
-                    <div class="mb-3" id="ketChecklistWrap" style="display:none;">
-                        <label class="form-label">Checklist <span id="ketChecklistContagem" style="font-weight:400;color:var(--text-muted);"></span></label>
-                        <ul class="kanban-checklist" id="ketChecklist"></ul>
-                    </div>
                     <div class="mb-2">
                         <label class="form-label">Título</label>
                         <input type="text" id="ketTitulo" class="form-control" maxlength="255" required>
@@ -1434,6 +1478,16 @@
                     <div class="mb-2">
                         <label class="form-label">Descrição</label>
                         <textarea id="ketDescricao" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3" id="ketChecklistWrap">
+                        <label class="form-label">Checklist <span id="ketChecklistContagem" class="kt-rotulo-opcional"></span></label>
+                        <ul class="kanban-checklist" id="ketChecklist"></ul>
+                        <div class="kt-novo-item">
+                            <input type="text" id="ketNovoItem" class="form-control form-control-sm" maxlength="255"
+                                   placeholder="Adicionar item ao checklist…" aria-label="Novo item do checklist"
+                                   onkeydown="if (event.key === 'Enter') { event.preventDefault(); adicionarItemChecklistKanban(); }">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="adicionarItemChecklistKanban()" aria-label="Adicionar item"><i class="fas fa-plus"></i></button>
+                        </div>
                     </div>
                     <div class="row">
                         <div class="col-6 mb-2">
@@ -9937,6 +9991,7 @@ function getCsrfToken(){
             .then(data => {
                 _kanbanTarefas = data.tarefas || [];
                 _kanbanResponsaveis = data.responsaveis || [];
+                _renderRotinasKanban(data.rotinas || []);
                 renderKanban();
                 initKanbanSortable();
             })
@@ -10325,12 +10380,76 @@ function getCsrfToken(){
         return `<a href="${url}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:var(--accent-cyan);"><i class="fas fa-paperclip me-1"></i>Abrir anexo</a>`;
     }
 
+    function _renderRotinasKanban(rotinas) {
+        const el = document.getElementById('kanbanRotinas');
+        el.hidden = !rotinas.length;
+        el.innerHTML = rotinas.length
+            ? '<span><i class="fas fa-rotate me-1"></i>Rotinas mensais deste cliente:</span>' + rotinas.map(r => `
+                <span class="kanban-rotina-chip${r.ativa ? '' : ' pausada'}" title="${r.itens_total} item(ns) no checklist. Editar/pausar no painel de Tarefas do dashboard.">
+                    ${_escapeHtmlKanban(r.titulo)} · dia ${r.dia_do_mes} · ${r.ativa ? 'próx. ' + r.proxima_fmt : 'pausada'}
+                </span>`).join('')
+            : '';
+    }
+
+    let _ktModo = 'tarefa';
+
     function abrirModalNovaTarefaKanban() {
         document.getElementById('ktTitulo').value = '';
         document.getElementById('ktDescricao').value = '';
         document.getElementById('ktPrazo').value = '';
         document.getElementById('ktPrioridade').value = 'media';
+        const dia = document.getElementById('ktDia');
+        if (!dia.options.length) {
+            for (let d = 1; d <= 31; d++) dia.add(new Option(String(d), String(d)));
+        }
+        dia.value = String(new Date().getDate());
+        document.getElementById('ktChecklist').innerHTML = '';
+        _ktAdicionarItem('', null, false);
+        _ktSetModo('tarefa');
         document.getElementById('modalNovaTarefaKanban').style.display = 'flex';
+        document.getElementById('ktTitulo').focus();
+    }
+
+    function _ktSetModo(modo) {
+        _ktModo = (KANBAN_IS_BACKOFFICE && modo === 'rotina') ? 'rotina' : 'tarefa';
+        const rotina = _ktModo === 'rotina';
+        document.querySelectorAll('#ktModo [role="radio"]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.modo === _ktModo)));
+        document.querySelectorAll('#modalNovaTarefaKanban [data-kt-rotina]').forEach(el => { el.hidden = !rotina; });
+        document.querySelectorAll('#modalNovaTarefaKanban [data-kt-tarefa]').forEach(el => { el.hidden = rotina; });
+        document.getElementById('ktModalTitulo').textContent = rotina ? 'Nova Rotina Mensal' : 'Nova Tarefa';
+        document.getElementById('ktSubmitLabel').textContent = rotina ? 'Criar Rotina' : 'Criar Tarefa';
+        document.getElementById('ktChecklistOpcional').hidden = rotina;
+    }
+
+    function _ktAdicionarItem(texto, depoisDe, focar) {
+        const li = document.createElement('li');
+        li.className = 'kt-editor-item';
+        li.innerHTML = '<i class="far fa-square" aria-hidden="true"></i>'
+            + '<input type="text" class="form-control form-control-sm" maxlength="255" placeholder="Ex.: Conferir backup do concentrador" aria-label="Item do checklist" onkeydown="_ktItemTecla(event, this)">'
+            + '<button type="button" class="kt-remover" title="Remover item" aria-label="Remover item" onclick="_ktRemoverItem(this)"><i class="fas fa-times"></i></button>';
+        li.querySelector('input').value = texto || '';
+        if (depoisDe) depoisDe.after(li); else document.getElementById('ktChecklist').appendChild(li);
+        if (focar) li.querySelector('input').focus();
+    }
+
+    function _ktRemoverItem(botao) {
+        const li = botao.closest('.kt-editor-item');
+        const vizinho = li.previousElementSibling || li.nextElementSibling;
+        li.remove();
+        if (vizinho) vizinho.querySelector('input').focus();
+        else _ktAdicionarItem('', null, true);
+    }
+
+    // Enter cria o próximo item; Backspace num item vazio apaga e volta para o anterior.
+    function _ktItemTecla(e, input) {
+        const li = input.closest('.kt-editor-item');
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (input.value.trim()) _ktAdicionarItem('', li, true);
+        } else if (e.key === 'Backspace' && !input.value && document.querySelectorAll('#ktChecklist .kt-editor-item').length > 1) {
+            e.preventDefault();
+            _ktRemoverItem(li.querySelector('.kt-remover'));
+        }
     }
 
     function fecharModalKanban(id) {
@@ -10339,27 +10458,42 @@ function getCsrfToken(){
 
     function salvarNovaTarefaKanban() {
         const titulo = document.getElementById('ktTitulo').value.trim();
-        if (!titulo) { uiToast('Informe um título.', 'erro'); return; }
+        if (!titulo) { uiToast('Informe um título.', 'erro'); document.getElementById('ktTitulo').focus(); return; }
+        const rotina = _ktModo === 'rotina';
+        const itens = Array.from(document.querySelectorAll('#ktChecklist input')).map(i => i.value.trim()).filter(Boolean);
+        if (rotina && !itens.length) {
+            uiToast('Adicione pelo menos um item ao checklist da rotina.', 'erro');
+            document.querySelector('#ktChecklist input').focus();
+            return;
+        }
 
         const fd = new FormData();
         fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
         fd.append('titulo', titulo);
         fd.append('descricao', document.getElementById('ktDescricao').value.trim());
-        fd.append('prazo', document.getElementById('ktPrazo').value);
         fd.append('prioridade', document.getElementById('ktPrioridade').value);
+        itens.forEach(t => fd.append('itens', t));
+        if (rotina) fd.append('dia_do_mes', document.getElementById('ktDia').value);
+        else fd.append('prazo', document.getElementById('ktPrazo').value);
 
-        fetch(`/tarefas/kanban/${KANBAN_CLIENTE_ID}/criar/`, { method: 'POST', body: fd })
+        const url = rotina
+            ? `/tarefas/kanban/${KANBAN_CLIENTE_ID}/rotinas/criar/`
+            : `/tarefas/kanban/${KANBAN_CLIENTE_ID}/criar/`;
+        const btn = document.getElementById('ktSubmit');
+        btn.disabled = true;
+        fetch(url, { method: 'POST', body: fd })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
                     fecharModalKanban('modalNovaTarefaKanban');
-                    uiToast('Tarefa criada.', 'ok');
+                    uiToast(data.mensagem || 'Tarefa criada.', 'ok');
                     carregarKanbanTarefas();
                 } else {
-                    uiToast(data.error || 'Erro ao criar tarefa.', 'erro');
+                    uiToast(data.error || 'Erro ao salvar.', 'erro');
                 }
             })
-            .catch(() => uiToast('Erro de rede ao criar tarefa.', 'erro'));
+            .catch(() => uiToast('Erro de rede ao salvar. Recarregue a página e tente de novo.', 'erro'))
+            .finally(() => { btn.disabled = false; });
     }
 
     function abrirModalEditarTarefaKanban(id) {
@@ -10389,15 +10523,48 @@ function getCsrfToken(){
             respWrap.style.display = 'none';
         }
         excluirBtn.style.display = t.pode_gerenciar ? '' : 'none';
+        document.getElementById('ketNovoItem').value = '';
         _renderChecklistKanban(t);
 
         document.getElementById('modalEditarTarefaKanban').style.display = 'flex';
     }
 
+    function _atualizarTarefaKanban(tarefa) {
+        const idx = _kanbanTarefas.findIndex(t => t.id === tarefa.id);
+        if (idx !== -1) _kanbanTarefas[idx] = tarefa;
+        renderKanban();
+        if (String(document.getElementById('ketId').value) === String(tarefa.id)) _renderChecklistKanban(tarefa);
+    }
+
+    function _postChecklistKanban(url, campos) {
+        const fd = new FormData();
+        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+        Object.entries(campos || {}).forEach(([k, v]) => fd.append(k, v));
+        return fetch(url, { method: 'POST', body: fd })
+            .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+            .then(data => { if (!data.success) throw new Error(data.error); return data; });
+    }
+
+    function adicionarItemChecklistKanban() {
+        const input = document.getElementById('ketNovoItem');
+        const texto = input.value.trim();
+        if (!texto) { input.focus(); return; }
+        input.disabled = true;
+        _postChecklistKanban(`/tarefas/checklist/tarefa/${document.getElementById('ketId').value}/adicionar/`, { texto })
+            .then(data => { input.value = ''; _atualizarTarefaKanban(data.tarefa); })
+            .catch(() => uiToast('Não foi possível adicionar o item.', 'erro'))
+            .finally(() => { input.disabled = false; input.focus(); });
+    }
+
+    function removerItemChecklistKanban(itemId) {
+        _postChecklistKanban(`/tarefas/checklist/${itemId}/remover/`)
+            .then(data => _atualizarTarefaKanban(data.tarefa))
+            .catch(() => uiToast('Não foi possível remover o item.', 'erro'));
+    }
+
     function _renderChecklistKanban(t) {
         const itens = t.checklist || [];
-        document.getElementById('ketChecklistWrap').style.display = itens.length ? '' : 'none';
-        document.getElementById('ketChecklistContagem').textContent = itens.length ? `${t.checklist_feitos}/${t.checklist_total}` : '';
+        document.getElementById('ketChecklistContagem').textContent = itens.length ? `${t.checklist_feitos}/${t.checklist_total}` : '(opcional)';
         document.getElementById('ketChecklist').innerHTML = itens.map(i => {
             const quem = i.verificado
                 ? `<i class="fas fa-check"></i> ${_escapeHtmlKanban(i.verificado_por_nome)}${i.verificado_por_nome ? ' · ' : ''}${_escapeHtmlKanban(i.verificado_em_fmt)}`
@@ -10409,6 +10576,7 @@ function getCsrfToken(){
                         <span class="kanban-checklist-texto">${_escapeHtmlKanban(i.texto)}</span>
                         <span class="kanban-checklist-quem">${quem}</span>
                     </label>
+                    <button type="button" class="kt-remover" title="Remover item" aria-label="Remover item" onclick="removerItemChecklistKanban(${i.id})"><i class="fas fa-times"></i></button>
                 </li>`;
         }).join('');
     }

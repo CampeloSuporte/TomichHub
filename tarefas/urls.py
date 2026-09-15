@@ -11,6 +11,9 @@ urlpatterns = [
 
     # Checklist (dashboard e Kanban) — JSON
     path('checklist/<int:item_id>/marcar/', views.checklist_item_marcar, name='tarefa_checklist_marcar'),
+    path('checklist/<int:item_id>/remover/', views.checklist_item_remover, name='tarefa_checklist_remover'),
+    path('checklist/tarefa/<int:tarefa_id>/adicionar/', views.checklist_item_adicionar, name='tarefa_checklist_adicionar'),
+    path('kanban/<int:cliente_id>/rotinas/criar/', views.rotina_kanban_criar, name='rotina_kanban_criar'),
 
     # Rotinas mensais (seção "Rotinas mensais" do painel do dashboard)
     path('rotinas/criar/', views.rotina_criar, name='rotina_criar'),

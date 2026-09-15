@@ -60,6 +60,9 @@ Seções do painel:
 | `rotinas/<id>/ativar/` | POST | Pausa/retoma (alterna) |
 | `rotinas/<id>/excluir/` | POST | Apaga a rotina; tarefas já geradas ficam |
 | `rotinas/<id>/usuarios/` | GET (JSON) | Responsáveis elegíveis + itens atuais, para o modal "Editar Rotina" |
+| `checklist/tarefa/<tarefa_id>/adicionar/` | POST (JSON) | Adiciona item (`texto`) ao fim do checklist de uma tarefa existente |
+| `checklist/<item_id>/remover/` | POST (JSON) | Remove item do checklist |
+| `kanban/<cliente_id>/rotinas/criar/` | POST (JSON) | Cria rotina do cliente pelo modal do Kanban (só back-office) |
 
 Todas as views (exceto `usuarios/`, que é GET) fazem `redirect` de volta pra `next` (ou `HTTP_REFERER`) — sem API JSON para as ações de escrita, mesmo padrão de formulário simples usado no `financeiro/dashboard.html`.
 
@@ -223,3 +226,33 @@ assume, conclui e reabre, cancelada, outra instância 404, GET 405, Kanban com c
 fuso) e `RotinaViewsTest` (criar com checklist e ocorrência do dia, sem itens, dia
 inválido, editar não mexe no mês, outra instância 404, retomar, "atribuída a mim",
 painel sem botão no cabeçalho e sem vazar rotina de outra instância).
+
+### Ajuste: checklist no Kanban do cliente e modal esticado (2026-09-15)
+
+O usuário abriu o **Nova Tarefa do Kanban do cliente** e encontrou (1) um vão vazio embaixo do
+formulário e (2) nada de checklist — na primeira entrega o checklist e a rotina só existiam no
+modal do dashboard.
+
+- **Vão vazio:** o `static/css/style.css` global (servido de `/opt/crm/static`, fora do git) deixou
+  de centralizar `.modal-overlay` com flex (`overflow-y:auto` + `margin:40px auto` no filho), mas o
+  JS do Kanban ainda abre os modais com `display:flex`. Num container flex o `.modal-acesso` estica
+  no eixo cruzado até o `max-height: 90vh`. Correção local em `listar.html`:
+  `#tab-tarefas .modal-overlay > .modal-acesso { align-self:flex-start; }` (vale para os modais de
+  chamados da mesma aba). Atenção: `staticfiles/css/style.css` do git é outra versão (tema verde),
+  não é o arquivo que o navegador recebe.
+- **Checklist em qualquer tarefa:** os dois modais de criação (dashboard e Kanban) têm editor de
+  checklist — opcional na tarefa única, obrigatório na rotina. Os dois modais de edição mostram o
+  checklist sempre, com campo para **adicionar item** e **✕ para remover**
+  (`services.adicionar_item_checklist` / `remover_item_checklist`). O status segue
+  `ajustar_status_pelo_checklist`: item novo numa concluída reabre; remover o único que faltava
+  conclui; remover o último item de uma concluída **não** reabre.
+- **Rotina pelo Kanban:** o modal do Kanban ganhou **Tarefa única / Rotina mensal** (só aparece
+  para back-office; `rotina_kanban_criar` exige `backoffice_required`). As rotinas do cliente
+  aparecem em chips acima do board ("dia 10 · próx. 10/10").
+- No dashboard, adicionar/remover item no modal de edição recarrega a página ao fechar, para as
+  listas e a seção de rotinas refletirem o checklist novo.
+
+Testes: `KanbanChecklistTest` (criar com checklist, rotina pelo Kanban, rotina sem itens 400,
+outra instância não cria, adicionar reabre, remover conclui, remover o último não reabre,
+adicionar/remover de outra instância 404, página do cliente com modal novo e correção do CSS) e
+`test_tarefa_unica_do_painel_com_checklist`.

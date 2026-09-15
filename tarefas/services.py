@@ -126,21 +126,60 @@ def marcar_item_checklist(item, user, verificado):
         item.verificado_em = timezone.now() if verificado else None
         item.save(update_fields=['verificado', 'verificado_por', 'verificado_em'])
 
-        total = tarefa.checklist.count()
-        feitos = tarefa.checklist.filter(verificado=True).count()
-        status_antes = tarefa.status
-        if tarefa.status != Tarefa.STATUS_CANCELADA:
-            if total and feitos == total:
-                tarefa.status = Tarefa.STATUS_CONCLUIDA
-                tarefa.concluida_em = timezone.now()
-            elif tarefa.status == Tarefa.STATUS_CONCLUIDA:
-                tarefa.status = Tarefa.STATUS_ANDAMENTO
-                tarefa.concluida_em = None
-            elif feitos and tarefa.status == Tarefa.STATUS_PENDENTE:
-                tarefa.status = Tarefa.STATUS_ANDAMENTO
-        if tarefa.status != status_antes:
-            tarefa.save(update_fields=['status', 'concluida_em', 'atualizado_em'])
+        ajustar_status_pelo_checklist(tarefa)
 
         if verificado and is_backoffice(user) and not tarefa.responsaveis.exists():
             tarefa.responsaveis.add(user)
+    return tarefa
+
+
+def ajustar_status_pelo_checklist(tarefa):
+    """Status que o checklist implica: todos verificados → Concluída; algum
+    faltando numa Concluída → Em Andamento; algum verificado numa Pendente →
+    Em Andamento. Tarefa sem itens ou Cancelada fica como está (remover o
+    último item não reabre uma tarefa concluída)."""
+    from .models import Tarefa
+
+    total = tarefa.checklist.count()
+    if not total or tarefa.status == Tarefa.STATUS_CANCELADA:
+        return tarefa
+    feitos = tarefa.checklist.filter(verificado=True).count()
+    status_antes = tarefa.status
+    if feitos == total:
+        if tarefa.status != Tarefa.STATUS_CONCLUIDA:
+            tarefa.status = Tarefa.STATUS_CONCLUIDA
+            tarefa.concluida_em = timezone.now()
+    elif tarefa.status == Tarefa.STATUS_CONCLUIDA:
+        tarefa.status = Tarefa.STATUS_ANDAMENTO
+        tarefa.concluida_em = None
+    elif feitos and tarefa.status == Tarefa.STATUS_PENDENTE:
+        tarefa.status = Tarefa.STATUS_ANDAMENTO
+    if tarefa.status != status_antes:
+        tarefa.save(update_fields=['status', 'concluida_em', 'atualizado_em'])
+    return tarefa
+
+
+def adicionar_item_checklist(tarefa, texto):
+    """Item novo vai para o fim. Numa tarefa concluída, reabre (agora falta um)."""
+    from django.db.models import Max
+    from .models import Tarefa, TarefaChecklistItem
+
+    with transaction.atomic():
+        tarefa = Tarefa.objects.select_for_update().get(pk=tarefa.pk)
+        ultima = tarefa.checklist.aggregate(m=Max('ordem'))['m']
+        item = TarefaChecklistItem.objects.create(
+            tarefa=tarefa, texto=texto[:255], ordem=0 if ultima is None else ultima + 1,
+        )
+        ajustar_status_pelo_checklist(tarefa)
+    return tarefa, item
+
+
+def remover_item_checklist(item):
+    """Remover o único item que faltava conclui a tarefa."""
+    from .models import Tarefa
+
+    with transaction.atomic():
+        tarefa = Tarefa.objects.select_for_update().get(pk=item.tarefa_id)
+        item.delete()
+        ajustar_status_pelo_checklist(tarefa)
     return tarefa
