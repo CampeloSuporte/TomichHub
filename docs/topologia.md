@@ -1148,6 +1148,36 @@ nessa direção enquanto a interface vai `-12 px` (lado oposto). Assim os dois r
 **qualquer ângulo** do enlace. A distância ao longo da linha (que tira o rótulo de cima da borda
 do node) não mudou.
 
+### Reincidência em enlace inclinado e em enlace curto — Corrigido em 2026-09-15
+
+A correção acima não bastou: no enlace `BA-TEI-A01-SW-CORE-01 → switch de baixo` (quase vertical,
+10 Gbps VLAN 38) o `198.18.96.133/30` continuava coberto pelo `XGigabitEthernet0/0/1` e o IP da
+outra ponta pelo `XGigabitEthernet0/0/23`. Nos enlaces horizontais curtos da mesma tela os dois
+IPs (`198.18.96.125/30` e `198.18.96.30/30`) se sobrepunham entre si e ao `10 Gbps`.
+
+**Causa:** os rótulos são caixas **largas e baixas** (~100×14 px) e o afastamento era de 12 px
+fixos na perpendicular. Num enlace horizontal a perpendicular é vertical e 12 px passam da altura
+da caixa; num enlace inclinado ela é quase horizontal e 12 px não tiram nem metade da caixa de
+cima da linha — as caixas do IP e da interface continuavam se cruzando. Em enlaces curtos, o
+limite `linkLen * 0.45` joga os dois IPs (que ficam do **mesmo** lado) para perto do meio.
+
+**Correção (`_renderLink`):**
+
+- O afastamento de cada caixa é `GAP_LINHA + |nx|·meiaLargura + |ny|·meiaAltura` — a meia-extensão
+  da caixa na direção da normal. Assim a **borda** da caixa (e não o centro) fica a
+  `GAP_LINHA = max(5, w/2 + 4)` px da linha em qualquer ângulo; como IP e interface ficam em lados
+  opostos, não há como se cruzarem.
+- O rótulo do meio (banda/VLAN) passou a ser calculado antes. Rótulo de ponta que colide com ele é
+  empurrado para fora da linha até passar da borda dele; se os dois rótulos do mesmo lado
+  (IP×IP ou interface×interface) colidem, o mais afastado sobe mais uma caixa. Esses empurrões só
+  aumentam a distância à linha, então não recriam colisões já resolvidas.
+- A distância ao longo da linha continua `raio + largura/2` (tira o rótulo de cima do node e do
+  nome/IP escritos embaixo dele).
+
+Validado simulando o bloco com a geometria da captura (enlace vertical, diagonal, horizontal
+curto e vertical reto): zero sobreposição entre as cinco caixas de cada enlace. Nós a menos de
+~90 px de distância entre bordas continuam sem espaço para rótulos longos (limite já existente).
+
 ---
 
 ## Áreas de documentação — Adicionado em 2026-08-27

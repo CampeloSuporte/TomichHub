@@ -5,6 +5,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-15 (Topologia: IP e interface do enlace sobrepostos)
+
+### Corrigido
+
+- **Rótulos de IP P2P e de interface um em cima do outro em enlace inclinado** — no enlace
+  quase vertical do `BA-TEI-A01-SW-CORE-01` o `198.18.96.133/30` ficava coberto pelo
+  `XGigabitEthernet0/0/1` (`topo_main.js`, `_renderLink`). O afastamento da linha era 12 px fixos
+  na perpendicular, o que só funciona com a perpendicular vertical: as caixas têm ~100×14 px, e
+  num enlace inclinado 12 px não tiram nem metade da caixa de cima da linha. Agora cada caixa é
+  afastada pela sua meia-extensão na direção da normal — a borda fica a `max(5, w/2+4)` px da linha
+  em qualquer ângulo, com IP e interface em lados opostos.
+- **Enlace curto**: os dois IPs (mesmo lado da linha) se sobrepunham entre si e ao rótulo
+  `10 Gbps`. Rótulo de ponta que colide com o do meio ou com o vizinho do mesmo lado é empurrado
+  para fora da linha.
+- `topo_main.js?v=47` no `topologia_editor.html` para furar o cache do navegador.
+
+Detalhes em [docs/topologia.md](docs/topologia.md) → "Reincidência em enlace inclinado e em enlace curto".
+
+---
+
 ## [Não publicado] — 2026-09-15 (Usuários: login restrito por função vira somente leitura)
 
 ### Alterado

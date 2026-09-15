@@ -1326,61 +1326,29 @@ class TopoEditor {
     const raioB = (tgt.w || 64) / 2 + 14;
 
     // Vetor PERPENDICULAR à linha, sempre apontando "para cima" (ny <= 0). O IP
-    // é afastado da linha por esse vetor e a interface pelo oposto — em vez de
-    // um deslocamento fixo em Y. Com o Y fixo (IP -8, interface +14), um link
-    // quase vertical jogava os dois rótulos praticamente na mesma coluna e o
-    // nome da interface cobria o IP (bug visto em produção — ver captura da
-    // sessão). Na perpendicular eles se separam em qualquer ângulo do enlace.
+    // fica de um lado da linha e a interface do outro — em vez de um
+    // deslocamento fixo em Y, que num link quase vertical jogava os dois
+    // rótulos na mesma coluna.
     let nx = -uy, ny = ux;
     if (ny > 0) { nx = -nx; ny = -ny; }
-    const OFF_IP = 12;   // afastamento perpendicular do rótulo de IP (um lado)
-    const OFF_IF = 12;   // ...e do rótulo de interface (lado oposto)
 
-    // Largura de cada rótulo, calculada ANTES da posição — precisa entrar na
-    // conta da distância até o node (ver comentário abaixo).
-    const ipLocalW = Math.max(68, (link.ip_local||'').length * 6 + 8);
-    const ipRemoteW = Math.max(68, (link.ip_remote||'').length * 6 + 8);
-    const ifAW = Math.max(52, (link.iface_a||'').length * 5.5 + 8);
-    const ifBW = Math.max(52, (link.iface_b||'').length * 5.5 + 8);
-
-    // IPs P2P (acima da linha, logo depois do rótulo de interface). O texto
-    // usa text-anchor:middle, ou seja a METADE da largura do rótulo fica do
-    // lado do node — por isso a distância inclui `largura/2`: sem isso, um
-    // rótulo largo (nome de interface comprido, ex. "Eth-Trunk10") ficava com
-    // a metade de trás ainda em cima do node mesmo com a "distância fixa"
-    // aplicada só ao ponto central (bug visto em produção — texto cortado
-    // pela borda do node em links horizontais).
-    const clearIpA = Math.min(raioA + 16 + ipLocalW/2, linkLen * 0.45);
-    const clearIpB = Math.min(raioB + 16 + ipRemoteW/2, linkLen * 0.45);
-    const ipLocalX  = src.x + ux * clearIpA + nx * OFF_IP;
-    const ipLocalY  = src.y + uy * clearIpA + ny * OFF_IP;
-    const ipRemoteX = tgt.x - ux * clearIpB + nx * OFF_IP;
-    const ipRemoteY = tgt.y - uy * clearIpB + ny * OFF_IP;
-    const ipLocalHtml = link.ip_local ? `
-      <rect x="${ipLocalX-ipLocalW/2}" y="${ipLocalY-10}" width="${ipLocalW}" height="14" rx="5" fill="#0b0f15" fill-opacity=".92" stroke="${color}" stroke-opacity=".35"/>
-      <text class="link-ip" x="${ipLocalX}" y="${ipLocalY}">${this._esc(link.ip_local)}</text>` : '';
-    const ipRemoteHtml = link.ip_remote ? `
-      <rect x="${ipRemoteX-ipRemoteW/2}" y="${ipRemoteY-10}" width="${ipRemoteW}" height="14" rx="5" fill="#0b0f15" fill-opacity=".92" stroke="${color}" stroke-opacity=".35"/>
-      <text class="link-ip" x="${ipRemoteX}" y="${ipRemoteY}">${this._esc(link.ip_remote)}</text>` : '';
-
-    // Interfaces lado A e lado B — logo fora da borda do node, abaixo da
-    // linha. Mesmo ajuste de `largura/2` explicado acima.
-    const clearIfA = Math.min(raioA + ifAW/2 + 6, linkLen * 0.4);
-    const clearIfB = Math.min(raioB + ifBW/2 + 6, linkLen * 0.4);
-    const ifAx = src.x + ux * clearIfA - nx * OFF_IF;
-    const ifAy = src.y + uy * clearIfA - ny * OFF_IF;
-    const ifBx = tgt.x - ux * clearIfB - nx * OFF_IF;
-    const ifBy = tgt.y - uy * clearIfB - ny * OFF_IF;
-    const ifAHtml = link.iface_a ? `
-      <rect x="${ifAx-ifAW/2}" y="${ifAy-8.5}" width="${ifAW}" height="12" rx="4" fill="#0b0f15" fill-opacity=".92"/>
-      <text class="link-iface" x="${ifAx}" y="${ifAy}" fill="${color}">${this._esc(link.iface_a)}</text>` : '';
-    const ifBHtml = link.iface_b ? `
-      <rect x="${ifBx-ifBW/2}" y="${ifBy-8.5}" width="${ifBW}" height="12" rx="4" fill="#0b0f15" fill-opacity=".92"/>
-      <text class="link-iface" x="${ifBx}" y="${ifBy}" fill="${color}">${this._esc(link.iface_b)}</text>` : '';
+    // Meia-extensão de uma caixa alinhada aos eixos (meia-largura hw,
+    // meia-altura hh) na direção unitária (vx,vy). O afastamento da linha usa
+    // isso em vez de um valor fixo: os rótulos são caixas LARGAS e baixas
+    // (~100×14 px), então 12 px na perpendicular bastavam num enlace
+    // horizontal mas, num enlace inclinado/vertical, a perpendicular é quase
+    // horizontal e 12 px não tiravam nem a caixa de cima da linha — IP e
+    // interface continuavam um por cima do outro (bug visto em produção em
+    // 2026-09-15, enlace CORE-01 → switch de baixo). Com a meia-extensão, a
+    // BORDA de cada caixa fica a GAP_LINHA px da linha em qualquer ângulo, e
+    // como IP e interface ficam em lados opostos eles nunca se cruzam.
+    const ext = (hw, hh, vx, vy) => Math.abs(vx) * hw + Math.abs(vy) * hh;
+    const GAP_LINHA = Math.max(5, w / 2 + 4);
 
     // Rótulo do meio do link: nome (se houver), banda e VLAN em linhas
     // separadas — "VLAN 100" embaixo da banda lê muito melhor que o antigo
-    // sufixo "V100" grudado na mesma linha ("100 Gbps V100").
+    // sufixo "V100" grudado na mesma linha ("100 Gbps V100"). Calculado antes
+    // dos rótulos das pontas porque eles desviam dele.
     const lblLines = [];
     if (userLbl) lblLines.push({text: userLbl, fill: color, weight: 600});
     lblLines.push({text: ifaceDef.label, fill: null, weight: 400});
@@ -1397,6 +1365,81 @@ class TopoEditor {
         const attrs = l.fill ? ` fill="${l.fill}" font-size="10" font-weight="${l.weight}"` : '';
         return `<text class="link-label" x="${mx}" y="${y}"${attrs}>${this._esc(l.text)}</text>`;
       }).join('')}`;
+    const caixaMeio = {cx: mx, cy: bgY + bgH/2, hw: bgW/2, hh: bgH/2};
+
+    // Largura de cada rótulo, calculada ANTES da posição — precisa entrar na
+    // conta da distância até o node (ver comentário abaixo).
+    const ipLocalW = Math.max(68, (link.ip_local||'').length * 6 + 8);
+    const ipRemoteW = Math.max(68, (link.ip_remote||'').length * 6 + 8);
+    const ifAW = Math.max(52, (link.iface_a||'').length * 5.5 + 8);
+    const ifBW = Math.max(52, (link.iface_b||'').length * 5.5 + 8);
+
+    // Distância ao longo da linha a partir do centro do node. O texto usa
+    // text-anchor:middle, ou seja a METADE da largura do rótulo fica do lado do
+    // node — por isso a distância inclui `largura/2`: sem isso, um rótulo largo
+    // (ex. "Eth-Trunk10") ficava com a metade de trás em cima do node (bug
+    // visto em produção — texto cortado pela borda do node em links
+    // horizontais). Em link vertical isso sobra, mas tira o rótulo de cima do
+    // nome/IP escritos embaixo do node.
+    const clearIpA = Math.min(raioA + 16 + ipLocalW/2, linkLen * 0.45);
+    const clearIpB = Math.min(raioB + 16 + ipRemoteW/2, linkLen * 0.45);
+    const clearIfA = Math.min(raioA + ifAW/2 + 6, linkLen * 0.4);
+    const clearIfB = Math.min(raioB + ifBW/2 + 6, linkLen * 0.4);
+
+    // Caixa de um rótulo: ponto na linha a `along` px do node (sentido +1 a
+    // partir do src, -1 a partir do tgt) e afastada `perp` px para o `lado`
+    // (+1 = lado do IP, -1 = lado da interface).
+    const caixa = (no, sentido, along, lado, largura, altura) => {
+      const c = {bx: no.x + ux*along*sentido, by: no.y + uy*along*sentido,
+                 lado, hw: largura/2, hh: altura/2};
+      afastar(c, GAP_LINHA + ext(c.hw, c.hh, nx, ny));
+      return c;
+    };
+    const afastar = (c, perp) => {
+      c.perp = perp;
+      c.cx = c.bx + c.lado * nx * perp;
+      c.cy = c.by + c.lado * ny * perp;
+    };
+    const sobrepoe = (a, b) =>
+      Math.abs(a.cx - b.cx) < a.hw + b.hw + 2 && Math.abs(a.cy - b.cy) < a.hh + b.hh + 2;
+
+    const cxIpA = caixa(src, +1, clearIpA, +1, ipLocalW, 14);
+    const cxIpB = caixa(tgt, -1, clearIpB, +1, ipRemoteW, 14);
+    const cxIfA = caixa(src, +1, clearIfA, -1, ifAW, 12);
+    const cxIfB = caixa(tgt, -1, clearIfB, -1, ifBW, 12);
+
+    // Link curto: o clamp por linkLen empurra os rótulos das pontas para perto
+    // do meio, em cima da banda/VLAN e um em cima do outro (os dois IPs ficam
+    // do MESMO lado da linha). Nesses casos o rótulo sai mais para fora na
+    // perpendicular — só se afasta da linha, então não volta a colidir com o
+    // que já foi resolvido.
+    const distMeio = (caixaMeio.cx - src.x) * nx + (caixaMeio.cy - src.y) * ny;
+    const extMeio = ext(caixaMeio.hw, caixaMeio.hh, nx, ny);
+    const mesmoLado = [[link.ip_local && cxIpA, link.ip_remote && cxIpB],
+                       [link.iface_a && cxIfA, link.iface_b && cxIfB]];
+    for (const par of mesmoLado) {
+      for (const c of par) {
+        if (c && sobrepoe(c, caixaMeio)) {
+          afastar(c, Math.max(c.perp, c.lado * distMeio + extMeio + 3 + ext(c.hw, c.hh, nx, ny)));
+        }
+      }
+      const [a, b] = par;
+      if (a && b && sobrepoe(a, b)) {
+        const [perto, longe] = a.perp <= b.perp ? [a, b] : [b, a];
+        afastar(longe, perto.perp + ext(perto.hw, perto.hh, nx, ny) + 3 + ext(longe.hw, longe.hh, nx, ny));
+      }
+    }
+
+    const ipHtml = (c, ip) => !ip ? '' : `
+      <rect x="${c.cx-c.hw}" y="${c.cy-7}" width="${c.hw*2}" height="14" rx="5" fill="#0b0f15" fill-opacity=".92" stroke="${color}" stroke-opacity=".35"/>
+      <text class="link-ip" x="${c.cx}" y="${c.cy+3}">${this._esc(ip)}</text>`;
+    const ifHtml = (c, nome) => !nome ? '' : `
+      <rect x="${c.cx-c.hw}" y="${c.cy-6}" width="${c.hw*2}" height="12" rx="4" fill="#0b0f15" fill-opacity=".92"/>
+      <text class="link-iface" x="${c.cx}" y="${c.cy+2.5}" fill="${color}">${this._esc(nome)}</text>`;
+    const ipLocalHtml  = ipHtml(cxIpA, link.ip_local);
+    const ipRemoteHtml = ipHtml(cxIpB, link.ip_remote);
+    const ifAHtml = ifHtml(cxIfA, link.iface_a);
+    const ifBHtml = ifHtml(cxIfB, link.iface_b);
 
     // "Pacotes" trafegando de A pra B — usa o mesmo `d` do link como trilho de
     // <animateMotion> (SVG anima o círculo ao longo do path automaticamente,
