@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-15 (Proxy web: buraco negro de PMTU no servidor do proxy SSH)
+
+### Corrigido
+
+- **Acesso 1455 (DS TECH) abria o HTML, mas CSS/JS/imagens davam 502** — o servidor do proxy
+  SSH (ProxyIsp) está com MTU 4096 num caminho de 1500. Resposta de 1 pacote passava, o resto
+  travava sem nenhum byte. A correção certa é MTU 1500 na VM do cliente. Até lá o CRM contorna:
+  requisição pelo túnel que estoura o tempo roda no proxy `ping -M do -s 1473 <host>`. Se a rota
+  aprender o MTU (`ip route get` com `mtu N`), a requisição é refeita numa conexão nova, e o
+  priming passa a ser renovado a cada 8 min para aquele proxy e host (`ProxyEngine._pmtu_*`).
+
+Detalhes em [docs/proxy_web_acessos.md](docs/proxy_web_acessos.md) → "Buraco negro de PMTU no servidor do proxy SSH".
+
+---
+
 ## [Não publicado] — 2026-09-15 (Proxy web: SPA React sem basename ficava em branco)
 
 ### Corrigido
