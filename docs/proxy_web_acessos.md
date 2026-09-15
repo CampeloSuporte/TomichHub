@@ -224,8 +224,46 @@ O cache foi testado na mesma sessão do Chrome, em 4 cargas:
 Testes em `clientes/tests_proxy_web.py` (`RewriteReactRouterBasenameTest`).
 
 **Não confundir** com o acesso 1455 (DS TECH, mesmo Observer): lá o HTML abre, mas o CSS/JS
-voltam **502** — é MTU 4096 na interface do servidor do proxy SSH num caminho de 1500 (pacote
-grande some), problema de rede do cliente, não do CRM.
+voltam **502**. É MTU 4096 na interface do servidor do proxy SSH num caminho de 1500 (pacote
+grande some). O CRM contorna isso, ver "Buraco negro de PMTU no servidor do proxy SSH".
+
+---
+
+### Buraco negro de PMTU no servidor do proxy SSH — Contornado em 15/09/2026
+
+**Sintoma:** acesso 1455 (DS TECH, `10.0.100.200:80`, proxy "tunnel dstech" = ProxyIsp
+`186.235.160.41:22002`). O HTML (~1 KB) volta 200, mas `assets/*.js`, `*.css` e `logo-circular.png`
+voltam **502** depois de 25s. No log aparece `[TUNNEL] Erro na requisição HTTP: timed out`.
+
+**Diagnóstico:** o problema está fora do CRM. De dentro do próprio proxy, um socket direto no
+equipamento recebe **0 byte** do CSS. A `ens18` do ProxyIsp está com **MTU 4096** (vindo do
+Proxmox, não do `/etc/network/interfaces`), e o caminho pelo gateway `186.235.160.100` é 1500.
+O SYN anuncia MSS 4056, o equipamento manda segmentos grandes e eles se perdem. Resposta de 1
+pacote passa, o resto trava. `ping -M do -s 1472` passa e `-s 1473` não.
+
+Esse ping de 1473 faz o roteador devolver ICMP "fragmentation needed". O kernel do proxy guarda
+`mtu 1500` na rota (`ip route get` mostra `cache expires ...sec mtu 1500`) por uns 10 minutos, e
+nesse período conexão nova sai com MSS 1460 e tudo funciona.
+
+**Correção certa (infra do cliente):** `mtu=1500` na placa de rede da VM no Proxmox, ou `mtu 1500`
+em `iface ens18`. O usuário `isp` que o CRM usa não tem sudo.
+
+**Contorno no CRM (`ProxyEngine._pmtu_*`, `clientes/proxy_engine.py`):**
+
+1. Requisição pelo túnel que estoura o tempo (`TimeoutError`, 0 byte) dispara `_pmtu_sondar`.
+   Por exec no proxy, roda `ping -c1 -W1 -M do -s 1473 <host>; ip route get <host>`.
+2. Se a rota passar a ter `mtu N`, as conexões guardadas desse destino são descartadas (nasceram
+   com o MSS grande) e a requisição é refeita **uma vez** numa conexão nova.
+3. O par (proxy, host) fica marcado e o priming é renovado antes da requisição a cada
+   `PMTU_RENOVAR_S` (8 min), antes de o cache do kernel expirar. Assim o timeout de 25s só acontece
+   de novo depois que o Daphne reinicia (a marcação fica em memória).
+4. Proxy sem exec (Mikrotik, shell restrito), host IPv6 ou rota que não aprende MTU: nada muda, o
+   timeout vira 502 como antes.
+
+Timeout por outro motivo (equipamento lento) também dispara a sondagem, mas sem `mtu N` na rota
+não há nova tentativa.
+
+Testes em `clientes/tests_proxy_engine_pmtu.py`, com servidor TCP local que trava a 1ª conexão.
 
 ---
 

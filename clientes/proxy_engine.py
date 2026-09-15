@@ -657,6 +657,73 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
             logger.error("[PROXY_DIRECT] %s %s → %s", method, url, e)
             return None
 
+    # ── Buraco negro de PMTU no proxy SSH ─────────────────────────────────────
+    #
+    # ProxyIsp da DS TECH (acesso 1455): ens18 com MTU 4096 num caminho de
+    # 1500. O SYN do sshd anuncia MSS 4056, o equipamento responde com
+    # segmentos grandes e eles somem — resposta de 1 pacote (HTML pequeno)
+    # passa, CSS/JS/png travam sem 1 byte e viram 502. O CRM não controla o
+    # socket que o sshd abre, mas um `ping -M do` de 1473 bytes a partir do
+    # proxy faz o roteador devolver o ICMP "fragmentation needed" e o kernel
+    # guardar `mtu 1500` na rota (~10 min): conexão nova já sai com MSS 1460.
+    #
+    # Só entra em ação depois de um timeout sem resposta; daí em diante o par
+    # (proxy, host) fica marcado e o priming é renovado antes do cache do
+    # kernel expirar. Proxy sem exec (Mikrotik, shell restrito) segue como antes.
+    PMTU_RENOVAR_S = 8 * 60
+    _pmtu_lock = threading.Lock()
+    _pmtu_primado: dict = {}   # (proxy_id, host) -> time.time() do último priming
+
+    def _pmtu_sondar(self, target_host: str) -> bool:
+        """Roda o ping com DF no proxy e diz se a rota até o host passou a ter
+        MTU aprendido (`ip route get` só mostra `mtu N` nesse caso)."""
+        if not self.proxy_server or ':' in target_host:
+            return False
+        import shlex as _shlex
+        h = _shlex.quote(target_host)
+        cmd = f'ping -c1 -W1 -M do -s 1473 {h} >/dev/null 2>&1; ip route get {h}'
+        try:
+            channel = self._ssh_pool.get_transport(self.proxy_server).open_session(timeout=5)
+            channel.settimeout(8)
+            channel.exec_command(cmd)
+            saida = b''
+            while True:
+                dados = channel.recv(4096)
+                if not dados:
+                    break
+                saida += dados
+            channel.close()
+        except Exception as e:
+            logger.debug("[PMTU] sondagem falhou no proxy %s → %s: %s",
+                         self.proxy_server.id, target_host, e)
+            return False
+        m = re.search(rb'\bmtu (\d+)', saida)
+        if m:
+            logger.info("[PMTU] proxy %s → %s: rota com mtu %s",
+                        self.proxy_server.id, target_host, m.group(1).decode())
+        return m is not None
+
+    def _pmtu_aprender(self, target_host: str) -> bool:
+        if not self._pmtu_sondar(target_host):
+            return False
+        import time as _time
+        with self._pmtu_lock:
+            self._pmtu_primado[(self.proxy_server.id, target_host)] = _time.time()
+        return True
+
+    def _pmtu_manter(self, target_host: str):
+        if not self.proxy_server:
+            return
+        import time as _time
+        chave = (self.proxy_server.id, target_host)
+        with self._pmtu_lock:
+            ultimo = self._pmtu_primado.get(chave)
+            if ultimo is None or _time.time() - ultimo < self.PMTU_RENOVAR_S:
+                return
+            # marca antes de sondar: requisições paralelas não disparam N pings
+            self._pmtu_primado[chave] = _time.time()
+        self._pmtu_sondar(target_host)
+
     # ── Requisição via túnel SSH ──────────────────────────────────────────────
 
     def _via_tunnel(self, method, url, target_host, target_port, scheme,
@@ -781,6 +848,34 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
                 return (resp.getheader('Content-Length') is not None
                         and 'close' not in conn_hdr)
 
+            def _refazer_apos_pmtu(err, sock):
+                """Timeout sem resposta pode ser buraco negro de PMTU no proxy
+                (ver _pmtu_sondar): se o proxy aprender o MTU do caminho, refaz
+                1x numa conexão nova — as antigas nasceram com o MSS grande."""
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+                if not isinstance(err, TimeoutError) or not self._pmtu_aprender(target_host):
+                    return None
+                _TunnelConnPool.invalidate(pool_key)
+                novo = _open_socket()
+                if novo is None:
+                    return None
+                try:
+                    resultado = _do_request(novo, req_headers)
+                except Exception as e3:
+                    logger.error("[TUNNEL] Erro na requisição HTTP após PMTU: %s", e3)
+                    try:
+                        novo.close()
+                    except Exception:
+                        pass
+                    return None
+                logger.info("[PMTU] %s refeita após aprender o MTU do caminho", url)
+                return novo, resultado
+
+            self._pmtu_manter(target_host)
+
             # ── 1ª tentativa: reaproveita socket do pool, se houver ─────────
             conn_sock = _TunnelConnPool.acquire(pool_key)
             reused    = conn_sock is not None
@@ -812,18 +907,16 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
                                      resp.status, len(content))
                     except Exception as e2:
                         logger.error("[TUNNEL] Erro na requisição HTTP: %s", e2)
-                        try:
-                            conn_sock.close()
-                        except Exception:
-                            pass
-                        return None
+                        refeito = _refazer_apos_pmtu(e2, conn_sock)
+                        if refeito is None:
+                            return None
+                        conn_sock, (resp, content, cookies_raw) = refeito
                 else:
                     logger.error("[TUNNEL] Erro na requisição HTTP: %s", e)
-                    try:
-                        conn_sock.close()
-                    except Exception:
-                        pass
-                    return None
+                    refeito = _refazer_apos_pmtu(e, conn_sock)
+                    if refeito is None:
+                        return None
+                    conn_sock, (resp, content, cookies_raw) = refeito
 
             if _reusable(resp):
                 _TunnelConnPool.release(pool_key, conn_sock)
