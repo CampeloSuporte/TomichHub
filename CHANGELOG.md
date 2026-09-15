@@ -5,6 +5,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-15 (Tarefas: checklist no Kanban do cliente e modal sem vão)
+
+### Corrigido
+
+- **Modal "Nova Tarefa" do Kanban do cliente com vão vazio embaixo**: abria com `display:flex`, mas
+  o `style.css` global não usa mais flex no `.modal-overlay`, então o card esticava até 90% da tela.
+  `align-self:flex-start` nos modais da aba Tarefas.
+
+### Adicionado
+
+- **Checklist no modal do Kanban do cliente** (e opcional na tarefa única do dashboard): lista de
+  itens com Enter para o próximo e ✕ para remover. O modal também alterna **Tarefa única / Rotina
+  mensal** para back-office, com "Repetir todo dia".
+- **Adicionar e remover itens em tarefa existente** nos modais de edição (dashboard e Kanban). Item
+  novo reabre tarefa concluída; remover o único pendente conclui.
+- Chips com as rotinas mensais do cliente acima do Kanban.
+- 10 testes novos (40 no total em `tarefas/tests.py`).
+
+---
+
 ## [Não publicado] — 2026-09-15 (Tarefas: rotinas mensais com checklist e "Nova Tarefa" dentro das listas)
 
 ### Adicionado

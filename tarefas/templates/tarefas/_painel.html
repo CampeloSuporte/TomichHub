@@ -117,6 +117,12 @@
 .checklist-editor-item { display: flex; align-items: center; gap: 8px; }
 .checklist-editor-item > i { color: #484f58; font-size: 13px; width: 14px; }
 
+#editChecklist { border: 1px solid #30363d; border-radius: 6px; padding: 4px; }
+#editChecklist:empty { display: none; }
+#editChecklist .checklist-item { display: flex; align-items: center; }
+#editChecklist .checklist-item label { flex: 1; min-width: 0; }
+.checklist-novo { display: flex; gap: 6px; margin-top: 6px; }
+
 @media (max-width: 640px) {
     .rotina-head { flex-wrap: wrap; }
     .rotina-toggle { flex-basis: 100%; }
@@ -394,13 +400,13 @@
                     </div>
                 </div>
 
-                <div class="mb-2" data-so-rotina hidden>
-                    <label class="form-label">Checklist</label>
+                <div class="mb-2">
+                    <label class="form-label">Checklist <span id="novaChecklistOpcional" style="font-weight:400;color:#7d8590;">(opcional)</span></label>
                     <div class="checklist-editor" id="novaChecklist">
                         <ol class="checklist-editor-lista"></ol>
                         <button type="button" class="tarefa-add" data-add-item style="margin-top:6px;"><i class="fas fa-plus"></i> Adicionar item</button>
                     </div>
-                    <div class="tarefa-dica">
+                    <div class="tarefa-dica" data-so-rotina hidden>
                         No dia escolhido de cada mês é criada uma tarefa com estes itens. Marque cada um como verificado; com todos marcados a tarefa é concluída.
                         Em meses sem esse dia (ex.: 31), cai no último dia do mês.
                     </div>
@@ -430,10 +436,6 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
-                <div class="mb-2" id="editChecklistWrap" hidden>
-                    <label class="form-label">Checklist <span id="editChecklistContagem" style="font-weight:400;color:#7d8590;"></span></label>
-                    <ul class="checklist" id="editChecklist" style="border:1px solid #30363d;border-radius:6px;padding:4px;"></ul>
-                </div>
                 <div class="mb-2">
                     <label class="form-label">Título</label>
                     <input type="text" name="titulo" class="form-control" id="editTitulo" required maxlength="255">
@@ -441,6 +443,15 @@
                 <div class="mb-2">
                     <label class="form-label">Descrição</label>
                     <textarea name="descricao" class="form-control" id="editDescricao" rows="3"></textarea>
+                </div>
+                <div class="mb-2" id="editChecklistWrap">
+                    <label class="form-label">Checklist <span id="editChecklistContagem" style="font-weight:400;color:#7d8590;">(opcional)</span></label>
+                    <ul class="checklist" id="editChecklist"></ul>
+                    <div class="checklist-novo">
+                        <input type="text" id="editNovoItem" class="form-control form-control-sm" maxlength="255"
+                               placeholder="Adicionar item ao checklist…" aria-label="Novo item do checklist">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="editNovoItemBtn" aria-label="Adicionar item"><i class="fas fa-plus"></i></button>
+                    </div>
                 </div>
                 <div class="mb-2 position-relative">
                     <label class="form-label">Cliente (opcional)</label>
@@ -678,6 +689,7 @@
         });
         document.getElementById('novaTarefaTitulo').textContent = rotina ? 'Nova Rotina Mensal' : 'Nova Tarefa';
         document.getElementById('novaSubmit').textContent = rotina ? 'Criar Rotina' : 'Criar Tarefa';
+        document.getElementById('novaChecklistOpcional').hidden = rotina;
     }
 
     formNova.querySelectorAll('input[name="_modo"]').forEach(r => r.addEventListener('change', () => {
@@ -710,11 +722,11 @@
 
     /* ── Editar tarefa ── */
     const formEditar = document.getElementById('formEditarTarefa');
+    // Adicionar/remover item no modal não reflete nas listas por trás: recarrega ao fechar.
+    let checklistMudou = false;
 
     function renderChecklistEdicao(itens) {
-        const wrap = document.getElementById('editChecklistWrap');
         const ul = document.getElementById('editChecklist');
-        wrap.hidden = !itens.length;
         ul.innerHTML = itens.map(item => `
             <li class="checklist-item${item.verificado ? ' verificado' : ''}" data-item-id="${item.id}">
                 <label>
@@ -722,10 +734,51 @@
                     <span class="checklist-texto">${esc(item.texto)}</span>
                     <span class="checklist-quem">${quemVerificou(item)}</span>
                 </label>
+                <button type="button" class="rotina-acao rotina-acao-danger" data-remover-url="${esc(item.remover_url)}" title="Remover item" aria-label="Remover item"><i class="fas fa-times"></i></button>
             </li>`).join('');
         const feitos = itens.filter(i => i.verificado).length;
-        document.getElementById('editChecklistContagem').textContent = itens.length ? `${feitos}/${itens.length}` : '';
+        document.getElementById('editChecklistContagem').textContent = itens.length ? `${feitos}/${itens.length}` : '(opcional)';
     }
+
+    function aposMudarChecklist(data) {
+        checklistMudou = true;
+        renderChecklistEdicao(data.tarefa.checklist || []);
+        aplicarContagens(data);
+    }
+
+    function adicionarItemEdicao() {
+        const input = document.getElementById('editNovoItem');
+        const texto = input.value.trim();
+        if (!texto || !formEditar.dataset.adicionarUrl) { input.focus(); return; }
+        const fd = new FormData();
+        fd.append('texto', texto);
+        input.disabled = true;
+        postJson(formEditar.dataset.adicionarUrl, fd)
+            .then(data => { input.value = ''; aposMudarChecklist(data); })
+            .catch(() => uiToast('Não foi possível adicionar o item.', 'erro'))
+            .finally(() => { input.disabled = false; input.focus(); });
+    }
+
+    document.getElementById('editNovoItemBtn').addEventListener('click', adicionarItemEdicao);
+    // Enter aqui dentro enviaria o form de edição inteiro.
+    document.getElementById('editNovoItem').addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); adicionarItemEdicao(); }
+    });
+    document.getElementById('editChecklist').addEventListener('click', e => {
+        const btn = e.target.closest('[data-remover-url]');
+        if (!btn) return;
+        const itemId = btn.closest('[data-item-id]').dataset.itemId;
+        btn.disabled = true;
+        postJson(btn.dataset.removerUrl, new FormData())
+            .then(data => {
+                document.querySelectorAll(`#painelRotinas [data-item-id="${itemId}"]`).forEach(li => li.remove());
+                aposMudarChecklist(data);
+            })
+            .catch(() => { btn.disabled = false; uiToast('Não foi possível remover o item.', 'erro'); });
+    });
+    document.getElementById('modalEditarTarefa').addEventListener('hidden.bs.modal', () => {
+        if (checklistMudou) location.reload();
+    });
 
     document.querySelectorAll('.tarefa-editar-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -739,12 +792,16 @@
             document.getElementById('editPrioridade').value = btn.dataset.prioridade || 'media';
             document.getElementById('editStatus').value = btn.dataset.status || 'pendente';
             document.getElementById('editResponsavel').innerHTML = '';
+            document.getElementById('editNovoItem').value = '';
+            formEditar.dataset.adicionarUrl = '';
+            checklistMudou = false;
             renderChecklistEdicao([]);
 
             fetch(btn.dataset.usuariosUrl)
                 .then(r => r.json())
                 .then(data => {
                     carregarResponsaveis(document.getElementById('editResponsavel'), data.results, data.responsaveis_ids);
+                    formEditar.dataset.adicionarUrl = data.adicionar_url || '';
                     renderChecklistEdicao(data.checklist || []);
                     if (data.status) document.getElementById('editStatus').value = data.status;
                 })
@@ -834,7 +891,10 @@
             li.querySelector('input').checked = item.verificado;
             li.querySelector('.checklist-quem').innerHTML = quemVerificou(item);
         });
+        aplicarContagens(data);
+    }
 
+    function aplicarContagens(data) {
         const tarefaId = data.tarefa.id;
         const completo = data.total > 0 && data.feitos === data.total;
         document.querySelectorAll(`[data-checklist-tarefa="${tarefaId}"]`).forEach(badge => {
@@ -867,18 +927,20 @@
         const fd = new FormData();
         fd.append('verificado', verificado ? '1' : '0');
         input.disabled = true;
-        fetch(input.dataset.marcarUrl, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF }, credentials: 'same-origin' })
-            // Sessão expirada vira redirect para o login (HTML): o .json() falha e cai no catch.
-            .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-            .then(data => {
-                if (!data.success) throw new Error(data.error);
-                aplicarResultado(data);
-            })
+        postJson(input.dataset.marcarUrl, fd)
+            .then(aplicarResultado)
             .catch(() => {
                 input.checked = !verificado;
                 uiToast('Não foi possível salvar o item. Recarregue a página e tente de novo.', 'erro');
             })
             .finally(() => { input.disabled = false; });
     });
+
+    function postJson(url, fd) {
+        return fetch(url, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF }, credentials: 'same-origin' })
+            // Sessão expirada vira redirect para o login (HTML): o .json() falha e cai no catch de quem chamou.
+            .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+            .then(data => { if (!data.success) throw new Error(data.error); return data; });
+    }
 })();
 </script>

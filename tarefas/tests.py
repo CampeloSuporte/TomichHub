@@ -359,3 +359,85 @@ class RotinaViewsTest(_BaseRotinas):
         self.assertNotIn('Rotina da instância B', html)
         item = TarefaChecklistItem.objects.filter(tarefa__rotina=rotina).first()
         self.assertIn(reverse('tarefa_checklist_marcar', args=[item.id]), html)
+
+    def test_tarefa_unica_do_painel_com_checklist(self):
+        self.client.force_login(self.consultor)
+        self.client.post(reverse('tarefa_criar'), {'titulo': 'Com itens', 'itens': ['A', '', 'B']})
+        tarefa = Tarefa.objects.get(titulo='Com itens')
+        self.assertEqual(list(tarefa.checklist.values_list('texto', flat=True)), ['A', 'B'])
+        self.assertIsNone(tarefa.rotina_id)
+
+
+class KanbanChecklistTest(_BaseRotinas):
+    """Modal do Kanban do cliente: checklist na criação, rotina e itens em tarefa existente."""
+
+    def test_kanban_cria_tarefa_com_checklist(self):
+        self.client.force_login(self.admin)
+        r = self.client.post(reverse('tarefa_kanban_criar', args=[self.cliente_a.id]), {
+            'titulo': 'Troca de equipamento', 'itens': ['Configurar', 'Testar'],
+        })
+        self.assertTrue(r.json()['success'])
+        self.assertEqual(r.json()['tarefa']['checklist_total'], 2)
+
+    def test_kanban_cria_rotina_do_cliente(self):
+        self.client.force_login(self.admin)
+        r = self.client.post(reverse('rotina_kanban_criar', args=[self.cliente_a.id]), {
+            'titulo': 'Revisão do cliente', 'dia_do_mes': 28, 'itens': ['Backup'],
+        })
+        self.assertTrue(r.json()['success'], r.content)
+        rotina = Rotina.objects.get()
+        self.assertEqual((rotina.cliente, rotina.instancia), (self.cliente_a, self.inst_a))
+        rotinas = self.client.get(reverse('tarefas_kanban_json', args=[self.cliente_a.id])).json()['rotinas']
+        self.assertEqual([x['titulo'] for x in rotinas], ['Revisão do cliente'])
+
+    def test_kanban_rotina_sem_itens_da_erro(self):
+        self.client.force_login(self.admin)
+        r = self.client.post(reverse('rotina_kanban_criar', args=[self.cliente_a.id]), {'titulo': 'X', 'dia_do_mes': 5})
+        self.assertEqual(r.status_code, 400)
+        self.assertFalse(Rotina.objects.exists())
+
+    def test_consultor_de_outra_instancia_nao_cria_rotina_no_cliente(self):
+        self.client.force_login(self.consultor_b)
+        self.client.post(reverse('rotina_kanban_criar', args=[self.cliente_a.id]), {
+            'titulo': 'Intrusa', 'dia_do_mes': 5, 'itens': ['a'],
+        })
+        self.assertFalse(Rotina.objects.exists())
+
+    def test_adicionar_item_reabre_tarefa_concluida(self):
+        tarefa = Tarefa.objects.create(titulo='T', instancia=self.inst_a, status=Tarefa.STATUS_CONCLUIDA)
+        TarefaChecklistItem.objects.create(tarefa=tarefa, texto='Feito', verificado=True)
+        self.client.force_login(self.consultor)
+        r = self.client.post(reverse('tarefa_checklist_adicionar', args=[tarefa.id]), {'texto': 'Faltou isto'})
+        self.assertEqual((r.json()['feitos'], r.json()['total'], r.json()['status']), (1, 2, Tarefa.STATUS_ANDAMENTO))
+        self.assertEqual(r.json()['item']['texto'], 'Faltou isto')
+
+    def test_remover_o_item_que_faltava_conclui(self):
+        tarefa = Tarefa.objects.create(titulo='T', instancia=self.inst_a, status=Tarefa.STATUS_ANDAMENTO)
+        TarefaChecklistItem.objects.create(tarefa=tarefa, texto='Feito', verificado=True, ordem=0)
+        pendente = TarefaChecklistItem.objects.create(tarefa=tarefa, texto='Não precisa', ordem=1)
+        self.client.force_login(self.consultor)
+        r = self.client.post(reverse('tarefa_checklist_remover', args=[pendente.id]))
+        self.assertEqual(r.json()['status'], Tarefa.STATUS_CONCLUIDA)
+        self.assertFalse(TarefaChecklistItem.objects.filter(pk=pendente.pk).exists())
+
+    def test_remover_ultimo_item_nao_reabre_concluida(self):
+        tarefa = Tarefa.objects.create(titulo='T', instancia=self.inst_a, status=Tarefa.STATUS_CONCLUIDA)
+        item = TarefaChecklistItem.objects.create(tarefa=tarefa, texto='Único', verificado=True)
+        self.client.force_login(self.consultor)
+        r = self.client.post(reverse('tarefa_checklist_remover', args=[item.id]))
+        self.assertEqual((r.json()['total'], r.json()['status']), (0, Tarefa.STATUS_CONCLUIDA))
+
+    def test_adicionar_e_remover_em_outra_instancia_da_404(self):
+        tarefa = Tarefa.objects.create(titulo='T', instancia=self.inst_a)
+        item = TarefaChecklistItem.objects.create(tarefa=tarefa, texto='x')
+        self.client.force_login(self.consultor_b)
+        self.assertEqual(self.client.post(reverse('tarefa_checklist_adicionar', args=[tarefa.id]), {'texto': 'y'}).status_code, 404)
+        self.assertEqual(self.client.post(reverse('tarefa_checklist_remover', args=[item.id])).status_code, 404)
+        self.assertEqual(tarefa.checklist.count(), 1)
+
+    def test_pagina_do_cliente_tem_modal_com_checklist_e_rotina(self):
+        self.client.force_login(self.admin)
+        html = self.client.get(f'/clientes/listar/?id={self.cliente_a.id}').content.decode()
+        self.assertIn('id="ktChecklist"', html)
+        self.assertIn('data-modo="rotina"', html)
+        self.assertIn('#tab-tarefas .modal-overlay > .modal-acesso { align-self:flex-start; }', html)

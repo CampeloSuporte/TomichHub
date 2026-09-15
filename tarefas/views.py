@@ -14,7 +14,8 @@ from usuario.perms import is_backoffice, pode_acessar_cliente, portal_pode_usar_
 
 from .models import Rotina, RotinaItem, Tarefa, TarefaChecklistItem
 from .services import (
-    gerar_ocorrencias_rotinas, instancia_da_tarefa, marcar_item_checklist, usuarios_atribuiveis,
+    adicionar_item_checklist, gerar_ocorrencias_rotinas, instancia_da_tarefa, marcar_item_checklist,
+    remover_item_checklist, usuarios_atribuiveis,
 )
 
 
@@ -102,6 +103,7 @@ def tarefa_criar(request):
     # "+ Adicionar tarefa" dentro de "Minhas Tarefas" já cria atribuída a quem clicou.
     if request.POST.get('atribuir_a_mim'):
         tarefa.responsaveis.add(request.user)
+    _criar_itens_checklist(tarefa, _itens_checklist_do_post(request))
     messages.success(request, 'Tarefa criada com sucesso.')
     return redirect(_next_url(request))
 
@@ -210,10 +212,8 @@ def tarefa_usuarios_json(request, tarefa_id):
         'results': [{'id': u.id, 'nome': u.get_full_name() or u.username} for u in usuarios],
         'responsaveis_ids': responsaveis_ids,
         'status': tarefa.status,
-        'checklist': [
-            {**_checklist_item_dict(i), 'marcar_url': reverse('tarefa_checklist_marcar', args=[i.id])}
-            for i in tarefa.checklist.select_related('verificado_por')
-        ],
+        'adicionar_url': reverse('tarefa_checklist_adicionar', args=[tarefa.id]),
+        'checklist': [_checklist_item_dict(i) for i in tarefa.checklist.select_related('verificado_por')],
     })
 
 
@@ -221,11 +221,23 @@ def tarefa_usuarios_json(request, tarefa_id):
 # CHECKLIST — marcar item como verificado (painel do dashboard e Kanban)
 # ─────────────────────────────────────────────────────────────────────────
 
+def _itens_checklist_do_post(request):
+    return [t.strip()[:255] for t in request.POST.getlist('itens') if t.strip()]
+
+
+def _criar_itens_checklist(tarefa, textos):
+    TarefaChecklistItem.objects.bulk_create([
+        TarefaChecklistItem(tarefa=tarefa, texto=texto, ordem=i) for i, texto in enumerate(textos)
+    ])
+
+
 def _checklist_item_dict(item):
     return {
         'id': item.id,
         'texto': item.texto,
         'verificado': item.verificado,
+        'marcar_url': reverse('tarefa_checklist_marcar', args=[item.id]),
+        'remover_url': reverse('tarefa_checklist_remover', args=[item.id]),
         'verificado_por_nome': (
             (item.verificado_por.get_full_name() or item.verificado_por.username)
             if item.verificado_por_id else ''
@@ -257,15 +269,51 @@ def checklist_item_marcar(request, item_id):
 
     verificado = request.POST.get('verificado') in ('1', 'true', 'on')
     tarefa = marcar_item_checklist(item, request.user, verificado)
+    return _resposta_checklist(request, tarefa, item)
+
+
+@login_required(login_url='login')
+@require_POST
+def checklist_item_adicionar(request, tarefa_id):
+    tarefa = get_object_or_404(Tarefa.objects.select_related('cliente'), pk=tarefa_id)
+    if not _pode_mexer_na_tarefa(request.user, tarefa):
+        return JsonResponse({'success': False, 'error': 'Tarefa não encontrada.'}, status=404)
+    texto = (request.POST.get('texto') or '').strip()
+    if not texto:
+        return JsonResponse({'success': False, 'error': 'Escreva o item.'}, status=400)
+    tarefa, item = adicionar_item_checklist(tarefa, texto)
+    return _resposta_checklist(request, tarefa, item)
+
+
+@login_required(login_url='login')
+@require_POST
+def checklist_item_remover(request, item_id):
+    item = get_object_or_404(TarefaChecklistItem.objects.select_related('tarefa__cliente'), pk=item_id)
+    if not _pode_mexer_na_tarefa(request.user, item.tarefa):
+        return JsonResponse({'success': False, 'error': 'Item não encontrado.'}, status=404)
+    tarefa = remover_item_checklist(item)
+    return _resposta_checklist(request, tarefa)
+
+
+def _resposta_checklist(request, tarefa, item=None):
+    """Resposta comum de marcar/adicionar/remover: contagem, status e a
+    tarefa inteira no formato do Kanban (que já traz o checklist)."""
+    tarefa = (
+        Tarefa.objects.select_related('criado_por')
+        .prefetch_related('responsaveis', 'checklist__verificado_por')
+        .get(pk=tarefa.pk)
+    )
     feitos, total = tarefa.checklist_progresso
-    return JsonResponse({
+    dados = {
         'success': True,
-        'item': _checklist_item_dict(item),
         'feitos': feitos,
         'total': total,
         'status': tarefa.status,
         'tarefa': _tarefa_kanban_dict(tarefa, request),
-    })
+    }
+    if item is not None:
+        dados['item'] = next(_checklist_item_dict(i) for i in tarefa.checklist.all() if i.pk == item.pk)
+    return JsonResponse(dados)
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -284,7 +332,7 @@ def _dados_rotina_do_post(request):
         dia = 0
     if not 1 <= dia <= 31:
         return None, 'Escolha um dia do mês entre 1 e 31.'
-    itens = [t.strip()[:255] for t in request.POST.getlist('itens') if t.strip()]
+    itens = _itens_checklist_do_post(request)
     if not itens:
         return None, 'Adicione pelo menos um item ao checklist da rotina.'
     prioridade = request.POST.get('prioridade')
@@ -335,6 +383,12 @@ def rotina_criar(request):
             messages.error(request, 'Cliente inválido.')
             return redirect(_next_url(request))
 
+    rotina, geradas = _criar_rotina(request, dados, cliente)
+    messages.success(request, f'Rotina criada. {_mensagem_proxima(rotina, geradas)}')
+    return redirect(_next_url(request))
+
+
+def _criar_rotina(request, dados, cliente):
     with transaction.atomic():
         rotina = Rotina.objects.create(
             titulo=dados['titulo'],
@@ -348,10 +402,28 @@ def rotina_criar(request):
         _salvar_itens_rotina(rotina, dados['itens'])
         if request.POST.get('atribuir_a_mim'):
             rotina.responsaveis.add(request.user)
-
     geradas = gerar_ocorrencias_rotinas(rotinas=Rotina.objects.filter(pk=rotina.pk))
-    messages.success(request, f'Rotina criada. {_mensagem_proxima(rotina, geradas)}')
-    return redirect(_next_url(request))
+    return rotina, geradas
+
+
+@login_required(login_url='login')
+@backoffice_required
+@cliente_can_view_cliente
+@modulo_habilitado_required('tarefas')
+@require_POST
+def rotina_kanban_criar(request, cliente_id):
+    """Mesma criação do painel, pelo modal do Kanban do cliente (JSON).
+    Só back-office: o portal do cliente final não cria rotina."""
+    cliente = get_object_or_404(Cliente, pk=cliente_id)
+    dados, erro = _dados_rotina_do_post(request)
+    if erro:
+        return JsonResponse({'success': False, 'error': erro}, status=400)
+    rotina, geradas = _criar_rotina(request, dados, cliente)
+    return JsonResponse({
+        'success': True,
+        'mensagem': f'Rotina criada. {_mensagem_proxima(rotina, geradas)}',
+        'gerada': bool(geradas),
+    })
 
 
 @login_required(login_url='login')
@@ -491,10 +563,26 @@ def tarefas_kanban_json(request, cliente_id):
             for u in usuarios_atribuiveis(cliente)
         ]
 
+    rotinas = []
+    if is_backoffice(request.user):
+        hoje = timezone.localdate()
+        rotinas = [
+            {
+                'id': r.id,
+                'titulo': r.titulo,
+                'dia_do_mes': r.dia_do_mes,
+                'ativa': r.ativa,
+                'itens_total': len(r.itens.all()),
+                'proxima_fmt': r.proxima_data(hoje).strftime('%d/%m'),
+            }
+            for r in Rotina.objects.filter(cliente=cliente).prefetch_related('itens')
+        ]
+
     return JsonResponse({
         'tarefas': [_tarefa_kanban_dict(t, request) for t in tarefas],
         'is_backoffice': is_backoffice(request.user),
         'responsaveis': responsaveis,
+        'rotinas': rotinas,
     })
 
 
@@ -523,6 +611,7 @@ def tarefa_kanban_criar(request, cliente_id):
         prazo=prazo,
         criado_por=request.user,
     )
+    _criar_itens_checklist(tarefa, _itens_checklist_do_post(request))
     return JsonResponse({'success': True, 'tarefa': _tarefa_kanban_dict(tarefa, request)})
 
 
