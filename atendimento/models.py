@@ -363,6 +363,32 @@ class Message(models.Model):
         help_text='Quem apagou. A mensagem some da conversa mas a linha fica.'
     )
 
+    # ── Resposta a outra mensagem (citação) ─────────────────────────────
+    # `reply_to` é a citação quando a mensagem original está no CRM; é o
+    # caso normal, e é o que faz o balão citado ser clicável (rola até ela).
+    # Os três campos "soltos" cobrem o caso em que ela NÃO está: o cliente
+    # pode responder no celular a uma mensagem anterior à conexão atual, ou
+    # de um chamado já fechado que não está nesta conversa. Aí o WhatsApp
+    # manda o trecho citado no próprio evento, e guardá-lo é a única forma
+    # de a tela mostrar a que a pessoa respondeu — sem isso o balão apareceria
+    # solto e a resposta perderia o sentido.
+    reply_to = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies',
+        help_text='Mensagem citada, quando ela existe no CRM.'
+    )
+    reply_to_external_id = models.CharField(
+        max_length=255, null=True, blank=True, db_index=True,
+        help_text='wamid da mensagem citada (mesmo que ela não esteja no CRM).'
+    )
+    reply_preview = models.CharField(
+        max_length=300, blank=True, default='',
+        help_text='Trecho da citação, para quando a mensagem original não está no CRM.'
+    )
+    reply_sender_name = models.CharField(
+        max_length=255, blank=True, default='',
+        help_text='Quem escreveu a mensagem citada, idem.'
+    )
+
     class Meta:
         ordering = ['created_at']
         indexes = [
@@ -376,6 +402,65 @@ class Message(models.Model):
     @property
     def excluida(self) -> bool:
         return self.deleted_at is not None
+
+    #: Rótulo do balão citado quando não há texto para mostrar (mídia sem
+    #: legenda). O WhatsApp faz igual: mostra o tipo, não um espaço vazio.
+    ROTULO_POR_TIPO = {
+        'image': '📷 Imagem', 'video': '🎥 Vídeo', 'audio': '🎤 Áudio',
+        'document': '📄 Documento', 'location': '📍 Localização',
+    }
+
+    #: Textos que o webhook grava quando a mensagem não tem nada para mostrar.
+    #: Na citação valem como vazio: "📷 Imagem [mídia]" não diz mais do que
+    #: "📷 Imagem", só ocupa a linha.
+    CONTEUDO_VAZIO = ('[sem conteúdo]', '[mídia]')
+
+    def resumo_citado(self, limite: int = 120) -> str:
+        """Uma linha só do conteúdo, para caber no bloco de citação.
+
+        Quebra de linha vira espaço de propósito: a citação tem altura fixa
+        de duas linhas e um texto com \\n empurraria o balão inteiro.
+        """
+        if self.deleted_at:
+            return 'Mensagem apagada'
+        texto = ' '.join((self.content or '').split())
+        if not texto or texto in self.CONTEUDO_VAZIO:
+            return self.ROTULO_POR_TIPO.get(self.message_type, 'Mensagem')
+        if self.message_type != 'text':
+            texto = f"{self.ROTULO_POR_TIPO.get(self.message_type, '')} {texto}".strip()
+        return texto[:limite]
+
+    def autor_citado(self, nome_do_grupo: str = '') -> str:
+        """Nome a mostrar no topo do bloco de citação."""
+        if self.sender_type in ('agent', 'ai'):
+            return self.sender_name or 'Atendente'
+        if self.sender_type == 'internal':
+            return 'Nota interna'
+        return self.sender_name or nome_do_grupo or 'Cliente'
+
+    @property
+    def citacao(self) -> dict:
+        """A citação desta mensagem no formato que a tela entende, ou {}.
+
+        `id` só vem quando a mensagem citada está no CRM — é o que a tela usa
+        para rolar até ela. Sem `id`, o bloco aparece igual, mas sem clique.
+        """
+        alvo = self.reply_to
+        if alvo:
+            return {
+                'id': str(alvo.id),
+                'sender_name': alvo.autor_citado(),
+                'preview': alvo.resumo_citado(),
+                'sender_type': alvo.sender_type,
+            }
+        if self.reply_to_external_id or self.reply_preview:
+            return {
+                'id': '',
+                'sender_name': self.reply_sender_name or 'Mensagem citada',
+                'preview': self.reply_preview or 'Mensagem',
+                'sender_type': '',
+            }
+        return {}
 
 
 class ScheduledMessage(models.Model):

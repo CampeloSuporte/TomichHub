@@ -747,6 +747,64 @@ def _extrair_edicao(msg_content: dict):
     return None
 
 
+def _texto_do_quoted(quoted: dict) -> str:
+    """Uma linha do trecho citado que o WhatsApp manda dentro do contextInfo.
+
+    Serve só de reserva: quando a mensagem citada está no CRM, quem manda é o
+    conteúdo dela (que pode ter sido editado depois). Este texto é o que
+    salva o bloco de citação quando a original é anterior à conexão atual, ou
+    está num chamado antigo que não é esta conversa.
+    """
+    if not isinstance(quoted, dict):
+        return ''
+    texto = (
+        quoted.get("conversation")
+        or (quoted.get("extendedTextMessage") or {}).get("text")
+        or (quoted.get("imageMessage") or {}).get("caption")
+        or (quoted.get("videoMessage") or {}).get("caption")
+        or (quoted.get("documentMessage") or {}).get("fileName")
+        or ''
+    )
+    if not texto:
+        for wkey, mtype in _MEDIA_TYPE_MAP.items():
+            if wkey in quoted:
+                return Message.ROTULO_POR_TIPO.get(mtype, 'Mensagem')
+    return ' '.join(str(texto).split())[:300]
+
+
+def _extrair_citacao(msg_content: dict) -> dict:
+    """Detecta que a mensagem recebida é RESPOSTA a outra e devolve
+    {'alvo': wamid_da_citada, 'participant': …, 'preview': …}, ou {}.
+
+    O WhatsApp não manda isso num evento separado: a citação vem como
+    `contextInfo` pendurado no próprio corpo da mensagem — em
+    `extendedTextMessage` no caso de texto, e dentro do objeto de mídia
+    (`imageMessage`, `audioMessage`, …) quando respondem com foto ou áudio.
+    Por isso varre todos os corpos, em vez de olhar só o de texto.
+
+    `stanzaId` é o wamid da mensagem citada e é o que liga a resposta ao
+    balão de cá; `participant` é quem a escreveu, usado só para nomear o
+    bloco quando a original não está no CRM.
+    """
+    if not isinstance(msg_content, dict):
+        return {}
+    for corpo in msg_content.values():
+        if not isinstance(corpo, dict):
+            continue
+        ctx = corpo.get("contextInfo")
+        if not isinstance(ctx, dict):
+            continue
+        alvo = ctx.get("stanzaId") or ctx.get("stanzaID")
+        if not alvo:
+            continue
+        return {
+            "alvo": alvo,
+            "participant": ctx.get("participant") or "",
+            "preview": _texto_do_quoted(ctx.get("quotedMessage") or {}),
+        }
+    return {}
+
+
 def auto_assign_on_reply(conversation: Conversation, agent) -> bool:
     """Atribui a conversa a quem respondeu, quando ela ainda não tem dono.
 
@@ -1127,13 +1185,33 @@ class EvolutionAPIClient:
             logger.error(f"Erro ao reagir à mensagem {message_id} em {jid}: {e}")
             return False, str(e)
 
+    @staticmethod
+    def montar_quoted(key: Dict, texto: str = "") -> Dict:
+        """Monta o campo `quoted` do envio (responder citando outra mensagem).
+
+        Evolution 2.x aceita `quoted` no corpo do próprio `sendText`/`sendMedia`
+        (na 1.x ficava dentro de `options`). O que importa de verdade é
+        `quoted.key`: é dela que o WhatsApp tira o `stanzaId` e o `participant`
+        do `contextInfo` — sem o `participant`, em grupo, o aplicativo mostra a
+        resposta solta, sem o bloco citado. `quoted.message` é só o trecho que
+        o WhatsApp exibe dentro do bloco; mandar vazio não impede a citação.
+        """
+        quoted = {"key": {k: v for k, v in (key or {}).items() if v not in (None, '')}}
+        if texto:
+            quoted["message"] = {"conversation": texto[:1000]}
+        return quoted
+
     def send_text(self, jid: str, text: str, mentions: List[str] = None,
-                  everyone: bool = False) -> Tuple[bool, str]:
+                  everyone: bool = False, quoted: Dict = None) -> Tuple[bool, str]:
         """Envia mensagem de texto. Retorna (sucesso, message_id_evolution).
         everyone=True: passa os números no campo 'mentioned' (todos recebem notificação)
         sem poluir o corpo da mensagem com @número.
+        `quoted` (ver `montar_quoted`) faz a mensagem sair como resposta a
+        outra, com o bloco citado em cima — igual a responder no celular.
         """
         body = {"number": jid, "text": text}
+        if quoted:
+            body["quoted"] = quoted
         if everyone and jid.endswith("@g.us"):
             numbers = self.get_group_participants(jid)
             if numbers:
@@ -1176,21 +1254,32 @@ class EvolutionAPIClient:
             return False, ""
 
     def send_media(self, jid: str, mediatype: str, media_b64: str,
-                   filename: str = "arquivo", caption: str = "") -> bool:
-        """Envia mídia (imagem, documento, vídeo)"""
+                   filename: str = "arquivo", caption: str = "",
+                   quoted: Dict = None) -> Tuple[bool, str]:
+        """Envia mídia (imagem, documento, vídeo).
+
+        Retorna (sucesso, message_id_evolution) como o `send_text` — o id é
+        gravado no `external_id` da Message, e é ele que torna a mídia que
+        *nós* enviamos citável, editável do lado do WhatsApp e apagável.
+        Antes ficava para sempre com o id local `local_media_…`, que não
+        existe do outro lado.
+        """
+        body = {
+            "number": jid,
+            "mediatype": mediatype,
+            "media": media_b64,
+            "fileName": filename,
+            "caption": caption or "",
+        }
+        if quoted:
+            body["quoted"] = quoted
         try:
-            r = self._post(f"/message/sendMedia/{self.instance}", {
-                "number": jid,
-                "mediatype": mediatype,
-                "media": media_b64,
-                "fileName": filename,
-                "caption": caption or "",
-            })
+            r = self._post(f"/message/sendMedia/{self.instance}", body)
             r.raise_for_status()
-            return True
+            return True, (r.json().get("key", {}) or {}).get("id") or ""
         except Exception as e:
             logger.error(f"Erro ao enviar mídia para {jid}: {e}")
-            return False
+            return False, ""
 
     def download_media(self, event_data: dict) -> tuple:
         """Baixa a mídia de uma mensagem recebida via webhook.
@@ -1212,19 +1301,18 @@ class EvolutionAPIClient:
             logger.warning(f"Falha ao baixar mídia: {e}")
         return None, None
 
-    def send_audio(self, jid: str, audio_b64: str) -> bool:
-        """Envia áudio PTT"""
+    def send_audio(self, jid: str, audio_b64: str, quoted: Dict = None) -> Tuple[bool, str]:
+        """Envia áudio PTT. Retorna (sucesso, message_id_evolution)."""
+        body = {"number": jid, "audio": audio_b64, "encoding": True}
+        if quoted:
+            body["quoted"] = quoted
         try:
-            r = self._post(f"/message/sendWhatsAppAudio/{self.instance}", {
-                "number": jid,
-                "audio": audio_b64,
-                "encoding": True,
-            })
+            r = self._post(f"/message/sendWhatsAppAudio/{self.instance}", body)
             r.raise_for_status()
-            return True
+            return True, (r.json().get("key", {}) or {}).get("id") or ""
         except Exception:
             # fallback como media
-            return self.send_media(jid, "audio", audio_b64, "audio.mp3")
+            return self.send_media(jid, "audio", audio_b64, "audio.mp3", quoted=quoted)
 
     # ── Webhook ──────────────────────────────────────────────────────────────
 
@@ -1517,6 +1605,13 @@ class ConversationService:
                 or "[sem conteúdo]"
             )
 
+            # ── Respondeu citando outra mensagem? ──────────────────────────
+            # Não é um evento à parte: vem como `contextInfo` pendurado no
+            # corpo da própria mensagem. Sem ler isso, a resposta do cliente
+            # ("esse aqui", "pode fazer") chegava solta e o atendente não
+            # tinha como saber a que ela se referia.
+            citacao = _extrair_citacao(msg_content)
+
             # ── Baixa mídia (apenas para mensagens recebidas) ──────────────
             attachment_url = None
             if detected_type != "text" and not from_me:
@@ -1561,7 +1656,8 @@ class ConversationService:
                 if conv:
                     msg, created = ConversationService._salvar_msg(
                         conv, message_id, content, detected_type,
-                        push_name_override or push_name, attachment_url, sender_type=sender_type)
+                        push_name_override or push_name, attachment_url, sender_type=sender_type,
+                        citacao=citacao, connection=connection)
                     if created:
                         conv.last_message_at = now
                         conv.save(update_fields=['last_message_at'])
@@ -1583,7 +1679,8 @@ class ConversationService:
             if conv:
                 msg, created = ConversationService._salvar_msg(
                     conv, message_id, content, detected_type,
-                    push_name_override or push_name, attachment_url, sender_type=sender_type)
+                    push_name_override or push_name, attachment_url, sender_type=sender_type,
+                    citacao=citacao, connection=connection)
                 if created:
                     conv.last_message_at = now
                     if conv.status == 'new':
@@ -1618,7 +1715,8 @@ class ConversationService:
 
             msg, created = ConversationService._salvar_msg(
                 conv, message_id, content, detected_type,
-                push_name_override or push_name, attachment_url, sender_type=sender_type)
+                push_name_override or push_name, attachment_url, sender_type=sender_type,
+                citacao=citacao, connection=connection)
             if not created:
                 return {"success": True, "message": "dup", "conversation_id": str(conv.id)}
             conv.last_message_at = now
@@ -1795,8 +1893,41 @@ class ConversationService:
         })
 
     @staticmethod
+    def _campos_de_citacao(conversation, citacao: dict, connection=None) -> Dict:
+        """Traduz o `contextInfo` do webhook nos campos de citação da Message.
+
+        A mensagem citada quase sempre está nesta conversa, e aí o vínculo é
+        a FK — o balão fica clicável e o trecho acompanha edições posteriores.
+        Quando não está (anterior à conexão atual, ou de um chamado já
+        fechado), guarda-se o trecho solto: sem ele o balão apareceria sem
+        contexto nenhum, que é pior do que uma citação não clicável.
+        """
+        alvo = (citacao or {}).get("alvo")
+        if not alvo:
+            return {}
+        campos = {"reply_to_external_id": alvo[:255]}
+        original = Message.objects.filter(external_id=alvo).first()
+        if original and original.conversation_id == conversation.id:
+            campos["reply_to"] = original
+            return campos
+        if original:
+            campos["reply_preview"] = original.resumo_citado(300)
+            campos["reply_sender_name"] = original.autor_citado()[:255]
+            return campos
+        campos["reply_preview"] = (citacao.get("preview") or '')[:300]
+        participant = citacao.get("participant") or ''
+        nome = ''
+        if connection and participant:
+            nome = (GroupMemberName.objects
+                    .filter(connection=connection, jid=participant)
+                    .values_list('name', flat=True).first()) or ''
+        campos["reply_sender_name"] = (nome or participant.split('@')[0])[:255]
+        return campos
+
+    @staticmethod
     def _salvar_msg(conversation, message_id, content, detected_type,
-                    push_name, attachment_url, sender_type='customer'):
+                    push_name, attachment_url, sender_type='customer',
+                    citacao=None, connection=None):
         """Cria a mensagem (idempotente pelo external_id)."""
         return Message.objects.get_or_create(
             external_id=message_id,
@@ -1807,6 +1938,7 @@ class ConversationService:
                 "content": content,
                 "sender_name": push_name,
                 "attachment_url": attachment_url,
+                **ConversationService._campos_de_citacao(conversation, citacao, connection),
             },
         )
 
@@ -1826,6 +1958,9 @@ class ConversationService:
                 "message_type": msg.message_type,
                 "attachment_url": msg.attachment_url or "",
                 "sender_id": msg.sender_id,
+                # Bloco citado, quando a mensagem é resposta a outra. Vazio
+                # ({}) na esmagadora maioria — a tela só desenha se vier.
+                "reply": msg.citacao,
             },
             "conversation": {
                 "id": str(conversation.id),
@@ -1959,9 +2094,77 @@ class ConversationService:
         except Exception:
             return agent.get_full_name() or agent.username
 
+    # ── Responder citando outra mensagem ──────────────────────────────────
+
+    @staticmethod
+    def pode_responder(message, is_internal: bool = False) -> Tuple[bool, str]:
+        """Diz se dá para responder citando `message`, e por que não quando
+        não dá.
+
+        Duas réguas, porque são dois destinos diferentes:
+
+        - **Nota interna** (`is_internal`): a citação não sai do CRM, então
+          vale citar qualquer coisa que esteja na conversa — inclusive outra
+          nota interna.
+        - **Mensagem para o cliente**: a citação vai junto para o WhatsApp,
+          e lá ela só existe se a mensagem citada também existir. Mesma régua
+          de `pode_reagir` — nota interna e mensagem sem wamid confirmado
+          ficam de fora, senão o CRM mostraria um bloco citado que o cliente
+          nunca recebeu.
+        """
+        if message.deleted_at:
+            return False, 'Não dá para responder a uma mensagem apagada.'
+        if message.sender_type == 'system':
+            return False, 'Aviso do sistema não é uma mensagem para responder.'
+        if is_internal:
+            return True, ''
+        if message.is_internal or message.sender_type == 'internal':
+            return False, ('Nota interna não foi para o WhatsApp. Responda a ela '
+                           'em "Comentário Interno".')
+        if not message.external_id or message.external_id.startswith(
+                ConversationService.IDS_INTERNOS + ('local_',)):
+            return False, 'Essa mensagem ainda não foi confirmada pelo WhatsApp.'
+        return True, ''
+
+    @staticmethod
+    def _quoted_para_envio(message, group) -> Tuple[bool, Optional[Dict], str]:
+        """Monta o `quoted` da Evolution para responder a `message`.
+
+        Retorna (ok, quoted, erro). Roda **antes** do envio em background, de
+        propósito: é a última chance de recusar com um motivo que chega à
+        tela — depois que a thread começa, o atendente já viu o balão.
+
+        A key vem da Evolution (`find_message_key`) pelo mesmo motivo da
+        reação: em grupo o WhatsApp exige o `participant` da mensagem citada
+        para montar o bloco, e o CRM não guarda esse campo.
+        """
+        cliente = EvolutionAPIClient(group.connection)
+        key = cliente.find_message_key(message.external_id)
+        if not key:
+            propria = bool(message.sender_id) and message.sender_type == 'agent'
+            if not propria and group.jid.endswith('@g.us'):
+                return False, None, ('Não encontrei essa mensagem no WhatsApp para responder. '
+                                     'Ela pode ser anterior à conexão atual.')
+            key = {"id": message.external_id, "remoteJid": group.jid, "fromMe": propria}
+        return True, EvolutionAPIClient.montar_quoted(key, message.resumo_citado(300)), ''
+
+    @staticmethod
+    def _resolver_citacao(conversation, reply_to_id, is_internal: bool):
+        """Valida o alvo da citação e devolve (ok, message|None, erro)."""
+        if not reply_to_id:
+            return True, None, ''
+        alvo = Message.objects.filter(id=reply_to_id, conversation=conversation).first()
+        if not alvo:
+            return False, None, 'A mensagem citada não é desta conversa.'
+        pode, motivo = ConversationService.pode_responder(alvo, is_internal)
+        if not pode:
+            return False, None, motivo
+        return True, alvo, ''
+
     @staticmethod
     def send_message(conversation: Conversation, text: str,
-                     agent=None, is_internal=False, mentions=None) -> Tuple[bool, str]:
+                     agent=None, is_internal=False, mentions=None,
+                     reply_to=None) -> Tuple[bool, str]:
         """Salva a mensagem imediatamente. Se `is_internal`, é uma nota
         interna — fica só no CRM, NUNCA sai pro WhatsApp do cliente (o
         toggle "Comentário Interno" da tela chegava a esta função sem
@@ -1973,6 +2176,9 @@ class ConversationService:
         {'nome','phone'}): o CRM guarda o texto legível com o nome e o
         WhatsApp recebe o número, que é o que faz a menção destacar e
         notificar a pessoa. Nota interna ignora — não sai nada pro grupo.
+
+        `reply_to` é o id de outra Message desta conversa: a mensagem sai
+        citando aquela, com o bloco em cima, como responder no celular.
         """
         import threading as _threading
 
@@ -1981,6 +2187,20 @@ class ConversationService:
             sender_type = "internal" if is_internal else "agent"
             texto_wa, numeros_mencionados = aplicar_mencoes(text, mentions)
             whatsapp_text = f"*{display_name}*\n\n{texto_wa}"
+
+            # 0a. Citação: resolvida e validada ANTES de gravar qualquer
+            # coisa. Recusar depois deixaria na tela um balão que o cliente
+            # não recebeu como resposta.
+            ok, citada, erro = ConversationService._resolver_citacao(
+                conversation, reply_to, is_internal)
+            if not ok:
+                return False, erro
+            quoted = None
+            if citada and not is_internal:
+                ok, quoted, erro = ConversationService._quoted_para_envio(
+                    citada, conversation.group)
+                if not ok:
+                    return False, erro
 
             # 0. Quem responde, assume — vale para qualquer caminho de envio
             # (inclusive nota interna: escrever sobre o chamado já é sinal
@@ -2000,6 +2220,8 @@ class ConversationService:
                 content=text,
                 created_at=now,
                 is_internal=is_internal,
+                reply_to=citada,
+                reply_to_external_id=(citada.external_id if citada else None),
             )
 
             # 2. Atualiza conversa e cria atividade. Nota interna não chega
@@ -2039,6 +2261,7 @@ class ConversationService:
                     # Quem escreveu: a tela usa para decidir se mostra o lápis
                     # de editar (o servidor revalida na hora de salvar).
                     "sender_id": agent.id if agent else None,
+                    "reply": msg.citacao,
                 },
             })
 
@@ -2062,7 +2285,8 @@ class ConversationService:
                 try:
                     client = EvolutionAPIClient(group_connection)
                     ok, remote_id = client.send_text(
-                        group_jid, whatsapp_text, mentions=numeros_mencionados or None)
+                        group_jid, whatsapp_text, mentions=numeros_mencionados or None,
+                        quoted=quoted)
                     if ok and remote_id:
                         Message.objects.filter(id=msg_id).update(external_id=remote_id)
                     elif not ok:
@@ -2398,18 +2622,36 @@ class ConversationService:
 
     @staticmethod
     def send_media(conversation: Conversation, media_base64: str, media_type: str,
-                   file_name: str, caption: str, agent=None) -> Tuple[bool, str]:
+                   file_name: str, caption: str, agent=None,
+                   reply_to=None) -> Tuple[bool, str]:
         """Salva a Message de mídia imediatamente e envia ao WhatsApp em
         background. Mesma mecânica de send_message, mas para
         imagem/áudio/vídeo/documento. Igual ao envio imediato, sempre salva
         um arquivo novo em disco (mesmo se o chamador já tiver um
         attachment_url de antes, como no agendador) — simples e evita um
-        segundo caminho de código só pra reaproveitar o arquivo."""
+        segundo caminho de código só pra reaproveitar o arquivo.
+
+        `reply_to` cita outra mensagem da conversa, como no send_message —
+        mandar a foto do equipamento respondendo à pergunta do cliente é
+        justamente o caso em que a citação mais ajuda."""
         import threading as _threading
         import mimetypes as _mt
         import time as _t
 
         try:
+            # Citação validada antes de gravar, como no send_message: mídia
+            # nunca é nota interna, então a régua é sempre a do WhatsApp.
+            ok, citada, erro = ConversationService._resolver_citacao(
+                conversation, reply_to, is_internal=False)
+            if not ok:
+                return False, erro
+            quoted = None
+            if citada:
+                ok, quoted, erro = ConversationService._quoted_para_envio(
+                    citada, conversation.group)
+                if not ok:
+                    return False, erro
+
             detected_mime, _ = _mt.guess_type(file_name)
             if not detected_mime:
                 detected_mime = {
@@ -2439,6 +2681,8 @@ class ConversationService:
                 sender_name=display_name, message_type=media_type, content=content,
                 external_id=f"local_media_{int(_t.time()*1000)}",
                 attachment_url=attachment_url, created_at=now,
+                reply_to=citada,
+                reply_to_external_id=(citada.external_id if citada else None),
             )
             conversation.last_message_at = now
             if conversation.status == 'new':
@@ -2453,10 +2697,16 @@ class ConversationService:
                 try:
                     client = EvolutionAPIClient(group_connection)
                     if media_type == 'audio':
-                        client.send_audio(group_jid, media_base64)
+                        ok_env, remote_id = client.send_audio(group_jid, media_base64, quoted=quoted)
                     else:
-                        client.send_media(group_jid, mediatype=media_type, media_b64=media_base64,
-                                          filename=file_name, caption=caption)
+                        ok_env, remote_id = client.send_media(
+                            group_jid, mediatype=media_type, media_b64=media_base64,
+                            filename=file_name, caption=caption, quoted=quoted)
+                    # Troca o id local pelo wamid, como o envio de texto já
+                    # fazia: é ele que deixa a mídia que nós mandamos ser
+                    # citada, editada e apagada depois.
+                    if ok_env and remote_id:
+                        Message.objects.filter(id=msg_id).update(external_id=remote_id)
                 except Exception as _e:
                     logger.error(f"Erro bg envio mídia (msg {msg_id}): {_e}")
 

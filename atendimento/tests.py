@@ -79,7 +79,7 @@ class SendMediaServiceTest(TestCase):
     @mock.patch('atendimento.services._save_media_file', return_value='/media/atendimento/media/fake.jpg')
     @mock.patch('atendimento.services.EvolutionAPIClient')
     def test_send_media_cria_message_com_tipo_e_legenda(self, mock_client_cls, mock_save):
-        mock_client_cls.return_value.send_media.return_value = True
+        mock_client_cls.return_value.send_media.return_value = (True, 'WAMID_MEDIA')
 
         ok, result = ConversationService.send_media(
             self.conversation, 'ZmFrZQ==', 'image', 'foto.jpg', 'Segue a foto', self.agent
@@ -95,7 +95,7 @@ class SendMediaServiceTest(TestCase):
     @mock.patch('atendimento.services._save_media_file', return_value='/media/atendimento/media/fake.mp4')
     @mock.patch('atendimento.services.EvolutionAPIClient')
     def test_send_media_sem_legenda_usa_rotulo_do_tipo(self, mock_client_cls, mock_save):
-        mock_client_cls.return_value.send_media.return_value = True
+        mock_client_cls.return_value.send_media.return_value = (True, 'WAMID_MEDIA')
 
         ok, result = ConversationService.send_media(
             self.conversation, 'ZmFrZQ==', 'video', 'video.mp4', '', self.agent
@@ -107,7 +107,7 @@ class SendMediaServiceTest(TestCase):
     @mock.patch('atendimento.services._save_media_file', return_value='/media/atendimento/media/audio.ogg')
     @mock.patch('atendimento.services.EvolutionAPIClient')
     def test_send_media_audio_chama_send_audio_nao_send_media(self, mock_client_cls, mock_save):
-        mock_client_cls.return_value.send_audio.return_value = True
+        mock_client_cls.return_value.send_audio.return_value = (True, 'WAMID_AUDIO')
 
         ok, result = ConversationService.send_media(
             self.conversation, 'ZmFrZQ==', 'audio', 'audio.ogg', '', self.agent
@@ -126,7 +126,7 @@ class ApiSendMediaTest(TestCase):
     @mock.patch('atendimento.services._save_media_file', return_value='/media/atendimento/media/fake.jpg')
     @mock.patch('atendimento.services.EvolutionAPIClient')
     def test_envia_midia_com_legenda(self, mock_client_cls, mock_save):
-        mock_client_cls.return_value.send_media.return_value = True
+        mock_client_cls.return_value.send_media.return_value = (True, 'WAMID_MEDIA')
         url = reverse('atendimento:api_send_media', args=[self.conversation.id])
         resp = self.client.post(url, data=json.dumps({
             'mediaBase64': 'ZmFrZQ==', 'mediaType': 'image',
@@ -257,7 +257,7 @@ class EnviarMensagensAgendadasTest(TestCase):
     @mock.patch('atendimento.services._read_attachment_as_base64', return_value='ZmFrZQ==')
     @mock.patch('atendimento.services.EvolutionAPIClient')
     def test_envia_mensagem_de_midia_vencida(self, mock_client_cls, mock_read_b64, mock_save):
-        mock_client_cls.return_value.send_media.return_value = True
+        mock_client_cls.return_value.send_media.return_value = (True, 'WAMID_MEDIA')
         sm = ScheduledMessage.objects.create(
             conversation=self.conversation, created_by=self.agent,
             message_type='image', content='Legenda da foto',
@@ -483,7 +483,7 @@ class AgendadorFluxoCompletoTest(TestCase):
         """O ponto sutil da feature: agendar guarda a legenda CRUA (vazia), e o
         rótulo padrão ('Imagem') só é calculado na hora do envio. Se o endpoint
         gravasse 'Imagem' como legenda, a mídia sairia com esse texto colado."""
-        mock_client_cls.return_value.send_media.return_value = True
+        mock_client_cls.return_value.send_media.return_value = (True, 'WAMID_MEDIA')
         b64 = base64.b64encode(b'bytes-de-imagem-fake').decode()
 
         resp = self.client.post(self.url, data=json.dumps({
@@ -561,7 +561,7 @@ class AutoAtribuicaoAoResponderTest(TestCase):
     @mock.patch('atendimento.services._save_media_file', return_value='/media/atendimento/media/fake.jpg')
     @mock.patch('atendimento.services.EvolutionAPIClient')
     def test_send_media_tambem_atribui(self, mock_client_cls, _mock_save):
-        mock_client_cls.return_value.send_media.return_value = True
+        mock_client_cls.return_value.send_media.return_value = (True, 'WAMID_MEDIA')
 
         ok, _ = ConversationService.send_media(
             self.conversation, base64.b64encode(b'x').decode(), 'image', 'foto.jpg', '', self.agent,
@@ -3696,3 +3696,321 @@ class ReagirMensagemTest(TestCase):
         self.assertIn(botao, bloco_cliente)
         self.assertNotIn(botao, bloco_nota)
         self.assertIn('msg-reaction mine" data-emoji="🙏"', bloco_cliente)
+
+
+class ResponderMensagemTest(TestCase):
+    """Responder citando outra mensagem, como no WhatsApp.
+
+    O que está em teste é a mesma exigência de editar/apagar/reagir: os dois
+    lados têm que contar a mesma história. Se o balão do CRM mostra uma
+    citação, o cliente precisa ter recebido a resposta citando — senão o
+    atendente conversa com um contexto que só existe aqui.
+    """
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.group = self.conversation.group
+        self.group.jid = '120363424696737223@g.us'
+        self.group.save(update_fields=['jid'])
+        self.agent = _criar_agente_staff('rita')
+        self.agent.first_name = 'Rita'
+        self.agent.save(update_fields=['first_name'])
+        self.msg = self._msg()
+
+    def _msg(self, **kw):
+        campos = dict(
+            conversation=self.conversation, sender_type='customer',
+            sender_name='Douglas', message_type='text',
+            content='O link do roteador caiu de novo',
+            external_id='3EB015306B1CBD33E413F2',
+        )
+        campos.update(kw)
+        return Message.objects.create(**campos)
+
+    KEY_DO_CLIENTE = {
+        'id': '3EB015306B1CBD33E413F2', 'fromMe': False,
+        'remoteJid': '120363424696737223@g.us', 'participant': '258668834611317@lid',
+    }
+
+    def _webhook(self, message_dict, msg_id='3EB0RESPOSTA'):
+        return ConversationService.process_webhook({
+            'event': 'MESSAGES_UPSERT',
+            'instance': self.group.connection.instance_name,
+            'data': {
+                'key': {'id': msg_id, 'fromMe': False, 'remoteJid': self.group.jid},
+                'pushName': 'Douglas',
+                'message': message_dict,
+            },
+        })
+
+    # ── A que mensagem dá para responder ────────────────────────────────
+
+    def test_da_para_responder_a_mensagem_do_cliente(self):
+        self.assertEqual(ConversationService.pode_responder(self.msg), (True, ''))
+
+    def test_nao_responde_a_apagada_nem_a_aviso_do_sistema(self):
+        casos = {
+            'apagada': self._msg(deleted_at=timezone.now(), external_id='a1'),
+            'sistema': self._msg(sender_type='system', external_id='s1'),
+        }
+        for trecho, msg in casos.items():
+            for interna in (False, True):
+                pode, motivo = ConversationService.pode_responder(msg, interna)
+                self.assertFalse(pode, f'{trecho} interna={interna}')
+                self.assertIn(trecho, motivo)
+
+    def test_nota_interna_so_e_citavel_em_comentario_interno(self):
+        """Citar a nota numa mensagem ao cliente mostraria no CRM um bloco que
+        ele não recebeu — a nota nunca saiu daqui."""
+        nota = self._msg(sender_type='internal', is_internal=True, external_id='n1')
+
+        pode, motivo = ConversationService.pode_responder(nota, is_internal=False)
+        self.assertFalse(pode)
+        self.assertIn('Comentário Interno', motivo)
+        self.assertEqual(ConversationService.pode_responder(nota, is_internal=True), (True, ''))
+
+    def test_mensagem_sem_wamid_confirmado_so_e_citavel_por_dentro(self):
+        enviando = self._msg(sender_type='agent', external_id='sending_123_abc')
+
+        self.assertFalse(ConversationService.pode_responder(enviando)[0])
+        self.assertTrue(ConversationService.pode_responder(enviando, is_internal=True)[0])
+
+    # ── Envio citando ───────────────────────────────────────────────────
+
+    @mock.patch.object(EvolutionAPIClient, 'send_text', return_value=(True, 'WAMID1'))
+    @mock.patch.object(EvolutionAPIClient, 'find_message_key')
+    def test_responder_manda_quoted_com_a_key_da_citada(self, mock_key, mock_text):
+        mock_key.return_value = self.KEY_DO_CLIENTE
+
+        ok, msg_id = ConversationService.send_message(
+            self.conversation, 'Já estou vendo', self.agent, reply_to=str(self.msg.id))
+
+        self.assertTrue(ok)
+        _args, kwargs = mock_text.call_args
+        self.assertEqual(kwargs['quoted'], {
+            'key': self.KEY_DO_CLIENTE,
+            'message': {'conversation': 'O link do roteador caiu de novo'},
+        })
+        resposta = Message.objects.get(id=msg_id)
+        self.assertEqual(resposta.reply_to_id, self.msg.id)
+        self.assertEqual(resposta.reply_to_external_id, self.msg.external_id)
+
+    @mock.patch.object(EvolutionAPIClient, 'send_text', return_value=(True, 'WAMID1'))
+    @mock.patch.object(EvolutionAPIClient, 'find_message_key', return_value=None)
+    def test_sem_key_em_grupo_recusa_e_nao_grava_a_resposta(self, _mock_key, mock_text):
+        """Mesma recusa da reação: sem o `participant` o WhatsApp entrega o
+        texto solto, e o CRM ficaria com uma citação que só existe aqui."""
+        antes = Message.objects.count()
+
+        ok, erro = ConversationService.send_message(
+            self.conversation, 'Já estou vendo', self.agent, reply_to=str(self.msg.id))
+
+        self.assertFalse(ok)
+        self.assertIn('Não encontrei', erro)
+        mock_text.assert_not_called()
+        self.assertEqual(Message.objects.count(), antes)
+
+    @mock.patch.object(EvolutionAPIClient, 'send_text', return_value=(True, 'WAMID1'))
+    @mock.patch.object(EvolutionAPIClient, 'find_message_key', return_value=None)
+    def test_sem_key_mensagem_nossa_vai_como_fromme(self, _mock_key, mock_text):
+        nossa = self._msg(sender_type='agent', sender=self.agent,
+                          content='Segue o boleto', external_id='3EB0NOSSA')
+
+        ok, _ = ConversationService.send_message(
+            self.conversation, 'Confirmado', self.agent, reply_to=str(nossa.id))
+
+        self.assertTrue(ok)
+        self.assertEqual(mock_text.call_args.kwargs['quoted']['key'],
+                         {'id': '3EB0NOSSA', 'remoteJid': self.group.jid, 'fromMe': True})
+
+    def test_nota_interna_cita_sem_falar_com_o_whatsapp(self):
+        nota = self._msg(sender_type='internal', is_internal=True,
+                         content='Cliente já reclamou disso ontem', external_id='n1')
+
+        with mock.patch.object(EvolutionAPIClient, 'find_message_key') as mock_key:
+            ok, msg_id = ConversationService.send_message(
+                self.conversation, 'Vou checar o histórico', self.agent,
+                is_internal=True, reply_to=str(nota.id))
+
+        self.assertTrue(ok)
+        mock_key.assert_not_called()
+        self.assertEqual(Message.objects.get(id=msg_id).reply_to_id, nota.id)
+
+    def test_citar_mensagem_de_outra_conversa_e_recusado(self):
+        outra = Message.objects.create(
+            conversation=_criar_conversa(), sender_type='customer',
+            content='De outro chamado', external_id='3EB0OUTRA',
+        )
+
+        ok, erro = ConversationService.send_message(
+            self.conversation, 'oi', self.agent, reply_to=str(outra.id))
+
+        self.assertFalse(ok)
+        self.assertIn('não é desta conversa', erro)
+
+    @mock.patch('atendimento.services._save_media_file', return_value='/media/x.jpg')
+    @mock.patch.object(EvolutionAPIClient, 'find_message_key')
+    def test_midia_tambem_sai_citando(self, mock_key, _mock_save):
+        mock_key.return_value = self.KEY_DO_CLIENTE
+
+        ok, msg_id = ConversationService.send_media(
+            self.conversation, 'BASE64', 'image', 'foto.jpg', 'olha a porta',
+            self.agent, reply_to=str(self.msg.id))
+
+        self.assertTrue(ok)
+        self.assertEqual(Message.objects.get(id=msg_id).reply_to_id, self.msg.id)
+
+    # ── Resposta que CHEGA do cliente ───────────────────────────────────
+
+    def test_resposta_do_cliente_vira_citacao_ligada_ao_balao(self):
+        self._webhook({'extendedTextMessage': {
+            'text': 'esse mesmo',
+            'contextInfo': {
+                'stanzaId': self.msg.external_id,
+                'participant': '258668834611317@lid',
+                'quotedMessage': {'conversation': 'O link do roteador caiu de novo'},
+            },
+        }})
+
+        resposta = Message.objects.get(external_id='3EB0RESPOSTA')
+        self.assertEqual(resposta.reply_to_id, self.msg.id)
+        self.assertEqual(resposta.citacao['preview'], 'O link do roteador caiu de novo')
+        self.assertEqual(resposta.citacao['id'], str(self.msg.id))
+
+    def test_citacao_de_mensagem_que_o_crm_nao_tem_guarda_o_trecho(self):
+        """Cliente responde a algo anterior à conexão atual: sem guardar o
+        trecho, o balão apareceria sem contexto nenhum."""
+        self._webhook({'extendedTextMessage': {
+            'text': 'pode fazer',
+            'contextInfo': {
+                'stanzaId': '3EB0ANTIGA',
+                'participant': '258668834611317@lid',
+                'quotedMessage': {'conversation': 'Posso reiniciar a OLT?'},
+            },
+        }})
+
+        resposta = Message.objects.get(external_id='3EB0RESPOSTA')
+        self.assertIsNone(resposta.reply_to_id)
+        self.assertEqual(resposta.reply_to_external_id, '3EB0ANTIGA')
+        self.assertEqual(resposta.citacao['preview'], 'Posso reiniciar a OLT?')
+        self.assertEqual(resposta.citacao['id'], '')   # sem clique: não está aqui
+
+    def test_citacao_vem_tambem_de_resposta_com_midia(self):
+        """Em foto/áudio o contextInfo mora dentro do objeto de mídia, não no
+        extendedTextMessage."""
+        with mock.patch.object(EvolutionAPIClient, 'download_media', return_value=(None, None)):
+            self._webhook({'imageMessage': {
+                'caption': 'olha como ficou',
+                'mimetype': 'image/jpeg',
+                'contextInfo': {'stanzaId': self.msg.external_id, 'participant': 'x@lid'},
+            }})
+
+        self.assertEqual(Message.objects.get(external_id='3EB0RESPOSTA').reply_to_id, self.msg.id)
+
+    def test_mensagem_sem_contexto_nao_ganha_citacao(self):
+        self._webhook({'conversation': 'bom dia'})
+
+        self.assertEqual(Message.objects.get(external_id='3EB0RESPOSTA').citacao, {})
+
+    def test_citacao_de_midia_sem_legenda_mostra_o_tipo(self):
+        foto = self._msg(message_type='image', content='[mídia]', external_id='3EB0FOTO')
+
+        self.assertEqual(foto.resumo_citado(), '📷 Imagem')
+
+    def test_citacao_de_mensagem_apagada_vira_o_rastro(self):
+        apagada = self._msg(deleted_at=timezone.now(), external_id='3EB0DEL')
+
+        self.assertEqual(apagada.resumo_citado(), 'Mensagem apagada')
+
+    # ── Cliente da Evolution ────────────────────────────────────────────
+
+    def test_send_text_leva_quoted_no_corpo(self):
+        cliente = EvolutionAPIClient(self.group.connection)
+        resposta = mock.Mock(ok=True)
+        resposta.json.return_value = {'key': {'id': 'WAMID9'}}
+        quoted = EvolutionAPIClient.montar_quoted(self.KEY_DO_CLIENTE, 'texto citado')
+        with mock.patch.object(cliente, '_post', return_value=resposta) as mock_post:
+            cliente.send_text(self.group.jid, 'resposta', quoted=quoted)
+
+        _path, body = mock_post.call_args.args
+        self.assertEqual(body['quoted'], {
+            'key': self.KEY_DO_CLIENTE, 'message': {'conversation': 'texto citado'}})
+
+    def test_montar_quoted_descarta_campo_vazio_da_key(self):
+        """`participant` vazio (conversa 1:1) não pode ir no corpo: o WhatsApp
+        trata como um remetente em branco."""
+        quoted = EvolutionAPIClient.montar_quoted(
+            {'id': 'M1', 'remoteJid': '55@s.whatsapp.net', 'fromMe': False, 'participant': ''})
+
+        self.assertEqual(quoted, {'key': {'id': 'M1', 'remoteJid': '55@s.whatsapp.net',
+                                          'fromMe': False}})
+
+    def test_send_media_devolve_o_wamid_para_a_midia_ficar_citavel(self):
+        cliente = EvolutionAPIClient(self.group.connection)
+        resposta = mock.Mock(ok=True)
+        resposta.json.return_value = {'key': {'id': 'WAMID_MIDIA'}}
+        resposta.raise_for_status.return_value = None
+        with mock.patch.object(cliente, '_post', return_value=resposta):
+            ok, wamid = cliente.send_media(self.group.jid, 'image', 'B64', 'f.jpg')
+
+        self.assertEqual((ok, wamid), (True, 'WAMID_MIDIA'))
+
+    # ── API e tela ──────────────────────────────────────────────────────
+
+    @mock.patch.object(EvolutionAPIClient, 'send_text', return_value=(True, 'WAMID1'))
+    @mock.patch.object(EvolutionAPIClient, 'find_message_key')
+    def test_api_envia_citando_e_devolve_o_bloco(self, mock_key, _mock_text):
+        mock_key.return_value = self.KEY_DO_CLIENTE
+        self.client.force_login(self.agent)
+
+        r = self.client.post(
+            reverse('atendimento:api_send_message', args=[self.conversation.id]),
+            data=json.dumps({'message': 'Já estou vendo', 'reply_to': str(self.msg.id)}),
+            content_type='application/json')
+
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()['reply']['preview'], 'O link do roteador caiu de novo')
+        self.assertEqual(r.json()['reply']['sender_name'], 'Douglas')
+
+    def test_api_recusa_citar_nota_interna_em_mensagem_ao_cliente(self):
+        nota = self._msg(sender_type='internal', is_internal=True, external_id='n1')
+        self.client.force_login(self.agent)
+
+        r = self.client.post(
+            reverse('atendimento:api_send_message', args=[self.conversation.id]),
+            data=json.dumps({'message': 'oi', 'reply_to': str(nota.id)}),
+            content_type='application/json')
+
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('Comentário Interno', r.json()['error'])
+        self.assertFalse(Message.objects.filter(content='oi').exists())
+
+    def test_tela_mostra_a_seta_e_o_bloco_citado(self):
+        resposta = self._msg(sender_type='agent', sender=self.agent, content='Já estou vendo',
+                             external_id='3EB0RESP', reply_to=self.msg)
+        sistema = self._msg(sender_type='system', content='Chamado aberto', external_id='s1')
+        self.client.force_login(self.agent)
+
+        html = self.client.get(
+            reverse('atendimento:conversation_detail', args=[self.conversation.id])
+        ).content.decode()
+
+        bloco_cliente = html.split(f'data-msg-id="{self.msg.id}"', 1)[1].split('data-msg-id=', 1)[0]
+        bloco_resposta = html.split(f'data-msg-id="{resposta.id}"', 1)[1].split('data-msg-id=', 1)[0]
+        bloco_sistema = html.split(f'data-msg-id="{sistema.id}"', 1)[1].split('data-msg-id=', 1)[0]
+        self.assertIn('class="msg-reply-btn"', bloco_cliente)
+        self.assertNotIn('class="msg-reply-btn"', bloco_sistema)
+        self.assertIn(f'class="msg-quote" data-quote-id="{self.msg.id}"', bloco_resposta)
+        self.assertIn('O link do roteador caiu de novo', bloco_resposta)
+
+    def test_polling_devolve_o_bloco_citado(self):
+        self._msg(sender_type='agent', sender=self.agent, content='Já estou vendo',
+                  external_id='3EB0RESP', reply_to=self.msg)
+        self.client.force_login(self.agent)
+
+        r = self.client.get(
+            reverse('atendimento:api_conversation_messages', args=[self.conversation.id]))
+
+        blocos = [m['reply'] for m in r.json()['messages'] if m['reply']]
+        self.assertEqual(len(blocos), 1)
+        self.assertEqual(blocos[0]['id'], str(self.msg.id))
