@@ -5,6 +5,29 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-15 (Usuários: login restrito por função vira somente leitura)
+
+### Alterado
+
+- **Login do portal com hosts restritos (por função ou host a host) só visualiza**: na aba Acessos
+  somem Editar, Duplicar, Excluir, Adicionar/Importar Host, "+ protocolo" e o formulário de
+  comentário, e o card não mostra mais usuário/senha. O botão **Acessar** continua funcionando
+  (a credencial é lida do banco no servidor). Regra em `usuario.perms.acessos_somente_leitura`.
+- APIs `buscar_acesso`, `terminal/acessos` e `topologia/hosts` devolvem usuário/senha vazios para
+  esses logins; cadastrar, importar, protocolos extras e comentários respondem 403.
+
+### Segurança
+
+- `editar_acesso` e `deletar_acesso` não verificavam permissão: agora passam por
+  `perms.pode_alterar_acesso` (host do próprio escopo e fora do modo somente leitura).
+
+### Testes
+
+- `usuario.tests.AcessosSomenteLeituraTest` (9 testes; 36 no app).
+- Doc: [docs/HOSTS_POR_USUARIO.md](docs/HOSTS_POR_USUARIO.md).
+
+---
+
 ## [Não publicado] — 2026-09-15 (Tarefas: checklist no Kanban do cliente e modal sem vão)
 
 ### Corrigido

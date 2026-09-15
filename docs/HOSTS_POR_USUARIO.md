@@ -137,6 +137,31 @@ Listagens filtradas com `filtrar_acessos_visiveis`:
 - `listar_backups_cliente` — o arquivo de backup **é** a configuração do equipamento, então
   segue o mesmo recorte.
 
+### Somente leitura para login restrito (15/09/2026)
+
+Login do portal **com recorte** (por função ou host a host) só **olha** os hosts liberados.
+A regra é `perms.acessos_somente_leitura(user)`; `perms.pode_alterar_acesso(user, acesso)` é
+`pode_acessar_acesso` + não estar em somente leitura. Portal sem recorte e back-office não mudam.
+
+| O que some / é bloqueado | Tela (`listar.html`, `modal_acessos.html`) | Servidor |
+|---|---|---|
+| Usuário e senha do host | Linhas "Usuário"/"Senha" do card não são renderizadas; o botão **Acessar** recebe usuário/senha vazios | `buscar_acesso`, `listar_acessos_terminal` e `topologia_hosts` devolvem `usuario`/`senha` vazios |
+| Editar | Botão ✎ escondido | `editar_acesso` → 403 |
+| Clonar (duplicar) e Adicionar / Importar Host | Botões escondidos | `cadastrar_acesso`, `importar_acessos_crt`, `importar_acessos_excel` → 403 |
+| Excluir | Botão 🗑 escondido | `deletar_acesso` → recusa |
+| Comentar | Formulário e lixeira somem do modal (os comentários existentes continuam legíveis) | adicionar/editar/deletar comentário → 403; `listar` devolve `pode_comentar: false` |
+| Protocolo extra | "+" e o ✕ dos chips escondidos | adicionar/remover protocolo → 403 |
+
+**O acesso ao equipamento continua**: terminal SSH/Telnet, WinBox, RDP e proxy web autenticam
+com a credencial lida do banco no servidor (`clientes/consumers.py` usa `acesso.senha`), então
+tirar usuário/senha do navegador não quebra nada.
+
+> Antes disso, `editar_acesso` e `deletar_acesso` não checavam permissão nenhuma: qualquer login
+> com a aba Acessos podia editar/excluir um host de outro cliente por id. Agora os dois passam por
+> `pode_alterar_acesso`.
+
+Testes: `usuario.tests.AcessosSomenteLeituraTest` (9).
+
 ### Limite conhecido
 
 A auto-documentação do IPAM (`ipam_analisar_backups`) varre os backups de **todos** os hosts

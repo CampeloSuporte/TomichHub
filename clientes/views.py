@@ -170,6 +170,7 @@ def listar_clientes(request):
         'is_admin': is_admin,
         'is_admin_puro': is_admin_puro,
         'is_superuser': is_superuser,
+        'acessos_somente_leitura': _perms.acessos_somente_leitura(request.user),
         'modulos_habilitados': modulos_habilitados,
         'destinos_padrao': DESTINOS_PADRAO,
         'acessos_com_erro_backup': acessos_com_erro_backup,
@@ -318,6 +319,9 @@ def cadastrar_cliente(request):
 def importar_acessos_crt(request, cliente_id):
     """Importa hosts a partir de um arquivo XML de backup do SecureCRT."""
     import xml.etree.ElementTree as ET
+
+    if _perms.acessos_somente_leitura(request.user):
+        return JsonResponse({'success': False, 'error': 'Sem permissão para importar acessos.'}, status=403)
 
     PROTO_MAP = {
         'SSH2': 'SSH', 'SSH1': 'SSH', 'SSH': 'SSH',
@@ -650,6 +654,9 @@ def importar_acessos_excel(request, cliente_id):
     import io
     import openpyxl
 
+    if _perms.acessos_somente_leitura(request.user):
+        return JsonResponse({'success': False, 'error': 'Sem permissão para importar acessos.'}, status=403)
+
     cliente = get_object_or_404(Cliente, id=cliente_id)
 
     PROTO_VALIDOS = {'SSH', 'TELNET', 'HTTP', 'HTTPS', 'WINBOX', 'FTP', 'FTPS'}
@@ -753,6 +760,12 @@ def importar_acessos_excel(request, cliente_id):
 @login_required(login_url='login')
 @modulo_habilitado_required('acessos')
 def cadastrar_acesso(request):
+    if request.method == 'POST' and _perms.acessos_somente_leitura(request.user):
+        # Cadastrar e duplicar (o "clonar" do card) passam por aqui
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'error': 'Sem permissão para cadastrar acessos.'}, status=403)
+        messages.error(request, 'Sem permissão para cadastrar acessos.')
+        return redirect('login')
     if request.method == 'POST':
         cliente_id = request.POST.get('cliente')
         funcao_id = request.POST.get('funcao')
@@ -928,6 +941,8 @@ def buscar_acesso(request, acesso_id):
         if not _perms.pode_acessar_acesso(request.user, acesso):
             return JsonResponse({'error': 'Sem permissão'}, status=403)
 
+        # Login restrito por função/host só olha: credencial não sai daqui
+        ocultar_credenciais = _perms.acessos_somente_leitura(request.user)
         data = {
             'id': acesso.id,
             'tipo': acesso.tipo,
@@ -935,8 +950,8 @@ def buscar_acesso(request, acesso_id):
             'host_ipv6': acesso.host_ipv6 or '',
             'protocolo': acesso.protocolo,
             'porta': acesso.porta,
-            'usuario': acesso.usuario,
-            'senha': acesso.senha,
+            'usuario': '' if ocultar_credenciais else acesso.usuario,
+            'senha': '' if ocultar_credenciais else acesso.senha,
             'senha_adm': (acesso.senha_adm or '') if _perms.is_backoffice(request.user) else '',
             'vlan': acesso.vlan or '',
             'winbox': acesso.winbox or '',
@@ -965,6 +980,11 @@ def editar_acesso(request, acesso_id):
     if request.method == 'POST':
         try:
             acesso = get_object_or_404(Acesso, id=acesso_id)
+            if not _perms.pode_alterar_acesso(request.user, acesso):
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'error': 'Sem permissão para editar este acesso.'}, status=403)
+                messages.error(request, 'Sem permissão para editar este acesso.')
+                return redirect(f"{reverse('listar_clientes')}?id={acesso.cliente_id}")
 
             # Atualiza campos diretos
             acesso.tipo = request.POST.get('tipo')
@@ -1040,7 +1060,7 @@ def adicionar_protocolo_acesso(request, acesso_id):
     """Protocolo extra (protocolo + porta) no mesmo IP do host — formulário
     inline do card, sem modal."""
     acesso = get_object_or_404(Acesso, id=acesso_id)
-    if not _perms.pode_acessar_acesso(request.user, acesso):
+    if not _perms.pode_alterar_acesso(request.user, acesso):
         return JsonResponse({'success': False, 'error': 'Sem permissão'}, status=403)
 
     protocolo = (request.POST.get('protocolo') or '').strip().upper()
@@ -1070,7 +1090,7 @@ def adicionar_protocolo_acesso(request, acesso_id):
 @require_http_methods(['POST'])
 def remover_protocolo_acesso(request, protocolo_id):
     extra = get_object_or_404(AcessoProtocolo.objects.select_related('acesso__cliente'), id=protocolo_id)
-    if not _perms.pode_acessar_acesso(request.user, extra.acesso):
+    if not _perms.pode_alterar_acesso(request.user, extra.acesso):
         return JsonResponse({'success': False, 'error': 'Sem permissão'}, status=403)
     extra.delete()
     return JsonResponse({'success': True})
@@ -1082,6 +1102,10 @@ def deletar_acesso(request, acesso_id):
     acesso = get_object_or_404(Acesso, id=acesso_id)
     cliente_id = acesso.cliente.id
     tipo_acesso = acesso.tipo
+
+    if not _perms.pode_alterar_acesso(request.user, acesso):
+        messages.error(request, 'Sem permissão para excluir este acesso.')
+        return redirect(f"{reverse('listar_clientes')}?id={cliente_id}")
 
     acesso.delete()
 
@@ -4137,6 +4161,7 @@ def listar_acessos_terminal(request):
         except Cliente.DoesNotExist:
             return JsonResponse({'acessos': []})
 
+    ocultar_credenciais = _perms.acessos_somente_leitura(request.user)
     data = [
         {
             'id': a.id,
@@ -4144,7 +4169,7 @@ def listar_acessos_terminal(request):
             'host': a.host,
             'porta': a.porta or 22,
             'protocolo': a.protocolo,
-            'usuario': a.usuario,
+            'usuario': '' if ocultar_credenciais else a.usuario,
             'cliente_nome': a.cliente.nome_empresa,
             'cliente_id': a.cliente.id,
             'funcao': a.funcao.descricao if a.funcao else '',
@@ -5698,7 +5723,8 @@ def listar_comentarios_acesso(request, acesso_id):
     return JsonResponse({
         'success': True,
         'comentarios': dados,
-        'total': len(dados)
+        'total': len(dados),
+        'pode_comentar': not _perms.acessos_somente_leitura(request.user),
     })
 
 
@@ -5708,7 +5734,7 @@ def adicionar_comentario_acesso(request, acesso_id):
     acesso = get_object_or_404(Acesso, id=acesso_id)
 
     # ✅ CORRIGIDO: Verificação de permissão CORRETA
-    if not _perms.pode_acessar_acesso(request.user, acesso):
+    if not _perms.pode_alterar_acesso(request.user, acesso):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     comentario_texto = request.POST.get('comentario', '').strip()
@@ -5952,6 +5978,8 @@ def deletar_comentario_acesso(request, comentario_id):
     comentario = get_object_or_404(ComentarioAcesso, id=comentario_id)
 
     # Verificar permissão - apenas o autor ou admin pode deletar
+    if _perms.acessos_somente_leitura(request.user):
+        return JsonResponse({'error': 'Sem permissão para deletar'}, status=403)
     if request.user != comentario.usuario and not _perms.is_backoffice(request.user):
         return JsonResponse({'error': 'Sem permissão para deletar'}, status=403)
 
@@ -5972,6 +6000,8 @@ def editar_comentario_acesso(request, comentario_id):
     comentario = get_object_or_404(ComentarioAcesso, id=comentario_id)
 
     # Verificar permissão - apenas o autor ou admin pode editar
+    if _perms.acessos_somente_leitura(request.user):
+        return JsonResponse({'error': 'Sem permissão para editar'}, status=403)
     if request.user != comentario.usuario and not _perms.is_backoffice(request.user):
         return JsonResponse({'error': 'Sem permissão para editar'}, status=403)
 
@@ -7025,6 +7055,7 @@ def topologia_hosts(request, cliente_id):
     if not _topologia_perm(request, cliente):
         return JsonResponse({'error': 'Sem permissao'}, status=403)
     acessos = Acesso.objects.filter(cliente=cliente).select_related('funcao', 'modelo')
+    ocultar_credenciais = _perms.acessos_somente_leitura(request.user)
     hosts = []
     for a in acessos:
         funcao_nome = ((a.funcao.descricao or '') if a.funcao else '').lower()
@@ -7063,7 +7094,7 @@ def topologia_hosts(request, cliente_id):
             'ip': a.host,
             'porta': a.porta,
             'protocolo': a.protocolo,
-            'usuario': a.usuario,
+            'usuario': '' if ocultar_credenciais else a.usuario,
             'tipo': tipo,
             'cliente_id': cliente.id,
             'funcao': (a.funcao.descricao or '') if a.funcao else '',

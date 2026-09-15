@@ -351,3 +351,121 @@ class FuncoesLiberadasPortalTest(TestCase):
         self.assertEqual(por_desc['OLT']['hosts'], 2)
         self.assertTrue(por_desc['OLT']['marcado'])
         self.assertFalse(por_desc['BRAS']['marcado'])
+
+
+class AcessosSomenteLeituraTest(TestCase):
+    """Login restrito por função (ou host) só **olha** os hosts liberados: sem
+    editar, clonar, excluir, comentar nem ver usuário/senha."""
+
+    SENHA = 'S3nh4SecretaOLT'
+    USUARIO = 'admoltrestrito'
+
+    def setUp(self):
+        from clientes.models import Cliente, Acesso
+        from funcao_equipamento.models import Funcao_equipamento
+
+        self.admin = _criar_admin_staff()
+        self.portal = User.objects.create_user(username='kaique_teste', password='x', is_active=True)
+        TOTPDevice.objects.create(usuario=self.portal, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+        self.cliente = Cliente.objects.create(
+            usuario=self.portal, nome_empresa='Empresa RO',
+            cnpj='44.444.444/0001-44', endereco='Rua 5', email='ro@example.com',
+        )
+        self.olt = Funcao_equipamento.objects.create(descricao='OLT')
+        self.acesso = Acesso.objects.create(
+            cliente=self.cliente, tipo='OLT-RO', host='10.9.0.1', protocolo='SSH',
+            porta=22, usuario=self.USUARIO, senha=self.SENHA, funcao=self.olt,
+        )
+        UsuarioFuncao.objects.create(usuario=self.portal, funcao=self.olt)
+        self.client.force_login(self.portal)
+
+    def _painel(self):
+        return self.client.get(
+            reverse('listar_clientes') + f'?id={self.cliente.id}', follow=True
+        ).content.decode()
+
+    def test_regra_vale_so_para_portal_restrito(self):
+        from usuario import perms
+        self.assertTrue(perms.acessos_somente_leitura(self.portal))
+        self.assertFalse(perms.acessos_somente_leitura(self.admin))
+        UsuarioFuncao.objects.filter(usuario=self.portal).delete()
+        self.assertFalse(perms.acessos_somente_leitura(self.portal))
+
+    def test_painel_mostra_o_host_sem_credenciais_nem_acoes(self):
+        html = self._painel()
+        self.assertIn(self.acesso.host, html)
+        self.assertNotIn(self.SENHA, html)
+        self.assertNotIn(self.USUARIO, html)
+        self.assertNotIn(f'abrirModalEditarAcesso({self.acesso.id})', html)
+        self.assertNotIn(f'AbrirmodalDuplicarAcesso({self.acesso.id})', html)
+        self.assertNotIn(reverse('deletar_acesso', args=[self.acesso.id]), html)
+        self.assertNotIn('id="novoComentarioAcesso"', html)
+        # O acesso ao equipamento continua
+        self.assertIn('ac-btn-acessar', html)
+
+    def test_painel_sem_restricao_continua_com_tudo(self):
+        UsuarioFuncao.objects.filter(usuario=self.portal).delete()
+        html = self._painel()
+        self.assertIn(self.SENHA, html)
+        self.assertIn(f'abrirModalEditarAcesso({self.acesso.id})', html)
+        self.assertIn('id="novoComentarioAcesso"', html)
+
+    def test_buscar_nao_devolve_credenciais(self):
+        import json
+        r = self.client.get(f'/clientes/acessos/buscar/{self.acesso.id}/')
+        self.assertEqual(r.status_code, 200)
+        d = json.loads(r.content)
+        self.assertEqual((d['usuario'], d['senha'], d['senha_adm']), ('', '', ''))
+
+    def test_terminal_nao_devolve_usuario(self):
+        import json
+        d = json.loads(self.client.get(f'/clientes/terminal/acessos/?cliente={self.cliente.id}').content)
+        self.assertEqual([a['usuario'] for a in d['acessos']], [''])
+
+    def test_editar_e_excluir_sao_bloqueados(self):
+        from clientes.models import Acesso
+        r = self.client.post(
+            reverse('editar_acesso', args=[self.acesso.id]),
+            {'tipo': 'HACK', 'hostname': '1.1.1.1', 'protocolo': 'SSH', 'porta': 22,
+             'usuario': 'x', 'senha': 'x'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(r.status_code, 403)
+        self.client.post(reverse('deletar_acesso', args=[self.acesso.id]))
+        self.acesso.refresh_from_db()
+        self.assertEqual(self.acesso.tipo, 'OLT-RO')
+        self.assertTrue(Acesso.objects.filter(id=self.acesso.id).exists())
+
+    def test_clonar_e_cadastrar_sao_bloqueados(self):
+        from clientes.models import Acesso
+        r = self.client.post(reverse('cadastrar_acesso'), {
+            'cliente': self.cliente.id, 'funcao': self.olt.id, 'tipo': 'OLT-CLONE',
+            'hostname': '10.9.0.2', 'protocolo': 'SSH', 'porta': 22, 'usuario': 'a', 'senha': 'b',
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(r.status_code, 403)
+        self.assertFalse(Acesso.objects.filter(tipo='OLT-CLONE').exists())
+
+    def test_comentar_e_bloqueado_mas_ler_continua(self):
+        import json
+        from clientes.models import ComentarioAcesso
+        r = self.client.post(
+            reverse('adicionar_comentario_acesso', args=[self.acesso.id]), {'comentario': 'oi'}
+        )
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(ComentarioAcesso.objects.count(), 0)
+
+        com = ComentarioAcesso.objects.create(acesso=self.acesso, usuario=self.admin, comentario='nota')
+        d = json.loads(self.client.get(reverse('listar_comentarios_acesso', args=[self.acesso.id])).content)
+        self.assertEqual(d['total'], 1)
+        self.assertFalse(d['pode_comentar'])
+        self.assertEqual(
+            self.client.post(reverse('editar_comentario_acesso', args=[com.id]), {'comentario': 'x'}).status_code,
+            403,
+        )
+        self.assertEqual(self.client.post(reverse('deletar_comentario_acesso', args=[com.id])).status_code, 403)
+
+    def test_protocolo_extra_e_bloqueado(self):
+        r = self.client.post(
+            reverse('adicionar_protocolo_acesso', args=[self.acesso.id]), {'protocolo': 'TELNET', 'porta': 23}
+        )
+        self.assertEqual(r.status_code, 403)

@@ -1343,6 +1343,7 @@
             </div>
             
             <!-- FORMULÁRIO ADICIONAR COMENTÁRIO -->
+            {% if not acessos_somente_leitura %}
             <div class="comentario-form-container" style="border-top: 1px solid var(--border); padding-top: 20px;">
                 <div class="form-group-modal">
                     <label style="margin-bottom: 10px; display: block;">
@@ -1367,6 +1368,7 @@
                     </button>
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -1861,8 +1863,9 @@ function abrirModalComentariosAcesso(acessoId, nomeEquipamento) {
     // Preencher nome do equipamento
     document.getElementById('nome_equipamento_comentario').textContent = nomeEquipamento;
     
-    // Limpar campo de novo comentário
-    document.getElementById('novoComentarioAcesso').value = '';
+    // Limpar campo de novo comentário (não existe para login somente leitura)
+    const campoNovo = document.getElementById('novoComentarioAcesso');
+    if (campoNovo) campoNovo.value = '';
     
     // Abrir modal
     document.getElementById('modalComentariosAcesso').style.display = 'flex';
@@ -1898,7 +1901,7 @@ function carregarComentariosAcesso(acessoId) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                renderizarComentariosAcesso(data.comentarios);
+                renderizarComentariosAcesso(data.comentarios, data.pode_comentar !== false);
             } else {
                 container.innerHTML = `
                     <div class="text-center py-5">
@@ -1922,15 +1925,15 @@ function carregarComentariosAcesso(acessoId) {
 /**
  * Renderiza comentários no modal
  */
-function renderizarComentariosAcesso(comentarios) {
+function renderizarComentariosAcesso(comentarios, podeComentar = true) {
     const container = document.getElementById('listaComentariosAcesso');
-    
+
     if (comentarios.length === 0) {
         container.innerHTML = `
             <div class="text-center py-5">
                 <i class="fas fa-comments" style="font-size: 48px; color: var(--text-muted); opacity: 0.3;"></i>
                 <p class="mt-3 text-muted" style="font-size: 13px;">Nenhum comentário ainda</p>
-                <p class="text-muted" style="font-size: 12px; margin-top: 8px;">Seja o primeiro a comentar!</p>
+                ${podeComentar ? '<p class="text-muted" style="font-size: 12px; margin-top: 8px;">Seja o primeiro a comentar!</p>' : ''}
             </div>
         `;
         return;
@@ -1968,15 +1971,15 @@ function renderizarComentariosAcesso(comentarios) {
                         </span>
                         ${com.data_atualizacao ? `<span style="color: var(--text-muted); font-size: 10px;"> (editado)</span>` : ''}
                     </div>
-                    <div style="display: flex; gap: 6px;">
-                        <button 
-                            class="icon-btn btn-sm" 
-                            onclick="deletarComentarioAcesso(${com.id})" 
+                    ${podeComentar ? `<div style="display: flex; gap: 6px;">
+                        <button
+                            class="icon-btn btn-sm"
+                            onclick="deletarComentarioAcesso(${com.id})"
                             title="Deletar comentário"
                             style="color: var(--error-red);">
                             <i class="fas fa-trash"></i>
                         </button>
-                    </div>
+                    </div>` : ''}
                 </div>
                 
                 <div class="comentario-texto" style="
