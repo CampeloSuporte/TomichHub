@@ -9,6 +9,16 @@ urlpatterns = [
     path('<int:tarefa_id>/excluir/', views.tarefa_excluir, name='tarefa_excluir'),
     path('<int:tarefa_id>/usuarios/', views.tarefa_usuarios_json, name='tarefa_usuarios_json'),
 
+    # Checklist (dashboard e Kanban) — JSON
+    path('checklist/<int:item_id>/marcar/', views.checklist_item_marcar, name='tarefa_checklist_marcar'),
+
+    # Rotinas mensais (seção "Rotinas mensais" do painel do dashboard)
+    path('rotinas/criar/', views.rotina_criar, name='rotina_criar'),
+    path('rotinas/<int:rotina_id>/editar/', views.rotina_editar, name='rotina_editar'),
+    path('rotinas/<int:rotina_id>/ativar/', views.rotina_ativar, name='rotina_ativar'),
+    path('rotinas/<int:rotina_id>/excluir/', views.rotina_excluir, name='rotina_excluir'),
+    path('rotinas/<int:rotina_id>/usuarios/', views.rotina_usuarios_json, name='rotina_usuarios_json'),
+
     # Kanban (aba "Tarefas" na página do cliente — clientes/templates/listar.html)
     path('kanban/<int:cliente_id>/', views.tarefas_kanban_json, name='tarefas_kanban_json'),
     path('kanban/<int:cliente_id>/criar/', views.tarefa_kanban_criar, name='tarefa_kanban_criar'),

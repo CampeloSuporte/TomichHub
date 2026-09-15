@@ -5,6 +5,41 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-15 (Tarefas: rotinas mensais com checklist e "Nova Tarefa" dentro das listas)
+
+### Adicionado
+
+- **Rotinas mensais**: tarefa que se repete todo mês no dia escolhido, feita como checklist.
+  Modelos `Rotina`/`RotinaItem` e `TarefaChecklistItem`; a `Tarefa` ganhou `rotina` e
+  `competencia` (migração `tarefas.0003_rotinas_checklist`, só adiciona tabelas e colunas
+  nulas). No dia, uma tarefa comum é criada com prazo às 23:59, responsáveis e checklist
+  copiados, e entra em Atrasadas/Minhas/Kanban como qualquer outra. Dia 31 cai no último dia
+  de meses curtos; não cria ocorrência já vencida; tarefa do mês excluída não volta.
+- **Seção "Rotinas mensais" no dashboard**: estado de cada rotina (agendada, vence, atrasada,
+  concluída, pausada), barra de progresso, checklist expandido para marcar como verificado
+  (quem e quando), editar/pausar/excluir e resumo "x de y itens verificados".
+- **Checklist marcado por AJAX** (`/tarefas/checklist/<id>/marcar/`): primeiro item põe a tarefa
+  em andamento e quem marcou assume; todos marcados concluem; desmarcar reabre. Aparece também
+  no modal de edição do dashboard e do Kanban do cliente, com selos **Rotina** e `2/4` nas
+  linhas e cartões.
+- Beat `tarefas-gerar-rotinas-mensais` de hora em hora (idempotente).
+
+### Alterado
+
+- **Botão "Nova Tarefa" saiu do cabeçalho**: no dashboard virou **+ Adicionar tarefa** no fim de
+  "Minhas Tarefas" (já atribuída a quem clicou) e de "Não Assumidas", mais **+ Nova rotina
+  mensal**; o modal alterna **Tarefa única / Rotina mensal**. No Kanban do cliente, virou
+  **+ Adicionar tarefa** no pé da coluna Pendente.
+
+### Corrigido
+
+- **Prazo no Kanban do cliente aparecia 3 h adiantado** (formatado em UTC): 23:59 saía como
+  "02:59" do dia seguinte. Agora usa o fuso local.
+- 30 testes em `tarefas/tests.py` (23 novos). Detalhes em `docs/TAREFAS.md` → "Rotinas mensais
+  com checklist".
+
+---
+
 ## [Não publicado] — 2026-09-14 (Ações do card de acesso todas na linha)
 
 ### Alterado

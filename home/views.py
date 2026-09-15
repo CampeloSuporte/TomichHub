@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Prefetch, Q, Sum
 from datetime import datetime, timedelta
 from clientes.models import (
     Cliente, BlocoIP, BackupTemplate, Acesso, BackupLog,
@@ -14,7 +14,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
-from tarefas.models import Tarefa
+from tarefas.models import Rotina, Tarefa
 import json
 import logging
 import hashlib
@@ -28,15 +28,59 @@ import requests as _requests
 logger = logging.getLogger(__name__)
 
 
+def _contexto_rotinas(request):
+    """Seção "Rotinas mensais" do painel. Para cada rotina, `atual` é a
+    tarefa deste mês ou, se ainda não houver, a do mês anterior que ficou
+    em aberto — é nela que o checklist é marcado."""
+    hoje = timezone.localdate()
+    competencia = hoje.replace(day=1)
+    ocorrencias = Tarefa.objects.filter(
+        Q(competencia=competencia) | ~Q(status__in=[Tarefa.STATUS_CONCLUIDA, Tarefa.STATUS_CANCELADA])
+    ).order_by('-competencia').prefetch_related('checklist__verificado_por')
+    rotinas = list(
+        Rotina.objects.visiveis_para(request.user).select_related('cliente').prefetch_related(
+            'itens', 'responsaveis', Prefetch('ocorrencias', queryset=ocorrencias, to_attr='ocorrencias_abertas'),
+        )
+    )
+
+    feitos_total = itens_total = 0
+    for r in rotinas:
+        r.atual = r.ocorrencias_abertas[0] if r.ocorrencias_abertas else None
+        r.proxima = r.proxima_data(hoje)
+        if r.atual:
+            r.atual_feitos, r.atual_total = r.atual.checklist_progresso
+            feitos_total += r.atual_feitos
+            itens_total += r.atual_total
+
+    def ordem(r):
+        # Primeiro o que pede ação agora; depois as agendadas pela data; pausadas no fim.
+        if not r.ativa:
+            return (2, r.proxima)
+        if r.atual and r.atual.status != Tarefa.STATUS_CONCLUIDA:
+            return (0, r.atual.prazo.date() if r.atual.prazo else r.proxima)
+        return (1, r.proxima)
+    rotinas.sort(key=ordem)
+
+    return {
+        'rotinas': rotinas,
+        'rotinas_itens_feitos': feitos_total,
+        'rotinas_itens_total': itens_total,
+        'rotinas_competencia': competencia,
+        'dias_do_mes': range(1, 32),
+        'dia_de_hoje': hoje.day,
+    }
+
+
 def _contexto_tarefas(request):
     """Dados do painel de Tarefas — usado tanto no quadro_geral (Administrador)
     quanto no quadro_instancia (Consultor/Operador), escopados por
     Tarefa.objects.visiveis_para (Administrador vê tudo, resto só a própria
     instância)."""
-    qs = Tarefa.objects.visiveis_para(request.user).select_related('cliente').prefetch_related('responsaveis')
+    qs = Tarefa.objects.visiveis_para(request.user).select_related('cliente').prefetch_related('responsaveis', 'checklist')
     em_aberto = qs.exclude(status__in=[Tarefa.STATUS_CONCLUIDA, Tarefa.STATUS_CANCELADA])
 
     return {
+        **_contexto_rotinas(request),
         'tarefas_pendentes_count': qs.filter(status=Tarefa.STATUS_PENDENTE).count(),
         'tarefas_andamento_count': qs.filter(status=Tarefa.STATUS_ANDAMENTO).count(),
         'tarefas_atrasadas_count': em_aberto.filter(prazo__lt=timezone.now()).count(),

@@ -1187,6 +1187,20 @@
             .kanban-col-atrasada .kanban-col-header { border-bottom-color:rgba(248,81,73,.3); }
             .kanban-col-atrasada .kanban-card { border-color:rgba(248,81,73,.3); }
             .kanban-col-atrasada .kanban-card:hover { border-color:var(--error-red); }
+            .kanban-badge-rotina { background:rgba(163,113,247,.12); color:#bc8cff; border-color:rgba(163,113,247,.3); }
+            .kanban-badge-checklist-ok { background:rgba(63,185,80,.12); color:var(--primary-green); border-color:rgba(63,185,80,.35); }
+            .kanban-add { margin:0 10px 10px; padding:7px 10px; display:flex; align-items:center; justify-content:center; gap:6px; font-size:12px; color:var(--text-muted); background:transparent; border:1px dashed var(--border); border-radius:8px; cursor:pointer; transition:color .15s ease, border-color .15s ease, transform .12s ease-out; }
+            .kanban-add:hover { color:var(--accent-cyan); border-color:var(--accent-cyan); }
+            .kanban-add:active { transform:scale(.97); }
+            .kanban-add:focus-visible { outline:2px solid var(--accent-cyan); outline-offset:2px; }
+            .kanban-checklist { list-style:none; margin:0; padding:4px; border:1px solid var(--border); border-radius:8px; }
+            .kanban-checklist-item label { display:flex; gap:10px; align-items:flex-start; margin:0; padding:6px 8px; border-radius:6px; cursor:pointer; transition:background-color .12s ease; }
+            .kanban-checklist-item label:hover { background:rgba(255,255,255,.03); }
+            .kanban-checklist-item input { width:16px; height:16px; margin-top:2px; accent-color:var(--primary-green); flex-shrink:0; cursor:pointer; }
+            .kanban-checklist-texto { flex:1; font-size:13px; color:var(--text-light); word-break:break-word; }
+            .kanban-checklist-item.verificado .kanban-checklist-texto { color:var(--text-muted); }
+            .kanban-checklist-quem { font-size:11px; color:var(--primary-green); white-space:nowrap; }
+            @media (prefers-reduced-motion: reduce) { .kanban-add { transition:none; } }
         </style>
 
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -1196,9 +1210,6 @@
             <div class="d-flex gap-2">
                 <button class="btn btn-sm btn-outline-secondary" onclick="abrirModalChamadosCliente()">
                     <i class="fas fa-headset me-1"></i> Listar Chamados
-                </button>
-                <button class="btn btn-sm btn-primary" onclick="abrirModalNovaTarefaKanban()">
-                    <i class="fas fa-plus me-1"></i> Nova Tarefa
                 </button>
             </div>
         </div>
@@ -1217,6 +1228,9 @@
                     <span class="kanban-col-count" id="kanban-count-pendente">0</span>
                 </div>
                 <div class="kanban-cards" id="kanban-cards-pendente"></div>
+                <button type="button" class="kanban-add" onclick="abrirModalNovaTarefaKanban()">
+                    <i class="fas fa-plus"></i> Adicionar tarefa
+                </button>
             </div>
             <div class="kanban-col" data-status="andamento">
                 <div class="kanban-col-header">
@@ -1409,6 +1423,10 @@
                 </div>
                 <div class="modal-body-acesso">
                     <input type="hidden" id="ketId">
+                    <div class="mb-3" id="ketChecklistWrap" style="display:none;">
+                        <label class="form-label">Checklist <span id="ketChecklistContagem" style="font-weight:400;color:var(--text-muted);"></span></label>
+                        <ul class="kanban-checklist" id="ketChecklist"></ul>
+                    </div>
                     <div class="mb-2">
                         <label class="form-label">Título</label>
                         <input type="text" id="ketTitulo" class="form-control" maxlength="255" required>
@@ -9962,12 +9980,20 @@ function getCsrfToken(){
         const respHtml = nomesResp.length
             ? `<div class="kanban-card-responsavel"><i class="fas fa-user"></i> ${_escapeHtmlKanban(nomesResp.join(', '))}</div>`
             : '';
+        const rotinaHtml = t.rotina
+            ? '<span class="kanban-badge kanban-badge-rotina" title="Criada pela rotina mensal"><i class="fas fa-rotate"></i> Rotina</span>'
+            : '';
+        const checklistHtml = t.checklist_total
+            ? `<span class="kanban-badge ${t.checklist_feitos === t.checklist_total ? 'kanban-badge-checklist-ok' : 'kanban-badge-prazo'}" title="Itens verificados"><i class="fas fa-list-check"></i> ${t.checklist_feitos}/${t.checklist_total}</span>`
+            : '';
         return `
             <div class="kanban-card" data-id="${t.id}" onclick="abrirModalEditarTarefaKanban(${t.id})">
                 <div class="kanban-card-titulo">${_escapeHtmlKanban(t.titulo)}</div>
                 <div class="kanban-card-meta">
                     <span class="kanban-badge ${prioClasse}">${prioLabel}</span>
                     ${prazoHtml}
+                    ${rotinaHtml}
+                    ${checklistHtml}
                 </div>
                 ${respHtml}
             </div>`;
@@ -10363,8 +10389,51 @@ function getCsrfToken(){
             respWrap.style.display = 'none';
         }
         excluirBtn.style.display = t.pode_gerenciar ? '' : 'none';
+        _renderChecklistKanban(t);
 
         document.getElementById('modalEditarTarefaKanban').style.display = 'flex';
+    }
+
+    function _renderChecklistKanban(t) {
+        const itens = t.checklist || [];
+        document.getElementById('ketChecklistWrap').style.display = itens.length ? '' : 'none';
+        document.getElementById('ketChecklistContagem').textContent = itens.length ? `${t.checklist_feitos}/${t.checklist_total}` : '';
+        document.getElementById('ketChecklist').innerHTML = itens.map(i => {
+            const quem = i.verificado
+                ? `<i class="fas fa-check"></i> ${_escapeHtmlKanban(i.verificado_por_nome)}${i.verificado_por_nome ? ' · ' : ''}${_escapeHtmlKanban(i.verificado_em_fmt)}`
+                : '';
+            return `
+                <li class="kanban-checklist-item${i.verificado ? ' verificado' : ''}">
+                    <label>
+                        <input type="checkbox" ${i.verificado ? 'checked' : ''} onchange="marcarItemChecklistKanban(this, ${i.id}, ${t.id})">
+                        <span class="kanban-checklist-texto">${_escapeHtmlKanban(i.texto)}</span>
+                        <span class="kanban-checklist-quem">${quem}</span>
+                    </label>
+                </li>`;
+        }).join('');
+    }
+
+    function marcarItemChecklistKanban(input, itemId, tarefaId) {
+        const verificado = input.checked;
+        input.disabled = true;
+        const fd = new FormData();
+        fd.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+        fd.append('verificado', verificado ? '1' : '0');
+        fetch(`/tarefas/checklist/${itemId}/marcar/`, { method: 'POST', body: fd })
+            .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+            .then(data => {
+                if (!data.success) throw new Error(data.error);
+                // Marcar tudo conclui a tarefa: re-renderiza o board para o cartão mudar de coluna.
+                const idx = _kanbanTarefas.findIndex(t => t.id === tarefaId);
+                if (idx !== -1) _kanbanTarefas[idx] = data.tarefa;
+                renderKanban();
+                if (String(document.getElementById('ketId').value) === String(tarefaId)) _renderChecklistKanban(data.tarefa);
+            })
+            .catch(() => {
+                input.checked = !verificado;
+                input.disabled = false;
+                uiToast('Não foi possível salvar o item. Recarregue a página e tente de novo.', 'erro');
+            });
     }
 
     function salvarEdicaoTarefaKanban() {

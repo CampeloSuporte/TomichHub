@@ -112,6 +112,12 @@ app.conf.beat_schedule = {
         'task': 'clientes.tasks.rotaloop_verificar_clientes_agendado',
         'schedule': timedelta(days=2),
     },
+    # Rotinas mensais: cria a tarefa (com checklist) no dia configurado.
+    # De hora em hora e idempotente — worker parado à 00h não perde o dia.
+    'tarefas-gerar-rotinas-mensais': {
+        'task': 'tarefas.tasks.gerar_rotinas_mensais',
+        'schedule': crontab(minute=5),
+    },
 }
 
 app.conf.timezone = 'America/Sao_Paulo'
