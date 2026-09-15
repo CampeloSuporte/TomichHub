@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-15 (Proxy web: SPA React sem basename ficava em branco)
+
+### Corrigido
+
+- **TOMICH OBSERVER (acesso 1116) "simula abrir mas não abre" pelo proxy web** — tudo respondia
+  200 (HTML, JS, CSS, API), mas a tela ficava em branco. A SPA usa `<BrowserRouter>` sem
+  `basename`: o router via o caminho do proxy (`/clientes/acessos/1116/web/80/http/`), caía no
+  coringa `<Navigate to="/">` e o `replaceState` injetado recolocava o prefixo, voltando pro
+  coringa. O override de `Location.prototype.pathname` não pega no Chrome (`pathname` é
+  propriedade própria de `location`).
+- Respostas JavaScript do proxy agora passam por `ProxyEngine._rewrite_js`: o default `"/"` do
+  `basename` do `Router` do react-router 6 vira `window.__crmRouterBase(location)`, helper
+  injetado no HTML que devolve o `proxy_base` só quando a localização do router está dentro dele
+  (HashRouter e basename explícito ficam como estavam).
+- JS reescrito sai com `Cache-Control: no-cache` (sem `ETag`/`Last-Modified`/`Expires`): o
+  device manda `max-age` de 30 dias. Quem já tinha aberto o acesso precisa de um Ctrl+F5 uma vez.
+
+Detalhes em [docs/proxy_web_acessos.md](docs/proxy_web_acessos.md) → "SPA React simula abrir mas não abre".
+
+---
+
 ## [Não publicado] — 2026-09-15 (Topologia: IP e interface do enlace sobrepostos)
 
 ### Corrigido

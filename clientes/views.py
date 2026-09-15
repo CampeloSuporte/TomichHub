@@ -6792,12 +6792,16 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
             stripped = content.lstrip()
             content_type = 'text/html' if stripped.startswith(b'<') else 'application/octet-stream'
 
-        if 'text/html' in content_type or 'text/css' in content_type:
+        js_reescrito = False
+        if ('text/html' in content_type or 'text/css' in content_type
+                or 'javascript' in content_type):
+            original = content
             content = engine.rewrite_content(content, content_type, proxy_base, target_host,
                                              cookie_prefix=cookie_prefix,
                                              target_port=porta_web)
             if 'text/html' in content_type:
                 content_type = 'text/html; charset=utf-8'
+            js_reescrito = 'javascript' in content_type and content != original
 
         # Alguns devices (ex: firmware Mimosa/Airspan) devolvem um campo
         # "https":false no JSON de login/status e o próprio JS deles compara
@@ -6827,6 +6831,13 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
             if h in django_resp:
                 del django_resp[h]
 
+        # Bundle com hash no nome vem do device com max-age de 30 dias: guardado
+        # assim, uma mudança na reescrita não chegaria a quem já abriu o acesso.
+        if js_reescrito:
+            for h in ('ETag', 'Last-Modified', 'Expires'):
+                if h in django_resp:
+                    del django_resp[h]
+            django_resp['Cache-Control'] = 'no-cache'
 
         for cookie_str in getattr(resp, 'cookies_raw', []):
             _repassar_cookie_do_device(django_resp, cookie_str, cookie_prefix, request.is_secure())
