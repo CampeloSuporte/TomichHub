@@ -2,6 +2,28 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 55 — 15/09/2026: TOMICH OBSERVER pelo proxy web (acessos 1116 e 1455)
+
+**O que foi corrigido?**
+- 🧭 **SPA React sem `basename` ficava em branco** (1116): o `BrowserRouter` via o caminho do proxy e
+  caía no coringa `<Navigate to="/">` em loop. `ProxyEngine._rewrite_js` troca o default `"/"` do
+  `basename` do `Router` do react-router 6 por `window.__crmRouterBase(location)`, helper injetado no HTML.
+- 🗃️ **Bundle antigo em cache segurava o fix** (max-age de 30 dias do device): `<script src>` e
+  `modulepreload` ganham `?crmv=<VERSAO_ASSETS>`, mais um import map da URL original para a
+  versionada, para o módulo não carregar duas vezes.
+- 📦 **Buraco negro de PMTU no servidor do proxy SSH** (1455, ProxyIsp com MTU 4096 num caminho de
+  1500): timeout no túnel roda `ping -M do -s 1473` no proxy; se a rota aprender o MTU, a requisição
+  é refeita numa conexão nova e o priming é renovado a cada 8 min.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[proxy_web_acessos.md](proxy_web_acessos.md)** | "SPA React simula abrir mas não abre (TOMICH OBSERVER)" |
+| **[proxy_web_acessos.md](proxy_web_acessos.md)** | "Buraco negro de PMTU no servidor do proxy SSH" |
+
+---
+
 ### Sessão 54 — 14/09/2026: Acesso web via proxy mais rápido
 
 **O que foi melhorado?**
