@@ -5,6 +5,50 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-15 (Atendimento: responder citando uma mensagem)
+
+### Adicionado
+
+- **Responder citando uma mensagem, igual ao WhatsApp** — seta de responder no balão (ao lado do
+  lápis, da lixeira e da carinha), barra "Respondendo a…" em cima do compositor (`Esc` cancela) e o
+  bloco citado dentro da bolha da resposta. Clicar no bloco rola até a mensagem original, que pisca.
+  Vale para texto e para mídia.
+- **A citação passou a valer nos dois sentidos.** A resposta que o cliente manda do celular chega
+  como `contextInfo` pendurado no corpo da mensagem (em `extendedTextMessage` quando é texto, e
+  dentro do objeto de mídia quando é foto/áudio). O CRM ignorava isso: o balão aparecia solto e
+  ninguém sabia a que ele respondia. Agora liga no balão de cá pela FK `reply_to`; quando a citada
+  não está no chamado (anterior à conexão atual, ou de um chamado fechado), guarda o trecho solto
+  em `reply_preview`/`reply_sender_name` e o bloco aparece sem clique.
+- Duas réguas em `ConversationService.pode_responder`: para o cliente, só o que existe no WhatsApp
+  (mesma régua de `pode_reagir`); em comentário interno, qualquer mensagem da conversa, inclusive
+  outra nota interna — a citação não sai do CRM. Escolher uma nota interna já entra no modo
+  "Comentário Interno"; voltar para o modo WhatsApp desfaz a citação.
+
+### Corrigido
+
+- **A mídia enviada pelo CRM ficava para sempre com um id que não existe no WhatsApp**
+  (`local_media_…`): `EvolutionAPIClient.send_media`/`send_audio` não devolviam o `message_id` e
+  nada era gravado de volta. Por isso a foto que nós mandamos não podia ser citada, editada nem
+  apagada. Agora devolvem `(ok, message_id)` como o `send_text` já fazia, e o `external_id` é
+  trocado pelo wamid depois do envio.
+
+### Detalhes
+
+- A citação é resolvida e validada **antes** de gravar a Message, de forma síncrona — é a última
+  janela para recusar com um motivo que chega à tela, já que o envio em si vai em background.
+  Em grupo, sem o `participant` da mensagem citada (que vem de `find_message_key`), o envio é
+  recusado em vez de sair solto, para o CRM não mostrar uma citação que o cliente não recebeu.
+- `quoted` vai no corpo do próprio `sendText`/`sendMedia` da Evolution 2.x. Campo vazio na key
+  (`participant` em conversa 1:1) é descartado por `montar_quoted`.
+- Mensagem agendada não cita (`ScheduledMessage` não tem esses campos) — a tela avisa em vez de
+  descartar a citação em silêncio.
+- Migração `atendimento/0019_message_reply_to` (4 campos na `Message`).
+- `ResponderMensagemTest`, 23 casos.
+
+Detalhes em [docs/ATENDIMENTO.md](docs/ATENDIMENTO.md) → "Responder citando uma mensagem".
+
+---
+
 ## [Não publicado] — 2026-09-15 (Proxy web: buraco negro de PMTU no servidor do proxy SSH)
 
 ### Corrigido

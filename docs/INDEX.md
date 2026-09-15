@@ -1745,6 +1745,12 @@ o CRM: não há prazo do lado daqui, e o motivo da recusa aparece na própria co
 mensagem ainda não foi confirmada pelo WhatsApp (`external_id` começando com `sending_`, `ia_`,
 `flow_`…), não há o que apagar do outro lado.
 
+### "Respondi citando e o cliente recebeu a mensagem sem a citação"
+→ [ATENDIMENTO.md](ATENDIMENTO.md) — Seção "Responder citando uma mensagem". Em grupo o WhatsApp só
+monta o bloco citado se a key da mensagem citada levar o `participant`, e ela vem da Evolution
+(`/chat/findMessages`). Quando a Evolution não tem a mensagem (anterior à conexão atual), o CRM
+**recusa** o envio em vez de mandar a resposta solta — o motivo aparece na tela.
+
 ### "O editor de topologia deixa a página do cliente lenta"
 → [topologia.md](topologia.md) — Seção "Desempenho com o mapa PARADO". O editor roda num `<iframe>`
 dentro da aba Topologia do cadastro, então o custo dele é pago pela página inteira. Mapas grandes
@@ -1787,6 +1793,7 @@ existente).
 
 | Data | O quê | Documentação |
 |------|-------|--------------|
+| 15/09/2026 | Atendimento: **responder citando uma mensagem**, como no WhatsApp — seta no balão, barra "Respondendo a…" no compositor e o bloco citado dentro da bolha, clicável para rolar até a original. Vale para texto e mídia, e nos dois sentidos: a resposta que o cliente manda do celular (`contextInfo`, que o CRM jogava fora e virava balão solto) agora liga no balão de cá. Duas réguas em `pode_responder`: ao cliente só se a mensagem existir no WhatsApp; em comentário interno vale qualquer uma, inclusive outra nota. De quebra, a mídia enviada pelo CRM passou a guardar o wamid (`sendMedia` devolvendo o id) e virou citável/editável/apagável | ATENDIMENTO.md |
 | 08/09/2026 | Arquivos/Firmware: **links de compartilhamento com IP** — HTTP, HTTPS, FTP, SFTP e o comando Cisco saíam com o domínio, e a linha "HTTP" aparecia como `https://` (a URL já nascia HTTPS, então o `replace` que fazia a linha HTTPS não trocava nada). OLT/roteador quase nunca tem DNS, então o hostname não resolvia no equipamento — TFTP e os comandos Huawei já usavam `_resolver_ip`, o resto não. Como o HTTP por IP caía no redirect 301 para HTTPS e o certificado é do domínio, a rota de download ganhou exceção na porta 80 do nginx | CHANGELOG.md |
 | 06/09/2026 | Arquivos/Firmware: **renomear pasta** — botão de lápis na linha da pasta; só dava para criar e excluir, então corrigir um nome errado significava recriar e subir tudo de novo. Renomear mexe em três lugares além do banco: move o diretório em `media/firmware/`, reescreve o `arquivo.name` de **todos os arquivos das subpastas** (`caminho_completo` é calculado, mas o `FileField` guarda o caminho literal) e refaz os **symlinks relativos do root do TFTP/FTP** que quebraram — só os quebrados, para não roubar o link de um arquivo homônimo em outra pasta. Recusa nome duplicado entre irmãs e diretório de destino já existente, antes de mover qualquer coisa | README.md |
 | 04/09/2026 | Automação BGP: **subir IX/PTT com peer de outro ASN na mesma sessão** — a carta do IX.br entrega os route servers sob um ASN e o looking glass sob outro (`AS26162 rs1/rs2` + `AS20121 lgc`), e o formulário só aceitava um. O peer extra sai **fora do peer-group** (`peer <IP> as-number 20121` sem `peer <IP> group`) e com as **mesmas route-policies** aplicadas nele mesmo; como o vínculo circuito ↔ sessão é feito pela export policy, ele volta do backup como mais uma sessão do mesmo `ix-NN`, sem gastar slot nem grupo de community. Vale também para operadora e CDN | bgp_automacao.md |

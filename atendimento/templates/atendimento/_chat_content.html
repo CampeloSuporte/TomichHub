@@ -170,7 +170,7 @@
                 (white-space:pre-wrap), então qualquer indentação do template
                 aqui dentro vira linha em branco e recuo dentro do balão.
                 {% endcomment %}
-                <div class="msg-bubble">{% if message.excluida %}<span class="msg-apagada"><i class="fas fa-ban"></i>Mensagem apagada</span><span class="msg-meta"><span class="msg-time">{{ message.created_at|date:"H:i" }}</span></span>{% else %}{% if message.message_type == 'image' and message.attachment_url %}<img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'audio' and message.attachment_url %}<audio controls class="msg-audio-player" preload="none"><source src="{{ message.attachment_url }}"></audio>{% elif message.message_type == 'video' and message.attachment_url %}<video controls class="msg-video-player" preload="none"><source src="{{ message.attachment_url }}"></video>{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'document' and message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}</a>{% else %}<span class="msg-text">{{ message.content|urlize }}</span>{% endif %}<span class="msg-meta">{% if message.edited_at %}<span class="msg-edited" title="Editada às {{ message.edited_at|date:"H:i" }}">editada</span>{% endif %}<span class="msg-time">{{ message.created_at|date:"H:i" }}</span>{% if message.sender_type == 'agent' %}<i class="fas fa-check-double msg-tick"></i>{% endif %}</span>{% endif %}</div>{% if message.editavel and not message.excluida %}<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>{% endif %}{% if message.excluivel %}<button type="button" class="msg-del-btn" title="Apagar mensagem"><i class="fas fa-trash"></i></button>{% endif %}{% if message.reagivel %}<button type="button" class="msg-react-btn" title="Reagir" aria-label="Reagir à mensagem"><i class="far fa-smile"></i></button>{% endif %}
+                <div class="msg-bubble">{% if not message.excluida %}{% with cit=message.citacao %}{% if cit %}<button type="button" class="msg-quote" data-quote-id="{{ cit.id }}" title="{% if cit.id %}Ir para a mensagem citada{% else %}A mensagem citada não está neste chamado{% endif %}"><div class="msg-quote-autor">{{ cit.sender_name }}</div><div class="msg-quote-texto">{{ cit.preview }}</div></button>{% endif %}{% endwith %}{% endif %}{% if message.excluida %}<span class="msg-apagada"><i class="fas fa-ban"></i>Mensagem apagada</span><span class="msg-meta"><span class="msg-time">{{ message.created_at|date:"H:i" }}</span></span>{% else %}{% if message.message_type == 'image' and message.attachment_url %}<img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'audio' and message.attachment_url %}<audio controls class="msg-audio-player" preload="none"><source src="{{ message.attachment_url }}"></audio>{% elif message.message_type == 'video' and message.attachment_url %}<video controls class="msg-video-player" preload="none"><source src="{{ message.attachment_url }}"></video>{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'document' and message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}</a>{% else %}<span class="msg-text">{{ message.content|urlize }}</span>{% endif %}<span class="msg-meta">{% if message.edited_at %}<span class="msg-edited" title="Editada às {{ message.edited_at|date:"H:i" }}">editada</span>{% endif %}<span class="msg-time">{{ message.created_at|date:"H:i" }}</span>{% if message.sender_type == 'agent' %}<i class="fas fa-check-double msg-tick"></i>{% endif %}</span>{% endif %}</div>{% if message.editavel and not message.excluida %}<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>{% endif %}{% if message.excluivel %}<button type="button" class="msg-del-btn" title="Apagar mensagem"><i class="fas fa-trash"></i></button>{% endif %}{% if message.reagivel %}<button type="button" class="msg-react-btn" title="Reagir" aria-label="Reagir à mensagem"><i class="far fa-smile"></i></button>{% endif %}{% if message.respondivel %}<button type="button" class="msg-reply-btn" title="Responder" aria-label="Responder a esta mensagem"><i class="fas fa-reply"></i></button>{% endif %}
                 {% with reacoes=message.reactions.all %}{% if reacoes %}
                 <div class="msg-reactions" data-reactions-for="{{ message.id }}">
                     {% for r in reacoes %}
@@ -327,6 +327,16 @@
             <button class="chat-icon-btn" style="color:var(--brand-500);border-color:rgba(88,166,255,0.3);" onclick="chatApp.stopRecording()">
                 <i class="fas fa-stop"></i> Parar
             </button>
+        </div>
+
+        <!-- Respondendo a… (citação escolhida) -->
+        <div class="reply-bar" id="replyBar">
+            <i class="fas fa-reply" style="color:var(--wa-text-muted);font-size:12px;"></i>
+            <div class="reply-bar-corpo">
+                <div class="reply-bar-autor" id="replyBarAutor"></div>
+                <div class="reply-bar-texto" id="replyBarTexto"></div>
+            </div>
+            <button class="chat-icon-btn" id="replyBarCancel" title="Cancelar resposta (Esc)"><i class="fas fa-times"></i></button>
         </div>
 
         <!-- Preview de mídia -->
@@ -1338,6 +1348,7 @@
         msgInput.placeholder = isInternal ? 'Nota interna (não enviada ao cliente)...' : 'Mensagem...';
         var area = document.querySelector('.chat-input-area');
         if (area) area.classList.toggle('mode-internal', isInternal);
+        if (typeof revisarCitacaoNoModo === 'function') revisarCitacaoNoModo();
     }
 
     /* ── Anexo popup ── */
@@ -1457,14 +1468,17 @@
         var mediaSendBtn = document.getElementById('mediaSendBtn');
         if (mediaSendBtn) { mediaSendBtn.disabled = true; mediaSendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
         var caption = document.getElementById('mediaCaption').value.trim();
+        var citandoMidia = _respondendoA;
         fetch(API_MEDIA, {
             method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-            body:JSON.stringify({mediaBase64:mediaBase64,mediaType:mediaType,fileName:mediaFileName,caption:caption})
+            body:JSON.stringify({mediaBase64:mediaBase64,mediaType:mediaType,fileName:mediaFileName,caption:caption,
+                                 reply_to: citandoMidia ? citandoMidia.id : null})
         }).then(function(r){return r.json();}).then(function(d){
             if (d.success) {
                 clearMedia();
+                cancelarResposta();
                 if (!_renderedIds.has(String(d.message_id))) {
-                    renderMessage({id:d.message_id,content:d.content,sender_type:'agent',sender_name:'',created_at:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})});
+                    renderMessage({id:d.message_id,content:d.content,sender_type:'agent',sender_name:'',message_type:mediaType,reply:d.reply,created_at:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})});
                 }
                 if (d.newly_assigned) _onNewlyAssigned();
             } else { alert('Erro: '+(d.error||'Falha ao enviar')); }
@@ -1676,6 +1690,131 @@
         if (e.key === 'Escape' && _reagindo) { e.preventDefault(); fecharReacoes(); }
     });
 
+    /* ── Responder citando uma mensagem (igual ao WhatsApp) ──────────────
+       A citação é um estado do COMPOSITOR, não do balão: escolher a mensagem
+       só enche a barra "Respondendo a…" em cima do campo, e o vínculo é
+       criado no envio (texto ou mídia). Cancelar antes de enviar não deixa
+       rastro nenhum. */
+    var _respondendoA = null;   /* {id, autor, texto, interna} ou null */
+
+    var replyBar       = document.getElementById('replyBar');
+    var replyBarAutor  = document.getElementById('replyBarAutor');
+    var replyBarTexto  = document.getElementById('replyBarTexto');
+    var replyBarCancel = document.getElementById('replyBarCancel');
+
+    /* O que mostrar na barra e no balão: o mesmo resumo de uma linha que o
+       servidor monta em `Message.resumo_citado` — mídia sem legenda vira o
+       rótulo do tipo, em vez de um bloco vazio. */
+    var ROTULO_MIDIA = {image:'📷 Imagem', video:'🎥 Vídeo', audio:'🎤 Áudio',
+                        document:'📄 Documento', location:'📍 Localização'};
+    /* Marcadores que o webhook grava quando não há o que mostrar; na citação
+       valem como texto vazio (espelha Message.CONTEUDO_VAZIO). */
+    var CONTEUDO_VAZIO = ['[sem conteúdo]', '[mídia]'];
+
+    function resumoDoBalao(el) {
+        if (el.querySelector('.msg-apagada')) return 'Mensagem apagada';
+        var texto = '';
+        var corpo = el.querySelector('.msg-bubble .msg-text');
+        if (corpo) texto = corpo.textContent.replace(/\s+/g, ' ').trim();
+        if (CONTEUDO_VAZIO.indexOf(texto) !== -1) texto = '';
+        var tipo = '';
+        if (el.querySelector('.msg-media-img')) tipo = 'image';
+        else if (el.querySelector('.msg-video-player')) tipo = 'video';
+        else if (el.querySelector('.msg-audio-player')) tipo = 'audio';
+        else if (el.querySelector('.msg-doc-link')) tipo = 'document';
+        if (tipo) {
+            if (!texto) {
+                var doc = el.querySelector('.msg-doc-link');
+                texto = doc ? doc.textContent.trim() : '';
+            }
+            return (ROTULO_MIDIA[tipo] + ' ' + texto).trim().slice(0, 120);
+        }
+        return (texto || 'Mensagem').slice(0, 120);
+    }
+
+    function autorDoBalao(el) {
+        var nome = el.querySelector('.msg-sender-name');
+        if (el.classList.contains('internal')) return 'Nota interna';
+        return (nome ? nome.textContent.trim() : '') ||
+               (el.classList.contains('agent') ? 'Atendente' : 'Cliente');
+    }
+
+    function responderA(id) {
+        var el = balaoDaMensagem(id);
+        if (!el) return;
+        var interna = el.classList.contains('internal');
+        /* Nota interna nunca foi para o WhatsApp: citá-la numa mensagem ao
+           cliente mostraria aqui um bloco que ele não recebeu. Em vez de
+           recusar no envio, a tela já entra em "Comentário Interno" — que é
+           onde essa resposta faz sentido. O servidor revalida (`pode_responder`). */
+        if (interna && !isInternal) setMode('internal');
+        _respondendoA = {
+            id: id,
+            autor: autorDoBalao(el),
+            texto: resumoDoBalao(el),
+            interna: interna
+        };
+        replyBarAutor.textContent = _respondendoA.autor;
+        replyBarTexto.textContent = _respondendoA.texto;
+        replyBar.classList.add('visible');
+        replyBar.classList.toggle('interna', interna);
+        msgInput.focus();
+    }
+
+    function cancelarResposta() {
+        _respondendoA = null;
+        replyBar.classList.remove('visible', 'interna');
+        replyBarAutor.textContent = '';
+        replyBarTexto.textContent = '';
+    }
+
+    /* Voltar para o modo WhatsApp com uma nota interna citada desfaz a
+       citação: ela não pode viajar para o cliente. */
+    function revisarCitacaoNoModo() {
+        if (_respondendoA && _respondendoA.interna && !isInternal) cancelarResposta();
+    }
+
+    if (replyBarCancel) replyBarCancel.addEventListener('click', cancelarResposta);
+
+    /* Bloco citado dentro da bolha. O mesmo HTML do template server-side,
+       para a mensagem recém-chegada e a mesma depois do F5 ficarem iguais. */
+    function renderQuote(reply) {
+        if (!reply || (!reply.preview && !reply.sender_name)) return '';
+        return '<button type="button" class="msg-quote" data-quote-id="' +
+               escapeHTML(reply.id || '') + '" title="' +
+               (reply.id ? 'Ir para a mensagem citada' : 'A mensagem citada não está neste chamado') +
+               '"><div class="msg-quote-autor">' + escapeHTML(reply.sender_name || '') +
+               '</div><div class="msg-quote-texto">' + escapeHTML(reply.preview || '') +
+               '</div></button>';
+    }
+
+    /* Clique na citação: rola até a original e pisca. Se ela não estiver
+       carregada (chamado antigo, ou ainda acima do trecho em memória), o
+       aviso aparece embaixo do balão — melhor que um clique que não faz nada. */
+    var _piscando = null;
+    function irParaCitada(id, elOrigem) {
+        var alvo = id && balaoDaMensagem(id);
+        if (!alvo) {
+            if (elOrigem) avisarNoBalao(elOrigem, 'A mensagem citada não está neste chamado.');
+            return;
+        }
+        alvo.scrollIntoView({behavior: 'smooth', block: 'center'});
+        if (_piscando) _piscando.classList.remove('destacada');
+        /* reflow: sem isso, reanimar o mesmo balão não reinicia a animação */
+        void alvo.offsetWidth;
+        alvo.classList.add('destacada');
+        _piscando = alvo;
+        setTimeout(function() { alvo.classList.remove('destacada'); }, 1500);
+    }
+
+    /* Espelha `ConversationService.pode_responder` (régua do WhatsApp) para
+       os balões que nascem no JS: mensagem recém-chegada do cliente ou
+       recém-enviada por nós. O servidor revalida no envio. */
+    function podeResponder(msg) {
+        return msg.sender_type === 'customer' || msg.sender_type === 'agent' ||
+               msg.sender_type === 'internal';
+    }
+
     /* Hora + tick dentro do balão, mesmo HTML que o template server-side. */
     function renderMeta(cls, timeText, editadaEm) {
         return '<span class="msg-meta">' +
@@ -1742,10 +1881,11 @@
             el.innerHTML =
                 '<div class="msg-block' + (cls === 'internal' ? ' internal-block' : '') + '">' +
                 '<div class="msg-sender-name' + (cls === 'agent' ? ' agent-name' : '') + '">' + nameText + '</div>' +
-                '<div class="msg-bubble">' + renderMediaBubble(msg) + renderMeta(cls, msg.created_at, msg.edited_at) + '</div>' +
+                '<div class="msg-bubble">' + renderQuote(msg.reply) + renderMediaBubble(msg) + renderMeta(cls, msg.created_at, msg.edited_at) + '</div>' +
                 (prazo ? '<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>' : '') +
                 (podeApagar(msg) ? '<button type="button" class="msg-del-btn" title="Apagar mensagem"><i class="fas fa-trash"></i></button>' : '') +
                 (podeReagir(msg) ? '<button type="button" class="msg-react-btn" title="Reagir" aria-label="Reagir à mensagem"><i class="far fa-smile"></i></button>' : '') +
+                (podeResponder(msg) ? '<button type="button" class="msg-reply-btn" title="Responder" aria-label="Responder a esta mensagem"><i class="fas fa-reply"></i></button>' : '') +
                 '</div>';
         }
         _renderedIds.add(String(msg.id));
@@ -2016,6 +2156,9 @@
         /* Mensagem apagada não recebe reação (o servidor também recusa). */
         if (_reagindo === id) fecharReacoes();
         var btnR = el.querySelector('.msg-react-btn'); if (btnR) btnR.remove();
+        /* Nem resposta: o rastro não cita ninguém e não dá para citá-lo. */
+        var btnRe = el.querySelector('.msg-reply-btn'); if (btnRe) btnRe.remove();
+        if (_respondendoA && _respondendoA.id === id) cancelarResposta();
         el.removeAttribute('data-editavel-ate');
         if (_editando === id) _editando = null;
     }
@@ -2033,6 +2176,18 @@
             } else {
                 reagir(alvoMsg.dataset.msgId, emoBtn.dataset.emoji || '');
             }
+            return;
+        }
+        var quote = e.target.closest('.msg-quote');
+        if (quote) {
+            e.preventDefault();
+            irParaCitada(quote.dataset.quoteId, alvoMsg);
+            return;
+        }
+        var replyBtn = e.target.closest('.msg-reply-btn');
+        if (replyBtn && alvoMsg) {
+            e.preventDefault();
+            responderA(alvoMsg.dataset.msgId);
             return;
         }
         var reactBtn = e.target.closest('.msg-react-btn');
@@ -2263,6 +2418,14 @@
         }
     }, true);
 
+    /* Esc no compositor cancela a citação. Registrado DEPOIS do listener do
+       "@" de propósito: com a lista de participantes aberta, o primeiro Esc
+       fecha a lista (ela chama stopImmediatePropagation) e só o segundo
+       desfaz a resposta. */
+    msgInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && _respondendoA) { e.preventDefault(); cancelarResposta(); }
+    });
+
     /* ── Enviar mensagem ── */
     function doSend() {
         /* Bloqueia se já enviando ou se há mídia pendente (evitar envio duplo) */
@@ -2271,12 +2434,18 @@
         if (!text) return;
 
         isSending = true;
+        /* A citação sai do compositor junto com o texto: se o envio falhar,
+           os dois voltam, senão a pessoa reescreveria a resposta sem saber
+           que ela deixou de citar a mensagem. */
+        var citando = _respondendoA;
         msgInput.value = ''; msgInput.style.height = 'auto';
         sendBtn.style.display = 'none'; micBtn.style.display = 'flex';
+        cancelarResposta();
 
         fetch(API_MSG, {
             method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-            body:JSON.stringify({message:text, is_internal:isInternal, mentions:mencoesDoTexto(text)})
+            body:JSON.stringify({message:text, is_internal:isInternal, mentions:mencoesDoTexto(text),
+                                 reply_to: citando ? citando.id : null})
         }).then(function(r){ return r.json(); }).then(function(d){
             if (d.success) {
                 /* WebSocket já renderizou — se não, renderiza aqui como fallback */
@@ -2286,16 +2455,19 @@
                         content: text,
                         sender_type: isInternal ? 'internal' : 'agent',
                         sender_name: '',
+                        reply: d.reply,
                         created_at: new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})
                     });
                 }
                 if (d.newly_assigned) _onNewlyAssigned();
             } else {
                 msgInput.value = text;
+                if (citando) responderA(citando.id);
                 alert('Erro: ' + (d.error || 'Falha ao enviar'));
             }
         }).catch(function(){
             msgInput.value = text;
+            if (citando) responderA(citando.id);
             alert('Erro de conexão');
         }).finally(function(){
             isSending = false;
@@ -2990,9 +3162,14 @@
                 mediaBase64: mediaBase64,
                 mediaType: mediaType,
                 mediaFileName: mediaFileName,
-                mediaCaption: captionEl ? captionEl.value.trim() : ''
+                mediaCaption: captionEl ? captionEl.value.trim() : '',
+                /* Mensagem agendada não guarda citação (ScheduledMessage não
+                   tem esse campo), então o agendador precisa saber que há uma
+                   pendente para avisar em vez de descartá-la em silêncio. */
+                replyTo: _respondendoA ? _respondendoA.id : null
             };
         },
+        cancelReply: cancelarResposta,
         destroy: function() {
             if(ws){ws.onclose=null;ws.close();ws=null;}
             _pollDestroyed = true;
@@ -3377,6 +3554,12 @@ window.scheduledMsgs = {
         var state = window.chatApp.getComposerState();
         if (!state.text && !state.mediaBase64) {
             alert('Digite uma mensagem ou anexe uma mídia antes de agendar.');
+            return;
+        }
+        /* Agendamento não leva a citação junto — melhor dizer isso agora do
+           que deixar sair, dias depois, uma resposta sem a mensagem citada. */
+        if (state.replyTo) {
+            alert('Mensagem agendada não sai citando outra. Envie agora, ou cancele a resposta (Esc) para agendar.');
             return;
         }
         var dt = document.getElementById('scheduleDateTime');

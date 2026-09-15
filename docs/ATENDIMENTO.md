@@ -4,7 +4,7 @@
 
 Plataforma de atendimento ao cliente integrada ao CRM, similar ao Chatwoot. Centraliza o gerenciamento de tickets de suporte via WhatsApp (Evolution API v2), com tarefas, alertas automáticos, lembretes pessoais e relatórios completos.
 
-**Última atualização:** 04/09/2026  
+**Última atualização:** 15/09/2026  
 **Status:** ✅ FUNCIONAL  
 **Stack:** Django, PostgreSQL, Celery, WebSocket (Django Channels), JavaScript vanilla
 
@@ -20,6 +20,7 @@ Plataforma de atendimento ao cliente integrada ao CRM, similar ao Chatwoot. Cent
 | **Tarefas** | Board em 4 colunas com vinculação de conversas e lembretes automáticos |
 | **Contatos 1:1** | Além dos grupos, contato de telefone criado à mão — e a escolha de **quem atende** cada contato/grupo (ninguém marcado = atendimento geral) |
 | **Editar / apagar** | Mensagem enviada pode ser reescrita (15 min) ou **apagada para todos** — nos dois casos o WhatsApp muda junto |
+| **Responder citando** | Seleciona uma mensagem e responde amarrada a ela, com o bloco citado no balão — em texto e em mídia, nos dois sentidos |
 | Auto Atendimento | Fluxo de boas-vindas que coleta assunto e categoria automaticamente |
 | **Mensagens Agendadas** | Programa envio de mensagem/mídia para data e hora futuras, com painel para cancelar |
 | Relatórios | Tabela + PDF com assunto, categoria, agente, duração por empresa/período |
@@ -2099,3 +2100,142 @@ reação, que vira o `external_id` da `MessageReaction`.
 tira), mesma reação sem chamar o WhatsApp, recusa do WhatsApp sem gravar nada,
 recusa sem key em grupo, reação do cliente intacta, eco do webhook sem
 duplicar, formato do `sendReaction` e do `findMessages`, a API e a tela.
+
+---
+
+## ↩️ Responder citando uma mensagem (15/09/2026)
+
+Selecionar uma mensagem da conversa e responder **citando** ela, como no
+WhatsApp: o balão da resposta sai com o trecho citado em cima, e o cliente
+recebe a resposta amarrada à mensagem certa.
+
+O problema que isso resolve é de conversa longa: o cliente manda cinco coisas
+seguidas, o atendente responde "pode fazer" e ninguém mais sabe a qual das
+cinco. A citação existia só num sentido — o cliente respondia citando no
+celular, e o CRM jogava fora esse contexto e mostrava um balão solto.
+
+### Interface
+
+- Seta de **responder** ao lado do lápis, da lixeira e da carinha (aparece no
+  hover; em tela de toque fica visível, mais discreta).
+- A escolha enche a barra **"Respondendo a…"** em cima do compositor, com o
+  autor e uma prévia de uma linha. `Esc` ou o "×" cancelam. A citação é estado
+  do **compositor**, não do balão: cancelar antes de enviar não deixa rastro.
+- O balão da resposta mostra o bloco citado dentro da bolha, com barra
+  colorida à esquerda e no máximo duas linhas. **Clicar nele rola até a
+  mensagem original**, que pisca. Se a original não estiver no chamado, o
+  bloco aparece igual, sem clique, e o clique explica.
+- Vale para texto **e para mídia**: a foto sai citando a pergunta do cliente.
+
+### As duas réguas de `pode_responder`
+
+São dois destinos diferentes, então são duas réguas:
+
+| Onde | O que dá para citar |
+|---|---|
+| Mensagem ao cliente | Só o que existe no WhatsApp — mesma régua de `pode_reagir`. **Fora:** nota interna, aviso do sistema, mensagem apagada e mensagem sem wamid confirmado (`sending_`, `ia_`, `flow_`, `local_`, …) |
+| Comentário interno | Qualquer mensagem da conversa, **inclusive outra nota interna** — a citação não sai do CRM |
+
+Citar uma nota interna numa mensagem ao cliente mostraria aqui um bloco que
+ele não recebeu. Em vez de recusar no envio, a tela já entra em "Comentário
+Interno" ao escolher a nota; voltar para o modo WhatsApp desfaz a citação. O
+servidor revalida de qualquer jeito.
+
+### Ordem das operações
+
+A citação é resolvida e validada **antes** de gravar a Message, de forma
+síncrona — ao contrário do envio do texto em si, que vai em background. É a
+última janela para recusar com um motivo que chega à tela: depois que a thread
+começa, o atendente já está vendo o balão. Recusa aqui não grava nada.
+
+### O `participant`, de novo
+
+Como na reação, o WhatsApp precisa da key completa da mensagem citada
+(`stanzaId` + `participant`) para montar o bloco em grupo, e o CRM não guarda
+o `participant`. A key vem de `EvolutionAPIClient.find_message_key`
+(`/chat/findMessages`). Se a Evolution não tiver a mensagem:
+
+| Mensagem | O que acontece |
+|---|---|
+| Nossa (enviada pelo CRM) | Vai com `fromMe: true`, sem `participant` |
+| Do cliente, em grupo | **Recusa** — sem `participant` o texto chega solto e o CRM ficaria com uma citação que só existe aqui |
+| Conversa 1:1 | Vai sem `participant`, que não existe em 1:1 |
+
+### A resposta que chega do cliente
+
+Não é um evento à parte: vem como `contextInfo` pendurado no corpo da própria
+mensagem — em `extendedTextMessage` quando é texto, e **dentro do objeto de
+mídia** (`imageMessage`, `audioMessage`, …) quando respondem com foto ou
+áudio. Por isso `_extrair_citacao` varre todos os corpos, em vez de olhar só
+o de texto.
+
+Dois desfechos, e os dois campos existem por causa do segundo:
+
+- A citada **está nesta conversa** → vínculo pela FK `reply_to`. O bloco fica
+  clicável e o trecho acompanha edições posteriores da original.
+- A citada **não está** (anterior à conexão atual, ou de um chamado já
+  fechado) → guarda-se o trecho solto em `reply_preview` /
+  `reply_sender_name`, com o wamid em `reply_to_external_id`. Uma citação não
+  clicável é melhor do que um balão sem contexto nenhum.
+
+### Efeito colateral: a mídia que nós enviamos virou citável
+
+`EvolutionAPIClient.send_media`/`send_audio` passaram a devolver
+`(ok, message_id)` como o `send_text` já fazia, e `ConversationService.
+send_media` grava esse wamid no `external_id`. Antes a mídia enviada pelo CRM
+ficava para sempre com o id local `local_media_…`, que não existe do outro
+lado — e por isso não podia ser citada, editada nem apagada.
+
+### Modelo
+
+Quatro campos novos na `Message` (migração `0019_message_reply_to`):
+
+| Campo | Para quê |
+|---|---|
+| `reply_to` | FK para a Message citada (`SET_NULL`) — o caso normal |
+| `reply_to_external_id` | wamid da citada, mesmo quando ela não está no CRM |
+| `reply_preview` | trecho da citação, idem |
+| `reply_sender_name` | quem escreveu a citada, idem |
+
+`Message.resumo_citado()` monta a linha única que aparece no bloco (mídia sem
+legenda vira o rótulo do tipo; apagada vira "Mensagem apagada"), e
+`Message.citacao` devolve o bloco pronto para o template, a API e o WebSocket.
+
+### API
+
+| Método | Rota | Corpo | Resposta |
+|---|---|---|---|
+| POST | `/atendimento/api/conversation/<uuid>/send-message/` | `{"message": "…", "reply_to": "<uuid da Message>"}` | `{success, message_id, reply: {id, sender_name, preview, sender_type}}` |
+| POST | `/atendimento/api/conversation/<uuid>/send-media/` | idem, com os campos de mídia | idem |
+
+O `new_message` do WebSocket e o polling (`/messages/`) passaram a levar
+`reply` em cada mensagem — vazio (`{}`) na esmagadora maioria.
+
+**Mensagem agendada não cita**: `ScheduledMessage` não tem esses campos, e a
+tela avisa em vez de deixar sair, dias depois, uma resposta sem a citação.
+
+### Endpoint da Evolution (2.x)
+
+```json
+POST /message/sendText/{instance}
+{"number": "…@g.us", "text": "*Rita*\n\nJá estou vendo",
+ "quoted": {"key": {"id": "3EB0…", "remoteJid": "…@g.us", "fromMe": false,
+                    "participant": "…@lid"},
+            "message": {"conversation": "O link caiu de novo"}}}
+```
+
+`quoted` vai no corpo do próprio `sendText`/`sendMedia` (na 1.x ficava dentro
+de `options`). O que importa é `quoted.key` — é dela que sai o `contextInfo`;
+`quoted.message` é só o texto exibido dentro do bloco. Campo vazio na key
+(`participant` em conversa 1:1) é descartado por `montar_quoted`: em branco o
+WhatsApp trata como um remetente vazio.
+
+### Testes
+
+`ResponderMensagemTest` (23 casos): as duas réguas de `pode_responder`, o
+`quoted` com a key indo para a Evolution, recusa sem key em grupo (sem gravar
+a resposta), `fromMe` quando a mensagem é nossa, nota interna citando sem
+falar com o WhatsApp, citação de outra conversa recusada, mídia citando, a
+resposta do cliente chegando pelo webhook (com e sem a original no CRM, texto
+e mídia), o resumo de mídia sem legenda e de mensagem apagada, o formato do
+`quoted`, o wamid voltando do `sendMedia`, a API e a tela.

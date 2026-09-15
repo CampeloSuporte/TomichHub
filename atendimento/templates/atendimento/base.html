@@ -1157,6 +1157,79 @@ body {
 .msg-react-picker .mais { font-size:14px; color:var(--wa-text-muted); }
 .msg-react-picker[aria-busy="true"] button { opacity:.45; pointer-events:none; }
 
+/* ── Responder citando (igual ao WhatsApp) ──────────────────────────────
+   Seta de responder: mesma família do lápis/lixeira/carinha, e por isso a
+   mesma caixa de 24px. Fica do lado de fora do balão para não brigar com o
+   texto nem com a hora flutuante. */
+.msg-reply-btn {
+    position:absolute; top:50%; transform:translateY(-50%); right:-30px;
+    width:24px; height:24px; border-radius:50%; padding:0;
+    background:var(--wa-panel); border:1px solid var(--border);
+    color:var(--wa-text-muted); font-size:11px;
+    cursor:pointer; opacity:0; transition:opacity .12s, color .12s, border-color .12s;
+    z-index:3; display:flex; align-items:center; justify-content:center;
+}
+.msg:hover .msg-reply-btn, .msg-reply-btn:focus-visible { opacity:1; }
+.msg-reply-btn:hover { color:var(--wa-green-light); border-color:var(--wa-green-light); }
+@media (hover: none) { .msg-reply-btn { opacity:.55; } }
+/* Na mensagem do cliente a carinha de reagir já ocupa a coluna da direita,
+   então a seta vai para a de fora. Na do atendente as duas ficam à esquerda,
+   junto do lápis e da lixeira, na terceira coluna. */
+.msg.customer .msg-block:has(.msg-react-btn) .msg-reply-btn { right:-58px; }
+.msg.agent .msg-reply-btn { right:auto; left:-30px; }
+.msg.agent .msg-block:has(.msg-edit-btn, .msg-del-btn) .msg-reply-btn { left:-58px; }
+.msg.agent .msg-block:has(.msg-edit-btn, .msg-del-btn):has(.msg-react-btn) .msg-reply-btn { left:-86px; }
+.msg.agent .msg-block:not(:has(.msg-edit-btn, .msg-del-btn)):has(.msg-react-btn) .msg-reply-btn { left:-58px; }
+/* Nota interna é centralizada e não tem folga nas laterais: os botões dela
+   moram no canto de cima do próprio balão. */
+.msg.internal .msg-reply-btn {
+    left:auto; right:2px; top:2px; transform:none;
+    background:rgba(0,0,0,.45); border-color:rgba(245,196,0,0.3);
+}
+.msg.internal .msg-block:has(.msg-edit-btn) .msg-reply-btn { right:58px; top:2px; }
+.msg.internal .msg-block:has(.msg-del-btn):not(:has(.msg-edit-btn)) .msg-reply-btn { right:30px; top:2px; }
+
+/* Bloco citado dentro do balão: faixa com barra colorida à esquerda, nome
+   de quem escreveu e uma prévia de no máximo duas linhas — o desenho do
+   WhatsApp. Fica DENTRO da bolha, acima do texto da resposta. */
+.msg-quote {
+    display:block; width:100%; text-align:left; box-sizing:border-box;
+    background:rgba(0,0,0,.28); border:none; border-left:3px solid var(--wa-green-light);
+    border-radius:5px; padding:4px 8px; margin:0 0 4px; font-family:inherit;
+    cursor:pointer; overflow:hidden;
+}
+.msg-quote[data-quote-id=""] { cursor:default; }
+.msg-quote:hover { background:rgba(0,0,0,.4); }
+.msg.agent .msg-quote { background:rgba(0,0,0,.20); border-left-color:#a5d6c4; }
+.msg.internal .msg-quote { background:rgba(0,0,0,.25); border-left-color:#d29922; }
+.msg-quote-autor { font-size:11.5px; font-weight:600; color:var(--wa-green-light); margin-bottom:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.msg.agent .msg-quote-autor { color:#a5d6c4; }
+.msg.internal .msg-quote-autor { color:#d29922; }
+.msg-quote-texto {
+    font-size:12.5px; color:var(--wa-text-muted); line-height:1.35;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+    overflow:hidden; overflow-wrap:anywhere;
+}
+
+/* Pisca-pisca do balão citado quando se clica na citação. É o único retorno
+   visual de que a rolagem levou ao lugar certo — sem ele, numa conversa
+   longa, o salto parece que não aconteceu. */
+@keyframes msgDestacada {
+    0%, 100% { background:transparent; }
+    30%      { background:rgba(6,207,156,.16); }
+}
+.msg.destacada { animation:msgDestacada 1.4s ease; border-radius:8px; }
+
+/* Barra "Respondendo a…" em cima do compositor. Mesma faixa do bloco citado,
+   para a pessoa reconhecer o que vai sair no balão. */
+.reply-bar { display:none; align-items:center; gap:8px; margin:8px 14px 0; background:var(--wa-input-bg); border-left:3px solid var(--wa-green-light); border-radius:5px; padding:6px 10px; }
+.reply-bar.visible { display:flex; }
+.reply-bar.interna { border-left-color:#d29922; }
+.reply-bar-corpo { flex:1; min-width:0; }
+.reply-bar-autor { font-size:11.5px; font-weight:600; color:var(--wa-green-light); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.reply-bar.interna .reply-bar-autor { color:#d29922; }
+.reply-bar-texto { font-size:12px; color:var(--wa-text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
 /* ── Área de input (estilo WhatsApp) ── */
 .chat-input-area { background:var(--wa-panel); border-top:1px solid var(--wa-border); flex-shrink:0; }
 

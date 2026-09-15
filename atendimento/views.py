@@ -229,7 +229,7 @@ def conversation_detail(request, conversation_id):
 
     # Mensagens
     messages = list(
-        conversation.messages.select_related('sender').prefetch_related('reactions').order_by('created_at')
+        conversation.messages.select_related('sender', 'reply_to').prefetch_related('reactions').order_by('created_at')
     )
     # Quem pode editar o quê é decidido no servidor (uma regra só, em
     # ConversationService.pode_editar) e vai pro template como um instante
@@ -259,6 +259,11 @@ def conversation_detail(request, conversation_id):
         # Reagir não depende de quem é o atendente (a reação sai pela conta do
         # WhatsApp da instância), só da mensagem existir lá do outro lado.
         m.reagivel, _motivo_reac = ConversationService.pode_reagir(m)
+        # Responder citando: a régua estrita (a do WhatsApp) decide se a seta
+        # nasce. Nota interna e mensagem sem wamid ainda podem ser citadas em
+        # "Comentário Interno" — quem libera isso é o `pode_responder` do
+        # servidor, no envio.
+        m.respondivel, _motivo_resp = ConversationService.pode_responder(m)
 
     # Atualiza status de leitura das mensagens do cliente e avisa outras abas/dispositivos
     _marcar_mensagens_lidas(conversation)
@@ -488,6 +493,8 @@ def api_send_message(request, conversation_id):
         is_internal = bool(data.get('is_internal'))
         # Contatos marcados com "@" no chat: [{'nome','phone'}]
         mentions = data.get('mentions') or []
+        # Responder citando outra mensagem da conversa (id da Message).
+        reply_to = data.get('reply_to') or None
 
         if not message_text:
             return JsonResponse({'success': False, 'error': 'Mensagem vazia'}, status=400)
@@ -505,12 +512,14 @@ def api_send_message(request, conversation_id):
             request.user,
             is_internal=is_internal,
             mentions=mentions,
+            reply_to=reply_to,
         )
 
         if success:
             return JsonResponse({
                 'success': True,
                 'message_id': result,
+                'reply': Message.objects.get(id=result).citacao,
                 'newly_assigned': was_unassigned and conversation.assigned_to_id is not None,
                 'assigned_to_name': (
                     conversation.assigned_to.get_full_name() or conversation.assigned_to.username
@@ -541,6 +550,7 @@ def api_send_media(request, conversation_id):
         media_type   = data.get('mediaType', 'document')   # image | audio | document | video
         file_name    = data.get('fileName', 'arquivo')
         caption      = data.get('caption', '').strip()
+        reply_to     = data.get('reply_to') or None
 
         if not media_base64:
             return JsonResponse({'success': False, 'error': 'Base64 vazio'}, status=400)
@@ -548,7 +558,8 @@ def api_send_media(request, conversation_id):
         was_unassigned = conversation.assigned_to_id is None
 
         success, result = ConversationService.send_media(
-            conversation, media_base64, media_type, file_name, caption, request.user
+            conversation, media_base64, media_type, file_name, caption, request.user,
+            reply_to=reply_to,
         )
         if success:
             msg = Message.objects.get(id=result)
@@ -556,6 +567,7 @@ def api_send_media(request, conversation_id):
                 'success': True,
                 'message_id': result,
                 'content': msg.content,
+                'reply': msg.citacao,
                 'newly_assigned': was_unassigned and conversation.assigned_to_id is not None,
             })
         else:
@@ -2587,7 +2599,7 @@ def api_conversation_messages(request, conversation_id):
     except (ValueError, ImportError):
         after_dt = None
 
-    qs = Message.objects.filter(conversation=conversation).order_by('created_at').select_related('sender')
+    qs = Message.objects.filter(conversation=conversation).order_by('created_at').select_related('sender', 'reply_to')
     if after_dt:
         # >= (não >): evita pular uma mensagem que compartilhe o microssegundo
         # exato da última já vista. A mensagem da fronteira é reenviada, mas o
@@ -2618,6 +2630,9 @@ def api_conversation_messages(request, conversation_id):
             # de editar (o servidor revalida na hora de salvar).
             'sender_id': m.sender_id,
             'edited_at': timezone.localtime(m.edited_at).strftime('%H:%M') if m.edited_at else '',
+            # Bloco citado. Some junto com o conteúdo quando a mensagem foi
+            # apagada — o rastro "Mensagem apagada" não cita ninguém.
+            'reply': {} if m.deleted_at else m.citacao,
         })
 
     # Usuário está vendo a conversa (mini-chat flutuante) → marca como lida
