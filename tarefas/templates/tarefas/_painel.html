@@ -19,6 +19,7 @@
     color: #c9d1d9;
     cursor: pointer;
     white-space: nowrap;
+    transition: color .15s ease, border-color .15s ease, transform .12s ease-out;
 }
 .btn-tarefa:hover { border-color: #58a6ff; color: #58a6ff; }
 .btn-tarefa-primary { border-color: #388bfd; color: #58a6ff; }
@@ -30,15 +31,106 @@
     max-height: 180px; overflow-y: auto;
 }
 .tarefa-cliente-item:hover { background: #21262d; }
+
+/* Badges extras da linha */
+.badge-dash i { font-size: 9px; margin-right: 3px; }
+.badge-rotina { background: rgba(163,113,247,.12); color: #bc8cff; border: 1px solid rgba(163,113,247,.3); }
+.badge-checklist { cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums; }
+
+/* "+ Adicionar" dentro das listas (substitui o botão do cabeçalho) */
+.tarefa-add {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    width: 100%; margin-top: 10px; padding: 7px 10px;
+    font-size: 12px; color: #7d8590; font-family: inherit;
+    background: transparent; border: 1px dashed #30363d; border-radius: 6px; cursor: pointer;
+    transition: color .15s ease, border-color .15s ease, background-color .15s ease, transform .12s ease-out;
+}
+.tarefa-add:hover { color: #58a6ff; border-color: rgba(88,166,255,.5); background: rgba(88,166,255,.04); }
+.tarefa-add i { font-size: 10px; }
+.btn-tarefa:active, .tarefa-add:active, .rotina-acao:active, .badge-checklist:active { transform: scale(.97); }
+.tarefa-add:focus-visible, .rotina-acao:focus-visible, .rotina-toggle:focus-visible, .badge-checklist:focus-visible {
+    outline: 2px solid #58a6ff; outline-offset: 2px;
+}
+
+/* Rotinas mensais */
+.rotinas-resumo { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #7d8590; font-variant-numeric: tabular-nums; }
+.rotinas-barra { width: 110px; height: 4px; background: #21262d; border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+.rotinas-barra > span { display: block; height: 100%; background: #3fb950; border-radius: 2px; transition: width .2s ease-out; }
+.rotina-lista { display: flex; flex-direction: column; gap: 8px; }
+.rotina { border: 1px solid #30363d; border-radius: 8px; background: #0d1117; }
+.rotina-pausada { opacity: .65; }
+.rotina-head { display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 4px; }
+.rotina-toggle {
+    flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+    padding: 4px 6px; background: none; border: none; border-radius: 6px;
+    text-align: left; color: inherit; cursor: pointer; font-family: inherit;
+}
+.rotina-chevron { width: 12px; color: #7d8590; font-size: 10px; transition: transform .15s ease-out; }
+.rotina-toggle[aria-expanded="true"] .rotina-chevron { transform: rotate(90deg); }
+.rotina-info { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rotina-titulo { font-size: 13px; font-weight: 500; color: #c9d1d9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rotina-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; color: #7d8590; }
+.rotina-meta i { font-size: 10px; margin-right: 3px; opacity: .8; }
+.rotina-estado { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.rotina-progresso { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #7d8590; font-variant-numeric: tabular-nums; }
+.rotina-progresso .rotinas-barra { width: 56px; }
+.rotina-acoes { display: flex; gap: 2px; flex-shrink: 0; }
+.rotina-acoes form { display: inline; }
+.rotina-acao {
+    width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 6px; border: none; background: none; color: #7d8590; cursor: pointer; font-size: 12px;
+    transition: color .15s ease, background-color .15s ease, transform .12s ease-out;
+}
+.rotina-acao:hover { color: #c9d1d9; background: #21262d; }
+.rotina-acao-danger:hover { color: #f85149; }
+.rotina-corpo { border-top: 1px solid #21262d; padding: 6px 12px 10px 32px; }
+.rotina-rodape { font-size: 11px; color: #7d8590; margin: 6px 8px 0; }
+
+.checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.checklist-item label {
+    display: flex; align-items: flex-start; gap: 10px; margin: 0;
+    padding: 6px 8px; border-radius: 6px; cursor: pointer;
+    transition: background-color .12s ease;
+}
+.checklist-item label:hover { background: rgba(255,255,255,.03); }
+.checklist-item input { width: 16px; height: 16px; margin-top: 1px; accent-color: #3fb950; cursor: pointer; flex-shrink: 0; }
+.checklist-texto { flex: 1; font-size: 12.5px; color: #c9d1d9; line-height: 1.4; word-break: break-word; transition: color .15s ease; }
+.checklist-item.verificado .checklist-texto { color: #7d8590; }
+.checklist-quem { font-size: 11px; color: #3fb950; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.checklist-quem i { font-size: 9px; margin-right: 2px; }
+.checklist-previa { list-style: none; margin: 4px 0 0; padding: 0; }
+.checklist-previa li { display: flex; gap: 10px; align-items: baseline; padding: 4px 8px; font-size: 12.5px; color: #7d8590; }
+.checklist-previa li::before { content: ''; width: 12px; height: 12px; border: 1px solid #30363d; border-radius: 3px; flex-shrink: 0; transform: translateY(2px); }
+
+/* Modal: tipo de tarefa + editor de checklist */
+.tarefa-modo { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 3px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 14px; }
+.tarefa-modo input { position: absolute; opacity: 0; pointer-events: none; }
+.tarefa-modo label {
+    display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0;
+    padding: 6px 8px; font-size: 12px; font-weight: 500; color: #7d8590; border-radius: 6px; cursor: pointer;
+    transition: color .15s ease, background-color .15s ease;
+}
+.tarefa-modo input:checked + label { background: #21262d; color: #c9d1d9; box-shadow: 0 0 0 1px #30363d; }
+.tarefa-modo input:focus-visible + label { outline: 2px solid #58a6ff; outline-offset: 1px; }
+.tarefa-dica { font-size: 11px; color: #7d8590; margin-top: 4px; }
+.checklist-editor-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.checklist-editor-item { display: flex; align-items: center; gap: 8px; }
+.checklist-editor-item > i { color: #484f58; font-size: 13px; width: 14px; }
+
+@media (max-width: 640px) {
+    .rotina-head { flex-wrap: wrap; }
+    .rotina-toggle { flex-basis: 100%; }
+    .rotina-estado { margin-left: 32px; }
+    .rotina-acoes { margin-left: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .btn-tarefa, .tarefa-add, .rotina-acao, .rotina-chevron, .rotinas-barra > span { transition: none; }
+}
 </style>
 
 <div class="content-card">
     <div class="content-card-header">
         <div class="content-card-title"><i class="fas fa-tasks"></i> Tarefas</div>
-        <button type="button" class="content-card-link" style="border:none;background:none;cursor:pointer;"
-                data-bs-toggle="modal" data-bs-target="#modalNovaTarefa">
-            <i class="fas fa-plus me-1"></i> Nova Tarefa
-        </button>
     </div>
 
     <div class="tarefas-stat-grid">
@@ -101,6 +193,9 @@
                     </tbody>
                 </table>
             </div>
+            <button type="button" class="tarefa-add" data-nova-tarefa data-atribuir="1">
+                <i class="fas fa-plus"></i> Adicionar tarefa
+            </button>
         </div>
 
         <div class="content-card" style="margin-bottom:0;">
@@ -119,28 +214,157 @@
                     </tbody>
                 </table>
             </div>
+            <button type="button" class="tarefa-add" data-nova-tarefa>
+                <i class="fas fa-plus"></i> Adicionar tarefa
+            </button>
         </div>
+    </div>
+
+    <div class="content-card" id="painelRotinas" style="margin:16px 0 0;">
+        <div class="content-card-header">
+            <div class="content-card-title"><i class="fas fa-rotate"></i> Rotinas mensais</div>
+            {% if rotinas_itens_total %}
+            <div class="rotinas-resumo">
+                <span class="rotinas-barra"><span id="rotinasBarraGeral" style="width:{% widthratio rotinas_itens_feitos rotinas_itens_total 100 %}%"></span></span>
+                <span id="rotinasResumoTexto">{{ rotinas_itens_feitos }} de {{ rotinas_itens_total }} itens verificados</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="rotina-lista">
+        {% for r in rotinas %}
+            <div class="rotina{% if not r.ativa %} rotina-pausada{% endif %}" id="rotina-{{ r.id }}" {% if r.atual %}data-rotina-tarefa="{{ r.atual.id }}"{% endif %}>
+                <div class="rotina-head">
+                    <button type="button" class="rotina-toggle" aria-controls="rotina-corpo-{{ r.id }}"
+                            aria-expanded="{% if r.atual and r.atual.status != 'concluida' %}true{% else %}false{% endif %}">
+                        <i class="fas fa-chevron-right rotina-chevron"></i>
+                        <span class="rotina-info">
+                            <span class="rotina-titulo">{{ r.titulo }}</span>
+                            <span class="rotina-meta">
+                                <span><i class="far fa-calendar"></i>Todo dia {{ r.dia_do_mes }}</span>
+                                {% if r.cliente %}<span><i class="fas fa-building"></i>{{ r.cliente.nome_empresa|truncatechars:30 }}</span>{% endif %}
+                                <span><i class="fas fa-user"></i>{% for u in r.responsaveis.all %}{{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}{% empty %}Sem responsável{% endfor %}</span>
+                            </span>
+                        </span>
+                    </button>
+
+                    <div class="rotina-estado">
+                        {% if r.atual %}
+                            {% if r.atual.status == 'concluida' %}
+                            <span class="badge-dash badge-ok" data-rotina-chip data-label="Concluída" data-classe="badge-ok">Concluída</span>
+                            {% elif r.atual.atrasada %}
+                            <span class="badge-dash badge-err" data-rotina-chip data-label="Atrasada" data-classe="badge-err">Atrasada</span>
+                            {% else %}
+                            <span class="badge-dash badge-info" data-rotina-chip data-label="Vence {{ r.atual.prazo|date:'d/m' }}" data-classe="badge-info">Vence {{ r.atual.prazo|date:"d/m" }}</span>
+                            {% endif %}
+                            <span class="rotina-progresso">
+                                <span class="rotinas-barra"><span data-rotina-barra style="width:{% widthratio r.atual_feitos r.atual_total 100 %}%"></span></span>
+                                <span data-rotina-contagem>{{ r.atual_feitos }}/{{ r.atual_total }}</span>
+                            </span>
+                        {% elif not r.ativa %}
+                            <span class="badge-dash" style="color:#7d8590;border:1px solid #30363d;">Pausada</span>
+                        {% else %}
+                            <span class="badge-dash badge-warn" title="A tarefa com o checklist é criada neste dia">Agendada · {{ r.proxima|date:"d/m" }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="rotina-acoes">
+                        <button type="button" class="rotina-acao rotina-editar-btn" title="Editar rotina" aria-label="Editar rotina"
+                                data-editar-url="{% url 'rotina_editar' r.id %}"
+                                data-usuarios-url="{% url 'rotina_usuarios_json' r.id %}"
+                                data-titulo="{{ r.titulo }}"
+                                data-descricao="{{ r.descricao }}"
+                                data-cliente-id="{{ r.cliente_id|default:'' }}"
+                                data-cliente-nome="{{ r.cliente.nome_empresa|default:'' }}"
+                                data-dia="{{ r.dia_do_mes }}"
+                                data-prioridade="{{ r.prioridade }}">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <form method="post" action="{% url 'rotina_ativar' r.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            {% if r.ativa %}
+                            <button type="submit" class="rotina-acao" title="Pausar rotina" aria-label="Pausar rotina"><i class="fas fa-pause"></i></button>
+                            {% else %}
+                            <button type="submit" class="rotina-acao" title="Retomar rotina" aria-label="Retomar rotina"><i class="fas fa-play"></i></button>
+                            {% endif %}
+                        </form>
+                        <form method="post" action="{% url 'rotina_excluir' r.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            <button type="button" class="rotina-acao rotina-acao-danger" title="Excluir rotina" aria-label="Excluir rotina"
+                                    onclick="uiConfirm({titulo:'Excluir Rotina', msg:'Excluir a rotina &quot;{{ r.titulo|escapejs }}&quot;? As tarefas que ela já criou continuam na lista.', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'}).then(ok => { if (ok) this.closest('form').submit() })">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="rotina-corpo" id="rotina-corpo-{{ r.id }}" {% if not r.atual or r.atual.status == 'concluida' %}hidden{% endif %}>
+                    {% if r.atual %}
+                    <ul class="checklist">
+                        {% for item in r.atual.checklist.all %}
+                        <li class="checklist-item{% if item.verificado %} verificado{% endif %}" data-item-id="{{ item.id }}">
+                            <label>
+                                <input type="checkbox" data-marcar-url="{% url 'tarefa_checklist_marcar' item.id %}" {% if item.verificado %}checked{% endif %}>
+                                <span class="checklist-texto">{{ item.texto }}</span>
+                                <span class="checklist-quem">{% if item.verificado %}<i class="fas fa-check"></i>{% if item.verificado_por %}{{ item.verificado_por.get_full_name|default:item.verificado_por.username }} · {% endif %}{{ item.verificado_em|date:"d/m H:i" }}{% endif %}</span>
+                            </label>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <div class="rotina-rodape">
+                        Ocorrência de {{ r.atual.competencia|date:"F/Y" }} · prazo {{ r.atual.prazo|date:"d/m/Y" }}
+                        {% if r.atual.competencia != rotinas_competencia %} · a deste mês é criada em {{ r.proxima|date:"d/m" }}{% endif %}
+                    </div>
+                    {% else %}
+                    <div class="rotina-rodape" style="margin-top:4px;">Checklist que será criado em {{ r.proxima|date:"d/m/Y" }}:</div>
+                    <ul class="checklist-previa">
+                        {% for item in r.itens.all %}<li>{{ item.texto }}</li>{% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+            </div>
+        {% empty %}
+            <div class="empty-state" style="padding:20px 16px 8px;">
+                <i class="fas fa-rotate"></i>
+                <p>Nenhuma rotina ainda. Uma rotina cria, todo mês no dia escolhido, uma tarefa com checklist para a equipe ir marcando como verificada.</p>
+            </div>
+        {% endfor %}
+        </div>
+
+        <button type="button" class="tarefa-add" data-nova-tarefa data-modo="rotina">
+            <i class="fas fa-plus"></i> Nova rotina mensal
+        </button>
     </div>
 </div>
 
-<!-- Modal Nova Tarefa -->
-<div class="modal fade" id="modalNovaTarefa" tabindex="-1">
+<!-- Modal Nova Tarefa / Nova Rotina -->
+<div class="modal fade" id="modalNovaTarefa" tabindex="-1" aria-labelledby="novaTarefaTitulo">
     <div class="modal-dialog">
-        <form class="modal-content" method="post" action="{% url 'tarefa_criar' %}">
+        <form class="modal-content" method="post" id="formNovaTarefa" action="{% url 'tarefa_criar' %}"
+              data-url-tarefa="{% url 'tarefa_criar' %}" data-url-rotina="{% url 'rotina_criar' %}">
             {% csrf_token %}
             <input type="hidden" name="next" value="{{ request.path }}">
             <div class="modal-header">
-                <h5 class="modal-title">Nova Tarefa</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="novaTarefaTitulo">Nova Tarefa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
+                <div class="tarefa-modo" role="radiogroup" aria-label="Tipo">
+                    <input type="radio" name="_modo" id="modoTarefa" value="tarefa" checked>
+                    <label for="modoTarefa"><i class="far fa-square-check"></i> Tarefa única</label>
+                    <input type="radio" name="_modo" id="modoRotina" value="rotina">
+                    <label for="modoRotina"><i class="fas fa-rotate"></i> Rotina mensal</label>
+                </div>
+
                 <div class="mb-2">
-                    <label class="form-label">Título</label>
-                    <input type="text" name="titulo" class="form-control" required maxlength="255">
+                    <label class="form-label" for="novaTitulo">Título</label>
+                    <input type="text" name="titulo" id="novaTitulo" class="form-control" required maxlength="255">
                 </div>
                 <div class="mb-2">
-                    <label class="form-label">Descrição</label>
-                    <textarea name="descricao" class="form-control" rows="3"></textarea>
+                    <label class="form-label" for="novaDescricao">Descrição</label>
+                    <textarea name="descricao" id="novaDescricao" class="form-control" rows="2"></textarea>
                 </div>
                 <div class="mb-2 position-relative">
                     <label class="form-label">Cliente (opcional)</label>
@@ -148,24 +372,48 @@
                     <input type="hidden" name="cliente_id" class="tarefa-cliente-id">
                     <div class="tarefa-cliente-resultados" style="display:none;"></div>
                 </div>
+
                 <div class="row">
-                    <div class="col-6 mb-2">
-                        <label class="form-label">Prazo</label>
-                        <input type="datetime-local" name="prazo" class="form-control">
+                    <div class="col-6 mb-2" data-so-tarefa>
+                        <label class="form-label" for="novaPrazo">Prazo</label>
+                        <input type="datetime-local" name="prazo" id="novaPrazo" class="form-control">
+                    </div>
+                    <div class="col-6 mb-2" data-so-rotina hidden>
+                        <label class="form-label" for="novaDia">Repetir todo dia</label>
+                        <select name="dia_do_mes" id="novaDia" class="form-select" required disabled>
+                            {% for d in dias_do_mes %}<option value="{{ d }}"{% if d == dia_de_hoje %} selected{% endif %}>{{ d }}</option>{% endfor %}
+                        </select>
                     </div>
                     <div class="col-6 mb-2">
-                        <label class="form-label">Prioridade</label>
-                        <select name="prioridade" class="form-select">
+                        <label class="form-label" for="novaPrioridade">Prioridade</label>
+                        <select name="prioridade" id="novaPrioridade" class="form-select">
                             <option value="baixa">Baixa</option>
                             <option value="media" selected>Média</option>
                             <option value="alta">Alta</option>
                         </select>
                     </div>
                 </div>
+
+                <div class="mb-2" data-so-rotina hidden>
+                    <label class="form-label">Checklist</label>
+                    <div class="checklist-editor" id="novaChecklist">
+                        <ol class="checklist-editor-lista"></ol>
+                        <button type="button" class="tarefa-add" data-add-item style="margin-top:6px;"><i class="fas fa-plus"></i> Adicionar item</button>
+                    </div>
+                    <div class="tarefa-dica">
+                        No dia escolhido de cada mês é criada uma tarefa com estes itens. Marque cada um como verificado; com todos marcados a tarefa é concluída.
+                        Em meses sem esse dia (ex.: 31), cai no último dia do mês.
+                    </div>
+                </div>
+
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" name="atribuir_a_mim" value="1" id="novaAtribuirAMim">
+                    <label class="form-check-label" for="novaAtribuirAMim">Eu fico responsável</label>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" class="btn btn-primary btn-sm">Criar Tarefa</button>
+                <button type="submit" class="btn btn-primary btn-sm" id="novaSubmit">Criar Tarefa</button>
             </div>
         </form>
     </div>
@@ -179,9 +427,13 @@
             <input type="hidden" name="next" value="{{ request.path }}">
             <div class="modal-header">
                 <h5 class="modal-title">Editar Tarefa</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
+                <div class="mb-2" id="editChecklistWrap" hidden>
+                    <label class="form-label">Checklist <span id="editChecklistContagem" style="font-weight:400;color:#7d8590;"></span></label>
+                    <ul class="checklist" id="editChecklist" style="border:1px solid #30363d;border-radius:6px;padding:4px;"></ul>
+                </div>
                 <div class="mb-2">
                     <label class="form-label">Título</label>
                     <input type="text" name="titulo" class="form-control" id="editTitulo" required maxlength="255">
@@ -234,9 +486,78 @@
     </div>
 </div>
 
+<!-- Modal Editar Rotina -->
+<div class="modal fade" id="modalEditarRotina" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="post" id="formEditarRotina" action="">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Rotina</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <label class="form-label" for="rotTitulo">Título</label>
+                    <input type="text" name="titulo" class="form-control" id="rotTitulo" required maxlength="255">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" for="rotDescricao">Descrição</label>
+                    <textarea name="descricao" class="form-control" id="rotDescricao" rows="2"></textarea>
+                </div>
+                <div class="mb-2 position-relative">
+                    <label class="form-label">Cliente (opcional)</label>
+                    <input type="text" class="form-control tarefa-cliente-busca" id="rotClienteBusca" autocomplete="off" placeholder="Buscar por nome ou CNPJ...">
+                    <input type="hidden" name="cliente_id" class="tarefa-cliente-id" id="rotClienteId">
+                    <div class="tarefa-cliente-resultados" style="display:none;"></div>
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-2">
+                        <label class="form-label" for="rotDia">Repetir todo dia</label>
+                        <select name="dia_do_mes" id="rotDia" class="form-select" required>
+                            {% for d in dias_do_mes %}<option value="{{ d }}">{{ d }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6 mb-2">
+                        <label class="form-label" for="rotPrioridade">Prioridade</label>
+                        <select name="prioridade" class="form-select" id="rotPrioridade">
+                            <option value="baixa">Baixa</option>
+                            <option value="media">Média</option>
+                            <option value="alta">Alta</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Checklist</label>
+                    <div class="checklist-editor" id="rotChecklist">
+                        <ol class="checklist-editor-lista"></ol>
+                        <button type="button" class="tarefa-add" data-add-item style="margin-top:6px;"><i class="fas fa-plus"></i> Adicionar item</button>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" for="rotResponsavel">Responsáveis <span style="font-weight:400;color:#7d8590;">(Ctrl/Cmd p/ vários)</span></label>
+                    <select name="responsaveis" class="form-select" id="rotResponsavel" multiple size="4"></select>
+                </div>
+                <div class="tarefa-dica">A tarefa já criada neste mês fica como está; as mudanças valem a partir da próxima.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm" id="rotSubmit">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 (function () {
     const BUSCAR_CLIENTES_URL = "{% url 'buscar_clientes_chamado' %}";
+    const CSRF = "{{ csrf_token }}";
+
+    function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s == null ? '' : String(s);
+        return d.innerHTML;
+    }
 
     function ligarBuscaCliente(root) {
         const input = root.querySelector('.tarefa-cliente-busca');
@@ -273,12 +594,143 @@
         });
     }
 
-    document.querySelectorAll('#modalNovaTarefa, #modalEditarTarefa').forEach(ligarBuscaCliente);
+    document.querySelectorAll('#modalNovaTarefa, #modalEditarTarefa, #modalEditarRotina').forEach(ligarBuscaCliente);
+
+    function carregarResponsaveis(select, results, idsAtuais) {
+        select.innerHTML = '';
+        const ids = (idsAtuais || []).map(String);
+        (results || []).forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.nome;
+            if (ids.includes(String(u.id))) opt.selected = true;
+            select.appendChild(opt);
+        });
+    }
+
+    /* ── Editor de checklist (itens da rotina) ── */
+    function adicionarItem(editor, texto, depoisDe, focar) {
+        const lista = editor.querySelector('.checklist-editor-lista');
+        const li = document.createElement('li');
+        li.className = 'checklist-editor-item';
+        li.innerHTML = '<i class="far fa-square" aria-hidden="true"></i>'
+            + '<input type="text" name="itens" class="form-control form-control-sm" maxlength="255" placeholder="Ex.: Conferir backup do concentrador" aria-label="Item do checklist">'
+            + '<button type="button" class="rotina-acao rotina-acao-danger" title="Remover item" aria-label="Remover item"><i class="fas fa-times"></i></button>';
+        const input = li.querySelector('input');
+        input.value = texto || '';
+        input.disabled = editor.closest('[hidden]') !== null;
+        if (depoisDe) depoisDe.after(li); else lista.appendChild(li);
+        if (focar) input.focus();
+        return li;
+    }
+
+    function preencherEditor(editor, itens) {
+        editor.querySelector('.checklist-editor-lista').innerHTML = '';
+        (itens && itens.length ? itens : ['']).forEach(t => adicionarItem(editor, t, null, false));
+    }
+
+    document.querySelectorAll('.checklist-editor').forEach(editor => {
+        editor.querySelector('[data-add-item]').addEventListener('click', () => adicionarItem(editor, '', null, true));
+        editor.addEventListener('click', e => {
+            const remover = e.target.closest('.rotina-acao-danger');
+            if (!remover) return;
+            const li = remover.closest('.checklist-editor-item');
+            const anterior = li.previousElementSibling;
+            li.remove();
+            if (!editor.querySelector('.checklist-editor-item')) adicionarItem(editor, '', null, true);
+            else if (anterior) anterior.querySelector('input').focus();
+        });
+        // Enter cria o próximo item (em vez de enviar o form); Backspace no item vazio apaga.
+        editor.addEventListener('keydown', e => {
+            const input = e.target.closest('.checklist-editor-item input');
+            if (!input) return;
+            const li = input.closest('.checklist-editor-item');
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (input.value.trim()) adicionarItem(editor, '', li, true);
+            } else if (e.key === 'Backspace' && !input.value && editor.querySelectorAll('.checklist-editor-item').length > 1) {
+                e.preventDefault();
+                const anterior = li.previousElementSibling || li.nextElementSibling;
+                li.remove();
+                const alvo = anterior.querySelector('input');
+                alvo.focus();
+                alvo.setSelectionRange(alvo.value.length, alvo.value.length);
+            }
+        });
+    });
+
+    /* ── Nova tarefa / nova rotina ── */
+    const modalNova = document.getElementById('modalNovaTarefa');
+    const formNova = document.getElementById('formNovaTarefa');
+    const editorNova = document.getElementById('novaChecklist');
+
+    function aplicarModo(modo) {
+        const rotina = modo === 'rotina';
+        document.getElementById(rotina ? 'modoRotina' : 'modoTarefa').checked = true;
+        formNova.action = rotina ? formNova.dataset.urlRotina : formNova.dataset.urlTarefa;
+        formNova.querySelectorAll('[data-so-rotina]').forEach(el => {
+            el.hidden = !rotina;
+            el.querySelectorAll('input, select').forEach(i => { i.disabled = !rotina; });
+        });
+        formNova.querySelectorAll('[data-so-tarefa]').forEach(el => {
+            el.hidden = rotina;
+            el.querySelectorAll('input, select').forEach(i => { i.disabled = rotina; });
+        });
+        document.getElementById('novaTarefaTitulo').textContent = rotina ? 'Nova Rotina Mensal' : 'Nova Tarefa';
+        document.getElementById('novaSubmit').textContent = rotina ? 'Criar Rotina' : 'Criar Tarefa';
+    }
+
+    formNova.querySelectorAll('input[name="_modo"]').forEach(r => r.addEventListener('change', () => {
+        aplicarModo(r.value);
+        if (r.value === 'rotina' && !editorNova.querySelector('.checklist-editor-item')) preencherEditor(editorNova, []);
+    }));
+
+    formNova.addEventListener('submit', e => {
+        if (formNova.action.endsWith(formNova.dataset.urlRotina)) {
+            const preenchidos = Array.from(editorNova.querySelectorAll('input[name="itens"]')).filter(i => i.value.trim());
+            if (!preenchidos.length) {
+                e.preventDefault();
+                uiToast('Adicione pelo menos um item ao checklist.', 'erro');
+                editorNova.querySelector('input[name="itens"]').focus();
+            }
+        }
+    });
+
+    document.querySelectorAll('[data-nova-tarefa]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            formNova.reset();
+            formNova.querySelector('.tarefa-cliente-id').value = '';
+            preencherEditor(editorNova, []);
+            aplicarModo(btn.dataset.modo || 'tarefa');
+            document.getElementById('novaAtribuirAMim').checked = btn.dataset.atribuir === '1';
+            bootstrap.Modal.getOrCreateInstance(modalNova).show();
+        });
+    });
+    modalNova.addEventListener('shown.bs.modal', () => document.getElementById('novaTitulo').focus());
+
+    /* ── Editar tarefa ── */
+    const formEditar = document.getElementById('formEditarTarefa');
+
+    function renderChecklistEdicao(itens) {
+        const wrap = document.getElementById('editChecklistWrap');
+        const ul = document.getElementById('editChecklist');
+        wrap.hidden = !itens.length;
+        ul.innerHTML = itens.map(item => `
+            <li class="checklist-item${item.verificado ? ' verificado' : ''}" data-item-id="${item.id}">
+                <label>
+                    <input type="checkbox" data-marcar-url="${esc(item.marcar_url)}" ${item.verificado ? 'checked' : ''}>
+                    <span class="checklist-texto">${esc(item.texto)}</span>
+                    <span class="checklist-quem">${quemVerificou(item)}</span>
+                </label>
+            </li>`).join('');
+        const feitos = itens.filter(i => i.verificado).length;
+        document.getElementById('editChecklistContagem').textContent = itens.length ? `${feitos}/${itens.length}` : '';
+    }
 
     document.querySelectorAll('.tarefa-editar-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const form = document.getElementById('formEditarTarefa');
-            form.action = btn.dataset.editarUrl;
+            formEditar.action = btn.dataset.editarUrl;
+            formEditar.dataset.tarefaId = btn.dataset.tarefaId;
             document.getElementById('editTitulo').value = btn.dataset.titulo || '';
             document.getElementById('editDescricao').value = btn.dataset.descricao || '';
             document.getElementById('editClienteId').value = btn.dataset.clienteId || '';
@@ -286,24 +738,147 @@
             document.getElementById('editPrazo').value = btn.dataset.prazo || '';
             document.getElementById('editPrioridade').value = btn.dataset.prioridade || 'media';
             document.getElementById('editStatus').value = btn.dataset.status || 'pendente';
+            document.getElementById('editResponsavel').innerHTML = '';
+            renderChecklistEdicao([]);
 
-            const selResp = document.getElementById('editResponsavel');
-            selResp.innerHTML = '';
             fetch(btn.dataset.usuariosUrl)
                 .then(r => r.json())
                 .then(data => {
-                    const idsAtuais = (data.responsaveis_ids || []).map(String);
-                    (data.results || []).forEach(u => {
-                        const opt = document.createElement('option');
-                        opt.value = u.id;
-                        opt.textContent = u.nome;
-                        if (idsAtuais.includes(String(u.id))) opt.selected = true;
-                        selResp.appendChild(opt);
-                    });
-                });
+                    carregarResponsaveis(document.getElementById('editResponsavel'), data.results, data.responsaveis_ids);
+                    renderChecklistEdicao(data.checklist || []);
+                    if (data.status) document.getElementById('editStatus').value = data.status;
+                })
+                .catch(() => uiToast('Não foi possível carregar os dados da tarefa. Recarregue a página.', 'erro'));
 
-            new bootstrap.Modal(document.getElementById('modalEditarTarefa')).show();
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditarTarefa')).show();
         });
+    });
+
+    // O selo "2/4" da linha abre a edição, que mostra o checklist.
+    document.querySelectorAll('[data-abrir-edicao]').forEach(badge => {
+        badge.addEventListener('click', () => {
+            const editar = badge.closest('tr').querySelector('.tarefa-editar-btn');
+            if (editar) editar.click();
+        });
+    });
+
+    /* ── Editar rotina ── */
+    const formRotina = document.getElementById('formEditarRotina');
+    const editorRotina = document.getElementById('rotChecklist');
+
+    document.querySelectorAll('.rotina-editar-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            formRotina.action = btn.dataset.editarUrl;
+            document.getElementById('rotTitulo').value = btn.dataset.titulo || '';
+            document.getElementById('rotDescricao').value = btn.dataset.descricao || '';
+            document.getElementById('rotClienteId').value = btn.dataset.clienteId || '';
+            document.getElementById('rotClienteBusca').value = btn.dataset.clienteNome || '';
+            document.getElementById('rotDia').value = btn.dataset.dia || '1';
+            document.getElementById('rotPrioridade').value = btn.dataset.prioridade || 'media';
+            document.getElementById('rotResponsavel').innerHTML = '';
+            preencherEditor(editorRotina, []);
+            // Enquanto os itens não chegam, salvar apagaria o checklist atual.
+            const salvar = document.getElementById('rotSubmit');
+            salvar.disabled = true;
+
+            fetch(btn.dataset.usuariosUrl)
+                .then(r => r.json())
+                .then(data => {
+                    carregarResponsaveis(document.getElementById('rotResponsavel'), data.results, data.responsaveis_ids);
+                    preencherEditor(editorRotina, data.itens || []);
+                    salvar.disabled = false;
+                })
+                .catch(() => uiToast('Não foi possível carregar a rotina. Recarregue a página.', 'erro'));
+
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modalEditarRotina')).show();
+        });
+    });
+
+    formRotina.addEventListener('submit', e => {
+        if (!Array.from(editorRotina.querySelectorAll('input[name="itens"]')).some(i => i.value.trim())) {
+            e.preventDefault();
+            uiToast('A rotina precisa de pelo menos um item no checklist.', 'erro');
+        }
+    });
+
+    /* ── Abrir/fechar rotina ── */
+    document.querySelectorAll('.rotina-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const aberto = btn.getAttribute('aria-expanded') === 'true';
+            btn.setAttribute('aria-expanded', aberto ? 'false' : 'true');
+            document.getElementById(btn.getAttribute('aria-controls')).hidden = aberto;
+        });
+    });
+
+    /* ── Marcar item do checklist ── */
+    function quemVerificou(item) {
+        if (!item.verificado) return '';
+        const nome = item.verificado_por_nome ? esc(item.verificado_por_nome) + ' · ' : '';
+        return `<i class="fas fa-check"></i>${nome}${esc(item.verificado_em_fmt)}`;
+    }
+
+    function recalcularResumoRotinas() {
+        const caixas = document.querySelectorAll('#painelRotinas .checklist input[type="checkbox"]');
+        const feitos = Array.from(caixas).filter(c => c.checked).length;
+        const texto = document.getElementById('rotinasResumoTexto');
+        if (texto) texto.textContent = `${feitos} de ${caixas.length} itens verificados`;
+        const barra = document.getElementById('rotinasBarraGeral');
+        if (barra && caixas.length) barra.style.width = `${Math.round(feitos * 100 / caixas.length)}%`;
+    }
+
+    function aplicarResultado(data) {
+        const item = data.item;
+        // O mesmo item pode estar na seção de rotinas e no modal de edição ao mesmo tempo.
+        document.querySelectorAll(`[data-item-id="${item.id}"]`).forEach(li => {
+            li.classList.toggle('verificado', item.verificado);
+            li.querySelector('input').checked = item.verificado;
+            li.querySelector('.checklist-quem').innerHTML = quemVerificou(item);
+        });
+
+        const tarefaId = data.tarefa.id;
+        const completo = data.total > 0 && data.feitos === data.total;
+        document.querySelectorAll(`[data-checklist-tarefa="${tarefaId}"]`).forEach(badge => {
+            badge.querySelector('[data-contagem]').textContent = `${data.feitos}/${data.total}`;
+            badge.classList.toggle('badge-ok', completo);
+            badge.classList.toggle('badge-warn', !completo);
+        });
+
+        const rotina = document.querySelector(`[data-rotina-tarefa="${tarefaId}"]`);
+        if (rotina) {
+            rotina.querySelector('[data-rotina-contagem]').textContent = `${data.feitos}/${data.total}`;
+            rotina.querySelector('[data-rotina-barra]').style.width = `${Math.round(data.feitos * 100 / (data.total || 1))}%`;
+            const chip = rotina.querySelector('[data-rotina-chip]');
+            const concluida = data.status === 'concluida';
+            chip.className = 'badge-dash ' + (concluida ? 'badge-ok' : chip.dataset.classe);
+            chip.textContent = concluida ? 'Concluída' : chip.dataset.label;
+        }
+
+        if (formEditar.dataset.tarefaId === String(tarefaId)) {
+            document.getElementById('editStatus').value = data.status;
+            document.getElementById('editChecklistContagem').textContent = `${data.feitos}/${data.total}`;
+        }
+        recalcularResumoRotinas();
+    }
+
+    document.addEventListener('change', e => {
+        const input = e.target.closest('.checklist input[data-marcar-url]');
+        if (!input) return;
+        const verificado = input.checked;
+        const fd = new FormData();
+        fd.append('verificado', verificado ? '1' : '0');
+        input.disabled = true;
+        fetch(input.dataset.marcarUrl, { method: 'POST', body: fd, headers: { 'X-CSRFToken': CSRF }, credentials: 'same-origin' })
+            // Sessão expirada vira redirect para o login (HTML): o .json() falha e cai no catch.
+            .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+            .then(data => {
+                if (!data.success) throw new Error(data.error);
+                aplicarResultado(data);
+            })
+            .catch(() => {
+                input.checked = !verificado;
+                uiToast('Não foi possível salvar o item. Recarregue a página e tente de novo.', 'erro');
+            })
+            .finally(() => { input.disabled = false; });
     });
 })();
 </script>

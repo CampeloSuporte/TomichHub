@@ -1,7 +1,7 @@
 <tr class="{% if t.atrasada %}tarefa-row-atrasada{% endif %}">
     <td>
         <div style="font-weight:500;color:#c9d1d9;">{{ t.titulo|truncatechars:40 }}</div>
-        <div style="display:flex;gap:6px;margin-top:2px;">
+        <div style="display:flex;gap:6px;margin-top:2px;flex-wrap:wrap;">
             {% if t.status == 'pendente' %}<span class="badge-dash badge-warn">Pendente</span>
             {% elif t.status == 'andamento' %}<span class="badge-dash badge-info">Em Andamento</span>
             {% elif t.status == 'concluida' %}<span class="badge-dash badge-ok">Concluída</span>
@@ -9,6 +9,13 @@
             {% if t.prioridade == 'alta' %}<span class="badge-dash badge-err">Alta</span>
             {% elif t.prioridade == 'media' %}<span class="badge-dash badge-info">Média</span>
             {% else %}<span class="badge-dash badge-ok">Baixa</span>{% endif %}
+            {% if t.rotina_id %}<span class="badge-dash badge-rotina" title="Criada pela rotina mensal"><i class="fas fa-rotate"></i> Rotina</span>{% endif %}
+            {% with prog=t.checklist_progresso %}{% if prog.1 %}
+            <button type="button" class="badge-dash badge-checklist {% if prog.0 == prog.1 %}badge-ok{% else %}badge-warn{% endif %}"
+                    data-checklist-tarefa="{{ t.id }}" data-abrir-edicao title="Ver checklist">
+                <i class="fas fa-list-check"></i> <span data-contagem>{{ prog.0 }}/{{ prog.1 }}</span>
+            </button>
+            {% endif %}{% endwith %}
         </div>
     </td>
     <td>{{ t.cliente.nome_empresa|truncatechars:18|default:"—" }}</td>
@@ -28,6 +35,7 @@
             </form>
             {% endif %}
             <button type="button" class="btn-tarefa tarefa-editar-btn"
+                    data-tarefa-id="{{ t.id }}"
                     data-editar-url="{% url 'tarefa_editar' t.id %}"
                     data-usuarios-url="{% url 'tarefa_usuarios_json' t.id %}"
                     data-titulo="{{ t.titulo }}"

@@ -4,7 +4,7 @@
 
 To-do do back-office, opcionalmente vinculado a um Cliente. Qualquer atendente (Administrador/Consultor/Operador) pode criar, assumir e reatribuir tarefas dentro do próprio escopo de instância; o Administrador da plataforma vê e age em todas.
 
-**Última atualização:** 06/08/2026
+**Última atualização:** 15/09/2026 (rotinas mensais com checklist — ver [seção](#rotinas-mensais-com-checklist-2026-09-15))
 **Status:** ✅ FUNCIONAL
 **Stack:** Django, painel embutido no dashboard (`quadro_geral` / `quadro_instancia`)
 
@@ -38,9 +38,10 @@ Incluído via `{% include 'tarefas/_painel.html' %}` em `home/templates/quadro_g
 Seções do painel:
 - Contadores: Pendentes / Em Andamento / Atrasadas / Concluídas Hoje.
 - **Atrasadas** em destaque (borda vermelha), sempre no topo quando há alguma.
-- **Minhas Tarefas** — atribuídas ao usuário logado.
-- **Não Assumidas** — sem responsável, com botão "Assumir".
-- Modal "Nova Tarefa" e modal "Editar Tarefa" (reaproveitado por todas as linhas via `data-*` attributes + JS) — sem página dedicada, tudo dentro do próprio painel.
+- **Minhas Tarefas** — atribuídas ao usuário logado. O **+ Adicionar tarefa** no fim da lista já cria a tarefa com quem clicou como responsável.
+- **Não Assumidas** — sem responsável, com botão "Assumir" e **+ Adicionar tarefa** no fim.
+- **Rotinas mensais** — ver seção própria abaixo.
+- Modal "Nova Tarefa" (com a opção **Tarefa única / Rotina mensal**) e modal "Editar Tarefa" (reaproveitado por todas as linhas via `data-*` attributes + JS) — sem página dedicada, tudo dentro do próprio painel. Desde 15/09/2026 não há mais botão "Nova Tarefa" no cabeçalho do card: a criação fica dentro das listas.
 - Botão **Excluir** em cada linha, com confirmação via `uiConfirm` (definido em `templates/base.html`).
 
 ## 🔌 Endpoints (`/tarefas/...`)
@@ -52,7 +53,13 @@ Seções do painel:
 | `<id>/assumir/` | POST | Auto-atribuição de um clique; se estava pendente, vira "Em Andamento" |
 | `<id>/status/` | POST | Mudança rápida de status sem abrir modal |
 | `<id>/excluir/` | POST | Exclui a tarefa (botão "Excluir" da linha) |
-| `<id>/usuarios/` | GET (JSON) | Lista de usuários elegíveis pro seletor "Responsável", escopada à instância da tarefa |
+| `<id>/usuarios/` | GET (JSON) | Lista de usuários elegíveis pro seletor "Responsável", escopada à instância da tarefa; traz também `status` e o `checklist` que o modal mostra |
+| `checklist/<item_id>/marcar/` | POST (JSON) | Marca/desmarca item (`verificado=1/0`); devolve item, `feitos`, `total`, `status` e a tarefa no formato do Kanban |
+| `rotinas/criar/` | POST | Cria rotina (título, `dia_do_mes`, `itens` repetido, prioridade, cliente, `atribuir_a_mim`) |
+| `rotinas/<id>/editar/` | POST | Altera a rotina; vale da próxima ocorrência em diante |
+| `rotinas/<id>/ativar/` | POST | Pausa/retoma (alterna) |
+| `rotinas/<id>/excluir/` | POST | Apaga a rotina; tarefas já geradas ficam |
+| `rotinas/<id>/usuarios/` | GET (JSON) | Responsáveis elegíveis + itens atuais, para o modal "Editar Rotina" |
 
 Todas as views (exceto `usuarios/`, que é GET) fazem `redirect` de volta pra `next` (ou `HTTP_REFERER`) — sem API JSON para as ações de escrita, mesmo padrão de formulário simples usado no `financeiro/dashboard.html`.
 
@@ -120,3 +127,99 @@ em kanban nenhum e ficava impossível de excluir por qualquer caminho.
 exclui tarefa sem cliente, **não** exclui de outra instância (404), Administrador
 exclui de qualquer uma, login de portal não exclui, GET devolve 405 e o botão aparece
 no painel.
+
+---
+
+## Rotinas mensais com checklist (2026-09-15)
+
+Tarefas que se repetem todo mês num dia fixo ("dia 10: conferir backups, OLT,
+concentrador") e são feitas marcando cada item como **verificado**.
+
+### Modelo
+
+```
+Rotina              titulo, descricao, cliente, instancia, dia_do_mes (1–31), prioridade,
+                    responsaveis (M2M), ativa, inicio, ultima_competencia, criado_por
+RotinaItem          rotina → itens do checklist-modelo (texto, ordem)
+Tarefa (+)          rotina (FK, SET_NULL), competencia (1º dia do mês da ocorrência)
+TarefaChecklistItem tarefa → checklist (texto, ordem, verificado, verificado_por, verificado_em)
+```
+
+A rotina é só o **modelo**. No dia configurado, `services.gerar_ocorrencias_rotinas`
+cria uma **Tarefa comum**: prazo às 23:59 do dia, responsáveis e checklist copiados.
+Por ser uma Tarefa, ela entra sozinha em Pendentes/Atrasadas/Minhas/Não Assumidas e no
+Kanban do cliente, sem caminho paralelo.
+
+### Regras de geração
+
+- **Quando:** beat `tarefas-gerar-rotinas-mensais` (`crontab(minute=5)`, de hora em hora)
+  e logo depois de criar, editar ou retomar a rotina. Rotina criada com o dia de hoje já
+  gera na hora.
+- **Uma por mês:** controlado por `Rotina.ultima_competencia`, com `select_for_update`.
+  Não é pela existência da tarefa, de propósito: se alguém excluir a tarefa do mês, ela
+  **não** volta na hora seguinte. A constraint `tarefa_uma_ocorrencia_por_mes`
+  (rotina + competencia) é a segunda trava.
+- **Dia 29/30/31:** em mês mais curto cai no último dia (`Rotina.data_no_mes`).
+- **Sem ocorrência vencida:** não gera data anterior a `Rotina.inicio` (default: dia da
+  criação). Criada no dia 15 com dia 10 → a primeira é no mês seguinte. **Retomar** uma
+  pausada zera `inicio` para hoje pelo mesmo motivo.
+- **Sem retroativo:** se o worker ficou parado o mês inteiro, aquele mês fica sem
+  ocorrência, em vez de despejar tarefas velhas.
+- **Editar a rotina** não mexe na tarefa já gerada: o checklist dela é uma cópia, então
+  nada do que já foi verificado some. Vale da próxima em diante.
+- **Excluir a rotina** mantém as tarefas geradas (`rotina = NULL`), com checklist e histórico.
+
+### Checklist (`services.marcar_item_checklist`)
+
+- Grava `verificado_por`/`verificado_em`; desmarcar limpa os dois.
+- Primeiro item marcado numa **Pendente** → **Em Andamento**, e quem marcou assume se
+  ninguém tinha assumido (mesma regra de arrastar no Kanban).
+- Todos marcados → **Concluída** (`concluida_em`). Desmarcar um item de uma concluída →
+  volta para **Em Andamento**. **Cancelada** não muda de status.
+- Permissão (`_pode_mexer_na_tarefa`): back-office pelo escopo de instância (vale para
+  tarefa sem cliente); portal do cliente final só na tarefa do próprio cliente e com o
+  módulo Tarefas liberado no login, igual ao Kanban. Fora disso: **404**.
+
+### Onde aparece
+
+- **Dashboard → Rotinas mensais** (`home/views.py::_contexto_rotinas`): cada rotina com
+  "Todo dia N", cliente, responsáveis e o estado do mês: **Agendada · dd/mm**,
+  **Vence dd/mm** (barra + `2/4`), **Atrasada**, **Concluída** ou **Pausada**. A tarefa em
+  aberto já vem expandida com o checklist para marcar. Se a do mês ainda não foi criada e
+  a do mês anterior ficou em aberto, mostra essa. Agendada mostra a prévia dos itens.
+  Ordem: o que pede ação agora, depois agendadas por data, pausadas por último.
+  Ações: editar, pausar/retomar, excluir.
+- **Linhas das listas**: selo roxo **Rotina** e selo `2/4` que abre o modal de edição,
+  onde o checklist também pode ser marcado.
+- **Kanban do cliente**: mesmos selos no cartão; o modal de edição mostra o checklist no
+  topo. Marcar tudo move o cartão para Concluída na hora.
+- Marcar é AJAX: a linha, o selo, a barra da rotina, o resumo "x de y itens verificados"
+  e o status do modal de edição são atualizados sem recarregar. Se falhar (inclusive
+  sessão expirada, que vira redirect HTML), a caixa volta ao estado anterior e aparece um toast.
+
+### Botão "Nova Tarefa" realocado
+
+- **Dashboard:** saiu do cabeçalho do card. Agora é **+ Adicionar tarefa** no fim de
+  "Minhas Tarefas" (já atribuída a quem clicou) e de "Não Assumidas", e **+ Nova rotina
+  mensal** no fim da seção de rotinas. Os três abrem o mesmo modal, que alterna
+  **Tarefa única / Rotina mensal**: prazo ou "Repetir todo dia", e o editor de checklist
+  (Enter cria o próximo item, Backspace no item vazio apaga).
+- **Kanban do cliente:** saiu da barra superior. Agora é **+ Adicionar tarefa** no pé da
+  coluna **Pendente**, fora da área rolável, então fica sempre visível.
+
+### Correção junto: prazo do Kanban em UTC
+
+`_tarefa_kanban_dict` formatava `prazo` sem `timezone.localtime`, então o cartão e o
+modal do Kanban mostravam **3 h a mais** (23:59 virava "02:59" do dia seguinte). A
+ocorrência de rotina, com prazo 23:59, deixava isso evidente. Coberto por
+`ChecklistTest.test_kanban_traz_checklist_e_prazo_no_fuso_local`.
+
+### Testes
+
+`tarefas/tests.py`: `GeracaoRotinaTest` (gera no dia com checklist e prazo local, não
+antes, uma por mês, excluída não volta, dia 31 em fevereiro, criada depois do dia,
+virada de ano, pausada, excluir rotina mantém tarefas), `ChecklistTest` (andamento +
+assume, conclui e reabre, cancelada, outra instância 404, GET 405, Kanban com checklist e
+fuso) e `RotinaViewsTest` (criar com checklist e ocorrência do dia, sem itens, dia
+inválido, editar não mexe no mês, outra instância 404, retomar, "atribuída a mim",
+painel sem botão no cabeçalho e sem vazar rotina de outra instância).
