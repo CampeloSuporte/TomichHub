@@ -583,7 +583,7 @@
 ═══════════════════════════════════════════════════════════════════════════ -->
 
 <!-- Modal de confirmação (overlay puro — sem Bootstrap modal) -->
-<div id="uiModalConfirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:99995;backdrop-filter:blur(3px);align-items:center;justify-content:center;">
+<div id="uiModalConfirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:1000000;backdrop-filter:blur(3px);align-items:center;justify-content:center;">
   <div style="background:#1c2128;border:1px solid #30363d;box-shadow:0 8px 24px rgba(0,0,0,.5);font-family:'Inter',sans-serif;border-radius:10px;width:320px;max-width:94vw;">
     <div style="padding:28px 24px 16px;text-align:center">
       <div id="ui-confirm-icon" style="font-size:2rem;margin-bottom:14px"></div>
@@ -604,7 +604,9 @@
 </div>
 
 <!-- Modal de alerta (overlay puro — sem Bootstrap modal) -->
-<div id="uiModalAlert" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:99995;backdrop-filter:blur(3px);align-items:center;justify-content:center;">
+<!-- z-index acima de todo modal de página (o do IPAM é 99999/100000): antes o
+     alerta de erro abria ATRÁS do modal e o botão parecia travado. -->
+<div id="uiModalAlert" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:1000000;backdrop-filter:blur(3px);align-items:center;justify-content:center;">
   <div style="background:#1c2128;border:1px solid #30363d;box-shadow:0 8px 24px rgba(0,0,0,.5);font-family:'Inter',sans-serif;border-radius:10px;width:320px;max-width:94vw;">
     <div style="padding:28px 24px 16px;text-align:center">
       <div id="ui-alert-icon" style="font-size:2rem;margin-bottom:14px"></div>
@@ -622,7 +624,7 @@
 
 <!-- Toast global -->
 <div id="ui-toast" style="
-    position:fixed;bottom:28px;right:28px;z-index:99999;
+    position:fixed;bottom:28px;right:28px;z-index:1000001;
     padding:10px 20px;border-radius:8px;border:1px solid;
     font-size:.85rem;font-weight:500;min-width:200px;text-align:center;
     opacity:0;transform:translateY(12px);

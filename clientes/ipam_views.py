@@ -13,6 +13,7 @@ import subprocess
 import paramiko
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from django.http import Http404, JsonResponse
 from django.utils import timezone
@@ -305,11 +306,11 @@ def _ipam_log(request, cliente, modelo, obj, acao, antes=None):
 @ferramenta_instancia_required('ipam')
 def ipam_vlans_listar(request, cliente_id):
     c = _cliente(request, cliente_id)
-    qs = IPAMVlan.objects.filter(cliente=c)
+    qs = IPAMVlan.objects.filter(cliente=c).annotate(n_subredes=Count('subredes'))
     data = [
         {'id': v.id, 'numero': v.numero, 'nome': v.nome,
          'descricao': v.descricao, 'status': v.status,
-         'subredes': v.subredes.count()}
+         'subredes': v.n_subredes}
         for v in qs
     ]
     return JsonResponse({'ok': True, 'vlans': data})
@@ -362,7 +363,7 @@ def ipam_vlan_deletar(request, vlan_id):
 @ferramenta_instancia_required('ipam')
 def ipam_prefixos_listar(request, cliente_id):
     c  = _cliente(request, cliente_id)
-    qs = IPAMPrefixo.objects.filter(cliente=c)
+    qs = IPAMPrefixo.objects.filter(cliente=c).annotate(n_subredes=Count('subredes'))
     by_id = {p.id: p for p in qs}
 
     def _nivel(p):
@@ -375,7 +376,7 @@ def ipam_prefixos_listar(request, cliente_id):
 
     data = []
     for p in by_id.values():
-        sub_count = p.subredes.count()
+        sub_count = p.n_subredes
         data.append({
             'id': p.id, 'prefixo': p.prefixo, 'tipo': p.tipo,
             'status': p.status, 'descricao': p.descricao,
@@ -1354,7 +1355,9 @@ def _prefixlen_label(prefixlen, version=4):
 def ipam_subredes_listar(request, cliente_id):
     c       = _cliente(request, cliente_id)
     filtro  = request.GET.get('prefixo_id')
-    qs      = IPAMSubRede.objects.filter(cliente=c).select_related('prefixo', 'vlan')
+    qs      = (IPAMSubRede.objects.filter(cliente=c)
+               .select_related('prefixo', 'vlan')
+               .annotate(n_ips=Count('ips')))
     if filtro:
         # Filtra por CONTAINMENT real do CIDR, não pelo FK prefixo_id exato.
         # A maioria das sub-redes do sistema nunca teve prefixo_id preenchido
@@ -1378,17 +1381,27 @@ def ipam_subredes_listar(request, cliente_id):
         else:
             qs = qs.filter(prefixo_id=filtro)
 
+    # Contagem e hostnames saem em lote: por sub-rede eram 2 queries, e um
+    # cliente com ~1000 sub-redes levava segundos só nesta listagem.
+    subredes = list(qs)
+    hostnames_por_sr = {}
+    for sr_id, host in (IPAMEndereco.objects
+                        .filter(subrede_id__in=[s.id for s in subredes])
+                        .exclude(hostname='')
+                        .order_by('subrede_id', 'hostname')
+                        .values_list('subrede_id', 'hostname')
+                        .distinct()):
+        lista = hostnames_por_sr.setdefault(sr_id, [])
+        if len(lista) < 5:
+            lista.append(host)
+
     data = []
-    for s in qs:
+    for s in subredes:
         total = s.total_hosts()
-        used  = s.usados()
+        used  = s.n_ips
         pct   = round(used / total * 100, 1) if total else 0
         # Hostnames distintos dos IPs nesta sub-rede (apenas os preenchidos)
-        hostnames = list(
-            s.ips.exclude(hostname='')
-             .values_list('hostname', flat=True)
-             .distinct()[:5]
-        )
+        hostnames = hostnames_por_sr.get(s.id, [])
         data.append({
             'id': s.id, 'rede': s.rede, 'gateway': s.gateway,
             'descricao': s.descricao, 'local': s.local, 'status': s.status,
@@ -1414,9 +1427,25 @@ def ipam_subrede_salvar(request, cliente_id):
     sid  = body.get('id')
     try:
         rede_str = body.get('rede', '').strip()
-        ipaddress.ip_network(rede_str, strict=False)
-        if IPAMSubRede.objects.filter(cliente=c, rede=rede_str).exclude(id=sid or None).exists():
-            return JsonResponse({'ok': False, 'erro': f'Já existe sub-rede {rede_str} cadastrada'}, status=400)
+        try:
+            alvo = ipaddress.ip_network(rede_str, strict=False)
+        except ValueError:
+            return JsonResponse({'ok': False, 'erro': f'CIDR inválido: "{rede_str}"'}, status=400)
+        # Compara pela rede de fato, não pelo texto: "198.18.248.1/24" e
+        # "198.18.248.0/24" são a mesma sub-rede.
+        dup = None
+        for d_id, d_rede, d_desc in (IPAMSubRede.objects.filter(cliente=c)
+                                     .exclude(id=sid or None)
+                                     .values_list('id', 'rede', 'descricao')):
+            try:
+                if ipaddress.ip_network(d_rede, strict=False) == alvo:
+                    dup = (d_rede, d_desc)
+                    break
+            except ValueError:
+                continue
+        if dup:
+            nome = f' ({dup[1]})' if dup[1] else ''
+            return JsonResponse({'ok': False, 'erro': f'Já existe a sub-rede {dup[0]}{nome} cadastrada neste cliente'}, status=400)
         if sid:
             obj = get_object_or_404(IPAMSubRede, id=sid, cliente=c)
             antes = _ipam_snapshot('subrede', obj)

@@ -3960,10 +3960,9 @@ window.ipamCarregarPrefixos = async function(){
     if(!tb.querySelector('.ipam-row-prefixo')){
         tb.innerHTML = tbEmpty(7,'<i class="fas fa-spinner fa-spin"></i>');
     }
-    let r, d;
+    let d;
     try {
-        r = await fetch(`/clientes/${CID}/ipam/prefixos/`);
-        d = await r.json();
+        d = await _ipamFetchJsonUnico(`/clientes/${CID}/ipam/prefixos/`);
     } catch(e) {
         tb.innerHTML = tbEmpty(7, `<span style="color:#e06060">Erro ao carregar prefixos: ${e.message}</span>`);
         return;
@@ -5043,14 +5042,26 @@ window.ipamToggleScanAutomatico = async function(sid, checked){
     }
 };
 
+// Requisições em andamento por URL: abrir a aba dispara prefixos e sub-redes
+// ao mesmo tempo, e cada um chamava o outro com o cache ainda vazio — a lista
+// de sub-redes (centenas de KB em cliente grande) descia 5-7 vezes seguidas.
+const _ipamEmVoo = {};
+function _ipamFetchJsonUnico(url){
+    if(!_ipamEmVoo[url]){
+        _ipamEmVoo[url] = fetch(url).then(r => r.json())
+            .finally(() => { delete _ipamEmVoo[url]; });
+    }
+    return _ipamEmVoo[url];
+}
+
 window.ipamCarregarSubRedes = async function(filtro){
     // A aba "Sub-redes" foi fundida na aba Prefixos (sub-redes aparecem
     // aninhadas dentro da pasta de cada prefixo) — esta função hoje só
     // busca os dados e mantém IPAM.subredes + o dropdown da aba IPs em dia.
-    if(!IPAM.prefixos || !IPAM.prefixos.length){ await ipamCarregarPrefixos(); }
+    // Não depende de IPAM.prefixos: buscar prefixos daqui fazia a árvore
+    // (que por sua vez busca as sub-redes) ser montada em dobro.
     const url = `/clientes/${CID}/ipam/subredes/` + (filtro ? `?prefixo_id=${filtro}` : '');
-    const r = await fetch(url);
-    const d = await r.json();
+    const d = await _ipamFetchJsonUnico(url);
     IPAM.subredes = d.subredes || [];
 
     const selIp = document.getElementById('ipam-ip-filtro-subrede');

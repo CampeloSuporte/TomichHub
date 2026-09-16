@@ -88,3 +88,50 @@ class IPAMExclusaoBlocoTest(TestCase):
             resp = subrede_salvar(req, self.c.id)
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(IPAMSubRede.objects.filter(rede__startswith="45.").count(), 1)
+
+    def test_duplicada_compara_a_rede_e_nao_o_texto(self):
+        IPAMSubRede.objects.create(cliente=self.c, rede='45.161.248.0/24', descricao='LOOPBACKS')
+        req = self.rf.post('/', data=json.dumps({'rede': '45.161.248.7/24'}), content_type='application/json')
+        req.user = AnonymousUser()
+        with mock.patch('clientes.ipam_views._cliente', return_value=self.c):
+            resp = subrede_salvar(req, self.c.id)
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('LOOPBACKS', json.loads(resp.content)['erro'])
+
+
+class IPAMListagemTest(TestCase):
+    """As listagens contam sub-redes/IPs em lote — o número de queries não
+    pode crescer com a quantidade de sub-redes (cliente com ~1000 levava 2,5s)."""
+
+    def setUp(self):
+        self.c = Cliente.objects.create(
+            nome_empresa='Cliente IPAM', cnpj='33.333.333/0001-33',
+            endereco='Rua 1', email='ipam2@example.com',
+        )
+        self.rf = RequestFactory()
+
+    def _get(self, view):
+        req = self.rf.get('/')
+        req.user = AnonymousUser()
+        with mock.patch('clientes.ipam_views._cliente', return_value=self.c):
+            return json.loads(view(req, self.c.id).content)
+
+    def test_subredes_contagem_e_hostnames_sem_n_mais_1(self):
+        listar = inspect.unwrap(ipam_views.ipam_subredes_listar)
+        p = IPAMPrefixo.objects.create(cliente=self.c, prefixo='10.0.0.0/16')
+        for i in range(30):
+            IPAMSubRede.objects.create(cliente=self.c, prefixo=p, rede=f'10.0.{i}.0/24')
+        s = IPAMSubRede.objects.get(rede='10.0.1.0/24')
+        for n in range(1, 8):
+            IPAMEndereco.objects.create(cliente=self.c, subrede=s, ip=f'10.0.1.{n}',
+                                        hostname=f'h{n % 6}')
+
+        with self.assertNumQueries(2):
+            d = self._get(listar)
+        sr = next(x for x in d['subredes'] if x['rede'] == '10.0.1.0/24')
+        self.assertEqual(sr['usados'], 7)
+        self.assertEqual(sr['hostnames'], ['h0', 'h1', 'h2', 'h3', 'h4'])
+        self.assertEqual(next(x for x in d['subredes'] if x['rede'] == '10.0.2.0/24')['usados'], 0)
+
+        prefixos = self._get(inspect.unwrap(ipam_views.ipam_prefixos_listar))['prefixos']
+        self.assertEqual(next(x for x in prefixos if x['id'] == p.id)['subredes'], 30)

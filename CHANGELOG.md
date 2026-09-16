@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-16 (IPAM: salvar "travado" e aba lenta em cliente grande)
+
+### Corrigido
+
+- **"Salvar" da sub-rede parecia travado.** O servidor recusava (sub-rede já existente), mas o
+  alerta de erro abria atrás do modal do IPAM. Os alertas e as confirmações globais agora ficam
+  acima de qualquer modal.
+- A checagem de sub-rede duplicada compara a rede, não o texto digitado, e a mensagem diz qual
+  sub-rede já existe (CIDR e descrição).
+- **Documentação IP demorava ~15 s para abrir em cliente grande.** A listagem de sub-redes fazia
+  2 queries por sub-rede: foram de 2.055 queries (2,6 s) para 2 (~0,3 s). Prefixos e VLANs também
+  contam em lote. Além disso, a lista de sub-redes era baixada de 5 a 7 vezes ao abrir a aba, e
+  agora desce uma vez só.
+
+---
+
 ## [Não publicado] — 2026-09-16 (IPAM: excluir bloco leva as sub-redes quebradas)
 
 ### Corrigido

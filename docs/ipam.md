@@ -497,6 +497,36 @@ para elas reaparecerem. Excluir uma sub-rede `/24` que tinha sido quebrada tinha
 Testes: `clientes/tests_ipam_exclusao.py`. Nos testes, evite `198.18.0.0/15`, `10/8` etc.: um
 signal cria esses prefixos privados em todo cliente novo.
 
+## "Salvar" parecia travado e a aba levava ~15 s (2026-09-16)
+
+Reportado na StartNet (1.023 sub-redes, 200 prefixos, 980 IPs).
+
+### Salvar sem resposta
+
+O `POST .../ipam/subredes/salvar/` respondia **400** ("já existe a sub-rede"), e a UI chamava
+`uiAlert`, mas o overlay do alerta (`#uiModalAlert`, `z-index: 99995`) ficava **atrás** do modal do
+IPAM (`#modalIpamOverlay`, `99999`). O erro abria invisível e o botão parecia não fazer nada.
+`uiAlert`/`uiConfirm` agora usam `z-index: 1000000` (e o toast `1000001`) em `templates/base.html`,
+acima de qualquer modal de página.
+
+A checagem de duplicata passou a comparar a **rede** (`ip_network`), não o texto: `x.x.x.7/24` e
+`x.x.x.0/24` são a mesma sub-rede. A mensagem traz o CIDR gravado e a descrição da existente, e
+CIDR inválido dá "CIDR inválido" em vez do texto cru do `ipaddress`.
+
+### Aba lenta
+
+- **Backend:** `ipam_subredes_listar` fazia 2 queries por sub-rede (`s.usados()` e os
+  hostnames), o que dava 2.055 queries e 2,6 s. Agora a contagem sai de `annotate(n_ips=Count('ips'))`
+  e os hostnames de uma query só (até 5 por sub-rede, em ordem alfabética). O resultado são 2 queries
+  e ~0,3 s. Prefixos e VLANs usam `annotate(n_subredes=Count('subredes'))` pelo mesmo motivo.
+- **Front:** abrir a aba disparava `ipamCarregarPrefixos` e `ipamCarregarSubRedes` juntos. Com o
+  cache vazio, cada um chamava o outro, e a lista de sub-redes (337 KB) descia de 5 a 7 vezes.
+  `ipamCarregarSubRedes` não busca mais prefixos, e as duas usam `_ipamFetchJsonUnico(url)`, que
+  reaproveita a requisição em andamento para a mesma URL.
+
+Teste: `IPAMListagemTest` em `clientes/tests_ipam_exclusao.py` (`assertNumQueries(2)`, que não
+cresce com o número de sub-redes).
+
 ## Models Relacionados
 
 | Model          | Campos principais                                              |
