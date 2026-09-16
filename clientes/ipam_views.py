@@ -12,6 +12,7 @@ import subprocess
 
 import paramiko
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.http import Http404, JsonResponse
 from django.utils import timezone
@@ -200,6 +201,49 @@ def _sync_prefixo_pool_cheia(prefixo_id):
         pobj.save(update_fields=['pool_cheia'])
 
 
+def _subredes_do_bloco(cliente, alvo_net, protegidas_por=()):
+    """
+    Sub-redes do cliente que caem dentro de `alvo_net` (inclusive as de CIDR
+    igual) e que somem junto quando o bloco é excluído.
+
+    A UI agrupa sub-redes por CONTENÇÃO de CIDR, não pelo FK: apagar só o
+    prefixo (FK SET_NULL) deixava os /30 da divisão órfãos, e eles
+    "voltavam" assim que alguém recriava um bloco que os contém.
+
+    `protegidas_por`: redes de prefixos mais específicos que continuam
+    existindo — o que estiver dentro delas é outro bloco documentado e fica.
+    """
+    ids = []
+    for sid, rede in IPAMSubRede.objects.filter(cliente=cliente).values_list('id', 'rede'):
+        try:
+            net = ipaddress.ip_network(rede, strict=False)
+        except ValueError:
+            continue
+        if net.version != alvo_net.version or not net.subnet_of(alvo_net):
+            continue
+        if any(net.version == p.version and net.subnet_of(p) for p in protegidas_por):
+            continue
+        ids.append(sid)
+    return IPAMSubRede.objects.filter(id__in=ids)
+
+
+def _excluir_subredes(request, cliente, qs):
+    """Apaga as sub-redes (IPs documentados vão junto, CASCADE), registra
+    cada uma na auditoria e ressincroniza o pool_cheia dos prefixos tocados."""
+    prefixos = set()
+    for s in qs:
+        prefixos.add(s.prefixo_id)
+        _ipam_log(request, cliente, 'subrede', s, 'deleted')
+    qs.delete()
+    for pid in prefixos:
+        _sync_prefixo_pool_cheia(pid)
+
+
+def _resumo_exclusao(qs):
+    return {'subredes': qs.count(),
+            'ips': IPAMEndereco.objects.filter(subrede__in=qs).count()}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Log de auditoria — quem mudou o quê
 # ─────────────────────────────────────────────────────────────────────────────
@@ -241,11 +285,14 @@ def _ipam_log(request, cliente, modelo, obj, acao, antes=None):
         else:
             mudancas = _ipam_snapshot(modelo, obj)
 
-        IPAMAuditLog.objects.create(
-            cliente=cliente, modelo=modelo, objeto_id=obj.id,
-            objeto_repr=str(obj)[:255], acao=acao, mudancas=mudancas,
-            usuario=request.user if request.user.is_authenticated else None,
-        )
+        # Savepoint: se o INSERT falhar dentro de um atomic() do chamador (ex:
+        # exclusão em lote), sem ele o Postgres abortaria a transação inteira.
+        with transaction.atomic():
+            IPAMAuditLog.objects.create(
+                cliente=cliente, modelo=modelo, objeto_id=obj.id,
+                objeto_repr=str(obj)[:255], acao=acao, mudancas=mudancas,
+                usuario=request.user if request.user.is_authenticated else None,
+            )
     except Exception as e:
         logger.warning(f'_ipam_log falhou ({modelo}/{acao} #{getattr(obj, "id", "?")}): {e}')
 
@@ -391,10 +438,43 @@ def ipam_prefixo_salvar(request, cliente_id):
 @require_http_methods(['POST'])
 @ferramenta_instancia_required('ipam')
 def ipam_prefixo_deletar(request, prefixo_id):
+    """
+    Exclui o prefixo e as sub-redes dentro dele (ver `_subredes_do_bloco`).
+    Prefixos filhos continuam — são blocos próprios — e são reancorados no
+    avô. Com {"previa": true} só devolve o que seria apagado, pra confirmação.
+    """
     obj = get_object_or_404(IPAMPrefixo, id=prefixo_id)
     _checar_obj_cliente(request, obj)
-    _ipam_log(request, obj.cliente, 'prefixo', obj, 'deleted')
-    obj.delete()
+    c = obj.cliente
+    try:
+        alvo_net = ipaddress.ip_network(obj.prefixo, strict=False)
+    except ValueError:
+        alvo_net = None
+
+    subredes = IPAMSubRede.objects.none()
+    filhos = []
+    if alvo_net is not None:
+        for fid, cidr in IPAMPrefixo.objects.filter(cliente=c).exclude(id=obj.id).values_list('id', 'prefixo'):
+            try:
+                fnet = ipaddress.ip_network(cidr, strict=False)
+            except ValueError:
+                continue
+            if fnet.version == alvo_net.version and fnet.prefixlen > alvo_net.prefixlen \
+                    and fnet.subnet_of(alvo_net):
+                filhos.append((fid, fnet))
+        subredes = _subredes_do_bloco(c, alvo_net, [f for _, f in filhos])
+
+    if _json(request).get('previa'):
+        return JsonResponse({'ok': True, **_resumo_exclusao(subredes)})
+
+    with transaction.atomic():
+        _excluir_subredes(request, c, subredes)
+        _ipam_log(request, c, 'prefixo', obj, 'deleted')
+        obj.delete()
+        restantes = list(IPAMPrefixo.objects.filter(cliente=c).values_list('id', 'prefixo'))
+        for fid, fnet in filhos:
+            novo_pai = _computar_pai_id(fnet, restantes, excluir_id=fid)
+            IPAMPrefixo.objects.filter(id=fid).exclude(pai_id=novo_pai).update(pai_id=novo_pai)
     return JsonResponse({'ok': True})
 
 
@@ -1335,6 +1415,8 @@ def ipam_subrede_salvar(request, cliente_id):
     try:
         rede_str = body.get('rede', '').strip()
         ipaddress.ip_network(rede_str, strict=False)
+        if IPAMSubRede.objects.filter(cliente=c, rede=rede_str).exclude(id=sid or None).exists():
+            return JsonResponse({'ok': False, 'erro': f'Já existe sub-rede {rede_str} cadastrada'}, status=400)
         if sid:
             obj = get_object_or_404(IPAMSubRede, id=sid, cliente=c)
             antes = _ipam_snapshot('subrede', obj)
@@ -1368,12 +1450,36 @@ def ipam_subrede_salvar(request, cliente_id):
 @require_http_methods(['POST'])
 @ferramenta_instancia_required('ipam')
 def ipam_subrede_deletar(request, subrede_id):
+    """Exclui a sub-rede e as que foram quebradas dentro dela (ex: os /30 de
+    um /24), senão elas reaparecem quando o bloco é recriado. O que estiver
+    dentro de um prefixo mais específico que ela fica. {"previa": true} só conta."""
     obj = get_object_or_404(IPAMSubRede, id=subrede_id)
     _checar_obj_cliente(request, obj)
-    prefixo_id = obj.prefixo_id
-    _ipam_log(request, obj.cliente, 'subrede', obj, 'deleted')
-    obj.delete()
-    _sync_prefixo_pool_cheia(prefixo_id)
+    c = obj.cliente
+    try:
+        alvo_net = ipaddress.ip_network(obj.rede, strict=False)
+    except ValueError:
+        alvo_net = None
+
+    if alvo_net is None:
+        subredes = IPAMSubRede.objects.filter(id=obj.id)
+    else:
+        protegidas = []
+        for cidr in IPAMPrefixo.objects.filter(cliente=c).values_list('prefixo', flat=True):
+            try:
+                pnet = ipaddress.ip_network(cidr, strict=False)
+            except ValueError:
+                continue
+            if pnet.version == alvo_net.version and pnet.prefixlen > alvo_net.prefixlen \
+                    and pnet.subnet_of(alvo_net):
+                protegidas.append(pnet)
+        subredes = _subredes_do_bloco(c, alvo_net, protegidas)
+
+    if _json(request).get('previa'):
+        return JsonResponse({'ok': True, **_resumo_exclusao(subredes)})
+
+    with transaction.atomic():
+        _excluir_subredes(request, c, subredes)
     return JsonResponse({'ok': True})
 
 

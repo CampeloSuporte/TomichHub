@@ -469,6 +469,34 @@ sub-rede comum deixou de aparecer (cliente 90: 1017 → 822 linhas, exatamente a
 
 ---
 
+## Excluir um bloco leva as sub-redes de dentro dele (2026-09-16)
+
+Caso real (Startnet): o prefixo `198.18.248.0/24` tinha sido dividido em 64 `/30`. Excluído o
+prefixo e criado de novo o `/24`, os `/30` voltaram todos.
+
+### Por quê
+
+`IPAMSubRede.prefixo` é `SET_NULL`: apagar o prefixo só desligava o FK, e as sub-redes ficavam
+órfãs no banco. Como a árvore agrupa sub-redes por **contenção de CIDR** (não pelo FK), bastava
+existir de novo qualquer bloco que as contivesse — o `/24` recriado, ou até o `/15` acima dele —
+para elas reaparecerem. Excluir uma sub-rede `/24` que tinha sido quebrada tinha o mesmo defeito.
+
+### Como ficou
+
+- `ipam_prefixo_deletar` e `ipam_subrede_deletar` apagam também as sub-redes contidas no CIDR
+  (inclusive duplicatas de CIDR igual e as órfãs sem FK) via `_subredes_do_bloco`. Os IPs
+  documentados delas vão junto (CASCADE). Cada sub-rede apagada entra no `IPAMAuditLog`.
+- O que estiver dentro de um **prefixo mais específico** que continua existindo fica — é outro
+  bloco documentado. Esses prefixos filhos são reancorados no avô (`_computar_pai_id`), em vez de
+  ficarem com `pai=NULL`.
+- `POST {"previa": true}` nos dois endpoints só devolve `{subredes, ips}`; a confirmação da UI
+  (`ipamMsgExclusao`) usa isso para avisar quantas sub-redes/IPs vão junto.
+- `ipam_subrede_salvar` recusa criar/renomear para um CIDR que já existe no cliente — o `/24`
+  recriado tinha virado uma segunda linha ao lado do antigo.
+
+Testes: `clientes/tests_ipam_exclusao.py`. Nos testes, evite `198.18.0.0/15`, `10/8` etc.: um
+signal cria esses prefixos privados em todo cliente novo.
+
 ## Models Relacionados
 
 | Model          | Campos principais                                              |
