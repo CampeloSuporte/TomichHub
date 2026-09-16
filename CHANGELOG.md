@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-16 (IPAM: excluir bloco leva as sub-redes quebradas)
+
+### Corrigido
+
+- **Os `/30` de um bloco excluído voltavam quando o bloco era recriado.** Excluir um prefixo só
+  desligava as sub-redes dele (FK `SET_NULL`); como a árvore agrupa por CIDR, elas reapareciam
+  sob o bloco novo. Agora excluir um prefixo ou uma sub-rede apaga junto as sub-redes contidas nele
+  (e os IPs delas), preservando o que está dentro de um prefixo mais específico, que é reancorado
+  no avô. A confirmação avisa quantas sub-redes/IPs vão junto.
+- Criar sub-rede com um CIDR que já existe no cliente passou a ser recusado (gerava `/24` duplicado).
+
+---
+
 ## [Não publicado] — 2026-09-15 (Atendimento: responder citando uma mensagem)
 
 ### Adicionado

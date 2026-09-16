@@ -6022,17 +6022,35 @@ window.ipamToggleSubredePoolCheia = async function(id){
     }
     else uiAlert('Erro: ' + d.erro);
 };
+// Excluir um bloco leva junto as sub-redes quebradas dentro dele (e os IPs
+// delas) — a prévia conta quantas, pra confirmação não pegar ninguém de surpresa.
+async function ipamMsgExclusao(url, oque){
+    let msg = `Confirmar exclusão ${oque}?`;
+    try {
+        const r = await fetch(url,{method:'POST',headers:{'X-CSRFToken':getCsrfToken(),'Content-Type':'application/json'},body:JSON.stringify({previa:true})});
+        const d = await r.json();
+        const extra = oque === 'da sub-rede' ? d.subredes - 1 : d.subredes;
+        if(d.ok && extra > 0){
+            msg += ` Também serão removidas ${extra} sub-rede(s) dentro do bloco`
+                 + (d.ips ? ` e ${d.ips} IP(s) documentado(s)` : '') + '.';
+        }
+    } catch(e) {}
+    return msg;
+}
 window.ipamDeletarPrefixo = async function(id){
-    if(!await uiConfirm({titulo:'Excluir Prefixo', msg:'Confirmar exclusão do prefixo?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'})) return;
-    const r = await fetch(`/clientes/ipam/prefixos/${id}/deletar/`,{method:'POST',headers:{'X-CSRFToken':getCsrfToken()}});
+    const url = `/clientes/ipam/prefixos/${id}/deletar/`;
+    const msg = await ipamMsgExclusao(url, 'do prefixo');
+    if(!await uiConfirm({titulo:'Excluir Prefixo', msg, icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'})) return;
+    const r = await fetch(url,{method:'POST',headers:{'X-CSRFToken':getCsrfToken()}});
     const d = await r.json();
-    if(d.ok){ delete IPAM._bdOpen[id]; ipamCarregarPrefixos(); }
+    if(d.ok){ delete IPAM._bdOpen[id]; await ipamCarregarSubRedes(); ipamCarregarPrefixos(); }
     else uiAlert('Erro: ' + d.erro);
 };
 window.ipamDeletarSubRede = async function(id){
-    if(!await uiConfirm({titulo:'Excluir Sub-rede', msg:'Confirmar exclusão da sub-rede?', icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'})) return;
-    // Descobrir prefixo pai (se estiver numa linha de breakdown)
-    const r = await fetch(`/clientes/ipam/subredes/${id}/deletar/`,{method:'POST',headers:{'X-CSRFToken':getCsrfToken()}});
+    const url = `/clientes/ipam/subredes/${id}/deletar/`;
+    const msg = await ipamMsgExclusao(url, 'da sub-rede');
+    if(!await uiConfirm({titulo:'Excluir Sub-rede', msg, icone:'fas fa-trash', iconeCor:'#e06060', btnLabel:'Excluir'})) return;
+    const r = await fetch(url,{method:'POST',headers:{'X-CSRFToken':getCsrfToken()}});
     const d = await r.json();
     if(d.ok){
         // As pastas abertas (IPAM._bdOpen) se re-renderizam sozinhas com o cache atualizado
