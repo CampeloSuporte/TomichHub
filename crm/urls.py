@@ -21,4 +21,5 @@ urlpatterns = [
     path('monitoramento/', include('monitoramento.urls', namespace='monitoramento')),
     path('tarefas/', include('tarefas.urls')),
     path('seguranca/', include('seguranca.urls')),
+    path('projetos-rede/', include('projeto_rede.urls', namespace='projeto_rede')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

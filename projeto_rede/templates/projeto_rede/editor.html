@@ -1,0 +1,772 @@
+{% extends "base.html" %}
+{% block content %}
+{% csrf_token %}
+{% include "projeto_rede/_estilo_documento.html" %}
+<style>
+.ed { --ed-topo: 0px; padding: 0 24px 40px; }
+.ed-barra {
+    position: sticky; top: 0; z-index: 40; background: var(--dark-bg, #0d1117);
+    border-bottom: 1px solid var(--border); padding: 10px 0 8px; margin-bottom: 14px;
+}
+.ed-linha1 { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.ed-voltar { color:var(--text-muted); font-size:.76rem; text-decoration:none; display:inline-flex; gap:6px; align-items:center; }
+.ed-voltar:hover { color:var(--accent-cyan); }
+.ed-nome { font-weight:600; color:var(--text-light); font-size:.98rem; margin:2px 0 0; }
+.ed-estado { font-size:.74rem; color:var(--text-muted); display:inline-flex; align-items:center; gap:6px; }
+.ed-estado .ponto { width:8px; height:8px; border-radius:50%; background:#3fb950; }
+.ed-estado.sujo .ponto { background:#d29922; }
+.ed-estado.salvando .ponto { background:#58a6ff; }
+.ed-estado.erro .ponto { background:#e06060; }
+.ed-acoes { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.ed-btn {
+    display:inline-flex; align-items:center; gap:6px; background:transparent; border:1px solid var(--border);
+    color:var(--text-light); border-radius:6px; padding:6px 11px; font-size:.78rem; cursor:pointer; text-decoration:none;
+    transition: border-color .15s, color .15s, background .15s; white-space:nowrap;
+}
+.ed-btn:hover { border-color:var(--accent-cyan); color:var(--accent-cyan); }
+.ed-btn:disabled { opacity:.5; cursor:not-allowed; }
+.ed-btn-primario { border-color:var(--primary-green); color:var(--primary-green); }
+.ed-btn-primario:hover { background:rgba(63,185,80,.1); color:var(--primary-green); border-color:var(--primary-green); }
+.ed-btn-perigo:hover { border-color:#e06060; color:#e06060; }
+.ed-select {
+    background:var(--card-bg); color:var(--text-light); border:1px solid var(--border); border-radius:6px;
+    padding:5px 8px; font-size:.78rem;
+}
+.ed-ferramentas {
+    display:flex; gap:4px; flex-wrap:wrap; align-items:center; margin-top:8px;
+    background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:5px 6px;
+}
+.ed-ferramentas .sep { width:1px; align-self:stretch; background:var(--border); margin:2px 4px; }
+.ed-ferr {
+    min-width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; gap:5px;
+    background:transparent; border:1px solid transparent; border-radius:5px; color:var(--text-light);
+    font-size:.8rem; cursor:pointer; padding:0 7px;
+}
+.ed-ferr:hover { border-color:var(--border); background:rgba(255,255,255,.04); color:var(--accent-cyan); }
+.ed-ferr:disabled { opacity:.35; cursor:not-allowed; }
+.ed-ferr .lbl { font-size:.72rem; }
+
+.ed-grade { display:grid; grid-template-columns: 250px minmax(0, 1fr); gap:18px; align-items:start; }
+@media (max-width: 1100px) { .ed-grade { grid-template-columns: 1fr; } .ed-lateral { position:static !important; } }
+.ed-lateral {
+    position: sticky; top: var(--ed-topo); background:var(--card-bg); border:1px solid var(--border);
+    border-radius:8px; padding:12px; max-height: calc(100vh - var(--ed-topo) - 16px); overflow:auto;
+}
+.ed-lateral h6 { font-size:.7rem; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); margin:0 0 8px; }
+.ed-sumario { list-style:none; padding:0; margin:0 0 12px; }
+.ed-sumario li { display:flex; align-items:center; gap:4px; border-radius:5px; }
+.ed-sumario li a {
+    flex:1; min-width:0; color:var(--text-light); text-decoration:none; font-size:.78rem; padding:5px 6px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.ed-sumario li a .n { color:var(--accent-cyan); display:inline-block; min-width:20px; font-variant-numeric:tabular-nums; }
+.ed-sumario li:hover { background:rgba(255,255,255,.04); }
+.ed-sumario li.ativa { background:rgba(0,217,255,.08); }
+.ed-info { font-size:.72rem; color:var(--text-muted); line-height:1.5; border-top:1px solid var(--border); padding-top:10px; margin-top:6px; }
+
+.ed-papel {
+    background:#fff; border-radius:4px; box-shadow:0 2px 18px rgba(0,0,0,.35);
+    padding: 36px 48px 48px; max-width: 900px; margin: 0 auto 40px;
+}
+.ed-capa { border-bottom: 1px dashed #d0d5dd; padding-bottom: 22px; margin-bottom: 8px; }
+.ed-faixa { height:8px; background:#0f6e7a; margin:-36px -48px 26px; border-radius:4px 4px 0 0; }
+.doc-rede .ed-campo {
+    width:100%; border:1px solid transparent; border-radius:4px; background:transparent; color:inherit;
+    font:inherit; padding:2px 5px; margin-left:-6px;
+}
+.doc-rede .ed-campo:hover { border-color:#d0d5dd; }
+.doc-rede .ed-campo:focus { outline:none; border-color:#0f6e7a; background:#f7fbfc; }
+.doc-rede textarea.ed-campo { resize:vertical; min-height:44px; }
+.doc-rede .dr-capa-empresa .ed-campo, .doc-rede .dr-capa-titulo .ed-campo, .doc-rede .dr-capa-sub .ed-campo { font-weight:inherit; }
+.doc-rede .dr-controle td { padding:2px 7px; }
+.doc-rede .dr-controle td .ed-campo { margin-left:-4px; }
+
+.ed-secao { position:relative; padding-top:4px; }
+.ed-secao + .ed-secao { border-top:1px dashed #e4e7ec; margin-top:18px; }
+.ed-secao-cab { display:flex; align-items:center; gap:8px; margin:22px 0 6px; }
+.ed-secao-cab .num { color:#0f6e7a; font-family:Calibri,"Liberation Sans",Arial,sans-serif; font-size:17pt; font-weight:700; }
+.ed-secao-cab input.ed-campo {
+    flex:1; font-family:Calibri,"Liberation Sans",Arial,sans-serif; color:#0f6e7a; font-size:17pt; font-weight:700;
+}
+.ed-secao-ctl { display:flex; gap:2px; opacity:.35; transition:opacity .15s; }
+.ed-secao:hover .ed-secao-ctl, .ed-secao:focus-within .ed-secao-ctl { opacity:1; }
+.ed-secao-ctl button {
+    width:28px; height:28px; border:1px solid #d0d5dd; background:#fff; border-radius:5px; color:#475467;
+    cursor:pointer; font-size:.74rem;
+}
+.ed-secao-ctl button:hover { border-color:#0f6e7a; color:#0f6e7a; }
+.ed-secao-ctl button.perigo:hover { border-color:#b42318; color:#b42318; }
+.ed-tag-auto {
+    font-size:.64rem; color:#067647; border:1px solid #a6d8b8; border-radius:999px; padding:1px 7px;
+    font-family: "Liberation Sans", Arial, sans-serif; white-space:nowrap;
+}
+.ed-corpo { outline:none; min-height:40px; border-radius:4px; padding:2px 4px; margin:0 -4px; }
+.ed-corpo:focus { box-shadow: 0 0 0 2px rgba(15,110,122,.18); }
+.ed-corpo:empty::before { content:'Escreva o conteúdo desta seção…'; color:#98a2b3; }
+.ed-secoes { counter-reset: secao; }
+.ed-secao:not(.anexo) { counter-increment: secao; }
+.ed-corpo { counter-reset: sub; }
+.ed-secao:not(.anexo) .ed-corpo h3 { counter-increment: sub; }
+.ed-secao:not(.anexo) .ed-corpo h3::before { content: counter(secao) "." counter(sub) "  "; }
+.doc-rede .ed-corpo td:focus-within, .doc-rede .ed-corpo th:focus-within { outline: 2px solid rgba(15,110,122,.35); outline-offset:-2px; }
+.ed-add { display:flex; justify-content:center; margin-top:26px; gap:8px; flex-wrap:wrap; }
+.ed-add button {
+    border:1px dashed #98a2b3; background:#fff; color:#475467; border-radius:6px; padding:7px 14px;
+    font-size:.8rem; cursor:pointer; font-family:"Liberation Sans", Arial, sans-serif;
+}
+.ed-add button:hover { border-color:#0f6e7a; color:#0f6e7a; }
+
+.ed-modal-fundo { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:1050; display:none; align-items:center; justify-content:center; padding:16px; }
+.ed-modal-fundo.aberto { display:flex; }
+.ed-modal { background:var(--card-bg); border:1px solid var(--border); border-radius:10px; width:min(620px, 100%); max-height:85vh; display:flex; flex-direction:column; }
+.ed-modal-cab { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.ed-modal-cab h6 { margin:0; }
+.ed-modal-corpo { padding:14px 18px; overflow:auto; }
+.ed-modal-rod { padding:12px 18px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
+.ed-modal label { font-size:.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; display:block; margin:0 0 4px; }
+.ed-modal input[type=text], .ed-modal input[type=number] {
+    width:100%; background:var(--dark-bg, #0d1117); border:1px solid var(--border); color:var(--text-light);
+    border-radius:6px; padding:7px 10px; font-size:.84rem;
+}
+.ed-rev { display:flex; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); font-size:.82rem; }
+.ed-rev:last-child { border-bottom:none; }
+.ed-rev small { color:var(--text-muted); display:block; }
+.ed-fechar { background:none; border:none; color:var(--text-muted); font-size:1.1rem; cursor:pointer; }
+</style>
+
+<div class="ed" id="ed">
+    <div class="ed-barra" id="edBarra">
+        <div class="ed-linha1">
+            <div>
+                <a class="ed-voltar" href="{% url 'projeto_rede:lista' cliente.id %}"><i class="fas fa-arrow-left"></i> Documentos de {{ cliente.nome_empresa }}</a>
+                <div class="ed-nome" id="edNome">{{ doc.titulo }}</div>
+            </div>
+            <div class="ed-acoes">
+                <span class="ed-estado" id="edEstado" aria-live="polite"><span class="ponto"></span><span class="txt">Salvo</span></span>
+                <select class="ed-select" id="edStatus" title="Status do documento">
+                    {% for valor, rotulo in status_opcoes %}<option value="{{ valor }}" {% if valor == doc.status %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+                </select>
+                <button type="button" class="ed-btn ed-btn-primario" id="btnSalvar" title="Salvar (Ctrl+S)"><i class="fas fa-floppy-disk"></i> Salvar</button>
+                <button type="button" class="ed-btn" id="btnRevisao" title="Registrar um marco de revisão"><i class="fas fa-code-branch"></i> Registrar revisão</button>
+                <button type="button" class="ed-btn" id="btnHistorico"><i class="fas fa-clock-rotate-left"></i> Histórico</button>
+                <button type="button" class="ed-btn" id="btnAtualizar" title="Recalcula as seções automáticas com os backups mais recentes"><i class="fas fa-rotate"></i> Atualizar com backups</button>
+                <a class="ed-btn" id="btnVisualizar" href="{% url 'projeto_rede:visualizar' doc.id %}" target="_blank" rel="noopener"><i class="fas fa-eye"></i> Visualizar</a>
+                <a class="ed-btn" id="btnPdf" href="{% url 'projeto_rede:pdf' doc.id %}"><i class="fas fa-file-pdf"></i> PDF</a>
+                <a class="ed-btn" id="btnDocx" href="{% url 'projeto_rede:docx' doc.id %}"><i class="fas fa-file-word"></i> DOCX</a>
+                <button type="button" class="ed-btn ed-btn-perigo" id="btnExcluir" title="Excluir documento"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+        <div class="ed-ferramentas" id="edFerramentas" role="toolbar" aria-label="Formatação">
+            <button type="button" class="ed-ferr" data-cmd="bold" title="Negrito (Ctrl+B)"><i class="fas fa-bold"></i></button>
+            <button type="button" class="ed-ferr" data-cmd="italic" title="Itálico (Ctrl+I)"><i class="fas fa-italic"></i></button>
+            <button type="button" class="ed-ferr" data-cmd="underline" title="Sublinhado (Ctrl+U)"><i class="fas fa-underline"></i></button>
+            <button type="button" class="ed-ferr" data-cmd="strikeThrough" title="Tachado"><i class="fas fa-strikethrough"></i></button>
+            <span class="sep"></span>
+            <button type="button" class="ed-ferr" data-bloco="h3" title="Subtítulo"><span class="lbl">Subtítulo</span></button>
+            <button type="button" class="ed-ferr" data-bloco="h4" title="Tópico"><span class="lbl">Tópico</span></button>
+            <button type="button" class="ed-ferr" data-bloco="p" title="Parágrafo"><span class="lbl">Texto</span></button>
+            <span class="sep"></span>
+            <button type="button" class="ed-ferr" data-cmd="insertUnorderedList" title="Lista"><i class="fas fa-list-ul"></i></button>
+            <button type="button" class="ed-ferr" data-cmd="insertOrderedList" title="Lista numerada"><i class="fas fa-list-ol"></i></button>
+            <button type="button" class="ed-ferr" data-inserir="callout" title="Caixa de destaque"><i class="fas fa-circle-info"></i></button>
+            <button type="button" class="ed-ferr" data-inserir="callout-risco" title="Caixa de risco"><i class="fas fa-triangle-exclamation"></i></button>
+            <span class="sep"></span>
+            <button type="button" class="ed-ferr" data-inserir="tabela" title="Inserir tabela"><i class="fas fa-table"></i></button>
+            <button type="button" class="ed-ferr" data-tab="linha-acima" title="Inserir linha acima" disabled><i class="fas fa-arrow-up"></i><span class="lbl">Linha</span></button>
+            <button type="button" class="ed-ferr" data-tab="linha-abaixo" title="Inserir linha abaixo" disabled><i class="fas fa-arrow-down"></i><span class="lbl">Linha</span></button>
+            <button type="button" class="ed-ferr" data-tab="coluna" title="Inserir coluna à direita" disabled><i class="fas fa-arrow-right"></i><span class="lbl">Coluna</span></button>
+            <button type="button" class="ed-ferr" data-tab="del-linha" title="Excluir linha" disabled><i class="fas fa-minus"></i><span class="lbl">Linha</span></button>
+            <button type="button" class="ed-ferr" data-tab="del-coluna" title="Excluir coluna" disabled><i class="fas fa-minus"></i><span class="lbl">Coluna</span></button>
+            <button type="button" class="ed-ferr" data-tab="del-tabela" title="Excluir tabela" disabled><i class="fas fa-table"></i><i class="fas fa-xmark" style="font-size:.6rem;"></i></button>
+            <span class="sep"></span>
+            <select class="ed-select" id="edSeveridade" title="Marcar severidade no texto selecionado">
+                <option value="">Severidade…</option>
+                <option value="sev-critica">Crítica</option>
+                <option value="sev-alta">Alta</option>
+                <option value="sev-media">Média</option>
+                <option value="sev-baixa">Baixa</option>
+                <option value="sev-info">Informativa</option>
+            </select>
+            <button type="button" class="ed-ferr" data-cmd="removeFormat" title="Limpar formatação"><i class="fas fa-eraser"></i></button>
+            <span class="sep"></span>
+            <button type="button" class="ed-ferr" data-cmd="undo" title="Desfazer (Ctrl+Z)"><i class="fas fa-rotate-left"></i></button>
+            <button type="button" class="ed-ferr" data-cmd="redo" title="Refazer (Ctrl+Y)"><i class="fas fa-rotate-right"></i></button>
+        </div>
+    </div>
+
+    <div class="ed-grade">
+        <aside class="ed-lateral" id="edLateral">
+            <h6>Sumário</h6>
+            <ul class="ed-sumario" id="edSumario"></ul>
+            <button type="button" class="ed-btn" style="width:100%;justify-content:center;" id="btnNovaSecaoLat"><i class="fas fa-plus"></i> Nova seção</button>
+            <div class="ed-info">
+                {% with c=doc.coleta %}
+                Gerado a partir de <strong>{{ c.total_com_backup|default:0 }}</strong> backup(s) de {{ c.total_acessos|default:0 }} acesso(s)
+                {% if c.gerado_em %}em {{ c.gerado_em|slice:":10" }}{% endif %}.<br>
+                {% endwith %}
+                Seções com <span class="ed-tag-auto" style="font-size:.6rem;">auto</span> podem ser recalculadas pelo botão <i class="fas fa-rotate"></i>; edições nelas são substituídas.
+                O conteúdo é salvo automaticamente.
+            </div>
+        </aside>
+
+        <div>
+            <div class="ed-papel doc-rede" id="edPapel">
+                <div class="ed-capa">
+                    <div class="ed-faixa"></div>
+                    <p class="dr-capa-empresa"><input class="ed-campo" data-meta="empresa" aria-label="Empresa"></p>
+                    <h1 class="dr-capa-titulo"><input class="ed-campo" data-meta="titulo" aria-label="Título"></h1>
+                    <p class="dr-capa-sub"><input class="ed-campo" data-meta="subtitulo" aria-label="Subtítulo"></p>
+                    <table class="dr-controle">
+                        <thead><tr><th>Campo</th><th>Definição</th></tr></thead>
+                        <tbody>
+                        {% for chave, rotulo in campos_meta %}
+                            <tr><td>{{ rotulo }}</td><td><input class="ed-campo" data-meta="{{ chave }}" aria-label="{{ rotulo }}"></td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                    <div class="callout"><p style="display:flex;gap:6px;align-items:flex-start;"><strong style="white-space:nowrap;padding-top:3px;">Princípio do documento.</strong>
+                        <textarea class="ed-campo" data-meta="principio" rows="2" aria-label="Princípio do documento"></textarea></p></div>
+                </div>
+                <div class="ed-secoes" id="edSecoes"></div>
+                <div class="ed-add">
+                    <button type="button" id="btnNovaSecao"><i class="fas fa-plus"></i> Nova seção</button>
+                    <select class="ed-select" id="edRestaurarAuto" style="background:#fff;color:#475467;border-color:#98a2b3;" hidden>
+                        <option value="">Recolocar seção automática…</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ed-modal-fundo" id="modalRevisao">
+    <div class="ed-modal" role="dialog" aria-modal="true" aria-labelledby="tRev">
+        <div class="ed-modal-cab"><h6 id="tRev"><i class="fas fa-code-branch me-1"></i> Registrar revisão</h6><button class="ed-fechar" data-fechar>&times;</button></div>
+        <div class="ed-modal-corpo">
+            <p style="font-size:.82rem;color:var(--text-muted);">Guarda uma fotografia do documento como está agora. Use nos marcos: revisão técnica concluída, versão apresentada ao cliente etc.</p>
+            <div class="mb-3"><label for="revVersao">Nova versão</label><input type="text" id="revVersao" maxlength="20"></div>
+            <div><label for="revMotivo">Descrição</label><input type="text" id="revMotivo" maxlength="255" placeholder="Ex.: Revisão técnica com o NOC"></div>
+        </div>
+        <div class="ed-modal-rod"><button class="ed-btn" data-fechar>Cancelar</button><button class="ed-btn ed-btn-primario" id="revConfirmar">Registrar</button></div>
+    </div>
+</div>
+
+<div class="ed-modal-fundo" id="modalHistorico">
+    <div class="ed-modal" role="dialog" aria-modal="true" aria-labelledby="tHist">
+        <div class="ed-modal-cab"><h6 id="tHist"><i class="fas fa-clock-rotate-left me-1"></i> Histórico de revisões</h6><button class="ed-fechar" data-fechar>&times;</button></div>
+        <div class="ed-modal-corpo" id="histLista"><div style="color:var(--text-muted);font-size:.82rem;">Carregando…</div></div>
+    </div>
+</div>
+
+{{ doc_json|json_script:"doc-dados" }}
+{{ secoes_auto|json_script:"secoes-auto" }}
+<script>
+(function () {
+'use strict';
+const URLS = {
+    salvar: '{% url "projeto_rede:salvar" doc.id %}',
+    regenerar: '{% url "projeto_rede:regenerar_secao" doc.id %}',
+    regenerarTudo: '{% url "projeto_rede:regenerar_tudo" doc.id %}',
+    revisoes: '{% url "projeto_rede:revisoes" doc.id %}',
+    registrar: '{% url "projeto_rede:registrar_revisao" doc.id %}',
+    restaurar: '{% url "projeto_rede:restaurar_revisao" doc.id 0 %}',
+    excluir: '{% url "projeto_rede:excluir" doc.id %}',
+};
+const DOC = JSON.parse(document.getElementById('doc-dados').textContent);
+const AUTO = JSON.parse(document.getElementById('secoes-auto').textContent);
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+const csrf = () => ($('[name=csrfmiddlewaretoken]') || {}).value || '';
+
+let base = DOC.atualizado_em;
+let sujo = false;
+let salvando = false;
+let timerSalvar = null;
+let ultimoCorpo = null;     // último .ed-corpo focado (a toolbar rouba o foco)
+let ultimaCelula = null;
+
+// ── API ────────────────────────────────────────────────────────────────
+async function api(url, corpo, metodo = 'POST') {
+    const r = await fetch(url, {
+        method: metodo,
+        headers: metodo === 'POST' ? { 'X-CSRFToken': csrf(), 'Content-Type': 'application/json' } : {},
+        body: metodo === 'POST' ? JSON.stringify(corpo || {}) : undefined,
+    });
+    let j;
+    try { j = await r.json(); }
+    catch (_) { j = { ok: false, erro: r.status === 413 ? 'Documento grande demais.' : `Resposta inesperada do servidor (HTTP ${r.status}).` }; }
+    j.status = r.status;
+    return j;
+}
+
+// ── Sanitização no cliente (espelho de sanitizar.py) ──────────────────
+const TAGS = new Set(['P','BR','STRONG','EM','U','S','H3','H4','UL','OL','LI','TABLE','THEAD','TBODY','TR','TH','TD','CODE','PRE','BLOCKQUOTE','DIV','SPAN','A','SUP','SUB']);
+const RENOMEAR = { B: 'STRONG', I: 'EM', STRIKE: 'S', DEL: 'S', H1: 'H3', H2: 'H3', H5: 'H4', H6: 'H4' };
+const DESCARTAR = new Set(['SCRIPT','STYLE','IFRAME','OBJECT','EMBED','TEMPLATE','NOSCRIPT','SVG','MATH','META','LINK','TITLE','XML']);
+const CLASSES = { DIV: ['callout','callout-risco','callout-status'], SPAN: ['sev-critica','sev-alta','sev-media','sev-baixa','sev-info','marca'], P: ['nota'], TABLE: ['compacta'] };
+function limparNo(no, destino) {
+    for (const f of Array.from(no.childNodes)) {
+        if (f.nodeType === 3) { destino.appendChild(document.createTextNode(f.textContent)); continue; }
+        if (f.nodeType !== 1) continue;
+        let tag = RENOMEAR[f.tagName] || f.tagName;
+        if (DESCARTAR.has(tag)) continue;
+        if (tag === 'SPAN' && /font-weight:\s*(bold|[6-9]00)/.test(f.getAttribute('style') || '')) tag = 'STRONG';
+        if (!TAGS.has(tag)) { limparNo(f, destino); continue; }
+        const el = document.createElement(tag);
+        const cls = (f.getAttribute('class') || '').split(/\s+/).filter(c => (CLASSES[tag] || []).includes(c));
+        if (cls.length) el.className = cls.join(' ');
+        if (tag === 'A') { const h = f.getAttribute('href') || ''; if (/^(https?:|mailto:)/i.test(h)) el.setAttribute('href', h); }
+        if (tag === 'TD' || tag === 'TH') ['colspan','rowspan'].forEach(a => { const v = f.getAttribute(a); if (/^\d{1,2}$/.test(v || '')) el.setAttribute(a, v); });
+        limparNo(f, el);
+        if (tag === 'SPAN' && !cls.length) { while (el.firstChild) destino.appendChild(el.firstChild); continue; }
+        destino.appendChild(el);
+    }
+}
+function limparHtml(html) {
+    const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html');
+    const alvo = document.createElement('div');
+    limparNo(doc.body, alvo);
+    return alvo.innerHTML;
+}
+
+// ── Estado ─────────────────────────────────────────────────────────────
+function marcarEstado(tipo, texto) {
+    const el = $('#edEstado');
+    el.className = 'ed-estado ' + (tipo || '');
+    $('.txt', el).textContent = texto;
+}
+function sujar() {
+    sujo = true;
+    marcarEstado('sujo', 'Alterações não salvas');
+    clearTimeout(timerSalvar);
+    timerSalvar = setTimeout(() => salvar(false), 4000);
+}
+window.addEventListener('beforeunload', (ev) => { if (sujo) { ev.preventDefault(); ev.returnValue = ''; } });
+
+function coletar() {
+    const metadados = {};
+    $$('[data-meta]').forEach(i => { metadados[i.dataset.meta] = i.value; });
+    const secoes = $$('.ed-secao', $('#edSecoes')).map(s => ({
+        id: s.dataset.id,
+        chave: s.dataset.chave || '',
+        auto: s.dataset.auto === '1',
+        titulo: $('.ed-titulo', s).value,
+        html: $('.ed-corpo', s).innerHTML,
+    }));
+    return { metadados, secoes, status: $('#edStatus').value };
+}
+
+async function salvar(manual, forcar = false) {
+    if (salvando) return;
+    if (!sujo && !manual) return;
+    clearTimeout(timerSalvar);
+    salvando = true;
+    marcarEstado('salvando', 'Salvando…');
+    const j = await api(URLS.salvar, { ...coletar(), base, forcar }).catch(e => ({ ok: false, erro: e.message }));
+    salvando = false;
+    if (j.ok) {
+        base = j.atualizado_em;
+        sujo = false;
+        const h = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        marcarEstado('', `Salvo às ${h}`);
+        $('#edNome').textContent = $('[data-meta=documento]').value || DOC.titulo;
+        return true;
+    }
+    marcarEstado('erro', 'Não salvo');
+    if (j.conflito) {
+        const ok = await uiConfirm({
+            titulo: 'Documento alterado em outra sessão',
+            msg: `${j.erro} Salvar mesmo assim substitui a versão que está no servidor (uma revisão pode ser restaurada pelo histórico).`,
+            btnLabel: 'Substituir', iconeCor: '#d29922', btnCor: '#d29922',
+        });
+        if (ok) return salvar(true, true);
+        return false;
+    }
+    if (j.status === 401) { uiAlert({ titulo: 'Sessão expirada', msg: 'Entre novamente em outra aba e clique em Salvar — nada foi perdido nesta página.' }); return false; }
+    uiAlert({ titulo: 'Erro ao salvar', msg: j.erro || 'Falha ao salvar.', icone: 'fas fa-times-circle', iconeCor: '#e06060' });
+    return false;
+}
+
+// ── Renderização ───────────────────────────────────────────────────────
+function el(tag, attrs = {}, ...filhos) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) {
+        if (k === 'class') e.className = v;
+        else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+        else e.setAttribute(k, v);
+    }
+    filhos.forEach(f => e.append(f));
+    return e;
+}
+function btnCtl(icone, titulo, fn, extra = '') {
+    return el('button', { type: 'button', title: titulo, 'aria-label': titulo, class: extra, onclick: fn }, el('i', { class: icone }));
+}
+function novoId() { return Math.random().toString(16).slice(2, 14); }
+
+function criarSecao(s) {
+    const corpo = el('div', { class: 'ed-corpo', contenteditable: 'true', spellcheck: 'true' });
+    corpo.innerHTML = s.html || '';
+    const titulo = el('input', { class: 'ed-campo ed-titulo', value: s.titulo || '', 'aria-label': 'Título da seção' });
+    titulo.value = s.titulo || '';
+    const ctl = el('div', { class: 'ed-secao-ctl' },
+        btnCtl('fas fa-arrow-up', 'Mover para cima', () => mover(sec, -1)),
+        btnCtl('fas fa-arrow-down', 'Mover para baixo', () => mover(sec, 1)),
+    );
+    if (s.chave) ctl.append(btnCtl('fas fa-rotate', 'Recalcular esta seção a partir dos backups', () => regenerar(sec)));
+    ctl.append(btnCtl('fas fa-trash', 'Excluir seção', () => excluirSecao(sec), 'perigo'));
+    const cab = el('div', { class: 'ed-secao-cab' }, el('span', { class: 'num' }), titulo);
+    if (s.chave && s.auto) cab.append(el('span', { class: 'ed-tag-auto', title: 'Conteúdo gerado dos backups' }, 'auto'));
+    cab.append(ctl);
+    const sec = el('section', { class: 'ed-secao', 'data-id': s.id || novoId(), 'data-chave': s.chave || '', 'data-auto': s.auto ? '1' : '0' }, cab, corpo);
+    titulo.addEventListener('input', () => { renumerar(); sujar(); });
+    corpo.addEventListener('input', () => {
+        if (sec.dataset.auto === '1') { sec.dataset.auto = '0'; const t = $('.ed-tag-auto', sec); if (t) t.textContent = 'auto · editada'; }
+        sujar();
+    });
+    corpo.addEventListener('focus', () => { ultimoCorpo = corpo; });
+    corpo.addEventListener('paste', colar);
+    return sec;
+}
+
+function renderizar(doc) {
+    $$('[data-meta]').forEach(i => { i.value = (doc.metadados || {})[i.dataset.meta] || ''; });
+    $('#edStatus').value = doc.status;
+    const cont = $('#edSecoes');
+    cont.innerHTML = '';
+    (doc.secoes || []).forEach(s => cont.append(criarSecao(s)));
+    renumerar();
+}
+
+function renumerar() {
+    let n = 0;
+    const lista = $('#edSumario');
+    lista.innerHTML = '';
+    $$('.ed-secao', $('#edSecoes')).forEach((s) => {
+        const titulo = $('.ed-titulo', s).value.trim();
+        const anexo = /^anexo/i.test(titulo);
+        s.classList.toggle('anexo', anexo);
+        const num = anexo ? '' : String(++n);
+        $('.ed-secao-cab .num', s).textContent = num ? `${num}.` : '';
+        const a = el('a', { href: '#', title: titulo }, el('span', { class: 'n' }, num ? `${num}.` : '•'), ' ' + (titulo || 'Sem título'));
+        a.addEventListener('click', (ev) => { ev.preventDefault(); rolarPara(s); });
+        lista.append(el('li', {}, a));
+    });
+    const presentes = new Set($$('.ed-secao', $('#edSecoes')).map(s => s.dataset.chave).filter(Boolean));
+    const sel = $('#edRestaurarAuto');
+    sel.innerHTML = '<option value="">Recolocar seção automática…</option>';
+    AUTO.filter(a => !presentes.has(a.chave)).forEach(a => sel.append(el('option', { value: a.chave }, a.titulo)));
+    sel.hidden = sel.options.length <= 1;
+}
+
+function rolarPara(sec) {
+    const topo = $('#edBarra').getBoundingClientRect().height + 10;
+    window.scrollTo({ top: sec.getBoundingClientRect().top + window.scrollY - topo, behavior: 'smooth' });
+}
+
+function mover(sec, dir) {
+    const alvo = dir < 0 ? sec.previousElementSibling : sec.nextElementSibling;
+    if (!alvo) return;
+    if (dir < 0) alvo.before(sec); else alvo.after(sec);
+    renumerar(); sujar(); rolarPara(sec);
+}
+
+async function excluirSecao(sec) {
+    const nome = $('.ed-titulo', sec).value || 'esta seção';
+    const ok = await uiConfirm({ titulo: 'Excluir seção', msg: `Excluir "${nome}"? Seções automáticas podem ser recolocadas depois; o texto editado só volta pelo histórico de revisões.`, btnLabel: 'Excluir' });
+    if (!ok) return;
+    sec.remove(); renumerar(); sujar();
+}
+
+function novaSecao(depoisDe) {
+    const sec = criarSecao({ id: novoId(), titulo: 'Nova seção', html: '<p></p>' });
+    if (depoisDe) depoisDe.after(sec); else $('#edSecoes').append(sec);
+    renumerar(); sujar(); rolarPara(sec);
+    const t = $('.ed-titulo', sec); t.focus(); t.select();
+}
+
+async function regenerar(sec) {
+    const ok = await uiConfirm({
+        titulo: 'Recalcular seção', msg: 'O conteúdo desta seção será substituído pelo resultado da análise dos backups atuais. Edições feitas nela serão perdidas (salve uma revisão antes, se quiser guardar).',
+        icone: 'fas fa-rotate', iconeCor: '#58a6ff', btnLabel: 'Recalcular', btnCor: '#58a6ff',
+    });
+    if (!ok) return;
+    marcarEstado('salvando', 'Analisando backups…');
+    const j = await api(URLS.regenerar, { chave: sec.dataset.chave });
+    if (!j.ok) { marcarEstado('erro', 'Falha ao recalcular'); return uiAlert({ titulo: 'Erro', msg: j.erro || 'Falha ao recalcular.' }); }
+    const nova = criarSecao({ ...j, id: sec.dataset.id, titulo: $('.ed-titulo', sec).value || j.titulo, auto: true });
+    sec.replaceWith(nova);
+    renumerar(); sujar();
+    uiToast('Seção recalculada');
+}
+
+async function recolocarAuto(chave) {
+    marcarEstado('salvando', 'Analisando backups…');
+    const j = await api(URLS.regenerar, { chave });
+    if (!j.ok) { marcarEstado('erro', 'Falha'); return uiAlert({ titulo: 'Erro', msg: j.erro || 'Falha.' }); }
+    const idx = AUTO.findIndex(a => a.chave === chave);
+    const sec = criarSecao({ ...j, id: novoId(), auto: true });
+    // posiciona antes da próxima seção automática que existir na ordem padrão
+    const posteriores = AUTO.slice(idx + 1).map(a => a.chave);
+    const ref = $$('.ed-secao', $('#edSecoes')).find(s => posteriores.includes(s.dataset.chave));
+    if (ref) ref.before(sec); else $('#edSecoes').append(sec);
+    renumerar(); sujar(); rolarPara(sec);
+}
+
+// ── Colar ──────────────────────────────────────────────────────────────
+function colar(ev) {
+    const dt = ev.clipboardData;
+    if (!dt) return;
+    ev.preventDefault();
+    const html = dt.getData('text/html');
+    if (html) {
+        document.execCommand('insertHTML', false, limparHtml(html));
+    } else {
+        const texto = dt.getData('text/plain') || '';
+        const blocos = texto.replace(/\r/g, '').split(/\n{2,}/).map(b => b.trim()).filter(Boolean);
+        const esc = (t) => t.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])).replace(/\n/g, '<br>');
+        document.execCommand('insertHTML', false, blocos.length > 1 ? blocos.map(b => `<p>${esc(b)}</p>`).join('') : esc(texto));
+    }
+}
+
+// ── Ferramentas ────────────────────────────────────────────────────────
+function focarCorpo() {
+    const sel = window.getSelection();
+    if (ultimoCorpo && (!sel.rangeCount || !ultimoCorpo.contains(sel.anchorNode))) ultimoCorpo.focus();
+    return ultimoCorpo && ultimoCorpo.contains(window.getSelection().anchorNode);
+}
+function celulaAtual() {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return null;
+    let n = sel.anchorNode;
+    if (n && n.nodeType === 3) n = n.parentElement;
+    const c = n && n.closest ? n.closest('td, th') : null;
+    return c && c.closest('.ed-corpo') ? c : null;
+}
+document.addEventListener('selectionchange', () => {
+    const c = celulaAtual();
+    // A seleção sai da tabela quando o usuário mexe na toolbar; a última
+    // célula visitada continua sendo o alvo das operações de tabela.
+    if (c) ultimaCelula = c;
+    else if (ultimoCorpo && document.activeElement === ultimoCorpo) ultimaCelula = null;
+    const temAlvo = !!(ultimaCelula && document.contains(ultimaCelula));
+    $$('[data-tab]').forEach(b => { b.disabled = !temAlvo; });
+});
+// mousedown na toolbar não pode tirar a seleção do texto
+$('#edFerramentas').addEventListener('mousedown', (ev) => { if (ev.target.closest('button')) ev.preventDefault(); });
+
+$$('[data-cmd]').forEach(b => b.addEventListener('click', () => {
+    if (!focarCorpo() && !['undo', 'redo'].includes(b.dataset.cmd)) return;
+    document.execCommand(b.dataset.cmd, false, null);
+    if (b.dataset.cmd === 'removeFormat') {
+        // removeFormat não desfaz spans de severidade
+        const sel = window.getSelection();
+        if (sel.rangeCount) {
+            let n = sel.anchorNode; if (n && n.nodeType === 3) n = n.parentElement;
+            const span = n && n.closest && n.closest('.ed-corpo span');
+            if (span) span.replaceWith(...span.childNodes);
+        }
+    }
+    sujar();
+}));
+$$('[data-bloco]').forEach(b => b.addEventListener('click', () => {
+    if (!focarCorpo()) return;
+    document.execCommand('formatBlock', false, b.dataset.bloco);
+    sujar();
+}));
+$$('[data-inserir]').forEach(b => b.addEventListener('click', () => {
+    if (!focarCorpo()) return uiToast('Clique no texto de uma seção primeiro', 'info');
+    const tipo = b.dataset.inserir;
+    let html = '';
+    if (tipo === 'tabela') {
+        html = '<table><thead><tr><th>Coluna 1</th><th>Coluna 2</th><th>Coluna 3</th></tr></thead><tbody>'
+             + '<tr><td><br></td><td><br></td><td><br></td></tr><tr><td><br></td><td><br></td><td><br></td></tr></tbody></table><p><br></p>';
+    } else {
+        const cls = tipo === 'callout-risco' ? 'callout callout-risco' : 'callout';
+        const titulo = tipo === 'callout-risco' ? 'Risco.' : 'Nota.';
+        html = `<div class="${cls}"><p><strong>${titulo}</strong> Texto do destaque.</p></div><p><br></p>`;
+    }
+    document.execCommand('insertHTML', false, html);
+    sujar();
+}));
+$('#edSeveridade').addEventListener('change', (ev) => {
+    const cls = ev.target.value;
+    ev.target.value = '';
+    if (!cls || !focarCorpo()) return;
+    const sel = window.getSelection();
+    if (!sel.rangeCount || sel.isCollapsed) return uiToast('Selecione o texto a marcar', 'info');
+    const texto = sel.toString().replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    document.execCommand('insertHTML', false, `<span class="${cls}">${texto}</span>&nbsp;`);
+    sujar();
+});
+
+function operarTabela(op) {
+    const c = celulaAtual() || (ultimaCelula && document.contains(ultimaCelula) ? ultimaCelula : null);
+    if (!c) return uiToast('Clique dentro de uma tabela', 'info');
+    const tr = c.parentElement;
+    const tabela = c.closest('table');
+    const idx = Array.from(tr.children).indexOf(c);
+    const vazia = (tag) => { const x = document.createElement(tag); x.innerHTML = '<br>'; return x; };
+    if (op === 'linha-acima' || op === 'linha-abaixo') {
+        const nova = document.createElement('tr');
+        Array.from(tr.children).forEach(() => nova.append(vazia('td')));
+        if (tr.parentElement.tagName === 'THEAD') {
+            let tbody = tabela.tBodies[0];
+            if (!tbody) { tbody = document.createElement('tbody'); tabela.append(tbody); }
+            tbody.prepend(nova);
+        } else if (op === 'linha-acima') tr.before(nova); else tr.after(nova);
+        ultimaCelula = nova.children[idx] || nova.firstChild;
+        sujar();
+        return;
+    } else if (op === 'coluna') {
+        Array.from(tabela.rows).forEach(r => {
+            const ref = r.children[Math.min(idx, r.children.length - 1)];
+            const nova = vazia(r.parentElement.tagName === 'THEAD' ? 'th' : 'td');
+            if (ref) ref.after(nova); else r.append(nova);
+        });
+    } else if (op === 'del-linha') {
+        if (tr.parentElement.tagName === 'THEAD') return uiToast('A linha de cabeçalho não pode ser excluída', 'info');
+        tr.remove();
+    } else if (op === 'del-coluna') {
+        if (tr.children.length <= 1) return operarTabela('del-tabela');
+        Array.from(tabela.rows).forEach(r => { if (r.children[idx]) r.children[idx].remove(); });
+    } else if (op === 'del-tabela') {
+        tabela.remove();
+    }
+    ultimaCelula = null;
+    sujar();
+}
+$$('[data-tab]').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.tab === 'del-tabela') {
+        uiConfirm({ titulo: 'Excluir tabela', msg: 'Excluir a tabela inteira?', btnLabel: 'Excluir' }).then(ok => ok && operarTabela('del-tabela'));
+    } else operarTabela(b.dataset.tab);
+}));
+
+// ── Barra superior ─────────────────────────────────────────────────────
+$('#btnSalvar').addEventListener('click', () => salvar(true));
+$('#edStatus').addEventListener('change', sujar);
+$$('[data-meta]').forEach(i => i.addEventListener('input', sujar));
+document.addEventListener('keydown', (ev) => {
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 's') { ev.preventDefault(); salvar(true); }
+    if (ev.key === 'Escape') $$('.ed-modal-fundo.aberto').forEach(m => m.classList.remove('aberto'));
+});
+$('#btnNovaSecao').addEventListener('click', () => novaSecao());
+$('#btnNovaSecaoLat').addEventListener('click', () => novaSecao());
+$('#edRestaurarAuto').addEventListener('change', (ev) => { const v = ev.target.value; ev.target.value = ''; if (v) recolocarAuto(v); });
+
+// Exportar sempre a versão salva
+async function antesDeSair(ev) {
+    if (!sujo) return;
+    ev.preventDefault();
+    const destino = ev.currentTarget;
+    if (await salvar(true)) {
+        if (destino.target === '_blank') window.open(destino.href, '_blank', 'noopener'); else window.location.href = destino.href;
+    }
+}
+['#btnPdf', '#btnDocx', '#btnVisualizar'].forEach(s => $(s).addEventListener('click', antesDeSair));
+
+function abrir(id) { $(id).classList.add('aberto'); }
+$$('[data-fechar]').forEach(b => b.addEventListener('click', () => b.closest('.ed-modal-fundo').classList.remove('aberto')));
+$$('.ed-modal-fundo').forEach(m => m.addEventListener('click', (ev) => { if (ev.target === m) m.classList.remove('aberto'); }));
+
+$('#btnRevisao').addEventListener('click', () => {
+    const atual = $('[data-meta=versao]').value || DOC.versao || '1.0';
+    const partes = atual.split('.');
+    const sugestao = partes.length >= 2 && /^\d+$/.test(partes[partes.length - 1])
+        ? [...partes.slice(0, -1), String(Number(partes[partes.length - 1]) + 1)].join('.') : atual;
+    $('#revVersao').value = sugestao;
+    $('#revMotivo').value = '';
+    abrir('#modalRevisao');
+    setTimeout(() => $('#revMotivo').focus(), 50);
+});
+$('#revConfirmar').addEventListener('click', async () => {
+    const versao = $('#revVersao').value.trim();
+    if (versao) { $('[data-meta=versao]').value = versao; sujo = true; }
+    if (sujo && !(await salvar(true))) return;
+    const j = await api(URLS.registrar, { motivo: $('#revMotivo').value.trim() });
+    if (!j.ok) return uiAlert({ titulo: 'Erro', msg: j.erro || 'Falha ao registrar.' });
+    $('#modalRevisao').classList.remove('aberto');
+    uiToast(`Revisão ${versao || ''} registrada`);
+});
+
+$('#btnHistorico').addEventListener('click', async () => {
+    abrir('#modalHistorico');
+    const lista = $('#histLista');
+    lista.textContent = 'Carregando…';
+    const j = await api(URLS.revisoes, null, 'GET');
+    if (!j.ok) { lista.textContent = j.erro || 'Falha ao carregar.'; return; }
+    lista.innerHTML = '';
+    if (!j.revisoes.length) { lista.textContent = 'Nenhuma revisão registrada.'; return; }
+    j.revisoes.forEach(r => {
+        const b = el('button', { type: 'button', class: 'ed-btn' }, el('i', { class: 'fas fa-clock-rotate-left' }), ' Restaurar');
+        b.addEventListener('click', () => restaurar(r));
+        lista.append(el('div', { class: 'ed-rev' },
+            el('div', {}, el('strong', {}, `v${r.versao}`), ` — ${r.motivo || 'Sem descrição'}`,
+                el('small', {}, `${r.criado_em}${r.autor ? ' · ' + r.autor : ''} · ${r.secoes} seções`)),
+            b));
+    });
+});
+async function restaurar(r) {
+    const ok = await uiConfirm({ titulo: 'Restaurar revisão', msg: `Restaurar a versão ${r.versao} de ${r.criado_em}? O estado atual é guardado no histórico antes.`, btnLabel: 'Restaurar', iconeCor: '#58a6ff', btnCor: '#58a6ff' });
+    if (!ok) return;
+    if (sujo && !(await salvar(true))) return;
+    const j = await api(URLS.restaurar.replace(/\/0\/restaurar\/$/, `/${r.id}/restaurar/`), {});
+    if (!j.ok) return uiAlert({ titulo: 'Erro', msg: j.erro || 'Falha ao restaurar.' });
+    base = j.documento.atualizado_em;
+    renderizar(j.documento);
+    sujo = false; marcarEstado('', 'Revisão restaurada');
+    $('#modalHistorico').classList.remove('aberto');
+}
+
+$('#btnAtualizar').addEventListener('click', async () => {
+    const ok = await uiConfirm({
+        titulo: 'Atualizar com os backups mais recentes',
+        msg: 'Todas as seções automáticas serão recalculadas; seções criadas à mão e a capa são mantidas. Uma revisão com o estado atual é guardada antes.',
+        icone: 'fas fa-rotate', iconeCor: '#58a6ff', btnLabel: 'Atualizar', btnCor: '#58a6ff',
+    });
+    if (!ok) return;
+    if (sujo && !(await salvar(true))) return;
+    const btn = $('#btnAtualizar');
+    btn.disabled = true;
+    marcarEstado('salvando', 'Analisando backups…');
+    const j = await api(URLS.regenerarTudo, {});
+    btn.disabled = false;
+    if (!j.ok) { marcarEstado('erro', 'Falha'); return uiAlert({ titulo: 'Erro', msg: j.erro || 'Falha ao atualizar.' }); }
+    base = j.documento.atualizado_em;
+    renderizar(j.documento);
+    sujo = false; marcarEstado('', 'Atualizado com os backups');
+});
+
+$('#btnExcluir').addEventListener('click', async () => {
+    const ok = await uiConfirm({ titulo: 'Excluir documento', msg: 'O documento e todo o histórico de revisões serão excluídos. Esta ação não pode ser desfeita.', btnLabel: 'Excluir' });
+    if (!ok) return;
+    const j = await api(URLS.excluir, {});
+    if (!j.ok) return uiAlert({ titulo: 'Erro', msg: j.erro || 'Falha ao excluir.' });
+    sujo = false;
+    window.location.href = j.url;
+});
+
+// ── Destaque da seção visível no sumário ───────────────────────────────
+function ajustarTopo() {
+    const h = $('#edBarra').getBoundingClientRect().height;
+    $('#ed').style.setProperty('--ed-topo', `${h + 12}px`);
+}
+window.addEventListener('resize', ajustarTopo);
+let rafScroll = null;
+window.addEventListener('scroll', () => {
+    if (rafScroll) return;
+    rafScroll = requestAnimationFrame(() => {
+        rafScroll = null;
+        const limite = $('#edBarra').getBoundingClientRect().height + 40;
+        const secs = $$('.ed-secao', $('#edSecoes'));
+        let atual = 0;
+        secs.forEach((s, i) => { if (s.getBoundingClientRect().top <= limite) atual = i; });
+        $$('#edSumario li').forEach((li, i) => li.classList.toggle('ativa', i === atual));
+    });
+}, { passive: true });
+
+document.execCommand('defaultParagraphSeparator', false, 'p');
+renderizar(DOC);
+ajustarTopo();
+})();
+</script>
+{% endblock %}

@@ -2,6 +2,23 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 56 — 17/09/2026: AS-IS da infraestrutura gerado a partir dos backups
+
+**O que foi implementado?**
+- 📄 **AS-IS da Infraestrutura** (Administrador): documento no padrão do AS-IS da Startnet montado a
+  partir dos backups, da topologia e do cadastro, com achados, riscos e status.
+- ✍️ **Editor no sistema**: seções editáveis, tabelas, revisões com versão, histórico, recálculo pelos
+  backups mais recentes.
+- 📤 **PDF e DOCX** para apresentar ao cliente. Base pronta para o Change Plan TO-BE.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[PROJETO_REDE_ASIS.md](PROJETO_REDE_ASIS.md)** | Fluxo, extração, classificação eBGP, achados, armadilhas (SQL_ASCII, CSRF) |
+
+---
+
 ### Sessão 55 — 15/09/2026: TOMICH OBSERVER pelo proxy web (acessos 1116 e 1455)
 
 **O que foi corrigido?**

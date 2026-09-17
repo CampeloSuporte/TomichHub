@@ -1,0 +1,95 @@
+<style>
+/* Estilo do documento (papel) — usado no editor, na pré-visualização e no PDF.
+   Escopo em .doc-rede para não vazar para o tema escuro do CRM. */
+.doc-rede {
+    --dr-primaria: #0f6e7a;
+    --dr-primaria-escura: #0b525b;
+    --dr-texto: #1d2939;
+    --dr-suave: #475467;
+    --dr-borda: #1d2939;
+    --dr-zebra: #f1f6f7;
+    --dr-callout: #e3eff2;
+    --dr-risco: #fdf1e3;
+    color: var(--dr-texto);
+    font-family: "Liberation Sans", Arial, Helvetica, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.45;
+}
+.doc-rede h2.dr-secao {
+    font-family: Calibri, "Liberation Sans", Arial, sans-serif;
+    color: var(--dr-primaria);
+    font-size: 17pt;
+    font-weight: 700;
+    margin: 26px 0 10px;
+    break-after: avoid;
+}
+.doc-rede h2.dr-secao .num { margin-right: 6px; }
+.doc-rede h3 {
+    font-family: Calibri, "Liberation Sans", Arial, sans-serif;
+    color: var(--dr-primaria);
+    font-size: 12.5pt;
+    font-weight: 700;
+    margin: 16px 0 6px;
+    break-after: avoid;
+}
+.doc-rede h4 { font-size: 11pt; font-weight: 700; margin: 12px 0 4px; color: var(--dr-texto); }
+.doc-rede h3 .num { margin-right: 4px; }
+.doc-rede p { margin: 0 0 7px; }
+.doc-rede ul, .doc-rede ol { margin: 0 0 8px; padding-left: 22px; }
+.doc-rede li { margin: 2px 0; }
+.doc-rede code {
+    font-family: "Liberation Mono", Consolas, monospace; font-size: .9em;
+    background: #eef2f4; padding: 0 3px; border-radius: 3px;
+}
+.doc-rede pre {
+    font-family: "Liberation Mono", Consolas, monospace; font-size: 8.5pt;
+    background: #f4f6f8; border: 1px solid #d0d5dd; padding: 8px 10px; white-space: pre-wrap;
+}
+.doc-rede blockquote { margin: 8px 0; padding: 4px 12px; border-left: 3px solid #98a2b3; color: var(--dr-suave); font-style: italic; }
+.doc-rede table {
+    width: 100%; border-collapse: collapse; margin: 6px 0 14px;
+    font-size: 8.8pt; line-height: 1.35;
+}
+.doc-rede table th {
+    background: var(--dr-primaria); color: #fff; font-weight: 700; text-align: left;
+    padding: 5px 7px; border: 1px solid var(--dr-borda);
+}
+.doc-rede table td {
+    padding: 5px 7px; border: 1px solid var(--dr-borda); vertical-align: top;
+    overflow-wrap: anywhere;
+}
+.doc-rede table tbody tr:nth-child(even) td { background: var(--dr-zebra); }
+.doc-rede thead { display: table-header-group; }
+.doc-rede tr { break-inside: avoid; }
+.doc-rede .callout {
+    background: var(--dr-callout); border-left: 4px solid var(--dr-primaria);
+    padding: 10px 14px; margin: 10px 0 14px; break-inside: avoid;
+}
+.doc-rede .callout p:last-child { margin-bottom: 0; }
+.doc-rede .callout-risco { background: var(--dr-risco); border-left-color: #b54708; }
+.doc-rede .callout-status { background: #e8f3ec; border-left-color: #067647; }
+.doc-rede .sev-critica, .doc-rede .sev-alta, .doc-rede .sev-media,
+.doc-rede .sev-baixa, .doc-rede .sev-info {
+    display: inline-block; font-weight: 700; font-size: .92em; white-space: nowrap;
+}
+.doc-rede .sev-critica { color: #b42318; }
+.doc-rede .sev-alta { color: #c4320a; }
+.doc-rede .sev-media { color: #b54708; }
+.doc-rede .sev-baixa { color: #067647; }
+.doc-rede .sev-info { color: #475467; }
+.doc-rede .marca { background: #fff3a3; }
+.doc-rede p.nota { color: var(--dr-suave); font-size: .92em; }
+.doc-rede a { color: #1f5fad; }
+
+/* Capa */
+.doc-rede .dr-capa-empresa { color: var(--dr-primaria); font-size: 15pt; font-weight: 700; margin: 0 0 6px; }
+.doc-rede .dr-capa-titulo {
+    font-family: Calibri, "Liberation Sans", Arial, sans-serif;
+    font-size: 26pt; font-weight: 800; letter-spacing: .01em; margin: 0 0 6px; line-height: 1.15;
+}
+.doc-rede .dr-capa-sub { color: var(--dr-suave); font-size: 12pt; margin: 0 0 22px; }
+.doc-rede .dr-controle td:first-child { width: 28%; font-weight: 700; }
+.doc-rede .dr-sumario { list-style: none; padding: 0; margin: 0; }
+.doc-rede .dr-sumario li { padding: 4px 0; border-bottom: 1px dotted #d0d5dd; }
+.doc-rede .dr-sumario .num { color: var(--dr-primaria); font-weight: 700; display: inline-block; min-width: 26px; }
+</style>

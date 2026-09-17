@@ -143,6 +143,15 @@ Bloqueio por força bruta no login (3 senhas erradas trancam a conta por 5 min; 
 
 **URLs principais:** `/seguranca/`
 
+### `projeto_rede` — Documentos de arquitetura (AS-IS / TO-BE)
+
+Gera o **AS-IS da infraestrutura** de um cliente a partir dos backups de configuração (extratores
+dedicados para Huawei VRP e MikroTik), da topologia e do cadastro. O documento é editável no próprio
+sistema, tem revisões e é exportado em PDF (Chrome headless) e DOCX (python-docx). Exclusivo do
+Administrador. Ver [docs/PROJETO_REDE_ASIS.md](docs/PROJETO_REDE_ASIS.md).
+
+**URLs principais:** `/projetos-rede/`
+
 ### `funcao_equipamento` e `modelo_equipamento`
 
 Cadastro de funções (Roteador, Switch, Firewall, OLT...) e modelos de equipamentos.

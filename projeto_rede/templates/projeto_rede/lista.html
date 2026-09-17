@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block content %}
+{% csrf_token %}
+<style>
+.pr-pagina { padding: 20px 24px 40px; max-width: 1400px; margin: 0 auto; }
+.pr-voltar { display:inline-flex; align-items:center; gap:6px; color:var(--text-muted); font-size:.78rem; text-decoration:none; margin-bottom:10px; }
+.pr-voltar:hover { color:var(--accent-cyan); }
+.pr-cabecalho { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+.pr-titulo { margin:0; display:flex; align-items:center; gap:10px; }
+.pr-sub { color:var(--text-muted); font-size:.84rem; margin-top:4px; max-width:720px; }
+.pr-fontes { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin:18px 0; }
+.pr-fonte { background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; }
+.pr-fonte strong { display:block; font-size:1.35rem; color:var(--text-light); font-variant-numeric:tabular-nums; }
+.pr-fonte span { font-size:.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em; }
+.pr-fonte.alerta strong { color:#d29922; }
+.pr-btn { display:inline-flex; align-items:center; gap:7px; background:transparent; border:1px solid var(--border); color:var(--text-light);
+          border-radius:6px; padding:8px 14px; font-size:.82rem; cursor:pointer; text-decoration:none; transition:border-color .15s, color .15s, background .15s; }
+.pr-btn:hover { border-color:var(--accent-cyan); color:var(--accent-cyan); }
+.pr-btn:disabled { opacity:.55; cursor:progress; }
+.pr-btn-primario { border-color:var(--primary-green); color:var(--primary-green); }
+.pr-btn-primario:hover { background:rgba(63,185,80,.1); border-color:var(--primary-green); color:var(--primary-green); }
+.pr-btn-sm { padding:5px 10px; font-size:.76rem; }
+.pr-card { background:var(--card-bg); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.pr-card-cab { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.pr-card-cab h6 { margin:0; font-size:.85rem; }
+table.pr-tabela { width:100%; border-collapse:collapse; font-size:.82rem; }
+table.pr-tabela th { text-align:left; padding:10px 16px; color:var(--text-muted); font-weight:600; font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid var(--border); }
+table.pr-tabela td { padding:12px 16px; border-bottom:1px solid var(--border); vertical-align:middle; }
+table.pr-tabela tr:last-child td { border-bottom:none; }
+.pr-doc-titulo { color:var(--text-light); font-weight:600; text-decoration:none; }
+.pr-doc-titulo:hover { color:var(--accent-cyan); }
+.pr-muted { color:var(--text-muted); font-size:.75rem; }
+.pr-status { display:inline-block; padding:2px 9px; border-radius:999px; font-size:.7rem; font-weight:600; border:1px solid; }
+.pr-status-rascunho { color:#d29922; border-color:rgba(210,153,34,.45); }
+.pr-status-revisao { color:#58a6ff; border-color:rgba(88,166,255,.45); }
+.pr-status-fechado { color:#3fb950; border-color:rgba(63,185,80,.45); }
+.pr-status-apresentado { color:#a371f7; border-color:rgba(163,113,247,.45); }
+.pr-acoes { display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap; }
+.pr-vazio { text-align:center; padding:48px 20px; color:var(--text-muted); }
+.pr-vazio i { font-size:38px; opacity:.3; display:block; margin-bottom:10px; }
+.pr-progresso { display:none; margin-top:12px; font-size:.8rem; color:var(--text-muted); }
+.pr-progresso.ativo { display:block; }
+</style>
+
+<div class="pr-pagina">
+<a href="{% url 'listar_clientes' %}?id={{ cliente.id }}" class="pr-voltar">
+    <i class="fas fa-arrow-left"></i> Voltar para {{ cliente.nome_empresa }}
+</a>
+
+<div class="pr-cabecalho">
+    <div>
+        <h4 class="pr-titulo"><i class="fas fa-file-contract" style="color:var(--accent-cyan);"></i> Documentação de arquitetura</h4>
+        <div class="pr-sub">
+            AS-IS da infraestrutura de <strong>{{ cliente.nome_empresa }}</strong>, reconstruído a partir dos backups de
+            configuração, dos acessos cadastrados e da topologia. Depois de gerado, o documento é editável aqui e pode
+            ser exportado em PDF ou DOCX.
+        </div>
+    </div>
+    <div>
+        <button type="button" class="pr-btn pr-btn-primario" id="btnGerar" {% if not total_com_backup %}disabled title="Nenhum backup disponível"{% endif %}>
+            <i class="fas fa-wand-magic-sparkles"></i> Gerar AS-IS
+        </button>
+        <div class="pr-progresso" id="progresso"><i class="fas fa-spinner fa-spin me-1"></i> Lendo backups e analisando a rede…</div>
+    </div>
+</div>
+
+<div class="pr-fontes">
+    <div class="pr-fonte"><strong>{{ total_acessos }}</strong><span>Acessos cadastrados</span></div>
+    <div class="pr-fonte"><strong>{{ total_ssh }}</strong><span>Acessos SSH</span></div>
+    <div class="pr-fonte {% if total_com_backup < total_ssh %}alerta{% endif %}"><strong>{{ total_com_backup }}</strong><span>Com backup</span></div>
+    <div class="pr-fonte"><strong>{{ total_mapas }}</strong><span>Mapas de topologia</span></div>
+    <div class="pr-fonte"><strong>{{ total_blocos }}</strong><span>Blocos IP</span></div>
+</div>
+
+<div class="pr-card">
+    <div class="pr-card-cab">
+        <h6>Documentos</h6>
+        <span class="pr-muted">{{ documentos|length }} documento{{ documentos|length|pluralize }}</span>
+    </div>
+    {% if documentos %}
+    <table class="pr-tabela">
+        <thead>
+            <tr><th>Documento</th><th>Versão</th><th>Status</th><th>Última alteração</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for d in documentos %}
+            <tr>
+                <td>
+                    <a class="pr-doc-titulo" href="{% url 'projeto_rede:editor' d.id %}">{{ d.titulo }}</a>
+                    <div class="pr-muted">{{ d.get_tipo_display }} · criado em {{ d.criado_em|date:"d/m/Y H:i" }}{% if d.criado_por %} por {{ d.criado_por.get_full_name|default:d.criado_por.username }}{% endif %}</div>
+                </td>
+                <td style="font-variant-numeric:tabular-nums;">{{ d.versao }}</td>
+                <td><span class="pr-status pr-status-{{ d.status }}">{{ d.get_status_display }}</span></td>
+                <td>
+                    {{ d.atualizado_em|date:"d/m/Y H:i" }}
+                    {% if d.atualizado_por %}<div class="pr-muted">{{ d.atualizado_por.get_full_name|default:d.atualizado_por.username }}</div>{% endif %}
+                </td>
+                <td>
+                    <div class="pr-acoes">
+                        <a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:editor' d.id %}"><i class="fas fa-pen"></i> Editar</a>
+                        <a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:visualizar' d.id %}" target="_blank" rel="noopener"><i class="fas fa-eye"></i> Visualizar</a>
+                        <a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:pdf' d.id %}"><i class="fas fa-file-pdf"></i> PDF</a>
+                        <a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:docx' d.id %}"><i class="fas fa-file-word"></i> DOCX</a>
+                    </div>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="pr-vazio">
+        <i class="fas fa-file-circle-plus"></i>
+        Nenhum documento gerado ainda.<br>
+        {% if total_com_backup %}Use <strong>Gerar AS-IS</strong> para montar o primeiro a partir dos {{ total_com_backup }} backups disponíveis.
+        {% else %}Execute os backups dos equipamentos antes de gerar o AS-IS.{% endif %}
+    </div>
+    {% endif %}
+</div>
+
+</div>
+
+<script>
+(function () {
+    const btn = document.getElementById('btnGerar');
+    if (!btn) return;
+    const csrf = () => (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
+    btn.addEventListener('click', async () => {
+        const ok = await uiConfirm({
+            titulo: 'Gerar AS-IS',
+            msg: 'O sistema vai ler o backup mais recente de cada equipamento, a topologia e o cadastro, e criar um novo documento em rascunho. Continuar?',
+            icone: 'fas fa-wand-magic-sparkles', iconeCor: '#3fb950', btnLabel: 'Gerar', btnCor: '#3fb950',
+        });
+        if (!ok) return;
+        btn.disabled = true;
+        document.getElementById('progresso').classList.add('ativo');
+        try {
+            const r = await fetch('{% url "projeto_rede:gerar_asis" cliente.id %}', {
+                method: 'POST', headers: { 'X-CSRFToken': csrf(), 'Content-Type': 'application/json' }, body: '{}',
+            });
+            const j = await r.json().catch(() => ({ ok: false, erro: `Resposta inesperada do servidor (HTTP ${r.status}).` }));
+            if (!j.ok) throw new Error(j.erro || 'Falha ao gerar o documento.');
+            window.location.href = j.url;
+        } catch (e) {
+            btn.disabled = false;
+            document.getElementById('progresso').classList.remove('ativo');
+            uiAlert({ titulo: 'Não foi possível gerar', msg: e.message, icone: 'fas fa-times-circle', iconeCor: '#e06060' });
+        }
+    });
+})();
+</script>
+{% endblock %}

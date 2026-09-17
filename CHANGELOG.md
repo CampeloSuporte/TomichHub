@@ -5,6 +5,42 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-17 (AS-IS da infraestrutura gerado dos backups)
+
+### Adicionado
+
+- **AS-IS da Infraestrutura de Rede** (app novo `projeto_rede`, só para o Administrador). Na aba
+  *Documentação de Rede* do cliente, o botão **AS-IS da Infraestrutura** abre a tela de documentos,
+  onde **Gerar AS-IS** lê o último backup de cada acesso, a topologia e o cadastro e monta o documento
+  no formato do AS-IS da Startnet: capa com tabela de controle, sumário executivo, inventário de
+  RRs/PEs, underlay (OSPF, LDP, RSVP-TE, BFD, MTU), achados `AS-IS-NNN` por severidade, BNG/PPPoE/CGNAT,
+  upstreams e ISP downstreams (entrega, prefixos, LP, communities), VRFs e parceiros, L2VPNs,
+  communities com as faixas de prepend, segurança de gerência, riscos, status formal e anexo de fontes.
+- **Editor no próprio sistema**: capa e seções editáveis (rich text, tabelas com inserir/excluir
+  linha e coluna, caixas de destaque, severidade), reordenar/criar/excluir seções, salvamento
+  automático com detecção de conflito, revisões com versão (1.0 → 1.1), histórico com restauração,
+  recálculo de uma seção ou do documento inteiro a partir dos backups mais recentes (preservando as
+  seções escritas à mão).
+- **Exportação** em PDF (Chrome headless, cabeçalho/rodapé com paginação) e DOCX (python-docx, com
+  capa, sumário, tabelas no padrão do documento e numeração de páginas).
+- Classificação das sessões eBGP **pela política** (o que recebe e o que anuncia), não pela descrição.
+  Nos backups da Startnet isso revelou que a prefix-list `DEFAULT-V6` de Juruena é `:: 0 less-equal 48`
+  (full routing IPv6 para MUNDONET e WEBNET, que o documento manual registrava como default).
+
+### Detalhes
+
+- Dependência nova: `python-docx==1.2.0`. Migração `projeto_rede/0001_initial` (2 tabelas).
+- `crm_db` é SQL_ASCII: o `JSONField` do Django não grava acento (`\u00ed` é recusado pelo jsonb).
+  Os campos do documento usam `JSONTextoField` (JSON em `TextField`).
+- `base.html` não emite `{% csrf_token %}`; as telas novas incluem o próprio token.
+- Nenhum segredo sai dos extratores (senhas, chaves, communities SNMP só como contagem); HTML do
+  editor passa por lista de permissões no cliente e no servidor.
+- 26 testes, incluindo o fluxo completo num Chrome headless real.
+
+Detalhes em [docs/PROJETO_REDE_ASIS.md](docs/PROJETO_REDE_ASIS.md).
+
+---
+
 ## [Não publicado] — 2026-09-16 (IPAM: salvar "travado" e aba lenta em cliente grande)
 
 ### Corrigido
