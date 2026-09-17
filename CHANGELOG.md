@@ -32,6 +32,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - Na seção 3 do AS-IS, **Demais equipamentos cadastrados** passou a vir agrupada pela função do
   cadastro (BRAS, CGNAT, ROTEADOR, SWITCH L2…), um subtítulo com a contagem por função e a coluna de
   gerência no lugar da coluna de função.
+- **Switch L3 é PE.** A função do cadastro (Switch L3 / Roteador PE) passou a definir o PE: antes
+  o switch só virava PE se o backup tivesse VRF ou L2VPN (o SW3-PE-TUTI saía como "P") e os sem
+  backup (SW3-PE-PARANAITA, SW3-PE-TREVO-PARANAITA) sumiam do inventário. Agora entram na tabela
+  de PEs; os sem backup aparecem com o IP de gerência e "Sem backup analisado".
 
 ### Detalhes
 

@@ -367,6 +367,15 @@ class AnaliseTest(TestCase):
         self.assertTrue(self.m['communities']['regra_prepend'])
         self.assertEqual(linhas['27648:666']['finalidade'], 'Blackhole')
 
+    def test_switch_l3_e_pe_mesmo_sem_backup(self):
+        pes = {x['cadastro']: x for x in self.m['pes']}
+        self.assertIn('SW-PE-JNA', pes)                   # SWITCH L3 sem backup
+        self.assertTrue(pes['SW-PE-JNA']['sem_backup'])
+        self.assertIn('PE', self.m['equipamentos'][1]['papeis'])
+        self.assertIn('Sem backup analisado', composicao.s_topologia(self.m))
+        self.assertTrue(analise.funcao_eh_pe('ROTEADOR PE'))
+        self.assertFalse(analise.funcao_eh_pe('SWITCH L2'))
+
     def test_demais_equipamentos_agrupados_por_funcao(self):
         html = composicao.s_topologia(self.m)
         self.assertIn('<h4>CGNAT (1)</h4>', html)

@@ -97,6 +97,13 @@ faixas públicas e privadas, regras com `to-ports` = determinístico), BGP v6 (`
 (`connection`), OSPF, LDP/VPLS, rota default e serviços desabilitados. O export do RouterOS 7 abrevia
 chaves com o mesmo prefixo da anterior (`remote.address=X .as=Y` = `remote.as=Y`); `_kv` expande isso.
 
+### Papel dos equipamentos
+
+A função do cadastro manda: **Switch L3** e **Roteador PE** (`analise.funcao_eh_pe`) são sempre PE,
+mesmo que o backup não tenha VRF/L2VPN (seria P) ou que não haja backup. PE sem backup entra na
+tabela de PEs com o IP de gerência e "Sem backup analisado". Pelo backup ainda se somam RR, BNG,
+CGNAT e Borda eBGP; Huawei com MPLS e sem função de PE continua como P.
+
 ### Classificação das sessões eBGP
 
 Feita pela **política**, não pela descrição:

@@ -259,6 +259,12 @@ def _ips_do_equipamento(eq):
     return ips
 
 
+def funcao_eh_pe(funcao):
+    """Função do cadastro que caracteriza PE: Switch L3 e Roteador PE."""
+    f = (funcao or '').upper()
+    return bool(re.search(r'\bL3\b|\bPE\b', f))
+
+
 def _papeis(eq):
     x = eq.get('extr') or {}
     papeis = []
@@ -288,6 +294,13 @@ def _papeis(eq):
             papeis.append('MPLS/VPLS')
         if x['bgp']['peers']:
             papeis.append('BGP')
+    # O cadastro manda: Switch L3 / Roteador PE é PE mesmo sem VRF/L2VPN
+    # no backup (senão sairia como P) ou sem backup nenhum.
+    if funcao_eh_pe(funcao):
+        if 'P' in papeis:
+            papeis[papeis.index('P')] = 'PE'
+        elif 'PE' not in papeis:
+            papeis.insert(1 if papeis[:1] == ['RR'] else 0, 'PE')
     if not papeis:
         if 'BRAS' in funcao or 'BNG' in funcao:
             papeis.append('BNG')
@@ -382,14 +395,16 @@ def montar_modelo(inv):
             'lsr_id': x.get('lsr_id', ''), 'papeis': e['papeis'],
             'funcoes': _funcoes_observadas(e, x) if x else '—',
             'backup': e.get('backup'),
+            'sem_backup': not x,
         }
         if 'RR' in e['papeis']:
             rrs.append(linha)
-        if e.get('vendor') == 'huawei' and ('PE' in e['papeis'] or 'P' in e['papeis']):
+        if 'PE' in e['papeis'] or (e.get('vendor') == 'huawei' and 'P' in e['papeis']):
             pes.append(linha)
         else:
             demais.append(linha)
-    pes.sort(key=lambda l: (0 if 'RR' in l['papeis'] else 1, _ordenar_ip(l['lsr_id'])))
+    pes.sort(key=lambda l: (0 if 'RR' in l['papeis'] else 1, l['sem_backup'],
+                            _ordenar_ip(l['lsr_id'] or l['host'])))
 
     # ── backbone ─────────────────────────────────────────────────────────
     backbone = []
