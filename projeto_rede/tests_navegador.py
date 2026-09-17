@@ -75,6 +75,17 @@ class CDP:
         if not req['url'].startswith(self.base):
             self._enviar('Fetch.failRequest', requestId=rid, errorReason='Failed')
             return
+        # /static/js/ é servido pelo nginx a partir de STATIC_ROOT, que o live
+        # server de teste não enxerga (só STATICFILES_DIRS)
+        caminho = req['url'][len(self.base):].split('?')[0]
+        if caminho.startswith('/static/js/'):
+            arq = os.path.join(str(settings.BASE_DIR), caminho.lstrip('/'))
+            if os.path.isfile(arq):
+                with open(arq, 'rb') as fh:
+                    self._enviar('Fetch.fulfillRequest', requestId=rid, responseCode=200,
+                                 responseHeaders=[{'name': 'Content-Type', 'value': 'application/javascript'}],
+                                 body=base64.b64encode(fh.read()).decode())
+                return
         corpo = req.get('postData')
         r = urllib.request.Request(req['url'], data=corpo.encode() if corpo is not None else None,
                                    method=req['method'])
@@ -275,3 +286,71 @@ class EditorNavegadorTest(StaticLiveServerTestCase):
         self.confirmar()
         b.esperar("location.pathname.endsWith('/cliente/%d/')" % self.cliente.id)
         self.assertFalse(DocumentoRede.objects.exists())
+
+
+@unittest.skipUnless(os.path.exists(CHROME), 'Google Chrome não instalado')
+class CenarioNavegadorTest(EditorNavegadorTest):
+    """Editor de topologia em modo cenário TO-BE: painel de alvo, gravação no
+    cenário (não no mapa real) e o editor normal intacto."""
+
+    def test_fluxo_completo(self):   # substitui o fluxo do editor de documento
+        import json as _json
+        from clientes.models import Acesso, TopologiaDiagrama
+        from .models import CenarioTopologia
+        acesso = Acesso.objects.get()
+        mapa = TopologiaDiagrama.objects.create(cliente=self.cliente, nome='BACKBONE', dados_json=_json.dumps({
+            'nodes': [{'id': 'n1', 'type': 'router', 'x': 0, 'y': 0, 'label': 'PE-AFT', 'ip': '10.0.0.1',
+                       'color': '#58a6ff', 'w': 64, 'h': 64, 'acesso_id': acesso.id},
+                      {'id': 'n2', 'type': 'router', 'x': 200, 'y': 0, 'label': 'PE-JNA', 'ip': '10.0.0.2',
+                       'color': '#58a6ff', 'w': 64, 'h': 64}],
+            'links': [{'id': 'l1', 'src': 'n1', 'tgt': 'n2', 'iface': '100g', 'label': '', 'ip_local': '',
+                       'ip_remote': '', 'vlan': '', 'style': 'solid'}]}))
+        b = self.b
+
+        # editor normal continua funcionando (sem TOPO_CENARIO)
+        b.ir(f'{self.live_server_url}/clientes/{self.cliente.id}/topologia/editor/')
+        b.esperar('window.topo && topo.nodes.length === 2')
+        self.assertFalse(b.js('!!window.TOPO_CENARIO'))
+        b.js("topo._select('node', 'n1')")
+        self.assertFalse(b.js("!!document.getElementById('pn-tobe-estado')"))
+
+        # cria o cenário pela tela de arquitetura
+        b.ir(f'{self.live_server_url}/projetos-rede/cliente/{self.cliente.id}/')
+        b.js(f"document.getElementById('cenOrigem').value = '{mapa.id}'; window.open = () => null;"
+             "document.getElementById('btnNovoCenario').click()")
+        b.esperar("document.readyState === 'complete' && document.body.innerText.includes('TO-BE — BACKBONE')")
+        cen = CenarioTopologia.objects.get()
+
+        b.ir(f'{self.live_server_url}/projetos-rede/cenario/{cen.id}/')
+        b.esperar('window.topo && topo.nodes.length === 2')
+        self.assertTrue(b.js('!!window.TOPO_CENARIO'))
+        self.assertTrue(b.js("document.getElementById('btn-agrupar').hidden"))
+        b.js("topo._select('node', 'n1')")
+        b.esperar("!!document.getElementById('pn-tobe-estado')")
+        b.js("""document.querySelectorAll('.pn-tobe-papel').forEach(i => { i.checked = ['RR01', 'BNG01'].includes(i.value); });
+                document.getElementById('pn-tobe-loopback').value = '198.18.248.1/32';
+                topo._applyNodeProps('n1');""")
+        self.assertTrue(b.js("!!document.querySelector('[data-id=\"n1\"] .tobe-badge')"))
+        b.js("topo._select('link', 'l1')")
+        b.esperar("!!document.getElementById('pl-tobe-mtu')")
+        b.js("""document.getElementById('pl-tobe-mtu').value = '9100';
+                document.getElementById('pl-tobe-estado').value = 'remover';
+                topo._applyLinkProps('l1');""")
+        self.assertTrue(b.js("document.querySelector('g[data-link=\"l1\"]').classList.contains('tobe-remover')"))
+        b.js("topo.addNode('router', 400, 0, {label: 'PE-NOVO'})")
+        b.js("document.getElementById('nome-diagrama').value = 'Alvo 2027'; topo.save()")
+        b.esperar("document.getElementById('st-save').textContent.includes('Salvo')")
+
+        cen.refresh_from_db()
+        dados = cen.dados()
+        n1 = next(n for n in dados['nodes'] if n['id'] == 'n1')
+        self.assertEqual(n1['tobe']['papeis'], ['RR01', 'BNG01'])
+        self.assertEqual(n1['tobe']['loopback'], '198.18.248.1/32')
+        self.assertEqual(dados['links'][0]['tobe']['mtu_alvo'], '9100')
+        self.assertEqual(dados['links'][0]['tobe']['estado'], 'remover')
+        novo = next(n for n in dados['nodes'] if n['label'] == 'PE-NOVO')
+        self.assertEqual(novo['tobe']['estado'], 'novo')
+        self.assertEqual(cen.nome, 'Alvo 2027')
+        mapa.refresh_from_db()
+        self.assertNotIn('tobe', mapa.dados_json)            # mapa real intacto
+        self.assertEqual(b.erros, [])

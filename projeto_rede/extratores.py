@@ -30,6 +30,15 @@ def _prefixo(ip, mascara_ou_len):
         return f'{ip}/{mascara_ou_len}'
 
 
+def _ip_interface(ip, mascara_ou_len):
+    """Endereço de interface com prefixo, preservando o host:
+    '172.24.64.1' + '255.255.255.248' → '172.24.64.1/29'."""
+    try:
+        return str(ipaddress.ip_interface(f'{ip}/{mascara_ou_len}'))
+    except ValueError:
+        return f'{ip}/{mascara_ou_len}'
+
+
 def eh_asn_privado(asn):
     try:
         n = int(asn)
@@ -80,7 +89,20 @@ def _nova_interface(nome):
         'bfd': False, 'l2_vsi': '', 'l2vc': [], 'shutdown': False,
         'trunk_pai': '', 'bas': False, 'l2_terminate': False,
         'tunel_te': False, 'tunel_destino': '', 'tunel_caminho': '',
+        'ldp_sync': False, 'bfd_timers': '', 'ospf_custo': '', 'ospf_p2p': False,
+        'ppp_mru': None, 'mss': None, 'jumbo': None,
     }
+
+
+def _timers_bfd(linha):
+    """'... min-tx-interval 100 min-rx-interval 100 detect-multiplier 4' → '100/100/4'."""
+    p = linha.split()
+    val = {}
+    for chave in ('min-tx-interval', 'min-rx-interval', 'detect-multiplier'):
+        if chave in p and p.index(chave) + 1 < len(p):
+            val[chave] = p[p.index(chave) + 1]
+    return '/'.join([val.get('min-tx-interval', '?'), val.get('min-rx-interval', '?'),
+                     val.get('detect-multiplier', '3')])
 
 
 def _parse_interface_vrp(cab, corpo):
@@ -106,7 +128,7 @@ def _parse_interface_vrp(cab, corpo):
         elif s.startswith('ip address ') and 'unnumbered' not in s:
             p = s.split()
             if len(p) >= 4:
-                itf['ips'].append(_prefixo(p[2], p[3]))
+                itf['ips'].append(_ip_interface(p[2], p[3]))
         elif s.startswith('ipv6 address ') and '/' in s:
             itf['ipv6'].append(s.split()[2])
         elif s.startswith('ip binding vpn-instance '):
@@ -124,6 +146,22 @@ def _parse_interface_vrp(cab, corpo):
             itf['te'] = True
         elif s == 'mpls rsvp-te':
             itf['rsvp'] = True
+        elif s.startswith('jumboframe enable'):
+            p = s.split()
+            itf['jumbo'] = int(p[2]) if len(p) > 2 and p[2].isdigit() else 9216
+        elif s.startswith('ppp mru '):
+            itf['ppp_mru'] = int(s.split()[2]) if s.split()[2].isdigit() else None
+        elif s.startswith('tcp adjust-mss '):
+            itf['mss'] = int(s.split()[2]) if s.split()[2].isdigit() else None
+        elif s == 'ospf ldp-sync':
+            itf['ldp_sync'] = True
+        elif s.startswith('ospf cost '):
+            itf['ospf_custo'] = s.split()[2]
+        elif s == 'ospf network-type p2p':
+            itf['ospf_p2p'] = True
+        elif re.match(r'^ospf bfd min-tx-interval', s):
+            itf['bfd_timers'] = _timers_bfd(s)
+            itf['bfd'] = True
         elif re.match(r'^(ospf|isis) bfd enable', s) or s.startswith('bfd '):
             itf['bfd'] = True
         elif s.startswith('l2 binding vsi '):
@@ -464,6 +502,10 @@ def extrair_huawei(conteudo):
                     'processo': m_o.group(1), 'router_id': m_o.group(2) or '',
                     'vrf': m_o.group(3) or '', 'areas': areas,
                     'bfd': any('bfd all-interfaces enable' in x for x in corpo),
+                    'bfd_timers': next((_timers_bfd(x) for x in corpo
+                                        if 'bfd all-interfaces min-tx-interval' in x), ''),
+                    'import_route': sorted({x.split()[1] for x in corpo
+                                            if x.strip().startswith('import-route ')}),
                     'te': any(x.strip() == 'opaque-capability enable' for x in corpo),
                 })
         elif c0 == 'isis':

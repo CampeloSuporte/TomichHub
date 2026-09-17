@@ -104,6 +104,7 @@ def _coletar_equipamento(acesso):
             'data': timezone.localtime(backup.data_backup).isoformat(),
             'confirmado_em': timezone.localtime(coletado).isoformat(),
             'hash': backup.hash_conteudo or '',
+            'arquivo': backup.arquivo_path,
             'arquivo_disponivel': conteudo is not None,
         }
     if conteudo:

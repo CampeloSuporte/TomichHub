@@ -561,7 +561,7 @@ class ViewsTest(_BaseViews):
         self.assertEqual(doc.secoes[-1]['html'], '<p>manual</p>')
         self.assertNotEqual(doc.secoes[0]['html'], '<p>editado</p>')
 
-        rev = doc.revisoes.filter(motivo__startswith='Antes de atualizar').get()
+        rev = doc.revisoes.filter(motivo__startswith='Antes de recalcular').get()
         r = self.post_json(reverse('projeto_rede:restaurar_revisao', args=[doc.id, rev.id]))
         self.assertTrue(r.json()['ok'])
         doc.refresh_from_db()

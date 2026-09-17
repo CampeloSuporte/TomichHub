@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block content %}
+{% csrf_token %}
+<style>
+.tm-pagina { padding: 20px 24px 60px; max-width: 1300px; margin: 0 auto; }
+.tm-voltar { display:inline-flex; gap:6px; align-items:center; color:var(--text-muted); font-size:.78rem; text-decoration:none; margin-bottom:10px; }
+.tm-voltar:hover { color:var(--accent-cyan); }
+.tm-barra { position:sticky; top:0; z-index:20; background:var(--dark-bg); padding:10px 0; border-bottom:1px solid var(--border);
+            display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.tm-barra h4 { margin:0; font-size:1.05rem; }
+.tm-barra small { color:var(--text-muted); display:block; font-size:.76rem; }
+.tm-btn { display:inline-flex; align-items:center; gap:6px; background:transparent; border:1px solid var(--border); color:var(--text-light);
+          border-radius:6px; padding:7px 13px; font-size:.8rem; cursor:pointer; text-decoration:none; }
+.tm-btn:hover { border-color:var(--accent-cyan); color:var(--accent-cyan); }
+.tm-btn-primario { border-color:var(--primary-green); color:var(--primary-green); }
+.tm-btn-primario:hover { background:rgba(63,185,80,.1); color:var(--primary-green); border-color:var(--primary-green); }
+.tm-btn:disabled { opacity:.5; cursor:progress; }
+.tm-card { background:var(--card-bg); border:1px solid var(--border); border-radius:8px; margin-bottom:14px; }
+.tm-card > summary { padding:11px 16px; cursor:pointer; font-weight:600; font-size:.86rem; list-style:none; }
+.tm-card > summary::-webkit-details-marker { display:none; }
+.tm-card > summary small { color:var(--text-muted); font-weight:400; margin-left:6px; }
+.tm-corpo { padding:4px 16px 16px; overflow-x:auto; }
+.tm-grade { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; }
+.tm-grade label, .tm-lbl { display:block; font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); margin-bottom:3px; }
+.tm-pagina select, .tm-pagina input { width:100%; background:var(--dark-bg); color:var(--text-light); border:1px solid var(--border);
+                                      border-radius:6px; padding:6px 9px; font-size:.8rem; }
+table.tm-tab { width:100%; border-collapse:collapse; font-size:.8rem; }
+table.tm-tab th { text-align:left; font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); padding:6px; border-bottom:1px solid var(--border); }
+table.tm-tab td { padding:5px 6px; border-bottom:1px solid var(--border); vertical-align:middle; }
+table.tm-tab td.col-in { width:34%; min-width:200px; }
+.tm-muted { color:var(--text-muted); font-size:.74rem; }
+.tm-pend { background:rgba(210,153,34,.1); border:1px solid rgba(210,153,34,.45); border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:.8rem; }
+.tm-pend li { margin:2px 0; }
+</style>
+
+<div class="tm-pagina">
+<a class="tm-voltar" href="{% url 'projeto_rede:lista' cliente.id %}"><i class="fas fa-arrow-left"></i> Arquitetura de {{ cliente.nome_empresa }}</a>
+<div class="tm-barra">
+    <div>
+        <h4><i class="fas fa-right-left me-1" style="color:var(--accent-cyan)"></i> Fontes e mapeamentos — {{ doc.titulo }}</h4>
+        <small>Os valores já vêm sugeridos pela análise; ajuste o que for necessário. Ao aplicar, o plano é recalculado (as seções escritas à mão são mantidas).</small>
+    </div>
+    <div style="display:flex;gap:8px;">
+        <a class="tm-btn" href="{% url 'projeto_rede:editor' doc.id %}"><i class="fas fa-file-lines"></i> Documento</a>
+        <button type="button" class="tm-btn tm-btn-primario" id="tmAplicar"><i class="fas fa-check"></i> Aplicar e recalcular</button>
+    </div>
+</div>
+
+<div class="tm-pend" id="tmPend" {% if not pendencias %}hidden{% endif %}><strong><i class="fas fa-triangle-exclamation me-1" style="color:#d29922"></i> Pendências do plano</strong><ul id="tmPendLista" style="margin:4px 0 0;padding-left:18px;">{% for p in pendencias %}<li>{{ p }}</li>{% endfor %}</ul></div>
+
+<details class="tm-card" open>
+    <summary>Fontes do plano</summary>
+    <div class="tm-corpo tm-grade">
+        <div><label for="tmHld">HLD (convenção)</label>
+            <select id="tmHld">{% for d in hlds %}<option value="{{ d.id }}" {% if ref_hld and ref_hld.id == d.id %}selected{% endif %}>{{ d.titulo }} — v{{ d.versao }}</option>{% endfor %}
+                <option value="" {% if not ref_hld %}selected{% endif %}>Modelo ISP padrão</option></select></div>
+        <div><label for="tmAsis">AS-IS de referência</label>
+            <select id="tmAsis">{% for d in asis_docs %}<option value="{{ d.id }}" {% if ref_asis and ref_asis.id == d.id %}selected{% endif %}>{{ d.titulo }} — v{{ d.versao }}</option>{% endfor %}
+                <option value="" {% if not ref_asis %}selected{% endif %}>Nenhum</option></select></div>
+        <div><label for="tmCenario">Cenário de topologia TO-BE</label>
+            <select id="tmCenario">{% for c in cenarios %}<option value="{{ c.id }}" {% if ref_cenario and ref_cenario.id == c.id %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}
+                <option value="" {% if not ref_cenario %}selected{% endif %}>Sem cenário (topologia atual)</option></select></div>
+        <div><label for="tmCriticos">Serviços críticos (palavras, separadas por vírgula)</label>
+            <input id="tmCriticos" value="{{ criticos }}" placeholder="INVINET, SICREDI"></div>
+    </div>
+</details>
+
+<details class="tm-card" {% if not com_cenario %}open{% endif %}>
+    <summary>Papéis-alvo dos equipamentos <small>{% if com_cenario %}o cenário TO-BE tem prioridade; use só para equipamentos sem papel no cenário{% else %}sem cenário: defina RR01/RR02 e BNG01/BNG02 aqui{% endif %}</small></summary>
+    <div class="tm-corpo">
+        <table class="tm-tab"><thead><tr><th>Equipamento</th><th>POP</th><th>Papéis no AS-IS</th><th>Papéis TO-BE (separados por vírgula)</th></tr></thead><tbody>
+        {% for e in equipamentos %}
+            <tr><td>{{ e.nome }}</td><td>{{ e.pop }}</td><td class="tm-muted">{{ e.papeis|default:"—" }}</td>
+                <td class="col-in"><input data-mapa="papeis" data-chave="{{ e.acesso_id }}" value="{{ e.alvo }}" list="tmPapeis" placeholder="ex.: RR01, BNG01"></td></tr>
+        {% endfor %}
+        </tbody></table>
+        <datalist id="tmPapeis">{% for p in papeis_opcoes %}<option value="{{ p }}">{% endfor %}</datalist>
+    </div>
+</details>
+
+<details class="tm-card" open>
+    <summary>VRFs legadas → catálogo do HLD <small>{{ vrfs|length }} VRF(s)</small></summary>
+    <div class="tm-corpo">
+        <table class="tm-tab"><thead><tr><th>VRF atual</th><th>Destino TO-BE</th></tr></thead><tbody>
+        {% for v in vrfs %}
+            <tr><td><strong>{{ v.nome }}</strong></td><td class="col-in">
+                <select data-mapa="vrfs" data-chave="{{ v.nome }}">
+                    {% for d in destinos_vrf %}<option value="{{ d }}" {% if d == v.alvo %}selected{% endif %}>{% if d == 'L3VPN' %}L3VPN dedicada (TR-…-L3){% elif d == 'ELIMINAR' %}Eliminar (walled garden na VRF-ACCESS){% else %}{{ d }}{% endif %}</option>{% endfor %}
+                </select></td></tr>
+        {% empty %}<tr><td colspan="2" class="tm-muted">Nenhuma VRF no AS-IS.</td></tr>{% endfor %}
+        </tbody></table>
+    </div>
+</details>
+
+<details class="tm-card">
+    <summary>Contratantes das L2VPNs <small>{{ l2|length }} serviço(s) — nome usado em TR-&lt;CONTRATANTE&gt;-L2-&lt;SEQ&gt;</small></summary>
+    <div class="tm-corpo">
+        <table class="tm-tab"><thead><tr><th>ID</th><th>Serviço atual</th><th>Pontas</th><th>Contratante</th></tr></thead><tbody>
+        {% for s in l2 %}
+            <tr><td><strong>{{ s.id }}</strong></td><td>{{ s.nomes }}</td><td class="tm-muted">{{ s.pontas }}</td>
+                <td class="col-in"><input data-mapa="contratantes" data-chave="{{ s.chave }}" value="{{ s.contratante }}"></td></tr>
+        {% empty %}<tr><td colspan="4" class="tm-muted">Nenhum serviço L2.</td></tr>{% endfor %}
+        </tbody></table>
+    </div>
+</details>
+
+<details class="tm-card">
+    <summary>BNG de destino dos POPs com BNG remoto <small>{{ pops_bng|length }} POP(s); o cenário pode definir por nó</small></summary>
+    <div class="tm-corpo">
+        <table class="tm-tab"><thead><tr><th>POP</th><th>BNG remoto atual</th><th>Destino</th></tr></thead><tbody>
+        {% for b in pops_bng %}
+            <tr><td><strong>{{ b.pop }}</strong></td><td>{{ b.nome }}</td><td class="col-in">
+                <select data-mapa="bng_destino" data-chave="{{ b.pop }}">
+                    <option value="">A definir</option>
+                    <option value="BNG01" {% if b.destino == 'BNG01' %}selected{% endif %}>BNG01</option>
+                    <option value="BNG02" {% if b.destino == 'BNG02' %}selected{% endif %}>BNG02</option>
+                    <option value="BNG03" {% if b.destino == 'BNG03' %}selected{% endif %}>BNG03</option>
+                </select></td></tr>
+        {% empty %}<tr><td colspan="3" class="tm-muted">Nenhum BNG remoto.</td></tr>{% endfor %}
+        </tbody></table>
+    </div>
+</details>
+
+<details class="tm-card">
+    <summary>Communities legadas → HLD <small>valor ou faixa da convenção (ex.: 21000, 30200-30299)</small></summary>
+    <div class="tm-corpo">
+        <table class="tm-tab"><thead><tr><th>Community atual</th><th>Finalidade atual</th><th>Destino (valor HLD)</th></tr></thead><tbody>
+        {% for c in communities %}
+            <tr><td><strong>{{ c.valor }}</strong></td><td class="tm-muted">{{ c.finalidade }}</td>
+                <td class="col-in"><input data-mapa="communities" data-chave="{{ c.valor }}" value="{{ c.alvo }}" placeholder="A definir"></td></tr>
+        {% empty %}<tr><td colspan="3" class="tm-muted">Nenhuma community no AS-IS.</td></tr>{% endfor %}
+        </tbody></table>
+    </div>
+</details>
+</div>
+
+<script>
+(function () {
+    const csrf = () => (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
+    const btn = document.getElementById('tmAplicar');
+    btn.addEventListener('click', async () => {
+        const mapeamentos = { vrfs: {}, contratantes: {}, papeis: {}, bng_destino: {}, communities: {},
+                              criticos: document.getElementById('tmCriticos').value };
+        document.querySelectorAll('[data-mapa]').forEach(i => { mapeamentos[i.dataset.mapa][i.dataset.chave] = i.value.trim(); });
+        const val = (id) => document.getElementById(id).value || null;
+        btn.disabled = true;
+        try {
+            const r = await fetch('{% url "projeto_rede:salvar_mapeamentos" doc.id %}', {
+                method: 'POST', headers: { 'X-CSRFToken': csrf(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mapeamentos, hld_id: val('tmHld'), asis_id: val('tmAsis'), cenario_id: val('tmCenario') }) });
+            const j = await r.json().catch(() => ({ ok: false, erro: `HTTP ${r.status}` }));
+            if (!j.ok) throw new Error(j.erro || 'Falha ao aplicar.');
+            const lista = document.getElementById('tmPendLista');
+            lista.innerHTML = '';
+            (j.pendencias || []).forEach(p => { const li = document.createElement('li'); li.textContent = p; lista.append(li); });
+            document.getElementById('tmPend').hidden = !(j.pendencias || []).length;
+            const ir = await uiConfirm({ titulo: 'Plano recalculado', msg: `${(j.pendencias || []).length} pendência(s) restante(s). Abrir o documento?`,
+                                         icone: 'fas fa-check-circle', iconeCor: '#3fb950', btnLabel: 'Abrir documento', btnCor: '#3fb950' });
+            if (ir) window.location.href = j.url;
+            else window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (e) {
+            uiAlert({ titulo: 'Erro', msg: e.message, icone: 'fas fa-times-circle', iconeCor: '#e06060' });
+        } finally { btn.disabled = false; }
+    });
+})();
+</script>
+{% endblock %}

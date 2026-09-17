@@ -2,6 +2,22 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 57 — 17/09/2026: HLD reutilizável, cenário TO-BE e Change Plan
+
+**O que foi implementado?**
+- 🏛️ **HLD estruturado** para qualquer cliente (modelo Startnet parametrizado pelo ASN), com
+  communities no formato certo para ASN de 4 bytes.
+- 🗺️ **Cenário TO-BE** editado no editor de topologia (papéis RR/BNG, novo/remover, MTU e lotes).
+- 🛣️ **Change Plan TO-BE** calculado da diferença AS-IS × HLD × cenário, com mapeamentos manuais.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[PROJETO_REDE_TOBE.md](PROJETO_REDE_TOBE.md)** | Fluxo, convenção, cenário, motor por wave, armadilhas |
+
+---
+
 ### Sessão 56 — 17/09/2026: AS-IS da infraestrutura gerado a partir dos backups
 
 **O que foi implementado?**

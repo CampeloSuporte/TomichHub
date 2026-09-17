@@ -1,9 +1,12 @@
 """
 Documentos de arquitetura de rede por cliente.
 
-Hoje: AS-IS (estado atual reconstruído dos backups). O Change Plan TO-BE
-usa o mesmo modelo com `tipo='change_plan'` e aponta para o AS-IS de origem
-em `documento_base`.
+Três tipos de documento, todos no mesmo modelo e no mesmo editor:
+  - `hld`: arquitetura/convenção (dados estruturados em `dados['convencao']`);
+  - `asis`: estado atual reconstruído dos backups;
+  - `change_plan`: Change Plan TO-BE (AS-IS em `documento_base`, HLD e
+    cenário em `dados['hld_id']`/`dados['cenario_id']`, mapeamentos manuais
+    em `dados['mapeamentos']`).
 
 O conteúdo fica em `secoes` (lista de {id, chave, titulo, html, auto}) — é
 sempre lido e gravado inteiro pelo editor, então não compensa normalizar.
@@ -45,9 +48,11 @@ class JSONTextoField(models.TextField):
 
 
 class DocumentoRede(models.Model):
+    TIPO_HLD = 'hld'
     TIPO_ASIS = 'asis'
     TIPO_CHANGE_PLAN = 'change_plan'
     TIPOS = [
+        (TIPO_HLD, 'HLD — Arquitetura de rede'),
         (TIPO_ASIS, 'AS-IS da infraestrutura'),
         (TIPO_CHANGE_PLAN, 'Change Plan TO-BE'),
     ]
@@ -69,6 +74,8 @@ class DocumentoRede(models.Model):
     status = models.CharField(max_length=20, choices=STATUS, default=STATUS_RASCUNHO)
     metadados = JSONTextoField(default=dict, blank=True)
     secoes = JSONTextoField(default=list, blank=True)
+    dados = JSONTextoField(default=dict, blank=True,
+                           help_text='Conteúdo estruturado (convenção do HLD, referências e mapeamentos do TO-BE).')
     coleta = JSONTextoField(default=dict, blank=True,
                               help_text='Resumo das fontes usadas na geração (backups, hashes, datas).')
     criado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
@@ -104,3 +111,46 @@ class DocumentoRedeRevisao(models.Model):
 
     def __str__(self):
         return f'{self.documento_id} v{self.versao} — {self.motivo}'
+
+
+class CenarioTopologia(models.Model):
+    """Topologia alvo (TO-BE) de um cliente.
+
+    Fica fora de `TopologiaDiagrama` de propósito: o editor de topologia
+    resolve o mapa principal por `pai IS NULL` e o AS-IS lê todos os mapas do
+    cliente — um clone ali quebraria os dois. O formato de `dados_json` é o
+    mesmo do editor; os atributos de alvo ficam em `node.tobe` e `link.tobe`.
+    """
+    cliente = models.ForeignKey('clientes.Cliente', on_delete=models.CASCADE, related_name='cenarios_topologia')
+    nome = models.CharField(max_length=255, default='Cenário TO-BE')
+    origem = models.ForeignKey('clientes.TopologiaDiagrama', null=True, blank=True, on_delete=models.SET_NULL,
+                               related_name='+', verbose_name='Mapa de origem')
+    dados_json = models.TextField(default='{"nodes":[],"links":[]}')
+    criado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-atualizado_em']
+        verbose_name = 'Cenário de topologia TO-BE'
+        verbose_name_plural = 'Cenários de topologia TO-BE'
+
+    def __str__(self):
+        return f'{self.nome} — {self.cliente.nome_empresa}'
+
+    def dados(self):
+        try:
+            d = json.loads(self.dados_json or '{}')
+        except ValueError:
+            d = {}
+        return {'nodes': d.get('nodes') or [], 'links': d.get('links') or []}
+
+    def resumo(self):
+        d = self.dados()
+        nos = [n for n in d['nodes'] if n.get('type') not in ('area', 'text_box')]
+        estados = [(n.get('tobe') or {}).get('estado') for n in nos]
+        return {
+            'nos': len(nos), 'enlaces': len(d['links']),
+            'novos': estados.count('novo'), 'remover': estados.count('remover'),
+            'com_papel': sum(1 for n in nos if (n.get('tobe') or {}).get('papeis') or (n.get('tobe') or {}).get('papel')),
+        }

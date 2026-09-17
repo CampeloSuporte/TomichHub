@@ -149,7 +149,13 @@
                 <button type="button" class="ed-btn ed-btn-primario" id="btnSalvar" title="Salvar (Ctrl+S)"><i class="fas fa-floppy-disk"></i> Salvar</button>
                 <button type="button" class="ed-btn" id="btnRevisao" title="Registrar um marco de revisão"><i class="fas fa-code-branch"></i> Registrar revisão</button>
                 <button type="button" class="ed-btn" id="btnHistorico"><i class="fas fa-clock-rotate-left"></i> Histórico</button>
-                <button type="button" class="ed-btn" id="btnAtualizar" title="Recalcula as seções automáticas com os backups mais recentes"><i class="fas fa-rotate"></i> Atualizar com backups</button>
+                {% if doc.tipo == 'hld' %}
+                <a class="ed-btn" href="{% url 'projeto_rede:convencao' doc.id %}" title="Editar a convenção estruturada (catálogo, communities, endereçamento)"><i class="fas fa-sliders"></i> Convenção</a>
+                {% elif doc.tipo == 'change_plan' %}
+                <a class="ed-btn" href="{% url 'projeto_rede:tobe_mapeamentos' doc.id %}" title="HLD, AS-IS, cenário e mapeamentos manuais"><i class="fas fa-right-left"></i> Fontes e mapeamentos</a>
+                {% if ref_cenario %}<a class="ed-btn" href="{% url 'projeto_rede:cenario_editor' ref_cenario.id %}" target="_blank" rel="noopener" title="Abrir o cenário de topologia TO-BE"><i class="fas fa-diagram-project"></i> Cenário</a>{% endif %}
+                {% endif %}
+                <button type="button" class="ed-btn" id="btnAtualizar" title="Recalcula as seções automáticas"><i class="fas fa-rotate"></i> {{ rotulo_atualizar }}</button>
                 <a class="ed-btn" id="btnVisualizar" href="{% url 'projeto_rede:visualizar' doc.id %}" target="_blank" rel="noopener"><i class="fas fa-eye"></i> Visualizar</a>
                 <a class="ed-btn" id="btnPdf" href="{% url 'projeto_rede:pdf' doc.id %}"><i class="fas fa-file-pdf"></i> PDF</a>
                 <a class="ed-btn" id="btnDocx" href="{% url 'projeto_rede:docx' doc.id %}"><i class="fas fa-file-word"></i> DOCX</a>
@@ -200,10 +206,20 @@
             <ul class="ed-sumario" id="edSumario"></ul>
             <button type="button" class="ed-btn" style="width:100%;justify-content:center;" id="btnNovaSecaoLat"><i class="fas fa-plus"></i> Nova seção</button>
             <div class="ed-info">
+                {% if doc.tipo == 'asis' %}
                 {% with c=doc.coleta %}
                 Gerado a partir de <strong>{{ c.total_com_backup|default:0 }}</strong> backup(s) de {{ c.total_acessos|default:0 }} acesso(s)
                 {% if c.gerado_em %}em {{ c.gerado_em|slice:":10" }}{% endif %}.<br>
                 {% endwith %}
+                {% elif doc.tipo == 'change_plan' %}
+                <strong>Fontes:</strong><br>
+                HLD: {% if ref_hld %}<a href="{% url 'projeto_rede:editor' ref_hld.id %}">{{ ref_hld.titulo }} v{{ ref_hld.versao }}</a>{% else %}modelo padrão{% endif %}<br>
+                AS-IS: {% if ref_asis %}<a href="{% url 'projeto_rede:editor' ref_asis.id %}">{{ ref_asis.titulo }} v{{ ref_asis.versao }}</a>{% else %}backups atuais{% endif %}<br>
+                Cenário: {% if ref_cenario %}{{ ref_cenario.nome }}{% else %}topologia atual{% endif %}<br>
+                {% if doc.coleta.itens %}{{ doc.coleta.itens }} item(ns), {{ doc.coleta.pendencias|default:0 }} pendência(s).<br>{% endif %}
+                {% else %}
+                Seções geradas a partir da <a href="{% url 'projeto_rede:convencao' doc.id %}">convenção</a>.<br>
+                {% endif %}
                 Seções com <span class="ed-tag-auto" style="font-size:.6rem;">auto</span> podem ser recalculadas pelo botão <i class="fas fa-rotate"></i>; edições nelas são substituídas.
                 O conteúdo é salvo automaticamente.
             </div>
@@ -224,8 +240,8 @@
                         {% endfor %}
                         </tbody>
                     </table>
-                    <div class="callout"><p style="display:flex;gap:6px;align-items:flex-start;"><strong style="white-space:nowrap;padding-top:3px;">Princípio do documento.</strong>
-                        <textarea class="ed-campo" data-meta="principio" rows="2" aria-label="Princípio do documento"></textarea></p></div>
+                    <div class="callout"><p style="display:flex;gap:6px;align-items:flex-start;"><input class="ed-campo" data-meta="principio_titulo" aria-label="Título do destaque" placeholder="Princípio do documento." style="font-weight:700;width:190px;flex:none;">
+                        <textarea class="ed-campo" data-meta="principio" rows="2" aria-label="Texto do destaque"></textarea></p></div>
                 </div>
                 <div class="ed-secoes" id="edSecoes"></div>
                 <div class="ed-add">
@@ -490,7 +506,7 @@ async function regenerar(sec) {
         icone: 'fas fa-rotate', iconeCor: '#58a6ff', btnLabel: 'Recalcular', btnCor: '#58a6ff',
     });
     if (!ok) return;
-    marcarEstado('salvando', 'Analisando backups…');
+    marcarEstado('salvando', 'Recalculando…');
     const j = await api(URLS.regenerar, { chave: sec.dataset.chave });
     if (!j.ok) { marcarEstado('erro', 'Falha ao recalcular'); return uiAlert({ titulo: 'Erro', msg: j.erro || 'Falha ao recalcular.' }); }
     const nova = criarSecao({ ...j, id: sec.dataset.id, titulo: $('.ed-titulo', sec).value || j.titulo, auto: true });
@@ -500,7 +516,7 @@ async function regenerar(sec) {
 }
 
 async function recolocarAuto(chave) {
-    marcarEstado('salvando', 'Analisando backups…');
+    marcarEstado('salvando', 'Recalculando…');
     const j = await api(URLS.regenerar, { chave });
     if (!j.ok) { marcarEstado('erro', 'Falha'); return uiAlert({ titulo: 'Erro', msg: j.erro || 'Falha.' }); }
     const idx = AUTO.findIndex(a => a.chave === chave);
@@ -719,21 +735,24 @@ async function restaurar(r) {
 
 $('#btnAtualizar').addEventListener('click', async () => {
     const ok = await uiConfirm({
-        titulo: 'Atualizar com os backups mais recentes',
-        msg: 'Todas as seções automáticas serão recalculadas; seções criadas à mão e a capa são mantidas. Uma revisão com o estado atual é guardada antes.',
+        titulo: '{{ rotulo_atualizar|escapejs }}',
+        msg: 'Todas as seções automáticas serão recalculadas '
+             + ({ asis: 'a partir dos backups mais recentes', hld: 'a partir da convenção',
+                  change_plan: 'com o AS-IS, o HLD, o cenário e os mapeamentos atuais' }[DOC.tipo] || '')
+             + '; seções criadas à mão e a capa são mantidas. Uma revisão com o estado atual é guardada antes.',
         icone: 'fas fa-rotate', iconeCor: '#58a6ff', btnLabel: 'Atualizar', btnCor: '#58a6ff',
     });
     if (!ok) return;
     if (sujo && !(await salvar(true))) return;
     const btn = $('#btnAtualizar');
     btn.disabled = true;
-    marcarEstado('salvando', 'Analisando backups…');
+    marcarEstado('salvando', 'Recalculando…');
     const j = await api(URLS.regenerarTudo, {});
     btn.disabled = false;
     if (!j.ok) { marcarEstado('erro', 'Falha'); return uiAlert({ titulo: 'Erro', msg: j.erro || 'Falha ao atualizar.' }); }
     base = j.documento.atualizado_em;
     renderizar(j.documento);
-    sujo = false; marcarEstado('', 'Atualizado com os backups');
+    sujo = false; marcarEstado('', 'Seções recalculadas');
 });
 
 $('#btnExcluir').addEventListener('click', async () => {

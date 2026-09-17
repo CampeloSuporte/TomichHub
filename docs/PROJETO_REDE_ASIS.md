@@ -188,6 +188,6 @@ Juruena como "Default v4/v6", mas a prefix-list `DEFAULT-V6` desse PE é `:: 0 l
 
 ## Próxima etapa: Change Plan TO-BE
 
-O modelo já prevê isso: `DocumentoRede.tipo = 'change_plan'` e `documento_base` aponta para o AS-IS de
-origem. O editor, as revisões e a exportação são genéricos; falta a composição das seções do TO-BE
-(waves, pré-requisitos, rollback, janelas) a partir dos achados e riscos do AS-IS.
+Implementada em 17/09/2026 — ver [PROJETO_REDE_TOBE.md](PROJETO_REDE_TOBE.md) (HLD reutilizável,
+cenário de topologia TO-BE e motor do Change Plan). O IP de interface do extrator passou a guardar o
+endereço do host, não o da rede.

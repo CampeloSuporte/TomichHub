@@ -18,7 +18,6 @@ from html.parser import HTMLParser
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from .composicao import CAMPOS_METADADOS
 from .sanitizar import limpar_html
 
 COR_PRIMARIA = '0F6E7A'
@@ -65,6 +64,11 @@ def secoes_numeradas(secoes):
     return saida
 
 
+def _campos(doc):
+    from .documentos import campos
+    return campos(doc.tipo)
+
+
 def _css_str(texto):
     """Conteúdo seguro para uma string CSS entre aspas duplas."""
     saida = []
@@ -83,7 +87,8 @@ def contexto_documento(doc):
         'meta': meta,
         'css_topo': _css_str(f'{meta.get("empresa", "")} · {meta.get("documento") or doc.titulo}'),
         'css_rodape': _css_str(f'{meta.get("classificacao", "")} · v{doc.versao}'),
-        'campos': [(rotulo, meta.get(chave, '')) for chave, rotulo in CAMPOS_METADADOS],
+        'campos': [(rotulo, meta.get(chave, '')) for chave, rotulo in _campos(doc)],
+        'principio_titulo': meta.get('principio_titulo') or 'Princípio do documento.',
         'secoes': secoes_numeradas(doc.secoes or []),
         'gerado_em': timezone.localtime(),
     }
@@ -305,6 +310,13 @@ class _Conversor:
         for f in no.filhos:
             self.inline(paragrafo, f, fmt)
 
+    def _inlines_sem_strip(self, paragrafo, filhos):
+        inicio = len(paragrafo.runs)
+        for f in filhos:
+            self.inline(paragrafo, f)
+        if len(paragrafo.runs) > inicio:
+            paragrafo.runs[inicio].text = paragrafo.runs[inicio].text.lstrip()
+
     def _inlines(self, paragrafo, filhos, fmt=None):
         # remove espaços do começo do parágrafo
         for f in filhos:
@@ -354,16 +366,30 @@ class _Conversor:
         descarregar()
 
     def lista(self, no, alvo, nivel, numerada):
-        estilo = ('List Number' if numerada else 'List Bullet') + (f' {nivel + 1}' if nivel else '')
+        # Lista numerada: número escrito no texto. O estilo "List Number" do
+        # Word compartilha uma numeração só no documento inteiro — a segunda
+        # lista continuaria de onde a primeira parou (11., 27., 33.…).
+        from docx.shared import Cm
+        estilo = 'List Bullet' + (f' {nivel + 1}' if nivel else '')
+        n = 0
         for li in no.filhos:
             if isinstance(li, str) or li.tag != 'li':
                 continue
             inline = [x for x in li.filhos if isinstance(x, str) or x.tag not in ('ul', 'ol', 'p', 'table', 'div')]
-            try:
-                par = alvo.add_paragraph(style=estilo)
-            except KeyError:
-                par = alvo.add_paragraph(style='List Bullet')
-            self._inlines(par, inline)
+            if numerada:
+                n += 1
+                par = alvo.add_paragraph()
+                par.paragraph_format.left_indent = Cm(0.9 + 0.6 * nivel)
+                par.paragraph_format.first_line_indent = Cm(-0.6)
+                par.paragraph_format.space_after = self.Pt(2)
+                par.add_run(f'{n}.\t')
+                self._inlines_sem_strip(par, inline)
+            else:
+                try:
+                    par = alvo.add_paragraph(style=estilo)
+                except KeyError:
+                    par = alvo.add_paragraph(style='List Bullet')
+                self._inlines(par, inline)
             for sub in li.filhos:
                 if not isinstance(sub, str) and sub.tag in ('ul', 'ol'):
                     self.lista(sub, alvo, min(nivel + 1, 2), sub.tag == 'ol')
@@ -500,7 +526,7 @@ def gerar_docx(doc):
     ) + '</tbody></table>'
     conv.blocos(_arvore(tab_html))
     if meta.get('principio'):
-        conv.blocos(_arvore(f'<div class="callout"><p><strong>Princípio do documento.</strong> '
+        conv.blocos(_arvore(f'<div class="callout"><p><strong>{_esc(ctx["principio_titulo"])}</strong> '
                             f'{_esc(meta["principio"])}</p></div>'))
     d.add_paragraph().add_run().add_break(WD_BREAK.PAGE)
 
