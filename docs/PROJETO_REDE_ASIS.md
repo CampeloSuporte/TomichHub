@@ -42,7 +42,7 @@ no próprio sistema, versionado e exportado em **PDF** e **DOCX** para apresenta
 | Capa | Empresa, título, subtítulo, tabela de controle (documento, versão, status, ASN, data-base, responsável, classificação), princípio | cadastro + ASN predominante + período dos backups |
 | 1 | Controle e finalidade | fontes contadas da coleta |
 | 2 | Sumário executivo | texto e tabela por domínio |
-| 3 | Topologia e inventário | RRs, PEs (LSR-ID, plataforma, software), demais equipamentos, enlaces da topologia |
+| 3 | Topologia e inventário | RRs, PEs (LSR-ID, plataforma, software), demais equipamentos agrupados por função do cadastro, enlaces da topologia |
 | 4 | Underlay, MPLS e controle | OSPF, LDP, RSVP-TE, túneis TE, BFD, MTU por equipamento; RRs e famílias MP-BGP; peers iBGP históricos |
 | 5 | Achados estruturais | `AS-IS-NNN` ordenados por severidade |
 | 6 | BNG, PPPoE e CGNAT | pools BAS, IPv6 PD, PPPoE via L2VPN até o BNG (VE `l2-terminate`), BNGs remotos, CGNAT dedicado |

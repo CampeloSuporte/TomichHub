@@ -27,6 +27,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   Nos backups da Startnet isso revelou que a prefix-list `DEFAULT-V6` de Juruena é `:: 0 less-equal 48`
   (full routing IPv6 para MUNDONET e WEBNET, que o documento manual registrava como default).
 
+### Alterado
+
+- Na seção 3 do AS-IS, **Demais equipamentos cadastrados** passou a vir agrupada pela função do
+  cadastro (BRAS, CGNAT, ROTEADOR, SWITCH L2…), um subtítulo com a contagem por função e a coluna de
+  gerência no lugar da coluna de função.
+
 ### Detalhes
 
 - Dependência nova: `python-docx==1.2.0`. Migração `projeto_rede/0001_initial` (2 tabelas).
