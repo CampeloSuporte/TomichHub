@@ -367,6 +367,11 @@ class AnaliseTest(TestCase):
         self.assertTrue(self.m['communities']['regra_prepend'])
         self.assertEqual(linhas['27648:666']['finalidade'], 'Blackhole')
 
+    def test_demais_equipamentos_agrupados_por_funcao(self):
+        html = composicao.s_topologia(self.m)
+        self.assertIn('<h4>CGNAT (1)</h4>', html)
+        self.assertNotIn('Função (cadastro)', html)
+
     def test_secoes_escapam_texto_da_configuracao(self):
         inv = _inventario(extrair_huawei(HUAWEI_PE.replace('LINK-NET-ULTRA', '<script>x</script>')))
         m = analise.montar_modelo(inv)

@@ -205,11 +205,18 @@ def s_topologia(m):
     outros = [x for x in m['demais'] if x['vendor'] or x['backup']]
     if outros:
         partes.append(h3('Demais equipamentos cadastrados'))
-        partes.append(tabela(
-            ['Equipamento', 'Função (cadastro)', 'Plataforma', 'Papéis inferidos', 'Backup analisado'],
-            [[e(x['nome']), e(x['funcao']), e(x['modelo']), e(x['papeis']),
-              e(_data_br(x['backup']['confirmado_em']) if x['backup'] and x['backup']['arquivo_disponivel'] else 'Não')]
-             for x in sorted(outros, key=lambda x: (x['funcao'], x['nome']))]))
+        partes.append(p('Agrupados pela função cadastrada no CRM.'))
+        por_funcao = {}
+        for x in outros:
+            por_funcao.setdefault((x['funcao'] or '').strip().upper() or 'SEM FUNÇÃO CADASTRADA', []).append(x)
+        for funcao in sorted(por_funcao, key=lambda f: (f == 'SEM FUNÇÃO CADASTRADA', f)):
+            itens = sorted(por_funcao[funcao], key=lambda x: x['nome'].upper())
+            partes.append(f'<h4>{escape(funcao)} ({len(itens)})</h4>')
+            partes.append(tabela(
+                ['Equipamento', 'Gerência', 'Plataforma', 'Papéis inferidos', 'Backup analisado'],
+                [[e(x['nome']), e(x['host']), e(x['modelo']), e(x['papeis']),
+                  e(_data_br(x['backup']['confirmado_em']) if x['backup'] and x['backup']['arquivo_disponivel'] else 'Não')]
+                 for x in itens]))
 
     enlaces = m['topologia']['enlaces']
     if enlaces:
