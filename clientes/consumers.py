@@ -1456,6 +1456,18 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                 self.is_huawei = True
                 self.is_parks  = False
 
+            # OLT Parks sem "parks" no cadastro (sem modelo, tipo livre — ex.:
+            # acesso 1493, "OLT-IT_STO.ANT-23"): a escolha em conectar() caiu
+            # aqui e o invoke_shell derruba a CLI do firmware ("Aiee, segfault!"
+            # e canal fechado), mesmo com o pty-req completo. Só o banner
+            # denuncia o fabricante — desiste do Paramiko antes da auth e usa
+            # o ssh do sistema, como conectar() já faz quando o cadastro diz Parks.
+            if 'parks' in remote_ver and not self.is_huawei:
+                logger.info(f"↩️ Banner Parks ({remote_ver!r}) — trocando para pexpect+proxy")
+                self._fechar_recursos_fisicos()
+                self.connect_ssh_parks_proxy(acesso)
+                return
+
             # 4. Autenticar no equipamento
             try:
                 dest_transport.auth_password(acesso.usuario, acesso.senha)

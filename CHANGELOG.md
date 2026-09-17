@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-17 (Terminal SSH: OLT Parks sem fabricante no cadastro)
+
+### Corrigido
+
+- **OLT Parks abria e fechava na hora com "Aiee, segfault!"** quando o acesso não tinha modelo nem
+  "parks" no tipo (ex.: OLT-IT_STO.ANT-23, via DS TECH): a conexão ia pelo Paramiko, cujo
+  `invoke_shell` derruba a CLI do firmware. Agora o banner `SSH-2.0-Parks` desvia, antes da
+  autenticação, para o caminho pexpect (ssh do sistema) já usado nas Parks cadastradas.
+
+---
+
 ## [Não publicado] — 2026-09-17 (HLD reutilizável, cenário TO-BE e Change Plan)
 
 ### Adicionado
