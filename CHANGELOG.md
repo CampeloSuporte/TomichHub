@@ -5,6 +5,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-17 (Compartilhar arquivo: comandos de roteador Huawei VRP)
+
+### Adicionado
+
+- **Comandos de download para roteador/switch Huawei VRP** (NE8000, NE40E, CE, S-series) no link de
+  compartilhamento: `tftp <ip> get <arquivo>` e `ftp <ip>`, cada um com a variante
+  `vpn-instance __LOCAL_OAM_VPN__` de quem baixa pela porta de gerência (MEth). Até aqui o bloco
+  Huawei só trazia o dialeto de OLT (`load file tftp <ip> <arquivo>`), que o VRP não entende — na
+  prática sobrava colar a URL HTTP num comando `tftp`, que também não funciona.
+- **Aviso de limite do TFTP**: arquivo acima de 32 MB (65535 blocos de 512 bytes) mostra, junto do
+  comando TFTP, que o download trava no meio e que o caminho é FTP. Os `.cc` de NE8000 têm ~1,1 GB.
+
+### Alterado
+
+- O bloco Huawei do modal agora é montado pelo backend em grupos (`huawei_grupos`), com título por
+  dialeto — roteador/switch VRP primeiro, OLT MA5800/MA5600 depois. O template só renderiza, em vez
+  de repetir o HTML de cada protocolo.
+
+---
+
 ## [Não publicado] — 2026-09-17 (Terminal SSH: OLT Parks sem fabricante no cadastro)
 
 ### Corrigido

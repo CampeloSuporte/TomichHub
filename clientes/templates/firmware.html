@@ -747,7 +747,7 @@ const PROTO_DEFS = [
     {key:'tftp',     label:'TFTP',           icon:'fas fa-exchange-alt',   cor:'#4fc3f7'},
     {key:'cisco',    label:'CISCO',          icon:'fas fa-network-wired',  cor:'#e06060'},
     {key:'mikrotik', label:'MIKROTIK',       icon:'fas fa-router',         cor:'#81c784'},
-    {key:'huawei',   label:'HUAWEI',         icon:'fas fa-server',         cor:'#ffcc80', special:'huawei'},
+    {key:'huawei_grupos', label:'HUAWEI',     icon:'fas fa-server',         cor:'#ffcc80', special:'huawei'},
     {key:'linux',    label:'WGET / LINUX',   icon:'fab fa-linux',          cor:'#8b949e'},
     {key:'curl',     label:'CURL',           icon:'fas fa-terminal',       cor:'#8b949e'},
 ];
@@ -759,71 +759,40 @@ function fwRenderLinks(links, nomeArq, container) {
         if (!val) continue;
 
         if (pd.special === 'huawei') {
-            // ── Bloco Huawei especial: SFTP + TFTP com IP resolvido ──
-            const ip        = links.huawei_ip || '';
-            const ipBadge   = ip ? `<span style="font-size:.7rem;color:#ffcc80;background:rgba(255,204,128,.1);border:1px solid rgba(255,204,128,.25);border-radius:4px;padding:1px 6px;margin-left:6px">IP: ${ip}</span>` : '';
+            // ── Bloco Huawei: um grupo por dialeto (roteador VRP x OLT) ──
+            const grupos = Array.isArray(val) ? val : [];
+            if (!grupos.length) continue;
 
-            // SFTP
-            const sftp      = val;
-            const sftpEsc   = sftp.replace(/'/g, "\\'");
-            const sftpSC    = sftp.replace(/ username \S+ password \S+/, '').trim();
-            const temCreds  = sftp !== sftpSC;
-            const sftpSCEsc = sftpSC.replace(/'/g, "\\'");
+            const ip      = links.huawei_ip || '';
+            const ipBadge = ip ? `<span style="font-size:.7rem;color:#ffcc80;background:rgba(255,204,128,.1);border:1px solid rgba(255,204,128,.25);border-radius:4px;padding:1px 6px;margin-left:6px">IP: ${ip}</span>` : '';
 
-            // TFTP
-            const tftpCmd   = links.huawei_tftp || '';
-            const tftpEsc   = tftpCmd.replace(/'/g, "\\'");
+            const grupoHtml = g => `
+                <div style="width:100%;margin-top:8px">
+                    <div style="font-size:.76rem;color:#c9d1d9;font-weight:600">${g.titulo}</div>
+                    ${g.sub ? `<div style="font-size:.68rem;color:#6e7681">${g.sub}</div>` : ''}
+                    ${g.cmds.map(cmdHtml).join('')}
+                </div>`;
 
-            // FTP
-            const ftpCmd    = links.huawei_ftp || '';
-            const ftpSC     = ftpCmd.replace(/ username \S+ password \S+/, '').trim();
-            const ftpTemCreds = ftpCmd !== ftpSC;
-            const ftpEsc    = ftpCmd.replace(/'/g, "\\'");
-            const ftpSCEsc  = ftpSC.replace(/'/g, "\\'");
+            const cmdHtml = c => `
+                <div style="font-size:.72rem;color:#8b949e;margin-top:4px">${c.label}:</div>
+                <div class="proto-box" style="width:100%">
+                    <code style="white-space:pre-wrap;word-break:break-all;color:${c.cor || '#ffcc80'}${c.dim ? ';opacity:.6' : ''}">${c.cmd}</code>
+                    <span class="proto-copy" onclick="fwCopiar(this,'${fwEscJs(c.cmd)}')">Copiar</span>
+                </div>
+                ${c.hint ? `<div style="font-size:.68rem;color:#8b949e;margin-top:2px">${c.hint}</div>` : ''}`;
 
             html += `
-            <div class="proto-row" style="flex-direction:column;align-items:flex-start;gap:6px">
+            <div class="proto-row" style="flex-direction:column;align-items:flex-start;gap:2px">
                 <div class="proto-label" style="width:100%;display:flex;align-items:center">
                     <i class="${pd.icon} me-1" style="color:${pd.cor}"></i>${pd.label}${ipBadge}
                 </div>
-
-                <div style="font-size:.72rem;color:#8b949e">SFTP:</div>
-                <div class="proto-box" style="width:100%">
-                    <code style="white-space:pre-wrap;word-break:break-all">${sftp}</code>
-                    <span class="proto-copy" onclick="fwCopiar(this,'${sftpEsc}')">Copiar</span>
-                </div>
-                ${temCreds ? `
-                <div style="font-size:.72rem;color:#8b949e;margin-top:2px">SFTP sem credenciais (se a OLT pedir usuário/senha interativamente):</div>
-                <div class="proto-box" style="width:100%">
-                    <code style="white-space:pre-wrap;word-break:break-all;color:rgba(255,204,128,.6)">${sftpSC}</code>
-                    <span class="proto-copy" onclick="fwCopiar(this,'${sftpSCEsc}')">Copiar</span>
-                </div>` : ''}
-
-                ${tftpCmd ? `
-                <div style="font-size:.72rem;color:#8b949e;margin-top:4px">TFTP:</div>
-                <div class="proto-box" style="width:100%">
-                    <code style="white-space:pre-wrap;word-break:break-all;color:#4fc3f7">${tftpCmd}</code>
-                    <span class="proto-copy" onclick="fwCopiar(this,'${tftpEsc}')">Copiar</span>
-                </div>` : ''}
-
-                ${ftpCmd ? `
-                <div style="font-size:.72rem;color:#8b949e;margin-top:4px">FTP:</div>
-                <div class="proto-box" style="width:100%">
-                    <code style="white-space:pre-wrap;word-break:break-all;color:#ffaa00">${ftpCmd}</code>
-                    <span class="proto-copy" onclick="fwCopiar(this,'${ftpEsc}')">Copiar</span>
-                </div>
-                ${ftpTemCreds ? `
-                <div style="font-size:.72rem;color:#8b949e;margin-top:2px">FTP sem credenciais:</div>
-                <div class="proto-box" style="width:100%">
-                    <code style="white-space:pre-wrap;word-break:break-all;color:rgba(255,170,0,.6)">${ftpSC}</code>
-                    <span class="proto-copy" onclick="fwCopiar(this,'${ftpSCEsc}')">Copiar</span>
-                </div>` : ''}` : ''}
+                ${grupos.map(grupoHtml).join('')}
             </div>`;
             continue;
         }
 
         // Linha padrão
-        const valEsc = val.replace(/'/g, "\\'");
+        const valEsc = fwEscJs(val);
         html += `
         <div class="proto-row">
             <div class="proto-label"><i class="${pd.icon} me-1" style="color:${pd.cor}"></i>${pd.label}</div>
@@ -910,6 +879,10 @@ function fwLinksHtml(links) {
         </div>`;
     }
     return html;
+}
+
+function fwEscJs(s) {
+    return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
 }
 
 function fwCopiar(el, texto) {

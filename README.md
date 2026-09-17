@@ -336,7 +336,12 @@ Base de conhecimento interna:
 - Upload múltiplo com progresso em tempo real, drag & drop
 - Download remoto via URL (o servidor faz o download sem passar pelo navegador)
 - Sistema de compartilhamento com links temporários em 10 formatos:
-  HTTP, HTTPS, FTP, SFTP, TFTP, Cisco TFTP, MikroTik, Huawei TFTP, wget, curl
+  HTTP, HTTPS, FTP, SFTP, TFTP, Cisco TFTP, MikroTik, Huawei, wget, curl
+- O bloco Huawei traz os dois dialetos separados, porque são incompatíveis: roteador/switch VRP
+  (NE8000, NE40E, CE, S-series) usa `tftp <ip> get <arquivo>` / `ftp <ip>` — com a variante
+  `vpn-instance __LOCAL_OAM_VPN__` para quem baixa pela porta de gerência — e a OLT MA5600/MA5800
+  usa `load file <proto> <ip> <arquivo>`. Acima de 32 MB o comando TFTP vem com aviso para usar
+  FTP (o TFTP clássico só endereça 65535 blocos de 512 bytes)
 - Limite de upload: 2 GB
 
 ### Segurança
