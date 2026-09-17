@@ -216,6 +216,15 @@ pexpect + `ProxyCommand` usado nas OLTs Parks. O usuário vê
 nas mensagens) e serve aos dois casos em que o Paramiko não dá conta do peer — firmware Parks
 que crasha no `invoke_shell` e peer com algoritmo legado.
 
+**Parks sem "parks" no cadastro.** `conectar()` só manda para o caminho pexpect quando o
+fabricante do modelo (ou o `tipo`) contém "parks". Acesso sem modelo e com tipo livre (ex.: acesso
+1493, `OLT-IT_STO.ANT-23`, 10.1.23.1 via DS TECH) ia para o Paramiko; o banner `SSH-2.0-Parks` só
+trocava o terminal para `vt100` e mandava o pty-req completo, e mesmo assim a CLI da OLT respondia
+`Aiee, segfault! You should probably report this as a bug to the developer` e fechava o canal
+(o usuário via "Sessão encerrada pelo equipamento"). Agora `connect_ssh_via_proxy()`, ao ler
+`parks` no banner (e não sendo Huawei), fecha o transporte **antes da autenticação** e chama
+`connect_ssh_parks_proxy(acesso)`. ZTE continua no Paramiko — o desvio é só para Parks.
+
 **Senha errada deixou de virar "conectado".** Depois de enviar a senha do equipamento, o
 `expect` só olhava por prompt ou TIMEOUT: com credencial errada no cadastro, esperava 15 s e
 mesmo assim mandava `connected` — a aba ficava "conectada" parada num prompt de senha. Agora
