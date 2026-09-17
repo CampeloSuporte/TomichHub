@@ -199,8 +199,13 @@ def s_topologia(m):
     partes.append(h3('PEs analisados'))
     partes.append(tabela(
         ['POP / Nó', 'Equipamento', 'LSR ID', 'Plataforma', 'Software'],
-        [[e(x['pop']), f'<strong>{e(x["nome"])}</strong>', e(x['lsr_id']), e(x['modelo']), e(x['versao'])]
+        [[e(x['pop']), f'<strong>{e(x["nome"])}</strong>',
+          e(x['lsr_id'] or (f'{x["host"]} (gerência)' if x['sem_backup'] else '')),
+          e(x['modelo']), e('Sem backup analisado' if x['sem_backup'] else x['versao'])]
          for x in m['pes']]))
+    if any(x['sem_backup'] for x in m['pes']):
+        partes.append(p('<em>PEs sem backup constam pelo cadastro (Switch L3 / Roteador PE); '
+                        'LSR ID, serviços e políticas deles não foram analisados.</em>'))
 
     outros = [x for x in m['demais'] if x['vendor'] or x['backup']]
     if outros:
