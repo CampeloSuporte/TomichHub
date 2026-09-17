@@ -375,7 +375,8 @@ def firmware_compartilhar(request, arquivo_id):
         'ftp_user': ftp_user,
         'ftp_senha': ftp_senha,
         'links': _gerar_links(host, token, arq.nome, ftp_user, ftp_senha,
-                              tftp_path=arq.caminho_relativo, porta=porta),
+                              tftp_path=arq.caminho_relativo, porta=porta,
+                              tamanho=arq.tamanho),
     })
 
 
@@ -392,7 +393,7 @@ def _resolver_ip(host: str) -> str:
 
 
 def _gerar_links(host, token, nome_arquivo, ftp_user='', ftp_senha='',
-                  tftp_path: str = '', porta: str = ''):
+                  tftp_path: str = '', porta: str = '', tamanho: int = 0):
     """
     Gera os links e comandos de download para todos os protocolos.
 
@@ -404,6 +405,8 @@ def _gerar_links(host, token, nome_arquivo, ftp_user='', ftp_senha='',
                (= FirmwareArquivo.caminho_relativo, ex: 'Firmware Huawei/MA5800.bin').
                Se vazio, usa apenas o nome_arquivo.
     porta:     porta não padrão da requisição, se houver (ex: '8000').
+    tamanho:   tamanho do arquivo em bytes, usado para avisar quando o TFTP
+               não dá conta (ver TFTP_LIMITE_BYTES).
     """
     from django.urls import reverse
 
@@ -426,29 +429,6 @@ def _gerar_links(host, token, nome_arquivo, ftp_user='', ftp_senha='',
     tftp_nome = tftp_path if tftp_path else nome_arquivo
     url_tftp  = f'tftp://{host_ip}/{tftp_nome}'
 
-    # ── Huawei MA5800/MA5600 ──
-    # SFTP: load file sftp <IP> <arquivo> [username <user> password <pass>]
-    if ftp_user and ftp_senha:
-        huawei_sftp = (
-            f'load file sftp {host_ip} {nome_arquivo} '
-            f'username {ftp_user} password {ftp_senha}'
-        )
-    else:
-        huawei_sftp = f'load file sftp {host_ip} {nome_arquivo}'
-
-    # TFTP: load file tftp <IP> <arquivo>
-    # Huawei OLT só aceita nome simples (basename), sem barras/subdiretórios
-    huawei_tftp = f'load file tftp {host_ip} {nome_arquivo}'
-
-    # FTP: load file ftp <IP> <arquivo> [username <user> password <pass>]
-    if ftp_user and ftp_senha:
-        huawei_ftp = (
-            f'load file ftp {host_ip} {nome_arquivo} '
-            f'username {ftp_user} password {ftp_senha}'
-        )
-    else:
-        huawei_ftp = f'load file ftp {host_ip} {nome_arquivo}'
-
     return {
         'http':        url_http,
         'https':       url_https,
@@ -461,13 +441,83 @@ def _gerar_links(host, token, nome_arquivo, ftp_user='', ftp_senha='',
             else f'copy {url_http} flash:'
         ),
         'mikrotik':    f'/tool fetch url="{url_http}" dst-path="{nome_arquivo}"',
-        'huawei':      huawei_sftp,
-        'huawei_tftp': huawei_tftp,
-        'huawei_ftp':  huawei_ftp,
         'huawei_ip':   host_ip,
+        'huawei_grupos': _huawei_grupos(host_ip, nome_arquivo, ftp_user, ftp_senha, tamanho),
         'linux':       f'wget "{url_http}" -O "{nome_arquivo}"',
         'curl':        f'curl -L "{url_http}" -o "{nome_arquivo}"',
     }
+
+
+# Teto do TFTP clássico: 65535 blocos de 512 bytes. Acima disso o equipamento
+# aborta no meio do download (ou grava um arquivo truncado) — só FTP resolve.
+TFTP_LIMITE_BYTES = 65535 * 512  # 32 MB
+
+# VPN de gerência padrão dos roteadores Huawei (porta MEth/console).
+HUAWEI_VPN_OAM = '__LOCAL_OAM_VPN__'
+
+
+def _huawei_grupos(host_ip, nome_arquivo, ftp_user='', ftp_senha='', tamanho: int = 0):
+    """
+    Comandos de download para equipamentos Huawei, separados por dialeto.
+
+    São dois mundos diferentes e incompatíveis:
+      • OLT (MA5600/MA5800): 'load file <proto> <ip> <arquivo>';
+      • Roteador/Switch VRP (NE8000, NE40E, CE, S-series):
+        '<proto> <ip> [vpn-instance <vpn>] get <arquivo>'.
+
+    Os comandos usam sempre o basename, que é o symlink criado no root do
+    TFTP/FTP por _criar_symlink_tftp — subdiretório não funciona na OLT.
+    """
+    cred = f' username {ftp_user} password {ftp_senha}' if ftp_user and ftp_senha else ''
+
+    aviso_tftp = ''
+    if tamanho and tamanho > TFTP_LIMITE_BYTES:
+        aviso_tftp = (f'Arquivo de {tamanho // (1024 * 1024)} MB: acima do limite de 32 MB do '
+                      f'TFTP, o download trava no meio. Use FTP.')
+
+    login_ftp = (f'Usuário: {ftp_user} — Senha: {ftp_senha}' if ftp_user and ftp_senha
+                 else 'Usuário: anonymous (sem senha)')
+
+    # ── OLT MA5600/MA5800 ──
+    cmds_olt = [{'label': 'SFTP', 'cmd': f'load file sftp {host_ip} {nome_arquivo}{cred}',
+                 'cor': '#ffcc80'}]
+    if cred:
+        cmds_olt.append({'label': 'SFTP sem credenciais',
+                         'cmd': f'load file sftp {host_ip} {nome_arquivo}',
+                         'hint': 'Use se a OLT pedir usuário/senha interativamente',
+                         'cor': '#ffcc80', 'dim': True})
+    cmds_olt.append({'label': 'TFTP', 'cmd': f'load file tftp {host_ip} {nome_arquivo}',
+                     'cor': '#4fc3f7', 'hint': aviso_tftp})
+    cmds_olt.append({'label': 'FTP', 'cmd': f'load file ftp {host_ip} {nome_arquivo}{cred}',
+                     'cor': '#ffaa00'})
+    if cred:
+        cmds_olt.append({'label': 'FTP sem credenciais',
+                         'cmd': f'load file ftp {host_ip} {nome_arquivo}',
+                         'cor': '#ffaa00', 'dim': True})
+
+    # ── Roteador/Switch VRP (NE8000, NE40E, CE, S-series) ──
+    cmds_vrp = [
+        {'label': 'TFTP', 'cmd': f'tftp {host_ip} get {nome_arquivo}',
+         'cor': '#4fc3f7', 'hint': aviso_tftp},
+        {'label': 'TFTP pela porta de gerência (MEth)',
+         'cmd': f'tftp {host_ip} vpn-instance {HUAWEI_VPN_OAM} get {nome_arquivo}',
+         'cor': '#4fc3f7', 'dim': True, 'hint': aviso_tftp},
+        {'label': 'FTP — 1. abrir a sessão', 'cmd': f'ftp {host_ip}',
+         'cor': '#ffaa00', 'hint': login_ftp},
+        {'label': 'FTP — 1b. abrir pela porta de gerência (MEth)',
+         'cmd': f'ftp {host_ip} vpn-instance {HUAWEI_VPN_OAM}',
+         'cor': '#ffaa00', 'dim': True, 'hint': login_ftp},
+        {'label': 'FTP — 2. baixar (já dentro do prompt ftp>)',
+         'cmd': f'get {nome_arquivo}', 'cor': '#ffaa00',
+         'hint': 'Se o arquivo vier corrompido, rode "binary" antes do get'},
+    ]
+
+    return [
+        {'titulo': 'Roteador / Switch (NE8000, NE40E, CE, S-series)',
+         'sub': 'Comandos rodados no user-view do VRP', 'cmds': cmds_vrp},
+        {'titulo': 'OLT (MA5800, MA5600, MA5683)',
+         'sub': 'Comandos rodados no modo diagnose/config', 'cmds': cmds_olt},
+    ]
 
 
 def _ftp_criar_usuario(username: str, password: str):
@@ -910,6 +960,7 @@ def firmware_links_ativos(request, arquivo_id):
             'ftp_user': c.ftp_user,
             'ftp_senha': c.ftp_senha,
             'links': _gerar_links(host, c.token, arq.nome, c.ftp_user, c.ftp_senha,
-                                  tftp_path=arq.caminho_relativo, porta=porta),
+                                  tftp_path=arq.caminho_relativo, porta=porta,
+                                  tamanho=arq.tamanho),
         })
     return JsonResponse({'ok': True, 'compartilhamentos': result})
