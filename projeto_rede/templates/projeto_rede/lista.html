@@ -40,6 +40,20 @@ table.pr-tabela tr:last-child td { border-bottom:none; }
 .pr-vazio i { font-size:38px; opacity:.3; display:block; margin-bottom:10px; }
 .pr-progresso { display:none; margin-top:12px; font-size:.8rem; color:var(--text-muted); }
 .pr-progresso.ativo { display:block; }
+.pr-fluxo { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin:18px 0 6px; }
+.pr-passo { background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; position:relative; }
+.pr-passo .n { display:inline-flex; width:22px; height:22px; border-radius:50%; align-items:center; justify-content:center;
+               font-size:.72rem; font-weight:700; background:rgba(0,217,255,.12); color:var(--accent-cyan); margin-right:6px; }
+.pr-passo b { font-size:.86rem; }
+.pr-passo p { margin:6px 0 0; font-size:.74rem; color:var(--text-muted); line-height:1.45; }
+.pr-passo .ok { color:var(--primary-green); font-size:.72rem; margin-top:6px; display:block; }
+.pr-passo .falta { color:#d29922; font-size:.72rem; margin-top:6px; display:block; }
+.pr-bloco { margin-top:18px; }
+.pr-card-cab .pr-acoes { gap:8px; }
+.pr-card-cab small { color:var(--text-muted); font-size:.72rem; display:block; margin-top:2px; font-weight:400; }
+.pr-select { background:var(--dark-bg); color:var(--text-light); border:1px solid var(--border); border-radius:6px; padding:6px 8px; font-size:.78rem; max-width:220px; }
+.pr-input { background:var(--dark-bg); color:var(--text-light); border:1px solid var(--border); border-radius:6px; padding:6px 8px; font-size:.78rem; width:130px; }
+.pr-tag { display:inline-block; font-size:.68rem; padding:1px 7px; border-radius:999px; border:1px solid var(--border); color:var(--text-muted); margin-right:4px; }
 </style>
 
 <div class="pr-pagina">
@@ -49,18 +63,31 @@ table.pr-tabela tr:last-child td { border-bottom:none; }
 
 <div class="pr-cabecalho">
     <div>
-        <h4 class="pr-titulo"><i class="fas fa-file-contract" style="color:var(--accent-cyan);"></i> Documentação de arquitetura</h4>
+        <h4 class="pr-titulo"><i class="fas fa-file-contract" style="color:var(--accent-cyan);"></i> Arquitetura de rede</h4>
         <div class="pr-sub">
-            AS-IS da infraestrutura de <strong>{{ cliente.nome_empresa }}</strong>, reconstruído a partir dos backups de
-            configuração, dos acessos cadastrados e da topologia. Depois de gerado, o documento é editável aqui e pode
-            ser exportado em PDF ou DOCX.
+            Documentação de <strong>{{ cliente.nome_empresa }}</strong>: a convenção (HLD), o estado atual (AS-IS) lido dos
+            backups, a topologia desejada (cenário TO-BE) e o plano de mudança que liga os dois. Todos os documentos são
+            editáveis aqui e exportados em PDF ou DOCX.
         </div>
     </div>
-    <div>
-        <button type="button" class="pr-btn pr-btn-primario" id="btnGerar" {% if not total_com_backup %}disabled title="Nenhum backup disponível"{% endif %}>
-            <i class="fas fa-wand-magic-sparkles"></i> Gerar AS-IS
-        </button>
-        <div class="pr-progresso" id="progresso"><i class="fas fa-spinner fa-spin me-1"></i> Lendo backups e analisando a rede…</div>
+</div>
+
+<div class="pr-fluxo">
+    <div class="pr-passo"><span class="n">1</span><b>HLD — convenção</b>
+        <p>Catálogo de VRFs, RTs, communities, endereçamento e padrões de underlay. Parte do modelo ISP padrão.</p>
+        {% if hlds %}<span class="ok"><i class="fas fa-check"></i> {{ hlds|length }} documento(s)</span>{% else %}<span class="falta">Nenhum HLD ainda</span>{% endif %}
+    </div>
+    <div class="pr-passo"><span class="n">2</span><b>AS-IS — estado atual</b>
+        <p>Reconstruído dos backups ({{ total_com_backup }} de {{ total_ssh }} acessos SSH), da topologia e do cadastro.</p>
+        {% if asis %}<span class="ok"><i class="fas fa-check"></i> {{ asis|length }} documento(s)</span>{% else %}<span class="falta">Nenhum AS-IS ainda</span>{% endif %}
+    </div>
+    <div class="pr-passo"><span class="n">3</span><b>Cenário TO-BE</b>
+        <p>Cópia da topologia editada como deve ficar: papéis (RR, BNG), equipamentos novos/removidos, MTU e lotes.</p>
+        {% if cenarios %}<span class="ok"><i class="fas fa-check"></i> {{ cenarios|length }} cenário(s)</span>{% else %}<span class="falta">Opcional — sem cenário, usa a topologia atual</span>{% endif %}
+    </div>
+    <div class="pr-passo"><span class="n">4</span><b>Change Plan TO-BE</b>
+        <p>Waves 0–9 com itens concretos (atual → alvo), lotes, gates e decisões pendentes.</p>
+        {% if planos %}<span class="ok"><i class="fas fa-check"></i> {{ planos|length }} plano(s)</span>{% else %}<span class="falta">Nenhum plano ainda</span>{% endif %}
     </div>
 </div>
 
@@ -72,59 +99,116 @@ table.pr-tabela tr:last-child td { border-bottom:none; }
     <div class="pr-fonte"><strong>{{ total_blocos }}</strong><span>Blocos IP</span></div>
 </div>
 
-<div class="pr-card">
+{% with cabecalho='<tr><th>Documento</th><th>Versão</th><th>Status</th><th>Última alteração</th><th></th></tr>' %}
+<div class="pr-card pr-bloco">
     <div class="pr-card-cab">
-        <h6>Documentos</h6>
-        <span class="pr-muted">{{ documentos|length }} documento{{ documentos|length|pluralize }}</span>
+        <h6>1. HLD — Arquitetura de rede<small>Convenção reutilizável, parametrizada pelo ASN e prefixos do cliente.</small></h6>
+        <div class="pr-acoes">
+            <input class="pr-input" id="hldAsn" placeholder="ASN (opcional)" inputmode="numeric" aria-label="ASN">
+            <button type="button" class="pr-btn pr-btn-primario" id="btnNovoHld"><i class="fas fa-plus"></i> Novo HLD</button>
+        </div>
     </div>
-    {% if documentos %}
+    {% if hlds %}
+    <table class="pr-tabela"><thead>{{ cabecalho|safe }}</thead><tbody>
+        {% for d in hlds %}{% include "projeto_rede/_linha_doc.html" %}{% endfor %}
+    </tbody></table>
+    {% else %}
+    <div class="pr-vazio"><i class="fas fa-sitemap"></i>Nenhum HLD. <strong>Novo HLD</strong> parte do modelo ISP padrão já com o ASN e os papéis sugeridos pelos backups.</div>
+    {% endif %}
+</div>
+
+<div class="pr-card pr-bloco">
+    <div class="pr-card-cab">
+        <h6>2. AS-IS da infraestrutura<small>Estado atual lido dos backups, dos acessos e da topologia.</small></h6>
+        <div class="pr-acoes">
+            <span class="pr-progresso" id="progresso"><i class="fas fa-spinner fa-spin me-1"></i> Lendo backups…</span>
+            <button type="button" class="pr-btn pr-btn-primario" id="btnGerar" {% if not total_com_backup %}disabled title="Nenhum backup disponível"{% endif %}>
+                <i class="fas fa-wand-magic-sparkles"></i> Gerar AS-IS
+            </button>
+        </div>
+    </div>
+    {% if asis %}
+    <table class="pr-tabela"><thead>{{ cabecalho|safe }}</thead><tbody>
+        {% for d in asis %}{% include "projeto_rede/_linha_doc.html" %}{% endfor %}
+    </tbody></table>
+    {% else %}
+    <div class="pr-vazio"><i class="fas fa-file-circle-plus"></i>Nenhum AS-IS gerado ainda.
+        {% if total_com_backup %}Use <strong>Gerar AS-IS</strong> para montar o primeiro a partir dos {{ total_com_backup }} backups disponíveis.
+        {% else %}Execute os backups dos equipamentos antes de gerar o AS-IS.{% endif %}</div>
+    {% endif %}
+</div>
+
+<div class="pr-card pr-bloco">
+    <div class="pr-card-cab">
+        <h6>3. Cenários de topologia TO-BE<small>Clone do mapa, editado no editor de topologia sem afetar o mapa real.</small></h6>
+        <div class="pr-acoes">
+            <select class="pr-select" id="cenOrigem" aria-label="Mapa de origem">
+                {% for mp in mapas %}<option value="{{ mp.id }}">{% if mp.pai_id %}↳ {% endif %}{{ mp.nome }}</option>{% empty %}<option value="">Mapa vazio</option>{% endfor %}
+            </select>
+            <button type="button" class="pr-btn pr-btn-primario" id="btnNovoCenario"><i class="fas fa-diagram-project"></i> Novo cenário</button>
+        </div>
+    </div>
+    {% if cenarios %}
     <table class="pr-tabela">
-        <thead>
-            <tr><th>Documento</th><th>Versão</th><th>Status</th><th>Última alteração</th><th></th></tr>
-        </thead>
+        <thead><tr><th>Cenário</th><th>Conteúdo</th><th>Última alteração</th><th></th></tr></thead>
         <tbody>
-        {% for d in documentos %}
+        {% for c in cenarios %}
             <tr>
+                <td><a class="pr-doc-titulo" href="{% url 'projeto_rede:cenario_editor' c.id %}" target="_blank" rel="noopener">{{ c.nome }}</a>
+                    <div class="pr-muted">a partir de {{ c.origem.nome|default:"mapa vazio" }}</div></td>
                 <td>
-                    <a class="pr-doc-titulo" href="{% url 'projeto_rede:editor' d.id %}">{{ d.titulo }}</a>
-                    <div class="pr-muted">{{ d.get_tipo_display }} · criado em {{ d.criado_em|date:"d/m/Y H:i" }}{% if d.criado_por %} por {{ d.criado_por.get_full_name|default:d.criado_por.username }}{% endif %}</div>
+                    <span class="pr-tag">{{ c.info.nos }} nós</span><span class="pr-tag">{{ c.info.enlaces }} enlaces</span>
+                    <span class="pr-tag">{{ c.info.com_papel }} com papel</span>
+                    {% if c.info.novos %}<span class="pr-tag" style="color:#3fb950">{{ c.info.novos }} novo(s)</span>{% endif %}
+                    {% if c.info.remover %}<span class="pr-tag" style="color:#e06060">{{ c.info.remover }} a remover</span>{% endif %}
                 </td>
-                <td style="font-variant-numeric:tabular-nums;">{{ d.versao }}</td>
-                <td><span class="pr-status pr-status-{{ d.status }}">{{ d.get_status_display }}</span></td>
-                <td>
-                    {{ d.atualizado_em|date:"d/m/Y H:i" }}
-                    {% if d.atualizado_por %}<div class="pr-muted">{{ d.atualizado_por.get_full_name|default:d.atualizado_por.username }}</div>{% endif %}
-                </td>
-                <td>
-                    <div class="pr-acoes">
-                        <a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:editor' d.id %}"><i class="fas fa-pen"></i> Editar</a>
-                        <a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:visualizar' d.id %}" target="_blank" rel="noopener"><i class="fas fa-eye"></i> Visualizar</a>
-                        <a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:pdf' d.id %}"><i class="fas fa-file-pdf"></i> PDF</a>
-                        <a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:docx' d.id %}"><i class="fas fa-file-word"></i> DOCX</a>
-                    </div>
-                </td>
+                <td>{{ c.atualizado_em|date:"d/m/Y H:i" }}</td>
+                <td><div class="pr-acoes">
+                    <a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:cenario_editor' c.id %}" target="_blank" rel="noopener"><i class="fas fa-pen"></i> Editar</a>
+                    <button type="button" class="pr-btn pr-btn-sm" data-excluir-cenario="{% url 'projeto_rede:cenario_excluir' c.id %}" data-nome="{{ c.nome }}" title="Excluir cenário"><i class="fas fa-trash"></i></button>
+                </div></td>
             </tr>
         {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <div class="pr-vazio">
-        <i class="fas fa-file-circle-plus"></i>
-        Nenhum documento gerado ainda.<br>
-        {% if total_com_backup %}Use <strong>Gerar AS-IS</strong> para montar o primeiro a partir dos {{ total_com_backup }} backups disponíveis.
-        {% else %}Execute os backups dos equipamentos antes de gerar o AS-IS.{% endif %}
-    </div>
+    <div class="pr-vazio"><i class="fas fa-diagram-project"></i>Nenhum cenário. No editor, cada nó e enlace ganha um bloco <strong>TO-BE</strong>
+        (papel RR01/RR02/BNG, novo/remover, MTU alvo, lote).</div>
     {% endif %}
 </div>
 
+<div class="pr-card pr-bloco">
+    <div class="pr-card-cab">
+        <h6>4. Change Plan TO-BE<small>Waves de mudança calculadas da diferença entre AS-IS, HLD e cenário.</small></h6>
+        <div class="pr-acoes">
+            <a class="pr-btn pr-btn-primario" href="{% url 'projeto_rede:tobe_novo' cliente.id %}"><i class="fas fa-route"></i> Novo Change Plan</a>
+        </div>
+    </div>
+    {% if planos %}
+    <table class="pr-tabela"><thead>{{ cabecalho|safe }}</thead><tbody>
+        {% for d in planos %}{% include "projeto_rede/_linha_doc.html" %}{% endfor %}
+    </tbody></table>
+    {% else %}
+    <div class="pr-vazio"><i class="fas fa-route"></i>Nenhum plano. Crie o HLD e o AS-IS (e, se quiser, um cenário) e use <strong>Novo Change Plan</strong>.</div>
+    {% endif %}
+</div>
+{% endwith %}
 </div>
 
 <script>
 (function () {
-    const btn = document.getElementById('btnGerar');
-    if (!btn) return;
     const csrf = () => (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
-    btn.addEventListener('click', async () => {
+    async function post(url, corpo) {
+        const r = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrf(), 'Content-Type': 'application/json' },
+                                     body: JSON.stringify(corpo || {}) });
+        const j = await r.json().catch(() => ({ ok: false, erro: `Resposta inesperada do servidor (HTTP ${r.status}).` }));
+        if (!j.ok) throw new Error(j.erro || 'Falha na operação.');
+        return j;
+    }
+    function falha(e) { uiAlert({ titulo: 'Não foi possível concluir', msg: e.message, icone: 'fas fa-times-circle', iconeCor: '#e06060' }); }
+
+    const btn = document.getElementById('btnGerar');
+    btn && btn.addEventListener('click', async () => {
         const ok = await uiConfirm({
             titulo: 'Gerar AS-IS',
             msg: 'O sistema vai ler o backup mais recente de cada equipamento, a topologia e o cadastro, e criar um novo documento em rascunho. Continuar?',
@@ -133,19 +217,41 @@ table.pr-tabela tr:last-child td { border-bottom:none; }
         if (!ok) return;
         btn.disabled = true;
         document.getElementById('progresso').classList.add('ativo');
-        try {
-            const r = await fetch('{% url "projeto_rede:gerar_asis" cliente.id %}', {
-                method: 'POST', headers: { 'X-CSRFToken': csrf(), 'Content-Type': 'application/json' }, body: '{}',
-            });
-            const j = await r.json().catch(() => ({ ok: false, erro: `Resposta inesperada do servidor (HTTP ${r.status}).` }));
-            if (!j.ok) throw new Error(j.erro || 'Falha ao gerar o documento.');
-            window.location.href = j.url;
-        } catch (e) {
-            btn.disabled = false;
-            document.getElementById('progresso').classList.remove('ativo');
-            uiAlert({ titulo: 'Não foi possível gerar', msg: e.message, icone: 'fas fa-times-circle', iconeCor: '#e06060' });
-        }
+        try { window.location.href = (await post('{% url "projeto_rede:gerar_asis" cliente.id %}')).url; }
+        catch (e) { btn.disabled = false; document.getElementById('progresso').classList.remove('ativo'); falha(e); }
     });
+
+    const btnHld = document.getElementById('btnNovoHld');
+    btnHld.addEventListener('click', async () => {
+        const asn = document.getElementById('hldAsn').value.replace(/\D/g, '');
+        const ok = await uiConfirm({
+            titulo: 'Novo HLD',
+            msg: 'Cria o HLD a partir do modelo ISP padrão' + (asn ? ` com o AS${asn}` : ', usando o ASN e os papéis sugeridos pelos backups')
+                 + '. Depois você ajusta a convenção antes de gerar o texto final.',
+            icone: 'fas fa-sitemap', iconeCor: '#3fb950', btnLabel: 'Criar', btnCor: '#3fb950',
+        });
+        if (!ok) return;
+        btnHld.disabled = true;
+        try { window.location.href = (await post('{% url "projeto_rede:gerar_hld" cliente.id %}', asn ? { asn } : {})).url; }
+        catch (e) { btnHld.disabled = false; falha(e); }
+    });
+
+    const btnCen = document.getElementById('btnNovoCenario');
+    btnCen.addEventListener('click', async () => {
+        const sel = document.getElementById('cenOrigem');
+        btnCen.disabled = true;
+        try {
+            const j = await post('{% url "projeto_rede:cenario_criar" cliente.id %}', { origem_id: sel.value || null });
+            window.open(j.url, '_blank', 'noopener');
+            window.location.reload();
+        } catch (e) { btnCen.disabled = false; falha(e); }
+    });
+
+    document.querySelectorAll('[data-excluir-cenario]').forEach(b => b.addEventListener('click', async () => {
+        const ok = await uiConfirm({ titulo: 'Excluir cenário', msg: `Excluir o cenário "${b.dataset.nome}"? Planos que o usam passam a usar a topologia atual.`, btnLabel: 'Excluir' });
+        if (!ok) return;
+        try { await post(b.dataset.excluirCenario); window.location.reload(); } catch (e) { falha(e); }
+    }));
 })();
 </script>
 {% endblock %}

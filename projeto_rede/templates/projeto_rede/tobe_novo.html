@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+{% csrf_token %}
+<style>
+.tn-pagina { padding: 20px 24px 60px; max-width: 900px; margin: 0 auto; }
+.tn-voltar { display:inline-flex; gap:6px; align-items:center; color:var(--text-muted); font-size:.78rem; text-decoration:none; margin-bottom:10px; }
+.tn-voltar:hover { color:var(--accent-cyan); }
+.tn-card { background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:18px 20px; margin-top:14px; }
+.tn-campo { margin-bottom:16px; }
+.tn-campo label { display:block; font-weight:600; font-size:.84rem; margin-bottom:4px; }
+.tn-campo small { display:block; color:var(--text-muted); font-size:.74rem; margin-top:4px; }
+.tn-campo select { width:100%; background:var(--dark-bg); color:var(--text-light); border:1px solid var(--border); border-radius:6px; padding:8px 10px; font-size:.84rem; }
+.tn-btn { display:inline-flex; align-items:center; gap:6px; background:transparent; border:1px solid var(--primary-green); color:var(--primary-green);
+          border-radius:6px; padding:8px 16px; font-size:.84rem; cursor:pointer; }
+.tn-btn:hover { background:rgba(63,185,80,.1); }
+.tn-btn:disabled { opacity:.5; cursor:progress; }
+.tn-alerta { color:#d29922; font-size:.78rem; }
+</style>
+<div class="tn-pagina">
+<a class="tn-voltar" href="{% url 'projeto_rede:lista' cliente.id %}"><i class="fas fa-arrow-left"></i> Arquitetura de {{ cliente.nome_empresa }}</a>
+<h4 style="margin:0;"><i class="fas fa-route me-1" style="color:var(--accent-cyan)"></i> Novo Change Plan TO-BE</h4>
+<div style="color:var(--text-muted);font-size:.84rem;margin-top:4px;">
+    O plano é calculado com os backups atuais, a convenção do HLD e a topologia alvo. Na próxima tela você revisa os
+    mapeamentos que a análise não tem como adivinhar (VRFs, contratantes, papéis e BNG de destino).
+</div>
+
+<div class="tn-card">
+    <div class="tn-campo">
+        <label for="tnHld">HLD (convenção)</label>
+        <select id="tnHld">
+            {% for d in hlds %}<option value="{{ d.id }}">{{ d.titulo }} — v{{ d.versao }} ({{ d.get_status_display }})</option>{% endfor %}
+            <option value="">Modelo ISP padrão (sem HLD do cliente)</option>
+        </select>
+        {% if not hlds %}<small class="tn-alerta">Nenhum HLD cadastrado: o plano usará o modelo padrão. Recomendado criar o HLD antes.</small>{% endif %}
+    </div>
+    <div class="tn-campo">
+        <label for="tnAsis">AS-IS de referência</label>
+        <select id="tnAsis">
+            {% for d in asis %}<option value="{{ d.id }}">{{ d.titulo }} — v{{ d.versao }} ({{ d.atualizado_em|date:"d/m/Y" }})</option>{% endfor %}
+            <option value="">Nenhum (usar só os backups atuais)</option>
+        </select>
+        <small>O plano sempre recalcula o estado a partir dos backups atuais; o AS-IS escolhido entra como documento de referência.</small>
+    </div>
+    <div class="tn-campo">
+        <label for="tnCenario">Cenário de topologia TO-BE</label>
+        <select id="tnCenario">
+            {% for c in cenarios %}<option value="{{ c.id }}">{{ c.nome }} ({{ c.atualizado_em|date:"d/m/Y H:i" }})</option>{% endfor %}
+            <option value="">Sem cenário (topologia atual + papéis nos mapeamentos)</option>
+        </select>
+        <small>No cenário ficam os papéis RR01/RR02/BNG, equipamentos novos ou a remover, MTU alvo e lote de cada enlace.</small>
+    </div>
+    <button type="button" class="tn-btn" id="tnGerar"><i class="fas fa-wand-magic-sparkles"></i> Gerar plano</button>
+    <span id="tnProg" style="display:none;color:var(--text-muted);font-size:.8rem;margin-left:10px;"><i class="fas fa-spinner fa-spin"></i> Analisando…</span>
+</div>
+</div>
+<script>
+(function () {
+    const csrf = () => (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
+    const btn = document.getElementById('tnGerar');
+    btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        document.getElementById('tnProg').style.display = '';
+        const val = (id) => document.getElementById(id).value || null;
+        try {
+            const r = await fetch('{% url "projeto_rede:gerar_tobe" cliente.id %}', {
+                method: 'POST', headers: { 'X-CSRFToken': csrf(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ hld_id: val('tnHld'), asis_id: val('tnAsis'), cenario_id: val('tnCenario') }) });
+            const j = await r.json().catch(() => ({ ok: false, erro: `HTTP ${r.status}` }));
+            if (!j.ok) throw new Error(j.erro || 'Falha ao gerar.');
+            window.location.href = j.url;
+        } catch (e) {
+            btn.disabled = false;
+            document.getElementById('tnProg').style.display = 'none';
+            uiAlert({ titulo: 'Não foi possível gerar', msg: e.message, icone: 'fas fa-times-circle', iconeCor: '#e06060' });
+        }
+    });
+})();
+</script>
+{% endblock %}

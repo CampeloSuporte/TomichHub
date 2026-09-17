@@ -15,6 +15,16 @@ const TOPO_IMPORT_TIERS = [
 // batem exatamente no limite; os mapas de backbone reais ficam bem acima.
 const TOPO_PESO_LEVE = 60;
 
+// Modo cenário TO-BE: definido pelo template quando o editor é aberto a partir
+// de projeto_rede (salva no cenário, sem sub-mapas nem agrupamento).
+const TOPO_CENARIO = window.TOPO_CENARIO || null;
+
+function _tobePapeis(t) {
+  if (!t) return [];
+  if (Array.isArray(t.papeis)) return t.papeis;
+  return t.papel ? String(t.papel).split(/[,+\s]+/).filter(Boolean) : [];
+}
+
 // Ordem crescente de "peso" das interfaces — usada só ao agrupar hosts, para
 // escolher qual dos enlaces do vizinho vira o enlace único que liga ele ao
 // ícone do grupo (fica o mais rápido; os demais viram o rótulo "N enlaces").
@@ -706,6 +716,7 @@ class TopoEditor {
   _abrirOuCriarSubmapa(id) {
     const node = this.nodes.find(n => n.id === id);
     if (!node) return;
+    if (TOPO_CENARIO) { this._toast('Sub-mapas não se aplicam ao cenário TO-BE', 'error'); return; }
     if (node.submap_id) {
       window.location.href = `/clientes/${this.clienteId}/topologia/editor/?diagrama=${node.submap_id}`;
       return;
@@ -783,6 +794,7 @@ class TopoEditor {
   }
 
   async agruparSelecionados() {
+    if (TOPO_CENARIO) { this._toast('Agrupar não se aplica ao cenário TO-BE', 'error'); return; }
     if (this.selectedNodes.size < 2) {
       this._toast('Segure Ctrl e clique nos dispositivos para selecionar (2 ou mais)', 'error');
       return;
@@ -1137,6 +1149,7 @@ class TopoEditor {
       w: 64, h: 64,
       ...extra
     };
+    if (TOPO_CENARIO && !node.tobe) node.tobe = {estado: 'novo'};
     this.nodes.push(node);
     this._renderNode(node);
     this._updateStatus();
@@ -1161,6 +1174,7 @@ class TopoEditor {
       iface_a:   extra.iface_a   || '',          // interface lado A (ex: eth0, ge0/0/1)
       iface_b:   extra.iface_b   || '',          // interface lado B
     };
+    if (TOPO_CENARIO) link.tobe = extra.tobe || {estado: 'novo', papel: 'principal'};
     this.links.push(link);
     this._renderLink(link);
     this._updateStatus();
@@ -1193,6 +1207,9 @@ class TopoEditor {
     // Anel pulsante (CSS) só em nodes vinculados a um Acesso real do CRM —
     // ver `.node[data-live="1"] .node-ring` no <style> do template.
     if (node.acesso_id) el.dataset.live = '1'; else delete el.dataset.live;
+    const tobe = TOPO_CENARIO ? (node.tobe || {}) : null;
+    el.classList.toggle('tobe-novo', !!tobe && tobe.estado === 'novo');
+    el.classList.toggle('tobe-remover', !!tobe && tobe.estado === 'remover');
 
     if (node.type === 'area') {
       el.classList.add('area-node');
@@ -1272,6 +1289,9 @@ class TopoEditor {
       <rect class="node-label-bg" x="${-lblBgW/2}" y="${hh+7}" width="${lblBgW}" height="${lblBgH}" rx="7"/>
       <text x="0" y="${hh+19}" text-anchor="middle" font-size="11" font-weight="600" fill="#e6edf3" font-family="'Segoe UI',sans-serif" letter-spacing=".1">${this._esc(node.label)}</text>
       ${node.ip ? `<text x="0" y="${hh+31}" text-anchor="middle" font-size="9" font-weight="700" fill="${c}" fill-opacity=".85" font-family="'Courier New',monospace">${this._esc(node.ip)}</text>` : ''}
+      ${tobe && _tobePapeis(tobe).length ? `<g class="tobe-badge" transform="translate(0,${-hh-12})">
+          <rect x="${-(_tobePapeis(tobe).join(' · ').length * 3.3 + 8)}" y="-9" width="${_tobePapeis(tobe).join(' · ').length * 6.6 + 16}" height="17" rx="8.5"/>
+          <text text-anchor="middle" y="3.5">${this._esc(_tobePapeis(tobe).join(' · '))}</text></g>` : ''}
       <circle class="anchor" data-dir="N" cx="0" cy="${-hh}" r="5.5" fill="#0d1117" stroke="${c}" stroke-width="2.5"/>
       <circle class="anchor" data-dir="S" cx="0" cy="${hh}"  r="5.5" fill="#0d1117" stroke="${c}" stroke-width="2.5"/>
       <circle class="anchor" data-dir="W" cx="${-hw}" cy="0" r="5.5" fill="#0d1117" stroke="${c}" stroke-width="2.5"/>
@@ -1477,6 +1497,12 @@ class TopoEditor {
       ${ifAHtml}${ifBHtml}
       ${labelHtml}`;
 
+    if (TOPO_CENARIO) {
+      const t = link.tobe || {};
+      linkGroup.classList.toggle('tobe-novo', t.estado === 'novo');
+      linkGroup.classList.toggle('tobe-remover', t.estado === 'remover');
+      linkGroup.classList.toggle('tobe-alternativo', t.papel === 'alternativo' || t.papel === 'ultimo_recurso');
+    }
     linkGroup.querySelector('.link-hit').addEventListener('click', e => {
       e.stopPropagation();
       this._select('link', link.id);
@@ -1615,6 +1641,7 @@ class TopoEditor {
         <i class="fas fa-diagram-project"></i> Criar sub-mapa
       </button>`;
 
+    const tobeHtml = TOPO_CENARIO ? this._tobeNodeHtml(node) : '';
     const l2vpnHtml = node.acesso_id ? `
       <button class="prop-btn" id="btn-l2vpn"
         style="background:rgba(188,140,255,.12);border-color:var(--purple);color:var(--purple);margin:0 0 12px"
@@ -1652,7 +1679,7 @@ class TopoEditor {
       </div>
       ${l2vpnHtml}
       ${ponHtml}
-      ${submapHtml}
+      ${TOPO_CENARIO ? '' : submapHtml}
       <div class="prop-group">
         <label class="prop-label">Nome</label>
         <input class="prop-input" id="pn-label" value="${this._esc(node.label)}">
@@ -1670,6 +1697,7 @@ class TopoEditor {
         <label class="prop-label">Cor</label>
         <input type="color" class="prop-input" id="pn-color" value="${node.color}" style="height:36px;padding:2px">
       </div>
+      ${tobeHtml}
       ${accessHtml}
       <button class="prop-btn primary" onclick="topo._applyNodeProps('${id}')"><i class="fas fa-check"></i> Aplicar</button>
       <button class="prop-btn danger" onclick="topo._deleteSelected()"><i class="fas fa-trash"></i> Remover</button>`;
@@ -1767,6 +1795,7 @@ class TopoEditor {
     const hEl = document.getElementById('pn-h');
     if (hEl) node.h = Math.max(50, parseInt(hEl.value) || node.h);
     node.color = document.getElementById('pn-color').value;
+    if (TOPO_CENARIO) this._applyTobeNode(node);
     const typeEl = document.getElementById('pn-type');
     if (typeEl && typeEl.value !== node.type) {
       node.type = typeEl.value;
@@ -2774,6 +2803,7 @@ class TopoEditor {
         <strong>Duplo-clique</strong> em um waypoint para removê-lo.
         ${wps.length > 0 ? `<br><br><button class="prop-btn" onclick="topo._clearWaypoints('${id}')" style="margin-top:4px"><i class="fas fa-minus-circle"></i> Limpar waypoints (${wps.length})</button>` : ''}
       </div>
+      ${TOPO_CENARIO ? this._tobeLinkHtml(link) : ''}
       <button class="prop-btn" onclick="topo._applyLinkProps('${id}')"><i class="fas fa-check"></i> Aplicar</button>
       <button class="prop-btn danger" onclick="topo._deleteSelected()"><i class="fas fa-trash"></i> Remover</button>`;
 
@@ -2871,10 +2901,84 @@ class TopoEditor {
     link.vlan      = document.getElementById('pl-vlan').value;
     link.style     = document.getElementById('pl-style').value;
     link.shape     = document.getElementById('pl-shape').value;
+    if (TOPO_CENARIO) this._applyTobeLink(link);
     this._renderLink(link);
     this._renderLinkHandles(link);
     this._setDirty();
     this._toast('Aplicado');
+  }
+
+  // ── Cenário TO-BE (projeto_rede) ────────────────────────────────────────
+  // Atributos de alvo ficam em node.tobe / link.tobe e só existem no cenário;
+  // o motor do Change Plan (projeto_rede/tobe.py) é quem os interpreta.
+
+  _tobeNodeHtml(node) {
+    const t = node.tobe || {};
+    const papeis = _tobePapeis(t);
+    const est = t.estado || 'manter';
+    const chk = TOPO_CENARIO.papeis.map(p => `
+      <label class="tobe-chk"><input type="checkbox" class="pn-tobe-papel" value="${p}" ${papeis.includes(p) ? 'checked' : ''}> ${p}</label>`).join('');
+    const bngs = ['', ...TOPO_CENARIO.bngs].map(b => `<option value="${b}" ${t.bng_destino === b ? 'selected' : ''}>${b || '—'}</option>`).join('');
+    return `
+      <div class="prop-group tobe-box">
+        <label class="prop-label" style="color:var(--green)"><i class="fas fa-route"></i> TO-BE</label>
+        <label class="prop-label">Estado</label>
+        <select class="prop-select" id="pn-tobe-estado">
+          <option value="manter" ${est === 'manter' ? 'selected' : ''}>Manter</option>
+          <option value="novo" ${est === 'novo' ? 'selected' : ''}>Novo equipamento</option>
+          <option value="remover" ${est === 'remover' ? 'selected' : ''}>Remover (legado)</option>
+        </select>
+        <label class="prop-label" style="margin-top:8px">Papéis-alvo</label>
+        <div class="tobe-chks">${chk}</div>
+        <label class="prop-label" style="margin-top:8px">Loopback alvo</label>
+        <input class="prop-input" id="pn-tobe-loopback" placeholder="198.18.248.1/32" value="${this._esc(t.loopback || '')}">
+        <label class="prop-label" style="margin-top:8px">BNG de destino (POP com BNG remoto)</label>
+        <select class="prop-select" id="pn-tobe-bng">${bngs}</select>
+      </div>`;
+  }
+
+  _applyTobeNode(node) {
+    const t = Object.assign({}, node.tobe || {});
+    t.estado = document.getElementById('pn-tobe-estado').value;
+    t.papeis = Array.from(document.querySelectorAll('.pn-tobe-papel:checked')).map(i => i.value);
+    delete t.papel;
+    t.loopback = document.getElementById('pn-tobe-loopback').value.trim();
+    t.bng_destino = document.getElementById('pn-tobe-bng').value;
+    node.tobe = t;
+  }
+
+  _tobeLinkHtml(link) {
+    const t = link.tobe || {};
+    const opt = (v, r, atual) => `<option value="${v}" ${atual === v ? 'selected' : ''}>${r}</option>`;
+    return `
+      <div class="prop-group tobe-box">
+        <label class="prop-label" style="color:var(--green)"><i class="fas fa-route"></i> TO-BE</label>
+        <label class="prop-label">Estado</label>
+        <select class="prop-select" id="pl-tobe-estado">
+          ${opt('manter', 'Manter', t.estado || 'manter')}${opt('novo', 'Novo enlace', t.estado)}${opt('remover', 'Remover (legado)', t.estado)}
+        </select>
+        <label class="prop-label" style="margin-top:8px">Papel</label>
+        <select class="prop-select" id="pl-tobe-papel">
+          ${opt('principal', 'Principal', t.papel || 'principal')}${opt('alternativo', 'Alternativo', t.papel)}${opt('ultimo_recurso', 'Último recurso', t.papel)}
+        </select>
+        <label class="prop-label" style="margin-top:8px">MTU alvo</label>
+        <input class="prop-input" id="pl-tobe-mtu" inputmode="numeric" placeholder="vazio = valor do HLD/LLD" value="${this._esc(t.mtu_alvo || '')}">
+        <label class="prop-label" style="margin-top:8px">Custo OSPF alvo</label>
+        <input class="prop-input" id="pl-tobe-custo" inputmode="numeric" placeholder="opcional" value="${this._esc(t.custo || '')}">
+        <label class="prop-label" style="margin-top:8px">Lote de execução (Wave 1)</label>
+        <input class="prop-input" id="pl-tobe-lote" inputmode="numeric" placeholder="vazio = automático" value="${this._esc(t.lote || '')}">
+      </div>`;
+  }
+
+  _applyTobeLink(link) {
+    const num = (id) => document.getElementById(id).value.replace(/[^0-9]/g, '');
+    link.tobe = Object.assign({}, link.tobe || {}, {
+      estado: document.getElementById('pl-tobe-estado').value,
+      papel: document.getElementById('pl-tobe-papel').value,
+      mtu_alvo: num('pl-tobe-mtu'),
+      custo: num('pl-tobe-custo'),
+      lote: num('pl-tobe-lote'),
+    });
   }
 
   _clearWaypoints(id) {
@@ -3128,7 +3232,9 @@ class TopoEditor {
     const payload = {nome, dados_json: JSON.stringify({nodes:this.nodes, links:this.links}), diagrama_id: this.diagramaId};
     const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
     try {
-      const r = await fetch(`/clientes/${this.clienteId}/topologia/salvar/`, {
+      // Cenário TO-BE (projeto_rede) grava no próprio cenário, nunca no mapa real.
+      const url = TOPO_CENARIO ? TOPO_CENARIO.salvarUrl : `/clientes/${this.clienteId}/topologia/salvar/`;
+      const r = await fetch(url, {
         method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf},
         body: JSON.stringify(payload)
       });

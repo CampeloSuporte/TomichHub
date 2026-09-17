@@ -145,10 +145,11 @@ Bloqueio por força bruta no login (3 senhas erradas trancam a conta por 5 min; 
 
 ### `projeto_rede` — Documentos de arquitetura (AS-IS / TO-BE)
 
-Gera o **AS-IS da infraestrutura** de um cliente a partir dos backups de configuração (extratores
-dedicados para Huawei VRP e MikroTik), da topologia e do cadastro. O documento é editável no próprio
-sistema, tem revisões e é exportado em PDF (Chrome headless) e DOCX (python-docx). Exclusivo do
-Administrador. Ver [docs/PROJETO_REDE_ASIS.md](docs/PROJETO_REDE_ASIS.md).
+Documentação de arquitetura por cliente: **HLD** (convenção reutilizável), **AS-IS** gerado dos backups
+de configuração (extratores dedicados para Huawei VRP e MikroTik), **cenário de topologia TO-BE** e
+**Change Plan TO-BE** calculado da diferença entre eles. Documentos editáveis no próprio sistema, com
+revisões e exportação em PDF (Chrome headless) e DOCX (python-docx). Exclusivo do Administrador. Ver
+[docs/PROJETO_REDE_ASIS.md](docs/PROJETO_REDE_ASIS.md) e [docs/PROJETO_REDE_TOBE.md](docs/PROJETO_REDE_TOBE.md).
 
 **URLs principais:** `/projetos-rede/`
 

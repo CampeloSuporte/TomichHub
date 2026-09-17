@@ -1,0 +1,22 @@
+<tr>
+    <td>
+        <a class="pr-doc-titulo" href="{% url 'projeto_rede:editor' d.id %}">{{ d.titulo }}</a>
+        <div class="pr-muted">criado em {{ d.criado_em|date:"d/m/Y H:i" }}{% if d.criado_por %} por {{ d.criado_por.get_full_name|default:d.criado_por.username }}{% endif %}</div>
+    </td>
+    <td style="font-variant-numeric:tabular-nums;">{{ d.versao }}</td>
+    <td><span class="pr-status pr-status-{{ d.status }}">{{ d.get_status_display }}</span></td>
+    <td>
+        {{ d.atualizado_em|date:"d/m/Y H:i" }}
+        {% if d.atualizado_por %}<div class="pr-muted">{{ d.atualizado_por.get_full_name|default:d.atualizado_por.username }}</div>{% endif %}
+    </td>
+    <td>
+        <div class="pr-acoes">
+            <a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:editor' d.id %}"><i class="fas fa-pen"></i> Editar</a>
+            {% if d.tipo == 'hld' %}<a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:convencao' d.id %}"><i class="fas fa-sliders"></i> Convenção</a>{% endif %}
+            {% if d.tipo == 'change_plan' %}<a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:tobe_mapeamentos' d.id %}"><i class="fas fa-right-left"></i> Mapeamentos</a>{% endif %}
+            <a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:visualizar' d.id %}" target="_blank" rel="noopener" title="Visualizar"><i class="fas fa-eye"></i></a>
+            <a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:pdf' d.id %}" title="Baixar PDF"><i class="fas fa-file-pdf"></i> PDF</a>
+            <a class="pr-btn pr-btn-sm" href="{% url 'projeto_rede:docx' d.id %}" title="Baixar DOCX"><i class="fas fa-file-word"></i> DOCX</a>
+        </div>
+    </td>
+</tr>

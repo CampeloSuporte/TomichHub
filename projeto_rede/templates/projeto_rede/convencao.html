@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block content %}
+{% csrf_token %}
+<style>
+.cv-pagina { padding: 20px 24px 60px; max-width: 1300px; margin: 0 auto; }
+.cv-voltar { display:inline-flex; gap:6px; align-items:center; color:var(--text-muted); font-size:.78rem; text-decoration:none; margin-bottom:10px; }
+.cv-voltar:hover { color:var(--accent-cyan); }
+.cv-barra { position:sticky; top:0; z-index:20; background:var(--dark-bg); padding:10px 0; border-bottom:1px solid var(--border);
+            display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+.cv-barra h4 { margin:0; font-size:1.05rem; }
+.cv-barra small { color:var(--text-muted); display:block; font-size:.76rem; }
+.cv-btn { display:inline-flex; align-items:center; gap:6px; background:transparent; border:1px solid var(--border); color:var(--text-light);
+          border-radius:6px; padding:7px 13px; font-size:.8rem; cursor:pointer; text-decoration:none; }
+.cv-btn:hover { border-color:var(--accent-cyan); color:var(--accent-cyan); }
+.cv-btn-primario { border-color:var(--primary-green); color:var(--primary-green); }
+.cv-btn-primario:hover { background:rgba(63,185,80,.1); color:var(--primary-green); border-color:var(--primary-green); }
+.cv-btn:disabled { opacity:.5; cursor:progress; }
+.cv-aviso { background:rgba(210,153,34,.1); border:1px solid rgba(210,153,34,.45); border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:.8rem; }
+.cv-aviso li { margin:3px 0; }
+.cv-card { background:var(--card-bg); border:1px solid var(--border); border-radius:8px; margin-bottom:14px; }
+.cv-card > summary { padding:11px 16px; cursor:pointer; font-weight:600; font-size:.86rem; list-style:none; display:flex; justify-content:space-between; }
+.cv-card > summary::-webkit-details-marker { display:none; }
+.cv-card > summary::after { content:'\25BE'; color:var(--text-muted); }
+.cv-card:not([open]) > summary::after { content:'\25B8'; }
+.cv-corpo { padding:4px 16px 16px; }
+.cv-grade { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:10px 16px; }
+.cv-campo label { display:block; font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); margin-bottom:3px; }
+.cv-campo input, .cv-campo textarea, table.cv-tab input {
+    width:100%; background:var(--dark-bg); border:1px solid var(--border); color:var(--text-light); border-radius:6px; padding:6px 9px; font-size:.8rem; }
+.cv-campo input:focus, .cv-campo textarea:focus, table.cv-tab input:focus { outline:none; border-color:var(--accent-cyan); }
+.cv-campo textarea { min-height:64px; resize:vertical; }
+.cv-campo.largo { grid-column:1 / -1; }
+table.cv-tab { width:100%; border-collapse:collapse; font-size:.8rem; }
+table.cv-tab th { text-align:left; font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); padding:6px 4px; }
+table.cv-tab td { padding:3px 4px; }
+table.cv-tab td.acao { width:34px; }
+.cv-rem { background:none; border:1px solid transparent; color:var(--text-muted); border-radius:5px; width:30px; height:30px; cursor:pointer; }
+.cv-rem:hover { border-color:#e06060; color:#e06060; }
+.cv-add { margin-top:8px; }
+.cv-prev { color:var(--text-muted); font-size:.72rem; margin-top:4px; }
+</style>
+
+<div class="cv-pagina">
+<a class="cv-voltar" href="{% url 'projeto_rede:lista' cliente.id %}"><i class="fas fa-arrow-left"></i> Arquitetura de {{ cliente.nome_empresa }}</a>
+<div class="cv-barra">
+    <div>
+        <h4><i class="fas fa-sliders me-1" style="color:var(--accent-cyan)"></i> Convenção — {{ doc.titulo }}</h4>
+        <small>Dados estruturados do HLD. Ao salvar, as seções automáticas do documento são recalculadas (uma revisão é guardada antes).</small>
+    </div>
+    <div style="display:flex;gap:8px;">
+        <a class="cv-btn" href="{% url 'projeto_rede:editor' doc.id %}"><i class="fas fa-file-lines"></i> Documento</a>
+        <button type="button" class="cv-btn cv-btn-primario" id="btnSalvarConv"><i class="fas fa-floppy-disk"></i> Salvar e atualizar HLD</button>
+    </div>
+</div>
+
+<div class="cv-aviso" id="cvAvisos" {% if not avisos %}hidden{% endif %}>
+    <strong><i class="fas fa-triangle-exclamation me-1" style="color:#d29922"></i> Validações técnicas</strong>
+    <ul id="cvAvisosLista" style="margin:4px 0 0;padding-left:18px;">{% for a in avisos %}<li>{{ a }}</li>{% endfor %}</ul>
+</div>
+
+<div id="cvForm"></div>
+</div>
+
+{{ conv|json_script:"cv-dados" }}
+{{ campos|json_script:"cv-campos" }}
+{{ tabelas|json_script:"cv-tabelas" }}
+<script>
+(function () {
+'use strict';
+const CONV = JSON.parse(document.getElementById('cv-dados').textContent);
+const CAMPOS = JSON.parse(document.getElementById('cv-campos').textContent);
+const TABELAS = JSON.parse(document.getElementById('cv-tabelas').textContent);
+const LISTAS = [['regras_communities', 'Regras de communities'], ['uplinks', 'Uplinks e Content']];
+const TEXTOS = [['acesso_regra', 'Regra de acesso (BNG)'], ['ix_isolamento', 'Isolamento do IX']];
+const GRUPOS = [
+    ['Identidade e papéis', ['asn', 'prefixo_v6', 'bloco_v6_infra', 'rr01', 'rr02', 'familias_mpbgp', 'evpn', 'bng01', 'bng02', 'cgnat_modo']],
+    ['Underlay e MTU', ['ospf_processo', 'ospf_area', 'router_id', 'p2p_v4', 'p2p_v6', 'labels', 'ldp_sync', 'bfd_tx', 'bfd_rx', 'bfd_mult', 'ecmp', 'rsvp', 'igp_escopo', 'mtu_alvo', 'mpls_mtu_alvo']],
+    ['Políticas e textos', ['lp_rtbh', 'lp_fullbogons', 'rd_padrao', 'regra_de_ouro', 'frase']],
+];
+const csrf = () => (document.querySelector('[name=csrfmiddlewaretoken]') || {}).value || '';
+const form = document.getElementById('cvForm');
+let sujo = false;
+const el = (tag, attrs = {}, ...filhos) => { const e = document.createElement(tag); Object.entries(attrs).forEach(([k, v]) => k === 'class' ? e.className = v : e.setAttribute(k, v)); filhos.forEach(f => e.append(f)); return e; };
+function card(titulo, corpo, aberto = true) {
+    const d = el('details', { class: 'cv-card' }, el('summary', {}, titulo), el('div', { class: 'cv-corpo' }, corpo));
+    if (aberto) d.open = true;
+    return d;
+}
+function comunidade(valor) {
+    const asn = document.querySelector('[data-campo=asn]').value.trim();
+    const v = String(valor || '').trim();
+    if (!asn || !/^\d+([-–]\d+)?$/.test(v)) return '';
+    const fmt = (x) => Number(asn) > 65535 ? `${asn}:${x}:0` : `${asn}:${x}`;
+    const [a, b] = v.split(/[-–]/);
+    return b ? `${fmt(a)} a ${fmt(b)}` : fmt(a);
+}
+const DICA = Object.fromEntries(CAMPOS.map(([k, r, d]) => [k, [r, d]]));
+GRUPOS.forEach(([titulo, chaves]) => {
+    const grade = el('div', { class: 'cv-grade' });
+    chaves.forEach(k => {
+        const [rot, dica] = DICA[k] || [k, ''];
+        const longo = ['regra_de_ouro', 'frase', 'cgnat_modo'].includes(k);
+        const input = longo ? el('textarea', { 'data-campo': k, placeholder: dica }) : el('input', { 'data-campo': k, placeholder: dica });
+        input.value = CONV[k] || '';
+        grade.append(el('div', { class: 'cv-campo' + (longo ? ' largo' : '') }, el('label', {}, rot), input));
+    });
+    form.append(card(titulo, grade, titulo !== 'Políticas e textos'));
+});
+TABELAS.forEach(([chave, titulo, colunas]) => {
+    const corpo = el('tbody');
+    const comCommunity = ['communities_internas', 'communities_publicas', 'lp_classes'].includes(chave);
+    const linha = (dados = {}) => {
+        const tr = el('tr', { 'data-linha': chave });
+        colunas.forEach(([campo]) => {
+            const inp = el('input', { 'data-col': campo });
+            inp.value = dados[campo] || '';
+            const td = el('td', {}, inp);
+            if (comCommunity && (campo === 'faixa' || campo === 'community')) {
+                const prev = el('div', { class: 'cv-prev' });
+                const upd = () => { prev.textContent = comunidade(inp.value); };
+                inp.addEventListener('input', upd); upd();
+                td.append(prev);
+            }
+            tr.append(td);
+        });
+        const rem = el('button', { type: 'button', class: 'cv-rem', title: 'Remover linha', 'aria-label': 'Remover linha' }, el('i', { class: 'fas fa-xmark' }));
+        rem.addEventListener('click', () => { tr.remove(); sujo = true; });
+        tr.append(el('td', { class: 'acao' }, rem));
+        return tr;
+    };
+    (CONV[chave] || []).forEach(d => corpo.append(linha(d)));
+    const add = el('button', { type: 'button', class: 'cv-btn cv-add' }, el('i', { class: 'fas fa-plus' }), ' Linha');
+    add.addEventListener('click', () => { corpo.append(linha()); sujo = true; });
+    const tab = el('table', { class: 'cv-tab' }, el('thead', {}, el('tr', {}, ...colunas.map(([, r]) => el('th', {}, r)), el('th'))), corpo);
+    form.append(card(titulo, el('div', {}, tab, add), false));
+});
+const extras = el('div', { class: 'cv-grade' });
+LISTAS.forEach(([k, r]) => { const t = el('textarea', { 'data-lista': k }); t.value = (CONV[k] || []).join('\n'); extras.append(el('div', { class: 'cv-campo largo' }, el('label', {}, r + ' (uma por linha)'), t)); });
+TEXTOS.forEach(([k, r]) => { const t = el('textarea', { 'data-texto': k }); t.value = CONV[k] || ''; extras.append(el('div', { class: 'cv-campo largo' }, el('label', {}, r), t)); });
+form.append(card('Regras e textos de apoio', extras, false));
+form.addEventListener('input', () => { sujo = true; });
+document.querySelector('[data-campo=asn]').addEventListener('input', () => form.querySelectorAll('.cv-prev').forEach(p => p.previousSibling.dispatchEvent(new Event('input'))));
+window.addEventListener('beforeunload', ev => { if (sujo) { ev.preventDefault(); ev.returnValue = ''; } });
+
+function coletar() {
+    const conv = {};
+    form.querySelectorAll('[data-campo]').forEach(i => { conv[i.dataset.campo] = i.value; });
+    TABELAS.forEach(([chave, , colunas]) => {
+        conv[chave] = Array.from(form.querySelectorAll(`tr[data-linha="${chave}"]`)).map(tr => {
+            const o = {}; colunas.forEach(([c]) => { o[c] = tr.querySelector(`[data-col="${c}"]`).value; }); return o;
+        });
+    });
+    form.querySelectorAll('[data-lista]').forEach(t => { conv[t.dataset.lista] = t.value.split('\n').map(x => x.trim()).filter(Boolean); });
+    form.querySelectorAll('[data-texto]').forEach(t => { conv[t.dataset.texto] = t.value; });
+    return conv;
+}
+const btn = document.getElementById('btnSalvarConv');
+btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try {
+        const r = await fetch('{% url "projeto_rede:salvar_convencao" doc.id %}', {
+            method: 'POST', headers: { 'X-CSRFToken': csrf(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ convencao: coletar(), regerar: true }) });
+        const j = await r.json().catch(() => ({ ok: false, erro: `HTTP ${r.status}` }));
+        if (!j.ok) throw new Error(j.erro || 'Falha ao salvar.');
+        sujo = false;
+        const lista = document.getElementById('cvAvisosLista');
+        lista.innerHTML = '';
+        (j.avisos || []).forEach(a => lista.append(el('li', {}, a)));
+        document.getElementById('cvAvisos').hidden = !(j.avisos || []).length;
+        const ir = await uiConfirm({ titulo: 'Convenção salva', msg: 'As seções automáticas do HLD foram recalculadas. Abrir o documento?',
+                                     icone: 'fas fa-check-circle', iconeCor: '#3fb950', btnLabel: 'Abrir documento', btnCor: '#3fb950' });
+        if (ir) window.location.href = j.url;
+    } catch (e) {
+        uiAlert({ titulo: 'Erro ao salvar', msg: e.message, icone: 'fas fa-times-circle', iconeCor: '#e06060' });
+    } finally { btn.disabled = false; }
+});
+})();
+</script>
+{% endblock %}

@@ -5,6 +5,45 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-17 (HLD reutilizável, cenário TO-BE e Change Plan)
+
+### Adicionado
+
+- **HLD — Arquitetura de rede** como documento estruturado e reutilizável para qualquer cliente: o
+  HLD Startnet virou o modelo padrão, parametrizado pelo ASN, pelo /32 IPv6 e pelos RRs/BNGs
+  sugeridos dos backups. Formulário **Convenção** (catálogo de VRFs, RTs, communities, LP, IX,
+  segurança, endereçamento, underlay, MTU alvo) que recalcula o documento.
+- **Communities no formato certo para o ASN**: ASN de 4 bytes usa large community `ASN:valor:0`
+  (RFC 8092), porque `272648:20000` não existe como community padrão; o HLD e o plano explicam e
+  validam (também RT > 16 bits e uso de 198.18.0.0/15).
+- **Cenário de topologia TO-BE**: clone do mapa editado no próprio editor de topologia em modo cenário
+  (grava só no cenário), com papéis-alvo múltiplos por nó (RR01/RR02/BNG01…), nós/enlaces novos ou a
+  remover, loopback alvo, BNG de destino, MTU alvo, custo e lote por enlace.
+- **Change Plan TO-BE** gerado pelo motor de diferenças (AS-IS + HLD + cenário + mapeamentos): waves
+  0–9 com itens `atual → alvo` por enlace, equipamento, VRF, serviço L2/L3 e sessão de borda; lotes
+  da Wave 1, papéis-alvo, decisões pendentes e referências. Tela **Fontes e mapeamentos** com
+  sugestões (VRF legada → catálogo, contratante de cada L2VPN, papéis, BNG de destino, communities).
+- Tela **Arquitetura de rede** do cliente reorganizada no fluxo HLD → AS-IS → cenário → plano.
+
+### Corrigido
+
+- O extrator guardava o IP das interfaces como endereço de rede (`172.24.64.0/29`); agora guarda o do
+  host (`172.24.64.1/29`), o que também melhora o mapa IP → equipamento do AS-IS.
+- Listas numeradas no DOCX recomeçam em 1 em cada lista (o estilo do Word continuava a numeração
+  do documento inteiro).
+
+### Detalhes
+
+- Migração `projeto_rede/0002_hld_tobe_cenario` (campo `dados`, tipo `hld`, tabela
+  `CenarioTopologia`). `topo_main.js` → `?v=48`; mudanças só valem com `window.TOPO_CENARIO`.
+- Extrator Huawei lê `ospf ldp-sync`, `ospf cost`, timers de BFD, `import-route` no OSPF,
+  `ppp mru`, `tcp adjust-mss` e `jumboframe`.
+- 44 testes (16 novos), incluindo o modo cenário num Chrome real.
+
+Detalhes em [docs/PROJETO_REDE_TOBE.md](docs/PROJETO_REDE_TOBE.md).
+
+---
+
 ## [Não publicado] — 2026-09-17 (AS-IS da infraestrutura gerado dos backups)
 
 ### Adicionado
