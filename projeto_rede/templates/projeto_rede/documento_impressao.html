@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>{{ meta.documento|default:doc.titulo }} — v{{ doc.versao }}</title>
+{% include "projeto_rede/_estilo_documento.html" %}
+<style>
+@page {
+    size: A4;
+    margin: 20mm 17mm 18mm 17mm;
+    @top-left {
+        content: {{ css_topo|safe }};
+        font-family: "Liberation Sans", Arial, sans-serif; font-size: 7.5pt; color: #667085;
+    }
+    @bottom-left {
+        content: {{ css_rodape|safe }};
+        font-family: "Liberation Sans", Arial, sans-serif; font-size: 7.5pt; color: #667085;
+    }
+    @bottom-right {
+        content: "Página " counter(page) " de " counter(pages);
+        font-family: "Liberation Sans", Arial, sans-serif; font-size: 7.5pt; color: #667085;
+    }
+}
+@page capa {
+    margin: 0;
+    @top-left { content: none; }
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
+}
+html, body { margin: 0; background: #fff; }
+{% if not para_pdf %}
+body { background: #e9edf1; padding: 24px 0; }
+.dr-pagina {
+    background: #fff; width: 210mm; margin: 0 auto 24px; padding: 20mm 17mm;
+    box-sizing: border-box; box-shadow: 0 2px 14px rgba(16,24,40,.12);
+}
+.dr-capa { min-height: 297mm; }
+.dr-barra-acoes {
+    position: sticky; top: 0; z-index: 5; display: flex; justify-content: center; gap: 8px;
+    margin: -24px 0 20px; padding: 10px; background: rgba(233,237,241,.94);
+    font-family: "Liberation Sans", Arial, sans-serif;
+}
+.dr-barra-acoes a, .dr-barra-acoes button {
+    border: 1px solid #0f6e7a; background: #fff; color: #0f6e7a; border-radius: 6px;
+    padding: 6px 14px; font-size: 13px; text-decoration: none; cursor: pointer;
+}
+@media print { .dr-barra-acoes { display: none; } body { background: #fff; padding: 0; } .dr-pagina { box-shadow: none; margin: 0; width: auto; padding: 0; } }
+{% endif %}
+.dr-capa { page: capa; position: relative; break-after: page; }
+.dr-capa-faixa { height: 12mm; background: #0f6e7a; }
+.dr-capa-miolo { padding: 42mm 20mm 20mm; }
+.dr-quebra { break-before: page; }
+</style>
+</head>
+<body class="doc-rede">
+{% if not para_pdf %}
+<div class="dr-barra-acoes">
+    <button type="button" onclick="window.print()">Imprimir</button>
+    <a href="{% url 'projeto_rede:pdf' doc.id %}">Baixar PDF</a>
+    <a href="{% url 'projeto_rede:docx' doc.id %}">Baixar DOCX</a>
+    <a href="{% url 'projeto_rede:editor' doc.id %}">Voltar ao editor</a>
+</div>
+{% endif %}
+
+<section class="dr-capa {% if not para_pdf %}dr-pagina{% endif %}" {% if not para_pdf %}style="padding:0"{% endif %}>
+    <div class="dr-capa-faixa"></div>
+    <div class="dr-capa-miolo">
+        <p class="dr-capa-empresa">{{ meta.empresa }}</p>
+        <h1 class="dr-capa-titulo">{{ meta.titulo|default:doc.titulo }}</h1>
+        <p class="dr-capa-sub">{{ meta.subtitulo }}</p>
+        <table class="dr-controle">
+            <thead><tr><th>Campo</th><th>Definição</th></tr></thead>
+            <tbody>
+            {% for rotulo, valor in campos %}
+                <tr><td>{{ rotulo }}</td><td>{{ valor|default:"—" }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% if meta.principio %}
+        <div class="callout"><p><strong>Princípio do documento.</strong> {{ meta.principio }}</p></div>
+        {% endif %}
+    </div>
+</section>
+
+<section class="{% if not para_pdf %}dr-pagina{% endif %}">
+    <h2 class="dr-secao">Sumário</h2>
+    <ul class="dr-sumario">
+        {% for s in secoes %}
+        <li><span class="num">{% if s.numero %}{{ s.numero }}.{% endif %}</span> {{ s.titulo }}</li>
+        {% endfor %}
+    </ul>
+</section>
+
+<main class="{% if not para_pdf %}dr-pagina{% else %}dr-quebra{% endif %}">
+    {% for s in secoes %}
+    <section class="dr-sec" id="sec-{{ forloop.counter }}">
+        <h2 class="dr-secao">{% if s.numero %}<span class="num">{{ s.numero }}.</span>{% endif %}{{ s.titulo }}</h2>
+        {{ s.html|safe }}
+    </section>
+    {% endfor %}
+</main>
+</body>
+</html>

@@ -70,6 +70,7 @@ pyparsing==3.2.5
 pyserial==3.5
 python-crontab==3.3.0
 python-dateutil==2.9.0.post0
+python-docx==1.2.0
 PyYAML==6.0.1
 qrcode==8.2
 redis==6.4.0

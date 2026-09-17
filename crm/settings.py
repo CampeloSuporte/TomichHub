@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'atendimento',
     'tarefas',
     'seguranca',
+    'projeto_rede',
 ]
 
 REST_FRAMEWORK = {
