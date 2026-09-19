@@ -9,10 +9,10 @@ from django.test import TestCase
 from django.urls import reverse
 
 from clientes import views
-from clientes.models import Acesso, AcessoProtocolo, AcessoSessao, Cliente
+from clientes.models import Acesso, AcessoProtocolo, AcessoSessao, BgpSnapshot, Cliente
 from funcao_equipamento.models import Funcao_equipamento
 from modelo_equipamento.models import Modelo_equipamento
-from usuario.models import TOTPDevice
+from usuario.models import Instancia, InstanciaFerramenta, PerfilUsuario, TOTPDevice
 
 
 class _Base(TestCase):
@@ -192,3 +192,43 @@ class NomeSemFabricanteTest(TestCase):
         for nome, fabricante, esperado in casos:
             with self.subTest(nome=nome):
                 self.assertEqual(Modelo_equipamento(nome=nome, fabricante=fabricante).nome_sem_fabricante, esperado)
+
+
+class BotaoAutomacaoBgpTest(_Base):
+    """Botão "Automação BGP" do rodapé do card.
+
+    Quem enxerga era decidido por `request.user.is_staff`, que também é True
+    para Consultor e Operador e não olha a ferramenta liberada para a
+    instância — o botão aparecia para quem a própria tela (bgp_views.bgp_page,
+    via `ferramenta_habilitada(user, 'bgp')`) devolve 403."""
+
+    def _com_snapshot(self):
+        return BgpSnapshot.objects.create(
+            acesso=self.acesso, vendor='huawei',
+            dados={'sessoes': [{'nome': 'UPSTREAM', 'peer_ip': '10.0.0.1'}]},
+        )
+
+    def test_admin_com_snapshot_ve_o_botao(self):
+        self._com_snapshot()
+        self.assertIn(f"/clientes/bgp/{self.acesso.id}/", self._html())
+
+    def test_sem_snapshot_nao_mostra_botao(self):
+        # A classe .ac-acao-bgp aparece no CSS da página em qualquer caso:
+        # o que diz se o botão existe é o link da tela.
+        self.assertFalse(f"/clientes/bgp/{self.acesso.id}/" in self._html())
+
+    def test_operador_sem_ferramenta_bgp_nao_ve_o_botao(self):
+        self._com_snapshot()
+        instancia = Instancia.objects.create(nome='Instancia BGP')
+        self.cliente.instancia = instancia
+        self.cliente.save(update_fields=['instancia'])
+        operador = User.objects.create_user('op_bgp', password='x', is_staff=True)
+        PerfilUsuario.objects.create(usuario=operador, role=PerfilUsuario.ROLE_OPERADOR, instancia=instancia)
+        TOTPDevice.objects.create(usuario=operador, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+        InstanciaFerramenta.objects.create(instancia=instancia, ferramenta='acessos', habilitado=True)
+        self.client.force_login(operador)
+
+        self.assertFalse(f"/clientes/bgp/{self.acesso.id}/" in self._html())
+
+        InstanciaFerramenta.objects.create(instancia=instancia, ferramenta='bgp', habilitado=True)
+        self.assertIn(f"/clientes/bgp/{self.acesso.id}/", self._html())

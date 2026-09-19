@@ -309,6 +309,27 @@ cada item mostra usuário/tipo/status/duração/IP e botões condicionais:
 Todo texto vindo do backend (usuário, comandos, transcript) passa por `escapeHtml()` antes de ir
 para o DOM.
 
+#### Cabeçalho fixo e o "x" que sumia (corrigido em 2026-09-19)
+
+O `.modal-acesso` do modal declarava só `max-height: 85vh` (o `style.css` global dá a ele
+`overflow-y: auto`) e o `.modal-body-acesso` vinha com `height: 100%`. Resultado: o corpo ficava
+exatamente uma altura de cabeçalho mais alto que o modal, criando ~69px de rolagem parasita no
+próprio `.modal-acesso`. Ao rolar a lista de sessões até o fim, a rolagem encadeava para o modal e
+levava o cabeçalho — junto com o botão "x" — para fora da área visível, sem nenhuma outra forma de
+fechar (não havia ESC nem clique no overlay, ao contrário do modal de comentários): só recarregando
+a página.
+
+Agora o `.modal-acesso` é `display:flex; flex-direction:column; overflow:hidden` com o cabeçalho em
+`flex-shrink:0` e o corpo em `flex:1; min-height:0` (mesmo padrão já usado pelo
+`#modalHostsSemBackup` em `listar.html`) — cabeçalho, filtro de datas e paginação ficam fixos e só a
+lista rola. ESC e clique no overlay também fecham o modal, como no de comentários. O modal de
+comentários tinha o mesmo `height:100%` e recebeu o mesmo tratamento.
+
+Coberto por `clientes/tests_card_acesso.py` só na parte de markup; a verificação de layout foi feita
+com a página real renderizada num Chrome headless (mesmo driver CDP de `projeto_rede/tests_navegador.py`):
+antes do fix, `scrollHeight - clientHeight` do `.modal-acesso` era 69 e o botão ia para `top:-10`
+depois de rolar; depois, a sobra é 0 e o botão fica em `top:59` em qualquer rolagem.
+
 ---
 
 ## Volume de Dados — Cuidados Operacionais

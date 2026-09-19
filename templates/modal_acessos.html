@@ -1322,17 +1322,17 @@
 
 <!-- MODAL COMENTÁRIOS DE ACESSO -->
 <div id="modalComentariosAcesso" class="modal-overlay" style="display: none;">
-    <div class="modal-acesso" style="max-width: 700px; max-height: 80vh;">
-        <div class="modal-header-acesso">
+    <div class="modal-acesso" style="max-width: 700px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden;">
+        <div class="modal-header-acesso" style="flex-shrink: 0;">
             <h2 class="modal-title">
                 <span class="terminal-prefix">&gt;</span> Comentários - <span id="nome_equipamento_comentario"></span>
             </h2>
-            <button class="btn-close-modal" onclick="fecharModalComentariosAcesso()">
+            <button class="btn-close-modal" onclick="fecharModalComentariosAcesso()" aria-label="Fechar">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         
-        <div class="modal-body-acesso" style="display: flex; flex-direction: column; height: 100%;">
+        <div class="modal-body-acesso" style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden;">
             
             <!-- AREA DE COMENTÁRIOS -->
             <div id="listaComentariosAcesso" style="flex: 1; overflow-y: auto; margin-bottom: 20px;">
@@ -1374,18 +1374,26 @@
 </div>
 
 <!-- MODAL AUDITORIA DE ACESSOS -->
+{% comment %}
+   O .modal-acesso é flex-column com overflow:hidden e o corpo é flex:1/min-height:0
+   (mesmo padrão do #modalHostsSemBackup): com o `height:100%` de antes o corpo ficava
+   exatamente uma altura de cabeçalho mais alto que o modal, então rolar a lista até o
+   fim encadeava a rolagem pro .modal-acesso (que tem overflow-y:auto) e levava o
+   cabeçalho — junto com o "x" — pra fora da área visível, sem jeito de fechar o modal
+   a não ser recarregando a página.
+{% endcomment %}
 <div id="modalAuditoriaAcesso" class="modal-overlay" style="display: none;">
-    <div class="modal-acesso" style="max-width: 800px; max-height: 85vh;">
-        <div class="modal-header-acesso">
+    <div class="modal-acesso" style="max-width: 800px; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;">
+        <div class="modal-header-acesso" style="flex-shrink: 0;">
             <h2 class="modal-title">
                 <span class="terminal-prefix">&gt;</span> Auditoria de Acessos - <span id="nome_equipamento_auditoria"></span>
             </h2>
-            <button class="btn-close-modal" onclick="fecharModalAuditoriaAcesso()">
+            <button class="btn-close-modal" onclick="fecharModalAuditoriaAcesso()" aria-label="Fechar">
                 <i class="fas fa-times"></i>
             </button>
         </div>
 
-        <div class="modal-body-acesso" style="display: flex; flex-direction: column; height: 100%;">
+        <div class="modal-body-acesso" style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden;">
             <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:12px; padding-bottom:12px; border-bottom:1px dashed var(--border);">
                 <div style="display:flex; flex-direction:column; gap:4px;">
                     <label style="font-size:.68rem; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted);">De</label>
@@ -2341,6 +2349,10 @@ document.addEventListener('keydown', function(e) {
         if (modal && modal.style.display === 'flex') {
             fecharModalComentariosAcesso();
         }
+        const modalAud = document.getElementById('modalAuditoriaAcesso');
+        if (modalAud && modalAud.style.display === 'flex') {
+            fecharModalAuditoriaAcesso();
+        }
     }
 });
 
@@ -2351,6 +2363,9 @@ document.addEventListener('click', function(e) {
     const modal = document.getElementById('modalComentariosAcesso');
     if (e.target === modal) {
         fecharModalComentariosAcesso();
+    }
+    if (e.target === document.getElementById('modalAuditoriaAcesso')) {
+        fecharModalAuditoriaAcesso();
     }
 });
 
