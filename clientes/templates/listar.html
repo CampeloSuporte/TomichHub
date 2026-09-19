@@ -562,7 +562,7 @@
                                         <button type="button" class="ac-acao" title="Adicionar protocolo (mesmo IP)" onclick="toggleNovoProtocolo(this)"><i class="fas fa-plus"></i></button>
                                         <button type="button" class="ac-acao" title="Duplicar acesso" onclick="AbrirmodalDuplicarAcesso({{ acesso.id }})"><i class="fas fa-copy"></i></button>
                                         {% endif %}
-                                        {% if request.user.is_staff and acesso.bgp_snapshot %}
+                                        {% if pode_bgp and acesso.bgp_snapshot %}
                                         <button type="button" class="ac-acao ac-acao-bgp" title="Automação BGP" onclick="window.open('/clientes/bgp/{{ acesso.id }}/', '_blank')"><i class="fas fa-diagram-project"></i></button>
                                         {% endif %}
                                         {% if not acessos_somente_leitura %}

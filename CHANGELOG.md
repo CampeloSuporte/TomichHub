@@ -5,6 +5,34 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-19 (Botão de Automação BGP e modal de auditoria)
+
+### Corrigido
+
+- **Modal de auditoria de acessos ficava sem botão de fechar.** O corpo do modal (`height:100%`)
+  era uma altura de cabeçalho mais alto que o próprio modal, criando ~69px de rolagem parasita:
+  rolar a lista de sessões até o fim encadeava a rolagem e levava o cabeçalho — com o "x" — para
+  fora da área visível. Como não havia ESC nem clique no overlay para fechar, só recarregando a
+  página. Agora o modal é flex-column com cabeçalho `flex-shrink:0` e corpo `flex:1/min-height:0`
+  (cabeçalho, filtro de datas e paginação fixos, só a lista rola), e ESC/clique no overlay fecham.
+  O modal de comentários tinha o mesmo defeito e recebeu o mesmo tratamento.
+- **Botão "Automação BGP" do card aparecia para quem a tela recusa.** A condição era
+  `request.user.is_staff`, que é True também para Consultor e Operador e ignora a ferramenta
+  liberada para a instância — o botão abria a tela em 403. Passou a usar `pode_bgp`
+  (`_perms.ferramenta_habilitada(user, 'bgp')`), a mesma checagem de `bgp_views.bgp_page`.
+
+### Alterado
+
+- **Snapshot BGP é gerado no fim de cada backup bem-sucedido**, não só na rotina das 02:45. O botão
+  de Automação BGP do card só existe para host com `BgpSnapshot`, então um host que ganhou sessões
+  BGP durante o dia ficava sem botão até a madrugada seguinte — e sem botão não havia caminho até a
+  tela para clicar "Atualizar agora". A extração só lê o arquivo recém-salvo e roda regex (nenhuma
+  conexão); falha ali é logada e nunca derruba o backup.
+- Queryset de acessos de `listar_clientes` com `select_related('bgp_snapshot')` — o `{% if %}` do
+  botão fazia uma query por card.
+
+---
+
 ## [Não publicado] — 2026-09-17 (Compartilhar arquivo: comandos de roteador Huawei VRP)
 
 ### Adicionado

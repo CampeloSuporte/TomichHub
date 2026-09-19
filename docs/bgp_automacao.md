@@ -401,6 +401,18 @@ BGP no backup são ignorados silenciosamente (não é erro); falhas de parser/si
 identificado, 2 com erro (um peer configurado por hostname em vez de IP, um prefix-list com notação
 de range `X-Y` em vez de CIDR — ambos casos reais, não bugs do parser).
 
+### Snapshot também no fim de cada backup (adicionado em 2026-09-19)
+
+A rotina das 02:45 deixava um buraco de até 24h: como o botão do card só existe para host que já
+tem `BgpSnapshot`, um host que ganhou sessões BGP durante o dia ficava sem botão até a madrugada
+seguinte — e sem botão não havia caminho até a tela para clicar "🔄 Atualizar agora". Agora
+`clientes/views.py::realizar_backup` chama `_atualizar_snapshot_bgp_de_acesso(acesso)` logo depois
+de gravar o `BackupLog` de sucesso (import local, porque `tasks.py` importa `views.py`): só lê o
+arquivo recém-salvo e roda regex, sem conexão nenhuma. Qualquer exceção ali é engolida com log — o
+backup já está gravado e não pode falhar por causa do snapshot. Backup sem mudança
+(`sem_mudancas`, hash igual ao anterior) não gera `BackupLog` novo e, portanto, não reprocessa —
+quem cobre esse caso continua sendo a rotina noturna.
+
 ---
 
 ## Frontend (`clientes/bgp_views.py`, `clientes/templates/bgp_automacao.html`)
@@ -427,9 +439,15 @@ usa exatamente esse texto em vez de rechamar `_montar_comandos`. Se o body não 
 inalterado. Limite de sanidade: até 30 linhas, 500 caracteres cada, senão a view recusa com 400.
 
 Ícone novo no card de cada `Acesso` em `listar.html` (`fa-diagram-project`, ao lado do de auditoria),
-visível só pra staff e só quando `acesso.bgp_snapshot` existe (Django trata o `OneToOneField`
-reverso inexistente como `AttributeError` — `{% if acesso.bgp_snapshot %}` não quebra o template
-quando não há snapshot pra aquele Acesso).
+visível só quando `acesso.bgp_snapshot` existe (Django trata o `OneToOneField` reverso inexistente
+como `AttributeError` — `{% if acesso.bgp_snapshot %}` não quebra o template quando não há snapshot
+pra aquele Acesso) **e** para quem a própria tela deixa entrar: o contexto `pode_bgp`
+(`_perms.ferramenta_habilitada(request.user, 'bgp')`, mesma checagem de `bgp_views.bgp_page`).
+
+> **Corrigido em 2026-09-19:** a condição era `request.user.is_staff`, que também é True para
+> Consultor e Operador (ver `usuario/perms.py`) e não olha a ferramenta liberada para a instância —
+> o botão aparecia para quem a tela devolve 403. O queryset de acessos da `listar_clientes` ganhou
+> `select_related('bgp_snapshot')` no mesmo passo, senão o `{% if %}` faz uma query por card.
 
 ---
 

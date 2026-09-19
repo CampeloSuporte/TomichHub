@@ -104,7 +104,7 @@ def listar_clientes(request):
         acessos = acessos_do_cliente
     # Último acesso do card vem da auditoria (AcessoSessao), numa subquery só
     ultima_sessao = AcessoSessao.objects.filter(acesso=OuterRef('pk')).order_by('-iniciada_em')
-    acessos = acessos.prefetch_related('protocolos_extras').annotate(
+    acessos = acessos.prefetch_related('protocolos_extras').select_related('bgp_snapshot').annotate(
         ultimo_acesso_em=Subquery(ultima_sessao.values('iniciada_em')[:1]),
         ultimo_acesso_por=Subquery(ultima_sessao.values('usuario__username')[:1]),
     )
@@ -177,6 +177,11 @@ def listar_clientes(request):
         'blocos_rpki_invalidos_cliente': blocos_rpki_invalidos_cliente,
         'blocos_irr_invalidos_cliente': blocos_irr_invalidos_cliente,
         'total_blocos_rpki_irr_invalidos_cliente': total_blocos_rpki_irr_invalidos_cliente,
+        # Mesma regra da tela de automação BGP (clientes.bgp_views.bgp_page):
+        # o card usava request.user.is_staff, que é True também pra Consultor/
+        # Operador e não olha a ferramenta liberada pra instância — dava botão
+        # que abria em 403 pra quem não tem 'bgp' habilitado.
+        'pode_bgp': _perms.ferramenta_habilitada(request.user, 'bgp'),
     })
     response['Cache-Control'] = 'no-store, no-cache, must-revalidate'
     response['Pragma'] = 'no-cache'
@@ -2317,6 +2322,20 @@ def realizar_backup(acesso, usuario=None):
             executado_por=usuario,
             duracao_segundos=duracao,
         )
+
+        # Snapshot BGP na hora, com o backup ainda fresco: o botão de
+        # automação BGP do card só aparece pra host que já tem BgpSnapshot,
+        # e até aqui isso só era gerado pela rotina das 02:45 — um host que
+        # ganhou sessões BGP depois dela ficava até o dia seguinte sem botão
+        # e, portanto, sem nenhum caminho até a tela pra clicar "Atualizar
+        # agora". Só lê o arquivo recém-salvo e roda regex (sem conexão);
+        # falhar aqui não pode derrubar o backup, que já está gravado.
+        try:
+            from .tasks import _atualizar_snapshot_bgp_de_acesso
+            _resultado_bgp, _detalhe_bgp = _atualizar_snapshot_bgp_de_acesso(acesso)
+            print(f"🌐 Snapshot BGP: {_resultado_bgp} {_detalhe_bgp}".rstrip())
+        except Exception as e:
+            print(f"⚠️ Snapshot BGP não atualizado: {e}")
 
         print(f"\n{'='*80}")
         print(f"✅ BACKUP CONCLUÍDO COM SUCESSO!")
