@@ -23,6 +23,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Alterado
 
+- **Host com BGP configurado mas ainda sem peer passou a gerar snapshot** (e, portanto, botão). A
+  extração desistia quando não achava sessão nenhuma; uma borda em provisionamento — com `bgp <asn>`,
+  os `network` de origem e os community-filters `c-NN` no lugar, sessões ainda não criadas — ficava
+  invisível, embora a automação por community funcione inteira em cima desses dados. O critério
+  agora é "tem sessão **ou** tem AS local declarado", o que mantém switch/OLT sem BGP de fora
+  (7 hosts da base inteira entraram por esse caminho).
 - **Snapshot BGP é gerado no fim de cada backup bem-sucedido**, não só na rotina das 02:45. O botão
   de Automação BGP do card só existe para host com `BgpSnapshot`, então um host que ganhou sessões
   BGP durante o dia ficava sem botão até a madrugada seguinte — e sem botão não havia caminho até a
