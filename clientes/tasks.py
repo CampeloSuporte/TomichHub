@@ -2124,10 +2124,18 @@ def _atualizar_snapshot_bgp_de_acesso(acesso):
         BgpSnapshot.objects.update_or_create(acesso=acesso, defaults={'erro': f'Erro no parser: {e}'})
         return 'erro_parser', str(e)
 
-    if not dados.get('bgp'):
+    # Peer é o sinal mais óbvio de "esta caixa faz BGP", mas não é o único:
+    # roteador de borda recém-provisionado (caso real: VS-BGP da NET PLAY,
+    # 19/09/2026) já tem `bgp <asn>`, os `network` de origem e a bateria de
+    # community-filters/route-policies do padrão `c-NN` no lugar — só as
+    # sessões ainda não foram criadas. A automação por community
+    # (bgp_community_auto) funciona inteira em cima disso, então o snapshot
+    # (e, com ele, o botão no card) tem que existir. O `as_local` é o
+    # critério: o parser só o preenche quando há bloco `bgp <asn>` na
+    # config, ou seja, nunca liga o botão num switch/OLT sem BGP.
+    dados['sessoes'] = dados.pop('bgp', None) or []
+    if not dados['sessoes'] and not dados.get('as_local'):
         return 'sem_bgp', 'Nenhuma sessão BGP encontrada neste backup.'
-
-    dados['sessoes'] = dados.pop('bgp')
     try:
         anuncios = {}
         for sessao in dados['sessoes']:

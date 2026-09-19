@@ -69,6 +69,35 @@ class SnapshotBgpAposBackupTest(TestCase):
         self.assertEqual(snap.erro, '')
         self.assertEqual([s['peer_ip'] for s in snap.dados['sessoes']], ['10.10.10.2'])
 
+    def test_borda_com_bgp_sem_peer_ainda_gera_snapshot(self):
+        """Caso real (VS-BGP da NET PLAY, 19/09/2026): roteador de borda em
+        provisionamento, com `bgp <asn>`, `network` de origem e os
+        community-filters do padrão `c-NN` no lugar, mas nenhuma sessão
+        criada ainda. A automação por community depende só disso — sem
+        snapshot não há botão no card e a tela fica inalcançável."""
+        saida = """#
+sysname BORDA-NOVA
+#
+bgp 65000
+ private-4-byte-as enable
+ #
+ ipv4-family unicast
+  undo synchronization
+  network 203.0.113.0 255.255.255.0 route-policy RP-LOCAL-203.0.113.0-24
+#
+ip community-filter basic c-01-export index 10 permit 65024:50101
+ip community-filter basic c-01-export-1p index 10 permit 65024:50102
+#
+return
+"""
+        resultado = self._rodar_backup(saida)
+        self.assertTrue(resultado['sucesso'], resultado.get('erro'))
+
+        snap = BgpSnapshot.objects.get(acesso=self.acesso)
+        self.assertEqual(snap.dados['sessoes'], [])
+        self.assertEqual(snap.dados['as_local'], '65000')
+        self.assertIn('c-01-export', snap.dados['community_filters'])
+
     def test_host_sem_bgp_continua_sem_snapshot(self):
         saida = CONFIG_HUAWEI.split('bgp 65000')[0] + 'ip route-static 0.0.0.0 0.0.0.0 10.10.10.2\n#\nreturn\n'
         resultado = self._rodar_backup(saida)

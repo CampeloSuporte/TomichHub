@@ -401,6 +401,23 @@ BGP no backup são ignorados silenciosamente (não é erro); falhas de parser/si
 identificado, 2 com erro (um peer configurado por hostname em vez de IP, um prefix-list com notação
 de range `X-Y` em vez de CIDR — ambos casos reais, não bugs do parser).
 
+### Caixa com BGP mas sem peer também gera snapshot (corrigido em 2026-09-19)
+
+`_atualizar_snapshot_bgp_de_acesso` desistia com `'sem_bgp'` sempre que o parser não achava peer
+nenhum. Caso real que expôs o furo: a BORDA da NET PLAY (virtual-system `VS-BGP` de um NE8000) em
+provisionamento — `bgp 269124`, os dois `network` de origem, 240 community-filters `c-NN-<ação>` e
+30 route-policies já configurados, **peer nenhum ainda**. Sem snapshot não havia botão no card e,
+sem botão, nenhum caminho até a tela — embora a automação por community (`bgp_community_auto`,
+25 circuitos e 3 grupos globais nesse host) funcione inteira em cima desses dados.
+
+Agora o critério é `sessões OU as_local`: o parser só preenche `as_local` quando existe bloco
+`bgp <asn>` / `router bgp <asn>` / `/routing bgp instance as=` / `set routing-options
+autonomous-system` na config, então switch e OLT sem BGP continuam sem snapshot e sem botão.
+Medido na base inteira no dia da mudança: **7 hosts** passaram a ter snapshot por esse caminho
+(BRAS/BORDA/CCR que declaram AS mas ainda não têm sessão). Com `sessoes: []` a tela mostra
+"Nenhuma sessão BGP encontrada no último backup deste host" na lista e o painel de community
+aparece normalmente (`bgp_community_mapa` já cai para `dados['as_local']` quando não há sessão).
+
 ### Snapshot também no fim de cada backup (adicionado em 2026-09-19)
 
 A rotina das 02:45 deixava um buraco de até 24h: como o botão do card só existe para host que já
