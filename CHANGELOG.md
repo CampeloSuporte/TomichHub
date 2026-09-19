@@ -23,6 +23,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Alterado
 
+- **Acento no snapshot BGP quebrava a gravação inteira.** `BgpSnapshot.dados` é jsonb e o banco é
+  SQL_ASCII: o encoder padrão do Django manda `\u00c7` e o jsonb recusa, então o snapshot era
+  gravado só com a mensagem de erro e sem dados (3 hosts reais, dois deles com sessões BGP de
+  verdade). Passou a usar `JsonUtf8Encoder` (`ensure_ascii=False`); migração `0116`, no-op no SQL.
 - **Host com BGP configurado mas ainda sem peer passou a gerar snapshot** (e, portanto, botão). A
   extração desistia quando não achava sessão nenhuma; uma borda em provisionamento — com `bgp <asn>`,
   os `network` de origem e os community-filters `c-NN` no lugar, sessões ainda não criadas — ficava

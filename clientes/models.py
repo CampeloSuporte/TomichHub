@@ -1,3 +1,4 @@
+import json as _json
 import logging
 import uuid as _uuid_mod
 
@@ -1497,6 +1498,23 @@ class ScriptExecucaoLog(models.Model):
         return f"Execução #{self.id} — {self.script} [{self.status}]"
 
 
+class JsonUtf8Encoder(_json.JSONEncoder):
+    """Encoder de JSONField que grava acento como UTF-8 cru, sem `\\uXXXX`.
+
+    O `crm_db` é SQL_ASCII: o encoder padrão do Django serializa "ESPERANÇA"
+    como `ESPERAN\\u00c7A` e o jsonb recusa o escape nessa codificação
+    ("unsupported Unicode escape sequence ... could not be translated to the
+    server's encoding SQL_ASCII"). Com `ensure_ascii=False` os bytes UTF-8 vão
+    crus e o SQL_ASCII (que não converte nada) aceita — validado no banco de
+    produção. Mesma família de solução do `JSONTextoField` do `projeto_rede`,
+    só que sem trocar o tipo da coluna.
+    """
+
+    def __init__(self, *args, **kwargs):
+        kwargs['ensure_ascii'] = False
+        super().__init__(*args, **kwargs)
+
+
 class BgpSnapshot(models.Model):
     """Estrutura BGP (sessões, prefix-lists, route-policies e simulação de quais
     prefixos cada sessão está anunciando) extraída do backup mais recente de um
@@ -1510,7 +1528,10 @@ class BgpSnapshot(models.Model):
     backup_log = models.ForeignKey('BackupLog', null=True, blank=True, on_delete=models.SET_NULL)
     # dados = {"sessoes": [...], "prefix_lists": {...}, "policies": {...},
     #          "anuncios": {"<nome_sessao>": [{"prefixo","permitido","prepend"}, ...]}}
-    dados      = models.JSONField(default=dict, blank=True)
+    # `encoder`: hosts com acento no nome (ex: "BRAS_MORRO NOVA ESPERANÇA",
+    # "DMZ (Cópia)") faziam todo o snapshot falhar com "unsupported Unicode
+    # escape sequence" — ver JsonUtf8Encoder acima.
+    dados      = models.JSONField(default=dict, blank=True, encoder=JsonUtf8Encoder)
     # Se o parser falhar num backup novo, registra o motivo aqui SEM apagar
     # `dados` do snapshot anterior — a tela continua mostrando o último estado
     # válido conhecido em vez de ficar vazia.
