@@ -401,6 +401,21 @@ BGP no backup são ignorados silenciosamente (não é erro); falhas de parser/si
 identificado, 2 com erro (um peer configurado por hostname em vez de IP, um prefix-list com notação
 de range `X-Y` em vez de CIDR — ambos casos reais, não bugs do parser).
 
+### Acento no snapshot quebrava a gravação (corrigido em 2026-09-19)
+
+`BgpSnapshot.dados` é `JSONField` (jsonb) e o `crm_db` é **SQL_ASCII**: o encoder padrão do Django
+serializa "ESPERANÇA" como `ESPERAN\u00c7A` e o jsonb recusa o escape nessa codificação
+(`unsupported Unicode escape sequence ... could not be translated to the server's encoding
+SQL_ASCII`). O snapshot inteiro caía em `erro_simulacao` e ficava gravado só com a mensagem de
+erro, sem `dados` — 3 hosts reais na base (`BRAS_MORRO NOVA ESPERANÇA`, `DMZ (Cópia)`,
+`DMZ (Cópia) (Cópia)`, esses dois últimos com 6 e 1 sessões BGP de verdade).
+
+O campo passou a usar `clientes.models.JsonUtf8Encoder` (`ensure_ascii=False`): os bytes UTF-8 vão
+crus e o SQL_ASCII, que não converte nada, aceita — validado direto no banco de produção
+(`SELECT '{"nome": "ESPERANÇA"}'::jsonb` passa; com `\u00c7` falha). Migração `0116` é **no-op no
+SQL** (só metadado do Django, nenhuma alteração de coluna). Mesma família de solução do
+`JSONTextoField` do `projeto_rede`, sem trocar o tipo da coluna.
+
 ### Caixa com BGP mas sem peer também gera snapshot (corrigido em 2026-09-19)
 
 `_atualizar_snapshot_bgp_de_acesso` desistia com `'sem_bgp'` sempre que o parser não achava peer

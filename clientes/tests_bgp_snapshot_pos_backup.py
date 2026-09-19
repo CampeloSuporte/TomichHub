@@ -104,6 +104,22 @@ return
         self.assertTrue(resultado['sucesso'], resultado.get('erro'))
         self.assertFalse(BgpSnapshot.objects.filter(acesso=self.acesso).exists())
 
+    def test_acento_no_snapshot_nao_quebra_a_gravacao(self):
+        """`crm_db` é SQL_ASCII e o encoder padrão do JSONField vira
+        `\\u00c7`, que o jsonb recusa — 3 hosts reais (ex: "BRAS_MORRO NOVA
+        ESPERANÇA", "DMZ (Cópia)") gravavam o snapshot só com o erro e sem
+        `dados`. Ver `clientes.models.JsonUtf8Encoder`."""
+        saida = CONFIG_HUAWEI.replace('description UPSTREAM-TESTE',
+                                      'description UPSTREAM SÃO JOSÉ (CÓPIA)')
+        resultado = self._rodar_backup(saida)
+        self.assertTrue(resultado['sucesso'], resultado.get('erro'))
+
+        snap = BgpSnapshot.objects.get(acesso=self.acesso)
+        self.assertEqual(snap.erro, '')
+        self.assertEqual(snap.dados['sessoes'][0]['descricao'], 'UPSTREAM SÃO JOSÉ (CÓPIA)')
+        snap.refresh_from_db()
+        self.assertEqual(snap.dados['sessoes'][0]['descricao'], 'UPSTREAM SÃO JOSÉ (CÓPIA)')
+
     def test_falha_no_snapshot_nao_derruba_o_backup(self):
         with mock.patch('clientes.tasks._atualizar_snapshot_bgp_de_acesso',
                         side_effect=RuntimeError('parser explodiu')):
