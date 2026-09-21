@@ -2686,19 +2686,28 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             except ValueError:
                 is_private = False
 
+            connect_host, connect_port = target_host, porta
             if is_private:
                 proxy_srv = ProxyServer.objects.filter(
                     cliente=acesso.cliente, ativo=True
                 ).first()
-                if not proxy_srv:
-                    raise Exception(f'Sem proxy SSH ativo para {acesso.cliente}')
-                from .proxy_engine import TunnelPortCache, SSHConnectionPool
-                local_port = TunnelPortCache.get_port(
-                    proxy_srv, target_host, porta, SSHConnectionPool()
-                )
-                connect_host, connect_port = '127.0.0.1', local_port
-            else:
-                connect_host, connect_port = target_host, porta
+                if proxy_srv:
+                    from .proxy_engine import TunnelPortCache, SSHConnectionPool
+                    local_port = TunnelPortCache.get_port(
+                        proxy_srv, target_host, porta, SSHConnectionPool()
+                    )
+                    connect_host, connect_port = '127.0.0.1', local_port
+                else:
+                    # Mesmo fallback do proxy HTTP (views.proxy_web_acesso): sem
+                    # ProxyServer, um túnel VPN pode cobrir o IP privado e o acesso
+                    # é direto. Sem isso a página do Proxmox abria (HTTP ia pela VPN)
+                    # mas a WebSocket da console morria com "Connection failed".
+                    from .views import vpn_cobre_ip
+                    if not vpn_cobre_ip(acesso.cliente, target_host):
+                        raise Exception(
+                            f'IP privado {target_host} sem proxy SSH ativo e sem '
+                            f'túnel VPN cobrindo esse IP ({acesso.cliente})'
+                        )
 
             raw_sock = socket.create_connection((connect_host, connect_port), timeout=10)
 

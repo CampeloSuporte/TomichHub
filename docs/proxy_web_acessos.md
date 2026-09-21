@@ -56,9 +56,13 @@ quando dois clientes declaram a mesma faixa ampla só uma rota vale — sem essa
 função retorna `False` e o chamador cai no `ProxyServer` SSH, que é o caminho correto. Se o
 `ip route get` falhar, mantém-se o comportamento antigo (confia na declaração).
 
-**Atenção:** esse fallback existe em `proxy_web_acesso` (HTTP) mas **não** em todos os consumers
-WebSocket que também usam IP privado (Terminal SSH, Telnet, WinBox) — ver `docs/winbox_vnc.md`
-para o que já foi corrigido e o que ainda falta.
+Desde 21/09/2026 o `WebSocketProxyConsumer` (`clientes/consumers.py`, rota `ws/proxy/...`) usa o
+mesmo fallback: sem `ProxyServer` ativo ele consulta `vpn_cobre_ip` antes de recusar, em vez de
+abortar direto. Ver "Console do Proxmox não abre em cliente só com VPN" abaixo.
+
+**Atenção:** esse fallback existe em `proxy_web_acesso` (HTTP) e no `WebSocketProxyConsumer` mas
+**não** em todos os consumers WebSocket que também usam IP privado (Terminal SSH, Telnet, WinBox)
+— ver `docs/winbox_vnc.md` para o que já foi corrigido e o que ainda falta.
 
 ---
 
@@ -337,6 +341,32 @@ r.cookies_raw   # ['__Host-PBSAuthCookie=; Expires=Thu, 01 Jan 1970 00:00:00 GMT
 ```
 
 Com IP privado atrás de ProxyServer SSH, passe o `ProxyServer` do cliente no lugar de `None`.
+
+---
+
+### Console do Proxmox não abre em cliente só com VPN — Corrigido em 21/09/2026
+
+**Sintoma:** a interface do Proxmox abre normal pelo proxy, mas ao abrir a console (noVNC ou
+xterm.js) a janela fica preta com a tarja vermelha `Connection failed (Code: 1000)`. Acontecia
+apenas em clientes que **não** têm `ProxyServer` SSH cadastrado e chegam ao equipamento por túnel
+VPN (ex.: Conecta ISP, `172.18.234.4:8006`).
+
+**Causa:** o HTTP e o WebSocket tomam caminhos diferentes. O HTTP passa por `proxy_web_acesso`
+(`views.py`), que ao não achar `ProxyServer` ainda testa `vpn_cobre_ip()` e segue direto pela rota
+da VPN — por isso a página carregava. Já o WebSocket vai para o `WebSocketProxyConsumer`
+(`consumers.py`), que exigia `ProxyServer` e, sem ele, levantava exceção:
+
+```
+[WS_PROXY] Falha ao conectar: Sem proxy SSH ativo para Conecta ISP
+```
+
+Como o consumer já tinha feito `accept()` antes de montar o túnel, o `close()` chegava ao browser
+como fechamento normal — daí o código 1000 genérico, sem pista da causa.
+
+**Correção:** o consumer passou a repetir o fallback do HTTP — sem `ProxyServer`, consulta
+`vpn_cobre_ip(acesso.cliente, target_host)` e, se a VPN cobre o IP, conecta direto
+(`target_host:porta`). Só recusa quando não há nenhum dos dois caminhos, e a mensagem de erro
+agora diz qual IP e qual cliente.
 
 ---
 
