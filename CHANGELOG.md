@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-21 (Console do Proxmox via proxy)
+
+### Corrigido
+
+- **Console do Proxmox (noVNC/xterm.js) não abria em cliente sem proxy SSH.** A página do Proxmox
+  carregava pelo proxy web, mas a console ficava preta com `Connection failed (Code: 1000)`. O HTTP
+  (`proxy_web_acesso`) já tinha o fallback de VPN — sem `ProxyServer` ativo, testa `vpn_cobre_ip()`
+  e vai direto pela rota do túnel —, mas o `WebSocketProxyConsumer` (rota `ws/proxy/...`) exigia
+  `ProxyServer` e abortava com "Sem proxy SSH ativo". Como o `accept()` acontece antes de montar a
+  conexão, o browser via só um fechamento normal, sem causa. Agora o consumer repete o fallback do
+  HTTP e conecta direto quando a VPN cobre o IP; a recusa restante nomeia o IP e o cliente.
+
+---
+
 ## [Não publicado] — 2026-09-19 (Botão de Automação BGP e modal de auditoria)
 
 ### Corrigido
