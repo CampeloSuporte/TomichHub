@@ -79,13 +79,45 @@ Dois equipamentos colidem quando os U se sobrepõem **e** (algum dos dois é de 
   (`ge0/0/7`) não acende — não dá para saber qual quadradinho físico ela é.
 - Passar o mouse num cabo realça as duas pontas no rack.
 
+### Sincronização com o mapa (cabos automáticos) — 24/09/2026
+
+Os cabos **seguem os enlaces do mapa sozinhos** (`services.sincronizar_cabos`):
+
+| Situação | O que a sincronização faz |
+|---|---|
+| Enlace com as duas pontas montadas e sem cabo | **Cria** o cabo (`sincronizado=True`): portas das Interfaces Lado A/B, tipo/conector pela velocidade, etiqueta pelo rótulo |
+| Cabo `sincronizado` e o enlace mudou (interface, velocidade, rótulo, ponta) | **Atualiza** o cabo |
+| Cabo `sincronizado` e o enlace saiu do mapa (ou uma ponta foi desmontada) | **Remove** o cabo — tudo nele era derivado do enlace; volta igual se o enlace voltar |
+| Cabo editado à mão (qualquer campo) | Vira `sincronizado=False` e **não é mais tocado**. Se o enlace sair do mapa, o cabo fica, com o aviso "saiu do mapa" |
+| Cabo de enlace excluído pela pessoa | Grava `LinkSemCabo`: a sincronização **não recria**. "Cabear de novo" na aba Conexões desfaz |
+| Porta já cabeada, mesma porta nas duas pontas | Não cria; o enlace fica **bloqueado** com o motivo, e "Criar cabo" abre o formulário para ajustar as portas |
+
+**Quando roda:** ao montar ou editar/mover equipamento (a resposta traz `sync` com
+`criados/atualizados/removidos/bloqueados` e a tela avisa no toast), ao **salvar a topologia**
+(signal `post_save` de `TopologiaDiagrama` em `racks/signals.py` — o editor não conhece os racks; cliente
+sem nada montado nem lê o mapa; erro só vai para o log, nunca impede o salvamento), no "Cabear de
+novo" e no botão **Sincronizar** da aba Conexões. **Não** roda em GET.
+
+### Cabos desenhados no rack
+
+Com o botão de cabo do cabeçalho do rack (ligado por padrão, lembrado no navegador), os cabos do rack
+aberto aparecem como patch cords saindo pela direita de cada equipamento para uma **calha** ao lado do
+rack — uma raia por cabo, os mais curtos por dentro — e entrando na outra ponta. Cabo para **outro
+rack** (ou para equipamento que só aparece na outra face) termina numa seta com o destino
+(`RACK-02 · OLT-CENTRO`). A altura em que o cabo sai do equipamento é ilustrativa; a porta exata está no
+tooltip. Passar o mouse realça o cabo e as duas pontas; clicar abre a edição. A largura da calha é medida
+depois de desenhar (sem cabo, o rack fica centralizado como antes). Em tela estreita (< 820px) a calha
+some.
+
 ### Situação de um enlace
 
 | Situação | Quando |
 |---|---|
 | `pendente` | alguma ponta ainda não está montada em rack nenhum (`faltando` lista quais) |
 | `pronta` | as duas pontas montadas, sem cabo |
-| `criada` | já existe `ConexaoFisica` com o `topologia_link_id` do enlace |
+| `criada` | já existe `ConexaoFisica` com o `topologia_link_id` do enlace (`sincronizado` diz se segue o mapa) |
+| `pronta` + `bloqueio` | pontas montadas mas a sincronização não conseguiu criar — `bloqueio` traz o motivo |
+| `ignorada` | a pessoa excluiu o cabo desse enlace (`LinkSemCabo`) |
 
 Enlaces com **Internet, IX, nuvem, VM, texto, área ou grupo** numa das pontas são lógicos e não entram
 na lista. Enlace que aparece em mais de um mapa (o mesmo `id` na cópia de borda de um sub-mapa) conta
@@ -100,7 +132,8 @@ Rack (cliente, nome, local, altura_u, observacoes)
  └─ RackEquipamento (rack, tipo, nome, u_inicial, altura_u, face, profundidade_total,
                      acesso?, topologia_node_id, fabricante, modelo, num_portas)
 ConexaoFisica (cliente, ponta_a → RackEquipamento, porta_a, ponta_b, porta_b, meio, conector,
-               cor, comprimento_m, identificacao, topologia_link_id, diagrama?)
+               cor, comprimento_m, identificacao, topologia_link_id, sincronizado, diagrama?)
+LinkSemCabo (cliente, topologia_link_id)   — enlaces cujo cabo foi excluído de propósito
 ```
 
 - **Por que tabelas e não o `dados_json` da topologia:** o físico tem regra que o banco precisa segurar
@@ -152,7 +185,9 @@ nada (rotas de escrita dão 403; a tela esconde os controles).
 | `POST` | `/racks/equipamento/<id>/editar/` · `/excluir/` | Edita/move (inclusive `rack_id`) / remove |
 | `POST` | `/racks/cliente/<id>/conexoes/criar/` | Cabo manual |
 | `POST` | `/racks/cliente/<id>/conexoes/do-link/` | Cabo a partir do enlace `link_id` (campos opcionais sobrescrevem o sugerido) |
-| `POST` | `/racks/conexao/<id>/editar/` · `/excluir/` | Edita / exclui cabo |
+| `POST` | `/racks/conexao/<id>/editar/` · `/excluir/` | Edita (tira da sincronização) / exclui cabo (cabo de enlace grava `LinkSemCabo`) |
+| `POST` | `/racks/cliente/<id>/conexoes/sincronizar/` | Roda a sincronização e devolve `sync` |
+| `POST` | `/racks/cliente/<id>/conexoes/religar/` | "Cabear de novo" (`link_id`): apaga o `LinkSemCabo` e sincroniza |
 
 Toda rota de escrita devolve `{ok: true, estado: {...}}` ou `{ok: false, erro: "..."}`.
 

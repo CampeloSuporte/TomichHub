@@ -90,7 +90,11 @@ def _corpo(request):
     return dados
 
 
-def _ok(cliente, **extra):
+def _ok(cliente, sincronizar=False, **extra):
+    """Com `sincronizar`, acerta os cabos com o mapa antes de devolver o
+    estado — e diz o que mudou (`sync`), para a tela avisar."""
+    if sincronizar:
+        extra['sync'] = services.sincronizar_cabos(cliente)
     return JsonResponse({'ok': True, 'estado': services.estado(cliente), **extra})
 
 
@@ -167,14 +171,14 @@ def api_rack_excluir(request, rack):
 @_api(escrita=True)(_rack)
 def api_equipamento_criar(request, rack):
     eq = services.montar_equipamento(rack, _corpo(request))
-    return _ok(rack.cliente, equipamento_id=eq.id)
+    return _ok(rack.cliente, sincronizar=True, equipamento_id=eq.id)
 
 
 @require_POST
 @_api(escrita=True)(_equipamento)
 def api_equipamento_editar(request, eq):
     services.atualizar_equipamento(eq, _corpo(request))
-    return _ok(eq.cliente)
+    return _ok(eq.cliente, sincronizar=True)
 
 
 @require_POST
@@ -210,5 +214,19 @@ def api_conexao_editar(request, conexao):
 @_api(escrita=True)(_conexao)
 def api_conexao_excluir(request, conexao):
     cliente = conexao.cliente
-    conexao.delete()
+    services.excluir_conexao(conexao, request.user)
     return _ok(cliente)
+
+
+@require_POST
+@_api(escrita=True)(_cliente)
+def api_link_religar(request, cliente):
+    """"Cabear de novo" um enlace cujo cabo foi excluído."""
+    services.religar_link(cliente, _corpo(request).get('link_id'))
+    return _ok(cliente, sincronizar=True)
+
+
+@require_POST
+@_api(escrita=True)(_cliente)
+def api_sincronizar(request, cliente):
+    return _ok(cliente, sincronizar=True)

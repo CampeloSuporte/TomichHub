@@ -14,7 +14,7 @@ from clientes.models import Acesso, TopologiaDiagrama
 from clientes.topologia_tipos import tipo_topologia_do_acesso
 
 from . import catalogo
-from .models import ConexaoFisica, Rack, RackEquipamento
+from .models import ConexaoFisica, LinkSemCabo, Rack, RackEquipamento
 
 
 class ErroRack(ValueError):
@@ -302,22 +302,42 @@ def _campos_conexao(cliente, dados, atual=None):
     return campos
 
 
-def criar_conexao(cliente, dados, usuario=None, topologia_link_id='', diagrama=None):
+def criar_conexao(cliente, dados, usuario=None, topologia_link_id='', diagrama=None, sincronizado=False):
     with transaction.atomic():
         campos = _campos_conexao(cliente, dados)
         try:
-            return ConexaoFisica.objects.create(cliente=cliente, criado_por=usuario,
+            return ConexaoFisica.objects.create(cliente=cliente, criado_por=usuario, sincronizado=sincronizado,
                                                 topologia_link_id=topologia_link_id, diagrama=diagrama, **campos)
         except IntegrityError:
             raise ErroRack('Este enlace da topologia já tem conexão física.')
 
 
-def atualizar_conexao(conexao, dados):
+def atualizar_conexao(conexao, dados, pela_sincronizacao=False):
+    """Edição à mão tira o cabo da sincronização: dali em diante o que a
+    pessoa escreveu vale mais que o enlace do mapa."""
     with transaction.atomic():
         for campo, valor in _campos_conexao(conexao.cliente, dados, atual=conexao).items():
             setattr(conexao, campo, valor)
+        if not pela_sincronizacao:
+            conexao.sincronizado = False
         conexao.save()
     return conexao
+
+
+def excluir_conexao(conexao, usuario=None):
+    """Cabo que veio de um enlace do mapa deixa o enlace marcado como "sem
+    cabo" — senão a próxima sincronização o recriaria."""
+    with transaction.atomic():
+        if conexao.topologia_link_id:
+            LinkSemCabo.objects.get_or_create(cliente_id=conexao.cliente_id,
+                                              topologia_link_id=conexao.topologia_link_id,
+                                              defaults={'criado_por': usuario})
+        conexao.delete()
+
+
+def religar_link(cliente, link_id):
+    """Desfaz o "sem cabo": o enlace volta a ser cabeado pela sincronização."""
+    LinkSemCabo.objects.filter(cliente=cliente, topologia_link_id=str(link_id or '')).delete()
 
 
 # ── Topologia -> rack ────────────────────────────────────────────────────────
@@ -415,13 +435,14 @@ def dispositivos(cliente):
     return lista
 
 
-def links_topologia(cliente, link_id=None):
+def links_topologia(cliente, link_id=None, com_bloqueio=True):
     """Enlaces da topologia entre equipamentos físicos e a situação de cada
     um no rack: `criada` (já tem cabo), `pronta` (as duas pontas montadas)
     ou `pendente` (falta montar alguma ponta — `faltando` diz qual)."""
     por_acesso, por_node = _indice_montados(cliente)
     conexoes = {c.topologia_link_id: c for c in
                 ConexaoFisica.objects.filter(cliente=cliente).exclude(topologia_link_id='')}
+    ignorados = set(LinkSemCabo.objects.filter(cliente=cliente).values_list('topologia_link_id', flat=True))
     vistos, lista = set(), []
     for diagrama, dados in _diagramas(cliente):
         nodes = {str(n.get('id')): n for n in dados.get('nodes') or [] if isinstance(n, dict)}
@@ -446,17 +467,42 @@ def links_topologia(cliente, link_id=None):
             conexao = conexoes.get(lid)
             faltando = [ponta[l]['label'] or ponta[l]['node_id'] for l in 'ab' if not ponta[l]['equipamento_id']]
             meio, conector = catalogo.meio_da_iface(link.get('iface'))
-            lista.append({
+            if conexao:
+                status = 'criada'
+            elif lid in ignorados:
+                status = 'ignorada'
+            else:
+                status = 'pendente' if faltando else 'pronta'
+            item = {
                 'link_id': lid, 'diagrama_id': diagrama.id, 'diagrama': diagrama.nome,
                 'iface': link.get('iface') or '', 'label': link.get('label') or '', 'vlan': link.get('vlan') or '',
                 'a': ponta['a'], 'b': ponta['b'], 'meio_sugerido': meio, 'conector_sugerido': conector,
-                'status': 'criada' if conexao else ('pendente' if faltando else 'pronta'),
-                'conexao_id': conexao.id if conexao else None, 'faltando': faltando,
-            })
+                'status': status, 'conexao_id': conexao.id if conexao else None,
+                'sincronizado': bool(conexao and conexao.sincronizado), 'faltando': faltando, 'bloqueio': '',
+            }
+            if status == 'pronta' and com_bloqueio:
+                # Pronta e sem cabo depois da sincronização = algo impede (porta
+                # já cabeada, mesma porta nas duas pontas): diz o quê.
+                try:
+                    _campos_conexao(cliente, _base_do_link(item))
+                except ErroRack as e:
+                    item['bloqueio'] = str(e)
+            lista.append(item)
     return lista
 
 
-def criar_conexao_do_link(cliente, link_id, dados=None, usuario=None):
+def _base_do_link(link):
+    """Campos do cabo que saem do enlace: pontas, portas (Interface Lado
+    A/B), tipo e conector pela velocidade, etiqueta pelo rótulo."""
+    return {
+        'ponta_a_id': link['a']['equipamento_id'], 'porta_a': link['a']['porta'],
+        'ponta_b_id': link['b']['equipamento_id'], 'porta_b': link['b']['porta'],
+        'meio': link['meio_sugerido'], 'conector': link['conector_sugerido'],
+        'identificacao': link['label'][:120],
+    }
+
+
+def criar_conexao_do_link(cliente, link_id, dados=None, usuario=None, sincronizado=False):
     """Cabo a partir de um enlace da topologia: pontas, portas (Interface
     Lado A/B), tipo de cabo (pela velocidade) e etiqueta (rótulo do enlace)
     vêm do enlace; `dados` sobrescreve o que a pessoa ajustou na tela."""
@@ -470,16 +516,61 @@ def criar_conexao_do_link(cliente, link_id, dados=None, usuario=None):
         raise ErroRack('Este enlace já tem conexão física.')
     if link['status'] == 'pendente':
         raise ErroRack('Monte no rack antes: ' + ', '.join(link['faltando']) + '.')
-    base = {
-        'ponta_a_id': link['a']['equipamento_id'], 'porta_a': link['a']['porta'],
-        'ponta_b_id': link['b']['equipamento_id'], 'porta_b': link['b']['porta'],
-        'meio': link['meio_sugerido'], 'conector': link['conector_sugerido'],
-        'identificacao': link['label'][:120],
-    }
-    base.update({k: v for k, v in dados.items() if k in (
+    if link['status'] == 'ignorada':
+        LinkSemCabo.objects.filter(cliente=cliente, topologia_link_id=link['link_id']).delete()
+    return _criar_do_link(cliente, link, dados, usuario, sincronizado)
+
+
+def _criar_do_link(cliente, link, dados=None, usuario=None, sincronizado=False):
+    base = _base_do_link(link)
+    base.update({k: v for k, v in (dados or {}).items() if k in (
         'porta_a', 'porta_b', 'meio', 'conector', 'cor', 'comprimento_m', 'identificacao', 'observacoes')})
     diagrama = TopologiaDiagrama.objects.filter(id=link['diagrama_id']).first()
-    return criar_conexao(cliente, base, usuario, topologia_link_id=link['link_id'], diagrama=diagrama)
+    return criar_conexao(cliente, base, usuario, topologia_link_id=link['link_id'], diagrama=diagrama,
+                         sincronizado=sincronizado)
+
+
+def sincronizar_cabos(cliente):
+    """Deixa os cabos iguais aos enlaces do mapa:
+
+    - enlace com as duas pontas montadas e sem cabo -> cria o cabo;
+    - cabo sincronizado (nunca editado à mão) -> acompanha o enlace
+      (pontas, portas, tipo, etiqueta) e sai se o enlace sumir do mapa ou
+      deixar de ter as duas pontas montadas;
+    - cabo editado à mão e enlace marcado "sem cabo" não são tocados.
+
+    Tudo o que um cabo sincronizado guarda é derivado do enlace, então
+    removê-lo não perde nada: ele volta igual quando o enlace voltar.
+    Devolve {'criados', 'atualizados', 'removidos', 'bloqueados'}."""
+    res = {'criados': 0, 'atualizados': 0, 'removidos': 0, 'bloqueados': 0}
+    links = {l['link_id']: l for l in links_topologia(cliente, com_bloqueio=False)}
+
+    for c in ConexaoFisica.objects.filter(cliente=cliente, sincronizado=True):
+        link = links.get(c.topologia_link_id)
+        if not link or not link['a']['equipamento_id'] or not link['b']['equipamento_id']:
+            c.delete()
+            res['removidos'] += 1
+            continue
+        base = _base_do_link(link)
+        atual = {'ponta_a_id': c.ponta_a_id, 'porta_a': c.porta_a, 'ponta_b_id': c.ponta_b_id,
+                 'porta_b': c.porta_b, 'meio': c.meio, 'conector': c.conector, 'identificacao': c.identificacao}
+        if base != atual:
+            try:
+                atualizar_conexao(c, base, pela_sincronizacao=True)
+                res['atualizados'] += 1
+            except ErroRack:
+                res['bloqueados'] += 1
+
+    # Relido: o passo de cima pode ter removido cabos (enlace volta a "pronta").
+    for link in links_topologia(cliente, com_bloqueio=False):
+        if link['status'] != 'pronta':
+            continue
+        try:
+            _criar_do_link(cliente, link, sincronizado=True)
+            res['criados'] += 1
+        except ErroRack:
+            res['bloqueados'] += 1
+    return res
 
 
 # ── Serialização ─────────────────────────────────────────────────────────────
@@ -503,7 +594,7 @@ def conexao_dict(c):
         'meio': c.meio, 'conector': c.conector, 'cor': c.cor,
         'comprimento_m': str(c.comprimento_m) if c.comprimento_m is not None else '',
         'identificacao': c.identificacao, 'topologia_link_id': c.topologia_link_id,
-        'diagrama_id': c.diagrama_id, 'observacoes': c.observacoes,
+        'diagrama_id': c.diagrama_id, 'observacoes': c.observacoes, 'sincronizado': c.sincronizado,
     }
 
 
@@ -511,12 +602,22 @@ def estado(cliente):
     """Tudo que a tela do rack precisa num só JSON; toda alteração devolve
     este estado inteiro de novo, então a tela nunca fica fora de sincronia."""
     racks = list(Rack.objects.filter(cliente=cliente).prefetch_related('equipamentos__acesso'))
+    racks_json = [{
+        'id': r.id, 'nome': r.nome, 'local': r.local, 'altura_u': r.altura_u, 'observacoes': r.observacoes,
+        'equipamentos': [equipamento_dict(eq) for eq in r.equipamentos.all()],
+    } for r in racks]
+    links = links_topologia(cliente)
+    no_mapa = {l['link_id'] for l in links}
+    conexoes = []
+    for c in ConexaoFisica.objects.filter(cliente=cliente):
+        d = conexao_dict(c)
+        # Cabo manual que veio de um enlace que não está mais no mapa: fica
+        # (é inventário físico), mas avisado.
+        d['orfao'] = bool(c.topologia_link_id) and c.topologia_link_id not in no_mapa
+        conexoes.append(d)
     return {
-        'racks': [{
-            'id': r.id, 'nome': r.nome, 'local': r.local, 'altura_u': r.altura_u, 'observacoes': r.observacoes,
-            'equipamentos': [equipamento_dict(eq) for eq in r.equipamentos.all()],
-        } for r in racks],
-        'conexoes': [conexao_dict(c) for c in ConexaoFisica.objects.filter(cliente=cliente)],
+        'racks': racks_json,
+        'conexoes': conexoes,
         'dispositivos': dispositivos(cliente),
-        'links': links_topologia(cliente),
+        'links': links,
     }

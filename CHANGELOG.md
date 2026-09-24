@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-24 (Racks: cabos criados a partir do mapa e desenhados no rack)
+
+### Adicionado
+
+- **Os enlaces do mapa viram cabos sozinhos**: montar as duas pontas de um enlace no rack (ou salvar a
+  topologia com um enlace novo entre hosts já montados) cria o cabo com as portas das Interfaces Lado
+  A/B, o tipo pela velocidade e a etiqueta pelo rótulo. Enquanto não for editado à mão, o cabo
+  **acompanha o enlace**: muda junto quando a interface/velocidade muda e sai quando o enlace é apagado
+  do mapa. Editou à mão, vira manual e a sincronização não mexe mais. Cabo de enlace excluído não é
+  recriado ("Cabear de novo" desfaz). Porta já cabeada bloqueia a criação e a tela mostra o motivo.
+- **Cabos desenhados no rack**: patch cords saindo de cada equipamento para uma calha ao lado do rack,
+  com a cor do cabo; cabo para outro rack termina numa seta com o destino. Hover realça o cabo e as
+  pontas, clique abre a edição; botão no cabeçalho do rack mostra/esconde.
+- Aba Conexões: status "segue o mapa" / "com cabo" / "bloqueado" / "sem cabo", botão **Sincronizar** e
+  selo de origem em cada cabo (mapa / editado / saiu do mapa). Toast ao montar diz quantos cabos o mapa
+  criou.
+
+---
+
 ## [Não publicado] — 2026-09-24 (Topologia: selo de rack nos hosts montados)
 
 ### Adicionado

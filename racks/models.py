@@ -93,6 +93,9 @@ class ConexaoFisica(models.Model):
     comprimento_m = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
     identificacao = models.CharField(max_length=120, blank=True, default='', help_text='Etiqueta do cabo.')
     topologia_link_id = models.CharField(max_length=80, blank=True, default='')
+    sincronizado = models.BooleanField(
+        default=False, help_text='Criado pela sincronização com a topologia e nunca editado à mão: '
+                                 'acompanha o enlace (portas, tipo, etiqueta) e some junto com ele.')
     diagrama = models.ForeignKey('clientes.TopologiaDiagrama', null=True, blank=True, on_delete=models.SET_NULL,
                                  related_name='+', help_text='Mapa da topologia onde está o enlace de origem.')
     observacoes = models.TextField(blank=True, default='')
@@ -112,3 +115,20 @@ class ConexaoFisica(models.Model):
 
     def __str__(self):
         return f'{self.ponta_a.nome}:{self.porta_a} ↔ {self.ponta_b.nome}:{self.porta_b}'
+
+
+class LinkSemCabo(models.Model):
+    """Enlace da topologia cujo cabo a pessoa excluiu: a sincronização não
+    o recria. Sai daqui pelo "Cabear de novo" da aba Conexões."""
+    cliente = models.ForeignKey('clientes.Cliente', on_delete=models.CASCADE, related_name='+')
+    topologia_link_id = models.CharField(max_length=80)
+    criado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Enlace sem cabo'
+        verbose_name_plural = 'Enlaces sem cabo'
+        constraints = [models.UniqueConstraint(fields=['cliente', 'topologia_link_id'], name='link_sem_cabo_unico')]
+
+    def __str__(self):
+        return f'{self.topologia_link_id} — {self.cliente_id}'
