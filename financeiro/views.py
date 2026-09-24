@@ -2088,10 +2088,13 @@ def api_listar_despesas(request):
             qs = qs.filter(status='PENDENTE', data_vencimento__gte=hoje)
         elif status_filtro == 'VENCIDO':
             qs = qs.filter(status='PENDENTE', data_vencimento__lt=hoje)
-        elif status_filtro == 'NAO_PAGA':
-            # Pendentes + vencidas — tudo que ainda não foi pago, sem filtrar por data.
-            # É o filtro padrão ao abrir a tela (só esconde o que já está pago).
-            qs = qs.filter(status='PENDENTE')
+        elif status_filtro == 'RELEVANTES':
+            # Vencidas + vence hoje + próximos 30 dias — mesmo critério do card
+            # "Pendentes" do resumo (api_despesas_dashboard). É o filtro padrão ao
+            # abrir a tela: esconde tanto as já pagas quanto parcelas de recorrência
+            # que só vencem daqui a muitos meses (ainda não são acionáveis).
+            limite = hoje + timedelta(days=30)
+            qs = qs.filter(status='PENDENTE', data_vencimento__lte=limite)
         if mes and ano:
             qs = qs.filter(data_vencimento__month=int(mes), data_vencimento__year=int(ano))
         elif ano:

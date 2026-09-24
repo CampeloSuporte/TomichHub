@@ -69,9 +69,9 @@ input[type=checkbox]{accent-color:var(--cy);cursor:pointer;}
   <div class="filter-bar">
     <input type="text" id="busca" placeholder="Buscar por nome…" oninput="carregarDespesas()">
     <select id="filtro-status" onchange="carregarDespesas()">
-      <option value="NAO_PAGA" selected>Pendentes + Vencidas</option>
+      <option value="RELEVANTES" selected>Pendentes (vencidas + próx. 30 dias)</option>
       <option value="">Todas</option>
-      <option value="PENDENTE">Só Pendentes</option>
+      <option value="PENDENTE">No prazo (qualquer data)</option>
       <option value="VENCIDO">Só Vencidas</option>
       <option value="PAGO">Pagas</option>
     </select>
@@ -84,7 +84,7 @@ input[type=checkbox]{accent-color:var(--cy);cursor:pointer;}
       <option value="FISCAL">Fiscal</option>
       <option value="OUTROS">Outros</option>
     </select>
-    <button class="cy-btn-sm" onclick="document.getElementById('busca').value='';document.getElementById('filtro-status').value='NAO_PAGA';document.getElementById('filtro-cat').value='';carregarDespesas();">
+    <button class="cy-btn-sm" onclick="document.getElementById('busca').value='';document.getElementById('filtro-status').value='RELEVANTES';document.getElementById('filtro-cat').value='';carregarDespesas();">
       <i class="fas fa-times"></i> Limpar
     </button>
     <span id="contador-despesas" style="font-size:.75rem;color:#7d8590;margin-left:auto;"></span>
