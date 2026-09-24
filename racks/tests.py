@@ -8,7 +8,7 @@ from clientes.models import Acesso, Cliente, TopologiaDiagrama
 from usuario.models import Instancia, InstanciaFerramenta, PerfilUsuario, TOTPDevice
 
 from . import services
-from .models import ConexaoFisica, Rack, RackEquipamento
+from .models import ConexaoFisica, LinkSemCabo, Rack, RackEquipamento
 from .services import ErroRack
 
 
@@ -169,6 +169,103 @@ class TopologiaParaRackTest(TestCase):
         self.assertEqual(self.links()['L1']['status'], 'pendente')
 
 
+class SincronizacaoTest(TestCase):
+    """Cabos seguindo os enlaces do mapa (services.sincronizar_cabos + signal)."""
+
+    def setUp(self):
+        self.cliente = _cliente()
+        self.sw = _acesso(self.cliente, 'SW-AGG', '10.0.0.1')
+        self.rtr = _acesso(self.cliente, 'RTR', '10.0.0.2')
+        self.dados = {
+            'nodes': [{'id': f'crm_{self.sw.id}', 'type': 'switch_l2', 'label': 'SW-AGG', 'acesso_id': self.sw.id},
+                      {'id': f'crm_{self.rtr.id}', 'type': 'router', 'label': 'RTR', 'acesso_id': self.rtr.id}],
+            'links': [{'id': 'L1', 'src': f'crm_{self.sw.id}', 'tgt': f'crm_{self.rtr.id}', 'iface': '10g',
+                       'iface_a': 'XGE0/0/1', 'iface_b': 'sfp1', 'label': 'P2P'}],
+        }
+        self.diagrama = TopologiaDiagrama.objects.create(cliente=self.cliente, dados_json=json.dumps(self.dados))
+        self.rack = services.criar_rack(self.cliente, {'nome': 'R1'})
+
+    def montar_os_dois(self):
+        a = services.montar_equipamento(self.rack, {'tipo': 'switch', 'acesso_id': self.sw.id})
+        b = services.montar_equipamento(self.rack, {'tipo': 'router', 'acesso_id': self.rtr.id})
+        return a, b
+
+    def salvar_mapa(self):
+        self.diagrama.dados_json = json.dumps(self.dados)
+        self.diagrama.save()  # dispara o signal
+
+    def cabo(self):
+        return ConexaoFisica.objects.get(topologia_link_id='L1')
+
+    def test_cria_cabo_quando_as_duas_pontas_estao_montadas(self):
+        services.montar_equipamento(self.rack, {'tipo': 'switch', 'acesso_id': self.sw.id})
+        self.assertEqual(services.sincronizar_cabos(self.cliente)['criados'], 0)
+        services.montar_equipamento(self.rack, {'tipo': 'router', 'acesso_id': self.rtr.id})
+        self.assertEqual(services.sincronizar_cabos(self.cliente)['criados'], 1)
+        c = self.cabo()
+        self.assertTrue(c.sincronizado)
+        self.assertEqual((c.porta_a, c.porta_b, c.meio, c.identificacao), ('XGE0/0/1', 'sfp1', 'fibra_sm', 'P2P'))
+        self.assertEqual(services.sincronizar_cabos(self.cliente),
+                         {'criados': 0, 'atualizados': 0, 'removidos': 0, 'bloqueados': 0})
+
+    def test_salvar_topologia_cria_e_acompanha_o_enlace(self):
+        self.montar_os_dois()
+        self.salvar_mapa()
+        self.assertEqual(self.cabo().porta_a, 'XGE0/0/1')
+        self.dados['links'][0].update(iface_a='XGE0/0/2', iface='1g')
+        self.salvar_mapa()
+        c = self.cabo()
+        self.assertEqual((c.porta_a, c.meio, c.conector), ('XGE0/0/2', 'utp', 'RJ45'))
+
+    def test_enlace_apagado_do_mapa_leva_o_cabo_sincronizado(self):
+        self.montar_os_dois()
+        self.salvar_mapa()
+        self.dados['links'] = []
+        self.salvar_mapa()
+        self.assertFalse(ConexaoFisica.objects.exists())
+
+    def test_editado_a_mao_para_de_seguir_o_mapa_e_fica_orfao(self):
+        self.montar_os_dois()
+        self.salvar_mapa()
+        services.atualizar_conexao(self.cabo(), {'comprimento_m': '3'})
+        self.assertFalse(self.cabo().sincronizado)
+        self.dados['links'][0]['iface_a'] = 'XGE0/0/9'
+        self.salvar_mapa()
+        self.assertEqual(self.cabo().porta_a, 'XGE0/0/1')
+        self.dados['links'] = []
+        self.salvar_mapa()
+        self.assertTrue(services.estado(self.cliente)['conexoes'][0]['orfao'])
+
+    def test_cabo_excluido_nao_volta_ate_religar(self):
+        self.montar_os_dois()
+        self.salvar_mapa()
+        services.excluir_conexao(self.cabo())
+        self.salvar_mapa()
+        self.assertFalse(ConexaoFisica.objects.exists())
+        self.assertEqual(services.links_topologia(self.cliente)[0]['status'], 'ignorada')
+        services.religar_link(self.cliente, 'L1')
+        services.sincronizar_cabos(self.cliente)
+        self.assertTrue(self.cabo().sincronizado)
+        self.assertFalse(LinkSemCabo.objects.exists())
+
+    def test_porta_ja_cabeada_bloqueia_e_explica(self):
+        a, b = self.montar_os_dois()
+        services.criar_conexao(self.cliente, {'ponta_a_id': a.id, 'porta_a': 'xge0/0/1', 'ponta_b_id': b.id, 'porta_b': 'x'})
+        self.assertEqual(services.sincronizar_cabos(self.cliente)['bloqueados'], 1)
+        link = services.links_topologia(self.cliente)[0]
+        self.assertEqual(link['status'], 'pronta')
+        self.assertIn('já tem cabo', link['bloqueio'])
+
+    def test_desmontar_ponta_remove_cabo_e_remontar_devolve(self):
+        a, _ = self.montar_os_dois()
+        services.sincronizar_cabos(self.cliente)
+        a.delete()
+        self.assertFalse(ConexaoFisica.objects.exists())
+        services.montar_equipamento(self.rack, {'tipo': 'switch', 'acesso_id': self.sw.id})
+        services.sincronizar_cabos(self.cliente)
+        self.assertEqual(self.cabo().porta_a, 'XGE0/0/1')
+
+
 class ApiTest(TestCase):
     def setUp(self):
         self.inst = Instancia.objects.create(nome='Revenda')
@@ -212,6 +309,24 @@ class ApiTest(TestCase):
         self.assertEqual(r.status_code, 400)
         self.assertIn('OLT-1', r.json()['erro'])
         self.assertEqual(RackEquipamento.objects.count(), 1)
+
+    def test_montar_pela_api_sincroniza_e_relata(self):
+        a = _acesso(self.cliente, 'SW', '10.0.0.1')
+        b = _acesso(self.cliente, 'RTR', '10.0.0.2')
+        TopologiaDiagrama.objects.create(cliente=self.cliente, dados_json=json.dumps({
+            'nodes': [{'id': f'crm_{a.id}', 'type': 'switch_l2', 'acesso_id': a.id},
+                      {'id': f'crm_{b.id}', 'type': 'router', 'acesso_id': b.id}],
+            'links': [{'id': 'L9', 'src': f'crm_{a.id}', 'tgt': f'crm_{b.id}', 'iface': '1g'}]}))
+        self.client.force_login(self.consultor)
+        rack_id = self.post('rack_criar', [self.cliente.id], {'nome': 'R'}).json()['rack_id']
+        self.post('equipamento_criar', [rack_id], {'tipo': 'switch', 'acesso_id': a.id})
+        r = self.post('equipamento_criar', [rack_id], {'tipo': 'router', 'acesso_id': b.id})
+        self.assertEqual(r.json()['sync']['criados'], 1)
+        cid = r.json()['estado']['conexoes'][0]['id']
+        r = self.post('conexao_excluir', [cid], {})
+        self.assertEqual(r.json()['estado']['links'][0]['status'], 'ignorada')
+        r = self.post('link_religar', [self.cliente.id], {'link_id': 'L9'})
+        self.assertEqual(r.json()['estado']['links'][0]['status'], 'criada')
 
     def test_tela_abre_para_admin(self):
         self.client.force_login(self.admin)

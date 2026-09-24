@@ -1242,3 +1242,7 @@ Detalhes em [racks.md](racks.md). O que muda no editor:
   e depois de importar hosts; o clique no selo é tratado no começo do `_onDown` (não seleciona nem
   arrasta o node) e chama `abrirNoRack` → `abrirRacks(null, equipamento_id)`. Selo estático, sem
   filtro nem animação.
+- **Salvar a topologia sincroniza os cabos do rack** (signal em `racks/signals.py`, sem código no
+  editor): enlace novo entre hosts montados vira cabo, mudança de interface/velocidade/rótulo atualiza o
+  cabo e enlace apagado leva o cabo junto — enquanto o cabo não tiver sido editado à mão. Ver
+  "Sincronização com o mapa" em [racks.md](racks.md).

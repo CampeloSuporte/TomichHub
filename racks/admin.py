@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ConexaoFisica, Rack, RackEquipamento
+from .models import ConexaoFisica, LinkSemCabo, Rack, RackEquipamento
 
 
 @admin.register(Rack)
@@ -20,6 +20,12 @@ class RackEquipamentoAdmin(admin.ModelAdmin):
 
 @admin.register(ConexaoFisica)
 class ConexaoFisicaAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'cliente', 'meio', 'identificacao', 'topologia_link_id')
-    list_filter = ('meio',)
+    list_display = ('__str__', 'cliente', 'meio', 'identificacao', 'topologia_link_id', 'sincronizado')
+    list_filter = ('meio', 'sincronizado')
     raw_id_fields = ('cliente', 'ponta_a', 'ponta_b', 'diagrama')
+
+
+@admin.register(LinkSemCabo)
+class LinkSemCaboAdmin(admin.ModelAdmin):
+    list_display = ('topologia_link_id', 'cliente', 'criado_por', 'criado_em')
+    raw_id_fields = ('cliente',)

@@ -29,6 +29,8 @@ class RackBuilder {
     this.focoLink = null;
     this.drag = null;
     this._ifaceCache = {};
+    this.verCabos = true;         // cabos desenhados na lateral do rack
+    try { this.verCabos = localStorage.getItem('rack_ver_cabos') !== '0'; } catch (e) {}
     this.U = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--u')) || 24;
 
     const qs = new URLSearchParams(location.search);
@@ -45,6 +47,7 @@ class RackBuilder {
     window.addEventListener('pointermove', e => this._mover(e));
     window.addEventListener('pointerup', e => this._soltar(e));
     window.addEventListener('keydown', e => this._tecla(e));
+    window.addEventListener('resize', () => this._desenharCabos());
     this.carregar();
   }
 
@@ -235,9 +238,11 @@ class RackBuilder {
         <div><h1>${this._esc(rack.nome)}</h1>
           <div class="sub">${rack.local ? this._esc(rack.local) + ' · ' : ''}${n}U · vista ${this.face === 'frente' ? 'frontal' : 'traseira'}</div></div>
         <div class="ocup"><div class="barra"><i style="width:${Math.round(ocup / n * 100)}%"></i></div>${ocup}/${n}U ocupados
+          <button class="ico-btn ${this.verCabos ? 'on' : ''}" title="${this.verCabos ? 'Esconder' : 'Mostrar'} os cabos" onclick="rb.alternarCabos()"><i class="fas fa-ethernet"></i></button>
           <button class="ico-btn so-escrita" title="Editar rack" onclick="rb.dialogoRack(${rack.id})"><i class="fas fa-gear"></i></button>
           <button class="ico-btn danger so-escrita" title="Excluir rack" onclick="rb.excluirRack(${rack.id})"><i class="fas fa-trash"></i></button></div>
       </div>
+      <div class="rack-cena ${this.verCabos ? 'com-cabos' : ''}" id="rack-cena">
       <div class="rack" style="--n:${n}">
         <div class="rack-topo"></div>
         <div class="rack-corpo">
@@ -246,7 +251,9 @@ class RackBuilder {
           <div class="trilho dir">${numeros}</div>
         </div>
         <div class="rack-base"></div>
-      </div>`;
+      </div>
+      <svg id="cabos-svg" xmlns="http://www.w3.org/2000/svg"></svg></div>`;
+    this._desenharCabos();
     palco.querySelectorAll('.eq:not(.verso)').forEach(el => el.addEventListener('pointerdown', e => this._pegar(e, el)));
     palco.querySelectorAll('.eq.verso').forEach(el => el.addEventListener('click', () => this.selecionar(+el.dataset.id)));
   }
@@ -372,19 +379,25 @@ class RackBuilder {
       // Rótulo da velocidade vem do TOPO_IFACES do editor (topo_engine.js).
       const iface = ((window.TOPO_IFACES || {})[l.iface] || {}).label || l.iface;
       let acao = '';
+      if (!this.leitura && l.status === 'ignorada') acao = `<button class="prop-btn mini" title="O cabo deste enlace foi excluído; volta a ser criado e a seguir o mapa" onclick="rb.religar('${this._escJs(l.link_id)}')"><i class="fas fa-rotate"></i> Cabear de novo</button>`;
       if (!this.leitura && l.status === 'pronta') acao = `<button class="prop-btn mini" onclick="rb.dialogoConexao({linkId:'${this._escJs(l.link_id)}'})"><i class="fas fa-plug"></i> Criar cabo</button>`;
       if (!this.leitura && l.status === 'pendente' && this._rack()) acao = `<button class="prop-btn mini" title="Monta as pontas que faltam no rack ${this._esc(this._rack().nome)}" onclick="rb.montarPendentes('${this._escJs(l.link_id)}')"><i class="fas fa-download"></i> Montar aqui</button>`;
       const extra = l.status === 'criada' ? ` data-realce="${l.conexao_id}"` : '';
       const meta = l.status === 'pendente' ? `Falta montar: ${this._esc(l.faltando.join(', '))}`
+        : l.bloqueio ? `<span class="alerta"><i class="fas fa-triangle-exclamation"></i> ${this._esc(l.bloqueio)}</span>`
         : [l.label, iface, l.vlan ? 'VLAN ' + l.vlan : ''].filter(Boolean).map(x => this._esc(x)).join(' · ');
+      const pill = {pendente: 'pendente', pronta: l.bloqueio ? 'bloqueado' : 'pronta',
+                    criada: l.sincronizado ? 'segue o mapa' : 'com cabo', ignorada: 'sem cabo'}[l.status];
       return `<div class="cartao ${this.focoLink === l.link_id ? 'foco' : ''}" data-link="${this._esc(l.link_id)}"${extra}>
         <div class="ln">${ponta(l.a)}<i class="fas fa-arrows-left-right seta"></i>${ponta(l.b)}</div>
-        <div class="ln"><span class="pill ${l.status}">${l.status}</span><span class="meta">${meta}</span>${acao}</div></div>`;
+        <div class="ln"><span class="pill ${l.status}${l.bloqueio ? ' bloqueado' : ''}">${pill}</span><span class="meta">${meta}</span>${acao}</div></div>`;
     }).join('');
     const cabos = this.estado.conexoes.map(c => this._cartaoCabo(c)).join('');
     return `
-      <div class="sec-tit"><h3>Enlaces da topologia</h3></div>
-      <div class="filtros">${btn('todos', `Todos ${links.length}`)}${btn('pronta', `Prontos ${n('pronta')}`)}${btn('pendente', `Pendentes ${n('pendente')}`)}${btn('criada', `Com cabo ${n('criada')}`)}</div>
+      <div class="sec-tit"><h3>Enlaces da topologia</h3>
+        <button class="prop-btn mini so-escrita" title="Cria/atualiza os cabos a partir dos enlaces do mapa salvo (também acontece sozinho ao montar e ao salvar a topologia)" onclick="rb.sincronizar()"><i class="fas fa-rotate"></i> Sincronizar</button></div>
+      <div class="dica">Enlace com as duas pontas montadas vira cabo sozinho, e o cabo acompanha o mapa até alguém editá-lo à mão.</div>
+      <div class="filtros">${btn('todos', `Todos ${links.length}`)}${btn('criada', `Com cabo ${n('criada')}`)}${btn('pendente', `Pendentes ${n('pendente')}`)}${n('pronta') ? btn('pronta', `Bloqueados ${n('pronta')}`) : ''}${n('ignorada') ? btn('ignorada', `Sem cabo ${n('ignorada')}`) : ''}</div>
       ${cartoes || `<div class="dica">${links.length ? 'Nada neste filtro.' : 'Nenhum enlace físico na topologia salva deste cliente. Enlaces com Internet, IX, nuvem, VM ou grupo são lógicos e não aparecem aqui.'}</div>`}
       <div class="sec-tit"><h3>Cabos (${this.estado.conexoes.length})</h3>
         <button class="prop-btn mini so-escrita" onclick="rb.dialogoConexao({})"><i class="fas fa-plus"></i> Cabo manual</button></div>
@@ -402,14 +415,109 @@ class RackBuilder {
       <div class="ln"><span class="cor-cabo" style="--cc:${this._corCabo(c)}"></span>
         <span class="ponta">${lugar(a)}${outroRack(a)} <em>${this._esc(pa || '—')}</em></span><i class="fas fa-arrows-left-right seta"></i>
         <span class="ponta">${lugar(b)}${outroRack(b)} <em>${this._esc(pb || '—')}</em></span></div>
-      <div class="ln"><span class="meta">${meta}${c.topologia_link_id ? ' · <i class="fas fa-diagram-project" title="Criado a partir da topologia"></i>' : ''}</span>
+      <div class="ln">${c.orfao ? '<span class="tag alerta" title="O enlace de origem não existe mais no mapa">saiu do mapa</span>'
+          : c.sincronizado ? '<span class="tag" title="Criado e mantido pelo enlace do mapa; editar à mão tira da sincronização">mapa</span>'
+          : c.topologia_link_id ? '<span class="tag manual" title="Veio do mapa e foi editado à mão — não acompanha mais o enlace">editado</span>' : ''}
+        <span class="meta">${meta}</span>
         <button class="prop-btn mini so-escrita" onclick="rb.dialogoConexao({conexaoId:${c.id}})" title="Editar"><i class="fas fa-pen"></i></button>
         <button class="prop-btn mini danger so-escrita" onclick="rb.excluirConexao(${c.id})" title="Excluir"><i class="fas fa-trash"></i></button></div></div>`;
+  }
+
+  alternarCabos() {
+    this.verCabos = !this.verCabos;
+    try { localStorage.setItem('rack_ver_cabos', this.verCabos ? '1' : '0'); } catch (e) {}
+    this._renderPalco();
+  }
+
+  /** Cabos do rack aberto, desenhados como patch cords que saem pela direita
+   *  de cada equipamento, descem/sobem por uma "calha" ao lado do rack (uma
+   *  raia por cabo, os mais curtos por dentro) e entram na outra ponta.
+   *  Cabo para outro rack — ou para equipamento que só aparece na outra face
+   *  — termina num rótulo com o destino. Onde o cabo sai no equipamento é
+   *  ilustrativo: a porta exata fica no tooltip e no painel. */
+  _desenharCabos() {
+    const cena = document.getElementById('rack-cena');
+    const svg = document.getElementById('cabos-svg');
+    if (!cena || !svg) return;
+    svg.innerHTML = '';
+    if (!this.verCabos) { cena.style.paddingRight = ''; return; }
+    const cr = cena.getBoundingClientRect();
+    const rr = cena.querySelector('.rack').getBoundingClientRect();
+    svg.setAttribute('width', cr.width);
+    svg.setAttribute('height', cr.height);
+    const xRack = rr.right - cr.left;
+    const elDe = id => {
+      const el = cena.querySelector(`.eq[data-id="${id}"]`);
+      return el && !el.classList.contains('verso') ? el : null; // de costas: portas não estão à vista
+    };
+
+    // Pontas visíveis por equipamento, para espalhar as saídas na altura dele.
+    const internos = [], externos = [], saidas = {};
+    this.estado.conexoes.forEach(c => {
+      const ea = elDe(c.ponta_a_id), eb = elDe(c.ponta_b_id);
+      if (!ea && !eb) return;
+      const item = {c, ea, eb};
+      (ea && eb ? internos : externos).push(item);
+      [ea, eb].forEach(el => { if (el) (saidas[el.dataset.id] = saidas[el.dataset.id] || []).push(item); });
+    });
+    const yDe = (el, item) => {
+      const lista = saidas[el.dataset.id];
+      const r = el.getBoundingClientRect();
+      const k = lista.indexOf(item) + (el === item.eb && item.ea === item.eb ? 1 : 0);
+      return r.top - cr.top + (k + 1) * r.height / (lista.length + (item.ea === item.eb ? 2 : 1));
+    };
+    const xDe = el => el.getBoundingClientRect().right - cr.left - 1; // pluga na borda do espelho
+
+    const RAIA = 8, X0 = xRack + 12;
+    internos.forEach(it => { it.ya = yDe(it.ea, it); it.yb = yDe(it.eb, it); });
+    internos.sort((p, q) => Math.abs(p.ya - p.yb) - Math.abs(q.ya - q.yb));
+    const partes = [];
+    const grupo = (c, d, extra) => {
+      const a = this._eq(c.ponta_a_id), b = this._eq(c.ponta_b_id);
+      const cor = this._corCabo(c);
+      const titulo = `${a ? a.nome : '?'} ${c.porta_a || '—'} ↔ ${b ? b.nome : '?'} ${c.porta_b || '—'}` +
+        [c.identificacao, (this.cat.meios[c.meio] || {}).label].filter(Boolean).map(x => ' · ' + x).join('');
+      return `<g class="cabo" data-cabo="${c.id}"><title>${this._esc(titulo)}</title>
+        <path class="cabo-hit" d="${d}"/><path class="cabo-linha" d="${d}" stroke="${cor}"/>${extra(cor)}</g>`;
+    };
+    internos.forEach((it, i) => {
+      const xl = X0 + (i % 18) * RAIA, xa = xDe(it.ea), xb = xDe(it.eb);
+      const s = it.yb >= it.ya ? 1 : -1, r = Math.min(6, Math.abs(it.yb - it.ya) / 2);
+      const d = `M${xa},${it.ya} H${xl - r} Q${xl},${it.ya} ${xl},${it.ya + s * r} V${it.yb - s * r} Q${xl},${it.yb} ${xl - r},${it.yb} H${xb}`;
+      partes.push(grupo(it.c, d, cor => `<circle cx="${xa}" cy="${it.ya}" r="2.6" fill="${cor}"/><circle cx="${xb}" cy="${it.yb}" r="2.6" fill="${cor}"/>`));
+    });
+    const xFim = X0 + Math.min(internos.length, 18) * RAIA + 10;
+    externos.forEach(it => {
+      const el = it.ea || it.eb;
+      const outroId = it.ea ? it.c.ponta_b_id : it.c.ponta_a_id;
+      const outro = this._eq(outroId);
+      const onde = !outro ? '?' : outro.rack_id !== this.rackId
+        ? `${this._rackDe(outro).nome} · ${outro.nome}` : `${outro.nome} (${outro.face})`;
+      const x = xDe(el), y = yDe(el, it);
+      const d = `M${x},${y} H${xFim}`;
+      partes.push(grupo(it.c, d, cor => `<circle cx="${x}" cy="${y}" r="2.6" fill="${cor}"/>
+        <path d="M${xFim},${y - 3.5} L${xFim + 5},${y} L${xFim},${y + 3.5}" fill="${cor}"/>
+        <text class="cabo-txt" x="${xFim + 9}" y="${y + 3.5}">${this._esc(onde.length > 24 ? onde.slice(0, 23) + '…' : onde)}</text>`));
+    });
+    svg.innerHTML = partes.join('');
+    // A calha ocupa só o que os cabos usam: sem cabo nenhum o rack fica
+    // centralizado como antes, e rótulo de outro rack não força rolagem.
+    // Mexer no padding da direita não muda as coordenadas (relativas à cena).
+    const largura = partes.length ? svg.getBBox().x + svg.getBBox().width - xRack + 12 : 0;
+    cena.style.paddingRight = Math.ceil(Math.max(0, largura)) + 'px';
+    svg.setAttribute('width', cena.getBoundingClientRect().width);
+    svg.querySelectorAll('.cabo').forEach(g => {
+      const id = +g.dataset.cabo;
+      g.addEventListener('mouseenter', () => this._realcarConexao(id, true));
+      g.addEventListener('mouseleave', () => this._realcarConexao(id, false));
+      if (!this.leitura) g.addEventListener('click', () => this.dialogoConexao({conexaoId: id}));
+    });
   }
 
   _realcarConexao(id, on) {
     const c = this.estado.conexoes.find(x => x.id === id);
     if (!c) return;
+    document.querySelector(`.cabo[data-cabo="${id}"]`)?.classList.toggle('on', on);
     [c.ponta_a_id, c.ponta_b_id].forEach(eid => {
       const el = document.querySelector(`.eq[data-id="${eid}"]`);
       if (!el) return;
@@ -533,7 +641,8 @@ class RackBuilder {
     if (d.tipo === 'mover') {
       const e = this._eq(d.id);
       if (e && e.u_inicial === d.u) return;
-      await this._post(`/racks/equipamento/${d.id}/editar/`, {u_inicial: d.u});
+      const r = await this._post(`/racks/equipamento/${d.id}/editar/`, {u_inicial: d.u});
+      if (r && this._resumoSync(r.sync)) this._toast('Movido' + this._resumoSync(r.sync));
     } else {
       await this._montar(d.dados, d.u, d.face);
     }
@@ -542,7 +651,7 @@ class RackBuilder {
   async _montar(dados, u, face) {
     const rack = this._rack();
     const r = await this._post(`/racks/rack/${rack.id}/equipamentos/criar/`, {...dados, u_inicial: u, face});
-    if (r) { this.sel = r.equipamento_id; this.aLateral = 'equipamento'; this.render(); this._toast('Montado'); }
+    if (r) { this.sel = r.equipamento_id; this.aLateral = 'equipamento'; this.render(); this._toast('Montado' + this._resumoSync(r.sync)); }
     return r;
   }
 
@@ -665,7 +774,8 @@ class RackBuilder {
     const cabCor = base.cor || (this.cat.meios[base.meio] || {}).cor || '#58a6ff';
     this._abrirDialogo(`
       <h2><i class="fas fa-plug"></i> ${c ? 'Editar cabo' : link ? 'Conexão física do enlace' : 'Novo cabo'}</h2>
-      <div class="sub">${link ? `Enlace da topologia <b>${this._esc(link.a.label)} ↔ ${this._esc(link.b.label)}</b>${link.iface ? ' · ' + this._esc(((window.TOPO_IFACES || {})[link.iface] || {}).label || link.iface) : ''}. As portas vieram de Interface Lado A/B e o tipo de cabo da velocidade — ajuste se o físico for diferente.` : 'Uma porta aceita um cabo só. Portas numéricas (1, 2, 3…) acendem no espelho do equipamento.'}</div>
+      <div class="sub">${link ? `Enlace da topologia <b>${this._esc(link.a.label)} ↔ ${this._esc(link.b.label)}</b>${link.iface ? ' · ' + this._esc(((window.TOPO_IFACES || {})[link.iface] || {}).label || link.iface) : ''}. As portas vieram de Interface Lado A/B e o tipo de cabo da velocidade — ajuste se o físico for diferente.` : c && c.sincronizado ? '<i class="fas fa-circle-info"></i> Este cabo segue o enlace do mapa. <b>Salvar uma alteração aqui tira ele da sincronização</b> — dali em diante vale o que estiver neste formulário.'
+        : 'Uma porta aceita um cabo só. Portas numéricas (1, 2, 3…) acendem no espelho do equipamento.'}</div>
       ${lado('a', base.a, base.pa)}${lado('b', base.b, base.pb)}
       <div class="prop-row">
         <div class="prop-group"><label class="prop-label">Cabo</label><select class="prop-select" id="cx-meio">${meios}</select></div>
@@ -739,7 +849,11 @@ class RackBuilder {
   }
 
   async excluirConexao(id) {
-    if (!confirm('Excluir este cabo?')) return;
+    const c = this.estado.conexoes.find(x => x.id === id);
+    const doMapa = c && c.topologia_link_id && !c.orfao;
+    if (!confirm(doMapa
+      ? 'Excluir este cabo?\n\nO enlace continua no mapa, mas não vai recriar o cabo. Para voltar, use "Cabear de novo" na aba Conexões.'
+      : 'Excluir este cabo?')) return;
     if (await this._post(`/racks/conexao/${id}/excluir/`)) this._toast('Cabo excluído');
   }
 
@@ -750,6 +864,27 @@ class RackBuilder {
     document.getElementById('dlg').classList.add('on');
   }
   fecharDialogo() { document.getElementById('dlg').classList.remove('on'); }
+
+  /** " — 2 cabos criados a partir do mapa" (vazio se nada mudou). */
+  _resumoSync(sync) {
+    if (!sync) return '';
+    const p = [];
+    if (sync.criados) p.push(`${sync.criados} cabo${sync.criados > 1 ? 's' : ''} criado${sync.criados > 1 ? 's' : ''} a partir do mapa`);
+    if (sync.atualizados) p.push(`${sync.atualizados} atualizado${sync.atualizados > 1 ? 's' : ''}`);
+    if (sync.removidos) p.push(`${sync.removidos} removido${sync.removidos > 1 ? 's' : ''}`);
+    if (sync.bloqueados) p.push(`${sync.bloqueados} bloqueado${sync.bloqueados > 1 ? 's' : ''} (ver Conexões)`);
+    return p.length ? ' — ' + p.join(', ') : '';
+  }
+
+  async sincronizar() {
+    const r = await this._post(`/racks/cliente/${this.clienteId}/conexoes/sincronizar/`);
+    if (r) this._toast(this._resumoSync(r.sync).replace(/^ — /, '') || 'Cabos já estão iguais ao mapa');
+  }
+
+  async religar(linkId) {
+    const r = await this._post(`/racks/cliente/${this.clienteId}/conexoes/religar/`, {link_id: linkId});
+    if (r) this._toast('Enlace volta a seguir o mapa' + this._resumoSync(r.sync));
+  }
 
   _toast(msg, erro = false) {
     const t = document.getElementById('toast');
