@@ -2088,6 +2088,10 @@ def api_listar_despesas(request):
             qs = qs.filter(status='PENDENTE', data_vencimento__gte=hoje)
         elif status_filtro == 'VENCIDO':
             qs = qs.filter(status='PENDENTE', data_vencimento__lt=hoje)
+        elif status_filtro == 'NAO_PAGA':
+            # Pendentes + vencidas — tudo que ainda não foi pago, sem filtrar por data.
+            # É o filtro padrão ao abrir a tela (só esconde o que já está pago).
+            qs = qs.filter(status='PENDENTE')
         if mes and ano:
             qs = qs.filter(data_vencimento__month=int(mes), data_vencimento__year=int(ano))
         elif ano:

@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-24 (Despesas Operacionais: filtro padrão ao abrir a tela)
+
+### Alterado
+
+- **Tela de Despesas Operacionais (`/financeiro/despesas/`) abria mostrando tudo, inclusive
+  as já pagas.** O `<select id="filtro-status">` (`financeiro/templates/financeiro/despesas.html`)
+  não tinha nenhuma opção marcada como `selected`, então o navegador assumia a primeira
+  (`"" — Todas`). Agora abre filtrando **Pendentes + Vencidas** (tudo que ainda não foi
+  pago) por padrão — nova opção `NAO_PAGA` no dropdown e no backend
+  (`api_listar_despesas`, `financeiro/views.py`), que filtra só por `status='PENDENTE'`
+  sem restringir por data de vencimento (ao contrário do filtro "Só Pendentes" já
+  existente, que exclui as vencidas). O botão "Limpar" também volta para esse mesmo
+  padrão em vez de "Todas". O widget de Despesas do dashboard financeiro principal não
+  foi alterado — já abria filtrando só "Vencidas".
+
+---
+
 ## [Não publicado] — 2026-09-24 (Agent NOC: shutdown de porta e continuação sem @noc)
 
 ### Corrigido
