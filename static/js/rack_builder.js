@@ -35,6 +35,7 @@ class RackBuilder {
     this.embed = qs.get('embed') === '1';
     this._linkInicial = qs.get('link');
     this._rackInicial = qs.get('rack');
+    this._equipInicial = parseInt(qs.get('equip'), 10) || null;
     const voltar = new URLSearchParams();
     if (this.diagramaId) voltar.set('diagrama', this.diagramaId);
     if (this.embed) voltar.set('embed', '1');
@@ -99,6 +100,20 @@ class RackBuilder {
   _primeiraAbertura() {
     const r = parseInt(this._rackInicial, 10);
     if (r && this.estado.racks.some(x => x.id === r)) this.selecionarRack(r);
+    // Vindo do selo de rack de um host na topologia: abre o rack dele, com ele
+    // selecionado e piscando no lugar.
+    if (this._equipInicial) {
+      if (this._eq(this._equipInicial)) {
+        this.selecionar(this._equipInicial);
+        const el = document.querySelector(`.eq[data-id="${this._equipInicial}"]`);
+        if (el) {
+          el.scrollIntoView({block: 'center'});
+          el.style.setProperty('--rc', '#00d9ff');
+          el.classList.add('realce');
+          setTimeout(() => el.classList.remove('realce'), 1800);
+        }
+      } else this._toast('Este equipamento não está mais montado em rack.', true);
+    }
     if (!this._linkInicial) return;
     const link = this.estado.links.find(l => l.link_id === this._linkInicial);
     this.focoLink = this._linkInicial;

@@ -19,6 +19,14 @@ Pelo editor de topologia:
   as duas pontas já estão montadas (botão **Criar conexão física**) ou qual ponta falta montar
   (botão **Montar no rack**). Os botões abrem a tela de racks já focada naquele enlace — com o
   formulário do cabo aberto quando dá para criar.
+- **Selo de rack nos hosts montados** (desde 24/09/2026): todo node da topologia que representa um
+  equipamento montado ganha, no canto inferior esquerdo, um selo com um mini-rack (tooltip
+  `RACK-01 · U20 — clique para abrir no rack`), e o painel do host ganha o botão
+  **No rack: RACK-01 · U20 →**. Os dois abrem a tela de racks com `?equip=<id>`: o rack daquele
+  equipamento, na face certa, com ele selecionado e piscando. Aparece sozinho — não é gravado no
+  `dados_json`, vem de `GET /racks/cliente/<id>/posicoes/` ao abrir o mapa (e depois de "Importar
+  Hosts"), casando pelo host do CRM (`acesso_id` / `crm_<id>`) ou pelo id do node desenhado à mão.
+  Montar, mover ou remover do rack não exige salvar a topologia; nó de grupo não recebe selo.
 
 Na tela de racks:
 
@@ -134,9 +142,10 @@ nada (rotas de escrita dão 403; a tela esconde os controles).
 
 | Método | URL | Descrição |
 |---|---|---|
-| `GET` | `/racks/cliente/<id>/` | Tela (`?diagrama=` volta para esse mapa, `?link=` foca um enlace, `?rack=` abre um rack, `?embed=1` preservado) |
+| `GET` | `/racks/cliente/<id>/` | Tela (`?diagrama=` volta para esse mapa, `?link=` foca um enlace, `?rack=` abre um rack, `?equip=` abre e seleciona um equipamento, `?embed=1` preservado) |
 | `GET` | `/racks/cliente/<id>/estado/` | Estado inteiro: racks+equipamentos, cabos, dispositivos, enlaces |
 | `GET` | `/racks/cliente/<id>/link/?link=<id>` | Situação de um enlace (painel do link na topologia) |
+| `GET` | `/racks/cliente/<id>/posicoes/` | `{por_acesso: {acesso_id: pos}, por_node: {node_id: pos}}` com `rack`, `u`, `u_final`, `face`, `equipamento_id` — selo de rack nos hosts da topologia |
 | `POST` | `/racks/cliente/<id>/racks/criar/` | Cria rack |
 | `POST` | `/racks/rack/<id>/editar/` · `/excluir/` | Edita (recusa reduzir a altura cortando equipamento) / exclui |
 | `POST` | `/racks/rack/<id>/equipamentos/criar/` | Monta (sem `u_inicial` = U mais alto livre) |

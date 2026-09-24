@@ -151,6 +151,15 @@ class TopologiaParaRackTest(TestCase):
         self.assertNotIn('nninet', chaves)
         self.assertEqual(len(chaves), 4)  # SW, RTR, OLT desenhada, OLT-NOVA
 
+    def test_posicoes_por_acesso_e_por_node(self):
+        services.montar_equipamento(self.rack, {'tipo': 'switch', 'acesso_id': self.sw.id, 'u_inicial': 40})
+        services.montar_equipamento(self.rack, {'tipo': 'olt', 'topologia_node_id': 'nolt', 'u_inicial': 30})
+        p = services.posicoes(self.cliente)
+        self.assertEqual(p['por_acesso'][str(self.sw.id)]['u'], 40)
+        self.assertEqual((p['por_node']['nolt']['u'], p['por_node']['nolt']['u_final']), (30, 31))
+        self.assertEqual(p['por_node']['nolt']['rack'], 'RACK-01')
+        self.assertNotIn(str(self.rtr.id), p['por_acesso'])
+
     def test_excluir_equipamento_leva_os_cabos(self):
         sw = services.montar_equipamento(self.rack, {'tipo': 'switch', 'acesso_id': self.sw.id, 'u_inicial': 40})
         services.montar_equipamento(self.rack, {'tipo': 'router', 'acesso_id': self.rtr.id, 'u_inicial': 38})
@@ -208,6 +217,11 @@ class ApiTest(TestCase):
         self.client.force_login(self.admin)
         r = self.client.get(reverse('racks:tela', args=[self.cliente.id]))
         self.assertContains(r, 'rack_builder.js')
+
+    def test_posicoes_bloqueado_para_outra_instancia(self):
+        self.client.force_login(self.intruso)
+        r = self.client.get(reverse('racks:posicoes', args=[self.cliente.id]))
+        self.assertEqual(r.status_code, 403)
 
     def test_link_endpoint_sem_enlace(self):
         self.client.force_login(self.admin)

@@ -57,6 +57,7 @@ class TopoEditor {
     this.areaResizing = null; // {id, corner, fx, fy} — arrastar canto de uma Área
     this._propsGen = 0;   // invalida fetch de interfaces em voo ao trocar seleção
     this._ifaceCache = {}; // acesso_id -> [interfaces] (extraídas do backup)
+    this._rackPos = {};    // node.id -> {rack_id, rack, u, u_final, equipamento_id} (app racks)
     this._l2vpn = null;    // estado do modal de VSI/VPLS/VPWS/L2VC quando aberto
     this.selectedNodes = new Set(); // multi-seleção de nodes (seleção em área / shift+clique)
     this.rubberBand = null;         // {x0,y0,x1,y1} durante o arraste do laço de seleção
@@ -410,6 +411,16 @@ class TopoEditor {
   _onDown(e) {
     if (e.button !== 0) return;
     const target = e.target;
+
+    // Botão de rack no host montado: vai direto para ele na tela de racks,
+    // sem selecionar nem começar a arrastar o node.
+    const badgeRack = target.closest && target.closest('.node-rack-badge');
+    if (badgeRack) {
+      e.stopPropagation();
+      e.preventDefault();
+      this.abrirNoRack(badgeRack.dataset.node);
+      return;
+    }
 
     // Waypoint handle drag
     if (target.classList.contains('wp-handle')) {
@@ -1286,6 +1297,7 @@ class TopoEditor {
           <circle r="9" fill="#0d1117" stroke="${c}" stroke-width="1.5"/>
           <path d="M-3.5,-3.5 h5 v5 M1.5,-3.5 L-3.5,1.5 M-1,-3.5 h4.5 v4.5" fill="none" stroke="${c}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
         </g>` : ''}
+      ${this._rackBadgeHtml(node, hw, hh, c)}
       <rect class="node-label-bg" x="${-lblBgW/2}" y="${hh+7}" width="${lblBgW}" height="${lblBgH}" rx="7"/>
       <text x="0" y="${hh+19}" text-anchor="middle" font-size="11" font-weight="600" fill="#e6edf3" font-family="'Segoe UI',sans-serif" letter-spacing=".1">${this._esc(node.label)}</text>
       ${node.ip ? `<text x="0" y="${hh+31}" text-anchor="middle" font-size="9" font-weight="700" fill="${c}" fill-opacity=".85" font-family="'Courier New',monospace">${this._esc(node.ip)}</text>` : ''}
@@ -1677,6 +1689,7 @@ class TopoEditor {
           <span>${def.label}${node.acesso_id ? ' · host do CRM' : ''}</span>
         </div>
       </div>
+      ${this._rackPropsHtml(node)}
       ${l2vpnHtml}
       ${ponHtml}
       ${TOPO_CENARIO ? '' : submapHtml}
@@ -2932,7 +2945,7 @@ class TopoEditor {
    *  `linkId`, ela já abre no enlace — e com o formulário do cabo, se as duas
    *  pontas estiverem montadas. A tela lê a topologia salva, então alteração
    *  pendente é salva antes. */
-  async abrirRacks(linkId) {
+  async abrirRacks(linkId, equipamentoId) {
     if (this.dirty) {
       if (!confirm('Há alterações não salvas na topologia. Salvar e abrir os racks?')) return;
       if (!await this.save()) return;
@@ -2940,8 +2953,67 @@ class TopoEditor {
     const qs = new URLSearchParams();
     if (this.diagramaId) qs.set('diagrama', this.diagramaId);
     if (linkId) qs.set('link', linkId);
+    if (equipamentoId) qs.set('equip', equipamentoId);
     if (document.body.classList.contains('embed-mode')) qs.set('embed', '1');
     window.location.href = `/racks/cliente/${this.clienteId}/?${qs}`;
+  }
+
+  /** Onde cada host está montado. Vem do banco (não do dados_json): montar,
+   *  mover ou tirar do rack aparece aqui na próxima abertura do mapa, sem
+   *  precisar salvar a topologia. Só redesenha os nodes cuja posição mudou. */
+  async _carregarPosicoesRack() {
+    if (TOPO_CENARIO) return;
+    let d = null;
+    try {
+      const r = await fetch(`/racks/cliente/${this.clienteId}/posicoes/`, {headers: {'Accept': 'application/json'}});
+      if (r.ok && (r.headers.get('content-type') || '').includes('json')) d = await r.json();
+    } catch (e) { return; }
+    if (!d || !d.ok) return;
+    const novo = {};
+    this.nodes.forEach(n => {
+      const acesso = n.acesso_id || (String(n.id).startsWith('crm_') ? String(n.id).slice(4) : null);
+      const pos = (acesso && d.por_acesso[String(acesso)]) || d.por_node[n.id];
+      if (pos && !n.grupo) novo[n.id] = pos;
+    });
+    const antes = this._rackPos;
+    this._rackPos = novo;
+    this.nodes.forEach(n => {
+      if (JSON.stringify(antes[n.id] || null) !== JSON.stringify(novo[n.id] || null)) this._renderNode(n);
+    });
+    if (this.selected && this.selected.type === 'node' && novo[this.selected.id]) this._showNodeProps(this.selected.id);
+  }
+
+  _rackRotulo(pos) {
+    return `${pos.rack} · U${pos.u}${pos.u_final > pos.u ? '–' + pos.u_final : ''}`;
+  }
+
+  /** Selo no canto inferior esquerdo do host montado (os outros cantos são do
+   *  LED, do badge de grupo e do de sub-mapa). Estático: nada de filtro nem
+   *  animação em elemento em repouso (ver "Desempenho com o mapa PARADO"). */
+  _rackBadgeHtml(node, hw, hh, c) {
+    const pos = this._rackPos[node.id];
+    if (!pos) return '';
+    return `<g class="node-rack-badge" data-node="${this._esc(node.id)}" transform="translate(${-hw+11},${hh-11})">
+        <title>${this._esc(this._rackRotulo(pos))} — clique para abrir no rack</title>
+        <circle r="10" fill="#0d1117" stroke="${c}" stroke-width="1.5"/>
+        <rect x="-4.5" y="-5" width="9" height="10" rx="1.2" fill="none" stroke="${c}" stroke-width="1.2"/>
+        <path d="M-2.6,-2.2 H2.6 M-2.6,0.2 H2.6 M-2.6,2.6 H2.6" stroke="${c}" stroke-width="1.1" stroke-linecap="round"/>
+      </g>`;
+  }
+
+  _rackPropsHtml(node) {
+    const pos = !TOPO_CENARIO && this._rackPos[node.id];
+    if (!pos) return '';
+    return `<button class="prop-btn" id="btn-rack"
+        style="background:rgba(0,217,255,.12);border-color:var(--cyan);color:var(--cyan);margin:0 0 12px"
+        onclick="topo.abrirNoRack('${this._esc(node.id)}')" title="Abre a tela de racks com este equipamento selecionado">
+        <i class="fas fa-server"></i> No rack: ${this._esc(this._rackRotulo(pos))} →
+      </button>`;
+  }
+
+  abrirNoRack(nodeId) {
+    const pos = this._rackPos[nodeId];
+    if (pos) this.abrirRacks(null, pos.equipamento_id);
   }
 
   _applyLinkProps(id) {
@@ -3338,7 +3410,7 @@ class TopoEditor {
       if (!novos.length) { this._toast('Nenhum host novo para importar'); return; }
 
       const added = this._layoutImportados(novos);
-      if (added > 0) { this.zoomFit(); this._revisarPeso(); }
+      if (added > 0) { this.zoomFit(); this._revisarPeso(); this._carregarPosicoesRack(); }
       this._toast(`${added} hosts importados`);
     } catch(e) { this._toast('Erro: ' + e.message, 'error'); }
   }
@@ -3980,6 +4052,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (nNodes) {
     topo.fromJSON(d);
     topo._refreshCrmNodeTypes();
+    topo._carregarPosicoesRack();
   } else {
     topo.importHosts();
   }

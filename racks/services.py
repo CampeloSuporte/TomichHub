@@ -357,6 +357,19 @@ def _indice_montados(cliente):
     return por_acesso, por_node
 
 
+def posicoes(cliente):
+    """Onde cada equipamento montado está, indexado como a topologia o
+    enxerga: pelo host do CRM (`acesso_id`) e pelo id do node desenhado à
+    mão. É o que acende o botão de rack nos nodes do mapa."""
+    por_acesso, por_node = _indice_montados(cliente)
+
+    def pos(eq):
+        return {'equipamento_id': eq.id, 'rack_id': eq.rack_id, 'rack': eq.rack.nome,
+                'u': eq.u_inicial, 'u_final': eq.u_final, 'face': eq.face}
+    return {'por_acesso': {str(k): pos(v) for k, v in por_acesso.items()},
+            'por_node': {k: pos(v) for k, v in por_node.items()}}
+
+
 def _equipamento_do_node(node, por_acesso, por_node):
     acesso_id = _acesso_do_node(node)
     return (por_acesso.get(acesso_id) if acesso_id else None) or por_node.get(str(node.get('id', '')))

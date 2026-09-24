@@ -123,6 +123,13 @@ def api_estado(request, cliente):
 
 @require_GET
 @_api()(_cliente)
+def api_posicoes(request, cliente):
+    """Posição no rack de cada node — botão de rack nos hosts da topologia."""
+    return JsonResponse({'ok': True, **services.posicoes(cliente)})
+
+
+@require_GET
+@_api()(_cliente)
 def api_link(request, cliente):
     """Situação de um enlace da topologia — painel do link no editor."""
     link_id = (request.GET.get('link') or '').strip()

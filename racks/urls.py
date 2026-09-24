@@ -8,6 +8,7 @@ urlpatterns = [
     path('cliente/<int:cliente_id>/', views.tela, name='tela'),
     path('cliente/<int:cliente_id>/estado/', views.api_estado, name='estado'),
     path('cliente/<int:cliente_id>/link/', views.api_link, name='link'),
+    path('cliente/<int:cliente_id>/posicoes/', views.api_posicoes, name='posicoes'),
     path('cliente/<int:cliente_id>/racks/criar/', views.api_rack_criar, name='rack_criar'),
     path('cliente/<int:cliente_id>/conexoes/criar/', views.api_conexao_criar, name='conexao_criar'),
     path('cliente/<int:cliente_id>/conexoes/do-link/', views.api_conexao_do_link, name='conexao_do_link'),

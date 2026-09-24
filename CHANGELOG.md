@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-24 (Topologia: selo de rack nos hosts montados)
+
+### Adicionado
+
+- **Host montado em rack ganha um botão no mapa da topologia**: selo com um mini-rack no canto
+  inferior esquerdo do node (tooltip com rack e U) e botão **No rack: RACK-01 · U20 →** no painel do
+  host. Clicar abre a tela de racks direto no rack dele, com o equipamento selecionado e destacado
+  (`?equip=`). Aparece sozinho ao montar — vem do banco (`GET /racks/cliente/<id>/posicoes/`), sem
+  precisar salvar a topologia.
+
+---
+
 ## [Não publicado] — 2026-09-24 (Racks e conexões físicas a partir da topologia)
 
 ### Adicionado
