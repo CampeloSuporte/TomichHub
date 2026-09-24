@@ -92,10 +92,13 @@ SAFE_COMMANDS: dict[str, list[str]] = {
 BLOCKED_COMMANDS: list[str] = [
     r'reboot', r'reload', r'reset', r'erase',
     r'delete\s', r'no\s+interface',
-    # Bloqueia 'shutdown' standalone mas NÃO 'undo shutdown' / 'no shutdown'
-    r'(?<!undo )(?<!no )shutdown\s*$',
     r'rm\s+-rf', r'format\s+', r'factory',
 ]
+# NOTA: 'shutdown' (desativar porta/interface) NÃO fica em BLOCKED_COMMANDS —
+# é reversível (basta 'no shutdown' / 'undo shutdown') e já é explicitamente
+# permitido em nível operacional/admin via OPERATIONAL_COMMANDS por fabricante.
+# Colocá-lo aqui bloquearia o comando incondicionalmente ANTES da checagem de
+# nível de permissão, rejeitando até operadores admin (bug corrigido em 2026-09-24).
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -384,8 +387,13 @@ OPERATIONAL_COMMANDS: dict[str, list[str]] = {
         r'^undo\s+peer\s+[\d.]+\s+enable$',
     ],
     'cisco': [
-        r'^interface\s+', r'^ip\s+address\s+', r'^no\s+shutdown',
+        r'^interface\s+', r'^ip\s+address\s+', r'^no\s+shutdown', r'^shutdown$',
         r'^router\s+', r'^network\s+',
+    ],
+    'datacom': [
+        r'^interface\s+', r'^no\s+shutdown', r'^shutdown$',
+        r'^router\s+bgp\b', r'^neighbor\s+[\d.:a-f]+\s+shutdown',
+        r'^no\s+neighbor\s+[\d.:a-f]+\s+shutdown',
     ],
     'generico': [
         r'^systemctl\s+(start|stop|restart|enable|disable)\s+',
@@ -2452,6 +2460,14 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
 
         if not config.ativo:
             return "❌ Agent NOC desativado. Configure em Sistema → Configurações → Agent NOC."
+
+        # Marca atividade agora — QuerySet.update() não dispara auto_now, então
+        # sem isso `ultima_atividade` ficaria travado na criação da sessão e o
+        # timeout/janela de continuação por inatividade nunca refletiria uso real.
+        from clientes.models import AgentSessao as _AgentSessaoAtividade
+        await sync_to_async(
+            _AgentSessaoAtividade.objects.filter(id=self.sessao_id).update
+        )(ultima_atividade=timezone.now())
 
         provedor = config.provedor_ia or 'claude'
 

@@ -241,6 +241,11 @@
                     <input class="cfg-input" type="number" id="timeout_sessao_wa" value="{{ agent_cfg.timeout_sessao_wa }}" min="5" max="1440">
                     <div class="help-text">Inatividade neste período encerra a sessão do grupo</div>
                 </div>
+                <div>
+                    <label class="cfg-label">Janela de continuação sem prefixo (minutos)</label>
+                    <input class="cfg-input" type="number" id="janela_continuacao_wa" value="{{ agent_cfg.janela_continuacao_wa }}" min="0" max="60">
+                    <div class="help-text">Após chamado com o prefixo, por quantos minutos o agent continua respondendo no mesmo grupo sem precisar ser mencionado de novo. 0 = exige o prefixo sempre.</div>
+                </div>
             </div>
             <hr class="section-divider">
             <div class="toggle-row mb-3">
@@ -415,6 +420,7 @@ async function salvarClaude() {
         claude_temperature:  document.getElementById('claude_temperature').value,
         aprovacao_padrao:    document.getElementById('aprovacao_padrao').checked,
         timeout_sessao_wa:   document.getElementById('timeout_sessao_wa').value,
+        janela_continuacao_wa: document.getElementById('janela_continuacao_wa').value,
         prefixo_wa:          document.getElementById('prefixo_wa').value.trim(),
         max_comandos_sessao: document.getElementById('max_comandos_sessao').value,
         wa_grupo_noc:        document.getElementById('wa_grupo_noc').value.trim(),

@@ -5,6 +5,46 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-24 (Agent NOC: shutdown de porta e continuação sem @noc)
+
+### Corrigido
+
+- **Agent NOC rejeitava `shutdown` de interface mesmo em grupo WhatsApp nível `admin`.**
+  `BLOCKED_COMMANDS` tinha um padrão que bloqueia `shutdown` isolado (bare) **antes** de
+  qualquer checagem de nível de permissão — tanto em `_is_operational_command()`
+  (`home/agent_engine.py`) quanto em `aprovacao_wa()` (`home/views.py`), que reusa a
+  mesma lista. Resultado: mesmo um grupo `admin` ("tudo exceto comandos destrutivos"),
+  como o de gestão do Call Center, tinha `interface hundred-gigabit-ethernet 1/1/2` +
+  `shutdown` rejeitado automaticamente com a mensagem "Comando rejeitado pelo operador"
+  — apesar de `shutdown` já estar explicitamente liberado em nível operacional para
+  Huawei (`OPERATIONAL_COMMANDS['huawei']`), evidenciando que a intenção original sempre
+  foi permitir a ação (reversível com `no shutdown`/`undo shutdown`) e não tratá-la como
+  destrutiva (`reboot`/`erase`/`format`/`factory`). Removido o padrão de `BLOCKED_COMMANDS`;
+  adicionados `shutdown`/`no shutdown` a `OPERATIONAL_COMMANDS['cisco']` (só tinha
+  `no shutdown`) e criada a entrada `OPERATIONAL_COMMANDS['datacom']` (não existia — caía
+  no fallback `generico`, que não reconhece nenhum comando de interface).
+
+### Adicionado
+
+- **Agent NOC continua respondendo no WhatsApp por um tempo sem precisar de `@noc` de
+  novo.** Antes, toda mensagem — mesmo em pleno meio de uma conversa recém-iniciada com
+  `@noc` — precisava repetir o prefixo, ou era silenciosamente ignorada
+  (`_processar_wa_webhook`, `home/views.py`). Agora, depois de uma chamada com prefixo,
+  mensagens sem `@noc` no mesmo grupo/contato continuam sendo roteadas ao agent enquanto
+  houver uma `AgentSessao` ativa com atividade dentro da janela configurada — novo campo
+  `AgentConfig.janela_continuacao_wa` (padrão 5 min, editável em Agent NOC →
+  Configurações → Claude AI; `0` desliga e volta a exigir o prefixo sempre). Corrigido
+  também um bug correlato: `AgentSessao.ultima_atividade` (auto_now) nunca era
+  atualizado após a criação da sessão porque nada chamava `.save()` na sessão —
+  `QuerySet.update()` não dispara `auto_now`. Isso fazia o próprio `timeout_sessao_wa`
+  (documentado como "inatividade") expirar, na prática, um tempo fixo após a *criação*
+  da sessão, não após a última troca. `AgentNOCEngine.processar_mensagem()`
+  (`home/agent_engine.py`) agora atualiza `ultima_atividade` explicitamente a cada
+  mensagem processada, em qualquer canal.
+- Migração `clientes/migrations/0117_agentconfig_janela_continuacao_wa.py`.
+
+---
+
 ## [Não publicado] — 2026-09-21 (Console do Proxmox via proxy)
 
 ### Corrigido
