@@ -2411,6 +2411,8 @@ def agent_config(request):
             agent_cfg.claude_temperature  = float(data.get('claude_temperature') or agent_cfg.claude_temperature)
             agent_cfg.aprovacao_padrao    = bool(data.get('aprovacao_padrao', agent_cfg.aprovacao_padrao))
             agent_cfg.timeout_sessao_wa   = int(data.get('timeout_sessao_wa') or agent_cfg.timeout_sessao_wa)
+            if 'janela_continuacao_wa' in data:
+                agent_cfg.janela_continuacao_wa = int(data.get('janela_continuacao_wa') or 0)
             agent_cfg.prefixo_wa          = data.get('prefixo_wa', agent_cfg.prefixo_wa).strip() or '@noc'
             agent_cfg.max_comandos_sessao = int(data.get('max_comandos_sessao') or agent_cfg.max_comandos_sessao)
             agent_cfg.wa_grupo_noc        = data.get('wa_grupo_noc', agent_cfg.wa_grupo_noc)
@@ -3155,6 +3157,8 @@ def _processar_wa_webhook(payload: dict):
         if not texto:
             return
 
+        jid_lookup = jid_from if is_grupo else sender_jid
+
         # Prefixos válidos: @noc (configurado) + @<número do bot> (menção WA) + apelidos fixos
         texto_lower = texto.lower()
         numero_bot  = (config.wa_noc_numero or '').strip().lstrip('+').replace(' ', '')
@@ -3182,16 +3186,31 @@ def _processar_wa_webhook(payload: dict):
                     (p for p in prefixos_validos if texto_lower.startswith(p)), ''
                 )
 
-        if match_prefixo is None:
-            return  # Mensagem não direcionada ao agent
-
-        logger.warning(f"📨 WA prefixo match={match_prefixo!r}")
-        mensagem_agent = texto[len(match_prefixo):].strip()
-        if not mensagem_agent:
-            mensagem_agent = "Olá! Como posso ajudar?"
+        if match_prefixo is not None:
+            logger.warning(f"📨 WA prefixo match={match_prefixo!r}")
+            mensagem_agent = texto[len(match_prefixo):].strip()
+            if not mensagem_agent:
+                mensagem_agent = "Olá! Como posso ajudar?"
+        else:
+            # Sem menção explícita: só segue sem @noc se houver uma conversa em
+            # andamento recente (janela curta, configurável) — evita "ficar solto"
+            # respondendo qualquer mensagem do grupo a qualquer momento.
+            janela_min = config.janela_continuacao_wa
+            if not janela_min or janela_min <= 0:
+                return  # continuação desligada — exige prefixo sempre
+            desde_continuacao = timezone.now() - timedelta(minutes=janela_min)
+            em_continuacao = AgentSessao.objects.filter(
+                canal='whatsapp',
+                canal_id=jid_lookup,
+                status='ativa',
+                ultima_atividade__gte=desde_continuacao,
+            ).exists()
+            if not em_continuacao:
+                return  # Mensagem não direcionada ao agent
+            logger.warning(f"📨 WA continuação sem prefixo (janela={janela_min}min) jid={jid_lookup!r}")
+            mensagem_agent = texto
 
         # Verificar grupo vinculado
-        jid_lookup = jid_from if is_grupo else sender_jid
         try:
             grupo = WhatsAppGrupo.objects.select_related('cliente').get(
                 jid=jid_lookup, ativo=True

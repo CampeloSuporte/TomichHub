@@ -171,6 +171,77 @@ O singleton `AgentConfig.get()` concentra todas as configurações:
 
 ---
 
+## `shutdown` de interface bloqueado mesmo com nível admin — Corrigido em 2026-09-24
+
+**Arquivos:** `home/agent_engine.py` (`BLOCKED_COMMANDS`, `OPERATIONAL_COMMANDS`), `home/views.py` (`aprovacao_wa`)
+
+### Sintoma
+
+Grupo WhatsApp nível `admin` (ex.: gestor do Call Center) pedia para desativar uma porta
+(`interface hundred-gigabit-ethernet 1/1/2` + `shutdown` num switch Datacom) e o agent
+respondia "O operador rejeitou o comando" — sem nenhum humano ter rejeitado nada.
+
+### Causa raiz
+
+`BLOCKED_COMMANDS` (compartilhada por `_is_safe_command`/`_is_operational_command` no
+engine e por `aprovacao_wa()` em `views.py`) tinha o padrão
+`r'(?<!undo )(?<!no )shutdown\s*$'`, verificado **antes** de qualquer checagem de
+`nivel_permissao`. Isso vetava `shutdown` incondicionalmente para leitura, operacional
+**e admin** — mesmo já estando explicitamente liberado em `OPERATIONAL_COMMANDS['huawei']`
+(`r'^shutdown$'`), o que mostra que a intenção sempre foi tratar desativação de porta como
+ação operacional reversível (`no shutdown`/`undo shutdown` desfaz), e não como destrutiva
+(`reboot`, `erase`, `delete`, `format`, `factory`).
+
+### Correção
+
+- `shutdown` isolado saiu de `BLOCKED_COMMANDS` — a lista agora reserva-se a ações
+  realmente irreversíveis/disruptivas.
+- `OPERATIONAL_COMMANDS['cisco']` ganhou `shutdown` (só tinha `no shutdown`, ou seja,
+  só conseguia religar porta, nunca desligar).
+- `OPERATIONAL_COMMANDS['datacom']` foi criada do zero — não existia, então qualquer
+  comando de interface num Datacom caía no fallback `generico` (sem `interface`/`shutdown`)
+  e nível `operacional` nunca aprovava nada de configuração num Datacom.
+- Nível `leitura` continua sem aprovar `shutdown` (não está em `SAFE_COMMANDS`); nível
+  `admin` volta a aprovar (regra "tudo exceto `BLOCKED_COMMANDS`" já existente em
+  `aprovacao_wa`); nível `operacional` passa a aprovar via `OPERATIONAL_COMMANDS`.
+- Canal `terminal` não muda: continua sempre pedindo aprovação humana explícita
+  (`requer_aprovacao = not eh_seguro or self.canal == 'terminal'`), independente desta lista.
+
+---
+
+## Continuação de conversa no WhatsApp sem repetir `@noc` — Adicionado em 2026-09-24
+
+**Arquivos:** `home/views.py` (`_processar_wa_webhook`), `home/agent_engine.py`
+(`AgentNOCEngine.processar_mensagem`), `clientes/models.py` (`AgentConfig.janela_continuacao_wa`)
+
+### Motivação
+
+Antes, **toda** mensagem no grupo precisava começar com o prefixo (`@noc` ou menção),
+mesmo em pleno meio de uma conversa que o próprio agent tinha acabado de iniciar —
+qualquer mensagem de acompanhamento sem o prefixo era silenciosamente ignorada.
+
+### Como funciona
+
+- Novo campo `AgentConfig.janela_continuacao_wa` (minutos, padrão **5**, `0` desliga).
+- Em `_processar_wa_webhook`: se a mensagem não bate com nenhum prefixo válido, o
+  webhook verifica se existe uma `AgentSessao` `ativa` para aquele JID com
+  `ultima_atividade` dentro da janela configurada. Se sim, a mensagem inteira (sem
+  stripping de prefixo) é roteada ao agent como continuação; se não, é ignorada como
+  antes — a conversa nunca fica "solta" indefinidamente, expira sozinha depois da
+  janela de inatividade.
+- Cada mensagem processada (usuário ou agent, qualquer canal) renova a janela: o agent
+  segue disponível sem `@noc` enquanto a conversa estiver realmente ativa.
+- Corrigido de passagem: `AgentSessao.ultima_atividade` é `auto_now=True`, mas nada
+  chamava `.save()` na sessão depois da criação — só `QuerySet.update()`, que **não**
+  dispara `auto_now`. Ou seja, tanto esta janela quanto o `timeout_sessao_wa` existente
+  mediam tempo desde a *criação* da sessão, não desde a última troca real.
+  `processar_mensagem()` agora faz
+  `AgentSessao.objects.filter(id=...).update(ultima_atividade=timezone.now())`
+  explicitamente no início de cada mensagem processada.
+- Painel: **Agent NOC → Configurações → Claude AI → "Janela de continuação sem prefixo"**.
+
+---
+
 ## Sinal Óptico Datacom (DmOS) — Corrigido em 2026-06-16
 
 **Arquivos:** `home/agent_engine.py`, `AgentKnowledge` (artigo "Datacom" no banco)
