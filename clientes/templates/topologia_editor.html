@@ -575,6 +575,10 @@ body:not(.pal-off) #legend-panel{left:236px}
 .fisica-txt b{color:var(--text);font-weight:600}
 .fisica-ok{display:block;font-size:.74rem;font-weight:700;color:var(--green);margin-bottom:3px}
 .fisica .prop-btn{margin-top:8px}
+/* Selo de rack no host montado (_rackBadgeHtml): clicável, leva ao rack */
+.node-rack-badge{cursor:pointer}
+.node-rack-badge circle{transition:fill .12s}
+.node-rack-badge:hover circle{fill:#16324a}
 </style>
 </head>
 <body class="pal-off props-off">
@@ -742,6 +746,6 @@ body:not(.pal-off) #legend-panel{left:236px}
   }
 </script>
 <script src="/static/js/topo_engine.js?v=26"></script>
-<script src="/static/js/topo_main.js?v=49"></script>
+<script src="/static/js/topo_main.js?v=50"></script>
 </body>
 </html>

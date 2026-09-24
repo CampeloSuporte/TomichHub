@@ -40,7 +40,7 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 | `topo_engine.js` | Definição de tipos (`DEVICES`), interfaces (`IFACES`) e paths SVG dos ícones (`ICONS`) |
 | `topo_main.js` | Classe `TopoEditor` — lógica de renderização, eventos, persistência e importação |
 
-Versão atual: **topo_engine v=26 / topo_main v=49** (parâmetro de cache-busting no HTML).
+Versão atual: **topo_engine v=26 / topo_main v=50** (parâmetro de cache-busting no HTML).
 
 **Estes dois JS ficam em `static/` e mesmo assim são versionados.** `static/` é o
 `STATIC_ROOT` (destino do `collectstatic`) e está no `.gitignore`, mas esses dois
@@ -1236,3 +1236,9 @@ Detalhes em [racks.md](racks.md). O que muda no editor:
   rack"), pontas montadas (botão "Criar conexão física" — abre a tela de racks com o formulário do cabo
   já preenchido pelas Interfaces Lado A/B e pela velocidade), ou pontas faltando (botão "Montar no
   rack"). Enlace não salvo ou lógico (Internet/IX/nuvem/VM/grupo) só mostra o aviso.
+- **Selo de rack nos hosts montados** (`_rackBadgeHtml`, canto inferior esquerdo — os outros cantos
+  são do LED, do badge de grupo e do de sub-mapa) e botão **No rack: … →** no painel do host
+  (`_rackPropsHtml`). Posições em `this._rackPos`, carregadas por `_carregarPosicoesRack()` ao abrir
+  e depois de importar hosts; o clique no selo é tratado no começo do `_onDown` (não seleciona nem
+  arrasta o node) e chama `abrirNoRack` → `abrirRacks(null, equipamento_id)`. Selo estático, sem
+  filtro nem animação.
