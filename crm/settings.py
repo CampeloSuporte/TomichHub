@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'tarefas',
     'seguranca',
     'projeto_rede',
+    'racks',
 ]
 
 REST_FRAMEWORK = {

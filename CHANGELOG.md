@@ -5,6 +5,36 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-24 (Racks e conexões físicas a partir da topologia)
+
+### Adicionado
+
+- **Racks por cliente, montados U a U** (novo app `racks`, tela `/racks/cliente/<id>/`): botão
+  **Racks** na toolbar da topologia abre a tela; **Criar rack** (nome, local, 12–47U ou qualquer altura
+  até 60U); arrastar equipamentos do **Catálogo** (roteador, switch, OLT, firewall, CGNAT, DWDM,
+  servidor, patch panel, DIO, organizador, PDU, nobreak, bandeja, tampa cega) ou da aba **Da
+  topologia** (nodes físicos de todos os mapas + hosts do CRM ainda não desenhados) até um U, com
+  prévia verde/vermelha e o nome de quem ocupa; clique monta no U mais alto livre. Vista **Frente /
+  Traseira**, com equipamento raso (patch panel, PDU) ocupando só a sua face.
+- **Conexão física a partir do enlace da topologia**: o painel de cada link ganhou o bloco
+  **Conexão física** (cabo cadastrado / criar / falta montar X). O cabo nasce com as portas das
+  **Interfaces Lado A/B**, tipo de cabo e conector pela velocidade (1G → UTP/RJ45, 10G+ → fibra/LC,
+  GPON → fibra/SC) e a etiqueta do rótulo do enlace — tudo editável. Aba **Conexões** lista todos os
+  enlaces com a situação (pendente/pronta/com cabo), "Montar aqui" para as pontas que faltam, e os
+  cabos (inclusive manuais entre racks e em patch panel/DIO).
+- Regras no backend (`racks/services.py`): sem sobreposição de U por face/profundidade, uma porta com
+  um cabo só (sem diferenciar maiúscula/espaço), um host montado uma vez só, não reduzir a altura do
+  rack cortando equipamento, mover só para rack do mesmo cliente. Mesma permissão da topologia;
+  login somente leitura só olha. Documentação em `docs/racks.md`.
+
+### Alterado
+
+- Mapeamento função/tipo do host → tipo do device saiu de `topologia_hosts` para
+  `clientes/topologia_tipos.py` (mesma regra, agora usada também pelos racks).
+- `topo.save()` devolve se salvou e mostra no toast quando o backend recusa (antes ficava em silêncio).
+
+---
+
 ## [Não publicado] — 2026-09-24 (AS-IS da infraestrutura redigido com a IA do atendimento)
 
 ### Adicionado

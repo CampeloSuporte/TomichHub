@@ -5,7 +5,7 @@
 - `static/js/topo_engine.js`
 - `static/js/topo_main.js`
 
-**Atualizado em:** 2026-09-04
+**Atualizado em:** 2026-09-24
 
 ---
 
@@ -27,6 +27,9 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
   no equipamento — ver [topologia_l2vpn.md](topologia_l2vpn.md)
 - Diagnóstico e operação das portas PON de OLT Huawei (placas e ONTs lidas do backup,
   `display port info/state` e `laser-switch` ao vivo) — ver [olt_pon.md](olt_pon.md)
+- **Racks e conexões físicas**: botão **Racks** na toolbar e bloco **Conexão física** no painel
+  de cada enlace — monta os equipamentos por U e transforma o enlace num cabo porta a porta —
+  ver [racks.md](racks.md)
 
 ---
 
@@ -37,7 +40,7 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 | `topo_engine.js` | Definição de tipos (`DEVICES`), interfaces (`IFACES`) e paths SVG dos ícones (`ICONS`) |
 | `topo_main.js` | Classe `TopoEditor` — lógica de renderização, eventos, persistência e importação |
 
-Versão atual: **topo_engine v=26 / topo_main v=46** (parâmetro de cache-busting no HTML).
+Versão atual: **topo_engine v=26 / topo_main v=49** (parâmetro de cache-busting no HTML).
 
 **Estes dois JS ficam em `static/` e mesmo assim são versionados.** `static/` é o
 `STATIC_ROOT` (destino do `collectstatic`) e está no `.gitignore`, mas esses dois
@@ -54,6 +57,7 @@ static/*
 static/js/*
 !static/js/topo_engine.js
 !static/js/topo_main.js
+!static/js/rack_builder.js
 ```
 
 Ao criar um JS novo do editor, acrescente a linha `!static/js/<arquivo>` — sem
@@ -111,8 +115,9 @@ ruído nesse tamanho.
 ## Mapeamento Automático Função → Tipo (importação do CRM)
 
 Ao importar hosts via `GET /clientes/<id>/topologia/hosts/`, o backend
-(`clientes/views.py → topologia_hosts`) mapeia o campo `funcao.descricao`
-e `acesso.tipo` (ambos lowercased) para o tipo de dispositivo:
+(`clientes/views.py → topologia_hosts`, regra em `clientes/topologia_tipos.py →
+tipo_topologia_do_acesso` desde 2026-09-24, reaproveitada pelos racks) mapeia o campo
+`funcao.descricao` e `acesso.tipo` (ambos lowercased) para o tipo de dispositivo:
 
 | Keywords no nome da função/tipo | Tipo resultante |
 |---|---|
@@ -722,6 +727,7 @@ O botão **PNG** na toolbar exporta a topologia atual como imagem PNG em resolu�
 | `GET` | `/clientes/<id>/topologia/hosts/` | Lista hosts CRM com tipo mapeado |
 | `POST` | `/clientes/<id>/topologia/<diagrama_id>/submapa/` | Cria um sub-mapa vinculado a um nó (opcionalmente já com `dados_json` — é o que a ação "Agrupar" usa) |
 | `POST` | `/clientes/<id>/topologia/<diagrama_id>/submapa/excluir/` | Exclui um sub-mapa (usado pelo "Desagrupar"); recusa o mapa raiz |
+| `GET` | `/racks/cliente/<id>/link/?link=<link_id>` | Situação física do enlace (bloco "Conexão física" do painel do link) — ver [racks.md](racks.md) |
 | `GET` | `/clientes/acessos/<acesso_id>/interfaces-backup/` | Interfaces extraídas do backup mais recente do acesso (sugestão para Lado A/B e para os combos de interface do painel de clonagem L2VPN; cada item traz `logica`/`subinterface` para filtrar só as físicas) |
 | `GET` | `/clientes/acessos/<acesso_id>/l2vpn-backup/` | Serviços L2VPN (VSI/VPLS/VPWS/L2VC) do backup mais recente, com peers resolvidos para hosts — ver [topologia_l2vpn.md](topologia_l2vpn.md) |
 | `GET` | `/clientes/acessos/<acesso_id>/l2vpn-peers/` | Candidatos a peer de um túnel (hosts do cliente com identidade MPLS) para a busca por nome/IP no painel de clonagem |
@@ -1212,3 +1218,21 @@ por área (`_finishRubberBand`), modo conexão (`_ehArea`), faixas da importaç�
 arrastar os cantos redimensiona.
 
 Cache-busting: `topo_engine.js?v=26` + `topo_main.js?v=44`.
+
+---
+
+## Racks e Conexão Física — Adicionado em 2026-09-24
+
+Detalhes em [racks.md](racks.md). O que muda no editor:
+
+- **Botão "Racks"** (`#btn-racks`, só fora do cenário TO-BE) → `topo.abrirRacks()`. Com alteração
+  pendente pergunta "Salvar e abrir os racks?" e só navega se o `save()` der certo — a tela de racks
+  lê o enlace do `dados_json` **salvo**. Leva `?diagrama=` (o botão de volta da tela de racks retorna
+  para o mesmo mapa/sub-mapa) e preserva `?embed=1`.
+- **`save()` agora devolve `true`/`false`** (antes não devolvia nada e ignorava `ok: false` em
+  silêncio — agora mostra o erro no toast).
+- **Bloco "Conexão física"** no painel do link (`#pl-fisica`, preenchido por `_carregarFisica`,
+  guardado pelo `_propsGen` como os datalists): cabo cadastrado (portas e etiqueta, botão "Ver no
+  rack"), pontas montadas (botão "Criar conexão física" — abre a tela de racks com o formulário do cabo
+  já preenchido pelas Interfaces Lado A/B e pela velocidade), ou pontas faltando (botão "Montar no
+  rack"). Enlace não salvo ou lógico (Internet/IX/nuvem/VM/grupo) só mostra o aviso.

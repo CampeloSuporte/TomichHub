@@ -568,6 +568,13 @@ body:not(.pal-off) #legend-panel{left:236px}
 .tobe-box{border-top:1px solid var(--border);padding-top:10px;margin-top:4px}
 .tobe-chks{display:grid;grid-template-columns:repeat(3,1fr);gap:3px 6px}
 .tobe-chk{font-size:.7rem;color:var(--text);display:flex;align-items:center;gap:4px;cursor:pointer}
+/* Bloco "Conexão física" do painel do link (ver _carregarFisica em topo_main.js) */
+.fisica{border:1px solid var(--border);border-radius:9px;padding:9px 10px;background:rgba(0,217,255,.04)}
+.fisica .prop-label i{color:var(--cyan);margin-right:3px}
+.fisica-txt{display:block;font-size:.74rem;color:var(--muted);line-height:1.5}
+.fisica-txt b{color:var(--text);font-weight:600}
+.fisica-ok{display:block;font-size:.74rem;font-weight:700;color:var(--green);margin-bottom:3px}
+.fisica .prop-btn{margin-top:8px}
 </style>
 </head>
 <body class="pal-off props-off">
@@ -591,6 +598,7 @@ body:not(.pal-off) #legend-panel{left:236px}
   <div class="tb-sep"></div>
   <button class="tb-btn primary" id="btn-salvar" onclick="topo.save()" data-tip="Salvar (Ctrl+S)"><i class="fas fa-floppy-disk"></i> Salvar</button>
   <button class="tb-btn" onclick="topo.importHosts()" data-tip="Trazer os hosts cadastrados no CRM"><i class="fas fa-cloud-arrow-down"></i> Importar Hosts</button>
+  {% if not cenario %}<button class="tb-btn" id="btn-racks" onclick="topo.abrirRacks()" data-tip="Criar racks, montar os equipamentos por U e ligar os cabos dos enlaces"><i class="fas fa-server"></i> Racks</button>{% endif %}
   <div class="tb-group">
     <button class="tb-btn" onclick="topo.exportPNG()" data-tip="Exportar PNG"><i class="fas fa-image"></i></button>
     <button class="tb-btn" onclick="topo.undo()" data-tip="Desfazer (Ctrl+Z)"><i class="fas fa-rotate-left"></i></button>
@@ -734,6 +742,6 @@ body:not(.pal-off) #legend-panel{left:236px}
   }
 </script>
 <script src="/static/js/topo_engine.js?v=26"></script>
-<script src="/static/js/topo_main.js?v=48"></script>
+<script src="/static/js/topo_main.js?v=49"></script>
 </body>
 </html>

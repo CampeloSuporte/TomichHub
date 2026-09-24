@@ -1,0 +1,7 @@
+from django.apps import AppConfig
+
+
+class RacksConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'racks'
+    verbose_name = 'Racks e conexões físicas'

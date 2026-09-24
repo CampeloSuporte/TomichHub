@@ -32,6 +32,7 @@ static/*
 static/js/*
 !static/js/topo_engine.js
 !static/js/topo_main.js
+!static/js/rack_builder.js
 !static/js/acessar_equipamento.js
 !static/js/terminal_tab_manager.js
 !static/monitoramento/
