@@ -6887,6 +6887,7 @@ def _falha_proxy_web(html, status):
 # ─────────────────────────────────────────────────────────────────────────────
 
 from .models import TopologiaDiagrama
+from .topologia_tipos import tipo_topologia_do_acesso
 
 
 def _topologia_perm(request, cliente):
@@ -7088,36 +7089,7 @@ def topologia_hosts(request, cliente_id):
     ocultar_credenciais = _perms.acessos_somente_leitura(request.user)
     hosts = []
     for a in acessos:
-        funcao_nome = ((a.funcao.descricao or '') if a.funcao else '').lower()
-        tipo_lower = (a.tipo or '').lower()
-        tipo = 'host'
-        mapa = [
-            (['cgnat','cg-nat','carrier grade nat'], 'cgnat'),
-            # IX/PTT e trânsito vêm antes de router/switch: um host chamado
-            # "Router IX.br" é, no desenho, o ponto de troca — não mais um
-            # roteador igual aos outros. Palavras curtas ('ix', 'ptt', 'wan')
-            # só entram com separador, senão casariam com "matrix", "unix" etc.
-            (['ix.br','ixbr','ix br','ix-','ptt ','ptt-','ptt.','peering'], 'ix'),
-            (['transito','trânsito','upstream','internet','wan-','wan '], 'internet'),
-            (['bras','bng','broadband network'], 'router'),
-            (['router','roteador','core','border','borda'], 'router'),
-            (['switch l3','sw-l3','camada 3'], 'switch_l3'),
-            (['switch','sw-','catalyst','nexus'], 'switch_l2'),
-            (['access point','acess point','ponto de acesso','unifi','ap-','ap_'], 'ap'),
-            (['radio','rádio','wireless','ubiquiti','mikrotik','ap ','airmax','ltu'], 'radio'),
-            (['dwdm','oadm','ots','mstp','transponder'], 'dwdm'),
-            (['splitter','divisor optico','divisor óptico'], 'splitter'),
-            (['olt','gpon','xgs','epon'], 'olt'),
-            (['onu','ont'], 'onu'),
-            (['server','servidor','zabbix','grafana','proxmox'], 'server'),
-            (['firewall','utm','fortigate','pfsense','sophos'], 'firewall'),
-            (['vm','virtual machine','virtualizado','kvm','qemu','vmware','vps'], 'vm'),
-            (['cpe','modem'], 'cpe'),
-        ]
-        for keywords, dev_tipo in mapa:
-            if any(k in funcao_nome or k in tipo_lower for k in keywords):
-                tipo = dev_tipo
-                break
+        tipo = tipo_topologia_do_acesso(a)
         hosts.append({
             'id': a.id,
             'label': a.tipo,

@@ -2763,6 +2763,9 @@ class TopoEditor {
                placeholder="ge0/0/2, eth1, sfp2…" value="${this._esc(link.iface_b||'')}">
         <datalist id="dl-ifb"></datalist>
       </div>
+      ${TOPO_CENARIO ? '' : `<div class="prop-group fisica" id="pl-fisica">
+        <label class="prop-label"><i class="fas fa-server"></i> Conexão física</label>
+        <div class="fisica-corpo">Consultando racks…</div></div>`}
       <div class="prop-group">
         <label class="prop-label">IP Local (P2P)${src&&src.label?' — '+this._esc(src.label):''}</label>
         <input class="prop-input" id="pl-ipl" list="dl-ipl" autocomplete="off"
@@ -2809,6 +2812,7 @@ class TopoEditor {
 
     this._populateIfaceDatalist('dl-ifa', src && src.acesso_id, gen);
     this._populateIfaceDatalist('dl-ifb', tgt && tgt.acesso_id, gen);
+    if (!TOPO_CENARIO) this._carregarFisica(link, gen);
     this._populateIpDatalist('dl-ipl', src && src.acesso_id, gen);
     this._populateIpDatalist('dl-ipr', tgt && tgt.acesso_id, gen);
 
@@ -2886,6 +2890,58 @@ class TopoEditor {
       const labelAttr = legenda ? ` label="${legenda}"` : '';
       return `<option value="${this._esc(i.ip)}"${labelAttr}>${legenda}</option>`;
     }).join('');
+  }
+
+  // ── Racks / conexão física (app racks — ver docs/racks.md) ─────────────
+  // A situação vem do que está SALVO: o backend lê o enlace do dados_json.
+
+  async _carregarFisica(link, gen) {
+    let d = null;
+    try {
+      const r = await fetch(`/racks/cliente/${this.clienteId}/link/?link=${encodeURIComponent(link.id)}`,
+                            {headers: {'Accept': 'application/json'}});
+      if (r.ok && (r.headers.get('content-type') || '').includes('json')) d = await r.json();
+    } catch (e) { /* sem rede: o bloco fica com a mensagem neutra abaixo */ }
+    if (gen !== this._propsGen) return;
+    const el = document.querySelector('#pl-fisica .fisica-corpo');
+    if (!el) return;
+    const abrir = (rot, ico) => `<button class="prop-btn" onclick="topo.abrirRacks('${this._esc(link.id)}')"><i class="fas ${ico}"></i> ${rot}</button>`;
+    const l = d && d.link;
+    if (!d) { el.innerHTML = '<span class="fisica-txt">Não foi possível consultar os racks.</span>'; return; }
+    if (!l) {
+      el.innerHTML = `<span class="fisica-txt">${this.dirty
+        ? 'Salve a topologia para ligar este enlace a um cabo.'
+        : 'Enlace lógico (Internet, IX, nuvem, VM ou grupo) — não vira cabo.'}</span>`;
+      return;
+    }
+    const c = d.conexao;
+    if (l.status === 'criada' && c) {
+      el.innerHTML = `<span class="fisica-ok"><i class="fas fa-circle-check"></i> Cabo cadastrado</span>
+        <span class="fisica-txt">${this._esc(l.a.label)} <b>${this._esc(c.porta_a || '—')}</b> ↔ ${this._esc(l.b.label)} <b>${this._esc(c.porta_b || '—')}</b>
+        ${c.identificacao ? '· ' + this._esc(c.identificacao) : ''}</span>` + abrir('Ver no rack', 'fa-server');
+    } else if (l.status === 'pronta') {
+      el.innerHTML = `<span class="fisica-txt">As duas pontas estão montadas (${this._esc(l.a.rack)} U${l.a.u} · ${this._esc(l.b.rack)} U${l.b.u}).</span>`
+        + abrir('Criar conexão física', 'fa-plug');
+    } else {
+      el.innerHTML = `<span class="fisica-txt">Falta montar no rack: <b>${this._esc(l.faltando.join(', '))}</b>.</span>`
+        + abrir('Montar no rack', 'fa-server');
+    }
+  }
+
+  /** Abre a tela de racks (mesma janela, com botão de volta pra cá). Com
+   *  `linkId`, ela já abre no enlace — e com o formulário do cabo, se as duas
+   *  pontas estiverem montadas. A tela lê a topologia salva, então alteração
+   *  pendente é salva antes. */
+  async abrirRacks(linkId) {
+    if (this.dirty) {
+      if (!confirm('Há alterações não salvas na topologia. Salvar e abrir os racks?')) return;
+      if (!await this.save()) return;
+    }
+    const qs = new URLSearchParams();
+    if (this.diagramaId) qs.set('diagrama', this.diagramaId);
+    if (linkId) qs.set('link', linkId);
+    if (document.body.classList.contains('embed-mode')) qs.set('embed', '1');
+    window.location.href = `/racks/cliente/${this.clienteId}/?${qs}`;
   }
 
   _applyLinkProps(id) {
@@ -3246,8 +3302,11 @@ class TopoEditor {
         document.getElementById('st-save').style.color = 'var(--green)';
         document.getElementById('btn-salvar')?.classList.remove('dirty');
         this._toast('Topologia salva!');
+        return true;
       }
+      this._toast(d.error || 'Erro ao salvar', 'error');
     } catch(e) { this._toast('Erro ao salvar: '+e,'error'); }
+    return false;
   }
 
   async importHosts() {
