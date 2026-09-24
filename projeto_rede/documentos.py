@@ -6,7 +6,7 @@ import os
 
 from django.utils import timezone
 
-from . import analise, coleta, composicao, composicao_hld, composicao_tobe
+from . import analise, coleta, composicao, composicao_hld, composicao_tobe, ia
 from . import convencao as cv
 from . import tobe
 from .models import CenarioTopologia, DocumentoRede
@@ -59,8 +59,15 @@ def data_extenso(quando=None):
 # Contextos
 # ═══════════════════════════════════════════════════════════════════════════
 
-def modelo_asis(cliente):
-    return analise.montar_modelo(coleta.coletar(cliente))
+def modelo_asis(cliente, com_ia=False):
+    """Modelo analisado do AS-IS. Com `com_ia`, pede à IA a prosa das seções
+    de `ia.SECOES` (em `modelo['ia_texto']`) — sem IA/crédito, fica o texto
+    lógico e `modelo['ia_status']` diz o motivo."""
+    modelo = analise.montar_modelo(coleta.coletar(cliente))
+    if com_ia and modelo['total_com_backup']:
+        modelo['ia_texto'] = ia.redigir(modelo)
+        modelo['ia_status'] = ia.status(modelo['ia_texto'])
+    return modelo
 
 
 def convencao_do_hld(doc_hld):
@@ -115,9 +122,9 @@ def contexto_tobe(cliente, hld=None, asis=None, cenario=None, mapeamentos=None, 
             'refs': {'documentos': documentos, 'backups': sorted(backups), 'fontes': fontes}}
 
 
-def contexto(doc):
+def contexto(doc, com_ia=False):
     if doc.tipo == DocumentoRede.TIPO_ASIS:
-        return modelo_asis(doc.cliente)
+        return modelo_asis(doc.cliente, com_ia=com_ia)
     if doc.tipo == DocumentoRede.TIPO_HLD:
         return convencao_do_hld(doc)
     hld, asis, cenario = referencias_tobe(doc)

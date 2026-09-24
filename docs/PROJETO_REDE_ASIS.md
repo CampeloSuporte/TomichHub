@@ -65,6 +65,7 @@ coleta.py      → lê BackupLog/arquivo, TopologiaDiagrama, BlocoIP (somente le
 extratores.py  → Huawei VRP e MikroTik RouterOS → dict AS-IS (sem segredos)
 analise.py     → funções puras: papéis, classificação eBGP, agregações, achados, riscos
 composicao.py  → seções HTML (subconjunto controlado, tudo com escape)
+ia.py          → prosa do sumário/achados/riscos pela IA do atendimento (ChatGPT), com fallback lógico
 sanitizar.py   → lista de permissões do HTML vindo do editor
 exportacao.py  → HTML de impressão, PDF (Chrome headless), DOCX (python-docx)
 views.py       → páginas (admin_required) e API JSON (_admin_api → 401/403 em JSON)
@@ -72,6 +73,27 @@ views.py       → páginas (admin_required) e API JSON (_admin_api → 401/403 
 
 Para os demais fabricantes (Cisco, Juniper, Datacom, ZTE…) não há extrator dedicado. O documento usa
 o `clientes/backup_parser.py` genérico: L2VPN, IPs, BGP e OSPF básicos.
+
+### Redação com IA (ChatGPT) e fallback lógico
+
+Gerar o AS-IS, "Atualizar com backups" e recalcular as seções **Sumário executivo**, **Achados** ou
+**Riscos** pedem à IA a prosa dessas três seções. É a mesma integração do fechamento de chamados
+(`atendimento.ai.call_ai`, Configurações → Integração IA — provedor principal ChatGPT, com o outro
+provedor como segunda tentativa se tiver chave).
+
+- A IA recebe só os **fatos já extraídos** (`ia._fatos`: contagens, fabricantes, RRs, BNGs, CGNATs,
+  upstreams, VRFs, achados e riscos — sem IP de gerência nem credencial) e responde um JSON
+  `{sumario, achados, riscos}` com parágrafos em texto puro. O texto é escapado antes de virar `<p>`.
+- **Tabelas, inventário e números continuam 100% da lógica** — o documento segue rastreável até a
+  linha de configuração. A IA substitui só o parágrafo de abertura do sumário e acrescenta a análise
+  antes das tabelas de achados e riscos. A seção "Controle e finalidade" declara o uso de IA.
+- **Sem crédito, sem chave, timeout ou resposta fora do formato** → `ia.redigir` devolve `None` e as
+  seções saem exatamente como antes (texto lógico). A geração nunca falha por causa da IA.
+- O resultado fica em `DocumentoRede.coleta['ia']` (`usada`, `provedor`, `motivo`), aparece na lateral do
+  editor e num aviso após gerar/recalcular. O motivo é o mesmo `ai_last_error` de Configurações → Integração IA.
+- A chamada roda dentro da requisição: `timeout=40` e `max_retries=0` por provedor para caber nos
+  120 s do gunicorn (os parâmetros foram adicionados ao `call_ai`; o atendimento mantém o padrão).
+- Recalcular outras seções não chama a IA.
 
 ### Extração (Huawei)
 

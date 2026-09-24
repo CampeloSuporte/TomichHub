@@ -22,7 +22,7 @@ from clientes.decorators import admin_required
 from clientes.models import Acesso, BackupLog, Cliente, TopologiaDiagrama
 from usuario import perms
 
-from . import composicao, composicao_hld, composicao_tobe, documentos, exportacao, tobe
+from . import composicao, composicao_hld, composicao_tobe, documentos, exportacao, ia, tobe
 from . import convencao as cv
 from .models import CenarioTopologia, DocumentoRede, DocumentoRedeRevisao
 from .sanitizar import limpar_html, limpar_texto
@@ -64,8 +64,8 @@ def _novo_id():
     return uuid.uuid4().hex[:12]
 
 
-def _modelo_do_cliente(cliente):
-    return documentos.modelo_asis(cliente)
+def _modelo_do_cliente(cliente, com_ia=False):
+    return documentos.modelo_asis(cliente, com_ia=com_ia)
 
 
 def _snapshot(doc, motivo, user):
@@ -307,7 +307,7 @@ def tobe_mapeamentos(request, doc_id):
 def gerar_asis(request, cliente_id):
     cliente = get_object_or_404(Cliente, id=cliente_id)
     try:
-        modelo = _modelo_do_cliente(cliente)
+        modelo = _modelo_do_cliente(cliente, com_ia=True)
     except Exception:
         logger.exception('AS-IS: coleta/análise do cliente %s falhou', cliente.id)
         return _erro('Falha ao analisar os backups. Detalhes no log do servidor.', 500)
@@ -321,6 +321,7 @@ def gerar_asis(request, cliente_id):
     return JsonResponse({
         'ok': True, 'id': doc.id, 'url': reverse('projeto_rede:editor', args=[doc.id]),
         'achados': len(modelo['achados']), 'equipamentos': modelo['total_com_backup'],
+        'ia': modelo.get('ia_status'),
     })
 
 
@@ -524,12 +525,14 @@ def regenerar_secao(request, doc_id):
     chave = dados.get('chave')
     if chave not in documentos.chaves(doc.tipo):
         return _erro('Seção sem geração automática.')
+    asis = doc.tipo == DocumentoRede.TIPO_ASIS
     try:
-        ctx = documentos.contexto(doc)
+        ctx = documentos.contexto(doc, com_ia=asis and chave in ia.SECOES)
     except Exception:
         logger.exception('projeto_rede: regeneração da seção %s do documento %s falhou', chave, doc.id)
         return _erro('Falha ao recalcular a seção.', 500)
-    return JsonResponse({'ok': True, **documentos.gerar_secao(doc.tipo, ctx, chave)})
+    return JsonResponse({'ok': True, **documentos.gerar_secao(doc.tipo, ctx, chave),
+                         'ia': ctx.get('ia_status') if asis else None})
 
 
 @_admin_api
@@ -539,7 +542,7 @@ def regenerar_tudo(request, doc_id):
     mão. Guarda uma revisão antes."""
     doc = get_object_or_404(DocumentoRede.objects.select_related('cliente'), id=doc_id)
     try:
-        ctx = documentos.contexto(doc)
+        ctx = documentos.contexto(doc, com_ia=True)
     except Exception:
         logger.exception('projeto_rede: regeneração do documento %s falhou', doc.id)
         return _erro('Falha ao recalcular o documento.', 500)
@@ -551,7 +554,8 @@ def regenerar_tudo(request, doc_id):
             doc.metadados = meta
             doc.coleta = composicao.resumo_coleta(ctx)
         doc.save()
-    return JsonResponse({'ok': True, 'documento': _doc_json(doc)})
+    return JsonResponse({'ok': True, 'documento': _doc_json(doc),
+                         'ia': ctx.get('ia_status') if doc.tipo == DocumentoRede.TIPO_ASIS else None})
 
 
 @_admin_api
