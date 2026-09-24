@@ -210,6 +210,7 @@
                 {% with c=doc.coleta %}
                 Gerado a partir de <strong>{{ c.total_com_backup|default:0 }}</strong> backup(s) de {{ c.total_acessos|default:0 }} acesso(s)
                 {% if c.gerado_em %}em {{ c.gerado_em|slice:":10" }}{% endif %}.<br>
+                <span id="edIa">{% if c.ia.usada %}<i class="fas fa-robot"></i> Sumário, achados e riscos redigidos com IA ({{ c.ia.provedor }}).{% elif c.ia %}<i class="fas fa-gears"></i> Texto lógico (IA indisponível: {{ c.ia.motivo }}).{% endif %}</span><br>
                 {% endwith %}
                 {% elif doc.tipo == 'change_plan' %}
                 <strong>Fontes:</strong><br>
@@ -289,6 +290,21 @@ const URLS = {
     excluir: '{% url "projeto_rede:excluir" doc.id %}',
 };
 const DOC = JSON.parse(document.getElementById('doc-dados').textContent);
+
+// Resultado da redação por IA (ChatGPT) do AS-IS: sem IA/crédito, o texto
+// sai da lógica e o motivo aparece aqui e na lateral.
+function avisarIa(ia) {
+    if (!ia) return;
+    const el = document.getElementById('edIa');
+    if (ia.usada) {
+        if (el) el.innerHTML = '<i class="fas fa-robot"></i> Sumário, achados e riscos redigidos com IA (' + escHtml(ia.provedor) + ').';
+        uiToast('Texto redigido com IA (' + ia.provedor + ')');
+    } else {
+        if (el) el.innerHTML = '<i class="fas fa-gears"></i> Texto lógico (IA indisponível: ' + escHtml(ia.motivo) + ').';
+        uiToast('IA indisponível — usado o texto lógico: ' + ia.motivo, 'info');
+    }
+}
+function escHtml(t) { const d = document.createElement('div'); d.textContent = t || ''; return d.innerHTML; }
 const AUTO = JSON.parse(document.getElementById('secoes-auto').textContent);
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
@@ -512,7 +528,7 @@ async function regenerar(sec) {
     const nova = criarSecao({ ...j, id: sec.dataset.id, titulo: $('.ed-titulo', sec).value || j.titulo, auto: true });
     sec.replaceWith(nova);
     renumerar(); sujar();
-    uiToast('Seção recalculada');
+    if (j.ia) avisarIa(j.ia); else uiToast('Seção recalculada');
 }
 
 async function recolocarAuto(chave) {
@@ -753,6 +769,7 @@ $('#btnAtualizar').addEventListener('click', async () => {
     base = j.documento.atualizado_em;
     renderizar(j.documento);
     sujo = false; marcarEstado('', 'Seções recalculadas');
+    avisarIa(j.ia);
 });
 
 $('#btnExcluir').addEventListener('click', async () => {

@@ -211,7 +211,7 @@ table.pr-tabela tr:last-child td { border-bottom:none; }
     btn && btn.addEventListener('click', async () => {
         const ok = await uiConfirm({
             titulo: 'Gerar AS-IS',
-            msg: 'O sistema vai ler o backup mais recente de cada equipamento, a topologia e o cadastro, e criar um novo documento em rascunho. Continuar?',
+            msg: 'O sistema vai ler o backup mais recente de cada equipamento, a topologia e o cadastro, e criar um novo documento em rascunho. O sumário, os achados e os riscos são redigidos pela IA (ChatGPT) quando houver crédito; senão, pelo texto lógico. Continuar?',
             icone: 'fas fa-wand-magic-sparkles', iconeCor: '#3fb950', btnLabel: 'Gerar', btnCor: '#3fb950',
         });
         if (!ok) return;

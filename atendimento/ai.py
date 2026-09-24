@@ -84,13 +84,17 @@ def _motivo_legivel(e):
     return txt[:200]
 
 
-def call_ai(system_prompt, user_prompt, max_tokens=600):
+def call_ai(system_prompt, user_prompt, max_tokens=600, timeout=30, max_retries=2):
     """Texto da IA, ou None se ela não está configurada ou falhou.
 
     Tenta o provedor escolhido em Configurações e, se ele falhar, o OUTRO
     provedor — desde que tenha API key salva. Uma conta sem crédito ou uma
     chave revogada não deveria derrubar as automações quando existe um
     segundo provedor configurado ali do lado.
+
+    `timeout`/`max_retries` valem por provedor. Quem chama de dentro de uma
+    requisição HTTP (ex.: documentos de rede) precisa baixá-los para caber no
+    timeout do gunicorn; as tasks do Celery ficam com o padrão do SDK.
     """
     from .models import SystemSetting
 
@@ -100,7 +104,7 @@ def call_ai(system_prompt, user_prompt, max_tokens=600):
     motivos = []
     for p in ordem:
         chamada = _call_openai if p == 'openai' else _call_claude
-        texto, erro = chamada(system_prompt, user_prompt, max_tokens)
+        texto, erro = chamada(system_prompt, user_prompt, max_tokens, timeout, max_retries)
         if texto:
             if p != provider:
                 logger.warning(
@@ -116,7 +120,7 @@ def call_ai(system_prompt, user_prompt, max_tokens=600):
     return None
 
 
-def _call_claude(system_prompt, user_prompt, max_tokens):
+def _call_claude(system_prompt, user_prompt, max_tokens, timeout=30, max_retries=2):
     """Retorna (texto, erro). `erro` só é None quando veio texto."""
     from .models import SystemSetting
 
@@ -126,7 +130,7 @@ def _call_claude(system_prompt, user_prompt, max_tokens):
         return None, 'sem API key configurada'
     try:
         import anthropic
-        client = anthropic.Anthropic(api_key=api_key, timeout=30)
+        client = anthropic.Anthropic(api_key=api_key, timeout=timeout, max_retries=max_retries)
         resp = client.messages.create(
             model=model,
             max_tokens=max_tokens,
@@ -141,7 +145,7 @@ def _call_claude(system_prompt, user_prompt, max_tokens):
         return None, _motivo_legivel(e)
 
 
-def _call_openai(system_prompt, user_prompt, max_tokens):
+def _call_openai(system_prompt, user_prompt, max_tokens, timeout=30, max_retries=2):
     """Retorna (texto, erro). `erro` só é None quando veio texto."""
     from .models import SystemSetting
 
@@ -151,7 +155,7 @@ def _call_openai(system_prompt, user_prompt, max_tokens):
         return None, 'sem API key configurada'
     try:
         import openai
-        client = openai.OpenAI(api_key=api_key, timeout=30)
+        client = openai.OpenAI(api_key=api_key, timeout=timeout, max_retries=max_retries)
         resp = client.chat.completions.create(
             model=model,
             max_completion_tokens=max_tokens,

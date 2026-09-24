@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-24 (AS-IS da infraestrutura redigido com a IA do atendimento)
+
+### Adicionado
+
+- **Documentação AS-IS (`projeto_rede`) usa o agente ChatGPT já integrado** — o mesmo de
+  `atendimento.ai.call_ai` que redige a resolução no fechamento de chamados — para escrever a
+  prosa do **Sumário executivo**, da análise dos **Achados** e dos **Riscos** a partir dos fatos
+  extraídos dos backups (novo `projeto_rede/ia.py`). Tabelas, inventário e números continuam
+  vindo só da lógica determinística. Vale para gerar, "Atualizar com backups" e recalcular essas
+  três seções.
+- **Fallback lógico**: sem crédito (`insufficient_quota`), sem chave, timeout ou resposta
+  inválida, o documento sai com o texto lógico de sempre. O editor mostra na lateral e num aviso
+  se o texto veio da IA ou o motivo de ter caído na lógica (`DocumentoRede.coleta['ia']`).
+- `call_ai` ganhou `timeout`/`max_retries` opcionais (padrão inalterado) para caber no timeout
+  do gunicorn quando chamada dentro de uma requisição.
+
+---
+
 ## [Não publicado] — 2026-09-24 (Despesas Operacionais: filtro padrão ao abrir a tela)
 
 ### Alterado

@@ -14,6 +14,7 @@ from datetime import datetime
 
 from django.utils.html import escape
 
+from . import ia
 from .analise import SEVERIDADES
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -86,6 +87,11 @@ def _data_br(d):
     return d.strftime('%d/%m/%Y') if d else '—'
 
 
+def _texto_ia(m, chave):
+    """Parágrafos redigidos pela IA para a seção (lista vazia = usar a lógica)."""
+    return (m.get('ia_texto') or {}).get(chave) or []
+
+
 def _periodo(m):
     ini, fim = m['periodo']
     if not ini:
@@ -124,6 +130,9 @@ def s_controle(m):
         p('A extração é automática e determinística: cada informação deste documento tem origem em uma linha '
           'de configuração, no cadastro ou na topologia. Classificações (papel de equipamento, tipo de sessão '
           'eBGP, finalidade de community) são inferidas pela política aplicada e estão sujeitas à revisão técnica.'),
+        (p(f'Os textos analíticos do sumário executivo, dos achados e dos riscos foram redigidos com apoio de IA '
+           f'({escape(m["ia_status"]["provedor"])}) a partir desses mesmos fatos; tabelas, inventário e números '
+           'vêm exclusivamente da extração.') if (m.get('ia_status') or {}).get('usada') else ''),
         h3('Limitações'),
         callout('Risco residual aceito.',
                 'O levantamento foi reconstruído a partir das configurações disponíveis. Serviços não documentados '
@@ -179,7 +188,8 @@ def s_sumario(m):
         ['Risco', e(f'{len(m["achados"])} achado(s) estrutural(is), dos quais '
                     f'{len([a for a in m["achados"] if a["severidade"] in ("Crítica", "Alta")])} crítico(s)/alto(s)')],
     ]
-    return p(''.join(texto)) + tabela(['Domínio', 'Estado AS-IS consolidado'],
+    abertura = ia.html(_texto_ia(m, 'sumario')) or p(''.join(texto))
+    return abertura + tabela(['Domínio', 'Estado AS-IS consolidado'],
                                       [[f'<strong>{a}</strong>', b] for a, b in linhas])
 
 
@@ -297,7 +307,7 @@ def s_achados(m):
     cont = Counter(a['severidade'] for a in m['achados'])
     resumo = ', '.join(f'{cont[s]} {s.lower()}' for s in SEVERIDADES if cont[s])
     return p(f'Foram identificados {len(m["achados"])} achados ({escape(resumo)}). A severidade considera o impacto '
-             'na migração para o TO-BE e na operação atual.') + tabela(
+             'na migração para o TO-BE e na operação atual.') + ia.html(_texto_ia(m, 'achados')) + tabela(
         ['ID', 'Severidade', 'Achado', 'Evidência / impacto'],
         [[f'<strong>{e(a["id"])}</strong>', sev(a['severidade']), e(a['titulo']),
           f'{e(a["evidencia"])} <em>{e(a["impacto"])}</em>'] for a in m['achados']])
@@ -517,7 +527,8 @@ def s_seguranca(m):
 
 
 def s_riscos(m):
-    return tabela(['Risco', 'Tratamento'], [[e(r['risco']), e(r['tratamento'])] for r in m['riscos']])
+    return ia.html(_texto_ia(m, 'riscos')) + tabela(
+        ['Risco', 'Tratamento'], [[e(r['risco']), e(r['tratamento'])] for r in m['riscos']])
 
 
 def s_status(m):
@@ -639,4 +650,5 @@ def resumo_coleta(modelo):
         'total_acessos': modelo['total_acessos'], 'total_com_backup': modelo['total_com_backup'],
         'achados': len(modelo['achados']), 'fontes': fontes,
         'mapas_topologia': len(modelo['topologia']['mapas']),
+        'ia': modelo.get('ia_status') or {'usada': False, 'provedor': '', 'motivo': 'não solicitada'},
     }

@@ -13,7 +13,7 @@ from django.urls import reverse
 from clientes.models import Acesso, BackupLog, Cliente
 from usuario.models import PerfilUsuario, TOTPDevice
 
-from . import analise, composicao, exportacao
+from . import analise, composicao, exportacao, ia
 from .extratores import extrair_huawei, extrair_mikrotik
 from .models import DocumentoRede, DocumentoRedeRevisao
 from .sanitizar import limpar_html
@@ -389,6 +389,54 @@ class AnaliseTest(TestCase):
         self.assertIn('&lt;script&gt;', html.lower())
 
 
+class RedacaoIaTest(TestCase):
+    """Prosa do AS-IS pela IA do atendimento (ChatGPT), com fallback lógico."""
+    @classmethod
+    def setUpTestData(cls):
+        cls.m = analise.montar_modelo(_inventario(extrair_huawei(HUAWEI_PE), extrair_mikrotik(MIKROTIK_CGNAT)))
+
+    def _redigir(self, resposta):
+        with mock.patch('atendimento.ai.call_ai', return_value=resposta) as call:
+            textos = ia.redigir(self.m)
+        return textos, call
+
+    def test_ia_redige_sumario_achados_e_riscos(self):
+        resposta = ('```json\n' + json.dumps({
+            'sumario': ['Rede <b>madura</b> com MPLS.', 'Segundo parágrafo.'],
+            'achados': 'Achado A.\n\nAchado B.',
+            'riscos': ['Riscos **controlados**.'],
+        }) + '\n```')
+        textos, call = self._redigir(resposta)
+        self.assertEqual(textos['achados'], ['Achado A.', 'Achado B.'])
+        self.assertEqual(textos['riscos'], ['Riscos controlados.'])
+        # só os fatos vão no prompt, com timeout que cabe no gunicorn
+        self.assertIn('RTR-PE-AFT-CEN-01', call.call_args.args[1])
+        self.assertEqual(call.call_args.kwargs['max_retries'], 0)
+
+        m = dict(self.m, ia_texto=textos, ia_status={'usada': True, 'provedor': 'ChatGPT', 'motivo': ''})
+        sumario = composicao.s_sumario(m)
+        self.assertIn('<p>Rede &lt;b&gt;madura&lt;/b&gt; com MPLS.</p>', sumario)
+        self.assertIn('<table>', sumario)                          # tabela continua da lógica
+        self.assertNotIn('A rede opera com equipamentos', sumario)
+        self.assertIn('<p>Achado A.</p>', composicao.s_achados(m))
+        self.assertIn('AS-IS-001', composicao.s_achados(m))
+        self.assertTrue(composicao.s_riscos(m).startswith('<p>Riscos controlados.</p>'))
+        self.assertIn('apoio de IA (ChatGPT)', composicao.s_controle(m))
+        self.assertTrue(composicao.resumo_coleta(m)['ia']['usada'])
+
+    def test_sem_credito_usa_texto_logico(self):
+        textos, _ = self._redigir(None)
+        self.assertIsNone(textos)
+        m = dict(self.m, ia_texto=None, ia_status={'usada': False, 'provedor': 'ChatGPT', 'motivo': 'sem crédito'})
+        self.assertIn('A rede opera com equipamentos', composicao.s_sumario(m))
+        self.assertNotIn('apoio de IA', composicao.s_controle(m))
+        self.assertFalse(composicao.resumo_coleta(m)['ia']['usada'])
+
+    def test_resposta_fora_do_formato_usa_texto_logico(self):
+        self.assertIsNone(self._redigir('Desculpe, não posso ajudar.')[0])
+        self.assertIsNone(self._redigir('{"outra": 1}')[0])
+
+
 class SanitizarTest(TestCase):
     def test_lista_de_permissoes(self):
         sujo = ('<h1 style="color:red" onclick="x()">Título</h1><script>alert(1)</script>'
@@ -566,6 +614,31 @@ class ViewsTest(_BaseViews):
         self.assertTrue(r.json()['ok'])
         doc.refresh_from_db()
         self.assertEqual(doc.secoes[0]['html'], '<p>editado</p>')
+
+    def test_gerar_com_ia_e_sem_credito(self):
+        self.client.force_login(self.admin)
+        resposta = json.dumps({'sumario': ['Resumo pela IA.'], 'achados': [], 'riscos': []})
+        with mock.patch('atendimento.ai.call_ai', return_value=resposta), override_settings(MEDIA_ROOT=self.media):
+            r = self.post_json(reverse('projeto_rede:gerar_asis', args=[self.cliente.id]))
+        self.assertTrue(r.json()['ia']['usada'])
+        doc = DocumentoRede.objects.get(id=r.json()['id'])
+        self.assertIn('Resumo pela IA.', next(s['html'] for s in doc.secoes if s['chave'] == 'sumario'))
+        self.assertTrue(doc.coleta['ia']['usada'])
+
+        with mock.patch('atendimento.ai.call_ai', return_value=None), \
+                mock.patch('atendimento.ai.ultimo_erro_ia', return_value='ChatGPT: conta sem crédito/quota'), \
+                override_settings(MEDIA_ROOT=self.media):
+            r = self.post_json(reverse('projeto_rede:regenerar_tudo', args=[doc.id]))
+            self.assertEqual(r.json()['ia'], {'usada': False, 'provedor': 'Claude',
+                                              'motivo': 'ChatGPT: conta sem crédito/quota'})
+            sec = self.post_json(reverse('projeto_rede:regenerar_secao', args=[doc.id]), {'chave': 'sumario'}).json()
+            self.assertIn('A rede opera com equipamentos', sec['html'])
+            # seção fora da redação por IA não gasta chamada
+            with mock.patch('atendimento.ai.call_ai') as call:
+                self.post_json(reverse('projeto_rede:regenerar_secao', args=[doc.id]), {'chave': 'anexo'})
+            call.assert_not_called()
+        doc.refresh_from_db()
+        self.assertFalse(doc.coleta['ia']['usada'])
 
     def test_sem_backup_nao_gera(self):
         self.client.force_login(self.admin)
