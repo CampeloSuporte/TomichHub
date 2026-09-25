@@ -5,9 +5,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
-## [Não publicado] — 2026-09-25 (Topologia: salvamento automático e hosts automáticos)
+## [Não publicado] — 2026-09-25 (Topologia e racks: salvamento automático e hosts automáticos)
 
 ### Alterado
+
+- **Racks também salvam sozinhos**: o painel do equipamento e os diálogos de edição de rack e de cabo
+  não têm mais botão Salvar — cada campo grava ao ser alterado (texto ~1 s depois de parar de
+  digitar), sem tirar o cursor do campo, com status "Salvando… / ✓ Salvo". Fechar o diálogo ou clicar
+  em outro equipamento com alteração pendente ainda grava. Criar rack e criar cabo seguem com botão.
 
 - **Hosts do CRM entram sozinhos no mapa**: o botão Importar Hosts saiu. Host novo cadastrado no
   cliente aparece no mapa raiz ao abrir o editor, ao voltar para a aba ou em até 60 s com ela aberta,

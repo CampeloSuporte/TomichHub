@@ -200,3 +200,25 @@ Toda rota de escrita devolve `{ok: true, estado: {...}}` ou `{ok: false, erro: "
   `projeto_rede/tests_navegador.py`): botão da topologia → criar rack → arrastar com mouse real →
   prévia vermelha de conflito → criar cabo do enlace → painel do link na topologia. Com
   `RACK_SCREENSHOTS=<pasta>` salva as telas.
+
+
+---
+
+## Salvamento automático — 2026-09-25
+
+A tela de racks não tem mais botão **Salvar** nas edições (`static/js/rack_builder.js`):
+
+- **Painel do equipamento**: cada campo grava sozinho — texto ~0,8 s depois de parar de digitar
+  (`input`), select/checkbox/número na hora (`change`). Os valores são capturados a cada evento
+  (`_eqPendente`), então clicar em outro equipamento antes do debounce não perde a alteração. Saves em
+  fila (`_eqFila`), e só sai POST se os dados mudaram desde o último enviado (`_eqEnviado[id]`).
+  Status no próprio painel (`#eq-status`: Salvando… / ✓ Salvo / Não salvo — corrija o campo).
+- **Painel não é redesenhado enquanto o foco está nele**: o estado volta do servidor a cada save e o
+  `render()` apagaria o cursor. `_renderLateral` pula e marca `_lateralVelha`; o `focusout` do
+  `#lateral-corpo` redesenha quando o foco sai. Mudou de rack/face: segue o equipamento (`selecionar`).
+- **Diálogos de edição** de rack e de cabo (`_autoSaveDialogo`): mesmos gatilhos, botão vira
+  **Fechar**, status em `#dlg-status`. Fechar (botão, Esc, fundo) com alteração no debounce grava antes
+  (`_dlgPendente`). Os botões de altura do rack disparam `change` no campo.
+- **Criar rack / Criar cabo** continuam com botão — criação precisa de confirmação explícita.
+- Cabo sincronizado com o mapa: qualquer campo alterado no diálogo (e gravado sozinho) tira ele da
+  sincronização, como o Salvar fazia.

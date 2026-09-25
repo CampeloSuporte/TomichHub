@@ -189,6 +189,11 @@ button{font-family:inherit}
 #dlg .sub{font-size:.72rem;color:var(--faint);margin-bottom:14px;line-height:1.5}
 #dlg .acoes{display:flex;gap:8px;margin-top:14px}
 #dlg .acoes .prop-btn{margin:0}
+.auto-status{display:block;font-size:.68rem;color:var(--faint);margin-top:6px;text-align:center}
+.auto-status.salvando{color:var(--text-dim,#8b949e)}
+.auto-status.ok{color:var(--green,#3fb950)}
+.auto-status.erro{color:var(--red,#f85149)}
+#dlg .acoes .auto-status{margin:0 auto 0 0;align-self:center;text-align:left}
 .lado{border:1px solid var(--border-soft);border-radius:10px;padding:10px;margin-bottom:10px}
 .lado-tit{font-size:.64rem;font-weight:800;color:var(--cyan);letter-spacing:.1em;margin-bottom:8px}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);background:#0a0e14;border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:.8rem;opacity:0;pointer-events:none;transition:opacity .18s,transform .18s var(--ease-out);z-index:200;max-width:min(560px,calc(100vw - 32px));box-shadow:var(--shadow-md)}
@@ -262,6 +267,6 @@ body.leitura .so-escrita{display:none!important}
   };
 </script>
 <script src="/static/js/topo_engine.js?v=26"></script>
-<script src="/static/js/rack_builder.js?v=3"></script>
+<script src="/static/js/rack_builder.js?v=4"></script>
 </body>
 </html>
