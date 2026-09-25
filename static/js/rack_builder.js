@@ -313,7 +313,24 @@ class RackBuilder {
     document.getElementById('aba-equipamento').classList.toggle('on', this.aLateral === 'equipamento');
     document.getElementById('aba-conexoes').classList.toggle('on', this.aLateral === 'conexoes');
     const corpo = document.getElementById('lateral-corpo');
+    // Auto-save do painel: o estado volta do servidor enquanto a pessoa ainda
+    // digita — redesenhar agora tiraria o foco e o cursor do campo. Fica o
+    // painel como está e redesenha quando o foco sair dele (focusout abaixo).
+    if (this.aLateral === 'equipamento' && this.sel && corpo.dataset.eq === String(this.sel)
+        && corpo.contains(document.activeElement) && document.activeElement !== corpo) {
+      this._lateralVelha = true;
+      return;
+    }
+    this._lateralVelha = false;
+    corpo.dataset.eq = this.aLateral === 'equipamento' && this.sel ? this.sel : '';
     corpo.innerHTML = this.aLateral === 'equipamento' ? this._htmlEquipamento() : this._htmlConexoes();
+    if (!corpo._focoLigado) {
+      corpo._focoLigado = true;
+      corpo.addEventListener('focusout', ev => {
+        if (this._lateralVelha && !corpo.contains(ev.relatedTarget)) setTimeout(() => this._renderLateral(), 0);
+      });
+    }
+    if (this.aLateral === 'equipamento' && this.sel && !this.leitura) this._ligarAutoSaveEquipamento(this.sel);
     corpo.querySelectorAll('[data-realce]').forEach(el => {
       el.addEventListener('mouseenter', () => this._realcarConexao(+el.dataset.realce, true));
       el.addEventListener('mouseleave', () => this._realcarConexao(+el.dataset.realce, false));
@@ -360,8 +377,8 @@ class RackBuilder {
       </div>
       <div class="prop-group"><label class="prop-label">Observações</label><textarea class="prop-input" id="eq-obs" rows="2" ${ro}>${this._esc(e.observacoes)}</textarea></div>
       <div class="so-escrita">
-        <button class="prop-btn primary" onclick="rb.salvarEquipamento(${e.id})"><i class="fas fa-check"></i> Salvar</button>
         <button class="prop-btn danger" onclick="rb.excluirEquipamento(${e.id})"><i class="fas fa-trash"></i> Remover do rack</button>
+        <span class="auto-status" id="eq-status">Alterações salvas automaticamente</span>
       </div>
       <div class="sec-tit"><h3>Cabos (${cabos.length})</h3>
         <button class="prop-btn mini so-escrita" onclick="rb.dialogoConexao({pontaA:${e.id}})"><i class="fas fa-plus"></i> Cabo</button></div>
@@ -675,14 +692,68 @@ class RackBuilder {
 
   // ── Equipamento ──────────────────────────────────────────────────────────
 
-  async salvarEquipamento(id) {
-    const v = x => document.getElementById(x).value;
-    const r = await this._post(`/racks/equipamento/${id}/editar/`, {
+  // Sem botão Salvar: cada campo do painel grava sozinho — texto ~0,8 s
+  // depois de parar de digitar, select/checkbox na hora. Os saves vão em fila
+  // e só sai POST se algo mudou desde o último enviado.
+  _ligarAutoSaveEquipamento(id) {
+    const corpo = document.getElementById('lateral-corpo');
+    (this._eqEnviado = this._eqEnviado || {})[id] = JSON.stringify(this._dadosEquipamento());
+    corpo.querySelectorAll('.prop-input, .prop-select, #eq-total').forEach(el => {
+      el.addEventListener('input', () => this._agendarEquipamento(id, 800));
+      el.addEventListener('change', () => this._agendarEquipamento(id, 0));
+    });
+  }
+
+  _dadosEquipamento() {
+    const v = x => document.getElementById(x)?.value;
+    if (v('eq-nome') === undefined) return null;
+    return {
       nome: v('eq-nome'), tipo: v('eq-tipo'), rack_id: +v('eq-rack'), u_inicial: +v('eq-u'), altura_u: +v('eq-alt'),
       face: v('eq-face'), num_portas: +v('eq-portas'), profundidade_total: document.getElementById('eq-total').checked,
       acesso_id: v('eq-acesso') ? +v('eq-acesso') : null, fabricante: v('eq-fab'), modelo: v('eq-mod'), observacoes: v('eq-obs'),
-    });
-    if (r) { this.selecionar(id); this._toast('Salvo'); }
+    };
+  }
+
+  // Os valores são capturados a cada tecla/troca (não na hora do save): se a
+  // pessoa clicar em outro equipamento antes do debounce, o painel é
+  // redesenhado mas a alteração pendente ainda vai para o equipamento certo.
+  _agendarEquipamento(id, ms) {
+    const dados = this._dadosEquipamento();
+    if (!dados) return;
+    this._eqPendente = {id, dados};
+    clearTimeout(this._eqTimer);
+    this._eqTimer = setTimeout(() => this.salvarEquipamento(), ms);
+  }
+
+  _statusEq(txt, cls = '') {
+    const el = document.getElementById('eq-status');
+    if (el && this.sel === this._eqStatusDe) { el.textContent = txt; el.className = 'auto-status ' + cls; }
+  }
+
+  salvarEquipamento() {
+    clearTimeout(this._eqTimer);
+    const p = this._eqPendente;
+    this._eqPendente = null;
+    if (!p) return this._eqFila || Promise.resolve();
+    this._eqFila = (this._eqFila || Promise.resolve()).then(() => this._salvarEquipamentoAgora(p.id, p.dados));
+    return this._eqFila;
+  }
+
+  async _salvarEquipamentoAgora(id, dados) {
+    // Campo numérico apagado no meio da digitação: espera o valor completo.
+    if (!dados.u_inicial || !dados.altura_u) return;
+    const json = JSON.stringify(dados);
+    if (json === this._eqEnviado?.[id]) return;
+    this._eqStatusDe = id;
+    this._statusEq('Salvando…', 'salvando');
+    const antes = this._eq(id);
+    const r = await this._post(`/racks/equipamento/${id}/editar/`, dados);
+    if (!r) { this._statusEq('Não salvo — corrija o campo', 'erro'); return; }
+    (this._eqEnviado = this._eqEnviado || {})[id] = json;
+    this._statusEq('✓ Salvo', 'ok');
+    const e = this._eq(id);
+    // Mudou de rack/face: acompanha o equipamento, como fazia o Salvar.
+    if (e && antes && this.sel === id && (e.rack_id !== antes.rack_id || e.face !== antes.face)) this.selecionar(id);
   }
 
   async excluirEquipamento(id) {
@@ -718,22 +789,30 @@ class RackBuilder {
       <div class="prop-group"><label class="prop-label">Nome</label><input class="prop-input" id="rk-nome" value="${this._esc(r ? r.nome : `RACK-${String(this.estado.racks.length + 1).padStart(2, '0')}`)}"></div>
       <div class="prop-group"><label class="prop-label">Local (site, POP, sala)</label><input class="prop-input" id="rk-local" value="${this._esc(r ? r.local : '')}" placeholder="POP Centro — sala 2"></div>
       <div class="prop-group"><label class="prop-label">Altura</label>
-        <div class="filtros" id="rk-alturas">${alturas.map(a => `<button type="button" class="${a === atual ? 'on' : ''}" onclick="document.getElementById('rk-alt').value=${a};this.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===this))">${a}U</button>`).join('')}</div>
+        <div class="filtros" id="rk-alturas">${alturas.map(a => `<button type="button" class="${a === atual ? 'on' : ''}" onclick="const i=document.getElementById('rk-alt');i.value=${a};i.dispatchEvent(new Event('change'));this.parentNode.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===this))">${a}U</button>`).join('')}</div>
         <input class="prop-input" id="rk-alt" type="number" min="1" max="${this.cat.altura_rack_max}" value="${atual}"></div>
       <div class="prop-group"><label class="prop-label">Observações</label><textarea class="prop-input" id="rk-obs" rows="2">${this._esc(r ? r.observacoes : '')}</textarea></div>
-      <div class="acoes"><button class="prop-btn" onclick="rb.fecharDialogo()">Cancelar</button>
-        <button class="prop-btn primary" onclick="rb.salvarRack(${r ? r.id : 'null'})"><i class="fas fa-check"></i> ${r ? 'Salvar' : 'Criar'}</button></div>`);
+      ${r ? `<div class="acoes"><span class="auto-status" id="dlg-status">Alterações salvas automaticamente</span>
+        <button class="prop-btn" onclick="rb.fecharDialogo()">Fechar</button></div>`
+          : `<div class="acoes"><button class="prop-btn" onclick="rb.fecharDialogo()">Cancelar</button>
+        <button class="prop-btn primary" onclick="rb.salvarRack(null)"><i class="fas fa-check"></i> Criar</button></div>`}`);
     document.getElementById('rk-nome').select();
+    if (r) this._autoSaveDialogo(() => this.salvarRack(r.id, {auto: true}));
   }
 
-  async salvarRack(id) {
-    const dados = {nome: document.getElementById('rk-nome').value, local: document.getElementById('rk-local').value,
-                   altura_u: +document.getElementById('rk-alt').value, observacoes: document.getElementById('rk-obs').value};
+  async salvarRack(id, {auto = false} = {}) {
+    const campo = x => document.getElementById(x);
+    if (!campo('rk-nome')) return false;           // diálogo já fechou
+    const dados = {nome: campo('rk-nome').value, local: campo('rk-local').value,
+                   altura_u: +campo('rk-alt').value, observacoes: campo('rk-obs').value};
+    if (auto && (!dados.altura_u || !dados.nome.trim())) return false;  // meio da digitação
     const r = await this._post(id ? `/racks/rack/${id}/editar/` : `/racks/cliente/${this.clienteId}/racks/criar/`, dados);
-    if (!r) return;
+    if (!r) return false;
+    if (auto) return true;                          // edição: o diálogo continua aberto
     this.fecharDialogo();
     if (r.rack_id) this.selecionarRack(r.rack_id);
     this._toast(id ? 'Rack salvo' : 'Rack criado — arraste os equipamentos para ele');
+    return true;
   }
 
   async excluirRack(id) {
@@ -774,7 +853,7 @@ class RackBuilder {
     const cabCor = base.cor || (this.cat.meios[base.meio] || {}).cor || '#58a6ff';
     this._abrirDialogo(`
       <h2><i class="fas fa-plug"></i> ${c ? 'Editar cabo' : link ? 'Conexão física do enlace' : 'Novo cabo'}</h2>
-      <div class="sub">${link ? `Enlace da topologia <b>${this._esc(link.a.label)} ↔ ${this._esc(link.b.label)}</b>${link.iface ? ' · ' + this._esc(((window.TOPO_IFACES || {})[link.iface] || {}).label || link.iface) : ''}. As portas vieram de Interface Lado A/B e o tipo de cabo da velocidade — ajuste se o físico for diferente.` : c && c.sincronizado ? '<i class="fas fa-circle-info"></i> Este cabo segue o enlace do mapa. <b>Salvar uma alteração aqui tira ele da sincronização</b> — dali em diante vale o que estiver neste formulário.'
+      <div class="sub">${link ? `Enlace da topologia <b>${this._esc(link.a.label)} ↔ ${this._esc(link.b.label)}</b>${link.iface ? ' · ' + this._esc(((window.TOPO_IFACES || {})[link.iface] || {}).label || link.iface) : ''}. As portas vieram de Interface Lado A/B e o tipo de cabo da velocidade — ajuste se o físico for diferente.` : c && c.sincronizado ? '<i class="fas fa-circle-info"></i> Este cabo segue o enlace do mapa. <b>Alterar qualquer campo aqui (grava sozinho) tira ele da sincronização</b> — dali em diante vale o que estiver neste formulário.'
         : 'Uma porta aceita um cabo só. Portas numéricas (1, 2, 3…) acendem no espelho do equipamento.'}</div>
       ${lado('a', base.a, base.pa)}${lado('b', base.b, base.pb)}
       <div class="prop-row">
@@ -787,8 +866,10 @@ class RackBuilder {
         <div class="prop-group" style="flex:.35"><label class="prop-label">Cor</label><input class="prop-input" id="cx-cor" type="color" value="${this._esc(cabCor)}" style="padding:2px;height:34px"></div>
       </div>
       <div class="prop-group"><label class="prop-label">Observações</label><textarea class="prop-input" id="cx-obs" rows="2">${this._esc(base.obs || '')}</textarea></div>
-      <div class="acoes"><button class="prop-btn" onclick="rb.fecharDialogo()">Cancelar</button>
-        <button class="prop-btn primary" id="cx-ok"><i class="fas fa-check"></i> ${c ? 'Salvar' : 'Criar cabo'}</button></div>`);
+      ${c ? `<div class="acoes"><span class="auto-status" id="dlg-status">Alterações salvas automaticamente</span>
+        <button class="prop-btn" onclick="rb.fecharDialogo()">Fechar</button></div>`
+          : `<div class="acoes"><button class="prop-btn" onclick="rb.fecharDialogo()">Cancelar</button>
+        <button class="prop-btn primary" id="cx-ok"><i class="fas fa-check"></i> Criar cabo</button></div>`}`);
 
     const corOriginal = base.cor;
     document.getElementById('cx-cor').dataset.mexeu = corOriginal ? '1' : '';
@@ -803,12 +884,14 @@ class RackBuilder {
       if (sel.tagName === 'SELECT') sel.addEventListener('change', sugerir);
       sugerir();
     });
-    document.getElementById('cx-ok').onclick = () => this._salvarConexao({link, c});
+    if (c) this._autoSaveDialogo(() => this._salvarConexao({link, c, auto: true}));
+    else document.getElementById('cx-ok').onclick = () => this._salvarConexao({link, c});
   }
 
-  async _salvarConexao({link, c}) {
+  async _salvarConexao({link, c, auto = false}) {
     const v = x => document.getElementById(x).value;
     const corEl = document.getElementById('cx-cor');
+    if (!corEl) return false;                      // diálogo já fechou
     const dados = {porta_a: v('cx-pa'), porta_b: v('cx-pb'), meio: v('cx-meio'), conector: v('cx-con'),
                    identificacao: v('cx-id'), comprimento_m: v('cx-comp'), observacoes: v('cx-obs'),
                    // Cor só é gravada quando a pessoa escolheu: sem ela o cabo
@@ -820,9 +903,11 @@ class RackBuilder {
       Object.assign(dados, {ponta_a_id: +v('cx-a') || null, ponta_b_id: +v('cx-b') || null});
       r = await this._post(c ? `/racks/conexao/${c.id}/editar/` : `/racks/cliente/${this.clienteId}/conexoes/criar/`, dados);
     }
-    if (!r) return;
+    if (!r) return false;
+    if (auto) return true;                          // edição: o diálogo continua aberto
     this.fecharDialogo();
     this._toast(c ? 'Cabo salvo' : 'Cabo criado');
+    return true;
   }
 
   /** Interfaces do backup do host (mesmo endpoint do painel do link da
@@ -863,7 +948,42 @@ class RackBuilder {
     document.getElementById('dlg-caixa').innerHTML = html;
     document.getElementById('dlg').classList.add('on');
   }
-  fecharDialogo() { document.getElementById('dlg').classList.remove('on'); }
+  fecharDialogo() {
+    // Alteração ainda no debounce do diálogo de edição: grava antes de fechar.
+    if (this._dlgPendente) { clearTimeout(this._dlgTimer); this._dlgPendente(); }
+    this._dlgPendente = null;
+    document.getElementById('dlg').classList.remove('on');
+  }
+
+  /** Diálogo de EDIÇÃO (rack/cabo existentes) sem botão Salvar: qualquer
+   *  campo alterado grava sozinho via `salvar()` (que devolve o resultado do
+   *  _post), em fila e com debounce para texto. Criar continua com botão. */
+  _autoSaveDialogo(salvar) {
+    const caixa = document.getElementById('dlg-caixa');
+    const status = (txt, cls = '') => {
+      const el = document.getElementById('dlg-status');
+      if (el) { el.textContent = txt; el.className = 'auto-status ' + cls; }
+    };
+    let fila = Promise.resolve();
+    const agora = () => {
+      this._dlgPendente = null;
+      fila = fila.then(async () => {
+        status('Salvando…', 'salvando');
+        const ok = await salvar();
+        status(ok ? '✓ Salvo' : 'Não salvo — corrija o campo', ok ? 'ok' : 'erro');
+      });
+      return fila;
+    };
+    const agendar = ms => {
+      clearTimeout(this._dlgTimer);
+      this._dlgPendente = agora;
+      this._dlgTimer = setTimeout(agora, ms);
+    };
+    caixa.querySelectorAll('input, select, textarea').forEach(el => {
+      el.addEventListener('input', () => agendar(700));
+      el.addEventListener('change', () => agendar(0));
+    });
+  }
 
   /** " — 2 cabos criados a partir do mapa" (vazio se nada mudou). */
   _resumoSync(sync) {

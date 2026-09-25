@@ -168,7 +168,7 @@ class RackNavegadorTest(StaticLiveServerTestCase):
         # A calha dos cabos cabe no palco sem rolagem horizontal (1400px de janela)
         self.assertLessEqual(b.js("document.getElementById('palco').scrollWidth - document.getElementById('palco').clientWidth"), 0)
 
-        # Clicar no cabo desenhado abre a edição; salvar tira da sincronização
+        # Clicar no cabo desenhado abre a edição; alterar (grava sozinho) tira da sincronização
         x, y = b.js(f"""(() => {{ const r = document.querySelector('#cabos-svg .cabo[data-cabo="{c.id}"] .cabo-linha').getBoundingClientRect();
             return [r.right - 1, r.top + r.height / 2]; }})()""")
         self.mouse('mousePressed', x, y)
@@ -176,10 +176,24 @@ class RackNavegadorTest(StaticLiveServerTestCase):
         b.esperar("document.getElementById('dlg').classList.contains('on')")
         self.assertIn('tira ele da sincronização', b.js("document.getElementById('dlg-caixa').textContent"))
         self.foto('2_dialogo_cabo')
-        b.js("document.getElementById('cx-comp').value = '3'; document.getElementById('cx-ok').click()")
+        self.assertFalse(b.js("!!document.getElementById('cx-ok')"))   # edição não tem botão Salvar
+        b.js("{ const i = document.getElementById('cx-comp'); i.value = '3'; i.dispatchEvent(new Event('input')) }")
         b.esperar(f"rb.estado.conexoes.find(x => x.id === {c.id}).sincronizado === false")
         c.refresh_from_db()
         self.assertEqual((str(c.comprimento_m), c.sincronizado), ('3.00', False))
+        self.assertIn('Salvo', b.js("document.getElementById('dlg-status').textContent"))
+        # Fechar com alteração ainda no debounce grava antes de fechar
+        b.js("{ const i = document.getElementById('cx-obs'); i.value = 'passa pela calha'; i.dispatchEvent(new Event('input')); rb.fecharDialogo() }")
+        b.esperar(f"rb.estado.conexoes.find(x => x.id === {c.id}).observacoes === 'passa pela calha'")
+
+        # Diálogo de edição do rack também grava sozinho (botões de altura inclusive)
+        b.js(f"rb.dialogoRack({rack.id})")
+        b.js("{ const i = document.getElementById('rk-local'); i.value = 'POP Centro'; i.dispatchEvent(new Event('input')) }")
+        b.js("[...document.querySelectorAll('#rk-alturas button')].find(x => x.textContent === '42U').click()")
+        b.esperar(f"(r => r.local === 'POP Centro' && r.altura_u === 42)(rb.estado.racks.find(x => x.id === {rack.id}))")
+        b.js("rb.fecharDialogo()")
+        rack.refresh_from_db()
+        self.assertEqual((rack.local, rack.altura_u), ('POP Centro', 42))
 
         # Voltar para a topologia: o painel do link mostra o cabo
         b.js("document.getElementById('btn-voltar').click()")
@@ -204,4 +218,18 @@ class RackNavegadorTest(StaticLiveServerTestCase):
         self.assertIn(f'equip={sw.id}', b.js("location.search"))
         self.assertTrue(b.js(f"document.querySelector('.eq[data-id=\"{sw.id}\"]').classList.contains('sel')"))
         self.foto('6_rack_vindo_do_selo')
+
+        # Painel do equipamento sem botão Salvar: grava sozinho sem tirar o foco do campo
+        self.assertFalse(b.js("[...document.querySelectorAll('#lateral-corpo .prop-btn')].some(x => x.textContent.trim() === 'Salvar')"))
+        b.js("{ const i = document.getElementById('eq-nome'); i.focus(); i.value = 'SW-AGG-01-R'; i.dispatchEvent(new Event('input')) }")
+        b.esperar(f"rb._eq({sw.id}).nome === 'SW-AGG-01-R'")
+        self.assertEqual(b.js("document.activeElement.id"), 'eq-nome')
+        self.assertIn('Salvo', b.js("document.getElementById('eq-status').textContent"))
+        # Clicar em outro equipamento antes do debounce não perde a alteração
+        rtr = RackEquipamento.objects.get(acesso=self.rtr)
+        b.js(f"{{ const i = document.getElementById('eq-obs'); i.value = 'uplink 10G'; i.dispatchEvent(new Event('input')); rb.selecionar({rtr.id}) }}")
+        b.esperar(f"rb._eq({sw.id}).observacoes === 'uplink 10G'")
+        sw.refresh_from_db()
+        self.assertEqual((sw.nome, sw.observacoes), ('SW-AGG-01-R', 'uplink 10G'))
+        self.assertEqual(b.js("document.getElementById('eq-nome').value"), rtr.nome)
         self.assertEqual(b.erros, [])
