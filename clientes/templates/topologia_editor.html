@@ -91,7 +91,6 @@ html:-webkit-full-screen body{height:100%}
 /* Ponto de "não salvo": vai no ::before (com `order` pra cair depois do texto,
    já que .tb-btn é flex) porque o ::after do botão é o tooltip do [data-tip] —
    um só pseudo-elemento para os dois vira um balão vazado no meio da tela. */
-.tb-btn.primary.dirty::before{content:'';order:9;width:6px;height:6px;border-radius:50%;background:#04121a;opacity:.5;flex-shrink:0}
 /* Voltar pro mapa pai: o link mostrava só o NOME do mapa de cima ("Nova
    Topologia") ao lado de uma seta — entre a marca e o campo de nome, aquilo
    lia como título, não como navegação. Agora diz "Voltar", em cor de
@@ -600,7 +599,6 @@ body:not(.pal-off) #legend-panel{left:236px}
   {% endif %}
   <input id="nome-diagrama" value="{% if cenario %}{{ cenario.nome }}{% else %}{{ diagrama.nome|default:'Nova Topologia' }}{% endif %}" aria-label="Nome do diagrama" data-tip="Nome do diagrama">
   <div class="tb-sep"></div>
-  <button class="tb-btn primary" id="btn-salvar" onclick="topo.save()" data-tip="Salvar (Ctrl+S)"><i class="fas fa-floppy-disk"></i> Salvar</button>
   <button class="tb-btn" onclick="topo.importHosts()" data-tip="Trazer os hosts cadastrados no CRM"><i class="fas fa-cloud-arrow-down"></i> Importar Hosts</button>
   {% if not cenario %}<button class="tb-btn" id="btn-racks" onclick="topo.abrirRacks()" data-tip="Criar racks, montar os equipamentos por U e ligar os cabos dos enlaces"><i class="fas fa-server"></i> Racks</button>{% endif %}
   <div class="tb-group">
@@ -746,6 +744,6 @@ body:not(.pal-off) #legend-panel{left:236px}
   }
 </script>
 <script src="/static/js/topo_engine.js?v=26"></script>
-<script src="/static/js/topo_main.js?v=50"></script>
+<script src="/static/js/topo_main.js?v=51"></script>
 </body>
 </html>

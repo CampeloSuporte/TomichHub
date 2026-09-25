@@ -299,6 +299,7 @@ class TopoEditor {
     });
 
     document.getElementById('nome-diagrama').addEventListener('input', () => this._setDirty());
+    window.addEventListener('beforeunload', e => this._salvarAoSair(e));
   }
 
   // ── Path generation ───────────────────────────────────────────────────────
@@ -742,7 +743,7 @@ class TopoEditor {
       await this.save();
     }
     if (!this.diagramaId) {
-      this._toast('Salve o mapa antes de criar um sub-mapa', 'error');
+      this._toast('Não foi possível salvar o mapa para criar o sub-mapa', 'error');
       return;
     }
     try {
@@ -877,7 +878,7 @@ class TopoEditor {
     // O backend grava o `submap_id` no nó dentro do `dados_json` já salvo do
     // mapa pai — então o pai precisa estar salvo COM o node do grupo antes.
     await this.save();
-    if (!this.diagramaId) { this._toast('Salve o mapa antes de agrupar', 'error'); return; }
+    if (!this.diagramaId) { this._toast('Não foi possível salvar o mapa para agrupar', 'error'); return; }
 
     try {
       const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -2923,7 +2924,7 @@ class TopoEditor {
     if (!d) { el.innerHTML = '<span class="fisica-txt">Não foi possível consultar os racks.</span>'; return; }
     if (!l) {
       el.innerHTML = `<span class="fisica-txt">${this.dirty
-        ? 'Salve a topologia para ligar este enlace a um cabo.'
+        ? 'Enlace novo — aguarde o salvamento automático para ligá-lo a um cabo.'
         : 'Enlace lógico (Internet, IX, nuvem, VM ou grupo) — não vira cabo.'}</span>`;
       return;
     }
@@ -2943,13 +2944,10 @@ class TopoEditor {
 
   /** Abre a tela de racks (mesma janela, com botão de volta pra cá). Com
    *  `linkId`, ela já abre no enlace — e com o formulário do cabo, se as duas
-   *  pontas estiverem montadas. A tela lê a topologia salva, então alteração
-   *  pendente é salva antes. */
+   *  pontas estiverem montadas. A tela lê a topologia salva, então o
+   *  auto-save pendente é disparado na hora antes de sair. */
   async abrirRacks(linkId, equipamentoId) {
-    if (this.dirty) {
-      if (!confirm('Há alterações não salvas na topologia. Salvar e abrir os racks?')) return;
-      if (!await this.save()) return;
-    }
+    if (this.dirty && !await this.save()) return;
     const qs = new URLSearchParams();
     if (this.diagramaId) qs.set('diagrama', this.diagramaId);
     if (linkId) qs.set('link', linkId);
@@ -3341,44 +3339,112 @@ class TopoEditor {
   }
 
   _setDirty() {
-    // Chamado a cada frame de arraste — quando já está sujo não há nada novo a
-    // escrever na barra de status nem no botão Salvar.
+    // Chamado a cada frame de arraste: só conta a revisão e reagenda o
+    // auto-save — o save de verdade sai quando a mão para (debounce).
+    this._rev = (this._rev || 0) + 1;
+    this._agendarAutoSave();
     if (this.dirty) return;
     this.dirty = true;
-    document.getElementById('st-save').textContent = '● Não salvo';
-    document.getElementById('st-save').style.color = 'var(--orange)';
-    // Ponto no próprio botão Salvar: a barra de status fica no rodapé e passa
-    // despercebida — o aviso de "tem coisa não salva" precisa estar onde a
-    // pessoa vai clicar.
-    document.getElementById('btn-salvar')?.classList.add('dirty');
+    this._statusSave('● Alterações pendentes…', 'var(--orange)');
+  }
+
+  _statusSave(txt, cor) {
+    const el = document.getElementById('st-save');
+    el.textContent = txt;
+    el.style.color = cor;
   }
 
   // ── Save / Load ───────────────────────────────────────────────────────────
+  // Não há botão Salvar: toda alteração passa por _setDirty, que agenda um
+  // save automático 1s depois da última mudança. Arrastando, o save espera
+  // soltar. Os saves são em fila (nunca dois POST ao mesmo tempo) — o 1º save
+  // de um mapa novo CRIA o diagrama, e dois em paralelo criariam dois.
 
-  async save() {
+  _agendarAutoSave(ms = 1000) {
+    clearTimeout(this._autoSaveTimer);
+    this._autoSaveTimer = setTimeout(() => {
+      if (this.dragging || this.groupDragging || this.wpDrag || this.areaResizing) {
+        this._agendarAutoSave(ms);   // ainda com a mão no mapa
+        return;
+      }
+      this.save({auto: true});
+    }, ms);
+  }
+
+  _payloadSave() {
     const nome = document.getElementById('nome-diagrama').value || 'Nova Topologia';
-    const payload = {nome, dados_json: JSON.stringify({nodes:this.nodes, links:this.links}), diagrama_id: this.diagramaId};
+    return {nome, dados_json: JSON.stringify({nodes:this.nodes, links:this.links}), diagrama_id: this.diagramaId};
+  }
+
+  _urlSave() {
+    // Cenário TO-BE (projeto_rede) grava no próprio cenário, nunca no mapa real.
+    return TOPO_CENARIO ? TOPO_CENARIO.salvarUrl : `/clientes/${this.clienteId}/topologia/salvar/`;
+  }
+
+  /** Salva já (fura o debounce). Quem precisa do mapa gravado antes de seguir
+   *  (sub-mapa, agrupar, abrir racks) dá `await` e recebe true/false. */
+  save(opts = {}) {
+    clearTimeout(this._autoSaveTimer);
+    const anterior = this._saveFila || Promise.resolve();
+    this._saveFila = anterior.then(() => this._saveAgora(opts));
+    return this._saveFila;
+  }
+
+  async _saveAgora({auto = false} = {}) {
+    if (!this.dirty && this.diagramaId) return true;  // um save na fila já levou tudo
+    const rev = this._rev || 0;
     const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    this._statusSave('⟳ Salvando…', 'var(--text-dim, #8b949e)');
     try {
-      // Cenário TO-BE (projeto_rede) grava no próprio cenário, nunca no mapa real.
-      const url = TOPO_CENARIO ? TOPO_CENARIO.salvarUrl : `/clientes/${this.clienteId}/topologia/salvar/`;
-      const r = await fetch(url, {
+      const r = await fetch(this._urlSave(), {
         method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf},
-        body: JSON.stringify(payload)
+        body: JSON.stringify(this._payloadSave())
       });
       const d = await r.json();
       if (d.ok) {
         this.diagramaId = d.diagrama_id;
-        this.dirty = false;
-        document.getElementById('st-save').textContent = '✓ Salvo';
-        document.getElementById('st-save').style.color = 'var(--green)';
-        document.getElementById('btn-salvar')?.classList.remove('dirty');
-        this._toast('Topologia salva!');
+        this._falhaSave = false;
+        if ((this._rev || 0) === rev) {
+          this.dirty = false;
+          this._statusSave('✓ Salvo automaticamente', 'var(--green)');
+        } else {
+          this._statusSave('● Alterações pendentes…', 'var(--orange)');  // mudou durante o POST
+        }
         return true;
       }
-      this._toast(d.error || 'Erro ao salvar', 'error');
-    } catch(e) { this._toast('Erro ao salvar: '+e,'error'); }
+      this._falhouSave(d.error || 'Erro ao salvar', auto);
+    } catch(e) { this._falhouSave('Erro ao salvar: ' + e, auto); }
     return false;
+  }
+
+  _falhouSave(msg, auto) {
+    this._statusSave('⚠ Não salvo — tentando de novo', 'var(--red, #f85149)');
+    // Auto-save falhando (rede, sessão expirada) avisa uma vez só e tenta de
+    // novo em 10s, em vez de encher a tela de toast a cada alteração.
+    if (!auto || !this._falhaSave) this._toast(msg, 'error');
+    this._falhaSave = true;
+    this._agendarAutoSave(10000);
+  }
+
+  /** Fechando/recarregando a aba com alteração ainda no debounce: manda o
+   *  save com keepalive (sobrevive ao unload). O keepalive só leva até ~64 KB
+   *  — mapa maior que isso (ou o 1º save de um mapa novo ainda em voo, que
+   *  duplicaria o diagrama) cai no "sair do site?" do navegador. */
+  _salvarAoSair(e) {
+    if (!this.dirty) return;
+    clearTimeout(this._autoSaveTimer);
+    const body = JSON.stringify(this._payloadSave());
+    if (body.length < 60000 && this.diagramaId) {
+      try {
+        fetch(this._urlSave(), {
+          method: 'POST', keepalive: true, body,
+          headers: {'Content-Type':'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value},
+        });
+        return;
+      } catch (_) { /* cai no aviso abaixo */ }
+    }
+    e.preventDefault(); e.returnValue = '';
   }
 
   async importHosts() {

@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-25 (Topologia: salvamento automático)
+
+### Alterado
+
+- **Editor de topologia salva sozinho**: o botão Salvar saiu; qualquer alteração (mover, ligar,
+  apagar, propriedades, nome do mapa, desfazer/refazer) é gravada ~1 s depois, esperando soltar o
+  arraste. A barra de status mostra pendente/salvando/salvo; em falha avisa uma vez e tenta de novo a
+  cada 10 s. Fechar a aba com alteração pendente ainda envia o save (keepalive). O botão Racks não
+  pergunta mais "Salvar e abrir?" — salva direto. `Ctrl+S` continua forçando o save na hora.
+
+---
+
 ## [Não publicado] — 2026-09-24 (Racks: cabos criados a partir do mapa e desenhados no rack)
 
 ### Adicionado

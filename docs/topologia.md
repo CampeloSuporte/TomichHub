@@ -1091,7 +1091,7 @@ funcional de nenhuma ação — é puramente polish visual/tátil.
 
 | Tecla | Ação |
 |---|---|
-| `Ctrl+S` | Salvar |
+| `Ctrl+S` | Salvar na hora (opcional — o editor salva sozinho) |
 | `Ctrl+Z` | Desfazer |
 | `Ctrl+Y` | Refazer |
 | `C` | Alternar modo conexão |
@@ -1226,7 +1226,7 @@ Cache-busting: `topo_engine.js?v=26` + `topo_main.js?v=44`.
 Detalhes em [racks.md](racks.md). O que muda no editor:
 
 - **Botão "Racks"** (`#btn-racks`, só fora do cenário TO-BE) → `topo.abrirRacks()`. Com alteração
-  pendente pergunta "Salvar e abrir os racks?" e só navega se o `save()` der certo — a tela de racks
+  pendente salva na hora (sem perguntar, desde o auto-save de 2026-09-25) e só navega se o `save()` der certo — a tela de racks
   lê o enlace do `dados_json` **salvo**. Leva `?diagrama=` (o botão de volta da tela de racks retorna
   para o mesmo mapa/sub-mapa) e preserva `?embed=1`.
 - **`save()` agora devolve `true`/`false`** (antes não devolvia nada e ignorava `ok: false` em
@@ -1246,3 +1246,27 @@ Detalhes em [racks.md](racks.md). O que muda no editor:
   editor): enlace novo entre hosts montados vira cabo, mudança de interface/velocidade/rótulo atualiza o
   cabo e enlace apagado leva o cabo junto — enquanto o cabo não tiver sido editado à mão. Ver
   "Sincronização com o mapa" em [racks.md](racks.md).
+
+
+---
+
+## Salvamento automático — Adicionado em 2026-09-25
+
+O botão **Salvar** saiu da toolbar: toda alteração passa por `_setDirty()`, que agenda um save
+1 s depois da última mudança (debounce). Enquanto um node/grupo/waypoint/área está sendo arrastado o
+save espera soltar. A barra de status mostra `● Alterações pendentes…` → `⟳ Salvando…` →
+`✓ Salvo automaticamente`.
+
+- **Saves em fila** (`this._saveFila`): nunca saem dois POST ao mesmo tempo — o 1º save de um mapa
+  novo *cria* o diagrama e dois em paralelo criariam dois. Um contador de revisão (`_rev`) garante que
+  alteração feita durante o POST não seja marcada como salva.
+- **`save()` continua público** e devolve `true`/`false`: sub-mapa, agrupar e o botão Racks dão
+  `await` para ter o mapa gravado antes de seguir. `Ctrl+S` força o save na hora.
+- **Falha** (rede, sessão expirada): toast uma vez só, status `⚠ Não salvo — tentando de novo` e nova
+  tentativa a cada 10 s.
+- **Fechar/recarregar a aba** com alteração no debounce (`beforeunload` → `_salvarAoSair`): manda o
+  save com `fetch(..., {keepalive: true})`. O keepalive só leva ~64 KB; mapa maior (ou 1º save de mapa
+  novo ainda sem `diagrama_id`) cai no aviso "sair do site?" do navegador.
+- Vale igual para o cenário TO-BE (grava em `TOPO_CENARIO.salvarUrl`).
+- Consequência: o refresh de tipos dos hosts do CRM ao abrir o editor (`_refreshCrmNodeTypes`), que
+  antes só deixava o mapa "não salvo", agora grava a reclassificação sozinho.
