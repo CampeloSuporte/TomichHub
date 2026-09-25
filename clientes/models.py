@@ -1735,12 +1735,6 @@ class AgentConfig(models.Model):
     timeout_sessao_wa   = models.IntegerField(default=120, verbose_name='Timeout sessão WhatsApp (min)')
     prefixo_wa          = models.CharField(max_length=20, default='@noc', verbose_name='Prefixo de invocação WA')
     max_comandos_sessao = models.IntegerField(default=50, verbose_name='Máx. comandos por sessão')
-    janela_continuacao_wa = models.IntegerField(
-        default=5, verbose_name='Janela de continuação sem menção (min)',
-        help_text='Depois de chamado com o prefixo, por quantos minutos o agent segue '
-                   'respondendo no mesmo grupo sem precisar ser mencionado de novo. '
-                   '0 = exige o prefixo em toda mensagem.',
-    )
 
     # Escalonamento
     wa_grupo_noc        = models.CharField(max_length=150, blank=True, verbose_name='JID grupo NOC interno (escalonamento)')
