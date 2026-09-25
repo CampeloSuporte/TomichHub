@@ -411,3 +411,25 @@ No extra, o protocolo é o cadastrado; no padrão, continua `detect_protocol(por
 A sessão compartilhada de um extra usa a chave `(acesso_id, protocolo_id)`
 (`_SharedTerminalSession.chave`), separada da sessão do padrão. Link externo só no acesso padrão.
 Ver [acessos_protocolos_extras.md](acessos_protocolos_extras.md).
+
+---
+
+## Tela dividida (dois terminais lado a lado) — Adicionado em 2026-09-25
+
+Com **duas ou mais abas** abertas aparece o botão **Dividir tela** à direita da barra de abas
+(`#btnSplit`, `clientes/templates/terminal.html`). Ligado, a área do terminal mostra dois
+painéis lado a lado (empilhados no celular, ≤ 640px); clicar de novo (**Tela única**) volta
+ao modo de uma aba por vez.
+
+Tudo é frontend, no `TerminalManager` — nenhuma sessão SSH é aberta ou fechada ao dividir:
+
+- `split` / `splitPanes = [esquerda, direita]`: ids dos terminais visíveis. `activeTerminal` é
+  sempre um dos dois e é a metade **em foco** (borda azul no topo): recebe o teclado, a Wiki,
+  os Scripts, o Agent e o botão Compartilhar, como antes.
+- Clicar numa aba já visível só passa o foco; clicar numa aba escondida (ou abrir um host
+  novo) troca o terminal **da metade em foco**. Clicar dentro de um painel também passa o foco
+  (no WinBox o clique fica no iframe — use a aba).
+- Fechar uma das metades põe outra aba aberta no lugar; se não houver outra, volta à tela única.
+- `aplicarLayout()` é o único lugar que mostra/esconde painéis e marca abas; depois dele
+  `refitTerminaisVisiveis()` refaz o `fit()` dos dois xterm, e o `onResize` já existente manda o
+  novo `cols/rows` ao PTY de cada host.
