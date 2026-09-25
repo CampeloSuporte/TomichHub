@@ -211,6 +211,11 @@ ação operacional reversível (`no shutdown`/`undo shutdown` desfaz), e não co
 
 ## Continuação de conversa no WhatsApp sem repetir `@noc` — Adicionado em 2026-09-24
 
+> **Revertido em 2026-09-25.** A pedido, o agent voltou a exigir o prefixo (`@noc` ou
+> menção) em **toda** mensagem no WhatsApp. O campo `janela_continuacao_wa` saiu do
+> `AgentConfig` (migração `0118`) e do painel. Continua valendo só a correção de
+> `ultima_atividade` descrita abaixo (o `timeout_sessao_wa` conta inatividade real).
+
 **Arquivos:** `home/views.py` (`_processar_wa_webhook`), `home/agent_engine.py`
 (`AgentNOCEngine.processar_mensagem`), `clientes/models.py` (`AgentConfig.janela_continuacao_wa`)
 

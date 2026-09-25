@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-25 (Agent NOC: volta a exigir @noc em toda mensagem)
+
+### Removido
+
+- **Continuação de conversa no WhatsApp sem `@noc`** (adicionada em 2026-09-24) foi
+  revertida a pedido: mensagens sem o prefixo/menção voltam a ser ignoradas pelo agent,
+  mesmo logo após uma chamada. Saiu o campo `AgentConfig.janela_continuacao_wa`
+  (migração `clientes/migrations/0118_remove_agentconfig_janela_continuacao_wa.py`) e o
+  campo correspondente em Agent NOC → Configurações → Claude AI. Mantidas a correção do
+  `shutdown` de porta e a atualização de `AgentSessao.ultima_atividade` a cada mensagem.
+
+---
+
 ## [Não publicado] — 2026-09-25 (Topologia e racks: salvamento automático e hosts automáticos)
 
 ### Alterado
