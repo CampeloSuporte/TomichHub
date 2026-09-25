@@ -132,6 +132,19 @@
         .btn-mobile-menu:hover, .btn-mobile-menu:active { border-color: #3fb950; color: #3fb950; }
 
         /* ─── TABS ─── */
+        .terminal-tabs-bar { display: flex; align-items: stretch; background: #0d1117; border-bottom: 1px solid #30363d; flex-shrink: 0; }
+        .terminal-tabs-bar .terminal-tabs { flex: 1; min-width: 0; border-bottom: none; }
+        .btn-split {
+            display: none; align-items: center; gap: 5px; align-self: center;
+            margin: 0 8px; padding: 4px 9px; background: transparent;
+            border: 1px solid rgba(255,255,255,.08); border-radius: 3px; color: #7d8590;
+            font-family: 'Inter',sans-serif; font-size: 11px; cursor: pointer;
+            white-space: nowrap; flex-shrink: 0; transition: 0.2s;
+        }
+        .btn-split.visivel { display: flex; }
+        .btn-split:hover { border-color: #58a6ff; color: #58a6ff; }
+        .btn-split.ativo { background: rgba(88,166,255,.12); border-color: #58a6ff; color: #58a6ff; }
+        .btn-split svg { width: 14px; height: 14px; }
         .terminal-tabs {
             display: flex; background: #0d1117; border-bottom: 1px solid #30363d;
             overflow-x: auto; gap: 4px; padding: 6px 8px; min-height: 38px; flex-shrink: 0;
@@ -151,11 +164,18 @@
         .terminal-tab-close:hover { color: #ff4444; opacity: 1; }
         .terminal-tab-status { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.06); flex-shrink: 0; }
         .terminal-tab-status.connected { background: #3fb950; }
+        /* Aba visível na outra metade da tela dividida (não é a que recebe o teclado) */
+        .terminal-tab.split-visivel { color: #b1bac4; border-color: #30363d; }
 
         /* ─── CONTEÚDO ─── */
         .terminal-content { flex: 1; overflow: hidden; background: #0d1117; display: flex; flex-direction: column; position: relative; min-height: 0; }
         .terminal-pane { width: 100%; height: 100%; display: none; flex-direction: column; position: relative; min-height: 0; min-width: 0; }
         .terminal-pane.active { display: flex; }
+        /* Tela dividida: dois painéis lado a lado (empilhados no celular) */
+        .terminal-content.split { flex-direction: row; }
+        .terminal-content.split .terminal-pane { flex: 1 1 0 !important; width: auto; border-top: 2px solid transparent; }
+        .terminal-content.split .terminal-pane.split-segundo { border-left: 1px solid #30363d; }
+        .terminal-content.split .terminal-pane.split-foco { border-top-color: #58a6ff; }
         .xterm { flex: 1; overflow: hidden; width: 100%; height: 100%; position: relative; min-height: 0; min-width: 0; }
         .xterm-screen { width: 100%; height: 100%; }
         .xterm-viewport { background-color: #0d1117; }
@@ -593,6 +613,9 @@
             /* Tabs menores */
             .terminal-tabs { padding: 5px 6px; min-height: 34px; gap: 3px; }
             .terminal-tab { padding: 5px 10px; font-size: 10px; }
+            .btn-split span { display: none; } /* só o ícone */
+            .terminal-content.split { flex-direction: column; }
+            .terminal-content.split .terminal-pane.split-segundo { border-left: none; border-bottom: none; box-shadow: 0 -1px 0 #30363d; }
 
             /* Footer escondido no mobile — ações no drawer */
             .terminal-footer { display: none; }
@@ -846,7 +869,14 @@
 
             <!-- Área principal do terminal -->
             <div class="terminal-main">
-                <div class="terminal-tabs" id="terminalTabs"></div>
+                <div class="terminal-tabs-bar">
+                    <div class="terminal-tabs" id="terminalTabs"></div>
+                    <button class="btn-split" id="btnSplit" onclick="terminalManager.toggleSplit()"
+                            title="Dividir a tela com dois terminais">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><line x1="8" y1="2.5" x2="8" y2="13.5"/></svg>
+                        <span>Dividir tela</span>
+                    </button>
+                </div>
                 <div class="terminal-content" id="terminalContent" style="flex:1;min-height:0;">
                     <div class="terminal-pane active">
                         <div class="terminal-empty">
@@ -1742,6 +1772,9 @@
     class TerminalManager {
         constructor() {
             this.terminals = new Map(); this.activeTerminal = null;
+            // Tela dividida: splitPanes = [esquerda, direita] (ids de terminal);
+            // o activeTerminal é sempre um dos dois e é quem recebe o teclado.
+            this.split = false; this.splitPanes = [];
             this.tabCounter = 0; this.maxRetries = 3; this.retryDelay = 2000;
             this.verificarAcessoPendente();
             window.addEventListener('message', e => this.handleMessage(e));
@@ -1833,6 +1866,7 @@
                     p.classList.remove('active'); p.style.display = 'none';
                 });
                 content.appendChild(pane);
+                this.focarAoClicar(pane, terminalId);
                 terminal.open(pane);
 
                 // Canvas renderer — acelerado via 2D API, sem context loss do WebGL
@@ -1916,6 +1950,7 @@
                 p.classList.remove('active'); p.style.display = 'none';
             });
             content.appendChild(pane);
+            this.focarAoClicar(pane, tid);
 
             const tObj = {
                 id: tid, tipo: 'winbox', terminal: null, fitAddon: null,
@@ -1930,26 +1965,71 @@
         }
 
         ativarTerminal(terminalId) {
-            if (this.activeTerminal) {
-                const ant = this.terminals.get(this.activeTerminal);
-                if (ant) {
-                    ant.pane.classList.remove('active'); ant.pane.style.display = 'none';
-                    const tAnt = document.getElementById(`tab-${this.activeTerminal}`);
-                    if (tAnt) tAnt.classList.remove('active');
-                }
+            const tObj = this.terminals.get(terminalId);
+            if (!tObj) return;
+            // Na tela dividida, abrir/clicar numa aba que não está visível troca
+            // o terminal da metade em foco; a outra metade continua como está.
+            if (this.split && !this.splitPanes.includes(terminalId)) {
+                const i = this.splitPanes.indexOf(this.activeTerminal);
+                this.splitPanes[i >= 0 ? i : 1] = terminalId;
             }
             this.activeTerminal = terminalId;
-            const tObj = this.terminals.get(terminalId);
-            if (tObj?.acesso) window._spActiveAcesso = tObj.acesso;
-            if (tObj) {
-                tObj.pane.classList.add('active'); tObj.pane.style.display = 'flex';
-                const tab = document.getElementById(`tab-${terminalId}`);
-                if (tab) tab.classList.add('active');
-                if (tObj.tipo !== 'winbox') {
-                    setTimeout(() => { try { tObj.fitAddon.fit(); } catch(e) {} if (!isMobile()) tObj.terminal?.focus(); }, 50);
-                }
-            }
+            if (tObj.acesso) window._spActiveAcesso = tObj.acesso;
+            this.aplicarLayout();
+            if (tObj.tipo !== 'winbox' && !isMobile()) setTimeout(() => tObj.terminal?.focus(), 60);
             atualizarBotaoCompartilhar();
+        }
+
+        // Clicar dentro de uma metade da tela dividida passa o teclado para ela.
+        focarAoClicar(pane, terminalId) {
+            pane.addEventListener('mousedown', () => {
+                if (this.split && this.activeTerminal !== terminalId) this.ativarTerminal(terminalId);
+            });
+        }
+
+        toggleSplit() {
+            if (this.split) {
+                this.split = false; this.splitPanes = [];
+            } else {
+                if (this.terminals.size < 2) return;
+                // Segunda metade: a aba vizinha da ativa (a seguinte, ou a anterior se for a última)
+                const ids = Array.from(this.terminals.keys());
+                const i = ids.indexOf(this.activeTerminal);
+                const outro = ids[i + 1] || ids[i - 1] || ids.find(id => id !== this.activeTerminal);
+                this.split = true; this.splitPanes = [this.activeTerminal, outro];
+            }
+            this.aplicarLayout();
+            const t = this.terminals.get(this.activeTerminal);
+            if (t && t.tipo !== 'winbox' && !isMobile()) setTimeout(() => t.terminal?.focus(), 60);
+        }
+
+        // Mostra/esconde os painéis e marca as abas conforme o modo (uma tela ou dividida)
+        aplicarLayout() {
+            const visiveis = this.split ? this.splitPanes : [this.activeTerminal];
+            document.getElementById('terminalContent').classList.toggle('split', this.split);
+            this.terminals.forEach((t, id) => {
+                const pos = visiveis.indexOf(id);
+                const vis = pos >= 0;
+                t.pane.classList.toggle('active', vis);
+                t.pane.style.display = vis ? 'flex' : 'none';
+                t.pane.style.order = vis ? pos : '';
+                t.pane.classList.toggle('split-segundo', this.split && pos === 1);
+                t.pane.classList.toggle('split-foco', this.split && id === this.activeTerminal);
+                const tab = document.getElementById(`tab-${id}`);
+                if (tab) {
+                    tab.classList.toggle('active', id === this.activeTerminal);
+                    tab.classList.toggle('split-visivel', this.split && vis && id !== this.activeTerminal);
+                }
+            });
+            const btn = document.getElementById('btnSplit');
+            if (btn) {
+                btn.classList.toggle('visivel', this.terminals.size >= 2 || this.split);
+                btn.classList.toggle('ativo', this.split);
+                btn.title = this.split ? 'Voltar a um terminal por vez' : 'Dividir a tela com dois terminais';
+                const lbl = btn.querySelector('span');
+                if (lbl) lbl.textContent = this.split ? 'Tela única' : 'Dividir tela';
+            }
+            setTimeout(() => refitTerminaisVisiveis(), 50);
         }
 
         conectarWebSocket(terminalId) {
@@ -2067,10 +2147,20 @@
             tObj.pane.remove();
             const tab = document.getElementById(`tab-${terminalId}`); if (tab) tab.remove();
             this.terminals.delete(terminalId);
+            if (this.split && this.splitPanes.includes(terminalId)) {
+                // Fechou uma das metades: entra outro terminal no lugar; sem outro, volta a tela única
+                const substituto = Array.from(this.terminals.keys()).find(id => !this.splitPanes.includes(id));
+                if (substituto) {
+                    this.splitPanes[this.splitPanes.indexOf(terminalId)] = substituto;
+                } else {
+                    this.split = false; this.splitPanes = [];
+                }
+            }
             if (this.activeTerminal === terminalId) {
-                const next = Array.from(this.terminals.keys())[0];
+                const next = this.split ? this.splitPanes[0] : Array.from(this.terminals.keys())[0];
                 if (next) this.ativarTerminal(next); else this.activeTerminal = null;
             }
+            this.aplicarLayout();
         }
 
         fecharTodos() { Array.from(this.terminals.keys()).forEach(id => this.fecharTerminal(id)); }
@@ -2198,11 +2288,16 @@
     // ============================================================
     // RESIZE — inclui refit ao girar tela e ao teclado virtual aparecer
     // ============================================================
-    function refitTerminalAtivo() {
-        if (terminalManager.activeTerminal) {
-            const t = terminalManager.terminals.get(terminalManager.activeTerminal);
-            if (t) { try { t.fitAddon.fit(); } catch(e) {} }
-        }
+    function refitTerminalAtivo() { refitTerminaisVisiveis(); }
+
+    // Ajusta ao painel todos os terminais na tela (os dois, na tela dividida)
+    function refitTerminaisVisiveis() {
+        const mgr = window.terminalManager; if (!mgr) return;
+        const ids = mgr.split ? mgr.splitPanes : [mgr.activeTerminal];
+        ids.forEach(id => {
+            const t = id && mgr.terminals.get(id);
+            if (t && t.fitAddon) { try { t.fitAddon.fit(); } catch(e) {} }
+        });
     }
 
     window.addEventListener('resize', refitTerminalAtivo);

@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-25 (Terminal: dividir a tela com dois terminais)
+
+### Adicionado
+
+- **Botão "Dividir tela" no terminal de acesso aos hosts**: com duas ou mais abas abertas,
+  aparece à direita da barra de abas e mostra dois terminais lado a lado (empilhados no
+  celular). A metade em foco (borda azul) recebe o teclado; clicar numa aba escondida troca o
+  terminal dessa metade. Clicar de novo volta à tela única. Detalhes em
+  `docs/terminal_ssh.md` → "Tela dividida".
+
+---
+
 ## [Não publicado] — 2026-09-25 (Agent NOC: volta a exigir @noc em toda mensagem)
 
 ### Removido
