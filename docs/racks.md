@@ -12,7 +12,7 @@ A topologia (`docs/topologia.md`) é o desenho **lógico** da rede. Os racks sã
 
 Pelo editor de topologia:
 
-- **Botão "Racks"** na toolbar (ícone `fa-server`, ao lado de "Importar Hosts") abre a tela de racks
+- **Botão "Racks"** na toolbar (ícone `fa-server`) abre a tela de racks
   do cliente. Se houver alteração não salva, pergunta e salva antes — a tela de racks lê a topologia
   **salva**. Não aparece no cenário TO-BE (lá a topologia é hipotética).
 - **Bloco "Conexão física"** no painel de propriedades de cada enlace: diz se o enlace já tem cabo, se

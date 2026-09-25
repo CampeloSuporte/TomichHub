@@ -1270,3 +1270,28 @@ save espera soltar. A barra de status mostra `● Alterações pendentes…` →
 - Vale igual para o cenário TO-BE (grava em `TOPO_CENARIO.salvarUrl`).
 - Consequência: o refresh de tipos dos hosts do CRM ao abrir o editor (`_refreshCrmNodeTypes`), que
   antes só deixava o mapa "não salvo", agora grava a reclassificação sozinho.
+
+
+---
+
+## Hosts do CRM entram sozinhos no mapa — Adicionado em 2026-09-25
+
+O botão **Importar Hosts** saiu (as menções a `importHosts()` acima são históricas — a lógica agora
+vive em `_sincronizarHosts()`). Host cadastrado no CRM entra sozinho no **mapa raiz**, com o mesmo
+layout em faixas de antes (`_layoutImportados`), e o auto-save grava.
+
+- **Quando sincroniza** (`_iniciarSyncHosts`): ao abrir o editor, ao voltar o foco para a aba
+  (`focus`/`visibilitychange`, no máximo 1x a cada 5 s) e a cada 60 s com a aba visível. Cadastrar
+  um host em outra aba e voltar já mostra ele no mapa. Durante um arraste a rodada é pulada.
+- **O que entra**: host cujo acesso ainda não está no mapa — comparado pelo `acesso_id` do node, não
+  só pelo id `crm_<n>` (node ligado a um host à mão tem outro id e era duplicado). Não entram:
+  hosts dentro de grupo (`grupo_membros`), hosts desenhados em qualquer sub-mapa do cliente
+  (`em_submapas`, calculado em `topologia_hosts`) e hosts removidos à mão.
+- **Removido à mão não volta**: `_deleteSelected` guarda o acesso em `hostsRemovidos`, gravado no
+  `dados_json` como `hosts_removidos: [ids de Acesso]` (chave omitida quando vazia). Esses hosts
+  aparecem no topo da paleta em **"Hosts fora do mapa"**; clique devolve ao mapa (`_devolverHost`).
+  Desfazer a remoção também tira o host da lista na próxima sincronização.
+- **Sub-mapa** não importa nada (só sincroniza o tipo dos hosts que já tem) — antes um sub-mapa vazio
+  recebia todos os hosts do cliente. **Cenário TO-BE** importa só se abrir vazio (como antes).
+- A sincronização de tipo (função do CRM → ícone, respeitando `type_manual`) roda na mesma rodada.
+- Testes: `clientes/tests_topologia_navegador.py` (Chrome headless).
