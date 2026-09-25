@@ -5,9 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
-## [Não publicado] — 2026-09-25 (Topologia: salvamento automático)
+## [Não publicado] — 2026-09-25 (Topologia: salvamento automático e hosts automáticos)
 
 ### Alterado
+
+- **Hosts do CRM entram sozinhos no mapa**: o botão Importar Hosts saiu. Host novo cadastrado no
+  cliente aparece no mapa raiz ao abrir o editor, ao voltar para a aba ou em até 60 s com ela aberta,
+  e é salvo automaticamente. Host removido do mapa à mão não volta — fica na paleta em "Hosts fora do
+  mapa", de onde um clique o devolve. Sub-mapas não recebem hosts novos, e host já desenhado num
+  sub-mapa não é duplicado no mapa raiz.
 
 - **Editor de topologia salva sozinho**: o botão Salvar saiu; qualquer alteração (mover, ligar,
   apagar, propriedades, nome do mapa, desfazer/refazer) é gravada ~1 s depois, esperando soltar o

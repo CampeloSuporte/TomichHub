@@ -7102,7 +7102,19 @@ def topologia_hosts(request, cliente_id):
             'funcao': (a.funcao.descricao or '') if a.funcao else '',
             'modelo': (a.modelo.nome or '') if a.modelo else '',
         })
-    return JsonResponse({'hosts': hosts, 'total': len(hosts)})
+    # Hosts já desenhados em algum sub-mapa do cliente: o editor não os traz
+    # de volta para o mapa raiz na importação automática de hosts novos.
+    em_submapas = set()
+    for dj in TopologiaDiagrama.objects.filter(cliente=cliente, pai__isnull=False).values_list('dados_json', flat=True):
+        try:
+            nodes = json.loads(dj or '{}').get('nodes') or []
+        except Exception:
+            continue
+        for n in nodes:
+            acesso = n.get('acesso_id') or (str(n.get('id', ''))[4:] if str(n.get('id', '')).startswith('crm_') else None)
+            if acesso and str(acesso).isdigit():
+                em_submapas.add(int(acesso))
+    return JsonResponse({'hosts': hosts, 'total': len(hosts), 'em_submapas': sorted(em_submapas)})
 
 
 def _mascara_para_prefixo(ip, mascara):

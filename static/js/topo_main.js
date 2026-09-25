@@ -53,6 +53,11 @@ class TopoEditor {
     this.panning = null;
     this.selected = null;
     this.dirty = false;
+    // Hosts do CRM que a pessoa tirou do mapa: a importação automática não
+    // os traz de volta (ficam na paleta, em "Hosts fora do mapa"). Vai junto
+    // no dados_json como `hosts_removidos` (ids de Acesso).
+    this.hostsRemovidos = new Set();
+    this._hostsCrm = [];  // última lista de /topologia/hosts/ (nomes da paleta)
     this.wpDrag = null;   // {linkId, wpIdx} — arrastar waypoint
     this.areaResizing = null; // {id, corner, fx, fy} — arrastar canto de uma Área
     this._propsGen = 0;   // invalida fetch de interfaces em voo ao trocar seleção
@@ -1049,6 +1054,7 @@ class TopoEditor {
       const ids = new Set(this.selectedNodes);
       if (!this._confirmarRemoverGrupos(ids)) return;
       this._saveHistory();
+      this._marcarHostsRemovidos(this.nodes.filter(n => ids.has(n.id)));
       this.nodes = this.nodes.filter(n => !ids.has(n.id));
       this.links = this.links.filter(l => !ids.has(l.src) && !ids.has(l.tgt));
       this._clearMultiSelect();
@@ -1064,6 +1070,7 @@ class TopoEditor {
     this._saveHistory();
     if (this.selected.type === 'node') {
       const id = this.selected.id;
+      this._marcarHostsRemovidos(this.nodes.filter(n => n.id === id));
       this.nodes = this.nodes.filter(n => n.id !== id);
       this.links = this.links.filter(l => l.src !== id && l.tgt !== id);
     } else {
@@ -2718,7 +2725,7 @@ class TopoEditor {
       return;
     }
     // Host existe no CRM mas ainda não está no diagrama: em vez de não fazer
-    // nada, abre a documentação L2VPN dele (o "Importar Hosts" traz o ícone
+    // nada, abre a documentação L2VPN dele (a importação automática de hosts traz o ícone
     // pro canvas depois, se a pessoa quiser desenhar o enlace).
     this._toast('Host fora do diagrama — abrindo os serviços dele');
     this.abrirL2vpn(destino.acesso_id, destino.nome);
@@ -3373,7 +3380,9 @@ class TopoEditor {
 
   _payloadSave() {
     const nome = document.getElementById('nome-diagrama').value || 'Nova Topologia';
-    return {nome, dados_json: JSON.stringify({nodes:this.nodes, links:this.links}), diagrama_id: this.diagramaId};
+    const dados = {nodes: this.nodes, links: this.links};
+    if (this.hostsRemovidos.size) dados.hosts_removidos = [...this.hostsRemovidos];
+    return {nome, dados_json: JSON.stringify(dados), diagrama_id: this.diagramaId};
   }
 
   _urlSave() {
@@ -3447,38 +3456,149 @@ class TopoEditor {
     e.preventDefault(); e.returnValue = '';
   }
 
-  async importHosts() {
-    this._toast('Importando hosts...');
+  // ── Hosts do CRM ──────────────────────────────────────────────────────────
+  // Não há botão "Importar Hosts": host cadastrado no CRM entra sozinho no
+  // mapa raiz. Sincroniza ao abrir, ao voltar para a aba e a cada 60s com a
+  // aba visível — cadastrar um host em outra aba e voltar já mostra ele aqui.
+  // Não entram: hosts que a pessoa removeu do mapa (hostsRemovidos), os que
+  // estão dentro de um grupo ou desenhados num sub-mapa. Sub-mapa não importa
+  // nada; cenário TO-BE só importa se abrir vazio (o comportamento de antes).
+
+  _acessoDoNode(n) {
+    const a = n.acesso_id || (String(n.id).startsWith('crm_') ? String(n.id).slice(4) : null);
+    return a && /^\d+$/.test(String(a)) ? Number(a) : null;
+  }
+
+  /** Acessos do CRM já desenhados neste mapa — pelo `acesso_id`, não só pelo
+   *  id `crm_<n>`: node ligado a um host à mão tem outro id. */
+  _acessosNoMapa() {
+    const s = new Set();
+    this.nodes.forEach(n => { const a = this._acessoDoNode(n); if (a) s.add(a); });
+    return s;
+  }
+
+  _marcarHostsRemovidos(nodes) {
+    let mudou = false;
+    nodes.forEach(n => {
+      const a = this._acessoDoNode(n);
+      if (a && !n.grupo) { this.hostsRemovidos.add(a); mudou = true; }
+    });
+    if (mudou) this._renderHostsFora();
+  }
+
+  _iniciarSyncHosts(importar) {
+    this._importaHostsNovos = importar;
+    this._sincronizarHosts({inicial: true});
+    const talvez = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - (this._ultimoSyncHosts || 0) < 5000) return;
+      this._sincronizarHosts();
+    };
+    window.addEventListener('focus', talvez);
+    document.addEventListener('visibilitychange', talvez);
+    setInterval(talvez, 60000);
+  }
+
+  async _sincronizarHosts({inicial = false} = {}) {
+    if (this._syncHostsEmVoo) return;
+    // Com a mão no mapa, deixa para a próxima rodada — node novo no meio de um
+    // arraste bagunça o desenho e o histórico do desfazer.
+    if (this.dragging || this.groupDragging || this.wpDrag || this.areaResizing) return;
+    this._syncHostsEmVoo = true;
+    this._ultimoSyncHosts = Date.now();
     try {
-      const r = await fetch(`/clientes/${this.clienteId}/topologia/hosts/`);
-      if (!r.ok) { this._toast(`Erro ${r.status}`, 'error'); return; }
+      const r = await fetch(`/clientes/${this.clienteId}/topologia/hosts/`, {headers: {'Accept': 'application/json'}});
+      if (!r.ok || !(r.headers.get('content-type') || '').includes('json')) return;
       const d = await r.json();
-      if (!d.hosts || !d.hosts.length) { this._toast('Nenhum host cadastrado', 'error'); return; }
+      const hosts = d.hosts || [];
+      this._hostsCrm = hosts;
 
-      // Hosts que foram agrupados não estão mais entre os nodes deste mapa
-      // (vivem no sub-mapa do grupo). Sem essa checagem, "Importar Hosts"
-      // traria cada um deles de volta pro mapa pai como se fosse host novo.
-      const agrupados = this._idsAgrupados();
-
-      const novos = [];
-      d.hosts.forEach(h => {
-        const existing = this.nodes.find(n => n.id === 'crm_' + h.id);
-        if (!existing) { if (!agrupados.has('crm_' + h.id)) novos.push(h); return; }
-        existing.funcao = h.funcao;
-        // Ícone trocado manualmente pelo usuário (ver _applyNodeProps) não é
-        // sobrescrito por uma reimportação — só o mapeamento automático (função
-        // do CRM → tipo) é sincronizado aqui.
-        if (!existing.type_manual && existing.type !== h.tipo) {
-          existing.type = h.tipo;
-          this._renderNode(existing); this._setDirty();
+      // Ícone trocado manualmente (type_manual) não é sobrescrito — só o
+      // mapeamento automático função do CRM → tipo é sincronizado.
+      const noMapa = this._acessosNoMapa();
+      hosts.forEach(h => { if (noMapa.has(h.id)) this.hostsRemovidos.delete(h.id); });  // voltou pelo desfazer
+      let tipoMudou = false;
+      hosts.forEach(h => {
+        const node = this.nodes.find(n => n.id === 'crm_' + h.id);
+        if (!node) return;
+        node.funcao = h.funcao;
+        if (!node.type_manual && node.type !== h.tipo) {
+          node.type = h.tipo;
+          this._renderNode(node); tipoMudou = true;
         }
       });
-      if (!novos.length) { this._toast('Nenhum host novo para importar'); return; }
+      if (tipoMudou) { this._renderLinks(); this._setDirty(); }
 
-      const added = this._layoutImportados(novos);
-      if (added > 0) { this.zoomFit(); this._revisarPeso(); this._carregarPosicoesRack(); }
-      this._toast(`${added} hosts importados`);
-    } catch(e) { this._toast('Erro: ' + e.message, 'error'); }
+      if (this._importaHostsNovos) {
+        // Membros de grupo já vêm em em_submapas (o grupo tem sub-mapa); os
+        // grupo_membros cobrem o grupo cujo sub-mapa ainda não foi gravado.
+        const fora = new Set(d.em_submapas || []);
+        this.nodes.forEach(n => (n.grupo ? n.grupo_membros || [] : []).forEach(m => {
+          const a = this._acessoDoNode(m); if (a) fora.add(a);
+        }));
+        const novos = hosts.filter(h => !noMapa.has(h.id)
+                                        && !fora.has(h.id)
+                                        && !this.hostsRemovidos.has(h.id));
+        if (novos.length) {
+          const vazio = !this.nodes.length;
+          const added = this._layoutImportados(novos);
+          if (added > 0) {
+            if (vazio) this.zoomFit();
+            this._revisarPeso(); this._carregarPosicoesRack();
+            this._toast(added === 1 ? `Host novo no mapa: ${novos[0].label || novos[0].ip}`
+                                    : `${added} hosts novos adicionados ao mapa`);
+          }
+        }
+      }
+      // Cenário TO-BE: só a carga inicial de um cenário vazio importa.
+      if (TOPO_CENARIO) this._importaHostsNovos = false;
+      this._renderHostsFora();
+    } catch (e) { /* sem rede: tenta de novo na próxima rodada */ }
+    finally { this._syncHostsEmVoo = false; }
+  }
+
+  /** Seção "Hosts fora do mapa" no topo da paleta: os hosts removidos à mão,
+   *  que a importação automática não traz de volta. Clique devolve ao mapa. */
+  _renderHostsFora() {
+    const pal = document.getElementById('palette');
+    if (!pal) return;
+    pal.querySelectorAll('.pal-hosts-fora').forEach(el => el.remove());
+    const noMapa = this._acessosNoMapa();
+    const lista = this._hostsCrm.filter(h => this.hostsRemovidos.has(h.id) && !noMapa.has(h.id));
+    if (!lista.length) return;
+    const ancora = pal.querySelector('.pal-group-title');
+    const header = document.createElement('div');
+    header.className = 'pal-group-title pal-hosts-fora';
+    header.textContent = 'Hosts fora do mapa';
+    pal.insertBefore(header, ancora);
+    lista.forEach(h => {
+      const def = TOPO_DEVICES[h.tipo] || TOPO_DEVICES.host;
+      const item = document.createElement('div');
+      item.className = 'pal-item pal-host pal-hosts-fora';
+      item.dataset.busca = this._semAcento(`${h.label} ${h.ip} hosts fora do mapa`);
+      item.title = 'Removido do mapa — clique para trazer de volta';
+      item.innerHTML = `
+        <div class="pal-icon" style="background:${def.color}1f;color:${def.color}">
+          <svg viewBox="0 0 48 48">${TOPO_ICONS[def.icon]||''}</svg>
+        </div>
+        <div><div class="pal-label">${this._esc(h.label || h.ip)}</div><div class="pal-sub">${this._esc(h.ip || '')}</div></div>`;
+      item.addEventListener('click', () => this._devolverHost(h.id));
+      pal.insertBefore(item, ancora);
+    });
+    const busca = document.getElementById('pal-search');
+    if (busca && busca.value) this._filtrarPaleta(busca.value);
+  }
+
+  _devolverHost(acessoId) {
+    const h = this._hostsCrm.find(x => x.id === acessoId);
+    if (!h) return;
+    this.hostsRemovidos.delete(acessoId);
+    this._layoutImportados([h]);
+    this._carregarPosicoesRack();
+    this._renderHostsFora();
+    this._select('node', 'crm_' + acessoId);
+    this._setDirty();
+    this._toast(`${h.label || h.ip} de volta no mapa`);
   }
 
   /** Reavalia o peso do mapa depois de uma importação: um mapa vazio abre com
@@ -3635,6 +3755,7 @@ class TopoEditor {
       this.links = (d.links || []).map(l => ({
         waypoints: [], shape: 'straight', iface_a: '', iface_b: '', ...l
       }));
+      this.hostsRemovidos = new Set((d.hosts_removidos || []).map(Number));
       this.selectedNodes = new Set();
       this._renderAll();
       if (this.nodes.length) this.zoomFit();
@@ -4117,11 +4238,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (nNodes) {
     topo.fromJSON(d);
-    topo._refreshCrmNodeTypes();
     topo._carregarPosicoesRack();
-  } else {
-    topo.importHosts();
+  } else if (d) {
+    topo.hostsRemovidos = new Set((d.hosts_removidos || []).map(Number));
   }
+  // Mapa raiz importa sozinho todo host novo do CRM; cenário TO-BE só quando
+  // abre vazio; sub-mapa nunca (só sincroniza o tipo dos hosts que já tem).
+  topo._iniciarSyncHosts(TOPO_CENARIO ? !nNodes : window.TOPO_MAPA_RAIZ !== false);
 
   document.getElementById('btn-grid').classList.add('active');
   document.getElementById('btn-snap').classList.add('active');

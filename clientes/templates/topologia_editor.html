@@ -149,6 +149,7 @@ body:not(.pal-off) #btn-palette{transform:translateX(-10px);opacity:0;pointer-ev
 .pal-icon svg{width:21px;height:21px;filter:drop-shadow(0 0 4px currentColor)}
 .pal-label{font-size:.76rem;color:var(--text);line-height:1.2;font-weight:500}
 .pal-sub{font-size:.65rem;color:var(--faint);margin-top:1px}
+.pal-item.pal-host{cursor:pointer}
 .pal-vazio{padding:18px 14px;font-size:.72rem;color:var(--faint);text-align:center;font-style:italic}
 /* ── Canvas ── */
 #canvas-wrap{flex:1;position:relative;overflow:hidden;background:
@@ -599,7 +600,6 @@ body:not(.pal-off) #legend-panel{left:236px}
   {% endif %}
   <input id="nome-diagrama" value="{% if cenario %}{{ cenario.nome }}{% else %}{{ diagrama.nome|default:'Nova Topologia' }}{% endif %}" aria-label="Nome do diagrama" data-tip="Nome do diagrama">
   <div class="tb-sep"></div>
-  <button class="tb-btn" onclick="topo.importHosts()" data-tip="Trazer os hosts cadastrados no CRM"><i class="fas fa-cloud-arrow-down"></i> Importar Hosts</button>
   {% if not cenario %}<button class="tb-btn" id="btn-racks" onclick="topo.abrirRacks()" data-tip="Criar racks, montar os equipamentos por U e ligar os cabos dos enlaces"><i class="fas fa-server"></i> Racks</button>{% endif %}
   <div class="tb-group">
     <button class="tb-btn" onclick="topo.exportPNG()" data-tip="Exportar PNG"><i class="fas fa-image"></i></button>
@@ -691,7 +691,7 @@ body:not(.pal-off) #legend-panel{left:236px}
     </svg>
     <div id="legend-panel"></div>
     <div class="canvas-hint" id="canvas-hint">
-      <i class="fas fa-hand-pointer" style="margin-right:6px;color:var(--cyan)"></i>Abra <b style="color:var(--text);font-weight:600">Dispositivos</b> no canto superior esquerdo e arraste, ou clique em "Importar Hosts"
+      <i class="fas fa-hand-pointer" style="margin-right:6px;color:var(--cyan)"></i>Abra <b style="color:var(--text);font-weight:600">Dispositivos</b> no canto superior esquerdo e arraste — os hosts cadastrados no CRM entram sozinhos no mapa
     </div>
     <div id="zoom-ctl">
       <button onclick="topo.zoomOut()" class="tip-top" data-tip="Reduzir" aria-label="Reduzir zoom"><i class="fas fa-minus"></i></button>
@@ -730,6 +730,7 @@ body:not(.pal-off) #legend-panel{left:236px}
 <script>
   window.TOPO_CLIENTE_ID  = {{ cliente.id }};
   window.TOPO_DIAGRAMA_ID = {{ diagrama_id|default:'null' }};
+  window.TOPO_MAPA_RAIZ = {% if diagrama.pai_id %}false{% else %}true{% endif %};
   window.TOPO_DADOS = JSON.parse("{{ dados_json|escapejs }}");
   {% if cenario %}
   window.TOPO_CENARIO = {
@@ -744,6 +745,6 @@ body:not(.pal-off) #legend-panel{left:236px}
   }
 </script>
 <script src="/static/js/topo_engine.js?v=26"></script>
-<script src="/static/js/topo_main.js?v=51"></script>
+<script src="/static/js/topo_main.js?v=52"></script>
 </body>
 </html>
