@@ -87,16 +87,20 @@ class RackNavegadorTest(StaticLiveServerTestCase):
         # Topologia -> botão Racks
         b.ir(f'{self.live_server_url}/clientes/{self.cliente.id}/topologia/editor/')
         b.esperar("window.topo && topo.links.length === 2")
-        # O refresh de tipos reclassifica SW-AGG-01 (switch_l3 -> switch_l2) e
-        # deixa o mapa "não salvo": o botão pergunta e salva antes de sair.
-        # confirm() nativo travaria o Runtime.evaluate — responde "OK" aqui.
-        b.esperar("topo.dirty")
-        b.js("window.confirm = () => true")
+        # O refresh de tipos reclassifica SW-AGG-01 (switch_l3 -> switch_l2):
+        # não há botão Salvar, o auto-save grava sozinho logo em seguida.
+        self.assertFalse(b.js("!!document.getElementById('btn-salvar')"))
+        b.esperar("document.getElementById('st-save').textContent.includes('Salvo') && !topo.dirty")
+        self.diagrama.refresh_from_db()
+        self.assertIn('switch_l2', self.diagrama.dados_json)  # auto-save gravou
+
+        # Alteração ainda no debounce: o botão Racks salva na hora antes de sair.
+        b.js("document.getElementById('nome-diagrama').value = 'Mapa POP'; topo._setDirty()")
         b.js("document.getElementById('btn-racks').click()")
         b.esperar("location.pathname.startsWith('/racks/') && window.rb && !!document.querySelector('.vazio')")
         self.assertIn(f'diagrama={self.diagrama.id}', b.js("document.getElementById('btn-voltar').href"))
         self.diagrama.refresh_from_db()
-        self.assertIn('switch_l2', self.diagrama.dados_json)  # salvou antes de sair
+        self.assertEqual(self.diagrama.nome, 'Mapa POP')  # salvou antes de sair
 
         # Criar rack de 24U pelo diálogo
         b.js("rb.dialogoRack()")
