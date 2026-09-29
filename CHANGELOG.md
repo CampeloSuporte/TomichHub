@@ -14,6 +14,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   (`replaceTrack`), e a escolha fica salva no navegador. Se o aparelho salvo for desplugado,
   volta para o microfone padrão. Detalhes em `docs/ATENDIMENTO.md` → "Escolher o microfone".
 
+### Corrigido
+
+- O seletor tinha entrado só na página avulsa `/atendimento/sala/`; agora aparece também no
+  **painel flutuante da Sala Virtual** (menu lateral do atendimento), que é o usado no dia a dia.
+
 ---
 
 ## [Não publicado] — 2026-09-25 (Terminal: dividir a tela com dois terminais)
