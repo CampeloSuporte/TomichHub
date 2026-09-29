@@ -425,6 +425,7 @@ systemctl restart gunicorn daphne celery
 | 04/09/2026 | **Sala Virtual** — arrastar a tela compartilhada travava: zoom/pan de verdade no vídeo e captura em 30 fps com resolução preservada ao mover janelas |
 | 04/09/2026 | **Editar mensagem enviada** — corrige o balão no CRM e reescreve a mensagem no WhatsApp do grupo (janela de 15 min, só do autor, só texto); edição feita pelo cliente no celular passou a atualizar o balão em vez de virar "[sem conteúdo]" |
 | 11/09/2026 | **Reagir com emoji** — carinha ao lado do balão, as seis reações do WhatsApp + "+"; a reação chega ao celular do cliente e vira pílula no CRM (uma por conta, clicar tira); em grupo a key com `participant` vem do `findMessages` da Evolution |
+| 29/09/2026 | **Sala Virtual** — escolher qual microfone usar (seta ao lado do botão do mic); troca na hora, sem renegociar |
 
 ---
 
@@ -498,6 +499,21 @@ offer/answer com cada peer só para voltar a ouvir.
   `ontrack` e sempre que a área de tela aparece).
 - A preferência fica no `localStorage` (`sala_deafen`): é do ouvinte, não um estado da sala, então
   não é transmitida aos outros participantes.
+
+### Escolher o microfone (29/09/2026)
+
+Seta pequena (`#ctrl-mic-sel`) colada ao botão do microfone abre `#mic-menu` com as entradas de
+áudio do computador (`enumerateDevices`, `kind === 'audioinput'`); a atual aparece marcada.
+
+- **Troca durante a chamada** sem renegociar: pega um novo `getUserMedia` com
+  `deviceId: {exact}` e faz `sender.replaceTrack(novo)` em cada peer (o sender é achado pela
+  track antiga, então o áudio da tela compartilhada não é afetado). O estado mudo/ativo é mantido.
+- **Quem entrou sem microfone** só guarda a escolha; ela vale ao clicar no mic.
+- A escolha fica no `localStorage` (`sala_mic_id`) e é usada também no "Permitir microfone e
+  entrar". Se o aparelho salvo sumir (headset desplugado → `OverconstrainedError`/`NotFoundError`),
+  `obterMicrofone()` volta para o padrão do sistema e avisa.
+- Antes de qualquer permissão o navegador não revela os nomes dos aparelhos; o menu então pede para
+  ativar o microfone uma vez. A lista se atualiza sozinha (`devicechange`) com o menu aberto.
 - A tela que **eu** compartilho continua sempre muda no meu `<video>`, senão eu ouviria meu
   próprio som de volta.
 

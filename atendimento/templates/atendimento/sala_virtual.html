@@ -72,6 +72,19 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;he
 .ctrl-btn.off{background:rgba(248,81,73,.15);border-color:var(--red);color:var(--red)}
 .ctrl-btn.screen-on{background:rgba(88,166,255,.15);border-color:var(--blue);color:var(--blue)}
 #ctrl-chat-btn{position:relative}
+/* Seletor de microfone: seta colada ao botão do mic abre a lista de entradas */
+.mic-group{position:relative;display:flex;align-items:center}
+#ctrl-mic-sel{width:26px;height:26px;margin-left:-14px;margin-top:26px;border-radius:50%;border:2px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;font-size:.6rem;display:flex;align-items:center;justify-content:center;z-index:1}
+#ctrl-mic-sel:hover{color:var(--blue);border-color:var(--blue)}
+#mic-menu{position:absolute;bottom:58px;left:50%;transform:translateX(-50%);min-width:260px;max-width:min(360px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:6px;display:none;z-index:30;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#mic-menu.open{display:block}
+.mic-menu-title{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px 4px}
+.mic-opt{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;color:var(--text);font-size:.8rem;text-align:left;padding:8px;border-radius:6px;cursor:pointer}
+.mic-opt:hover{background:rgba(255,255,255,.06)}
+.mic-opt i{width:14px;color:transparent;flex-shrink:0}
+.mic-opt.sel i{color:var(--green)}
+.mic-opt span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mic-empty{font-size:.78rem;color:var(--muted);padding:8px}
 .chat-badge{position:absolute;top:-4px;right:-4px;background:var(--red);color:white;border-radius:50%;width:16px;height:16px;font-size:.6rem;display:flex;align-items:center;justify-content:center;display:none}
 
 /* ── Chat panel ── */
@@ -178,7 +191,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;he
 
 <!-- Controls -->
 <div id="controls">
-  <button class="ctrl-btn off" id="ctrl-mic" title="Microfone"><i class="fas fa-microphone-slash"></i></button>
+  <div class="mic-group">
+    <button class="ctrl-btn off" id="ctrl-mic" title="Microfone"><i class="fas fa-microphone-slash"></i></button>
+    <button id="ctrl-mic-sel" title="Escolher microfone"><i class="fas fa-chevron-up"></i></button>
+    <div id="mic-menu"></div>
+  </div>
   <button class="ctrl-btn" id="ctrl-deafen" title="Silenciar a sala (não escutar ninguém)"><i class="fas fa-headphones"></i></button>
   <button class="ctrl-btn" id="ctrl-screen" title="Compartilhar tela"><i class="fas fa-desktop"></i></button>
   <button class="ctrl-btn" id="ctrl-chat-btn" title="Chat">
@@ -234,7 +251,7 @@ const ICE_SERVERS = {
 // ── Permission flow ───────────────────────────────────────────────
 document.getElementById('btn-allow-mic').onclick = async () => {
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({audio: true, video: false});
+    localStream = await obterMicrofone();
     micOn = true;
     document.getElementById('ctrl-mic').className = 'ctrl-btn active';
     document.getElementById('ctrl-mic').innerHTML = '<i class="fas fa-microphone"></i>';
@@ -462,7 +479,7 @@ function removePeer(peerId) {
 document.getElementById('ctrl-mic').onclick = async () => {
   if (!localStream || localStream.getAudioTracks().length === 0) {
     try {
-      const s = await navigator.mediaDevices.getUserMedia({audio: true});
+      const s = await obterMicrofone();
       s.getAudioTracks().forEach(t => localStream.addTrack(t));
       // Add tracks to existing peer connections
       Object.values(peers).forEach(p => {
@@ -479,6 +496,110 @@ document.getElementById('ctrl-mic').onclick = async () => {
   updateMyCard();
   sendMediaState();
 };
+
+// ── Escolha do microfone ──────────────────────────────────────────
+// O deviceId escolhido fica no navegador (é do computador de quem fala,
+// não da sala). Se o aparelho salvo sumir (headset desplugado), cai no
+// microfone padrão do sistema em vez de deixar a pessoa muda.
+let micDeviceId = '';
+try { micDeviceId = localStorage.getItem('sala_mic_id') || ''; } catch(e) {}
+
+function salvarMicDeviceId(id) {
+  micDeviceId = id || '';
+  try { localStorage.setItem('sala_mic_id', micDeviceId); } catch(e) {}
+}
+
+async function obterMicrofone() {
+  if (micDeviceId) {
+    try {
+      return await navigator.mediaDevices.getUserMedia({audio: {deviceId: {exact: micDeviceId}}, video: false});
+    } catch(e) {
+      if (e.name !== 'OverconstrainedError' && e.name !== 'NotFoundError') throw e;
+      salvarMicDeviceId('');
+      toast('Microfone escolhido não encontrado — usando o padrão');
+    }
+  }
+  return await navigator.mediaDevices.getUserMedia({audio: true, video: false});
+}
+
+function micTrackAtual() {
+  return localStream ? localStream.getAudioTracks()[0] : null;
+}
+
+async function renderMicMenu() {
+  const menu = document.getElementById('mic-menu');
+  let mics = [];
+  try {
+    mics = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+  } catch(e) {}
+  const track = micTrackAtual();
+  const atual = (track && track.getSettings && track.getSettings().deviceId) || micDeviceId || 'default';
+  // Sem permissão concedida o navegador não revela os nomes (label vazio).
+  const semNome = mics.length && mics.every(d => !d.label);
+  let html = '<div class="mic-menu-title">Microfone</div>';
+  if (!mics.length) {
+    html += '<div class="mic-empty">Nenhum microfone encontrado.</div>';
+  } else if (semNome) {
+    html += '<div class="mic-empty">Ative o microfone uma vez para liberar a lista de aparelhos.</div>';
+  } else {
+    mics.forEach((d, i) => {
+      const sel = d.deviceId === atual ? ' sel' : '';
+      html += `<button class="mic-opt${sel}" data-id="${esc(d.deviceId)}" title="${esc(d.label)}">`
+            + `<i class="fas fa-check"></i><span>${esc(d.label || ('Microfone ' + (i + 1)))}</span></button>`;
+    });
+  }
+  menu.innerHTML = html;
+  menu.querySelectorAll('.mic-opt').forEach(b => {
+    b.onclick = () => trocarMicrofone(b.dataset.id, b.textContent);
+  });
+}
+
+async function trocarMicrofone(deviceId, nome) {
+  document.getElementById('mic-menu').classList.remove('open');
+  salvarMicDeviceId(deviceId);
+  const antigo = micTrackAtual();
+  if (!antigo) {
+    // Entrou sem microfone: só guarda a escolha, vale ao clicar no mic.
+    toast('Microfone escolhido: ' + nome + ' — ative o mic para falar');
+    return;
+  }
+  let s;
+  try {
+    s = await obterMicrofone();
+  } catch(e) {
+    toast('Não foi possível usar esse microfone', true);
+    return;
+  }
+  const novo = s.getAudioTracks()[0];
+  novo.enabled = micOn;
+  // replaceTrack troca o áudio sem renegociar: quem está ouvindo nem percebe.
+  for (const p of Object.values(peers)) {
+    if (!p.pc) continue;
+    const sender = p.pc.getSenders().find(x => x.track === antigo);
+    if (sender) { try { await sender.replaceTrack(novo); } catch(e) {} }
+  }
+  localStream.removeTrack(antigo);
+  antigo.stop();
+  localStream.addTrack(novo);
+  toast('Microfone: ' + nome);
+}
+
+document.getElementById('ctrl-mic-sel').onclick = async (e) => {
+  e.stopPropagation();
+  const menu = document.getElementById('mic-menu');
+  if (menu.classList.contains('open')) { menu.classList.remove('open'); return; }
+  await renderMicMenu();
+  menu.classList.add('open');
+};
+document.addEventListener('click', e => {
+  const menu = document.getElementById('mic-menu');
+  if (menu.classList.contains('open') && !menu.contains(e.target)) menu.classList.remove('open');
+});
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+  navigator.mediaDevices.addEventListener('devicechange', () => {
+    if (document.getElementById('mic-menu').classList.contains('open')) renderMicMenu();
+  });
+}
 
 document.getElementById('ctrl-screen').onclick = async () => {
   if (screenOn) {

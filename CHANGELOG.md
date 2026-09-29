@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-29 (Sala Virtual: escolher o microfone)
+
+### Adicionado
+
+- **Seletor de microfone na Sala Virtual do atendimento**: seta ao lado do botão do microfone
+  lista as entradas de áudio do computador; a troca vale na hora, sem derrubar a chamada
+  (`replaceTrack`), e a escolha fica salva no navegador. Se o aparelho salvo for desplugado,
+  volta para o microfone padrão. Detalhes em `docs/ATENDIMENTO.md` → "Escolher o microfone".
+
+---
+
 ## [Não publicado] — 2026-09-25 (Terminal: dividir a tela com dois terminais)
 
 ### Adicionado
