@@ -2919,11 +2919,19 @@ window.fadeOutRemove = function(el, cb) {
       <button id="sala-chat-send" onclick="salaSendChat()"><i class="fas fa-paper-plane"></i></button>
     </div>
 
+    <!-- Lista de microfones (aberta pela seta ao lado do mic) -->
+    <div id="sala-mic-menu"></div>
+
     <!-- Controles -->
     <div id="sala-controls">
-      <button id="sala-ctrl-mic" class="sala-ctrl off" onclick="salaToggleMic()" title="Microfone">
-        <i class="fas fa-microphone-slash"></i>
-      </button>
+      <div class="sala-mic-group">
+        <button id="sala-ctrl-mic" class="sala-ctrl off" onclick="salaToggleMic()" title="Microfone">
+          <i class="fas fa-microphone-slash"></i>
+        </button>
+        <button id="sala-ctrl-mic-sel" onclick="salaToggleMicMenu(event)" title="Escolher microfone">
+          <i class="fas fa-chevron-up"></i>
+        </button>
+      </div>
       <button id="sala-ctrl-screen" class="sala-ctrl" onclick="salaToggleScreen()" title="Compartilhar tela">
         <i class="fas fa-desktop"></i>
       </button>
@@ -3168,6 +3176,26 @@ window.fadeOutRemove = function(el, cb) {
 .sala-ctrl.screen-on { background: rgba(88,166,255,.15); border-color: #58a6ff; color: #58a6ff; }
 .sala-ctrl.leave { background: rgba(248,81,73,.1); border-color: #f85149; color: #f85149; }
 .sala-ctrl.leave:hover { background: rgba(248,81,73,.25); }
+/* Seletor de microfone: seta colada ao botão do mic abre a lista acima dos controles */
+.sala-mic-group { display: flex; align-items: center; }
+#sala-ctrl-mic-sel {
+  width: 22px; height: 22px; margin-left: -12px; margin-top: 22px; z-index: 1;
+  border-radius: 50%; border: 2px solid #30363d; background: #161b22; color: #7d8590;
+  cursor: pointer; font-size: .55rem; display: flex; align-items: center; justify-content: center;
+}
+#sala-ctrl-mic-sel:hover { border-color: #58a6ff; color: #58a6ff; }
+#sala-mic-menu { display: none; border-top: 1px solid #30363d; padding: 6px; max-height: 180px; overflow-y: auto; flex-shrink: 0; }
+#sala-mic-menu.open { display: block; }
+.sala-mic-title { font-size: .64rem; color: #7d8590; text-transform: uppercase; letter-spacing: .04em; padding: 4px 8px; }
+.sala-mic-opt {
+  display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: none;
+  color: #e6edf3; font-size: .76rem; text-align: left; padding: 7px 8px; border-radius: 6px; cursor: pointer;
+}
+.sala-mic-opt:hover { background: rgba(255,255,255,.06); }
+.sala-mic-opt i { width: 12px; color: transparent; flex-shrink: 0; }
+.sala-mic-opt.sel i { color: #3fb950; }
+.sala-mic-opt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sala-mic-empty { font-size: .74rem; color: #7d8590; padding: 6px 8px; }
 
 /* Janela flutuante de tela compartilhada */
 #sala-screen-win {
@@ -3266,7 +3294,7 @@ function salaConnect() {
   if (localStream && localStream.getAudioTracks().length) {
     salaOpenWs(); return; // já tem microfone de sessão anterior
   }
-  navigator.mediaDevices.getUserMedia({audio: true, video: false})
+  salaGetMic()
     .then(s => { localStream = s; micOn = true; updateMicBtn(); })
     .catch(() => { localStream = new MediaStream(); })
     .finally(() => salaOpenWs());
@@ -3455,7 +3483,7 @@ async function salaRequestMic() {
     return null;
   }
   try {
-    return await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    return await salaGetMic();
   } catch (e) {
     const n = e && e.name;
     let m = 'Não foi possível acessar o microfone.';
@@ -3486,6 +3514,102 @@ window.salaToggleMic = async function() {
   salaSendState();
   updateMyTile();
 };
+
+// ── Escolha do microfone ──────────────────────────────────────────
+// O deviceId fica no navegador (é do computador de quem fala, não da sala).
+// Se o aparelho salvo sumir (headset desplugado), cai no microfone padrão
+// do sistema em vez de deixar a pessoa muda.
+let micDeviceId = '';
+try { micDeviceId = localStorage.getItem('sala_mic_id') || ''; } catch(e) {}
+
+function salaSalvarMicId(id) {
+  micDeviceId = id || '';
+  try { localStorage.setItem('sala_mic_id', micDeviceId); } catch(e) {}
+}
+
+async function salaGetMic() {
+  if (micDeviceId) {
+    try {
+      return await navigator.mediaDevices.getUserMedia({audio: {deviceId: {exact: micDeviceId}}, video: false});
+    } catch (e) {
+      if (e.name !== 'OverconstrainedError' && e.name !== 'NotFoundError') throw e;
+      salaSalvarMicId('');
+      salaNotify('Microfone escolhido não encontrado — usando o padrão.', true);
+    }
+  }
+  return await navigator.mediaDevices.getUserMedia({audio: true, video: false});
+}
+
+async function salaRenderMicMenu() {
+  const menu = document.getElementById('sala-mic-menu');
+  let mics = [];
+  try {
+    mics = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+  } catch(e) {}
+  const track = localStream.getAudioTracks()[0];
+  const atual = (track && track.getSettings && track.getSettings().deviceId) || micDeviceId || 'default';
+  let html = '<div class="sala-mic-title">Microfone</div>';
+  if (!mics.length) {
+    html += '<div class="sala-mic-empty">Nenhum microfone encontrado.</div>';
+  } else if (mics.every(d => !d.label)) {
+    // Sem permissão concedida o navegador não revela os nomes dos aparelhos.
+    html += '<div class="sala-mic-empty">Ative o microfone uma vez para liberar a lista de aparelhos.</div>';
+  } else {
+    mics.forEach((d, i) => {
+      const nome = d.label || ('Microfone ' + (i + 1));
+      html += '<button class="sala-mic-opt' + (d.deviceId === atual ? ' sel' : '') + '" data-id="' + salaEsc(d.deviceId)
+            + '" title="' + salaEsc(nome) + '"><i class="fas fa-check"></i><span>' + salaEsc(nome) + '</span></button>';
+    });
+  }
+  menu.innerHTML = html;
+  menu.querySelectorAll('.sala-mic-opt').forEach(b => {
+    b.onclick = () => salaTrocarMic(b.dataset.id, b.textContent);
+  });
+}
+
+async function salaTrocarMic(deviceId, nome) {
+  document.getElementById('sala-mic-menu').classList.remove('open');
+  salaSalvarMicId(deviceId);
+  const antigo = localStream.getAudioTracks()[0];
+  if (!antigo) {
+    // Ainda sem microfone: só guarda a escolha, vale ao clicar no mic.
+    salaNotify('Microfone escolhido: ' + nome + '. Clique no microfone para falar.');
+    return;
+  }
+  let s;
+  try { s = await salaGetMic(); }
+  catch (e) { salaNotify('Não foi possível usar esse microfone.', true); return; }
+  const novo = s.getAudioTracks()[0];
+  novo.enabled = micOn;
+  // replaceTrack troca o áudio sem renegociar: quem está ouvindo nem percebe.
+  for (const p of Object.values(peers)) {
+    if (!p.pc) continue;
+    const sender = p.pc.getSenders().find(x => x.track === antigo);
+    if (sender) { try { await sender.replaceTrack(novo); } catch(e) {} }
+  }
+  localStream.removeTrack(antigo);
+  antigo.stop();
+  localStream.addTrack(novo);
+  salaNotify('Microfone: ' + nome);
+}
+
+window.salaToggleMicMenu = async function(ev) {
+  if (ev) ev.stopPropagation();
+  const menu = document.getElementById('sala-mic-menu');
+  if (menu.classList.contains('open')) { menu.classList.remove('open'); return; }
+  await salaRenderMicMenu();
+  menu.classList.add('open');
+};
+document.addEventListener('click', e => {
+  const menu = document.getElementById('sala-mic-menu');
+  if (menu && menu.classList.contains('open') && !menu.contains(e.target)) menu.classList.remove('open');
+});
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+  navigator.mediaDevices.addEventListener('devicechange', () => {
+    const menu = document.getElementById('sala-mic-menu');
+    if (menu && menu.classList.contains('open')) salaRenderMicMenu();
+  });
+}
 
 function updateMicBtn() {
   const btn = document.getElementById('sala-ctrl-mic');
@@ -3698,7 +3822,7 @@ function salaEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&
 document.addEventListener('DOMContentLoaded', function() {
   if (sessionStorage.getItem('sala_active') === '1') {
     // Reconexão silenciosa após reload — tenta microfone mas não bloqueia
-    navigator.mediaDevices.getUserMedia({audio: true, video: false})
+    salaGetMic()
       .then(s => { localStream = s; micOn = true; updateMicBtn(); })
       .catch(() => { localStream = new MediaStream(); })
       .finally(() => salaOpenWs());

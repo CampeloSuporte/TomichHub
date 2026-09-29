@@ -502,8 +502,13 @@ offer/answer com cada peer só para voltar a ouvir.
 
 ### Escolher o microfone (29/09/2026)
 
-Seta pequena (`#ctrl-mic-sel`) colada ao botão do microfone abre `#mic-menu` com as entradas de
-áudio do computador (`enumerateDevices`, `kind === 'audioinput'`); a atual aparece marcada.
+Vale nos dois lugares da sala: o **painel flutuante** do atendimento (`base.html` — o que a equipe
+usa no dia a dia: seta `#sala-ctrl-mic-sel` ao lado do mic, lista `#sala-mic-menu` embutida acima
+dos controles, porque o painel tem `overflow:hidden`) e a página avulsa `/atendimento/sala/`
+(`sala_virtual.html`: `#ctrl-mic-sel` / `#mic-menu`). Os dois compartilham a mesma escolha salva.
+A lista traz as entradas de áudio do computador (`enumerateDevices`, `kind === 'audioinput'`); a
+atual aparece marcada. No painel, toda captura de mic (auto-join, reconexão após reload, botão do
+mic) passa por `salaGetMic()`.
 
 - **Troca durante a chamada** sem renegociar: pega um novo `getUserMedia` com
   `deviceId: {exact}` e faz `sender.replaceTrack(novo)` em cada peer (o sender é achado pela
