@@ -6857,6 +6857,11 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
 
         if resp.status_code == 401:
             _digest_para_basic(django_resp)
+        if request.META.get('HTTP_AUTHORIZATION', '').lower().startswith('basic '):
+            # Diagnóstico de "digito a senha certa e não loga": registra quem
+            # tentou e o que o equipamento respondeu (nunca a senha).
+            logger.warning("[PROXY_WEB] acesso=%s login digitado usuario=%r → %s %s",
+                           acesso_id, dev_user, resp.status_code, path)
 
         # Bundle com hash no nome vem do device com max-age de 30 dias: guardado
         # assim, uma mudança na reescrita não chegaria a quem já abriu o acesso.
