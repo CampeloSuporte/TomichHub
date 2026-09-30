@@ -499,8 +499,8 @@ Quando a Anthropic recusa a chamada por **saldo zerado** (`credit balance is too
 
 - **Quem chamou** (grupo WA ou painel) recebe um aviso legível: *"O Agent NOC está indisponível no
   momento: os créditos da API Claude acabaram. A equipe já foi avisada…"*.
-- **O grupo NOC interno** (`AgentConfig.wa_grupo_noc`, em Sistema → Configurações → Agent NOC →
-  "JID grupo NOC interno") recebe um alerta com grupo, cliente e qual chave foi usada (a do grupo
+- **O grupo NOC interno** (`AgentConfig.wa_grupo_noc`, escolhido na lista em Sistema →
+  Configurações → Agent NOC → "Grupo NOC interno"; o JID é gravado automaticamente) recebe um alerta com grupo, cliente e qual chave foi usada (a do grupo
   ou a global). Sem esse JID o alerta só vai para o log (`[AgentNOC] ...`).
 - **Throttle**: 1 alerta por grupo (ou canal global) e por tipo a cada 6h, via cache Redis
   (`agent_noc:falha_conta_claude:<tipo>:<grupoN|global>`). Apague a chave para reenviar antes.

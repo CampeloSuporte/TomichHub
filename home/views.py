@@ -2447,9 +2447,12 @@ def agent_config(request):
 
         return JsonResponse({'ok': False, 'erro': 'Seção inválida.'}, status=400)
 
+    from clientes.models import WhatsAppGrupo
     return render(request, 'agent_config.html', {
         'agent_cfg': agent_cfg,
         'evo_cfg':   evo_cfg,
+        # Grupo NOC interno é escolhido na lista dos grupos sincronizados (o JID vem junto)
+        'wa_grupos': WhatsAppGrupo.objects.filter(ativo=True, tipo='grupo').only('jid', 'nome'),
     })
 
 

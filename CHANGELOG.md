@@ -13,6 +13,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   Anthropic (`Error code: 400 … credit balance is too low`), responde com um aviso legível e
   alerta o grupo NOC interno (`wa_grupo_noc`) informando grupo, cliente e qual chave acabou —
   no máximo 1 alerta a cada 6h por grupo. Ver `AGENT_NOC.md` → "Sem crédito / chave inválida".
+- **Grupo NOC interno escolhido na lista**: em Configurações → Agent NOC, o campo onde se digitava
+  o JID virou uma seleção dos grupos WhatsApp sincronizados; o JID é gravado sozinho.
 
 ---
 

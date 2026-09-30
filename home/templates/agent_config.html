@@ -253,9 +253,14 @@
             <hr class="section-divider">
             <div class="form-grid mb-3">
                 <div>
-                    <label class="cfg-label">JID grupo NOC interno (escalonamento)</label>
-                    <input class="cfg-input" type="text" id="wa_grupo_noc" value="{{ agent_cfg.wa_grupo_noc }}" placeholder="120363XXXXXXXXX@g.us">
-                    <div class="help-text">Grupo que recebe notificação quando o agent não consegue resolver</div>
+                    <label class="cfg-label">Grupo NOC interno (escalonamento e alertas)</label>
+                    <select class="cfg-select" id="wa_grupo_noc">
+                        <option value="">— nenhum —</option>
+                        {% for g in wa_grupos %}
+                        <option value="{{ g.jid }}" {% if g.jid == agent_cfg.wa_grupo_noc %}selected{% endif %}>{{ g.nome }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="help-text">Recebe os escalonamentos e o alerta de crédito/chave da API Claude esgotado em qualquer grupo</div>
                 </div>
                 <div>
                     <label class="cfg-label">Número plantão NOC (escalonamento)</label>
