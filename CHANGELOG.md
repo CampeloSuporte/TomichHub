@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-30 (Topologia: cost OSPF do backup no link)
+
+### Adicionado
+
+- **Cost OSPF no link da topologia**: ao escolher o IP P2P de cada lado, o editor lê do backup o
+  cost OSPF setado na interface dona do endereço e preenche "Cost OSPF" do lado A/B; o rótulo do
+  link mostra `OSPF cost N` (ou `A ↔ B` se assimétrico). Cobre Huawei/ZTE/Cisco (`ospf cost`),
+  Datacom/IOS-XR (`router ospf … interface … cost`), MikroTik v6/v7 e Juniper (`metric`).
+  Links antigos com IP e sem cost recebem a sugestão ao abrir o painel. Ver `docs/topologia.md`.
+
+---
+
 ## [Não publicado] — 2026-09-29 (Sala Virtual: escolher o microfone)
 
 ### Adicionado

@@ -531,6 +531,8 @@ vale derrubar o editor.
 | `ip_local` | string | IP P2P lado A (ex: `10.0.0.1/30`) |
 | `ip_remote` | string | IP P2P lado B (ex: `10.0.0.2/30`) |
 | `vlan` | string | VLAN ID — exibida como `VLAN 100` em linha própria, abaixo do label de velocidade |
+| `ospf_cost_a` | string | Cost OSPF da interface do lado A (vem do backup ao escolher o IP) — exibido como `OSPF cost N` abaixo da VLAN |
+| `ospf_cost_b` | string | Cost OSPF da interface do lado B; diferente do A, o rótulo mostra `OSPF cost A ↔ B` |
 | `iface_a` | string | Nome da interface no lado A — nó de origem do link (ex: `ge0/0/1`, `eth0`, `sfp1`) |
 | `iface_b` | string | Nome da interface no lado B — nó de destino do link (ex: `ge0/0/2`, `eth1`, `sfp2`) |
 | `style` | `solid`\|`dashed`\|`dotted` | Estilo do traço |
@@ -677,6 +679,30 @@ serem inputs de texto puro como antes:
   datalist é um caminho **adicional** para chegar no mesmo IP — direto pelo campo de IP, sem
   precisar passar pelo campo de interface primeiro (útil quando o usuário já sabe o IP mas não
   o nome da porta, ou quando quer só conferir a sugestão sem alterar a interface preenchida).
+
+### Cost OSPF a partir do Backup — Adicionado em 2026-09-30
+
+Ao escolher o **IP Local/Remoto (P2P)** (pelo datalist ou digitando), o painel do link procura
+no backup do lado correspondente a interface dona daquele endereço e preenche **Cost OSPF — lado
+A/B** com o cost **setado** nela. Vale também quando o IP chega pelo preenchimento automático da
+interface. O rótulo do meio do link ganha a linha `OSPF cost 5000` (ou `OSPF cost 5000 ↔ 10`
+quando os lados divergem — ida e volta seguem caminhos diferentes).
+
+- Só aparece cost explícito na config: o default do fabricante nunca é gravado no backup, então
+  interface sem `cost` não sugere nada (o campo fica livre para digitar).
+- Ao abrir o painel de um link que já tem IP mas nenhum cost, a busca roda sozinha e só preenche
+  campo vazio (toast "clique Aplicar para gravar"). Trocar o IP sobrescreve o cost com o da nova
+  interface. Como o resto do painel, só grava no link ao clicar em **Aplicar**.
+- A comparação do IP aceita com ou sem `/prefixo`. A legenda do datalist de IP mostra
+  `nome — descrição — cost N`.
+- `_extrair_interfaces_backup` devolve `ospf_cost` por interface; fontes:
+
+  | Fabricante | Fonte no backup |
+  |---|---|
+  | Huawei / ZTE / Cisco IOS | `ospf cost N` / `ip ospf cost N` dentro do bloco `interface` |
+  | Datacom DmOS / Cisco IOS-XR | `router ospf` → `area` → `interface X` → `cost N` (`_custos_ospf_backup`; o `l3-X` do DmOS casa com `interface l3 X`) |
+  | `MIKROTIK` | `/routing ospf interface add cost=N interface=X` (v6) e `/routing ospf interface-template add cost=N interfaces=X,Y` (v7) |
+  | `JUNIPER` | `set protocols ospf area A interface X metric N` |
 
 ---
 

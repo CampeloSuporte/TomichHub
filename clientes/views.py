@@ -7159,21 +7159,26 @@ def _extrair_interfaces_backup(conteudo, fabricante):
       linha `ip address IP MÁSCARA` (Cisco/Huawei/ZTE, máscara decimal) ou
       `ipv4 address IP/CIDR` (Datacom).
 
-    Retorna lista de {'nome': str, 'descricao': str, 'ip': str}, ordenada
-    por nome. `ip` vem vazio quando a interface não tem endereço configurado
-    (porta L2 pura, trunk, etc.) — nesse caso o frontend não sugere nada.
+    Retorna lista de {'nome': str, 'descricao': str, 'ip': str,
+    'ospf_cost': str}, ordenada por nome. `ip` vem vazio quando a interface
+    não tem endereço configurado (porta L2 pura, trunk, etc.) — nesse caso o
+    frontend não sugere nada. `ospf_cost` só vem preenchido quando o cost está
+    SETADO explicitamente na config (o default do fabricante nunca aparece no
+    backup) — ver _custos_ospf_backup.
     """
     fabricante = (fabricante or '').upper()
     interfaces = {}  # nome -> {'descricao': str, 'ip': str}
 
-    def _add(nome, desc='', ip=''):
+    def _add(nome, desc='', ip='', cost=''):
         if not nome:
             return
-        atual = interfaces.setdefault(nome, {'descricao': '', 'ip': ''})
+        atual = interfaces.setdefault(nome, {'descricao': '', 'ip': '', 'ospf_cost': ''})
         if desc and not atual['descricao']:
             atual['descricao'] = desc
         if ip and not atual['ip']:
             atual['ip'] = ip
+        if cost and not atual['ospf_cost']:
+            atual['ospf_cost'] = cost
 
     if fabricante == 'MIKROTIK':
         for m in re.finditer(r'^/interface\b.*?\bname=("([^"]+)"|(\S+))', conteudo, re.MULTILINE):
@@ -7225,7 +7230,7 @@ def _extrair_interfaces_backup(conteudo, fabricante):
             if not nome or re.search(r':\d+$', nome):
                 i = j
                 continue
-            desc, ip = '', ''
+            desc, ip, cost = '', '', ''
             for bloco_linha in linhas[i + 1:j]:
                 if not desc:
                     dm = re.match(r'^\s*description\s+(.+?)\s*$', bloco_linha)
@@ -7236,14 +7241,77 @@ def _extrair_interfaces_backup(conteudo, fabricante):
                         r'^\s*ip(?:v4)?\s+address\s+(\d{1,3}(?:\.\d{1,3}){3})[/\s]+(\S+)', bloco_linha)
                     if im:
                         ip = _mascara_para_prefixo(im.group(1), im.group(2))
-                if desc and ip:
-                    break
-            _add(nome, desc=desc, ip=ip)
+                if not cost:
+                    # Huawei/ZTE `ospf cost N`, Cisco IOS `ip ospf cost N`.
+                    cm = re.match(r'^\s*(?:ip\s+)?ospf\s+cost\s+(\d+)\b', bloco_linha)
+                    if cm:
+                        cost = cm.group(1)
+            _add(nome, desc=desc, ip=ip, cost=cost)
             i = j
+
+    for nome, cost in _custos_ospf_backup(conteudo, fabricante).items():
+        # DmOS: `interface l3 X` no bloco da interface vira `l3-X` dentro do
+        # `router ospf` — casa com o nome que já existe em vez de duplicar.
+        if nome not in interfaces:
+            alias = re.sub(r'^l3-', 'l3 ', nome)
+            if alias in interfaces:
+                nome = alias
+        _add(nome, cost=cost)
 
     itens = [{'nome': nome, **dados} for nome, dados in interfaces.items()]
     itens.sort(key=lambda it: it['nome'].lower())
     return itens[:500]
+
+
+def _custos_ospf_backup(conteudo, fabricante):
+    """Cost OSPF (v2) setado por interface fora do bloco da interface:
+    - MikroTik v6 `/routing ospf interface add cost=N interface=X` e v7
+      `/routing ospf interface-template add cost=N interfaces=X,Y`.
+    - Juniper `set protocols ospf area A interface X metric N`.
+    - Cisco IOS-XR / Datacom DmOS: `router ospf` hierárquico, com
+      `interface X` e um `cost N` mais indentado embaixo.
+    O `ospf cost`/`ip ospf cost` dentro do bloco `interface` (Huawei, ZTE,
+    Cisco IOS) é lido junto com o resto do bloco em _extrair_interfaces_backup.
+    Retorna {nome_interface: 'N'}."""
+    custos = {}
+    fabricante = (fabricante or '').upper()
+    if fabricante == 'MIKROTIK':
+        for m in re.finditer(r'^/routing ospf interface(?:-template)? add\b(.*)$', conteudo, re.MULTILINE):
+            resto = m.group(1)
+            cm = re.search(r'\bcost=(\d+)', resto)
+            im = re.search(r'\binterfaces?=("([^"]+)"|(\S+))', resto)
+            if cm and im:
+                for nome in (im.group(2) or im.group(3)).split(','):
+                    custos.setdefault(nome.strip(), cm.group(1))
+        return custos
+    if fabricante == 'JUNIPER':
+        for m in re.finditer(r'^set protocols ospf area \S+ interface (\S+) metric (\d+)',
+                             conteudo, re.MULTILINE):
+            custos.setdefault(m.group(1), m.group(2))
+        return custos
+
+    dentro, atual, recuo_if = False, None, 0
+    for linha in conteudo.splitlines():
+        if re.match(r'^router ospf\b', linha):
+            dentro, atual = True, None
+            continue
+        if not dentro:
+            continue
+        if linha and not linha[0].isspace() and linha.strip() != '!':
+            dentro = False  # próxima seção de nível 0
+            continue
+        recuo = len(linha) - len(linha.lstrip())
+        im = re.match(r'^\s+interface\s+(\S+)\s*$', linha)
+        if im:
+            atual, recuo_if = im.group(1), recuo
+            continue
+        if atual and recuo <= recuo_if and linha.strip():
+            atual = None  # saiu do bloco da interface (`!`, outra área...)
+            continue
+        cm = re.match(r'^\s+cost\s+(\d+)\s*$', linha)
+        if atual and cm:
+            custos.setdefault(atual, cm.group(1))
+    return custos
 
 
 @login_required(login_url='login')
