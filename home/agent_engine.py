@@ -879,6 +879,32 @@ TOOLS_OPENAI: list[dict] = [
 # Engine principal
 # ─────────────────────────────────────────────────────────────────
 
+# ── Falhas de conta na API Claude (crédito / chave) ─────────────────
+
+_AVISO_FALHA_CONTA_TTL = 6 * 3600
+
+_MSG_FALHA_CONTA_CLAUDE = {
+    'credito': (
+        "⚠️ O Agent NOC está indisponível no momento: os créditos da API Claude "
+        "acabaram. A equipe já foi avisada — assim que forem recarregados, "
+        "é só chamar novamente."
+    ),
+    'chave': (
+        "⚠️ O Agent NOC está indisponível no momento: a chave da API Claude "
+        "é inválida ou foi revogada. A equipe já foi avisada."
+    ),
+}
+
+
+def _classificar_falha_conta_claude(exc: Exception) -> str | None:
+    """'credito' (saldo zerado), 'chave' (401) ou None para os demais erros."""
+    if 'credit balance' in str(exc).lower():
+        return 'credito'
+    if isinstance(exc, anthropic.AuthenticationError):
+        return 'chave'
+    return None
+
+
 class AgentNOCEngine:
     """
     Motor do Agent NOC Tomich.
@@ -2196,6 +2222,59 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
             )
         return "\n\n---\n\n".join(resultado)
 
+    async def _avisar_falha_conta_claude(self, tipo: str, exc: Exception) -> None:
+        """
+        Avisa o grupo NOC interno (AgentConfig.wa_grupo_noc) que a conta Claude
+        usada nesta sessão está sem crédito ou com chave inválida.
+        Throttle via cache: no máximo 1 aviso por grupo/tipo a cada 6h, para
+        não inundar o NOC a cada @noc enquanto ninguém recarrega.
+        """
+        from django.core.cache import cache
+
+        sessao = await self._get_sessao()
+        config = await self._get_config()
+        grupo = sessao.wa_grupo if sessao.wa_grupo_id else None
+        escopo = f'grupo{grupo.id}' if grupo else 'global'
+        chave_cache = f'agent_noc:falha_conta_claude:{tipo}:{escopo}'
+        primeiro = await sync_to_async(cache.add)(chave_cache, 1, _AVISO_FALHA_CONTA_TTL)
+        if not primeiro:
+            return
+
+        motivo = {
+            'credito': 'créditos da API Claude *esgotados*',
+            'chave':   'API key Claude *inválida ou revogada*',
+        }[tipo]
+        if grupo:
+            origem = (
+                f"*Grupo:* {grupo.nome}\n"
+                f"*Cliente:* {sessao.cliente.nome_empresa if sessao.cliente_id else '—'}\n"
+                f"*Chave usada:* a do próprio grupo (Agent NOC → Grupos WhatsApp)"
+            )
+        else:
+            origem = (
+                f"*Canal:* {self.canal}\n"
+                f"*Chave usada:* a global (Sistema → Configurações → Agent NOC)"
+            )
+        msg = (
+            f"⚠️ *AGENT NOC SEM ACESSO À API CLAUDE*\n\n"
+            f"Motivo: {motivo}.\n{origem}\n\n"
+            f"Recarregue em console.anthropic.com → Plans & Billing "
+            f"(ou troque a chave). Enquanto isso o Agent NOC não responde.\n"
+            f"_Próximo aviso deste grupo em até 6h._"
+        )
+        await self._registrar_log('system', f"Aviso de {motivo} ({escopo}) — NOC notificado")
+
+        if not config.wa_grupo_noc:
+            logger.warning(f"[AgentNOC] {motivo} ({escopo}) — wa_grupo_noc não configurado: {exc}")
+            return
+        try:
+            from clientes.models import EvolutionAPIConfig
+            evo = await sync_to_async(EvolutionAPIConfig.get)()
+            if evo.url and evo.api_key and evo.instance_name:
+                await _evolution_send(evo, config.wa_grupo_noc, msg)
+        except Exception as exc_wa:
+            logger.warning(f"[AgentNOC] Falha ao avisar NOC sobre {motivo}: {exc_wa}")
+
     async def _tool_escalate_to_noc(self, resumo: str, urgencia: str,
                                      host_info: str = '') -> str:
         sessao = await self._get_sessao()
@@ -2539,6 +2618,12 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
             except anthropic.APIError as exc:
                 err = f"❌ Erro na API Claude: {exc}"
                 await self._registrar_log('error', err)
+                tipo_falha = _classificar_falha_conta_claude(exc)
+                if tipo_falha:
+                    # Crédito/chave: não repassa o JSON cru da Anthropic ao
+                    # usuário — responde com aviso legível e alerta o NOC.
+                    await self._avisar_falha_conta_claude(tipo_falha, exc)
+                    return _MSG_FALHA_CONTA_CLAUDE[tipo_falha]
                 return err
 
             total_tokens_in  += response.usage.input_tokens

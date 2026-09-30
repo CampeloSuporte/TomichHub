@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-30 (Agent NOC: aviso de falta de crédito na API Claude)
+
+### Alterado
+
+- **Agent NOC sem crédito / com chave inválida**: em vez de devolver ao grupo o JSON cru da
+  Anthropic (`Error code: 400 … credit balance is too low`), responde com um aviso legível e
+  alerta o grupo NOC interno (`wa_grupo_noc`) informando grupo, cliente e qual chave acabou —
+  no máximo 1 alerta a cada 6h por grupo. Ver `AGENT_NOC.md` → "Sem crédito / chave inválida".
+
+---
+
 ## [Não publicado] — 2026-09-30 (Topologia: cost OSPF do backup no link)
 
 ### Adicionado
