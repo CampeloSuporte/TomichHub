@@ -872,6 +872,8 @@ class TopoEditor {
         iface_b:   vizinhoEhOrigem ? '' : (base.iface_b || ''),
         ip_local:  vizinhoEhOrigem ? (base.ip_local || '') : '',
         ip_remote: vizinhoEhOrigem ? '' : (base.ip_remote || ''),
+        ospf_cost_a: vizinhoEhOrigem ? (base.ospf_cost_a || '') : '',
+        ospf_cost_b: vizinhoEhOrigem ? '' : (base.ospf_cost_b || ''),
       });
     });
 
@@ -1186,6 +1188,8 @@ class TopoEditor {
       ip_local:  extra.ip_local  || '',
       ip_remote: extra.ip_remote || '',
       vlan:      extra.vlan      || '',
+      ospf_cost_a: extra.ospf_cost_a || '',        // cost OSPF da interface no lado A
+      ospf_cost_b: extra.ospf_cost_b || '',        // cost OSPF da interface no lado B
       color:     extra.color     || null,
       style:     extra.style     || 'solid',    // traço: solid/dashed/dotted
       shape:     extra.shape     || 'straight', // forma: straight/curved/wavy
@@ -1393,6 +1397,8 @@ class TopoEditor {
     if (userLbl) lblLines.push({text: userLbl, fill: color, weight: 600});
     lblLines.push({text: ifaceDef.label, fill: null, weight: 400});
     if (link.vlan) lblLines.push({text: `VLAN ${link.vlan}`, fill: null, weight: 400});
+    const custoOspf = this._ospfCostTexto(link);
+    if (custoOspf) lblLines.push({text: custoOspf, fill: null, weight: 400});
 
     const lblLineH = 12;
     const bgW = Math.max(56, ...lblLines.map(l => l.text.length * 5.7 + 14));
@@ -2800,6 +2806,16 @@ class TopoEditor {
         <datalist id="dl-ipr"></datalist>
       </div>
       <div class="prop-group">
+        <label class="prop-label">Cost OSPF${src&&src.label?' — '+this._esc(src.label):''}</label>
+        <input class="prop-input" id="pl-costa" inputmode="numeric" placeholder="do backup, ao escolher o IP"
+               value="${this._esc(link.ospf_cost_a||'')}">
+      </div>
+      <div class="prop-group">
+        <label class="prop-label">Cost OSPF${tgt&&tgt.label?' — '+this._esc(tgt.label):''}</label>
+        <input class="prop-input" id="pl-costb" inputmode="numeric" placeholder="do backup, ao escolher o IP"
+               value="${this._esc(link.ospf_cost_b||'')}">
+      </div>
+      <div class="prop-group">
         <label class="prop-label">VLAN</label>
         <input class="prop-input" id="pl-vlan" placeholder="100" value="${link.vlan||''}">
       </div>
@@ -2842,11 +2858,57 @@ class TopoEditor {
     // roteamento configurado e o campo de IP ainda estiver vazio).
     const ifaEl = document.getElementById('pl-ifa');
     const ifbEl = document.getElementById('pl-ifb');
-    if (ifaEl) ifaEl.addEventListener('input', () => this._sugerirIpPorInterface('pl-ifa', 'pl-ipl', src && src.acesso_id));
-    if (ifbEl) ifbEl.addEventListener('input', () => this._sugerirIpPorInterface('pl-ifb', 'pl-ipr', tgt && tgt.acesso_id));
+    if (ifaEl) ifaEl.addEventListener('input', () => this._sugerirIpPorInterface('pl-ifa', 'pl-ipl', src && src.acesso_id, 'pl-costa'));
+    if (ifbEl) ifbEl.addEventListener('input', () => this._sugerirIpPorInterface('pl-ifb', 'pl-ipr', tgt && tgt.acesso_id, 'pl-costb'));
+
+    // Escolher o IP P2P (datalist do backup ou digitado) traz o cost OSPF
+    // setado na interface dona desse endereço. Ao abrir o painel de um link
+    // que já tem IP mas nenhum cost, faz o mesmo — quem desenhou o link antes
+    // disso não precisa reescolher o IP.
+    const iplEl = document.getElementById('pl-ipl');
+    const iprEl = document.getElementById('pl-ipr');
+    if (iplEl) iplEl.addEventListener('input', () => this._sugerirCostPorIp('pl-ipl', 'pl-costa', src && src.acesso_id));
+    if (iprEl) iprEl.addEventListener('input', () => this._sugerirCostPorIp('pl-ipr', 'pl-costb', tgt && tgt.acesso_id));
+    this._sugerirCostPorIp('pl-ipl', 'pl-costa', src && src.acesso_id, {soVazio: true});
+    this._sugerirCostPorIp('pl-ipr', 'pl-costb', tgt && tgt.acesso_id, {soVazio: true});
   }
 
-  async _sugerirIpPorInterface(ifInputId, ipInputId, acessoId) {
+  /** "OSPF cost 5000" quando os dois lados batem (ou só um é conhecido);
+   *  "OSPF cost 5000 ↔ 10" quando o cost é assimétrico — o tráfego de ida e o
+   *  de volta escolhem caminhos diferentes, então vale a pena ver os dois. */
+  _ospfCostTexto(link) {
+    const a = String(link.ospf_cost_a || '').trim(), b = String(link.ospf_cost_b || '').trim();
+    if (!a && !b) return '';
+    if (!a || !b || a === b) return `OSPF cost ${a || b}`;
+    return `OSPF cost ${a} ↔ ${b}`;
+  }
+
+  /** Interface do backup dona do IP digitado. Compara com e sem o /prefixo —
+   *  quem digita à mão nem sempre põe a máscara. */
+  _interfacePorIp(interfaces, ip) {
+    const semPrefixo = v => String(v || '').split('/')[0].trim();
+    return interfaces.find(i => i.ip && i.ip === ip)
+        || interfaces.find(i => i.ip && semPrefixo(i.ip) === semPrefixo(ip));
+  }
+
+  async _sugerirCostPorIp(ipInputId, costInputId, acessoId, {soVazio = false} = {}) {
+    if (!acessoId) return;
+    const gen = this._propsGen;
+    const ipEl = document.getElementById(ipInputId);
+    const costEl = document.getElementById(costInputId);
+    if (!ipEl || !costEl) return;
+    const ip = ipEl.value.trim();
+    if (!ip || (soVazio && costEl.value.trim())) return;
+    const interfaces = await this._fetchInterfaces(acessoId);
+    if (gen !== this._propsGen || ipEl.value.trim() !== ip) return; // painel/IP mudou durante a busca
+    if (soVazio && costEl.value.trim()) return;
+    const item = this._interfacePorIp(interfaces, ip);
+    if (!item || !item.ospf_cost || costEl.value.trim() === item.ospf_cost) return;
+    costEl.value = item.ospf_cost;
+    this._toast(`Cost OSPF ${item.ospf_cost} lido do backup (${item.nome})${soVazio ? ' — clique Aplicar para gravar' : ''}`);
+  }
+
+  async _sugerirIpPorInterface(ifInputId, ipInputId, acessoId, costInputId) {
     if (!acessoId) return;
     const ifEl = document.getElementById(ifInputId);
     const ipEl = document.getElementById(ipInputId);
@@ -2861,6 +2923,7 @@ class TopoEditor {
     if (item && item.ip) {
       ipEl.value = item.ip;
       this._toast(`IP ${item.ip} sugerido a partir do backup (${nome})`);
+      if (costInputId) this._sugerirCostPorIp(ipInputId, costInputId, acessoId);
     }
   }
 
@@ -2907,7 +2970,8 @@ class TopoEditor {
     // rede extra) — só interfaces com IP roteado configurado no backup fazem
     // sentido aqui, a maioria das portas L2/trunk não tem endereço.
     dl.innerHTML = interfaces.filter(i => i.ip).map(i => {
-      const legenda = this._esc([i.nome, i.descricao].filter(Boolean).join(' — '));
+      const legenda = this._esc([i.nome, i.descricao, i.ospf_cost ? `cost ${i.ospf_cost}` : '']
+        .filter(Boolean).join(' — '));
       const labelAttr = legenda ? ` label="${legenda}"` : '';
       return `<option value="${this._esc(i.ip)}"${labelAttr}>${legenda}</option>`;
     }).join('');
@@ -3032,6 +3096,8 @@ class TopoEditor {
     link.ip_local  = document.getElementById('pl-ipl').value;
     link.ip_remote = document.getElementById('pl-ipr').value;
     link.vlan      = document.getElementById('pl-vlan').value;
+    link.ospf_cost_a = document.getElementById('pl-costa').value.trim();
+    link.ospf_cost_b = document.getElementById('pl-costb').value.trim();
     link.style     = document.getElementById('pl-style').value;
     link.shape     = document.getElementById('pl-shape').value;
     if (TOPO_CENARIO) this._applyTobeLink(link);
