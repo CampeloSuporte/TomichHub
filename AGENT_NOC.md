@@ -492,6 +492,20 @@ Diferenças de implementação entre os loops:
 - **Resumo automático:** quando a sessão ultrapassa 80% do limite de tokens, o agent resume automaticamente as trocas anteriores e comprime o histórico
 - **Memória de sessão WhatsApp:** por grupo, persiste entre mensagens (expiração configurável, padrão: 2 horas de inatividade)
 
+#### Sem crédito / chave inválida na API Claude
+
+Quando a Anthropic recusa a chamada por **saldo zerado** (`credit balance is too low`) ou por
+**chave inválida** (401), o agent não repassa mais o JSON cru do erro:
+
+- **Quem chamou** (grupo WA ou painel) recebe um aviso legível: *"O Agent NOC está indisponível no
+  momento: os créditos da API Claude acabaram. A equipe já foi avisada…"*.
+- **O grupo NOC interno** (`AgentConfig.wa_grupo_noc`, em Sistema → Configurações → Agent NOC →
+  "JID grupo NOC interno") recebe um alerta com grupo, cliente e qual chave foi usada (a do grupo
+  ou a global). Sem esse JID o alerta só vai para o log (`[AgentNOC] ...`).
+- **Throttle**: 1 alerta por grupo (ou canal global) e por tipo a cada 6h, via cache Redis
+  (`agent_noc:falha_conta_claude:<tipo>:<grupoN|global>`). Apague a chave para reenviar antes.
+- Demais erros da API (rate limit, 5xx, overloaded) seguem com a mensagem `❌ Erro na API Claude`.
+
 ---
 
 ### 3.4 Base de Conhecimento
