@@ -425,6 +425,26 @@ for p in ['/', '/extjs/ext-all.js', '/js/proxmox-backup-gui.js']:
 
 ---
 
+### Senha digitada certa e não loga (MikroTik SwOS / HTTP Digest) — Corrigido em 30/09/2026
+
+**Sintoma:** acesso 475 (switch SwOS): a janela de senha do navegador aparecia, a senha correta
+era digitada e ela voltava a aparecer sem logar.
+
+**Causa:** o SwOS usa HTTP **Digest**. O hash que o navegador calcula inclui a URI
+(`/clientes/acessos/475/web/80/http/sys.b`), diferente da que o switch recebe (`/sys.b`), então o
+`ProxyEngine` descarta o `Authorization: Digest` do navegador e refaz o handshake com
+`acesso.usuario/senha`. Com a senha do cadastro desatualizada, nada que se digitasse funcionava.
+
+**Solução** (`clientes/views.py`):
+- `_digest_para_basic()` — num 401 do equipamento, troca `WWW-Authenticate: Digest …` por
+  `Basic realm="…"` (mesmo realm). O trecho navegador→CRM é HTTPS.
+- `_credenciais_basic_do_browser()` — se o navegador mandar `Authorization: Basic`, esse
+  usuário/senha tem prioridade sobre o cadastro e o proxy calcula o Digest para o equipamento
+  (`_compute_digest_auth` no túnel, `HTTPDigestAuth` no acesso direto).
+- Com a senha do cadastro correta, nada muda: o proxy loga sozinho e a janela nem aparece.
+
+---
+
 ## Como Testar Manualmente
 
 ```bash

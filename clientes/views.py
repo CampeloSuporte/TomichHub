@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 from django.http import HttpResponse
 import json
 import re
+import base64
 import pexpect
 import telnetlib
 import threading
@@ -6700,9 +6701,13 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
                 )
 
     # ── Executar Requisição via ProxyEngine ───────────────────────────
+    # Credenciais digitadas no navegador (Basic — ver _digest_para_basic)
+    # têm prioridade sobre as do cadastro: é o que o usuário acabou de
+    # informar, e o cadastro pode estar desatualizado.
+    dev_user, dev_senha = _credenciais_basic_do_browser(request) or (acesso.usuario, acesso.senha)
     engine = ProxyEngine(proxy_srv,
-                         device_username=acesso.usuario,
-                         device_password=acesso.senha)
+                         device_username=dev_user,
+                         device_password=dev_senha)
 
     _django_cookies = {'sessionid', 'csrftoken', 'messages'}
     raw_cookie = request.META.get('HTTP_COOKIE', '')
@@ -6850,6 +6855,9 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
             if h in django_resp:
                 del django_resp[h]
 
+        if resp.status_code == 401:
+            _digest_para_basic(django_resp)
+
         # Bundle com hash no nome vem do device com max-age de 30 dias: guardado
         # assim, uma mudança na reescrita não chegaria a quem já abriu o acesso.
         if js_reescrito:
@@ -6869,6 +6877,36 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
             ProxyEngine.get_error_page(f"Erro interno no proxy: <code>{str(e)}</code>"),
             500
         )
+
+
+def _credenciais_basic_do_browser(request):
+    """(usuario, senha) do header Authorization: Basic enviado pelo navegador, ou None."""
+    auth = request.META.get('HTTP_AUTHORIZATION', '')
+    if not auth.lower().startswith('basic '):
+        return None
+    try:
+        usuario, _, senha = base64.b64decode(auth[6:].strip()).decode('utf-8', 'replace').partition(':')
+    except Exception:
+        return None
+    return (usuario, senha) if usuario else None
+
+
+def _digest_para_basic(django_resp):
+    """
+    Troca o desafio `WWW-Authenticate: Digest` do equipamento por Basic.
+    O hash Digest que o navegador calcula inclui a URL do CRM
+    (/clientes/acessos/…), que não bate com a do equipamento — então o proxy
+    descartava essa resposta e tentava só com a senha do cadastro; se ela
+    estivesse errada, digitar a senha certa nunca logava (SwOS, acesso 475).
+    Com Basic (trecho navegador→CRM é HTTPS), o proxy recebe a senha digitada
+    e calcula ele mesmo o Digest para o equipamento.
+    """
+    desafio = django_resp.get('WWW-Authenticate', '')
+    if not desafio.lower().startswith('digest'):
+        return
+    m = re.search(r'realm="([^"]*)"', desafio)
+    realm = m.group(1) if m else 'Equipamento'
+    django_resp['WWW-Authenticate'] = f'Basic realm="{realm}", charset="UTF-8"'
 
 
 def _falha_proxy_web(html, status):
