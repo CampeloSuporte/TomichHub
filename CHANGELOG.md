@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-09-30 (Acesso web: login em equipamento com HTTP Digest)
+
+### Corrigido
+
+- **Senha certa não logava no acesso web de equipamento com HTTP Digest** (ex.: MikroTik SwOS,
+  acesso 475): o proxy descartava a senha digitada e insistia na do cadastro. Agora o CRM pede a
+  senha ao navegador como Basic (via HTTPS) e calcula ele mesmo o Digest para o equipamento; a
+  senha digitada tem prioridade sobre a cadastrada. Ver `docs/proxy_web_acessos.md`.
+
+---
+
 ## [Não publicado] — 2026-09-30 (Agent NOC: aviso de falta de crédito na API Claude)
 
 ### Alterado
