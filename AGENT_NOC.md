@@ -506,6 +506,27 @@ Quando a Anthropic recusa a chamada por **saldo zerado** (`credit balance is too
   (`agent_noc:falha_conta_claude:<tipo>:<grupoN|global>`). Apague a chave para reenviar antes.
 - Demais erros da API (rate limit, 5xx, overloaded) seguem com a mensagem `❌ Erro na API Claude`.
 
+#### Execução de comando em MikroTik RouterOS (exec sem PTY)
+
+`execute_command` passa por `platform_ssh_exec` (`clientes/consumers.py`). Para todos os fabricantes
+ele abre um **shell interativo com PTY** e lê até o prompt — menos no RouterOS, que vai por
+**exec sem PTY** (`_routeros_exec`):
+
+- **Por quê**: com PTY o RouterOS abre a sessão sondando o terminal (`ESC Z` + `ESC[6n`) e fica
+  esperando a resposta. O comando enviado era engolido como se fosse essa resposta e o agent recebia
+  só o banner "MikroTik RouterOS …", respondendo que o shell estava "preso" e pedindo acesso manual.
+- **Como identifica**: fabricante do modelo ou tipo do acesso contendo `mikrotik`/`routeros`. Acesso
+  sem modelo cadastrado também funciona: a sonda chega antes de qualquer envio, o shell a reconhece
+  (`_ROUTEROS_PROBE_RE`) e a execução é refeita por exec — sem risco de rodar o comando duas vezes.
+- **Várias linhas** vão num exec só; o RouterOS roda uma a uma e segue mesmo se alguma falhar (o erro
+  `bad command name …` aparece no meio da saída). Contexto **não** passa de uma linha para a outra:
+  `/interface` numa linha e `print` na seguinte não funciona — cada linha precisa do caminho completo.
+- **Comando sem saída** (ex.: `/interface disable …` bem-sucedido) volta como
+  `(comando executado — o RouterOS não devolveu saída)`, para o modelo não confundir com falha.
+- **Comando que não termina** (ex.: `/ping` sem `count`) é cortado no timeout (25s) e devolve o que
+  chegou + `[saída interrompida: …]`.
+- Rota igual à dos demais: túnel OpenVPN do cliente → proxy SSH do cliente → direto.
+
 ---
 
 ### 3.4 Base de Conhecimento

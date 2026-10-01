@@ -2975,7 +2975,8 @@ def _pexpect_exec(cmd_line: str, senha: str, comando: str,
         # Enviar senha
         proc.sendline(senha.encode())
         # Aguardar prompt
-        proc.expect(_PROMPT_RE, timeout=15)
+        if proc.expect([_ROUTEROS_PROBE_RE, _PROMPT_RE], timeout=15) == 0:
+            raise _RouterOSDetectado()
 
         if is_huawei:
             proc.sendline(b'screen-length 0 temporary')
@@ -3021,43 +3022,111 @@ def _pexpect_exec(cmd_line: str, senha: str, comando: str,
             pass
 
 
+# RouterOS com PTY abre a sessão sondando o terminal (ESC Z + ESC[6n) e fica
+# esperando a resposta: o que for enviado é engolido como se fosse a resposta,
+# e o shell devolve só o banner. Sem PTY (exec) ele roda o comando e fecha o
+# canal. A sonda chega antes de qualquer prompt e identifica o RouterOS.
+_ROUTEROS_PROBE_RE = re.compile(rb'\x1bZ\s*\x1b\[6n')
+
+
+class _RouterOSDetectado(Exception):
+    """O shell interativo caiu num RouterOS que o cadastro não identificava."""
+
+
+def _eh_routeros(acesso) -> bool:
+    fabricante = ''
+    if acesso.modelo:
+        fabricante = (getattr(acesso.modelo, 'fabricante', '') or '').lower()
+    tipo = (acesso.tipo or '').lower()
+    return any(k in txt for txt in (fabricante, tipo) for k in ('mikrotik', 'routeros'))
+
+
+def _abrir_canal_proxy(proxy, acesso):
+    """Abre um canal direct-tcpip até o acesso pelo proxy SSH (cliente em pool)."""
+    def _conectar():
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(
+            hostname=proxy.host, port=int(proxy.porta),
+            username=proxy.usuario, password=proxy.senha,
+            timeout=12, look_for_keys=False, allow_agent=False, banner_timeout=12,
+        )
+        _proxy_pool.put(proxy, client)
+        return client
+
+    destino = (acesso.host, int(acesso.porta))
+    proxy_client = _proxy_pool.get(proxy) or _conectar()
+    try:
+        return proxy_client.get_transport().open_channel(
+            'direct-tcpip', destino, ('127.0.0.1', 0), timeout=12,
+        )
+    except Exception:
+        # Conexão do pool expirou — reconectar
+        _proxy_pool.remove(proxy)
+        return _conectar().get_transport().open_channel(
+            'direct-tcpip', destino, ('127.0.0.1', 0), timeout=12,
+        )
+
+
+def _routeros_exec(acesso, comando: str, timeout: int = 25, proxy=None) -> str:
+    """
+    Executa comando em RouterOS por exec sem PTY (ver _ROUTEROS_PROBE_RE). Várias
+    linhas vão num exec só: o RouterOS roda uma a uma e segue adiante se alguma
+    der erro, devolvendo a mensagem ("bad command name ...") no meio da saída.
+    """
+    if proxy:
+        sock = _abrir_canal_proxy(proxy, acesso)
+    else:
+        sock = socket.create_connection((acesso.host, int(acesso.porta)), timeout=12)
+    transport = paramiko.Transport(sock)
+    try:
+        transport._preferred_kex = _ZTE_PREFERRED_KEX
+        transport.start_client(timeout=12)
+        transport.auth_password(acesso.usuario, acesso.senha)
+        if not transport.is_authenticated():
+            raise Exception('Autenticação falhou no equipamento destino')
+
+        chan = transport.open_session(timeout=12)
+        chan.set_combine_stderr(True)
+        chan.exec_command('\n'.join(l.strip() for l in comando.split('\n') if l.strip()))
+
+        buf = bytearray()
+        interrompido = False
+        deadline = time.time() + timeout
+        while True:
+            restante = deadline - time.time()
+            if restante <= 0:
+                interrompido = True
+                break
+            chan.settimeout(restante)
+            try:
+                chunk = chan.recv(65536)
+            except socket.timeout:
+                interrompido = True
+                break
+            if not chunk:
+                break
+            buf.extend(chunk)
+
+        saida = _ANSI_RE.sub('', buf.decode('utf-8', errors='replace'))
+        saida = saida.replace('\r\n', '\n').replace('\r', '').strip('\n').rstrip()
+        if interrompido:
+            saida += f'\n[saída interrompida: o comando não terminou em {timeout}s]'
+        return saida or '(comando executado — o RouterOS não devolveu saída)'
+    finally:
+        try:
+            transport.close()
+        except Exception:
+            pass
+
+
 def _paramiko_proxy_exec(proxy, acesso, comando: str,
                           is_huawei: bool, timeout: int = 25) -> str:
     """Executa comando via paramiko através de um proxy SSH (direct-tcpip)."""
     import re as _re
 
-    proxy_client = _proxy_pool.get(proxy)
-    _pool_hit = proxy_client is not None
-    if not _pool_hit:
-        proxy_client = paramiko.SSHClient()
-        proxy_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        proxy_client.connect(
-            hostname=proxy.host, port=int(proxy.porta),
-            username=proxy.usuario, password=proxy.senha,
-            timeout=12, look_for_keys=False, allow_agent=False, banner_timeout=12,
-        )
-        _proxy_pool.put(proxy, proxy_client)
     try:
-        proxy_transport = proxy_client.get_transport()
-        try:
-            dest_sock = proxy_transport.open_channel(
-                'direct-tcpip', (acesso.host, int(acesso.porta)), ('127.0.0.1', 0), timeout=12,
-            )
-        except Exception:
-            # Conexão do pool expirou — reconectar
-            _proxy_pool.remove(proxy)
-            proxy_client = paramiko.SSHClient()
-            proxy_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            proxy_client.connect(
-                hostname=proxy.host, port=int(proxy.porta),
-                username=proxy.usuario, password=proxy.senha,
-                timeout=12, look_for_keys=False, allow_agent=False, banner_timeout=12,
-            )
-            _proxy_pool.put(proxy, proxy_client)
-            proxy_transport = proxy_client.get_transport()
-            dest_sock = proxy_transport.open_channel(
-                'direct-tcpip', (acesso.host, int(acesso.porta)), ('127.0.0.1', 0), timeout=12,
-            )
+        dest_sock = _abrir_canal_proxy(proxy, acesso)
         dest_transport = paramiko.Transport(dest_sock)
         dest_transport._preferred_kex = _ZTE_PREFERRED_KEX
         dest_transport.start_client(timeout=12)
@@ -3083,10 +3152,14 @@ def _paramiko_proxy_exec(proxy, acesso, comando: str,
                     if not chunk:
                         break
                     buf.extend(chunk)
+                    if _ROUTEROS_PROBE_RE.search(buf):
+                        raise _RouterOSDetectado()
                     if _re.search(_PROMPT_RE, bytes(buf)):
                         return bytes(buf), False
                     if _CONFIRM_RE.search(bytes(buf)):
                         return bytes(buf), True
+                except _RouterOSDetectado:
+                    raise
                 except Exception:
                     time.sleep(0.05)
             return bytes(buf), False
@@ -3131,6 +3204,7 @@ def platform_ssh_exec(acesso, comando: str, timeout: int = 25) -> str:
     """
     Executa um único comando SSH em um Acesso usando a mesma infraestrutura
     da plataforma (suporte a algoritmos legados, proxy, Huawei paging).
+    RouterOS vai por exec sem PTY (_routeros_exec); o resto, shell interativo.
 
     Retorna o output como string. Lança Exception em caso de erro.
     """
@@ -3141,6 +3215,7 @@ def platform_ssh_exec(acesso, comando: str, timeout: int = 25) -> str:
     if acesso.modelo:
         fabricante = (getattr(acesso.modelo, 'fabricante', '') or '').lower()
     is_huawei = fabricante in ('huawei',) or 'huawei' in (acesso.tipo or '').lower()
+    is_routeros = _eh_routeros(acesso)
 
     def _is_private(host: str) -> bool:
         try:
@@ -3148,35 +3223,39 @@ def platform_ssh_exec(acesso, comando: str, timeout: int = 25) -> str:
         except ValueError:
             return False
 
+    def _executar(proxy=None) -> str:
+        """proxy=None → conexão direta (rota pública ou pela tun do cliente)."""
+        if is_routeros:
+            return _routeros_exec(acesso, comando, timeout, proxy=proxy)
+        try:
+            if proxy:
+                return _paramiko_proxy_exec(proxy, acesso, comando, is_huawei, timeout)
+            cmd_line = f"ssh {_SSH_FLAGS} -p {acesso.porta} {acesso.usuario}@{acesso.host}"
+            return _pexpect_exec(cmd_line, acesso.senha, comando, is_huawei, timeout)
+        except _RouterOSDetectado:
+            # Cadastro sem fabricante MikroTik: a sonda de terminal entregou.
+            # Ela chega antes de qualquer envio, então repetir por exec não
+            # duplica comando.
+            return _routeros_exec(acesso, comando, timeout, proxy=proxy)
+
     # Roteamento: IP privado → túnel OpenVPN do cliente ou proxy; público → direto
     if _is_private(acesso.host):
         if _tunel_ovpn_cobre(acesso.cliente, acesso.host):
             # Rota já existe no kernel pela tun daquele cliente — direto, sem
             # proxy e sem source bind.
-            cmd_line = f"ssh {_SSH_FLAGS} -p {acesso.porta} {acesso.usuario}@{acesso.host}"
-            return _pexpect_exec(cmd_line, acesso.senha, comando, is_huawei, timeout)
-
-        proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
-        if proxy:
-            return _paramiko_proxy_exec(proxy, acesso, comando, is_huawei, timeout)
+            return _executar()
         # sem proxy/VPN, tenta direto
-        cmd_line = f"ssh {_SSH_FLAGS} -p {acesso.porta} {acesso.usuario}@{acesso.host}"
-        return _pexpect_exec(cmd_line, acesso.senha, comando, is_huawei, timeout)
+        return _executar(ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first())
     elif getattr(acesso, 'tipo', '') == 'CGNAT':
         # Tenta direto primeiro
         try:
-            cmd_line = f"ssh {_SSH_FLAGS} -p {acesso.porta} {acesso.usuario}@{acesso.host}"
-            return _pexpect_exec(cmd_line, acesso.senha, comando, is_huawei, timeout)
+            return _executar()
         except Exception:
             pass
         # Fallback via proxy
         proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
         if proxy:
-            return _paramiko_proxy_exec(proxy, acesso, comando, is_huawei, timeout)
+            return _executar(proxy)
         raise RuntimeError(f"CGNAT sem proxy disponível para {acesso.host}")
     else:
-        cmd_line = (
-            f"ssh {_SSH_FLAGS} "
-            f"-p {acesso.porta} {acesso.usuario}@{acesso.host}"
-        )
-        return _pexpect_exec(cmd_line, acesso.senha, comando, is_huawei, timeout)
+        return _executar()
