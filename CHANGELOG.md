@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-01 (Agent NOC: comandos em MikroTik não executavam)
+
+### Corrigido
+
+- **Agent NOC não executava nada em MikroTik RouterOS**: o comando era enviado por shell
+  interativo, que no RouterOS fica esperando a detecção de terminal e devolve só o banner — o agent
+  respondia que o shell estava "preso" e pedia acesso manual (caso SW REG_TUTLANDIA, acesso 1318).
+  Agora o RouterOS é executado por exec sem PTY, inclusive em acesso sem modelo cadastrado. Ver
+  `AGENT_NOC.md` → "Execução de comando em MikroTik RouterOS".
+
+---
+
 ## [Não publicado] — 2026-09-30 (Acesso web: login em equipamento com HTTP Digest)
 
 ### Corrigido
