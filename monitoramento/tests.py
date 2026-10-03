@@ -615,3 +615,19 @@ class OpticoAgrupamentoTest(TestCase):
             g = self.zm.opticos([_it('1', 'a', rx, 'dBm', '-5'), _it('2', 'b', tx, 'dBm', '1')])
             self.assertEqual([x['interface'] for x in g], [iface], rx)
         self.assertEqual(self.zm._opt_sentido('10giga-ethernet0/0(OLT-TX_M.SERRAT): Sinal Base'), 'rx')
+
+
+class OpticoDescricaoTest(TestCase):
+    from monitoramento import zabbix_metricas as zm
+
+    def test_descricao_vem_do_trafego_e_menos_001_e_sem_leitura(self):
+        itens = [_it('1', 'net.if.in[x.1]', 'Interface XGigabitEthernet0/0/1(HUAWEI NE8000): Bits received', 'bps'),
+                 _it('2', 'net.if.out[x.1]', 'Interface XGigabitEthernet0/0/1(HUAWEI NE8000): Bits sent', 'bps'),
+                 _it('3', 'rx[1]', 'XGigabitEthernet0/0/1: Rx Power', '!dBm', '-1.34'),
+                 _it('4', 'tx[1]', 'XGigabitEthernet0/0/1: Tx Power', '!dBm', '-3.6'),
+                 _it('5', 'rx[2]', '40GE0/0/5: Rx Power', '!dBm', '-0.01'),
+                 _it('6', 'tx[2]', '40GE0/0/5: Tx Power', '!dBm', '-0.01')]
+        g = {x['interface']: x for x in self.zm.com_descricao(self.zm.opticos(itens), self.zm.interfaces(itens))}
+        self.assertIn('XGigabitEthernet0/0/1(HUAWEI NE8000)', g)
+        self.assertFalse(g['XGigabitEthernet0/0/1(HUAWEI NE8000)']['vazio'])
+        self.assertTrue(g['40GE0/0/5']['vazio'])

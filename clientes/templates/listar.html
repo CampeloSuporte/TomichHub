@@ -7341,7 +7341,7 @@ function getCsrfToken(){
         return v;
     }
     function zgClasseRx(dbm) {
-        if (dbm == null || dbm === 0) return 'zg-mudo';
+        if (dbm == null || Math.abs(dbm) < 0.05) return 'zg-mudo';
         if (dbm < -27) return 'zg-falha';
         if (dbm < -24) return 'zg-alerta';
         return 'zg-ok';
