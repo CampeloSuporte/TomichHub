@@ -93,6 +93,43 @@
         .ac-zbx-ponto.down, .ac-zbx-ponto.missing { background: var(--red); }
         .ac-zbx-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
         .ac-zbx.vazio { color: var(--text-muted); }
+        .ac-zbx-grafico { padding: 2px 5px; border: none; border-radius: 3px; background: none; color: var(--text-muted); font-size: 12px; }
+        .ac-zbx-grafico:hover, .ac-zbx-grafico:focus-visible { background: rgba(88, 166, 255, .08); color: var(--cyan); outline: none; }
+        .ac-cpu { display: inline-flex; align-items: center; gap: 8px; }
+        .ac-cpu-barra { width: 56px; height: 4px; overflow: hidden; border-radius: 2px; background: var(--border); }
+        .ac-cpu-barra span { display: block; height: 100%; background: var(--green); }
+        .ac-cpu.alerta .ac-cpu-barra span { background: var(--yellow); }
+        .ac-cpu.falha .ac-cpu-barra span { background: var(--red); }
+        .zg-overlay { display: none; position: fixed; inset: 0; z-index: 100000; align-items: center; justify-content: center; background: rgba(0, 0, 0, .78); }
+        .zg-box {
+            display: flex; flex-direction: column; width: 980px; max-width: 96vw; height: 86vh;
+            border: 1px solid #30363d; border-radius: 10px; background: #1c2128; color: #e6edf3; font-family: 'Inter', sans-serif;
+        }
+        .zg-topo { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 18px 10px; border-bottom: 1px solid #30363d; }
+        .zg-titulo { flex: 1; min-width: 200px; }
+        .zg-titulo b { font-size: .9rem; }
+        .zg-titulo div { color: #8b949e; font-size: .75rem; }
+        .zg-periodos, .zg-abas { display: flex; gap: 4px; }
+        .zg-periodos button, .zg-abas button {
+            padding: 4px 10px; border: 1px solid #30363d; border-radius: 6px; background: none; color: #8b949e; font-size: 12px;
+        }
+        .zg-periodos button.ativo, .zg-abas button.ativo { border-color: #58a6ff; background: rgba(88, 166, 255, .1); color: #58a6ff; }
+        .zg-abas { padding: 10px 18px 0; }
+        .zg-grafico { position: relative; height: 260px; margin: 10px 18px 0; }
+        .zg-grafico-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #8b949e; font-size: 12px; text-align: center; }
+        .zg-filtros { display: flex; align-items: center; gap: 12px; padding: 10px 18px 6px; font-size: 12px; color: #8b949e; }
+        .zg-filtros input[type=search] { max-width: 260px; background: #0d1117; color: #e6edf3; border-color: #30363d; }
+        .zg-lista { flex: 1; overflow: auto; padding: 0 12px 12px; }
+        .zg-linha {
+            display: grid; grid-template-columns: minmax(0, 1fr) 110px 110px; gap: 10px; align-items: center; width: 100%;
+            padding: 7px 10px; border: 1px solid transparent; border-radius: 6px; background: none; color: #e6edf3; font-size: 12px; text-align: left;
+        }
+        .zg-linha:hover, .zg-linha:focus-visible { border-color: #30363d; background: rgba(88, 166, 255, .05); outline: none; }
+        .zg-linha.ativo { border-color: rgba(88, 166, 255, .6); background: rgba(88, 166, 255, .08); }
+        .zg-linha span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .zg-linha span + span { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: right; white-space: nowrap; }
+        .zg-cab { color: #8b949e; font-size: 11px; }
+        .zg-ok { color: #3fb950; } .zg-alerta { color: #d29922; } .zg-falha { color: #f85149; } .zg-mudo { color: #6e7681; }
         .zbx-host-item {
             display: flex; justify-content: space-between; gap: 10px; width: 100%; padding: 7px 10px;
             border: 1px solid transparent; border-radius: 6px; background: none; color: #e6edf3; font-size: 12px; text-align: left;
@@ -515,7 +552,15 @@
                                         {% if zabbix_vinculo %}
                                         <div class="ac-linha ac-zbx-linha" data-zbx-acesso="{{ acesso.id }}" hidden>
                                             <span class="ac-rotulo">Zabbix</span>
-                                            <span class="ac-valor ac-texto">{% if acessos_somente_leitura %}<span class="ac-zbx vazio">{% else %}<button type="button" class="ac-zbx vazio" title="Escolher o host do Zabbix" onclick="abrirVinculoZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')">{% endif %}<span class="ac-zbx-ponto"></span><span class="ac-zbx-nome">não vinculado</span>{% if acessos_somente_leitura %}</span>{% else %}</button>{% endif %}</span>
+                                            <span class="ac-valor ac-texto">{% if acessos_somente_leitura %}<span class="ac-zbx vazio">{% else %}<button type="button" class="ac-zbx vazio" title="Escolher o host do Zabbix" onclick="abrirVinculoZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')">{% endif %}<span class="ac-zbx-ponto"></span><span class="ac-zbx-nome">não vinculado</span>{% if acessos_somente_leitura %}</span>{% else %}</button>{% endif %}<button type="button" class="ac-zbx-grafico" hidden title="Gráficos de interfaces e sinal óptico" aria-label="Gráficos do Zabbix" onclick="abrirGraficosZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"><i class="fas fa-chart-line"></i></button></span>
+                                        </div>
+                                        <div class="ac-linha ac-zbx-cpu" hidden>
+                                            <span class="ac-rotulo">CPU</span>
+                                            <span class="ac-valor"><span class="ac-cpu"><span class="ac-cpu-barra"><span></span></span><span class="ac-cpu-valor"></span></span></span>
+                                        </div>
+                                        <div class="ac-linha ac-zbx-uptime" hidden>
+                                            <span class="ac-rotulo">Uptime</span>
+                                            <span class="ac-valor ac-zbx-uptime-valor"></span>
                                         </div>
                                         {% endif %}
                                         {% if not acessos_somente_leitura %}
@@ -6977,6 +7022,13 @@ function getCsrfToken(){
     const ZBX_DOT = {up: 'ok', problem: 'alerta', down: 'falha', missing: 'falha'};
     let zbxTimer = null, zbxParado = false;
 
+    function zbxDuracao(seg) {
+        const d = Math.floor(seg / 86400), h = Math.floor((seg % 86400) / 3600), m = Math.floor((seg % 3600) / 60);
+        if (d) return `${d}d ${h}h`;
+        if (h) return `${h}h ${m}min`;
+        return `${m}min`;
+    }
+
     async function zbxJson(url, opts) {
         const r = await fetch(url, Object.assign({headers: {'X-Requested-With': 'XMLHttpRequest'}}, opts || {}));
         const data = await r.json().catch(() => null);
@@ -6992,6 +7044,24 @@ function getCsrfToken(){
             const ponto = linha.querySelector('.ac-zbx-ponto');
             const nome = linha.querySelector('.ac-zbx-nome');
             linha.hidden = false;
+            const card = linha.closest('.card');
+            const vinculado = !!(v && v.hostid);
+            linha.querySelector('.ac-zbx-grafico').hidden = !vinculado;
+            const lCpu = card.querySelector('.ac-zbx-cpu');
+            const lUp = card.querySelector('.ac-zbx-uptime');
+            lCpu.hidden = !(vinculado && v.cpu != null);
+            lUp.hidden = !(vinculado && v.uptime);
+            if (!lCpu.hidden) {
+                const caixa = lCpu.querySelector('.ac-cpu');
+                caixa.className = `ac-cpu ${v.cpu >= 90 ? 'falha' : (v.cpu >= 70 ? 'alerta' : '')}`;
+                caixa.querySelector('.ac-cpu-barra span').style.width = `${Math.min(100, Math.max(0, v.cpu))}%`;
+                caixa.querySelector('.ac-cpu-valor').textContent = `${Number.isInteger(v.cpu) ? v.cpu : v.cpu.toFixed(1)}%`;
+            }
+            if (!lUp.hidden) {
+                const el = lUp.querySelector('.ac-zbx-uptime-valor');
+                el.textContent = zbxDuracao(v.uptime);
+                el.title = `Ligado desde ${new Date(Date.now() - v.uptime * 1000).toLocaleString('pt-BR')}`;
+            }
             if (v && v.hostid) {
                 botao.classList.remove('vazio');
                 ponto.className = `ac-zbx-ponto ${v.status}`;
@@ -7172,6 +7242,272 @@ function getCsrfToken(){
         };
         busca.oninput = render;
         render();
+    }
+
+    // ── Gráficos do host vinculado: interfaces (bps), sinal óptico (dBm) e CPU.
+    // Os itens vêm do Zabbix do cliente; o servidor só aceita itens do host
+    // vinculado a este acesso.
+    const ZG = {acesso: null, dados: null, aba: 'interfaces', periodo: '6h', sel: null, chart: null, pedido: 0};
+    const ZG_CORES = ['#3fb950', '#58a6ff', '#f0883e', '#a371f7', '#d29922', '#39c5cf', '#f778ba', '#8b949e', '#e5534b', '#6cb6ff'];
+
+    function zgBps(v) {
+        if (v == null || isNaN(v)) return '—';
+        const u = ['bps', 'Kbps', 'Mbps', 'Gbps', 'Tbps'];
+        let i = 0;
+        while (Math.abs(v) >= 1000 && i < u.length - 1) { v /= 1000; i++; }
+        return `${v.toFixed(v >= 100 || i === 0 ? 0 : 1)} ${u[i]}`;
+    }
+    const zgDbm = (v) => (v == null || isNaN(v) ? '—' : `${v.toFixed(2)} dBm`);
+    // µW/mW → dBm, igual ao servidor (zabbix_metricas.para_dbm)
+    function zgParaDbm(v, units) {
+        const u = (units || '').toLowerCase().replace('!', '');
+        if (u === 'uw') return v > 0 ? 10 * Math.log10(v / 1000) : null;
+        if (u === 'mw') return v > 0 ? 10 * Math.log10(v) : null;
+        return v;
+    }
+    function zgClasseRx(dbm) {
+        if (dbm == null || dbm === 0) return 'zg-mudo';
+        if (dbm < -27) return 'zg-falha';
+        if (dbm < -24) return 'zg-alerta';
+        return 'zg-ok';
+    }
+
+    function zgModal() {
+        let m = document.getElementById('zgModal');
+        if (m) return m;
+        m = document.createElement('div');
+        m.id = 'zgModal';
+        m.className = 'zg-overlay';
+        m.setAttribute('role', 'dialog');
+        m.setAttribute('aria-modal', 'true');
+        m.setAttribute('aria-label', 'Gráficos do Zabbix');
+        m.innerHTML = `
+          <div class="zg-box">
+            <div class="zg-topo">
+              <div class="zg-titulo"><b class="zg-host"></b><div class="zg-sub"></div></div>
+              <div class="zg-periodos">
+                ${['1h', '6h', '24h', '7d', '30d'].map((p) => `<button type="button" data-periodo="${p}">${p}</button>`).join('')}
+              </div>
+              <button type="button" class="btn btn-sm btn-secondary zg-fechar">Fechar</button>
+            </div>
+            <div class="zg-abas">
+              <button type="button" data-aba="interfaces">Interfaces</button>
+              <button type="button" data-aba="opticos">Sinal óptico</button>
+              <button type="button" data-aba="cpu">CPU</button>
+            </div>
+            <div class="zg-grafico"><canvas></canvas><div class="zg-grafico-msg"></div></div>
+            <div class="zg-filtros">
+              <input type="search" class="form-control form-control-sm zg-busca" placeholder="Filtrar por nome..." autocomplete="off">
+              <label class="d-flex align-items-center gap-1 mb-0"><input type="checkbox" class="zg-todos"> <span class="zg-todos-rotulo"></span></label>
+            </div>
+            <div class="zg-lista"></div>
+          </div>`;
+        document.body.appendChild(m);
+        const fechar = () => {
+            m.style.display = 'none';
+            ZG.pedido++;
+            if (ZG.chart) { ZG.chart.destroy(); ZG.chart = null; }
+        };
+        m.querySelector('.zg-fechar').addEventListener('click', fechar);
+        m.addEventListener('click', (e) => { if (e.target === m) fechar(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && m.style.display !== 'none') fechar(); });
+        m.querySelectorAll('[data-periodo]').forEach((b) => b.addEventListener('click', () => {
+            ZG.periodo = b.dataset.periodo;
+            zgMarcar();
+            zgPlotar();
+        }));
+        m.querySelectorAll('[data-aba]').forEach((b) => b.addEventListener('click', () => {
+            ZG.aba = b.dataset.aba;
+            ZG.sel = null;
+            m.querySelector('.zg-busca').value = '';
+            m.querySelector('.zg-todos').checked = false;
+            zgRender();
+        }));
+        m.querySelector('.zg-busca').addEventListener('input', () => zgRender(false));
+        m.querySelector('.zg-todos').addEventListener('change', () => zgRender(false));
+        return m;
+    }
+
+    function zgMarcar() {
+        const m = zgModal();
+        m.querySelectorAll('[data-periodo]').forEach((b) => b.classList.toggle('ativo', b.dataset.periodo === ZG.periodo));
+        m.querySelectorAll('[data-aba]').forEach((b) => b.classList.toggle('ativo', b.dataset.aba === ZG.aba));
+    }
+
+    function zgMsg(texto) {
+        const m = zgModal();
+        m.querySelector('.zg-grafico-msg').textContent = texto || '';
+        m.querySelector('.zg-grafico canvas').style.visibility = texto ? 'hidden' : 'visible';
+    }
+
+    // Linhas da lista da aba atual: {chave, nome, v1, v2, c1, c2, itens}
+    function zgLinhas() {
+        const d = ZG.dados;
+        if (ZG.aba === 'interfaces') {
+            return d.interfaces
+                .map((i) => ({chave: i.nome, nome: i.nome, v1: zgBps(i.in), v2: zgBps(i.out),
+                              vazio: !(i.in > 0 || i.out > 0), ordem: (i.in || 0) + (i.out || 0), itens: i.itens}))
+                .sort((a, b) => b.ordem - a.ordem);
+        }
+        if (ZG.aba === 'opticos') {
+            return d.opticos.map((g) => {
+                const rx = g.itens.filter((i) => i.sentido === 'rx').map((i) => i.dbm).filter((v) => v != null);
+                const tx = g.itens.filter((i) => i.sentido === 'tx').map((i) => i.dbm).filter((v) => v != null);
+                const rxMin = rx.length ? Math.min(...rx) : null;
+                const txMed = tx.length ? tx.reduce((a, b) => a + b, 0) / tx.length : null;
+                return {chave: g.interface, nome: g.interface + (g.itens.length > 2 ? ` (${g.itens.length} leituras)` : ''),
+                        v1: zgDbm(rxMin), v2: zgDbm(txMed), c1: zgClasseRx(rxMin), vazio: g.vazio,
+                        itens: g.itens.map((i) => i.itemid)};
+            });
+        }
+        return d.cpu.map((c) => ({chave: c.itemid, nome: c.nome, v1: c.valor == null ? '—' : `${c.valor}%`, v2: '', itens: [c.itemid]}));
+    }
+
+    function zgRender(selecionarPrimeiro = true) {
+        const m = zgModal();
+        zgMarcar();
+        const d = ZG.dados;
+        m.querySelector('[data-aba="interfaces"]').textContent = `Interfaces (${d.interfaces.length})`;
+        m.querySelector('[data-aba="opticos"]').textContent = `Sinal óptico (${d.opticos.filter((g) => !g.vazio).length})`;
+        m.querySelector('[data-aba="cpu"]').textContent = `CPU (${d.cpu.length})`;
+        const rotuloTodos = {interfaces: 'mostrar sem tráfego', opticos: 'mostrar sem leitura', cpu: ''}[ZG.aba];
+        m.querySelector('.zg-todos-rotulo').textContent = rotuloTodos;
+        m.querySelector('.zg-todos').parentElement.style.display = rotuloTodos ? '' : 'none';
+
+        const busca = m.querySelector('.zg-busca').value.trim().toLowerCase();
+        const todos = m.querySelector('.zg-todos').checked;
+        const linhas = zgLinhas().filter((l) => (todos || !l.vazio) && (!busca || l.nome.toLowerCase().includes(busca)));
+
+        const lista = m.querySelector('.zg-lista');
+        lista.innerHTML = '';
+        const cab = {interfaces: ['Interface', 'Entrada', 'Saída'], opticos: ['Interface', 'RX (pior)', 'TX'], cpu: ['Item', 'Atual', '']}[ZG.aba];
+        const cabEl = document.createElement('div');
+        cabEl.className = 'zg-linha zg-cab';
+        cab.forEach((t) => { const s = document.createElement('span'); s.textContent = t; cabEl.appendChild(s); });
+        lista.appendChild(cabEl);
+
+        linhas.forEach((l) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'zg-linha' + (ZG.sel && ZG.sel.chave === l.chave ? ' ativo' : '');
+            [[l.nome, ''], [l.v1, l.c1 || ''], [l.v2, l.c2 || '']].forEach(([t, c]) => {
+                const s = document.createElement('span');
+                s.textContent = t;
+                if (c) s.className = c;
+                b.appendChild(s);
+            });
+            b.addEventListener('click', () => { ZG.sel = l; zgRender(false); zgPlotar(); });
+            lista.appendChild(b);
+        });
+        if (!linhas.length) {
+            const vazio = document.createElement('div');
+            vazio.className = 'zg-cab';
+            vazio.style.padding = '10px';
+            vazio.textContent = {interfaces: 'Nenhuma interface com tráfego neste host.',
+                                 opticos: 'Nenhum sinal óptico com leitura neste host.',
+                                 cpu: 'Nenhum item de CPU neste host.'}[ZG.aba];
+            lista.appendChild(vazio);
+        }
+        if (selecionarPrimeiro) {
+            ZG.sel = linhas[0] || null;
+            if (ZG.sel) lista.querySelectorAll('.zg-linha')[1].classList.add('ativo');
+            zgPlotar();
+        }
+    }
+
+    async function zgGarantirChart() {
+        if (window.Chart) return;
+        await new Promise((ok, falha) => {
+            const s = document.createElement('script');
+            s.src = '/static/js/chart.umd.min.js';
+            s.onload = ok;
+            s.onerror = () => falha(new Error('Não foi possível carregar a biblioteca de gráficos.'));
+            document.head.appendChild(s);
+        });
+    }
+
+    async function zgPlotar() {
+        const meu = ++ZG.pedido;
+        if (ZG.chart) { ZG.chart.destroy(); ZG.chart = null; }
+        if (!ZG.sel) { zgMsg('Selecione um item na lista.'); return; }
+        zgMsg('Carregando histórico…');
+        try {
+            await zgGarantirChart();
+            const url = `{% url 'monitoramento:zabbix_vinculos_historico' %}?acesso_id=${ZG.acesso}` +
+                        `&itemids=${ZG.sel.itens.join(',')}&periodo=${ZG.periodo}`;
+            const data = await zbxJson(url);
+            if (meu !== ZG.pedido) return;
+            if (data.error) throw new Error(data.error);
+            const series = data.series.filter((s) => s.pontos.length);
+            if (!series.length) { zgMsg('Sem dados neste período (o Zabbix pode não guardar histórico desse item).'); return; }
+
+            const optico = ZG.aba === 'opticos';
+            const bps = series.every((s) => s.units === 'bps');
+            const fmt = bps ? zgBps : (optico ? zgDbm : (v) => `${v.toFixed(1)}%`);
+            const datasets = series.map((s, i) => {
+                let rotulo = s.name;
+                if (bps) rotulo = /received|in\b|entrada/i.test(s.name) ? 'Entrada' : (/sent|out\b|sa[ií]da/i.test(s.name) ? 'Saída' : s.name);
+                else if (optico) rotulo = s.name.includes(':') ? s.name.split(':').pop().trim() : s.name;
+                return {
+                    label: rotulo, borderColor: ZG_CORES[i % ZG_CORES.length], backgroundColor: ZG_CORES[i % ZG_CORES.length] + '22',
+                    data: s.pontos.map((p) => ({x: p.t * 1000, y: optico ? zgParaDbm(p.v, s.units) : p.v})),
+                    borderWidth: 1.5, pointRadius: 0, tension: .25, fill: bps, spanGaps: true,
+                };
+            });
+            zgMsg('');
+            const curto = ['1h', '6h', '24h'].includes(ZG.periodo);
+            const fmtT = (ms) => new Date(ms).toLocaleString('pt-BR', curto ? {hour: '2-digit', minute: '2-digit'} : {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'});
+            ZG.chart = new Chart(zgModal().querySelector('.zg-grafico canvas'), {
+                type: 'line',
+                data: {datasets},
+                options: {
+                    animation: false, responsive: true, maintainAspectRatio: false, parsing: false,
+                    interaction: {mode: 'nearest', axis: 'x', intersect: false},
+                    plugins: {
+                        legend: {labels: {color: '#8b949e', boxWidth: 10, font: {size: 11}}},
+                        tooltip: {callbacks: {title: (it) => it.length ? fmtT(it[0].parsed.x) : '',
+                                              label: (c) => ` ${c.dataset.label}: ${fmt(c.parsed.y)}`}},
+                    },
+                    scales: {
+                        x: {type: 'linear', ticks: {color: '#8b949e', maxTicksLimit: 8, callback: (v) => fmtT(v)}, grid: {color: 'rgba(139,148,158,.12)'}},
+                        y: {beginAtZero: bps || ZG.aba === 'cpu', ticks: {color: '#8b949e', callback: (v) => fmt(v)}, grid: {color: 'rgba(139,148,158,.12)'}},
+                    },
+                },
+            });
+        } catch (e) {
+            if (meu === ZG.pedido) zgMsg(e.message);
+        }
+    }
+
+    async function abrirGraficosZabbix(acessoId, tipo) {
+        const m = zgModal();
+        ZG.acesso = acessoId;
+        ZG.dados = null;
+        ZG.aba = 'interfaces';
+        ZG.sel = null;
+        m.querySelector('.zg-host').textContent = 'Carregando…';
+        m.querySelector('.zg-sub').textContent = tipo;
+        m.querySelector('.zg-lista').innerHTML = '';
+        m.querySelector('.zg-busca').value = '';
+        m.querySelector('.zg-todos').checked = false;
+        zgMsg('Buscando itens do host no Zabbix…');
+        zgMarcar();
+        m.style.display = 'flex';
+        try {
+            const d = await zbxJson(`{% url 'monitoramento:zabbix_vinculos_itens' %}?acesso_id=${acessoId}`);
+            if (d.error) throw new Error(d.error);
+            if (ZG.acesso !== acessoId) return;
+            ZG.dados = d;
+            m.querySelector('.zg-host').textContent = d.host;
+            const up = d.uptime && d.uptime.valor ? ` · uptime ${zbxDuracao(d.uptime.valor)}` : '';
+            m.querySelector('.zg-sub').textContent = `${tipo}${up}`;
+            // Abre na aba que tiver conteúdo
+            if (!d.interfaces.length && d.opticos.some((g) => !g.vazio)) ZG.aba = 'opticos';
+            zgRender();
+        } catch (e) {
+            m.querySelector('.zg-host').textContent = 'Gráficos do Zabbix';
+            zgMsg(e.message);
+        }
     }
 
     document.addEventListener('DOMContentLoaded', () => {

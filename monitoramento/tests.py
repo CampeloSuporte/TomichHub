@@ -134,3 +134,101 @@ class StatusEDefinirTest(_Base):
                 with self.assertRaises(ZabbixIndisponivel):
                     vz.hosts_do_cliente(self.cliente.id, usar_cache=False)
         rc.assert_called_once()
+
+
+def _it(itemid, key, name, units='', lastvalue='0', value_type='3'):
+    return {'itemid': itemid, 'key_': key, 'name': name, 'units': units,
+            'lastvalue': lastvalue, 'value_type': value_type}
+
+
+class MetricasClassificacaoTest(TestCase):
+    """Casos tirados dos templates reais dos clientes (Huawei, Datacom,
+    MikroTik/Cisco via HOST-RESOURCES, Linux, OLT)."""
+    from monitoramento import zabbix_metricas as zm
+
+    def test_cpu_linux_ignora_tempos_parciais(self):
+        itens = [_it('1', 'system.cpu.util', 'Linux: CPU utilization', '%', '12'),
+                 _it('2', 'system.cpu.util[,guest]', 'Linux: CPU guest time', '%', '0'),
+                 _it('3', 'system.cpu.load[all,avg15]', 'Linux: Load average (15m avg)', '', '1.2'),
+                 _it('4', 'sensor.temp.value[x]', 'CPU: Temperature', '°C', '50')]
+        self.assertEqual([i['itemid'] for i in self.zm.escolher_cpu(itens)], ['1'])
+
+    def test_cpu_datacom_e_hrprocessorload_e_sem_fan(self):
+        dat = [_it('1', 'cpuLoadFiveMinutesActive[1.1.49]', 'CPU usage (last 5 minutes)', '%', '17'),
+               _it('2', 'cpuLoadFiveSecondsActive[1.1.49]', 'CPU usage (last 5 seconds)', '%', '30')]
+        self.assertEqual([i['itemid'] for i in self.zm.escolher_cpu(dat)], ['1'])
+        mk = [_it('1', 'system.cpu.util[hrProcessorLoad.1]', '#1: CPU utilization', '%'),
+              _it('2', 'system.cpu.util[hrProcessorLoad.2]', '#2: CPU utilization', '%')]
+        self.assertEqual(len(self.zm.escolher_cpu(mk)), 2)
+        olt = [_it('1', 'cpu.system', 'Cpu System', '%', '21'), _it('2', 'fan.duty[1]', 'Fan 1 Duty Cycle', '%', '54')]
+        self.assertEqual([i['itemid'] for i in self.zm.escolher_cpu(olt)], ['1'])
+
+    def test_uptime_prefere_item_com_valor(self):
+        # Huawei VRP: hrSystemUptime vem 0, sysUpTime é o que vale
+        itens = [_it('1', 'system.hw.uptime[hrSystemUptime.0]', 'Uptime (hardware)', 'uptime', '0'),
+                 _it('2', 'system.net.uptime[sysUpTime.0]', 'Uptime (network)', 'uptime', '3274837'),
+                 _it('3', 'mpls.ldp.uptime', 'MPLS LDP Uptime', 's', '999')]
+        self.assertEqual(self.zm.escolher_uptime(itens)['itemid'], '2')
+        self.assertIsNone(self.zm.escolher_uptime([_it('1', 'datacom.uptime', 'System Uptime', '', '123')]))
+
+    def test_interfaces_pareia_entrada_e_saida(self):
+        itens = [_it('1', 'net.if.in[ifHCInOctets.5]', 'Interface 100GE0/0/1(LINK): Bits received', 'bps'),
+                 _it('2', 'net.if.out[ifHCOutOctets.5]', 'Interface 100GE0/0/1(LINK): Bits sent', 'bps'),
+                 _it('3', 'net.if.in.errors[ifInErrors.5]', 'Interface 100GE0/0/1(LINK): Inbound packets with errors')]
+        g = self.zm.interfaces(itens)
+        self.assertEqual(len(g), 1)
+        self.assertEqual((g[0]['nome'], g[0]['in']['itemid'], g[0]['out']['itemid']), ('100GE0/0/1(LINK)', '1', '2'))
+
+    def test_opticos_multilane_usa_media_e_porta_vazia(self):
+        itens = [_it('1', 'hwEntityOpticalLaneRxPowerMLLane0[100GE0/0/1]', 'Optical Module Interface 100GE0/0/1: RxPower Lane0', 'dBm', '-30'),
+                 _it('2', 'calculado.multilane.avg.rx.[1]', 'Optical Module Interface 100GE0/0/1: RxPower Avg Lane1-4', 'dBm', '-31.4'),
+                 _it('3', 'calculado.multilane.avg.tx.[1]', 'Optical Module Interface 100GE0/0/1: TxPower Avg Lane1-4', 'dBm', '5.4'),
+                 _it('4', 'huawei.sfp.rx[GE0/0/9]', 'SFP GE0/0/9 RX Power', 'dBm', '0'),
+                 _it('5', 'huawei.sfp.tx[GE0/0/9]', 'SFP GE0/0/9 TX Power', 'dBm', '0')]
+        g = {x['interface']: x for x in self.zm.opticos(itens)}
+        self.assertEqual({m['item']['itemid'] for m in g['100GE0/0/1']['itens']}, {'2', '3'})
+        self.assertFalse(g['100GE0/0/1']['vazio'])
+        self.assertTrue(g['GE0/0/9']['vazio'])
+
+    def test_opticos_em_microwatt_e_sem_unidade(self):
+        self.assertAlmostEqual(self.zm.para_dbm('1000', 'uW'), 0.0)
+        self.assertAlmostEqual(self.zm.para_dbm('100', 'uW'), -10.0)
+        dat = [_it('1', 'datacom.sfp.ge_1_1_5.rx', 'SFP GE1/1/5 RX Power', '', '-1.56')]
+        self.assertEqual(self.zm.opticos(dat)[0]['interface'], 'GE1/1/5')
+
+
+class GraficosTest(_Base):
+    ITENS = [_it('11', 'net.if.in[x.1]', 'Interface ge1: Bits received', 'bps', '100'),
+             _it('12', 'net.if.out[x.1]', 'Interface ge1: Bits sent', 'bps', '50'),
+             _it('13', 'system.cpu.util', 'CPU utilization', '%', '7')]
+
+    def setUp(self):
+        super().setUp()
+        self.a = self.acesso('BNG', '10.0.0.1')
+        vz.sincronizar(self.cliente.id)
+        p = mock.patch('monitoramento.services._rpc', return_value=self.ITENS)
+        p.start()
+        mock.patch('monitoramento.services._get_auth_token', return_value='t').start()
+
+    def test_itens_e_historico_so_do_host_vinculado(self):
+        d = vz.itens_graficos(self.a)
+        self.assertEqual(d['interfaces'][0]['itens'], ['11', '12'])
+        self.assertEqual(d['cpu'][0]['itemid'], '13')
+        with mock.patch('monitoramento.services.historico_janela', return_value={'pontos': []}) as h:
+            vz.historico_graficos(self.a, ['11', '999', '12'], '24h')
+        self.assertEqual([c.args[1] for c in h.call_args_list], ['11', '12'])
+        with self.assertRaises(ValueError):
+            vz.historico_graficos(self.a, ['999'], '6h')
+
+    def test_acesso_sem_vinculo_nao_tem_grafico(self):
+        outro = self.acesso('SEM', '10.7.7.7')
+        with self.assertRaises(ValueError):
+            vz.itens_graficos(outro)
+
+    def test_status_traz_cpu_e_uptime(self):
+        itens = [dict(_it('21', 'system.cpu.util', 'CPU utilization', '%', '42.5'), hostid='101'),
+                 dict(_it('22', 'system.uptime', 'System uptime', 'uptime', '86400'), hostid='101')]
+        with mock.patch('monitoramento.services._rpc', return_value=itens), \
+             mock.patch('monitoramento.services.status_nodes', return_value={'101': 'up'}):
+            st = vz.status_cliente(self.cliente.id)[str(self.a.id)]
+        self.assertEqual((st['cpu'], st['uptime']), (42.5, 86400))
