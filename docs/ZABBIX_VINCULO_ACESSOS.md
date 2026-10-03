@@ -102,6 +102,46 @@ histórico de itens do host vinculado ao acesso pedido.
 Rotas: `zabbix/vinculos/itens/?acesso_id=` e
 `zabbix/vinculos/historico/?acesso_id=&itemids=1,2&periodo=1h|6h|24h|7d|30d`.
 
+## Cadastrar no Zabbix (acesso que não casou pelo IP)
+
+Botão **Cadastrar** na linha Zabbix do card sem vínculo (e "Cadastrar no Zabbix"
+no seletor de host). Só para quem edita acessos. Abre uma prévia — nada é
+escrito no Zabbix até confirmar. `monitoramento/zabbix_cadastro.py`:
+
+**Templates** (o "padrão" é o que o próprio cliente já usa):
+1. Mesmo conjunto dos hosts vinculados a acessos **do mesmo modelo**.
+2. Mesmo conjunto dos hosts do **mesmo fabricante e mesma função** (BRAS com BRAS).
+3. **Template oficial do modelo** lido do backup (`# model = CCR1009-7G-1C-1S+` →
+   "MikroTik CCR1009-7G-1C-1S+ by SNMP") + complementos que ≥50% dos vizinhos do
+   fabricante usam e que não são "by SNMP" (ex.: "Template Sinal SFP Mikrotik - BEE").
+4. Template oficial genérico do fabricante ("Huawei VRP by SNMP") — antes de copiar
+   vizinho do fabricante de **outra** função (templates de switch S57xx num BRAS).
+5. Vizinhos do fabricante; por fim "Generic by SNMP"/ICMP.
+
+Se o conjunto copiado traz o template oficial de outro modelo (vizinho com
+RB3011 num CCR1009), ele é trocado pelo do modelo deste equipamento.
+
+**Grupos**: dos mesmos vizinhos (modelo → fabricante+função → fabricante); sem
+vizinho, grupo com o nome do fabricante. **Proxy**: o mais comum nos vizinhos.
+
+**SNMP**: versão/community dos vizinhos, conferida com o backup do equipamento:
+- RouterOS nos dois formatos de export (terse `/snmp community set ... name=X`, o
+  dos backups do CRM, e em bloco); `addresses=` restrito vira aviso.
+- Macro global (`{$SNMP_COMMUNITY}`) é resolvida: se o valor não é uma community do
+  equipamento, usa a do backup (caso real: macro `TOMICH`, equipamento `green-ro`).
+- Huawei guarda cifrada (`cipher`): usa a dos vizinhos, com aviso.
+- SNMPv3: só copiando de um host vizinho; as credenciais nunca vão ao navegador.
+
+**Criação** (`host.create`): nome técnico saneado e checado (não duplica), tag
+`crm_acesso_id`, proxy por `monitored_by`+`proxyid` (7.0+) ou `proxy_hostid`
+(5.0/6.x). Erro de permissão da API vira mensagem pedindo acesso de escrita ao
+grupo. O vínculo é gravado como manual, com `criado_no_zabbix_por/em`.
+
+A prévia avisa quando já existe host com o mesmo IP (oferece "Vincular a").
+
+Rotas: `zabbix/vinculos/cadastro/previa/?acesso_id=` (GET) e
+`zabbix/vinculos/cadastro/criar/` (POST JSON).
+
 ## Também corrigido
 
 `services.listar_hosts` tinha `limit: 300` e cortava hosts em Zabbix maiores
@@ -109,6 +149,4 @@ Rotas: `zabbix/vinculos/itens/?acesso_id=` e
 
 ## Próximas fases (não implementadas)
 
-- Cadastrar o host no Zabbix pela API (`host.create`), com template por
-  Função/Modelo, tag `crm_acesso_id` e Zabbix proxy.
 - Clientes sem Zabbix: SNMP pelo proxy SSH (exec de `snmpbulkget` no proxy).

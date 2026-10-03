@@ -162,6 +162,11 @@ class ZabbixHostVinculo(models.Model):
     zabbix_nome   = models.CharField(max_length=255, blank=True, default='')
     origem        = models.CharField(max_length=10, choices=ORIGEM_CHOICES, default='auto')
     atualizado_em = models.DateTimeField(auto_now=True)
+    # Preenchido quando o host foi criado no Zabbix pelo botão do card
+    criado_no_zabbix_por = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+    criado_no_zabbix_em = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name        = 'Vínculo Acesso ↔ host Zabbix'

@@ -137,6 +137,24 @@
         .zg-linha span + span { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: right; white-space: nowrap; }
         .zg-cab { color: #8b949e; font-size: 11px; }
         .zg-ok { color: #3fb950; } .zg-alerta { color: #d29922; } .zg-falha { color: #f85149; } .zg-mudo { color: #6e7681; }
+        .zc-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 14px; }
+        .zc-campo label { display: block; margin-bottom: 3px; color: #8b949e; font-size: 11px; }
+        .zc-campo input, .zc-campo select { width: 100%; background: #0d1117; color: #e6edf3; border-color: #30363d; }
+        .zc-secao { margin-top: 14px; }
+        .zc-secao > label { display: block; margin-bottom: 4px; color: #8b949e; font-size: 11px; }
+        .zc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+        .zc-chip {
+            display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px 2px 9px; border: 1px solid rgba(88, 166, 255, .35);
+            border-radius: 10px; background: rgba(88, 166, 255, .06); color: #e6edf3; font-size: 11px;
+        }
+        .zc-chip button { padding: 0 4px; border: none; background: none; color: #8b949e; line-height: 1; }
+        .zc-chip button:hover { color: #f85149; }
+        .zc-sugestoes { max-height: 160px; overflow: auto; border: 1px solid #30363d; border-radius: 6px; }
+        .zc-sugestoes:empty { display: none; }
+        .zc-sugestoes button { display: block; width: 100%; padding: 5px 9px; border: none; background: none; color: #e6edf3; font-size: 12px; text-align: left; }
+        .zc-sugestoes button:hover, .zc-sugestoes button:focus-visible { background: rgba(88, 166, 255, .08); outline: none; }
+        .zc-aviso { margin: 0 0 6px; padding: 7px 10px; border-left: 3px solid #d29922; border-radius: 4px; background: rgba(210, 153, 34, .08); color: #e6edf3; font-size: 12px; }
+        .zc-base { color: #8b949e; font-size: 12px; }
         .zbx-host-item {
             display: flex; justify-content: space-between; gap: 10px; width: 100%; padding: 7px 10px;
             border: 1px solid transparent; border-radius: 6px; background: none; color: #e6edf3; font-size: 12px; text-align: left;
@@ -559,7 +577,7 @@
                                         {% if zabbix_vinculo %}
                                         <div class="ac-linha ac-zbx-linha" data-zbx-acesso="{{ acesso.id }}" hidden>
                                             <span class="ac-rotulo">Zabbix</span>
-                                            <span class="ac-valor ac-texto"><button type="button" class="ac-zbx vazio" onclick="clicarHostZabbix(this, {{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"><span class="ac-zbx-ponto"></span><span class="ac-zbx-nome">não vinculado</span></button><button type="button" class="ac-zbx-grafico" hidden title="Gráficos de interfaces, sinal óptico e CPU" onclick="abrirGraficosZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"><i class="fas fa-chart-line"></i> Gráficos</button>{% if not acessos_somente_leitura %}<button type="button" class="ac-zbx-editar" title="Trocar o host do Zabbix" aria-label="Trocar o host do Zabbix" onclick="abrirVinculoZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"><i class="fas fa-pen"></i></button>{% endif %}</span>
+                                            <span class="ac-valor ac-texto"><button type="button" class="ac-zbx vazio" onclick="clicarHostZabbix(this, {{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"><span class="ac-zbx-ponto"></span><span class="ac-zbx-nome">não vinculado</span></button><button type="button" class="ac-zbx-grafico" hidden title="Gráficos de interfaces, sinal óptico e CPU" onclick="abrirGraficosZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"><i class="fas fa-chart-line"></i> Gráficos</button>{% if not acessos_somente_leitura %}<button type="button" class="ac-zbx-grafico ac-zbx-cadastrar" hidden title="Criar este host no Zabbix do cliente com o template padrão do equipamento" onclick="abrirCadastroZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"><i class="fas fa-plus"></i> Cadastrar</button><button type="button" class="ac-zbx-editar" title="Trocar o host do Zabbix" aria-label="Trocar o host do Zabbix" onclick="abrirVinculoZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"><i class="fas fa-pen"></i></button>{% endif %}</span>
                                         </div>
                                         <div class="ac-linha ac-zbx-cpu" hidden>
                                             <span class="ac-rotulo">CPU</span>
@@ -7062,8 +7080,10 @@ function getCsrfToken(){
             linha.hidden = false;
             const card = linha.closest('.card');
             const vinculado = !!(v && v.hostid);
-            linha.querySelector('.ac-zbx-grafico').hidden = !vinculado;
+            linha.querySelector('.ac-zbx-grafico:not(.ac-zbx-cadastrar)').hidden = !vinculado;
             linha.dataset.vinculado = vinculado ? '1' : '';
+            const cad = linha.querySelector('.ac-zbx-cadastrar');
+            if (cad) cad.hidden = vinculado;
             const lCpu = card.querySelector('.ac-zbx-cpu');
             const lUp = card.querySelector('.ac-zbx-uptime');
             lCpu.hidden = !(vinculado && v.cpu != null);
@@ -7168,6 +7188,7 @@ function getCsrfToken(){
               <div style="display:flex;gap:8px;">
                 <button type="button" class="btn btn-sm btn-outline-secondary zbx-m-auto" title="Esquece a escolha manual; o casamento pelo IP decide">Automático (IP)</button>
                 <button type="button" class="btn btn-sm btn-outline-secondary zbx-m-nenhum" title="Este host não é monitorado no Zabbix">Não monitorado</button>
+                <button type="button" class="btn btn-sm btn-outline-primary zbx-m-cadastrar" title="Criar o host no Zabbix do cliente">Cadastrar no Zabbix</button>
               </div>
               <button type="button" class="btn btn-sm btn-secondary zbx-m-fechar">Fechar</button>
             </div>
@@ -7216,6 +7237,7 @@ function getCsrfToken(){
         };
         m.querySelector('.zbx-m-auto').onclick = () => salvar('auto');
         m.querySelector('.zbx-m-nenhum').onclick = () => salvar('nenhum');
+        m.querySelector('.zbx-m-cadastrar').onclick = () => { m.style.display = 'none'; abrirCadastroZabbix(acessoId, tipo); };
 
         let hosts = [];
         try {
@@ -7525,6 +7547,209 @@ function getCsrfToken(){
         } catch (e) {
             m.querySelector('.zg-host').textContent = 'Gráficos do Zabbix';
             zgMsg(e.message);
+        }
+    }
+
+    // ── Cadastrar no Zabbix: para o acesso que não casou pelo IP. O servidor
+    // sugere template/grupo/SNMP a partir dos hosts parecidos que o cliente já
+    // tem e do backup do equipamento; aqui só se confere e ajusta.
+    const ZC = {acesso: null, tipo: '', previa: null, templates: [], grupos: []};
+
+    function zcEl(tag, attrs = {}, texto) {
+        const n = document.createElement(tag);
+        Object.entries(attrs).forEach(([k, v]) => { if (k === 'class') n.className = v; else n.setAttribute(k, v); });
+        if (texto !== undefined) n.textContent = texto;
+        return n;
+    }
+
+    function zcModal() {
+        let m = document.getElementById('zcModal');
+        if (m) return m;
+        m = zcEl('div', {id: 'zcModal', class: 'zg-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Cadastrar no Zabbix'});
+        m.innerHTML = `
+          <div class="zg-box" style="width:760px;height:auto;max-height:90vh;">
+            <div class="zg-topo">
+              <div class="zg-titulo"><b>Cadastrar no Zabbix</b><div class="zc-sub"></div></div>
+              <button type="button" class="btn btn-sm btn-secondary zc-fechar">Fechar</button>
+            </div>
+            <div class="zc-corpo" style="overflow:auto;padding:14px 18px;"></div>
+            <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid #30363d;">
+              <button type="button" class="btn btn-sm btn-secondary zc-cancelar">Cancelar</button>
+              <button type="button" class="btn btn-sm btn-primary zc-criar" disabled>Cadastrar no Zabbix</button>
+            </div>
+          </div>`;
+        document.body.appendChild(m);
+        const fechar = () => { m.style.display = 'none'; };
+        m.querySelector('.zc-fechar').addEventListener('click', fechar);
+        m.querySelector('.zc-cancelar').addEventListener('click', fechar);
+        m.addEventListener('click', (e) => { if (e.target === m) fechar(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && m.style.display !== 'none') fechar(); });
+        m.querySelector('.zc-criar').addEventListener('click', zcCriar);
+        return m;
+    }
+
+    // Seletor múltiplo com busca: chips do que está escolhido + lista filtrada
+    function zcSeletor(rotulo, opcoes, escolhidos) {
+        const secao = zcEl('div', {class: 'zc-secao'});
+        secao.appendChild(zcEl('label', {}, rotulo));
+        const chips = zcEl('div', {class: 'zc-chips'});
+        const busca = zcEl('input', {type: 'search', class: 'form-control form-control-sm', placeholder: 'Adicionar...', autocomplete: 'off'});
+        busca.style.cssText = 'background:#0d1117;color:#e6edf3;border-color:#30363d;margin-bottom:4px;';
+        const sug = zcEl('div', {class: 'zc-sugestoes'});
+        const nome = Object.fromEntries(opcoes.map((o) => [o.id, o.nome]));
+        const desenhar = () => {
+            chips.innerHTML = '';
+            escolhidos.forEach((id) => {
+                const c = zcEl('span', {class: 'zc-chip'}, nome[id] || id);
+                const x = zcEl('button', {type: 'button', 'aria-label': `Remover ${nome[id] || id}`}, '×');
+                x.addEventListener('click', () => { escolhidos.splice(escolhidos.indexOf(id), 1); desenhar(); });
+                c.appendChild(x);
+                chips.appendChild(c);
+            });
+            if (!escolhidos.length) chips.appendChild(zcEl('span', {class: 'zc-base'}, 'nenhum'));
+        };
+        busca.addEventListener('input', () => {
+            const t = busca.value.trim().toLowerCase();
+            sug.innerHTML = '';
+            if (!t) return;
+            opcoes.filter((o) => !escolhidos.includes(o.id) && o.nome.toLowerCase().includes(t)).slice(0, 40).forEach((o) => {
+                const b = zcEl('button', {type: 'button'}, o.nome);
+                b.addEventListener('click', () => { escolhidos.push(o.id); busca.value = ''; sug.innerHTML = ''; desenhar(); busca.focus(); });
+                sug.appendChild(b);
+            });
+        });
+        desenhar();
+        secao.append(chips, busca, sug);
+        return secao;
+    }
+
+    function zcCampo(rotulo, el) {
+        const c = zcEl('div', {class: 'zc-campo'});
+        c.appendChild(zcEl('label', {}, rotulo));
+        c.appendChild(el);
+        return c;
+    }
+
+    function zcInput(nome, valor, attrs = {}) {
+        return zcEl('input', Object.assign({class: 'form-control form-control-sm', name: nome, value: valor ?? '', autocomplete: 'off'}, attrs));
+    }
+
+    function zcRender() {
+        const m = zcModal();
+        const p = ZC.previa, s = p.sugestao;
+        const corpo = m.querySelector('.zc-corpo');
+        corpo.innerHTML = '';
+        m.querySelector('.zc-sub').textContent = [ZC.tipo, p.fabricante, p.modelo].filter(Boolean).join(' · ');
+
+        p.avisos.forEach((a) => corpo.appendChild(zcEl('p', {class: 'zc-aviso'}, a)));
+        if (p.mesmo_ip.length) {
+            const box = zcEl('div', {class: 'zc-aviso'});
+            box.appendChild(zcEl('div', {}, 'Hosts com este IP no Zabbix:'));
+            p.mesmo_ip.forEach((h) => {
+                const b = zcEl('button', {type: 'button', class: 'btn btn-sm btn-outline-secondary mt-1 me-1'}, `Vincular a ${h.nome}`);
+                b.addEventListener('click', async () => {
+                    try {
+                        await definirVinculoZabbix(ZC.acesso, 'host', h.hostid);
+                        m.style.display = 'none';
+                        await carregarStatusZabbix();
+                        uiToast('Vínculo salvo');
+                    } catch (e) { uiAlert({titulo: 'Vincular', msg: e.message, icone: 'fas fa-exclamation-triangle', iconeCor: '#e0a060'}); }
+                });
+                box.appendChild(b);
+            });
+            corpo.appendChild(box);
+        }
+
+        const campos = zcEl('div', {class: 'zc-campos'});
+        campos.append(
+            zcCampo('Nome visível', zcInput('nome', s.nome)),
+            zcCampo('Nome técnico (host)', zcInput('host', s.host)),
+            zcCampo('IP da interface SNMP', zcInput('ip', s.ip)),
+            zcCampo('Porta SNMP', zcInput('porta', s.porta, {inputmode: 'numeric'})),
+        );
+        const versao = zcEl('select', {class: 'form-select form-select-sm', name: 'snmp_versao'});
+        [['1', 'SNMPv1'], ['2', 'SNMPv2c']].concat(s.snmp_v3_de ? [['3', `SNMPv3 (copiado de ${s.snmp_v3_de.nome})`]] : [])
+            .forEach(([v, t]) => { const o = zcEl('option', {value: v}, t); if (v === s.snmp_versao) o.selected = true; versao.appendChild(o); });
+        const comm = zcInput('community', s.community, {list: 'zc-communities'});
+        const dl = zcEl('datalist', {id: 'zc-communities'});
+        p.communities_backup.forEach((c) => dl.appendChild(zcEl('option', {value: c})));
+        const campoComm = zcCampo('Community', comm);
+        campoComm.appendChild(dl);
+        const sincVersao = () => { campoComm.style.display = versao.value === '3' ? 'none' : ''; };
+        versao.addEventListener('change', sincVersao);
+        const proxy = zcEl('select', {class: 'form-select form-select-sm', name: 'proxy'});
+        proxy.appendChild(zcEl('option', {value: ''}, 'Servidor Zabbix (sem proxy)'));
+        p.opcoes.proxies.forEach((x) => { const o = zcEl('option', {value: x.id}, x.nome); if (x.id === s.proxy) o.selected = true; proxy.appendChild(o); });
+        campos.append(zcCampo('Versão SNMP', versao), campoComm, zcCampo('Monitorado por', proxy));
+        corpo.appendChild(campos);
+        sincVersao();
+
+        ZC.templates = [...s.templates];
+        ZC.grupos = [...s.grupos];
+        const secT = zcSeletor('Templates', p.opcoes.templates, ZC.templates);
+        if (p.base_templates) secT.insertBefore(zcEl('div', {class: 'zc-base', style: 'margin-bottom:6px;'}, `Sugestão: ${p.base_templates}.`), secT.children[1]);
+        corpo.append(secT, zcSeletor('Grupos de hosts', p.opcoes.grupos, ZC.grupos));
+        m.querySelector('.zc-criar').disabled = false;
+    }
+
+    async function abrirCadastroZabbix(acessoId, tipo) {
+        const m = zcModal();
+        ZC.acesso = acessoId;
+        ZC.tipo = tipo;
+        m.querySelector('.zc-sub').textContent = tipo;
+        const corpo = m.querySelector('.zc-corpo');
+        corpo.innerHTML = '';
+        corpo.appendChild(zcEl('div', {class: 'zc-base'}, 'Lendo o backup e os hosts parecidos no Zabbix do cliente…'));
+        m.querySelector('.zc-criar').disabled = true;
+        m.style.display = 'flex';
+        try {
+            const p = await zbxJson(`{% url 'monitoramento:zabbix_cadastro_previa' %}?acesso_id=${acessoId}`);
+            if (p.error) throw new Error(p.error);
+            if (ZC.acesso !== acessoId) return;
+            ZC.previa = p;
+            zcRender();
+        } catch (e) {
+            corpo.innerHTML = '';
+            corpo.appendChild(zcEl('p', {class: 'zc-aviso'}, e.message));
+        }
+    }
+
+    async function zcCriar() {
+        const m = zcModal();
+        const btn = m.querySelector('.zc-criar');
+        const v = (n) => (m.querySelector(`[name="${n}"]`) || {}).value || '';
+        const dados = {
+            acesso_id: ZC.acesso, nome: v('nome'), host: v('host'), ip: v('ip'), porta: v('porta'),
+            snmp_versao: v('snmp_versao'), community: v('community'), proxy: v('proxy'),
+            snmp_v3_de: ZC.previa.sugestao.snmp_v3_de ? ZC.previa.sugestao.snmp_v3_de.hostid : '',
+            templates: ZC.templates, grupos: ZC.grupos,
+        };
+        if (!dados.grupos.length) { uiAlert({titulo: 'Cadastrar no Zabbix', msg: 'Escolha pelo menos um grupo de hosts.', icone: 'fas fa-exclamation-triangle', iconeCor: '#e0a060'}); return; }
+        const nomesT = Object.fromEntries(ZC.previa.opcoes.templates.map((t) => [t.id, t.nome]));
+        const ok = await uiConfirm({
+            titulo: 'Criar host no Zabbix do cliente?',
+            msg: `${dados.nome} (${dados.ip}) com ${dados.templates.length ? dados.templates.map((t) => nomesT[t]).join(', ') : 'nenhum template'}.`,
+            btnLabel: 'Criar host', btnCor: '#3fb950', icone: 'fas fa-server', iconeCor: '#58a6ff',
+        });
+        if (!ok) return;
+        btn.disabled = true;
+        btn.textContent = 'Criando…';
+        try {
+            const r = await fetch(`{% url 'monitoramento:zabbix_cadastro_criar' %}`, {
+                method: 'POST', body: JSON.stringify(dados),
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest'},
+            });
+            const data = await r.json().catch(() => null);
+            if (!data) throw new Error('Sessão expirada ou sem permissão. Recarregue a página.');
+            if (!data.success) throw new Error(data.error || 'Falha ao criar o host.');
+            m.style.display = 'none';
+            uiToast(`Host criado no Zabbix: ${data.nome}`);
+            await carregarStatusZabbix();
+        } catch (e) {
+            uiAlert({titulo: 'Cadastrar no Zabbix', msg: e.message, icone: 'fas fa-exclamation-triangle', iconeCor: '#e0a060'});
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Cadastrar no Zabbix';
         }
     }
 

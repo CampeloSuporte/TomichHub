@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-03 (Acessos: cadastrar o host no Zabbix pelo card)
+
+### Adicionado
+
+- **Botão "Cadastrar" no card do acesso que não casou com nenhum host do Zabbix**: abre uma
+  prévia com template, grupos, SNMP e proxy sugeridos — o padrão que o cliente já usa em hosts do
+  mesmo modelo ou fabricante, ou o template oficial do modelo lido no backup (ex.: MikroTik
+  CCR1009 → "MikroTik CCR1009-7G-1C-1S+ by SNMP" + sinal SFP). A community é conferida no backup
+  do equipamento. Tudo editável antes de criar; o host criado já fica vinculado ao acesso.
+  Funciona do Zabbix 5.0 ao 7.4. Ver `docs/ZABBIX_VINCULO_ACESSOS.md` → "Cadastrar no Zabbix".
+
+---
+
 ## [Não publicado] — 2026-10-03 (Acessos: CPU, uptime e gráficos do Zabbix no card)
 
 ### Adicionado
