@@ -89,7 +89,7 @@ reais):
 | CPU | `%` (ou sem unidade com util/uso/load) e "cpu"/"processor"/`hwAvgDuty` no texto; prioriza `system.cpu.util` "CPU utilization" > 5 min > 1 min > outros > 5 s; várias placas → o card mostra a maior | Linux tem 20+ itens "CPU * time" (excluídos); OLT tem "Fan Duty Cycle" em `%`; Datacom usa `cpuLoad*`, MikroTik/Cisco `hrProcessorLoad` — "load" só é excluído como *load average* |
 | Uptime | unidade `uptime` ou `s`; `system.hw.uptime` > `system.uptime` > `sysUpTime` > outros; **prefere item com valor > 0** | Huawei VRP devolve 0 em `hrSystemUptime`; LDP/BGP/sessão excluídos; item sem unidade (centésimos? texto?) é ignorado |
 | Interfaces | `net.if.in[…]`/`net.if.out[…]` em `bps`, pareados pelo nome antes do ":" | `net.if.in.errors/discards` ficam de fora |
-| Óptico | unidade dBm/!dBm/µW/mW ou nome "RX/TX Power"; agrupado por interface; multilane com média calculada → só a média | µW convertido para dBm; porta sem módulo (tudo 0) fica oculta por padrão |
+| Óptico | unidade dBm/!dBm/µW/mW ou nome "RX/TX Power"; agrupado por interface (nome sem o sentido e sem o ramo/lane/canal, para RX e TX da mesma porta caírem juntos); multilane com média calculada → só a média | µW convertido para dBm; porta sem módulo (tudo 0) fica oculta por padrão; formatos: "RxPower Lane2", "Potência Recebida (RX) na Interface X - Ramo 1", "SFP X RX Power", "X: Rx Power", "Ch1" |
 
 Desempenho: a descoberta de quais itens são CPU/uptime de cada host é uma busca
 filtrada (`search` em chave/nome) guardada por 30 min; a cada 60s o status só

@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-03 (Gráficos: RX e TX da mesma interface numa linha)
+
+### Corrigido
+
+- **Sinal óptico listava RX e TX em linhas separadas** em templates como o Datacom ("Potência
+  Recebida (RX) na Interface hundred-gigabit-ethernet-1/1/1 - ... - Ramo 1"): agora cada interface é
+  uma linha com o pior RX e o TX, e o gráfico mostra as séries como "RX ramo 1", "TX ramo 1" (RX em
+  verdes, TX em azuis). Ex.: switch Datacom Reg Juína passou de 18 linhas para 3.
+
+---
+
 ## [Não publicado] — 2026-10-03 (Zabbix: status em 5.0/5.2, cadastro em dobro, confirmação escondida)
 
 ### Corrigido
