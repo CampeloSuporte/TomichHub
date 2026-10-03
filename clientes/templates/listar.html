@@ -121,12 +121,12 @@
             padding: 4px 10px; border: 1px solid #30363d; border-radius: 6px; background: none; color: #8b949e; font-size: 12px;
         }
         .zg-periodos button.ativo, .zg-abas button.ativo { border-color: #58a6ff; background: rgba(88, 166, 255, .1); color: #58a6ff; }
-        .zg-abas { padding: 10px 18px 0; }
+        .zg-abas { flex-wrap: wrap; align-items: center; padding: 10px 18px 0; }
         .zg-grafico { position: relative; height: 260px; margin: 10px 18px 0; }
         .zg-grafico-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #8b949e; font-size: 12px; text-align: center; }
-        .zg-filtros { display: flex; align-items: center; gap: 12px; padding: 10px 18px 6px; font-size: 12px; color: #8b949e; }
-        .zg-filtros input[type=search] { max-width: 260px; background: #0d1117; color: #e6edf3; border-color: #30363d; }
-        .zg-lista { flex: 1; overflow: auto; padding: 0 12px 12px; }
+        .zg-filtros { display: flex; align-items: center; gap: 12px; margin-left: auto; font-size: 12px; color: #8b949e; }
+        .zg-filtros input[type=search] { width: 240px; max-width: 100%; background: #0d1117; color: #e6edf3; border-color: #30363d; }
+        .zg-lista { flex: 1; overflow: auto; padding: 8px 12px 12px; }
         .zg-linha {
             display: grid; grid-template-columns: minmax(0, 1fr) 110px 110px; gap: 10px; align-items: center; width: 100%;
             padding: 7px 10px; border: 1px solid transparent; border-radius: 6px; background: none; color: #e6edf3; font-size: 12px; text-align: left;
@@ -7312,12 +7312,12 @@ function getCsrfToken(){
               <button type="button" data-aba="interfaces">Interfaces</button>
               <button type="button" data-aba="opticos">Sinal óptico</button>
               <button type="button" data-aba="cpu">CPU</button>
+              <div class="zg-filtros">
+                <input type="search" class="form-control form-control-sm zg-busca" placeholder="Filtrar por nome..." autocomplete="off">
+                <label class="d-flex align-items-center gap-1 mb-0"><input type="checkbox" class="zg-todos"> <span class="zg-todos-rotulo"></span></label>
+              </div>
             </div>
             <div class="zg-grafico"><canvas></canvas><div class="zg-grafico-msg"></div></div>
-            <div class="zg-filtros">
-              <input type="search" class="form-control form-control-sm zg-busca" placeholder="Filtrar por nome..." autocomplete="off">
-              <label class="d-flex align-items-center gap-1 mb-0"><input type="checkbox" class="zg-todos"> <span class="zg-todos-rotulo"></span></label>
-            </div>
             <div class="zg-lista"></div>
           </div>`;
         document.body.appendChild(m);
