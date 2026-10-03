@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-03 (Acessos: CPU, uptime e gráficos do Zabbix no card)
+
+### Adicionado
+
+- **CPU e uptime no card do acesso** vinculado a um host do Zabbix, e botão de **gráficos** na linha
+  Zabbix: tráfego das interfaces, sinal óptico (RX/TX em dBm, multilane pela média) e CPU, nos
+  períodos de 1h a 30 dias. Acesso sem host vinculado não mostra nada disso. Os itens são
+  reconhecidos por chave, nome e unidade, porque cada cliente usa um template (Huawei, Datacom,
+  MikroTik, Cisco, OLTs, Linux). Ver `docs/ZABBIX_VINCULO_ACESSOS.md` → "CPU, uptime e gráficos".
+
+---
+
 ## [Não publicado] — 2026-10-03 (Acessos: status do Zabbix no card)
 
 ### Adicionado

@@ -71,6 +71,35 @@ por IP: é o caso típico da escolha manual.
 | `zabbix/vinculos/sincronizar/` | POST | refaz os vínculos automáticos |
 | `zabbix/vinculos/definir/` | POST | `modo=host` (+`hostid`), `nenhum` ou `auto` |
 
+## CPU, uptime e gráficos (só com host vinculado)
+
+Com o acesso vinculado a um host, o card ganha as linhas **CPU** (barra; amarela
+≥70%, vermelha ≥90%) e **Uptime**, e um botão de gráfico na linha Zabbix. Sem
+vínculo, nada disso aparece. Host sem item de CPU ou de uptime no Zabbix
+também não mostra a linha correspondente.
+
+Os templates variam muito entre clientes, então `monitoramento/zabbix_metricas.py`
+escolhe os itens por chave + nome + unidade (funções puras, testadas com casos
+reais):
+
+| Métrica | Regra | Armadilhas reais |
+|---|---|---|
+| CPU | `%` (ou sem unidade com util/uso/load) e "cpu"/"processor"/`hwAvgDuty` no texto; prioriza `system.cpu.util` "CPU utilization" > 5 min > 1 min > outros > 5 s; várias placas → o card mostra a maior | Linux tem 20+ itens "CPU * time" (excluídos); OLT tem "Fan Duty Cycle" em `%`; Datacom usa `cpuLoad*`, MikroTik/Cisco `hrProcessorLoad` — "load" só é excluído como *load average* |
+| Uptime | unidade `uptime` ou `s`; `system.hw.uptime` > `system.uptime` > `sysUpTime` > outros; **prefere item com valor > 0** | Huawei VRP devolve 0 em `hrSystemUptime`; LDP/BGP/sessão excluídos; item sem unidade (centésimos? texto?) é ignorado |
+| Interfaces | `net.if.in[…]`/`net.if.out[…]` em `bps`, pareados pelo nome antes do ":" | `net.if.in.errors/discards` ficam de fora |
+| Óptico | unidade dBm/!dBm/µW/mW ou nome "RX/TX Power"; agrupado por interface; multilane com média calculada → só a média | µW convertido para dBm; porta sem módulo (tudo 0) fica oculta por padrão |
+
+Desempenho: a descoberta de quais itens são CPU/uptime de cada host é uma busca
+filtrada (`search` em chave/nome) guardada por 30 min; a cada 60s o status só
+lê o `lastvalue` desses itens. A janela de gráficos lista todos os itens do host
+(cache de 2 min) e busca o histórico **em série** — em paralelo as requisições
+disputam o mesmo túnel SSH do proxy e estouram o timeout de 15s (medido).
+Janelas acima de 3 dias usam `trends` (médias horárias). O servidor só devolve
+histórico de itens do host vinculado ao acesso pedido.
+
+Rotas: `zabbix/vinculos/itens/?acesso_id=` e
+`zabbix/vinculos/historico/?acesso_id=&itemids=1,2&periodo=1h|6h|24h|7d|30d`.
+
 ## Também corrigido
 
 `services.listar_hosts` tinha `limit: 300` e cortava hosts em Zabbix maiores

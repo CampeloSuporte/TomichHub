@@ -907,3 +907,51 @@ def vinculos_definir(request):
     except Exception as e:
         logger.warning("[ZBX-VINC] definir acesso %s: %s", acesso.id, e)
         return JsonResponse({'error': str(e)}, status=502)
+
+
+def _acesso_permitido(request, acesso_id):
+    from clientes.models import Acesso
+    acesso = Acesso.objects.filter(id=acesso_id).first()
+    if not acesso or not _pode_acessar_cliente(request, acesso.cliente_id):
+        return None
+    return acesso
+
+
+@login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
+def vinculos_itens(request):
+    """Interfaces, sinal óptico, CPU e uptime do host vinculado ao acesso."""
+    from . import vinculo_zabbix as vz
+
+    acesso = _acesso_permitido(request, request.GET.get('acesso_id'))
+    if not acesso:
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    try:
+        return JsonResponse(vz.itens_graficos(acesso))
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        logger.warning("[ZBX-VINC] itens acesso %s: %s", acesso.id, e)
+        return JsonResponse({'error': str(e)}, status=502)
+
+
+@login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
+def vinculos_historico(request):
+    """GET acesso_id, itemids=1,2,3, periodo=1h|6h|24h|7d|30d."""
+    from . import vinculo_zabbix as vz
+
+    acesso = _acesso_permitido(request, request.GET.get('acesso_id'))
+    if not acesso:
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    itemids = [i for i in (request.GET.get('itemids') or '').split(',') if i.strip().isdigit()]
+    periodo = request.GET.get('periodo') or '6h'
+    if periodo not in ('1h', '6h', '24h', '7d', '30d'):
+        periodo = '6h'
+    try:
+        return JsonResponse({'series': vz.historico_graficos(acesso, itemids, periodo)})
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        logger.warning("[ZBX-VINC] histórico acesso %s: %s", acesso.id, e)
+        return JsonResponse({'error': str(e)}, status=502)

@@ -26,6 +26,8 @@ urlpatterns = [
     path('zabbix/vinculos/hosts/',       views.vinculos_hosts,       name='zabbix_vinculos_hosts'),
     path('zabbix/vinculos/sincronizar/', views.vinculos_sincronizar, name='zabbix_vinculos_sincronizar'),
     path('zabbix/vinculos/definir/',     views.vinculos_definir,     name='zabbix_vinculos_definir'),
+    path('zabbix/vinculos/itens/',       views.vinculos_itens,       name='zabbix_vinculos_itens'),
+    path('zabbix/vinculos/historico/',   views.vinculos_historico,   name='zabbix_vinculos_historico'),
 
     # ── Topologias (CRUD) ────────────────────────────────────
     path('topologias/listar/',  views.listar_topologias,       name='topologias_listar'),
