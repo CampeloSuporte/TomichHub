@@ -142,3 +142,30 @@ class MonitorLink(models.Model):
 
     def __str__(self):
         return f"{self.node_origem.label} → {self.node_destino.label}"
+
+
+class ZabbixHostVinculo(models.Model):
+    """
+    Liga um Acesso do CRM a um host do Zabbix do cliente.
+
+    `origem='auto'` vem do casamento por IP (monitoramento/vinculo_zabbix.py)
+    e é refeito a cada sincronização. `origem='manual'` foi escolhido na tela
+    e o sincronismo nunca mexe nele — inclusive `zabbix_hostid=''` manual, que
+    significa "não monitorado no Zabbix, não tente casar de novo".
+    """
+    ORIGEM_CHOICES = [('auto', 'Automático (IP)'), ('manual', 'Manual')]
+
+    acesso = models.OneToOneField(
+        'clientes.Acesso', on_delete=models.CASCADE, related_name='zabbix_vinculo',
+    )
+    zabbix_hostid = models.CharField(max_length=50, blank=True, default='')
+    zabbix_nome   = models.CharField(max_length=255, blank=True, default='')
+    origem        = models.CharField(max_length=10, choices=ORIGEM_CHOICES, default='auto')
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name        = 'Vínculo Acesso ↔ host Zabbix'
+        verbose_name_plural = 'Vínculos Acesso ↔ host Zabbix'
+
+    def __str__(self):
+        return f"{self.acesso_id} → {self.zabbix_hostid or '(sem host)'} [{self.origem}]"

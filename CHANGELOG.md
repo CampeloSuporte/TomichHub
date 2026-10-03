@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-03 (Acessos: status do Zabbix no card)
+
+### Adicionado
+
+- **Linha "Zabbix" nos cards da aba Acessos**: o host do Zabbix do cliente é casado pelo IP do
+  acesso (todas as interfaces do host, IPv4 e IPv6) e o card mostra o status dele — disponível,
+  com alerta ou indisponível; a bolinha do card acompanha até alguém testar o Ping. Quando há
+  mais de um host no mesmo IP, desempata por nome idêntico; senão, escolhe-se o host na própria
+  linha (com busca por nome/IP), e essa escolha manual não é desfeita pelo sincronismo. Botão
+  **Sincronizar Zabbix** na barra da aba e sincronismo diário às 05:20. Funciona com Zabbix em
+  IP privado (túnel do proxy). Ver `docs/ZABBIX_VINCULO_ACESSOS.md`.
+
+### Corrigido
+
+- **Aba Monitoramento cortava a lista de hosts do Zabbix em 300**: cliente com 355 hosts não
+  via 55 deles no seletor da topologia.
+
+---
+
 ## [Não publicado] — 2026-10-01 (Agent NOC: comandos em MikroTik não executavam)
 
 ### Corrigido

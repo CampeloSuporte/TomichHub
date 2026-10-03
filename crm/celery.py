@@ -118,6 +118,12 @@ app.conf.beat_schedule = {
         'task': 'tarefas.tasks.gerar_rotinas_mensais',
         'schedule': crontab(minute=5),
     },
+    # Vínculo Acesso ↔ host Zabbix (status na aba Acessos). A aba também
+    # sincroniza sozinha se passar de 6h; aqui é o refresh de madrugada.
+    'monitoramento-sincronizar-vinculos-zabbix': {
+        'task': 'monitoramento.tasks.sincronizar_vinculos_zabbix',
+        'schedule': crontab(hour=5, minute=20),
+    },
 }
 
 app.conf.timezone = 'America/Sao_Paulo'

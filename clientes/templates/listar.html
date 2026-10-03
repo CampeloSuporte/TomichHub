@@ -82,6 +82,24 @@
         .ac-dot.ok { background: var(--green); }
         .ac-dot.alerta { background: var(--yellow); }
         .ac-dot.falha { background: var(--red); }
+        .ac-zbx {
+            display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 2px 4px;
+            border: none; border-radius: 3px; background: none; color: var(--text-light); font-size: 12px;
+        }
+        button.ac-zbx:hover, button.ac-zbx:focus-visible { background: rgba(88, 166, 255, .08); color: var(--cyan); outline: none; }
+        .ac-zbx-ponto { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: var(--border); }
+        .ac-zbx-ponto.up { background: var(--green); }
+        .ac-zbx-ponto.problem { background: var(--yellow); }
+        .ac-zbx-ponto.down, .ac-zbx-ponto.missing { background: var(--red); }
+        .ac-zbx-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+        .ac-zbx.vazio { color: var(--text-muted); }
+        .zbx-host-item {
+            display: flex; justify-content: space-between; gap: 10px; width: 100%; padding: 7px 10px;
+            border: 1px solid transparent; border-radius: 6px; background: none; color: #e6edf3; font-size: 12px; text-align: left;
+        }
+        .zbx-host-item:hover, .zbx-host-item:focus-visible { border-color: #30363d; background: rgba(88, 166, 255, .06); outline: none; }
+        .zbx-host-item.atual { border-color: rgba(63, 185, 80, .5); }
+        .zbx-host-item small { color: #8b949e; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: nowrap; }
         .ac-status { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
         .ac-bloco {
             display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0;
@@ -426,6 +444,12 @@
                        style="color: #a371f7; border-color: rgba(163,113,247,.4);">
                         <i class="fas fa-shield-halved me-1"></i> Auditoria do Cliente
                     </a>
+                    {% if zabbix_vinculo and not acessos_somente_leitura %}
+                    <button class="btn btn-sm btn-outline-secondary" id="btn-zbx-sincronizar" onclick="sincronizarZabbix(this)"
+                            title="Casar os hosts com o Zabbix do cliente pelo IP e atualizar o status">
+                        <i class="fas fa-rotate me-1"></i> Sincronizar Zabbix
+                    </button>
+                    {% endif %}
                 </div>
 
                 <!-- Container flat de resultados de busca -->
@@ -488,6 +512,12 @@
                                         </div>
                                     </div>
                                     <div class="ac-linhas">
+                                        {% if zabbix_vinculo %}
+                                        <div class="ac-linha ac-zbx-linha" data-zbx-acesso="{{ acesso.id }}" hidden>
+                                            <span class="ac-rotulo">Zabbix</span>
+                                            <span class="ac-valor ac-texto">{% if acessos_somente_leitura %}<span class="ac-zbx vazio">{% else %}<button type="button" class="ac-zbx vazio" title="Escolher o host do Zabbix" onclick="abrirVinculoZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')">{% endif %}<span class="ac-zbx-ponto"></span><span class="ac-zbx-nome">não vinculado</span>{% if acessos_somente_leitura %}</span>{% else %}</button>{% endif %}</span>
+                                        </div>
+                                        {% endif %}
                                         {% if not acessos_somente_leitura %}
                                         <div class="ac-linha">
                                             <span class="ac-rotulo">Usuário</span>
@@ -6925,6 +6955,7 @@ function getCsrfToken(){
             const oks = [data.responde, data.porta_aberta].filter((v) => v !== null);
             const estado = oks.every(Boolean) ? 'ok' : (oks.some(Boolean) ? 'alerta' : 'falha');
             dot.className = `ac-dot ${estado}`;
+            dot.dataset.origem = 'ping';
             dot.title = `Testado às ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}`;
         } catch (e) {
             marcar(ping, 'testar', 'ac-testar');
@@ -6934,6 +6965,221 @@ function getCsrfToken(){
             delete status.dataset.testando;
         }
     }
+
+    {% if zabbix_vinculo %}
+    // ── Zabbix nos cards: status do host vinculado (casado por IP ou escolhido
+    // à mão). Uma requisição por cliente, cache de 60s no servidor; só
+    // consulta com a aba visível e para de vez se a sessão expirar (o 302 do
+    // login vira HTML, não JSON).
+    const ZBX_CLIENTE = {{ cliente.id }};
+    const ZBX_ROTULO = {up: 'disponível', problem: 'com alerta', down: 'indisponível',
+                        unknown: 'sem dados', missing: 'host removido do Zabbix', ignorado: 'não monitorado'};
+    const ZBX_DOT = {up: 'ok', problem: 'alerta', down: 'falha', missing: 'falha'};
+    let zbxTimer = null, zbxParado = false;
+
+    async function zbxJson(url, opts) {
+        const r = await fetch(url, Object.assign({headers: {'X-Requested-With': 'XMLHttpRequest'}}, opts || {}));
+        const data = await r.json().catch(() => null);
+        if (!data) { zbxParado = true; throw new Error('Sessão expirada ou sem permissão. Recarregue a página.'); }
+        if (data.error && !('acessos' in data)) throw new Error(data.error);
+        return data;
+    }
+
+    function pintarZabbix(acessos) {
+        document.querySelectorAll('[data-zbx-acesso]').forEach((linha) => {
+            const v = acessos[linha.dataset.zbxAcesso];
+            const botao = linha.querySelector('.ac-zbx');
+            const ponto = linha.querySelector('.ac-zbx-ponto');
+            const nome = linha.querySelector('.ac-zbx-nome');
+            linha.hidden = false;
+            if (v && v.hostid) {
+                botao.classList.remove('vazio');
+                ponto.className = `ac-zbx-ponto ${v.status}`;
+                nome.textContent = v.nome || v.hostid;
+                botao.title = `${v.nome} — ${ZBX_ROTULO[v.status] || v.status}` +
+                              (v.origem === 'manual' ? ' (escolhido manualmente)' : ' (casado pelo IP)');
+            } else {
+                botao.classList.add('vazio');
+                ponto.className = 'ac-zbx-ponto';
+                nome.textContent = v ? 'não monitorado' : 'não vinculado';
+                botao.title = v ? 'Marcado como não monitorado no Zabbix' : 'Nenhum host do Zabbix com este IP';
+            }
+            // A bolinha do card mostra o Zabbix até alguém testar o ping
+            const dot = linha.closest('.card').querySelector('.ac-dot');
+            if (dot && dot.dataset.origem !== 'ping') {
+                const estado = v && v.hostid ? ZBX_DOT[v.status] : '';
+                dot.className = `ac-dot ${estado || ''}`;
+                dot.dataset.origem = estado ? 'zbx' : '';
+                dot.title = estado ? `Zabbix: ${ZBX_ROTULO[v.status]}` : 'Clique em Ping para testar';
+            }
+        });
+    }
+
+    async function carregarStatusZabbix() {
+        if (zbxParado || document.hidden) return;
+        const aba = document.getElementById('tab-acessos');
+        if (!aba || aba.style.display === 'none') return;
+        try {
+            const data = await zbxJson(`{% url 'monitoramento:zabbix_vinculos_status' %}?id=${ZBX_CLIENTE}`);
+            if (!data.zabbix) { zbxParado = true; return; }
+            pintarZabbix(data.acessos || {});
+            const btn = document.getElementById('btn-zbx-sincronizar');
+            if (btn) btn.title = data.error ? `Zabbix indisponível: ${data.error}` : 'Casar os hosts com o Zabbix do cliente pelo IP e atualizar o status';
+        } catch (e) { /* silencioso: o status do Zabbix é complemento do card */ }
+    }
+
+    async function sincronizarZabbix(btn) {
+        btn.disabled = true;
+        const icone = btn.querySelector('i');
+        icone.classList.add('fa-spin');
+        try {
+            const fd = new FormData();
+            fd.append('id', ZBX_CLIENTE);
+            const r = await fetch(`{% url 'monitoramento:zabbix_vinculos_sincronizar' %}`, {
+                method: 'POST', body: fd, headers: {'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest'},
+            });
+            const data = await r.json().catch(() => null);
+            if (!data) throw new Error('Sessão expirada ou sem permissão. Recarregue a página.');
+            if (!data.success) throw new Error(data.error || 'Falha ao sincronizar.');
+            const s = data.resumo;
+            let msg = `${s.vinculados} de ${s.acessos} hosts casados com os ${s.hosts} hosts do Zabbix.`;
+            if (s.manuais) msg += ` ${s.manuais} escolhidos manualmente (mantidos).`;
+            if (s.ambiguos.length) msg += ` ${s.ambiguos.length} com mais de um host no mesmo IP: ` +
+                s.ambiguos.map((a) => a.tipo).join(', ') + ' — escolha pela linha "Zabbix" do card.';
+            if (s.manuais_sem_host.length) msg += ` Escolha manual apontando para host que não existe mais: ` +
+                s.manuais_sem_host.map((a) => a.tipo).join(', ') + '.';
+            await uiAlert({titulo: 'Zabbix sincronizado', msg, icone: 'fas fa-check-circle', iconeCor: '#3fb950'});
+            await carregarStatusZabbix();
+        } catch (e) {
+            uiAlert({titulo: 'Sincronizar Zabbix', msg: e.message, icone: 'fas fa-exclamation-triangle', iconeCor: '#e0a060'});
+        } finally {
+            btn.disabled = false;
+            icone.classList.remove('fa-spin');
+        }
+    }
+
+    // Seletor de host: lista do Zabbix do cliente com busca por nome ou IP
+    function zbxModal() {
+        let m = document.getElementById('zbxVinculoModal');
+        if (m) return m;
+        m = document.createElement('div');
+        m.id = 'zbxVinculoModal';
+        m.setAttribute('role', 'dialog');
+        m.setAttribute('aria-modal', 'true');
+        m.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:100000;align-items:center;justify-content:center;';
+        m.innerHTML = `
+          <div style="background:#1c2128;border:1px solid #30363d;border-radius:10px;width:480px;max-width:94vw;max-height:80vh;display:flex;flex-direction:column;font-family:'Inter',sans-serif;">
+            <div style="padding:16px 18px 10px;">
+              <div style="font-size:.85rem;font-weight:600;color:#e6edf3;">Host do Zabbix</div>
+              <div class="zbx-m-sub" style="font-size:.75rem;color:#8b949e;margin-top:2px;"></div>
+              <input type="search" class="form-control form-control-sm zbx-m-busca mt-2" placeholder="Nome ou IP..." autocomplete="off"
+                     style="background:#0d1117;color:#e6edf3;border-color:#30363d;">
+            </div>
+            <div class="zbx-m-lista" style="overflow:auto;padding:0 12px;min-height:120px;flex:1;"></div>
+            <div style="display:flex;gap:8px;justify-content:space-between;padding:12px 18px;border-top:1px solid #30363d;">
+              <div style="display:flex;gap:8px;">
+                <button type="button" class="btn btn-sm btn-outline-secondary zbx-m-auto" title="Esquece a escolha manual; o casamento pelo IP decide">Automático (IP)</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary zbx-m-nenhum" title="Este host não é monitorado no Zabbix">Não monitorado</button>
+              </div>
+              <button type="button" class="btn btn-sm btn-secondary zbx-m-fechar">Fechar</button>
+            </div>
+          </div>`;
+        document.body.appendChild(m);
+        const fechar = () => { m.style.display = 'none'; };
+        m.querySelector('.zbx-m-fechar').addEventListener('click', fechar);
+        m.addEventListener('click', (e) => { if (e.target === m) fechar(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && m.style.display !== 'none') fechar(); });
+        return m;
+    }
+
+    async function definirVinculoZabbix(acessoId, modo, hostid) {
+        const fd = new FormData();
+        fd.append('acesso_id', acessoId);
+        fd.append('modo', modo);
+        if (hostid) fd.append('hostid', hostid);
+        const r = await fetch(`{% url 'monitoramento:zabbix_vinculos_definir' %}`, {
+            method: 'POST', body: fd, headers: {'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest'},
+        });
+        const data = await r.json().catch(() => null);
+        if (!data) throw new Error('Sessão expirada ou sem permissão. Recarregue a página.');
+        if (!data.success) throw new Error(data.error || 'Falha ao salvar.');
+    }
+
+    async function abrirVinculoZabbix(acessoId, tipo) {
+        const m = zbxModal();
+        const lista = m.querySelector('.zbx-m-lista');
+        const busca = m.querySelector('.zbx-m-busca');
+        m.querySelector('.zbx-m-sub').textContent = tipo;
+        lista.innerHTML = '<div style="color:#8b949e;font-size:12px;padding:10px;">Carregando hosts do Zabbix…</div>';
+        busca.value = '';
+        m.style.display = 'flex';
+        busca.focus();
+
+        const linhaAtual = document.querySelector(`[data-zbx-acesso="${acessoId}"] .ac-zbx-nome`);
+        const salvar = async (modo, hostid) => {
+            try {
+                await definirVinculoZabbix(acessoId, modo, hostid);
+                m.style.display = 'none';
+                await carregarStatusZabbix();
+                uiToast(modo === 'auto' ? 'Volta a casar pelo IP na próxima sincronização' : 'Vínculo salvo');
+            } catch (e) {
+                uiAlert({titulo: 'Host do Zabbix', msg: e.message, icone: 'fas fa-exclamation-triangle', iconeCor: '#e0a060'});
+            }
+        };
+        m.querySelector('.zbx-m-auto').onclick = () => salvar('auto');
+        m.querySelector('.zbx-m-nenhum').onclick = () => salvar('nenhum');
+
+        let hosts = [];
+        try {
+            const data = await zbxJson(`{% url 'monitoramento:zabbix_vinculos_hosts' %}?id=${ZBX_CLIENTE}`);
+            hosts = data.hosts || [];
+        } catch (e) {
+            lista.innerHTML = '';
+            const erro = document.createElement('div');
+            erro.style.cssText = 'color:#e0a060;font-size:12px;padding:10px;';
+            erro.textContent = e.message;
+            lista.appendChild(erro);
+            return;
+        }
+        const atual = linhaAtual ? linhaAtual.textContent : '';
+        const render = () => {
+            const t = busca.value.trim().toLowerCase();
+            lista.innerHTML = '';
+            const filtrados = hosts.filter((h) => !t || h.name.toLowerCase().includes(t) || h.ips.some((ip) => ip.includes(t)));
+            filtrados.slice(0, 200).forEach((h) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'zbx-host-item' + (h.name === atual ? ' atual' : '');
+                const n = document.createElement('span');
+                n.textContent = h.name;
+                const ip = document.createElement('small');
+                ip.textContent = h.ips.join(', ');
+                b.append(n, ip);
+                b.addEventListener('click', () => salvar('host', h.hostid));
+                lista.appendChild(b);
+            });
+            if (!filtrados.length) {
+                const vazio = document.createElement('div');
+                vazio.style.cssText = 'color:#8b949e;font-size:12px;padding:10px;';
+                vazio.textContent = 'Nenhum host encontrado.';
+                lista.appendChild(vazio);
+            } else if (filtrados.length > 200) {
+                const mais = document.createElement('div');
+                mais.style.cssText = 'color:#8b949e;font-size:11px;padding:8px 10px;';
+                mais.textContent = `Mostrando 200 de ${filtrados.length} — refine a busca.`;
+                lista.appendChild(mais);
+            }
+        };
+        busca.oninput = render;
+        render();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        carregarStatusZabbix();
+        zbxTimer = setInterval(carregarStatusZabbix, 60000);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) carregarStatusZabbix(); });
+    });
+    {% endif %}
 
     // "Acessar": sem protocolo extra nem Winbox abre direto como sempre; com
     // algum deles, escurece o card e mostra no meio dele as opções de acesso.
@@ -8525,6 +8771,9 @@ function getCsrfToken(){
         }
         if (nomeAba === 'topologia') {
             topoSubAba('editor');
+        }
+        if (nomeAba === 'acessos') {
+            if (typeof carregarStatusZabbix === 'function') carregarStatusZabbix();
         }
         if (nomeAba === 'tuneis') {
             if (typeof tovpnCarregarLista === 'function') tovpnCarregarLista();

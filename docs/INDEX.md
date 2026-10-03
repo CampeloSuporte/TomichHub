@@ -2,6 +2,22 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 58 — 03/10/2026: status do Zabbix nos cards de Acessos
+
+**O que foi implementado?**
+- 🔗 **Vínculo Acesso ↔ host Zabbix** casado pelo IP (todas as interfaces), com desempate por nome
+  idêntico e escolha manual que o sincronismo respeita.
+- 🟢 **Status no card** (disponível, alerta, indisponível) com cache de 60s e sincronismo diário.
+- 🐛 Aba Monitoramento listava no máximo 300 hosts do Zabbix.
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[ZABBIX_VINCULO_ACESSOS.md](ZABBIX_VINCULO_ACESSOS.md)** | Regras do casamento, sincronismo, desempenho, rotas |
+
+---
+
 ### Sessão 57 — 17/09/2026: HLD reutilizável, cenário TO-BE e Change Plan
 
 **O que foi implementado?**
