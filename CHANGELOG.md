@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-03 (Terminal: reconectar sem apagar o histórico)
+
+### Alterado
+
+- **Reconectar no terminal não apaga mais a tela**: o botão ↻ Reconectar (e o Ctrl+R) abre a nova
+  conexão mantendo todo o histórico de comandos e saídas; só aparece uma linha
+  "↻ Reconectando..." marcando onde começa a nova sessão. Vale também para o terminal em modal.
+
+---
+
 ## [Não publicado] — 2026-10-03 (Monitoramento: clonar gráfico)
 
 ### Adicionado

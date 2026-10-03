@@ -167,6 +167,12 @@ Em sessão compartilhada o aviso vai para todos os espectadores (`_broadcast_par
 frontend (`terminal.html`) apaga a bolinha de conectado da aba e escreve a linha em amarelo
 pedindo **↻ Reconectar**, em vez do vermelho de erro repetido.
 
+**Reconectar mantém o histórico.** `reconectarTerminalAtivo()` (`terminal.html`) e
+`reconectarTerminal()` (`modal_ssh_terminal.html`) fecham o WebSocket e abrem uma sessão SSH
+nova, mas **não** limpam o xterm: escrevem só a linha `↻ Reconectando...` e a saída da nova
+sessão continua embaixo, com a rolagem anterior preservada. Para apagar a tela continua
+existindo o botão de limpar.
+
 **Motivo da queda no log.** `_read_paramiko_shell` agora registra por que o loop terminou:
 `motivo=EOF — o outro lado fechou o canal`, `select falhou: …`, `recv falhou: …`,
 `canal já fechado` ou `parada solicitada`, mais `transporte_ativo=`. Sem isso o log só dizia
