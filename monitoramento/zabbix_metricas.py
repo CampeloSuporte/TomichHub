@@ -175,6 +175,22 @@ def _opt_interface(nome):
     return (n or nome), lane
 
 
+def com_descricao(opticos_lista, ifaces):
+    """Põe a descrição da porta no nome do sinal óptico. O template de tráfego
+    traz "XGigabitEthernet0/0/1(HUAWEI NE8000)"; o de módulo óptico, muitas
+    vezes só "XGigabitEthernet0/0/1"."""
+    desc = {}
+    for i in ifaces:
+        m = re.match(r'^(.*?)\((.+)\)\s*$', i['nome'])
+        if m:
+            desc.setdefault(m.group(1).strip().lower(), i['nome'])
+    for g in opticos_lista:
+        completo = desc.get(g['interface'].strip().lower())
+        if completo:
+            g['interface'] = completo
+    return opticos_lista
+
+
 def para_dbm(valor, units):
     """Converte para dBm (µW e mW → dBm). None se não der."""
     try:
@@ -217,7 +233,8 @@ def opticos(itens):
         medias = [m for m in membros if m['media']]
         principais = medias if medias else membros
         valores = [para_dbm(m['item'].get('lastvalue'), m['item'].get('units')) for m in principais]
-        vazio = all(v is None or v == 0 for v in valores)
+        # Sem módulo/leitura: 0 (Datacom, Huawei multilane) ou -0,01 (Huawei S67xx)
+        vazio = all(v is None or abs(v) < 0.05 for v in valores)
         saida.append({'interface': iface, 'itens': principais, 'todos': membros, 'vazio': vazio})
     return sorted(saida, key=lambda g: (g['vazio'], g['interface'].lower()))
 

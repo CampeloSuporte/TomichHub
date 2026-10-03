@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-03 (Gráficos: descrição da porta no sinal óptico)
+
+### Corrigido
+
+- **Sinal óptico sem a descrição da interface**: o template de módulo óptico costuma trazer só
+  "XGigabitEthernet0/0/1"; a descrição vem dos itens de tráfego e agora aparece também no óptico
+  ("XGigabitEthernet0/0/1(HUAWEI NE8000)"), inclusive no filtro por nome.
+- **Porta sem leitura aparecia como "-0,01 dBm" em verde** (Huawei S67xx devolve -0,01 em vez de
+  0): agora conta como sem leitura e fica oculta por padrão, como as de 0 dBm.
+
+---
+
 ## [Não publicado] — 2026-10-03 (Gráficos: RX e TX da mesma interface numa linha)
 
 ### Corrigido

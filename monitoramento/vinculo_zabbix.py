@@ -411,7 +411,7 @@ def itens_graficos(acesso) -> dict:
         })
 
     opts = []
-    for g in zm.opticos(itens):
+    for g in zm.com_descricao(zm.opticos(itens), zm.interfaces(itens)):
         opts.append({
             'interface': g['interface'], 'vazio': g['vazio'],
             'itens': [dict(_item_json(m['item']), sentido=m['sentido'], lane=m['lane'],
