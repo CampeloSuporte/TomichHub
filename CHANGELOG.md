@@ -15,6 +15,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   reconhecidos por chave, nome e unidade, porque cada cliente usa um template (Huawei, Datacom,
   MikroTik, Cisco, OLTs, Linux). Ver `docs/ZABBIX_VINCULO_ACESSOS.md` → "CPU, uptime e gráficos".
 
+### Corrigido
+
+- **Gráficos não eram encontrados no card**: o clique no nome do host abria o seletor de host e o
+  botão de gráfico era só um ícone apagado. Agora o nome do host vinculado abre os gráficos, há um
+  botão **Gráficos** com texto ao lado e a troca de host fica no lápis.
+
 ---
 
 ## [Não publicado] — 2026-10-03 (Acessos: status do Zabbix no card)
