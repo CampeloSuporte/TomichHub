@@ -94,6 +94,11 @@ def casar(acessos, hosts) -> dict:
     return resultado
 
 
+def eh_mikrotik(acesso) -> bool:
+    textos = ((acesso.modelo.fabricante if acesso.modelo else '') or '', acesso.tipo or '')
+    return any(k in t.lower() for t in textos for k in ('mikrotik', 'routeros'))
+
+
 def _nome_normalizado(texto: str) -> str:
     return re.sub(r'[^0-9A-Z]', '', (texto or '').upper())
 
@@ -243,7 +248,8 @@ def status_cliente(cliente_id) -> dict:
     if not cache.get(_ck('sync', cliente_id)):
         sincronizar(cliente_id)
 
-    vinculos = list(ZabbixHostVinculo.objects.filter(acesso__cliente_id=cliente_id))
+    vinculos = list(ZabbixHostVinculo.objects.filter(acesso__cliente_id=cliente_id)
+                    .select_related('acesso__modelo'))
     hostids  = sorted({v.zabbix_hostid for v in vinculos if v.zabbix_hostid})
     cfg      = _config(cliente_id) if hostids else None
     estados  = services.status_nodes(cfg, hostids) if hostids else {}
@@ -259,9 +265,13 @@ def status_cliente(cliente_id) -> dict:
             st = estados.get(v.zabbix_hostid, 'missing')
         else:
             st = 'ignorado'
-        resp[str(v.acesso_id)] = {'status': st, 'hostid': v.zabbix_hostid,
-                                  'nome': v.zabbix_nome, 'origem': v.origem,
-                                  **metricas.get(v.zabbix_hostid, {})}
+        dados = {'status': st, 'hostid': v.zabbix_hostid, 'nome': v.zabbix_nome, 'origem': v.origem,
+                 **metricas.get(v.zabbix_hostid, {})}
+        # MikroTik: os templates do Zabbix não têm voltagem; o card oferece criar o item
+        if (v.zabbix_hostid and 'volt' not in dados and not dados.get('volt_sem_leitura')
+                and eh_mikrotik(v.acesso)):
+            dados['volt_ativavel'] = True
+        resp[str(v.acesso_id)] = dados
     cache.set(ck, resp, _TTL_STATUS)
     return resp
 
@@ -271,8 +281,8 @@ def status_cliente(cliente_id) -> dict:
 # ──────────────────────────────────────────────────────────────
 
 _BUSCA_METRICAS = {
-    'key_': ['cpu', 'uptime', 'duty', 'processor', '1.3.6.1.2.1.1.3.0'],
-    'name': ['cpu', 'uptime', 'processador', 'processor'],
+    'key_': ['cpu', 'uptime', 'duty', 'processor', '1.3.6.1.2.1.1.3.0', 'volt'],
+    'name': ['cpu', 'uptime', 'processador', 'processor', 'volt', 'tens'],
 }
 
 
@@ -284,7 +294,7 @@ def _float(v):
 
 
 def _mapa_metricas(cfg, cliente_id, hostids) -> dict:
-    """{hostid: {'cpu': [itemids], 'uptime': itemid}} — descoberta cara (busca
+    """{hostid: {'cpu': [itemids], 'uptime': itemid, 'volt': [itemids]}} — descoberta cara (busca
     por nome/chave em todos os hosts), guardada por _TTL_METRICAS."""
     ck = _ck('metricas', cliente_id)
     mapa = cache.get(ck)
@@ -306,7 +316,8 @@ def _mapa_metricas(cfg, cliente_id, hostids) -> dict:
     for hid, its in por_host.items():
         up = zm.escolher_uptime(its)
         mapa[hid] = {'cpu': [it['itemid'] for it in zm.escolher_cpu(its)],
-                     'uptime': up['itemid'] if up else None}
+                     'uptime': up['itemid'] if up else None,
+                     'volt': [(it['itemid'], it.get('units', '')) for it in zm.escolher_voltagem(its)]}
     cache.set(ck, mapa, _TTL_METRICAS)
     return mapa
 
@@ -317,6 +328,7 @@ def _metricas(cfg, cliente_id, hostids) -> dict:
     mapa = _mapa_metricas(cfg, cliente_id, hostids)
     ids = [i for h in hostids for i in mapa.get(h, {}).get('cpu', [])]
     ids += [mapa[h]['uptime'] for h in hostids if mapa.get(h, {}).get('uptime')]
+    ids += [i for h in hostids for i, _ in mapa.get(h, {}).get('volt', [])]
     if not ids:
         return {}
     auth = services._get_auth_token(cfg)
@@ -334,6 +346,14 @@ def _metricas(cfg, cliente_id, hostids) -> dict:
         up = ultimos.get(m.get('uptime'))
         if up and up > 0:
             dados['uptime'] = int(up)
+        tensoes = [zm.volts(ultimos.get(i), u) for i, u in m.get('volt', [])]
+        tensoes = [t for t in tensoes if t is not None]
+        if tensoes:
+            dados['volt'] = round(tensoes[0], 1)
+            if len(tensoes) > 1:
+                dados['volts'] = [round(t, 1) for t in tensoes]
+        elif m.get('volt'):
+            dados['volt_sem_leitura'] = True
         if dados:
             saida[h] = dados
     return saida
@@ -396,6 +416,8 @@ def itens_graficos(acesso) -> dict:
         'host': v.zabbix_nome, 'hostid': v.zabbix_hostid,
         'interfaces': ifaces, 'opticos': opts,
         'cpu': [_item_json(i) for i in cpu],
+        'voltagem': [dict(_item_json(i), valor=zm.volts(i.get('lastvalue'), i.get('units')))
+                     for i in zm.escolher_voltagem(itens)],
         'uptime': _item_json(up) if up else None,
     }
 

@@ -189,3 +189,56 @@ def opticos(itens):
         vazio = all(v is None or v == 0 for v in valores)
         saida.append({'interface': iface, 'itens': principais, 'todos': membros, 'vazio': vazio})
     return sorted(saida, key=lambda g: (g['vazio'], g['interface'].lower()))
+
+
+# ── Voltagem do equipamento ──────────────────────────────────
+
+# Chave do item que o CRM cria em MikroTik (os templates do Zabbix não têm)
+CHAVE_VOLTAGEM_CRM = 'crm.voltagem[mtxrHlVoltage.0]'
+
+_VOLT_SIM = re.compile(r'volt|tens[aã]o', re.I)
+# Tensão de módulo óptico/porta PON não é a do equipamento; status/limites
+# são enumerações ou thresholds
+_VOLT_NAO = re.compile(
+    r'sfp|xfp|qsfp|optic|[oó]ptic|transceiver|lane|\bpon\b|gpon|epon|module|m[oó]dulo|'
+    r'threshold|limite|alarm|status|current|corrente|\bport\b|porta|interface',
+    re.I,
+)
+
+
+def _volt_score(it):
+    key, nome = it.get('key_', ''), it.get('name', '')
+    if key == CHAVE_VOLTAGEM_CRM:
+        return 100
+    texto = f'{key} {nome}'
+    if not _VOLT_SIM.search(texto) or _VOLT_NAO.search(texto):
+        return 0
+    if (it.get('units') or '').strip() not in ('V', 'v', 'mV'):
+        return 0
+    if int(it.get('value_type', 3)) not in (0, 3):
+        return 0
+    if re.search(r'input|entrada|psu|power supply|fonte|system|board|main', texto, re.I):
+        return 80
+    return 60
+
+
+def volts(valor, units):
+    """Valor em volts, ou None se não for uma leitura plausível de equipamento
+    (0 a 300 V — template de OLT Parks devolve 1195 para 11,95 V em 'V')."""
+    try:
+        v = float(valor)
+    except (TypeError, ValueError):
+        return None
+    if (units or '').strip() == 'mV':
+        v /= 1000
+    return v if 0 < v <= 300 else None
+
+
+def escolher_voltagem(itens):
+    """Itens de voltagem do equipamento, melhor tipo primeiro (várias fontes =
+    vários itens)."""
+    pontuados = [(s, it) for it in itens if (s := _volt_score(it))]
+    if not pontuados:
+        return []
+    melhor = max(s for s, _ in pontuados)
+    return [it for s, it in pontuados if s == melhor]
