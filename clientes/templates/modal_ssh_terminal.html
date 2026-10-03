@@ -413,7 +413,8 @@ function reconectarTerminal() {
     }
     
     terminalData.connected = false;
-    terminalData.terminal.clear();
+    // Mantém o histórico na tela: só marca onde começa a nova sessão.
+    terminalData.terminal.writeln('\r\n\x1b[36m↻ Reconectando...\x1b[0m\r\n');
     
     setTimeout(() => {
         conectar();

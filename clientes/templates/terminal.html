@@ -1705,7 +1705,8 @@
         tObj.connected = false; tObj.wsRetries = 0; tObj.hadSshError = false;
         const tab = document.getElementById(`tab-${id}`);
         if (tab) { const d = tab.querySelector('.terminal-tab-status'); if (d) d.classList.remove('connected'); }
-        tObj.terminal.clear();
+        // Mantém o histórico na tela: só marca onde começa a nova sessão.
+        tObj.terminal.writeln('\r\n\x1b[36m↻ Reconectando...\x1b[0m\r\n');
         setTimeout(() => terminalManager.conectarWebSocket(id), 500);
     }
 
