@@ -129,19 +129,50 @@ _OPT_UNIDADES = {'dbm', '!dbm', 'uw', '!uw', 'mw', '!mw'}
 _OPT_NOME = re.compile(r'(rx|tx)\s*_?power|(rx|tx)\s*pwr|pot[eê]ncia', re.I)
 
 
-def _opt_sentido(texto):
-    t = texto.lower()
-    if re.search(r'\brx|rxpower|rx\s*power|receb|recep', t):
+_SENTIDO_EXPLICITO = [
+    ('rx', re.compile(r'rx\s*_?(power|pwr)|\(rx\)|recebida|receive|recep[cç]', re.I)),
+    ('tx', re.compile(r'tx\s*_?(power|pwr)|\(tx\)|transmitida|transmit', re.I)),
+]
+_LANE = re.compile(r'[\s:,\-–]*\b(lane|ramo|canal|ch)\s*([\d][\d\-]*)', re.I)
+
+
+def _opt_sentido(nome, key=''):
+    """rx/tx pelo nome ("Potência Recebida (RX)", "Rx Power", "RxPower"); só
+    depois pela chave e por RX/TX soltos."""
+    for texto in (nome, key):
+        for sentido, rx in _SENTIDO_EXPLICITO:
+            if rx.search(texto):
+                return sentido
+    for texto in (nome, key):
+        m = re.search(r'(?<![A-Za-z0-9_])(rx|tx)(?![A-Za-z0-9_])', texto, re.I)
+        if m:
+            return m.group(1).lower()
+    # "Sinal Base" das OLTs: leitura de sinal sem sentido no nome — recebido
+    if re.search(r'\bsinal\b|\bsignal\b', nome, re.I):
         return 'rx'
-    if re.search(r'\btx|txpower|tx\s*power|transm', t):
-        return 'tx'
     return ''
 
 
 def _opt_interface(nome):
-    n = re.split(r'[:\-–]?\s*(rx|tx)\s*_?(power|pwr)', nome, maxsplit=1, flags=re.I)[0]
-    n = re.sub(r'^(optical module interface|interface|sfp|transceiver)\s+', '', n.strip(), flags=re.I)
-    return n.strip(' :-–') or nome
+    """(interface, lane) a partir do nome do item, sem o sentido nem o ramo —
+    RX e TX da mesma porta precisam dar a mesma interface. Formatos reais:
+    'Optical Module Interface 100GE0/0/1: RxPower Lane2',
+    'Potência Recebida (RX) na Interface hundred-gigabit-ethernet-1/1/1 - SW-X - Ramo 1',
+    'SFP GE1/1/5 RX Power', 'XGigabitEthernet0/0/1: Tx Power'."""
+    n = nome
+    lane = ''
+    m = _LANE.search(n)
+    if m:
+        lane = m.group(2)
+        n = n[:m.start()] + n[m.end():]
+    n = re.sub(r'pot[eê]ncia\s+(recebida|transmitida)\s*(\((rx|tx)\))?', ' ', n, flags=re.I)
+    n = re.sub(r'(rx|tx)\s*_?(power|pwr)', ' ', n, flags=re.I)
+    n = re.sub(r'\((rx|tx)\)|(?<![A-Za-z0-9])(rx|tx)(?![A-Za-z0-9_])', ' ', n, flags=re.I)
+    n = re.sub(r'\b(avg|m[eé]dia)\b', ' ', n, flags=re.I)
+    n = re.sub(r'^\s*(optical module interface|na interface|interface|sfp|transceiver)\b', ' ', n.strip(), flags=re.I)
+    n = re.sub(r'^\s*(na interface|interface)\b', ' ', n.strip(), flags=re.I)
+    n = re.sub(r'\s{2,}', ' ', n).strip(' :-–,')
+    return (n or nome), lane
 
 
 def para_dbm(valor, units):
@@ -170,14 +201,14 @@ def opticos(itens):
             continue
         if int(it.get('value_type', 3)) not in (0, 3):
             continue
-        sentido = _opt_sentido(texto)
+        sentido = _opt_sentido(nome, it.get('key_', ''))
         if not sentido:
             continue
-        lane = re.search(r'lane\s*([\d\-]+)|\bch\s*(\d+)', nome, re.I)
-        grupos.setdefault(_opt_interface(nome), []).append({
+        iface, lane = _opt_interface(nome)
+        grupos.setdefault(iface, []).append({
             'item': it, 'sentido': sentido,
             'media': bool(re.search(r'\bavg\b|m[eé]dia', nome, re.I)),
-            'lane': (lane.group(1) or lane.group(2)) if lane else '',
+            'lane': lane,
         })
 
     saida = []

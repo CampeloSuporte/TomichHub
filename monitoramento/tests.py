@@ -592,3 +592,26 @@ class CadastroDuploTest(_Base):
         with self.assertRaisesRegex(ValueError, 'já está vinculado'):
             zc.criar(a, CadastroParametrosTest.D)
         self.assertIsNone(cache.get(f'zbx_cad_trava:{a.id}'))
+
+
+class OpticoAgrupamentoTest(TestCase):
+    from monitoramento import zabbix_metricas as zm
+
+    def test_datacom_potencia_recebida_transmitida_por_ramo_numa_linha(self):
+        base = 'na Interface hundred-gigabit-ethernet-1/1/1 - SW-HU-JUINA - Ramo'
+        itens = [_it(str(i), f'k{i}', f'Potência {d} ({s}) {base} {r}', 'dBm', v)
+                 for i, (d, s, r, v) in enumerate([('Recebida', 'RX', 1, '-28.5'), ('Recebida', 'RX', 2, '-27.4'),
+                                                    ('Transmitida', 'TX', 1, '3.7'), ('Transmitida', 'TX', 2, '3.8')])]
+        g = self.zm.opticos(itens)
+        self.assertEqual(len(g), 1)
+        self.assertEqual(g[0]['interface'], 'hundred-gigabit-ethernet-1/1/1 - SW-HU-JUINA')
+        self.assertEqual(sorted((m['sentido'], m['lane']) for m in g[0]['itens']),
+                         [('rx', '1'), ('rx', '2'), ('tx', '1'), ('tx', '2')])
+
+    def test_outros_formatos_pareiam(self):
+        for rx, tx, iface in [('SFP GE1/1/5 RX Power', 'SFP GE1/1/5 TX Power', 'GE1/1/5'),
+                              ('XGigabitEthernet0/0/1: Rx Power', 'XGigabitEthernet0/0/1: Tx Power', 'XGigabitEthernet0/0/1'),
+                              ('SFP 100GE1/1/1 Ch1 RX Power', 'SFP 100GE1/1/1 Ch1 TX Power', '100GE1/1/1')]:
+            g = self.zm.opticos([_it('1', 'a', rx, 'dBm', '-5'), _it('2', 'b', tx, 'dBm', '1')])
+            self.assertEqual([x['interface'] for x in g], [iface], rx)
+        self.assertEqual(self.zm._opt_sentido('10giga-ethernet0/0(OLT-TX_M.SERRAT): Sinal Base'), 'rx')

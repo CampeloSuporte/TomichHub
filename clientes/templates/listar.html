@@ -7530,9 +7530,18 @@ function getCsrfToken(){
             const datasets = series.map((s, i) => {
                 let rotulo = s.name;
                 if (bps) rotulo = /received|in\b|entrada/i.test(s.name) ? 'Entrada' : (/sent|out\b|sa[ií]da/i.test(s.name) ? 'Saída' : s.name);
-                else if (optico) rotulo = s.name.includes(':') ? s.name.split(':').pop().trim() : s.name;
+                else if (optico) {
+                    // "RX ramo 1", "TX média" — a interface já está no título
+                    const it = (ZG.dados.opticos.find((g) => g.interface === ZG.sel.chave) || {itens: []})
+                        .itens.find((x) => String(x.itemid) === String(s.itemid));
+                    rotulo = it ? `${it.sentido.toUpperCase()}${it.lane ? ` ramo ${it.lane}` : ''}${/avg|m[eé]dia/i.test(it.nome) ? ' (média)' : ''}`
+                                : (s.name.includes(':') ? s.name.split(':').pop().trim() : s.name);
+                }
+                // Óptico: RX em verdes, TX em azuis, para ler os pares de relance
+                const cor = optico ? (/^RX/.test(rotulo) ? ['#3fb950', '#56d364', '#2ea043', '#7ee787'] : ['#58a6ff', '#79c0ff', '#388bfd', '#a5d6ff'])[i % 4]
+                                   : ZG_CORES[i % ZG_CORES.length];
                 return {
-                    label: rotulo, borderColor: ZG_CORES[i % ZG_CORES.length], backgroundColor: ZG_CORES[i % ZG_CORES.length] + '22',
+                    label: rotulo, borderColor: cor, backgroundColor: cor + '22',
                     data: s.pontos.map((p) => ({x: p.t * 1000, y: optico ? zgParaDbm(p.v, s.units) : p.v})),
                     borderWidth: 1.5, pointRadius: 0, tension: .25, fill: bps, spanGaps: true,
                 };
