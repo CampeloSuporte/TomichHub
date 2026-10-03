@@ -91,10 +91,17 @@
         .ac-zbx-ponto.up { background: var(--green); }
         .ac-zbx-ponto.problem { background: var(--yellow); }
         .ac-zbx-ponto.down, .ac-zbx-ponto.missing { background: var(--red); }
-        .ac-zbx-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+        .ac-zbx-nome { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 120px; }
         .ac-zbx.vazio { color: var(--text-muted); }
-        .ac-zbx-grafico { padding: 2px 5px; border: none; border-radius: 3px; background: none; color: var(--text-muted); font-size: 12px; }
-        .ac-zbx-grafico:hover, .ac-zbx-grafico:focus-visible { background: rgba(88, 166, 255, .08); color: var(--cyan); outline: none; }
+        .ac-zbx-grafico {
+            display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; padding: 2px 8px;
+            border: 1px solid rgba(88, 166, 255, .35); border-radius: 10px; background: rgba(88, 166, 255, .06);
+            color: var(--cyan); font-family: 'Inter', sans-serif; font-size: 11px; white-space: nowrap;
+        }
+        .ac-zbx-grafico[hidden] { display: none; }
+        .ac-zbx-grafico:hover, .ac-zbx-grafico:focus-visible { border-color: var(--cyan); background: rgba(88, 166, 255, .14); outline: none; }
+        .ac-zbx-editar { flex-shrink: 0; padding: 2px 4px; border: none; background: none; color: var(--text-muted); font-size: 11px; line-height: 1; }
+        .ac-zbx-editar:hover, .ac-zbx-editar:focus-visible { color: var(--cyan); outline: none; }
         .ac-cpu { display: inline-flex; align-items: center; gap: 8px; }
         .ac-cpu-barra { width: 56px; height: 4px; overflow: hidden; border-radius: 2px; background: var(--border); }
         .ac-cpu-barra span { display: block; height: 100%; background: var(--green); }
@@ -552,7 +559,7 @@
                                         {% if zabbix_vinculo %}
                                         <div class="ac-linha ac-zbx-linha" data-zbx-acesso="{{ acesso.id }}" hidden>
                                             <span class="ac-rotulo">Zabbix</span>
-                                            <span class="ac-valor ac-texto">{% if acessos_somente_leitura %}<span class="ac-zbx vazio">{% else %}<button type="button" class="ac-zbx vazio" title="Escolher o host do Zabbix" onclick="abrirVinculoZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')">{% endif %}<span class="ac-zbx-ponto"></span><span class="ac-zbx-nome">não vinculado</span>{% if acessos_somente_leitura %}</span>{% else %}</button>{% endif %}<button type="button" class="ac-zbx-grafico" hidden title="Gráficos de interfaces e sinal óptico" aria-label="Gráficos do Zabbix" onclick="abrirGraficosZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"><i class="fas fa-chart-line"></i></button></span>
+                                            <span class="ac-valor ac-texto"><button type="button" class="ac-zbx vazio" onclick="clicarHostZabbix(this, {{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"><span class="ac-zbx-ponto"></span><span class="ac-zbx-nome">não vinculado</span></button><button type="button" class="ac-zbx-grafico" hidden title="Gráficos de interfaces, sinal óptico e CPU" onclick="abrirGraficosZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"><i class="fas fa-chart-line"></i> Gráficos</button>{% if not acessos_somente_leitura %}<button type="button" class="ac-zbx-editar" title="Trocar o host do Zabbix" aria-label="Trocar o host do Zabbix" onclick="abrirVinculoZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}')"><i class="fas fa-pen"></i></button>{% endif %}</span>
                                         </div>
                                         <div class="ac-linha ac-zbx-cpu" hidden>
                                             <span class="ac-rotulo">CPU</span>
@@ -7022,6 +7029,15 @@ function getCsrfToken(){
     const ZBX_DOT = {up: 'ok', problem: 'alerta', down: 'falha', missing: 'falha'};
     let zbxTimer = null, zbxParado = false;
 
+    // Host vinculado: o clique no nome abre os gráficos (era o que se esperava;
+    // antes abria o seletor e o botão de gráfico passava despercebido).
+    // Sem vínculo: abre o seletor para escolher o host (quem pode editar).
+    function clicarHostZabbix(btn, acessoId, tipo) {
+        const linha = btn.closest('[data-zbx-acesso]');
+        if (linha.dataset.vinculado) abrirGraficosZabbix(acessoId, tipo);
+        else if (linha.querySelector('.ac-zbx-editar')) abrirVinculoZabbix(acessoId, tipo);
+    }
+
     function zbxDuracao(seg) {
         const d = Math.floor(seg / 86400), h = Math.floor((seg % 86400) / 3600), m = Math.floor((seg % 3600) / 60);
         if (d) return `${d}d ${h}h`;
@@ -7047,6 +7063,7 @@ function getCsrfToken(){
             const card = linha.closest('.card');
             const vinculado = !!(v && v.hostid);
             linha.querySelector('.ac-zbx-grafico').hidden = !vinculado;
+            linha.dataset.vinculado = vinculado ? '1' : '';
             const lCpu = card.querySelector('.ac-zbx-cpu');
             const lUp = card.querySelector('.ac-zbx-uptime');
             lCpu.hidden = !(vinculado && v.cpu != null);
@@ -7067,7 +7084,8 @@ function getCsrfToken(){
                 ponto.className = `ac-zbx-ponto ${v.status}`;
                 nome.textContent = v.nome || v.hostid;
                 botao.title = `${v.nome} — ${ZBX_ROTULO[v.status] || v.status}` +
-                              (v.origem === 'manual' ? ' (escolhido manualmente)' : ' (casado pelo IP)');
+                              (v.origem === 'manual' ? ' (escolhido manualmente)' : ' (casado pelo IP)') +
+                              '. Clique para ver os gráficos.';
             } else {
                 botao.classList.add('vazio');
                 ponto.className = 'ac-zbx-ponto';

@@ -74,7 +74,9 @@ por IP: é o caso típico da escolha manual.
 ## CPU, uptime e gráficos (só com host vinculado)
 
 Com o acesso vinculado a um host, o card ganha as linhas **CPU** (barra; amarela
-≥70%, vermelha ≥90%) e **Uptime**, e um botão de gráfico na linha Zabbix. Sem
+≥70%, vermelha ≥90%) e **Uptime**, e o botão **Gráficos** na linha Zabbix. Clicar
+no nome do host vinculado também abre os gráficos; trocar o host fica no lápis
+(sem vínculo, o clique no nome abre o seletor). Sem
 vínculo, nada disso aparece. Host sem item de CPU ou de uptime no Zabbix
 também não mostra a linha correspondente.
 
