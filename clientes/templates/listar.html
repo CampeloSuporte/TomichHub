@@ -103,6 +103,9 @@
         .ac-zbx-editar { flex-shrink: 0; padding: 2px 4px; border: none; background: none; color: var(--text-muted); font-size: 11px; line-height: 1; }
         .ac-zbx-editar:hover, .ac-zbx-editar:focus-visible { color: var(--cyan); outline: none; }
         .ac-cpu { display: inline-flex; align-items: center; gap: 8px; }
+        .ac-zbx-metrica { padding: 2px 4px; border: none; border-radius: 3px; background: none; color: var(--text-light); font: inherit; }
+        .ac-zbx-metrica:hover, .ac-zbx-metrica:focus-visible { background: rgba(88, 166, 255, .08); color: var(--cyan); outline: none; }
+        .ac-zbx-metrica[hidden] { display: none; }
         .ac-cpu-barra { width: 56px; height: 4px; overflow: hidden; border-radius: 2px; background: var(--border); }
         .ac-cpu-barra span { display: block; height: 100%; background: var(--green); }
         .ac-cpu.alerta .ac-cpu-barra span { background: var(--yellow); }
@@ -581,7 +584,11 @@
                                         </div>
                                         <div class="ac-linha ac-zbx-cpu" hidden>
                                             <span class="ac-rotulo">CPU</span>
-                                            <span class="ac-valor"><span class="ac-cpu"><span class="ac-cpu-barra"><span></span></span><span class="ac-cpu-valor"></span></span></span>
+                                            <span class="ac-valor"><button type="button" class="ac-zbx-metrica" title="Histórico da CPU" onclick="abrirGraficosZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}', 'cpu')"><span class="ac-cpu"><span class="ac-cpu-barra"><span></span></span><span class="ac-cpu-valor"></span></span></button></span>
+                                        </div>
+                                        <div class="ac-linha ac-zbx-volt" hidden>
+                                            <span class="ac-rotulo">Voltagem</span>
+                                            <span class="ac-valor"><button type="button" class="ac-zbx-metrica ac-zbx-volt-valor" title="Histórico da voltagem" onclick="abrirGraficosZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}', 'voltagem')"></button>{% if not acessos_somente_leitura %}<button type="button" class="ac-zbx-grafico ac-zbx-volt-ativar" hidden title="Criar no Zabbix o item de voltagem deste MikroTik (os templates não têm)" onclick="ativarVoltagemZabbix(this, {{ acesso.id }})"><i class="fas fa-bolt"></i> Ativar</button>{% endif %}<span class="ac-zbx-volt-vazio" hidden style="color:var(--text-muted)">sem leitura</span></span>
                                         </div>
                                         <div class="ac-linha ac-zbx-uptime" hidden>
                                             <span class="ac-rotulo">Uptime</span>
@@ -7094,6 +7101,18 @@ function getCsrfToken(){
                 caixa.querySelector('.ac-cpu-barra span').style.width = `${Math.min(100, Math.max(0, v.cpu))}%`;
                 caixa.querySelector('.ac-cpu-valor').textContent = `${Number.isInteger(v.cpu) ? v.cpu : v.cpu.toFixed(1)}%`;
             }
+            const lVolt = card.querySelector('.ac-zbx-volt');
+            const temVolt = vinculado && v.volt != null;
+            const ativar = lVolt.querySelector('.ac-zbx-volt-ativar');
+            lVolt.hidden = !(vinculado && (temVolt || v.volt_sem_leitura || (v.volt_ativavel && ativar)));
+            lVolt.querySelector('.ac-zbx-volt-valor').hidden = !temVolt;
+            lVolt.querySelector('.ac-zbx-volt-vazio').hidden = !(vinculado && v.volt_sem_leitura && !temVolt);
+            if (ativar) ativar.hidden = !(vinculado && v.volt_ativavel);
+            if (temVolt) {
+                const b = lVolt.querySelector('.ac-zbx-volt-valor');
+                b.textContent = `${v.volt.toFixed(1)} V`;
+                b.title = (v.volts ? `Fontes: ${v.volts.map((x) => x.toFixed(1) + ' V').join(' · ')}. ` : '') + 'Clique para ver o histórico.';
+            }
             if (!lUp.hidden) {
                 const el = lUp.querySelector('.ac-zbx-uptime-valor');
                 el.textContent = zbxDuracao(v.uptime);
@@ -7334,6 +7353,7 @@ function getCsrfToken(){
               <button type="button" data-aba="interfaces">Interfaces</button>
               <button type="button" data-aba="opticos">Sinal óptico</button>
               <button type="button" data-aba="cpu">CPU</button>
+              <button type="button" data-aba="voltagem">Voltagem</button>
               <div class="zg-filtros">
                 <input type="search" class="form-control form-control-sm zg-busca" placeholder="Filtrar por nome..." autocomplete="off">
                 <label class="d-flex align-items-center gap-1 mb-0"><input type="checkbox" class="zg-todos"> <span class="zg-todos-rotulo"></span></label>
@@ -7400,6 +7420,9 @@ function getCsrfToken(){
                         itens: g.itens.map((i) => i.itemid)};
             });
         }
+        if (ZG.aba === 'voltagem') {
+            return d.voltagem.map((c) => ({chave: c.itemid, nome: c.nome, v1: c.valor == null ? 'sem leitura' : `${c.valor.toFixed(2)} V`, v2: '', itens: [c.itemid]}));
+        }
         return d.cpu.map((c) => ({chave: c.itemid, nome: c.nome, v1: c.valor == null ? '—' : `${c.valor}%`, v2: '', itens: [c.itemid]}));
     }
 
@@ -7410,7 +7433,8 @@ function getCsrfToken(){
         m.querySelector('[data-aba="interfaces"]').textContent = `Interfaces (${d.interfaces.length})`;
         m.querySelector('[data-aba="opticos"]').textContent = `Sinal óptico (${d.opticos.filter((g) => !g.vazio).length})`;
         m.querySelector('[data-aba="cpu"]').textContent = `CPU (${d.cpu.length})`;
-        const rotuloTodos = {interfaces: 'mostrar sem tráfego', opticos: 'mostrar sem leitura', cpu: ''}[ZG.aba];
+        m.querySelector('[data-aba="voltagem"]').textContent = `Voltagem (${d.voltagem.length})`;
+        const rotuloTodos = {interfaces: 'mostrar sem tráfego', opticos: 'mostrar sem leitura', cpu: '', voltagem: ''}[ZG.aba];
         m.querySelector('.zg-todos-rotulo').textContent = rotuloTodos;
         m.querySelector('.zg-todos').parentElement.style.display = rotuloTodos ? '' : 'none';
 
@@ -7420,7 +7444,7 @@ function getCsrfToken(){
 
         const lista = m.querySelector('.zg-lista');
         lista.innerHTML = '';
-        const cab = {interfaces: ['Interface', 'Entrada', 'Saída'], opticos: ['Interface', 'RX (pior)', 'TX'], cpu: ['Item', 'Atual', '']}[ZG.aba];
+        const cab = {interfaces: ['Interface', 'Entrada', 'Saída'], opticos: ['Interface', 'RX (pior)', 'TX'], cpu: ['Item', 'Atual', ''], voltagem: ['Item', 'Atual', '']}[ZG.aba];
         const cabEl = document.createElement('div');
         cabEl.className = 'zg-linha zg-cab';
         cab.forEach((t) => { const s = document.createElement('span'); s.textContent = t; cabEl.appendChild(s); });
@@ -7445,7 +7469,8 @@ function getCsrfToken(){
             vazio.style.padding = '10px';
             vazio.textContent = {interfaces: 'Nenhuma interface com tráfego neste host.',
                                  opticos: 'Nenhum sinal óptico com leitura neste host.',
-                                 cpu: 'Nenhum item de CPU neste host.'}[ZG.aba];
+                                 cpu: 'Nenhum item de CPU neste host.',
+                                 voltagem: 'Nenhum item de voltagem do equipamento neste host.'}[ZG.aba];
             lista.appendChild(vazio);
         }
         if (selecionarPrimeiro) {
@@ -7483,7 +7508,8 @@ function getCsrfToken(){
 
             const optico = ZG.aba === 'opticos';
             const bps = series.every((s) => s.units === 'bps');
-            const fmt = bps ? zgBps : (optico ? zgDbm : (v) => `${v.toFixed(1)}%`);
+            const volt = ZG.aba === 'voltagem';
+            const fmt = bps ? zgBps : (optico ? zgDbm : (volt ? (v) => `${v.toFixed(2)} V` : (v) => `${v.toFixed(1)}%`));
             const datasets = series.map((s, i) => {
                 let rotulo = s.name;
                 if (bps) rotulo = /received|in\b|entrada/i.test(s.name) ? 'Entrada' : (/sent|out\b|sa[ií]da/i.test(s.name) ? 'Saída' : s.name);
@@ -7519,11 +7545,11 @@ function getCsrfToken(){
         }
     }
 
-    async function abrirGraficosZabbix(acessoId, tipo) {
+    async function abrirGraficosZabbix(acessoId, tipo, aba) {
         const m = zgModal();
         ZG.acesso = acessoId;
         ZG.dados = null;
-        ZG.aba = 'interfaces';
+        ZG.aba = aba || 'interfaces';
         ZG.sel = null;
         m.querySelector('.zg-host').textContent = 'Carregando…';
         m.querySelector('.zg-sub').textContent = tipo;
@@ -7542,11 +7568,37 @@ function getCsrfToken(){
             const up = d.uptime && d.uptime.valor ? ` · uptime ${zbxDuracao(d.uptime.valor)}` : '';
             m.querySelector('.zg-sub').textContent = `${tipo}${up}`;
             // Abre na aba que tiver conteúdo
-            if (!d.interfaces.length && d.opticos.some((g) => !g.vazio)) ZG.aba = 'opticos';
+            if (!aba && !d.interfaces.length && d.opticos.some((g) => !g.vazio)) ZG.aba = 'opticos';
             zgRender();
         } catch (e) {
             m.querySelector('.zg-host').textContent = 'Gráficos do Zabbix';
             zgMsg(e.message);
+        }
+    }
+
+    async function ativarVoltagemZabbix(btn, acessoId) {
+        const ok = await uiConfirm({
+            titulo: 'Ativar voltagem?',
+            msg: 'Cria no host deste MikroTik, no Zabbix do cliente, um item SNMP de voltagem (a cada 5 min). Os templates do Zabbix não trazem esse dado.',
+            btnLabel: 'Criar item', btnCor: '#3fb950', icone: 'fas fa-bolt', iconeCor: '#d29922',
+        });
+        if (!ok) return;
+        btn.disabled = true;
+        try {
+            const fd = new FormData();
+            fd.append('acesso_id', acessoId);
+            const r = await fetch(`{% url 'monitoramento:zabbix_voltagem_ativar' %}`, {
+                method: 'POST', body: fd, headers: {'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest'},
+            });
+            const data = await r.json().catch(() => null);
+            if (!data) throw new Error('Sessão expirada ou sem permissão. Recarregue a página.');
+            if (!data.success) throw new Error(data.error || 'Falha ao criar o item.');
+            uiToast('Item criado — a primeira leitura chega em até 5 minutos');
+            await carregarStatusZabbix();
+        } catch (e) {
+            uiAlert({titulo: 'Ativar voltagem', msg: e.message, icone: 'fas fa-exclamation-triangle', iconeCor: '#e0a060'});
+        } finally {
+            btn.disabled = false;
         }
     }
 
@@ -7684,6 +7736,51 @@ function getCsrfToken(){
         corpo.appendChild(campos);
         sincVersao();
 
+        // SNMP no equipamento: community liberada só para o IP do Zabbix
+        const cfg = p.configurar_snmp;
+        const secS = zcEl('div', {class: 'zc-secao'});
+        const lbl = zcEl('label', {class: 'd-flex align-items-center gap-2', style: 'color:#e6edf3;font-size:12px;'});
+        const chk = zcEl('input', {type: 'checkbox', name: 'configurar_snmp'});
+        chk.checked = cfg.disponivel;
+        chk.disabled = !cfg.disponivel;
+        lbl.append(chk, zcEl('span', {}, 'Configurar o SNMP no equipamento por SSH antes de cadastrar'));
+        secS.appendChild(lbl);
+        if (!cfg.disponivel) secS.appendChild(zcEl('div', {class: 'zc-base'}, cfg.motivo));
+        const det = zcEl('div');
+        const ipZ = zcInput('ip_zabbix', p.ip_zabbix, {placeholder: 'IP do Zabbix'});
+        const campoIp = zcCampo('IP do Zabbix (addresses da community)', ipZ);
+        campoIp.style.maxWidth = '260px';
+        campoIp.style.marginTop = '8px';
+        det.append(campoIp, zcEl('div', {class: 'zc-base'}, p.ip_zabbix_origem || ''));
+        const cmds = zcEl('pre', {style: 'margin:8px 0 6px;padding:8px 10px;border:1px solid #30363d;border-radius:6px;background:#0d1117;color:#e6edf3;font-size:11px;white-space:pre-wrap;'});
+        const efeito = zcEl('div', {class: 'zc-base'});
+        det.append(cmds, efeito);
+        secS.appendChild(det);
+        const q = (x) => `"${String(x).replace(/["\\$]/g, (c) => '\\' + c)}"`;
+        const sincSnmp = () => {
+            det.style.display = chk.checked ? '' : 'none';
+            const v3 = versao.value === '3';
+            const nome = v3 ? '<usuário SNMPv3 do host de referência>' : comm.value.trim();
+            const macro = !v3 && nome.startsWith('{$');
+            const existe = !v3 && p.communities_backup.includes(nome);
+            const ip = ipZ.value.trim() || '<IP do Zabbix>';
+            const nomeEq = macro ? `<valor de ${nome}>` : nome;
+            cmds.textContent = (existe
+                ? `/snmp community set [ find name=${q(nomeEq)} ] addresses=${ip}/32`
+                : `/snmp community set [ find default=yes ] addresses=${ip}/32 name=${q(nomeEq)}`) +
+                (v3 ? ' security=... authentication-password=... encryption-password=...' : '') +
+                '\n/snmp set enabled=yes';
+            const pad = p.community_padrao;
+            efeito.textContent = existe
+                ? `A community "${nome}" passa a responder só para ${ip}.`
+                : (pad ? `A community padrão hoje é "${pad.name}"${pad.addresses ? ` (liberada para ${pad.addresses})` : ''} e passa a ser "${nomeEq}", só para ${ip}.`
+                       : `A community padrão passa a ser "${nomeEq}", só para ${ip}.`) +
+                  ' O host só é criado no Zabbix se o equipamento aceitar e a leitura de volta conferir.';
+        };
+        [chk, ipZ, comm, versao].forEach((el) => { el.addEventListener('input', sincSnmp); el.addEventListener('change', sincSnmp); });
+        sincSnmp();
+        corpo.appendChild(secS);
+
         ZC.templates = [...s.templates];
         ZC.grupos = [...s.grupos];
         const secT = zcSeletor('Templates', p.opcoes.templates, ZC.templates);
@@ -7723,12 +7820,14 @@ function getCsrfToken(){
             snmp_versao: v('snmp_versao'), community: v('community'), proxy: v('proxy'),
             snmp_v3_de: ZC.previa.sugestao.snmp_v3_de ? ZC.previa.sugestao.snmp_v3_de.hostid : '',
             templates: ZC.templates, grupos: ZC.grupos,
+            configurar_snmp: !!(m.querySelector('[name="configurar_snmp"]') || {}).checked, ip_zabbix: v('ip_zabbix'),
         };
         if (!dados.grupos.length) { uiAlert({titulo: 'Cadastrar no Zabbix', msg: 'Escolha pelo menos um grupo de hosts.', icone: 'fas fa-exclamation-triangle', iconeCor: '#e0a060'}); return; }
         const nomesT = Object.fromEntries(ZC.previa.opcoes.templates.map((t) => [t.id, t.nome]));
         const ok = await uiConfirm({
             titulo: 'Criar host no Zabbix do cliente?',
-            msg: `${dados.nome} (${dados.ip}) com ${dados.templates.length ? dados.templates.map((t) => nomesT[t]).join(', ') : 'nenhum template'}.`,
+            msg: (dados.configurar_snmp ? `Primeiro o SNMP é configurado no equipamento por SSH (só para ${dados.ip_zabbix}). ` : '') +
+                 `${dados.nome} (${dados.ip}) com ${dados.templates.length ? dados.templates.map((t) => nomesT[t]).join(', ') : 'nenhum template'}.`,
             btnLabel: 'Criar host', btnCor: '#3fb950', icone: 'fas fa-server', iconeCor: '#58a6ff',
         });
         if (!ok) return;
@@ -7743,7 +7842,8 @@ function getCsrfToken(){
             if (!data) throw new Error('Sessão expirada ou sem permissão. Recarregue a página.');
             if (!data.success) throw new Error(data.error || 'Falha ao criar o host.');
             m.style.display = 'none';
-            uiToast(`Host criado no Zabbix: ${data.nome}`);
+            uiToast(`Host criado no Zabbix: ${data.nome}` + (data.snmp_configurado.length ? ' · SNMP configurado no equipamento' : ''));
+            if (data.avisos && data.avisos.length) uiAlert({titulo: 'Cadastrado, com ressalva', msg: data.avisos.join(' '), icone: 'fas fa-exclamation-circle', iconeCor: '#d29922'});
             await carregarStatusZabbix();
         } catch (e) {
             uiAlert({titulo: 'Cadastrar no Zabbix', msg: e.message, icone: 'fas fa-exclamation-triangle', iconeCor: '#e0a060'});

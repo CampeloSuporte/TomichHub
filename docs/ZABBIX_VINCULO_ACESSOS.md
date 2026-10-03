@@ -142,6 +142,48 @@ A prévia avisa quando já existe host com o mesmo IP (oferece "Vincular a").
 Rotas: `zabbix/vinculos/cadastro/previa/?acesso_id=` (GET) e
 `zabbix/vinculos/cadastro/criar/` (POST JSON).
 
+## SNMP configurado no equipamento (MikroTik) ao cadastrar
+
+Na prévia do cadastro, "Configurar o SNMP no equipamento por SSH" (marcado por
+padrão em MikroTik com SSH cadastrado). Ao confirmar, **antes** do `host.create`:
+
+1. Lê `/snmp print` + `/snmp community print terse` pelo `platform_ssh_exec`
+   (proxy/VPN/direto; RouterOS por exec sem PTY), na porta SSH do acesso.
+2. Aplica, no padrão do NOC:
+   - community com esse nome já existe → `/snmp community set [ find name="X" ] addresses=<IP do Zabbix>/32`
+   - senão → `/snmp community set [ find default=yes ] addresses=<IP do Zabbix>/32 name="X"`
+   - `/snmp set enabled=yes`
+   - SNMPv3 (copiado de host vizinho): `security=`, `authentication-protocol/password`,
+     `encryption-protocol/password` (MD5/SHA1 e DES/AES).
+3. Lê de volta e confere community + addresses + SNMP ligado.
+
+Se o equipamento recusar ou a leitura não conferir, **o host não é criado**.
+Community que é macro (`{$SNMP_COMMUNITY}`) fica como macro no Zabbix, mas o
+equipamento recebe o valor da macro global.
+
+**IP do Zabbix (addresses)**: o da URL da API (DNS resolvido), editável na
+prévia. Atenção — achado real: há clientes em que o equipamento hoje libera só
+um IP interno (ex.: `172.31.10.2`) enquanto a API está em outro (`170.79.92.46`):
+o Zabbix consulta por NAT/rede interna. A prévia avisa quando o IP da API não
+está entre os liberados hoje, porque o `addresses` passa a ter **só** o IP
+informado e cortaria quem coleta pelo IP antigo.
+
+## Voltagem
+
+Linha **Voltagem** no card (clique abre o histórico na aba "Voltagem" dos
+gráficos; a linha de CPU também abre a aba CPU).
+
+- Item de voltagem **do equipamento**: unidade V/mV e "volt"/"tensão" no nome,
+  excluindo SFP/PON/módulo/status/limite; leitura fora de 0–300 V é descartada
+  (OLT Parks devolve 1195 para 11,95 V). Várias fontes → mostra a primeira e lista
+  as outras no tooltip.
+- **MikroTik**: nenhum template do Zabbix (oficiais nem "Sinal SFP") traz
+  voltagem. O cadastro pelo botão já cria o item `crm.voltagem[mtxrHlVoltage.0]`
+  (SNMP `1.3.6.1.4.1.14988.1.1.3.8.0`, ×0,1, 5 min, histórico 30 d). Para MikroTik
+  que já estava no Zabbix, o card mostra **Ativar**, que cria o mesmo item
+  (rota `zabbix/vinculos/voltagem/ativar/`). Equipamento sem sensor deixa o item
+  sem leitura ("sem leitura" no card).
+
 ## Também corrigido
 
 `services.listar_hosts` tinha `limit: 300` e cortava hosts em Zabbix maiores

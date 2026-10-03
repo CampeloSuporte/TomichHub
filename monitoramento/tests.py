@@ -371,3 +371,172 @@ class CadastroCriarTest(_Base):
             with self.assertRaisesRegex(ValueError, 'permissão de escrita'):
                 zc.criar(a, CadastroParametrosTest.D)
         self.assertFalse(ZabbixHostVinculo.objects.filter(acesso=a).exists())
+
+
+SNMP_ANTES = ('            enabled: no\n            contact:\n'
+              ' 0 * name=TOMICH addresses=172.31.10.2/32 security=none read-access=yes\n'
+              ' 1   name=outra addresses=0.0.0.0/0 security=none read-access=yes\n')
+SNMP_DEPOIS = ('            enabled: yes\n'
+               ' 0 * name=green-ro addresses=10.9.9.9/32 security=none read-access=yes\n'
+               ' 1   name=outra addresses=0.0.0.0/0 security=none read-access=yes\n')
+
+
+class VoltagemTest(TestCase):
+    from monitoramento import zabbix_metricas as zm
+
+    def test_escolhe_voltagem_do_equipamento(self):
+        itens = [_it('1', 'huawei.sfp.voltage[40GE0/0/1]', 'SFP 40GE0/0/1 Supply Voltage', 'V', '3.3'),
+                 _it('2', '1.3.6.1.4.1.2011.6.128.1.1.2.23.1.2.[1]', 'PON GPON 0/1/0: Voltagem', 'V', '3.2'),
+                 _it('3', 'datacom.psu.1.status', 'PSU 1 Status', '', '1'),
+                 _it('4', 'sensor.voltage.value[psu1]', 'PSU 1: Voltage', 'V', '12.1')]
+        self.assertEqual([i['itemid'] for i in self.zm.escolher_voltagem(itens)], ['4'])
+        crm = _it('9', self.zm.CHAVE_VOLTAGEM_CRM, 'Voltagem', 'V', '24.1')
+        self.assertEqual([i['itemid'] for i in self.zm.escolher_voltagem(itens + [crm])], ['9'])
+
+    def test_valor_fora_de_escala_e_milivolt(self):
+        self.assertIsNone(self.zm.volts('1195', 'V'))     # OLT Parks: centésimos em "V"
+        self.assertAlmostEqual(self.zm.volts('12100', 'mV'), 12.1)
+        self.assertIsNone(self.zm.volts('0', 'V'))
+
+
+class SnmpRouterOSTest(TestCase):
+    from monitoramento import zabbix_cadastro as zc
+
+    def test_le_print_terse(self):
+        r = self.zc.ler_snmp_routeros(SNMP_ANTES)
+        self.assertFalse(r['enabled'])
+        self.assertEqual(r['communities'][0], {'name': 'TOMICH', 'addresses': '172.31.10.2/32', 'default': True, 'disabled': False})
+
+    def test_comandos_padrao_existente_e_v3(self):
+        atual = self.zc.ler_snmp_routeros(SNMP_ANTES)
+        c = self.zc.comandos_snmp_routeros(atual, '10.9.9.9', {'version': 2, 'community': 'green-ro'})
+        self.assertEqual(c, ['/snmp community set [ find default=yes ] addresses=10.9.9.9/32 name="green-ro"',
+                             '/snmp set enabled=yes'])
+        c = self.zc.comandos_snmp_routeros(atual, '10.9.9.9', {'version': 2, 'community': 'outra'})
+        self.assertEqual(c[0], '/snmp community set [ find name="outra" ] addresses=10.9.9.9/32')
+        v3 = {'version': 3, 'securityname': 'wtdtelecom', 'securitylevel': 2, 'authprotocol': 1,
+              'authpassphrase': 'procyon', 'privprotocol': 1, 'privpassphrase': 'procyon'}
+        c = self.zc.comandos_snmp_routeros(atual, '10.9.9.9', v3)
+        self.assertIn('name="wtdtelecom" security=private authentication-protocol=SHA1 '
+                      'authentication-password="procyon" encryption-protocol=AES encryption-password="procyon"', c[0])
+        with self.assertRaises(ValueError):
+            self.zc.comandos_snmp_routeros(atual, '10.9.9.9', {'version': 2, 'community': 'a b;/system reboot'})
+
+    def _acesso(self):
+        return SimpleNamespace(id=1, tipo='RB', porta_ssh=lambda: 22)
+
+    def test_configura_e_confere(self):
+        saidas = iter([SNMP_ANTES, '', SNMP_DEPOIS])
+        with mock.patch('clientes.consumers.platform_ssh_exec', side_effect=lambda *a, **k: next(saidas)) as ex:
+            r = self.zc.configurar_snmp_mikrotik(self._acesso(), '10.9.9.9', {'version': 2, 'community': 'green-ro'})
+        self.assertEqual(ex.call_args_list[1].args[0].porta, 22)
+        self.assertIn('name="green-ro"', r['comandos'][0])
+
+    def test_recusa_e_leitura_que_nao_confere(self):
+        saidas = iter([SNMP_ANTES, 'failure: already have community with such name'])
+        with mock.patch('clientes.consumers.platform_ssh_exec', side_effect=lambda *a, **k: next(saidas)):
+            with self.assertRaisesRegex(ValueError, 'recusou'):
+                self.zc.configurar_snmp_mikrotik(self._acesso(), '10.9.9.9', {'version': 2, 'community': 'green-ro'})
+        saidas = iter([SNMP_ANTES, '', SNMP_ANTES])
+        with mock.patch('clientes.consumers.platform_ssh_exec', side_effect=lambda *a, **k: next(saidas)):
+            with self.assertRaisesRegex(ValueError, 'leitura de volta'):
+                self.zc.configurar_snmp_mikrotik(self._acesso(), '10.9.9.9', {'version': 2, 'community': 'green-ro'})
+
+
+class CadastroComSnmpTest(_Base):
+    def _mikrotik(self):
+        from modelo_equipamento.models import Modelo_equipamento
+        m = Modelo_equipamento.objects.create(nome='CCR-TESTE', fabricante='Mikrotik')
+        return self.acesso('RB NOVO', '10.5.5.5', modelo=m)
+
+    def test_equipamento_primeiro_e_voltagem_depois(self):
+        from monitoramento import zabbix_cadastro as zc
+        a = self._mikrotik()
+        ordem = []
+
+        def rpc(url, metodo, params, auth=None, config=None):
+            ordem.append(metodo)
+            if metodo == 'host.create':
+                return {'hostids': ['777']}
+            if metodo == 'hostinterface.get':
+                return [{'interfaceid': '55'}]
+            if metodo == 'item.create':
+                self.item = params
+                return {'itemids': ['900']}
+            return []
+
+        def configurar(acesso, ip, snmp):
+            ordem.append(f'ssh:{ip}:{snmp["community"]}')
+            return {'comandos': ['x']}
+
+        with mock.patch('monitoramento.services._rpc', side_effect=rpc), \
+             mock.patch('monitoramento.services._get_auth_token', return_value='t'), \
+             mock.patch('monitoramento.services._get_zabbix_version', return_value=(7, 0, 0)), \
+             mock.patch('monitoramento.zabbix_cadastro.configurar_snmp_mikrotik', side_effect=configurar):
+            r = zc.criar(a, dict(CadastroParametrosTest.D, proxy='', configurar_snmp=True, ip_zabbix='10.9.9.9'))
+        self.assertEqual(ordem[:3], ['host.get', 'ssh:10.9.9.9:leitura', 'host.create'])
+        self.assertEqual((self.item['type'], self.item['snmp_oid'], self.item['interfaceid']),
+                         (20, '1.3.6.1.4.1.14988.1.1.3.8.0', '55'))
+        self.assertEqual(self.item['preprocessing'][0]['params'], '0.1')
+        self.assertEqual((r['avisos'], r['snmp_configurado']), ([], ['x']))
+
+    def test_equipamento_recusou_nao_cria_host(self):
+        from monitoramento import zabbix_cadastro as zc
+        a = self._mikrotik()
+        metodos = []
+        with mock.patch('monitoramento.services._rpc', side_effect=lambda u, m, *x, **k: metodos.append(m) or []), \
+             mock.patch('monitoramento.services._get_auth_token', return_value='t'), \
+             mock.patch('monitoramento.services._get_zabbix_version', return_value=(7, 0, 0)), \
+             mock.patch('monitoramento.zabbix_cadastro.configurar_snmp_mikrotik', side_effect=ValueError('recusou')):
+            with self.assertRaises(ValueError):
+                zc.criar(a, dict(CadastroParametrosTest.D, configurar_snmp=True, ip_zabbix='10.9.9.9'))
+        self.assertNotIn('host.create', metodos)
+        self.assertFalse(ZabbixHostVinculo.objects.filter(acesso=a).exists())
+
+    def test_macro_resolvida_para_o_equipamento(self):
+        from monitoramento import zabbix_cadastro as zc
+        a = self._mikrotik()
+        vistos = []
+
+        def rpc(url, metodo, params, auth=None, config=None):
+            if metodo == 'usermacro.get':
+                return [{'macro': '{$SNMP_COMMUNITY}', 'value': 'TOMICH', 'type': '0'}]
+            return {'hostids': ['1']} if metodo == 'host.create' else []
+
+        with mock.patch('monitoramento.services._rpc', side_effect=rpc), \
+             mock.patch('monitoramento.services._get_auth_token', return_value='t'), \
+             mock.patch('monitoramento.services._get_zabbix_version', return_value=(7, 0, 0)), \
+             mock.patch('monitoramento.zabbix_cadastro.configurar_snmp_mikrotik',
+                        side_effect=lambda ac, ip, snmp: vistos.append(snmp['community']) or {'comandos': []}):
+            zc.criar(a, dict(CadastroParametrosTest.D, community='{$SNMP_COMMUNITY}', proxy='',
+                             configurar_snmp=True, ip_zabbix='10.9.9.9'))
+        self.assertEqual(vistos, ['TOMICH'])
+
+    def test_status_oferece_ativar_voltagem_em_mikrotik(self):
+        a = self._mikrotik()
+        a.host = '10.0.0.1'
+        a.save()
+        vz.sincronizar(self.cliente.id)
+        with mock.patch('monitoramento.services._rpc', return_value=[]), \
+             mock.patch('monitoramento.services._get_auth_token', return_value='t'), \
+             mock.patch('monitoramento.services.status_nodes', return_value={'101': 'up'}):
+            st = vz.status_cliente(self.cliente.id)[str(a.id)]
+        self.assertTrue(st['volt_ativavel'])
+
+
+class CadastroAvisoIpZabbixTest(_Base):
+    def test_avisa_quando_ip_da_api_nao_esta_liberado_hoje(self):
+        from modelo_equipamento.models import Modelo_equipamento
+        from monitoramento import zabbix_cadastro as zc
+        m = Modelo_equipamento.objects.create(nome='CCR-AVISO', fabricante='Mikrotik')
+        a = self.acesso('RB AVISO', '10.6.6.6', modelo=m)
+        bkp = ('# model = CCR-AVISO\n/snmp community set [ find default=yes ] addresses=172.31.10.2/32 name=green-ro\n'
+               '/snmp set enabled=yes\n')
+        ops = {'templates': [], 'grupos': [], 'proxies': [], 'macros': {}}
+        with mock.patch('monitoramento.zabbix_cadastro._conteudo_backup', return_value=bkp), \
+             mock.patch('monitoramento.zabbix_cadastro.opcoes', return_value=ops), \
+             mock.patch('monitoramento.zabbix_cadastro.vizinhos', return_value=[]), \
+             mock.patch('monitoramento.zabbix_cadastro.ip_do_zabbix', return_value=('170.79.92.46', 'API')):
+            p = zc.previa(a)
+        self.assertTrue(any('só aceita 172.31.10.2/32' in x for x in p['avisos']))
+        self.assertEqual(p['community_padrao'], {'name': 'green-ro', 'addresses': '172.31.10.2/32'})

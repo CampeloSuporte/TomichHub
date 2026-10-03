@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-03 (Zabbix: SNMP configurado no MikroTik e voltagem no card)
+
+### Adicionado
+
+- **Cadastro no Zabbix configura o SNMP no MikroTik por SSH** antes de criar o host: a community
+  fica liberada só para o IP do Zabbix (`addresses=<ip>/32`) e o SNMP é ligado; a configuração é
+  conferida lendo de volta, e se o equipamento recusar o host não é criado. A prévia mostra os
+  comandos e avisa quando o IP da API não é o que o equipamento libera hoje (NAT/rede interna).
+- **Voltagem no card do acesso**, com histórico ao clicar. Como os templates de MikroTik do Zabbix
+  não têm voltagem, o cadastro cria o item, e MikroTik já monitorado ganha o botão **Ativar**.
+  Ver `docs/ZABBIX_VINCULO_ACESSOS.md`.
+
+---
+
 ## [Não publicado] — 2026-10-03 (Acessos: cadastrar o host no Zabbix pelo card)
 
 ### Adicionado

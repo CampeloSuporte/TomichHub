@@ -996,3 +996,22 @@ def cadastro_criar(request):
     except Exception as e:
         logger.warning("[ZBX-CAD] criar acesso %s: %s", acesso.id, e)
         return JsonResponse({'error': str(e)}, status=502)
+
+
+@login_required(login_url='login')
+@require_http_methods(["POST"])
+@ferramenta_instancia_required('monitoramento')
+def voltagem_ativar(request):
+    """Cria no host MikroTik vinculado o item SNMP de voltagem."""
+    from . import zabbix_cadastro as zc
+
+    acesso = _acesso_permitido(request, request.POST.get('acesso_id'))
+    if not acesso or not _vinculo_pode_editar(request):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    try:
+        return JsonResponse({'success': True, 'itemid': zc.ativar_voltagem(acesso)})
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        logger.warning("[ZBX-CAD] voltagem acesso %s: %s", acesso.id, e)
+        return JsonResponse({'error': str(e)}, status=502)

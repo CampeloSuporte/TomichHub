@@ -97,7 +97,7 @@ def snmp_do_backup(conteudo: str) -> dict:
     """{'communities': [...], 'restricoes': {community: 'addresses'},
     'cifrada': bool, 'desabilitado': bool|None}. `desabilitado=None` = não
     deu para saber pelo backup."""
-    comms, restricoes, cifrada, desabilitado = [], {}, False, None
+    comms, restricoes, cifrada, desabilitado, padrao = [], {}, False, None, None
 
     # MikroTik RouterOS
     for l in _linhas_routeros(conteudo, '/snmp community'):
@@ -108,6 +108,9 @@ def snmp_do_backup(conteudo: str) -> dict:
             continue
         c = nome.group(1).strip('"')
         comms.append(c)
+        if re.search(r'default=yes', l):
+            end_p = re.search(r'\baddresses=(\S+)', l)
+            padrao = {'name': c, 'addresses': end_p.group(1) if end_p else ''}
         end = re.search(r'\baddresses=(\S+)', l)
         if end and end.group(1) not in ('0.0.0.0/0', '::/0'):
             restricoes[c] = end.group(1)
@@ -128,7 +131,7 @@ def snmp_do_backup(conteudo: str) -> dict:
             comms.append(m.group(1).strip('"'))
 
     return {'communities': list(dict.fromkeys(c for c in comms if c)), 'restricoes': restricoes,
-            'cifrada': cifrada, 'desabilitado': desabilitado}
+            'cifrada': cifrada, 'desabilitado': desabilitado, 'padrao': padrao}
 
 
 # ──────────────────────────────────────────────────────────────
@@ -386,6 +389,32 @@ def previa(acesso) -> dict:
     if not s['grupos']:
         avisos.append('Nenhum grupo sugerido: escolha na lista.')
 
+    from .vinculo_zabbix import eh_mikrotik
+    ip_zbx, ip_zbx_origem = ip_do_zabbix(acesso.cliente_id)
+    if eh_mikrotik(acesso) or fabricante.lower() == 'mikrotik':
+        if acesso.porta_ssh():
+            config_snmp = {'disponivel': True, 'motivo': ''}
+            # O cadastro liga o SNMP: o aviso de "desabilitado" não se aplica
+            avisos[:] = [a for a in avisos if 'SNMP está desabilitado' not in a]
+        else:
+            config_snmp = {'disponivel': False, 'motivo': 'Acesso sem SSH cadastrado.'}
+    else:
+        config_snmp = {'disponivel': False, 'motivo': 'Configuração automática do SNMP só em MikroTik, por enquanto.'}
+    # Restrição que a configuração vai substituir: o "addresses" passa a ser só o Zabbix
+    if config_snmp['disponivel'] and snmp_bkp.get('restricoes', {}).get(community):
+        avisos[:] = [a for a in avisos if not a.startswith('No equipamento, a community')]
+
+    # O IP da API nem sempre é o de onde o Zabbix consulta (NAT, rede interna).
+    # Achado real: equipamento liberando só 172.31.10.2 com a API em
+    # 170.79.92.46. Trocar o addresses cortaria quem coleta hoje: avisa.
+    if config_snmp['disponivel'] and ip_zbx:
+        alvo = community if community in snmp_bkp['communities'] else (snmp_bkp.get('padrao') or {}).get('name')
+        hoje = snmp_bkp.get('restricoes', {}).get(alvo) if alvo else None
+        if hoje and f'{ip_zbx}/32' not in hoje.split(','):
+            avisos.append(f'Hoje a community "{alvo}" só aceita {hoje}, e o IP da API do Zabbix ({ip_zbx}) não '
+                          'está nessa lista. Se o Zabbix consulta a partir de outro IP (NAT ou rede interna), '
+                          'ajuste o "IP do Zabbix" abaixo — o addresses vai ficar só com ele.')
+
     ip = ip_do_acesso(acesso.host)
     mesmo_ip = []
     if ip:
@@ -404,6 +433,9 @@ def previa(acesso) -> dict:
         },
         'base_templates': s['base_templates'],
         'communities_backup': snmp_bkp['communities'],
+        'community_padrao': snmp_bkp.get('padrao'),
+        'ip_zabbix': ip_zbx, 'ip_zabbix_origem': ip_zbx_origem,
+        'configurar_snmp': config_snmp,
         'mesmo_ip': mesmo_ip, 'avisos': avisos,
         'opcoes': {k: v for k, v in ops.items() if k != 'macros'},
     }
@@ -474,6 +506,30 @@ def criar(acesso, dados: dict, user=None) -> dict:
     if existe:
         raise ValueError(f'Já existe um host com o nome técnico "{params["host"]}" no Zabbix.')
 
+    from .vinculo_zabbix import eh_mikrotik
+    mikrotik = eh_mikrotik(acesso)
+    snmp_config = None
+    if dados.get('configurar_snmp'):
+        if not mikrotik:
+            raise ValueError('Configuração automática do SNMP só está disponível para MikroTik.')
+        import ipaddress
+        ip_zbx = (dados.get('ip_zabbix') or '').strip()
+        try:
+            ipaddress.ip_address(ip_zbx)
+        except ValueError:
+            raise ValueError('Informe o IP do Zabbix (vai no "addresses" da community).')
+        # Antes do host.create: se o equipamento recusar, nada é criado no Zabbix
+        snmp_eq = dict(params['interfaces'][0]['details'])
+        com = str(snmp_eq.get('community', ''))
+        if com.startswith('{$'):
+            # O host no Zabbix fica com a macro; o equipamento precisa do valor
+            valor = opcoes(cfg, acesso.cliente_id).get('macros', {}).get(com)
+            if not valor:
+                raise ValueError(f'A community é a macro {com}, cujo valor não consigo ler (secreta ou só no host). '
+                                 'Digite a community de fato para configurar o equipamento.')
+            snmp_eq['community'] = valor
+        snmp_config = configurar_snmp_mikrotik(acesso, ip_zbx, snmp_eq)
+
     try:
         r = services._rpc(cfg.url, 'host.create', params, auth, config=cfg)
     except Exception as exc:
@@ -484,6 +540,12 @@ def criar(acesso, dados: dict, user=None) -> dict:
         raise ValueError(msg) from exc
 
     hostid = str(r['hostids'][0])
+    avisos = []
+    if mikrotik:
+        try:
+            criar_item_voltagem(cfg, hostid)
+        except Exception as exc:
+            avisos.append(f'Host criado, mas o item de voltagem não: {exc}')
     ZabbixHostVinculo.objects.update_or_create(
         acesso=acesso,
         defaults={'zabbix_hostid': hostid, 'zabbix_nome': params['name'], 'origem': 'manual',
@@ -496,4 +558,181 @@ def criar(acesso, dados: dict, user=None) -> dict:
     logger.info('[ZBX-CAD] acesso %s (%s) criado no Zabbix do cliente %s como host %s por %s; templates=%s',
                 acesso.id, acesso.tipo, acesso.cliente_id, hostid, getattr(user, 'username', '?'),
                 [t['templateid'] for t in params['templates']])
-    return {'hostid': hostid, 'nome': params['name']}
+    return {'hostid': hostid, 'nome': params['name'], 'avisos': avisos,
+            'snmp_configurado': snmp_config['comandos'] if snmp_config else []}
+
+
+# ──────────────────────────────────────────────────────────────
+# SNMP no equipamento (MikroTik por SSH) e voltagem
+# ──────────────────────────────────────────────────────────────
+
+def ip_do_zabbix(cliente_id) -> tuple:
+    """(ip, origem) de onde o Zabbix consulta os equipamentos: o IP da URL da
+    API do Zabbix do cliente (o que respondeu por último), com DNS resolvido.
+    Conferido nos backups: os MikroTik já monitorados que restringem a
+    community liberam exatamente esse IP."""
+    import ipaddress
+    import socket
+    from urllib.parse import urlparse
+    from .agent_zabbix import _candidatos
+
+    cands = _candidatos(cliente_id)
+    if not cands:
+        return '', ''
+    ident = cache.get(f'zbx_agent_cfg:{cliente_id}')
+    cand = next((c for c in cands if c.id == ident), cands[0])
+    host = urlparse(cand.url).hostname or ''
+    try:
+        return str(ipaddress.ip_address(host)), f'IP da API do Zabbix ({cand.url})'
+    except ValueError:
+        pass
+    try:
+        return socket.gethostbyname(host), f'{host} resolvido pelo DNS'
+    except OSError:
+        return '', f'não consegui resolver {host}'
+
+
+_COMMUNITY_OK = re.compile(r'^[A-Za-z0-9._@#%+=:,!^*~\-]{1,64}$')
+
+
+def _ros_q(valor: str) -> str:
+    """Valor entre aspas para o terminal do RouterOS."""
+    return '"' + valor.replace('\\', '\\\\').replace('"', '\\"').replace('$', '\\$') + '"'
+
+
+def _acesso_ssh(acesso):
+    """Cópia do acesso apontando para a porta SSH (o principal pode ser Winbox/Web)."""
+    import copy
+    porta = acesso.porta_ssh()
+    if not porta:
+        raise ValueError('Este acesso não tem SSH cadastrado: não dá para configurar o SNMP no equipamento.')
+    a = copy.copy(acesso)
+    a.porta, a.protocolo = porta, 'SSH'
+    return a
+
+
+def ler_snmp_routeros(saida: str) -> dict:
+    """Interpreta '/snmp print' + '/snmp community print terse'."""
+    comms = []
+    for l in saida.splitlines():
+        m = re.match(r'^\s*\d+\s+([A-Z* ]*?)\s*name=("[^"]*"|\S+)(.*)$', l)
+        if not m:
+            continue
+        end = re.search(r'\baddresses=(\S+)', m.group(3))
+        comms.append({'name': m.group(2).strip('"'), 'addresses': end.group(1) if end else '',
+                      'default': '*' in m.group(1), 'disabled': 'X' in m.group(1)})
+    hab = re.search(r'^\s*enabled:\s*(yes|no)', saida, re.M)
+    return {'communities': comms, 'enabled': (hab.group(1) == 'yes') if hab else None}
+
+
+_V3_SEG = {'0': 'none', '1': 'authorized', '2': 'private'}
+_V3_AUTH = {'0': 'MD5', '1': 'SHA1'}
+_V3_PRIV = {'0': 'DES', '1': 'AES'}
+
+
+def comandos_snmp_routeros(atual: dict, ip_zabbix: str, snmp: dict) -> list:
+    """Comandos que deixam a community liberada SÓ para o IP do Zabbix e o SNMP
+    ligado. Community com esse nome já existe → altera ela; senão renomeia a
+    padrão (como no exemplo do NOC: `set [ find default=yes ] addresses=... name=...`)."""
+    if str(snmp.get('version')) == '3':
+        nome = snmp.get('securityname') or ''
+        nivel = _V3_SEG.get(str(snmp.get('securitylevel', '0')))
+        extra = f' security={nivel}'
+        if nivel in ('authorized', 'private'):
+            proto = _V3_AUTH.get(str(snmp.get('authprotocol', '0')))
+            if not proto:
+                raise ValueError('Protocolo de autenticação SNMPv3 não suportado no RouterOS por este fluxo.')
+            extra += f' authentication-protocol={proto} authentication-password={_ros_q(snmp.get("authpassphrase", ""))}'
+        if nivel == 'private':
+            proto = _V3_PRIV.get(str(snmp.get('privprotocol', '0')))
+            if not proto:
+                raise ValueError('Protocolo de criptografia SNMPv3 não suportado no RouterOS por este fluxo.')
+            extra += f' encryption-protocol={proto} encryption-password={_ros_q(snmp.get("privpassphrase", ""))}'
+    else:
+        nome, extra = snmp.get('community') or '', ''
+    if not _COMMUNITY_OK.match(nome):
+        raise ValueError(f'Community/usuário SNMP "{nome}" com caractere não suportado para configurar no equipamento.')
+
+    enderecos = f'{ip_zabbix}/32'
+    if any(c['name'] == nome for c in atual.get('communities', [])):
+        cmd = f'/snmp community set [ find name={_ros_q(nome)} ] addresses={enderecos}{extra}'
+    else:
+        cmd = f'/snmp community set [ find default=yes ] addresses={enderecos} name={_ros_q(nome)}{extra}'
+    return [cmd, '/snmp set enabled=yes']
+
+
+_ROS_ERRO = re.compile(r'failure:|bad command|syntax error|expected |no such item|invalid value', re.I)
+
+
+def configurar_snmp_mikrotik(acesso, ip_zabbix: str, snmp: dict) -> dict:
+    """Lê o SNMP atual, aplica e confere. Lança ValueError se não ficou certo —
+    nesse caso o host NÃO é criado no Zabbix."""
+    from clientes.consumers import platform_ssh_exec
+
+    a = _acesso_ssh(acesso)
+    leitura = '/snmp print\n/snmp community print terse'
+    try:
+        antes = ler_snmp_routeros(platform_ssh_exec(a, leitura, timeout=25))
+    except Exception as exc:
+        raise ValueError(f'Não consegui entrar no equipamento por SSH: {exc}') from exc
+
+    cmds = comandos_snmp_routeros(antes, ip_zabbix, snmp)
+    saida = platform_ssh_exec(a, '\n'.join(cmds), timeout=30)
+    if _ROS_ERRO.search(saida):
+        raise ValueError(f'O equipamento recusou a configuração do SNMP: {saida.strip()[:300]}')
+
+    depois = ler_snmp_routeros(platform_ssh_exec(a, leitura, timeout=25))
+    nome = snmp.get('securityname') if str(snmp.get('version')) == '3' else snmp.get('community')
+    alvo = next((c for c in depois['communities'] if c['name'] == nome), None)
+    if not alvo or f'{ip_zabbix}/32' not in alvo['addresses'].split(',') or depois['enabled'] is False:
+        raise ValueError('Os comandos rodaram, mas a leitura de volta não mostra a community liberada para o '
+                         f'Zabbix com o SNMP ligado. Confira no equipamento ({", ".join(cmds)}).')
+    logger.info('[ZBX-CAD] SNMP configurado no acesso %s (%s): %s', acesso.id, acesso.tipo, cmds[0].split(' name=')[0])
+    return {'comandos': cmds, 'antes': antes['communities']}
+
+
+OID_VOLTAGEM_MIKROTIK = '1.3.6.1.4.1.14988.1.1.3.8.0'   # mtxrHlVoltage, em décimos de volt
+
+
+def criar_item_voltagem(cfg, hostid) -> str:
+    """Item SNMP de voltagem num host MikroTik (os templates do Zabbix não têm).
+    Idempotente: se já existe, devolve o existente."""
+    from .zabbix_metricas import CHAVE_VOLTAGEM_CRM
+
+    auth = services._get_auth_token(cfg)
+    ja = services._rpc(cfg.url, 'item.get', {'hostids': [hostid], 'filter': {'key_': CHAVE_VOLTAGEM_CRM},
+                                             'output': ['itemid']}, auth, config=cfg)
+    if ja:
+        return ja[0]['itemid']
+    ifaces = services._rpc(cfg.url, 'hostinterface.get', {'hostids': [hostid], 'filter': {'type': '2'},
+                                                          'output': ['interfaceid']}, auth, config=cfg)
+    if not ifaces:
+        raise ValueError('O host não tem interface SNMP no Zabbix.')
+    params = {
+        'hostid': hostid, 'name': 'Voltagem', 'key_': CHAVE_VOLTAGEM_CRM, 'type': 20,
+        'snmp_oid': OID_VOLTAGEM_MIKROTIK, 'interfaceid': ifaces[0]['interfaceid'],
+        'value_type': 0, 'units': 'V', 'delay': '5m', 'history': '30d', 'trends': '365d',
+        'preprocessing': [{'type': 1, 'params': '0.1', 'error_handler': 0, 'error_handler_params': ''}],
+    }
+    if _ver(cfg) >= (5, 4, 0):
+        params['tags'] = [{'tag': 'origem', 'value': 'crm'}]
+    try:
+        r = services._rpc(cfg.url, 'item.create', params, auth, config=cfg)
+    except Exception as exc:
+        msg = str(exc)
+        if 'permission' in msg.lower():
+            msg = 'O usuário da API do Zabbix deste cliente não tem permissão de escrita neste host. Detalhe: ' + msg
+        raise ValueError(msg) from exc
+    return str(r['itemids'][0])
+
+
+def ativar_voltagem(acesso) -> str:
+    from .vinculo_zabbix import _ck, _config, _vinculo_ativo
+
+    v = _vinculo_ativo(acesso)
+    itemid = criar_item_voltagem(_config(acesso.cliente_id), v.zabbix_hostid)
+    cache.delete(_ck('metricas', acesso.cliente_id))
+    cache.delete(_ck('status', acesso.cliente_id))
+    cache.delete(f'zbx_vinc_itens:{acesso.cliente_id}:{v.zabbix_hostid}')
+    logger.info('[ZBX-CAD] item de voltagem %s criado no host %s (acesso %s)', itemid, v.zabbix_hostid, acesso.id)
+    return itemid
