@@ -139,10 +139,31 @@ def testar_conexao(config) -> str:
 # HOSTS
 # ──────────────────────────────────────────────────────────────
 
+# Até o Zabbix 5.2 a disponibilidade fica no HOST (um campo por tipo de
+# interface); da 5.4 em diante, em cada interface. Pedir "available" na
+# interface de um 5.2 devolve `interfaces: [[]]` (caso real: Sartor 5.2.7 e
+# cliente 37 5.0 — status do card e da topologia quebravam).
+_AVAIL_HOST = ["available", "snmp_available", "ipmi_available", "jmx_available"]
+
+
+def _avail_no_host(config) -> bool:
+    return _get_zabbix_version(config.url) < (5, 4, 0)
+
+
+def _disponibilidade(h) -> list:
+    """Valores de disponibilidade do host ("1" ok, "2" fora; "0" = desconhecido
+    ou tipo de interface não usado, ignorado), nas duas formas da API."""
+    vals = [i.get("available") for i in h.get("interfaces", [])
+            if isinstance(i, dict) and i.get("available") not in (None, "0")]
+    if not vals:
+        vals = [h.get(k) for k in _AVAIL_HOST if h.get(k) not in (None, "0")]
+    return vals
+
+
 def listar_hosts(config, busca: str = "") -> list:
     auth   = _get_auth_token(config)
     params = {
-        "output":           ["hostid", "host", "name", "status"],
+        "output":           ["hostid", "host", "name", "status"] + (_AVAIL_HOST if _avail_no_host(config) else []),
         "selectInterfaces": ["ip", "port", "type", "available"],
     }
     if busca:
@@ -156,13 +177,13 @@ def listar_hosts(config, busca: str = "") -> list:
         ip        = ""
         available = "unknown"
         ifaces    = h.get("interfaces", [])
-        if ifaces:
+        if ifaces and isinstance(ifaces[0], dict):
             ip = ifaces[0].get("ip", "")
-            avail_vals = [i.get("available", "0") for i in ifaces]
-            if "1" in avail_vals:
-                available = "up"
-            elif all(v == "2" for v in avail_vals):
-                available = "down"
+        avail_vals = _disponibilidade(h)
+        if "1" in avail_vals:
+            available = "up"
+        elif avail_vals and all(v == "2" for v in avail_vals):
+            available = "down"
 
         result.append({
             "hostid":    h["hostid"],
@@ -396,16 +417,16 @@ def status_nodes(config, host_ids: list) -> dict:
         return {}
 
     auth      = _get_auth_token(config)
-    hosts_raw = _rpc(config.url, "host.get", {
-        "output":           ["hostid"],
-        "selectInterfaces": ["available"],
-        "hostids":          host_ids,
-    }, auth)
+    no_host   = _avail_no_host(config)
+    params    = {"output": ["hostid"] + (_AVAIL_HOST if no_host else []), "hostids": host_ids}
+    if not no_host:
+        params["selectInterfaces"] = ["available"]
+    hosts_raw = _rpc(config.url, "host.get", params, auth)
 
     status: dict = {}
     for h in hosts_raw:
         hid        = h["hostid"]
-        avail_vals = [i.get("available", "0") for i in h.get("interfaces", [])]
+        avail_vals = _disponibilidade(h)
         if "1" in avail_vals:
             status[hid] = "up"
         elif avail_vals and all(v == "2" for v in avail_vals):

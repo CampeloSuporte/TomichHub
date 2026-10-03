@@ -510,7 +510,7 @@
                         <i class="fas fa-shield-halved me-1"></i> Auditoria do Cliente
                     </a>
                     {% if zabbix_vinculo and not acessos_somente_leitura %}
-                    <button class="btn btn-sm btn-outline-secondary" id="btn-zbx-sincronizar" onclick="sincronizarZabbix(this)"
+                    <button class="btn btn-sm btn-outline-secondary" id="btn-zbx-sincronizar" onclick="sincronizarZabbix(this)" {% if not zabbix_configurado %}hidden{% endif %}
                             title="Casar os hosts com o Zabbix do cliente pelo IP e atualizar o status">
                         <i class="fas fa-rotate me-1"></i> Sincronizar Zabbix
                     </button>
@@ -7063,6 +7063,17 @@ function getCsrfToken(){
         else if (linha.querySelector('.ac-zbx-editar')) abrirVinculoZabbix(acessoId, tipo);
     }
 
+    // As caixas de confirmação/alerta/aviso do base.html ficam dentro de um
+    // bloco com camada própria: o z-index delas não vence o das janelas do
+    // Zabbix (presas ao <body>) e a confirmação abria POR TRÁS do painel de
+    // cadastro. Levá-las para o fim do <body> as põe na mesma camada, acima.
+    function zbxCaixasNoTopo() {
+        ['uiModalConfirm', 'uiModalAlert', 'ui-toast'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el && el.parentElement !== document.body) document.body.appendChild(el);
+        });
+    }
+
     function zbxDuracao(seg) {
         const d = Math.floor(seg / 86400), h = Math.floor((seg % 86400) / 3600), m = Math.floor((seg % 3600) / 60);
         if (d) return `${d}d ${h}h`;
@@ -7148,7 +7159,11 @@ function getCsrfToken(){
         if (!aba || aba.style.display === 'none') return;
         try {
             const data = await zbxJson(`{% url 'monitoramento:zabbix_vinculos_status' %}?id=${ZBX_CLIENTE}`);
-            if (!data.zabbix) { zbxParado = true; return; }
+            // Sem Zabbix ainda: nada a pintar, mas não desiste — configurado
+            // na aba Monitoramento, aparece no próximo ciclo ou ao voltar para Acessos
+            const btnSync = document.getElementById('btn-zbx-sincronizar');
+            if (btnSync) btnSync.hidden = !data.zabbix;
+            if (!data.zabbix) return;
             pintarZabbix(data.acessos || {});
             const btn = document.getElementById('btn-zbx-sincronizar');
             if (btn) btn.title = data.error ? `Zabbix indisponível: ${data.error}` : 'Casar os hosts com o Zabbix do cliente pelo IP e atualizar o status';
@@ -7187,6 +7202,7 @@ function getCsrfToken(){
 
     // Seletor de host: lista do Zabbix do cliente com busca por nome ou IP
     function zbxModal() {
+        zbxCaixasNoTopo();
         let m = document.getElementById('zbxVinculoModal');
         if (m) return m;
         m = document.createElement('div');
@@ -7332,6 +7348,7 @@ function getCsrfToken(){
     }
 
     function zgModal() {
+        zbxCaixasNoTopo();
         let m = document.getElementById('zgModal');
         if (m) return m;
         m = document.createElement('div');
@@ -7615,6 +7632,7 @@ function getCsrfToken(){
     }
 
     function zcModal() {
+        zbxCaixasNoTopo();
         let m = document.getElementById('zcModal');
         if (m) return m;
         m = zcEl('div', {id: 'zcModal', class: 'zg-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Cadastrar no Zabbix'});
@@ -7812,6 +7830,14 @@ function getCsrfToken(){
     }
 
     async function zcCriar() {
+        // Trava desde o 1º clique (antes da confirmação): dois cliques abriam
+        // duas confirmações e o "Criar host" respondia às duas
+        if (ZC.enviando) return;
+        ZC.enviando = true;
+        try { await zcCriarUmaVez(); } finally { ZC.enviando = false; }
+    }
+
+    async function zcCriarUmaVez() {
         const m = zcModal();
         const btn = m.querySelector('.zc-criar');
         const v = (n) => (m.querySelector(`[name="${n}"]`) || {}).value || '';

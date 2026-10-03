@@ -540,3 +540,55 @@ class CadastroAvisoIpZabbixTest(_Base):
             p = zc.previa(a)
         self.assertTrue(any('só aceita 172.31.10.2/32' in x for x in p['avisos']))
         self.assertEqual(p['community_padrao'], {'name': 'green-ro', 'addresses': '172.31.10.2/32'})
+
+
+class LimparCacheTest(_Base):
+    def test_config_nova_esquece_falha_e_sincronismo_antigos(self):
+        from monitoramento.agent_zabbix import ZabbixIndisponivel
+        with mock.patch('monitoramento.agent_zabbix.resolver_config', side_effect=ZabbixIndisponivel('fora')):
+            with self.assertRaises(ZabbixIndisponivel):
+                vz.hosts_do_cliente(self.cliente.id, usar_cache=False)
+        vz.limpar_cache(self.cliente.id)
+        # Com o cache limpo, volta a tentar (e agora o Zabbix responde)
+        self.assertEqual(len(vz.hosts_do_cliente(self.cliente.id, usar_cache=False)), len(HOSTS))
+
+
+class DisponibilidadeVersaoTest(TestCase):
+    """Zabbix < 5.4 guarda a disponibilidade no host; 5.4+ na interface."""
+    from monitoramento import services
+
+    def test_status_nodes_zabbix_52(self):
+        cfg = SimpleNamespace(id='c', url='http://z')
+        hosts = [{'hostid': '1', 'available': '1', 'snmp_available': '0'},
+                 {'hostid': '2', 'available': '0', 'snmp_available': '2'},
+                 {'hostid': '3', 'available': '0', 'snmp_available': '0'}]
+        with mock.patch.object(self.services, '_get_auth_token', return_value='t'), \
+             mock.patch.object(self.services, '_get_zabbix_version', return_value=(5, 2, 7)), \
+             mock.patch.object(self.services, '_rpc', side_effect=[hosts, []]) as rpc:
+            st = self.services.status_nodes(cfg, ['1', '2', '3'])
+        self.assertEqual(st, {'1': 'up', '2': 'down', '3': 'unknown'})
+        params = rpc.call_args_list[0].args[2]
+        self.assertNotIn('selectInterfaces', params)
+        self.assertIn('snmp_available', params['output'])
+
+    def test_status_nodes_zabbix_7(self):
+        cfg = SimpleNamespace(id='c', url='http://z')
+        hosts = [{'hostid': '1', 'interfaces': [{'available': '2'}, {'available': '1'}]}]
+        with mock.patch.object(self.services, '_get_auth_token', return_value='t'), \
+             mock.patch.object(self.services, '_get_zabbix_version', return_value=(7, 0, 0)), \
+             mock.patch.object(self.services, '_rpc', side_effect=[hosts, []]):
+            self.assertEqual(self.services.status_nodes(cfg, ['1']), {'1': 'up'})
+
+
+class CadastroDuploTest(_Base):
+    def test_segundo_cadastro_simultaneo_e_acesso_ja_vinculado_sao_recusados(self):
+        from monitoramento import zabbix_cadastro as zc
+        a = self.acesso('NOVO', '10.5.5.5')
+        cache.add(f'zbx_cad_trava:{a.id}', 1, 60)
+        with self.assertRaisesRegex(ValueError, 'em andamento'):
+            zc.criar(a, CadastroParametrosTest.D)
+        cache.delete(f'zbx_cad_trava:{a.id}')
+        ZabbixHostVinculo.objects.create(acesso=a, zabbix_hostid='5', origem='manual')
+        with self.assertRaisesRegex(ValueError, 'já está vinculado'):
+            zc.criar(a, CadastroParametrosTest.D)
+        self.assertIsNone(cache.get(f'zbx_cad_trava:{a.id}'))
