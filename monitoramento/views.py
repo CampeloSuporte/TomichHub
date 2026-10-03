@@ -955,3 +955,44 @@ def vinculos_historico(request):
     except Exception as e:
         logger.warning("[ZBX-VINC] histórico acesso %s: %s", acesso.id, e)
         return JsonResponse({'error': str(e)}, status=502)
+
+
+@login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
+def cadastro_previa(request):
+    """Sugestão de cadastro no Zabbix para um acesso sem host (nada é escrito)."""
+    from . import zabbix_cadastro as zc
+
+    acesso = _acesso_permitido(request, request.GET.get('acesso_id'))
+    if not acesso or not _vinculo_pode_editar(request):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    try:
+        return JsonResponse(zc.previa(acesso))
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        logger.warning("[ZBX-CAD] prévia acesso %s: %s", acesso.id, e)
+        return JsonResponse({'error': str(e)}, status=502)
+
+
+@login_required(login_url='login')
+@require_http_methods(["POST"])
+@ferramenta_instancia_required('monitoramento')
+def cadastro_criar(request):
+    """Cria o host no Zabbix do cliente com o que a tela confirmou."""
+    from . import zabbix_cadastro as zc
+
+    try:
+        dados = json.loads(request.body or '{}')
+    except ValueError:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+    acesso = _acesso_permitido(request, dados.get('acesso_id'))
+    if not acesso or not _vinculo_pode_editar(request):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    try:
+        return JsonResponse({'success': True, **zc.criar(acesso, dados, request.user)})
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        logger.warning("[ZBX-CAD] criar acesso %s: %s", acesso.id, e)
+        return JsonResponse({'error': str(e)}, status=502)

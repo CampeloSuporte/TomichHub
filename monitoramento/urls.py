@@ -28,6 +28,8 @@ urlpatterns = [
     path('zabbix/vinculos/definir/',     views.vinculos_definir,     name='zabbix_vinculos_definir'),
     path('zabbix/vinculos/itens/',       views.vinculos_itens,       name='zabbix_vinculos_itens'),
     path('zabbix/vinculos/historico/',   views.vinculos_historico,   name='zabbix_vinculos_historico'),
+    path('zabbix/vinculos/cadastro/previa/', views.cadastro_previa, name='zabbix_cadastro_previa'),
+    path('zabbix/vinculos/cadastro/criar/',  views.cadastro_criar,  name='zabbix_cadastro_criar'),
 
     # ── Topologias (CRUD) ────────────────────────────────────
     path('topologias/listar/',  views.listar_topologias,       name='topologias_listar'),

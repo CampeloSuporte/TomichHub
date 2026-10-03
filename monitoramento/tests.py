@@ -232,3 +232,142 @@ class GraficosTest(_Base):
              mock.patch('monitoramento.services.status_nodes', return_value={'101': 'up'}):
             st = vz.status_cliente(self.cliente.id)[str(self.a.id)]
         self.assertEqual((st['cpu'], st['uptime']), (42.5, 86400))
+
+
+class CadastroBackupTest(TestCase):
+    from monitoramento import zabbix_cadastro as zc
+
+    def test_routeros_terse_com_restricao_e_snmp_ligado(self):
+        bkp = ('# model = CCR1009-7G-1C-1S+\n/snmp community set [ find default=yes ] addresses=172.31.10.2/32 name=green-ro\n'
+               '/snmp community add addresses=0.0.0.0/0 name=outra\n/snmp community add disabled=yes name=velha\n'
+               '/snmp set enabled=yes trap-version=2\n/system identity set name=X\n')
+        r = self.zc.snmp_do_backup(bkp)
+        self.assertEqual(r['communities'], ['green-ro', 'outra'])
+        self.assertEqual(r['restricoes'], {'green-ro': '172.31.10.2/32'})
+        self.assertFalse(r['desabilitado'])
+
+    def test_routeros_bloco_e_snmp_desligado(self):
+        bkp = '# model = RB750Gr3\n/snmp community\nset [ find default=yes ] name=publica\n/system identity\nset name=X\n'
+        r = self.zc.snmp_do_backup(bkp)
+        self.assertEqual(r['communities'], ['publica'])
+        self.assertTrue(r['desabilitado'])
+
+    def test_huawei_cifrada_e_cisco(self):
+        r = self.zc.snmp_do_backup(' snmp-agent community read cipher %^%#abc%^%#\n')
+        self.assertEqual((r['communities'], r['cifrada']), ([], True))
+        r = self.zc.snmp_do_backup('snmp-server community LEITURA RO\n')
+        self.assertEqual(r['communities'], ['LEITURA'])
+
+
+def _ops(*nomes):
+    return {'templates': [{'id': str(i), 'nome': n} for i, n in enumerate(nomes, 1)],
+            'grupos': [{'id': '50', 'nome': 'Switches Huawei'}, {'id': '51', 'nome': 'MIKROTIK'}], 'proxies': []}
+
+
+class CadastroSugestaoTest(TestCase):
+    from monitoramento import zabbix_cadastro as zc
+
+    OPS = _ops('Mikrotik by SNMP', 'MikroTik CCR1009-7G-1C-1S+ by SNMP', 'MikroTik CRS309-1G-8S+IN by SNMP',
+               'Template Sinal SFP Mikrotik - BEE', 'Huawei VRP by SNMP', 'MW - HUAWEI - HEALTH - S57xx', 'Generic by SNMP')
+
+    def viz(self, **kw):
+        base = {'hostid': '1', 'nome': 'h', 'modelo_id': None, 'funcao_id': None, 'fabricante': '',
+                'templates': [], 'grupos': [], 'snmp': None, 'proxy': ''}
+        base.update(kw)
+        return base
+
+    def test_mesmo_modelo_copia_o_conjunto(self):
+        a = SimpleNamespace(modelo_id=7, funcao_id=1)
+        v = [self.viz(modelo_id=7, fabricante='mikrotik', templates=['3', '4'], grupos=['51'])]
+        s = self.zc.sugerir(a, 'CRS309-1G-8S+IN', 'Mikrotik', v, self.OPS)
+        self.assertEqual((s['templates'], s['grupos']), (['3', '4'], ['51']))
+
+    def test_oficial_do_modelo_com_complementos_e_troca_de_modelo(self):
+        a = SimpleNamespace(modelo_id=8, funcao_id=None)
+        v = [self.viz(modelo_id=7, fabricante='mikrotik', templates=['3', '4']),
+             self.viz(modelo_id=9, fabricante='mikrotik', templates=['1', '4'])]
+        s = self.zc.sugerir(a, 'CCR1009-7G-1C-1S+', 'Mikrotik', v, self.OPS)
+        self.assertEqual(s['templates'], ['2', '4'])   # oficial do modelo + SFP; nada de "by SNMP" alheio
+        # Vizinho da mesma função com template oficial de OUTRO modelo: troca
+        a2 = SimpleNamespace(modelo_id=8, funcao_id=3)
+        v2 = [self.viz(modelo_id=7, funcao_id=3, fabricante='mikrotik', templates=['3', '4'])]
+        s2 = self.zc.sugerir(a2, 'CCR1009-7G-1C-1S+', 'Mikrotik', v2, self.OPS)
+        self.assertEqual(s2['templates'], ['2', '4'])
+
+    def test_bras_huawei_sem_vizinho_da_funcao_usa_oficial_generico(self):
+        a = SimpleNamespace(modelo_id=20, funcao_id=5)
+        v = [self.viz(modelo_id=21, funcao_id=6, fabricante='huawei', templates=['6'], grupos=['50'])]
+        s = self.zc.sugerir(a, 'NE8000', 'Huawei', v, self.OPS)
+        self.assertEqual(s['templates'], ['5'])
+        self.assertEqual(s['grupos'], ['50'])
+
+    def test_fabricante_desconhecido_cai_no_generico(self):
+        a = SimpleNamespace(modelo_id=None, funcao_id=None)
+        s = self.zc.sugerir(a, '', 'Parks', [], self.OPS)
+        self.assertEqual(s['templates'], ['7'])
+
+
+class CadastroParametrosTest(TestCase):
+    from monitoramento import zabbix_cadastro as zc
+
+    D = {'acesso_id': 5, 'host': 'SW/CORE 01', 'nome': 'SW/CORE 01', 'ip': '10.0.0.1', 'porta': '161',
+         'snmp_versao': '2', 'community': 'leitura', 'templates': ['2'], 'grupos': ['50'], 'proxy': '9'}
+
+    def test_versoes_do_zabbix_e_proxy(self):
+        p7 = self.zc.montar_parametros(self.D, (7, 0, 21))
+        self.assertEqual((p7['monitored_by'], p7['proxyid']), (1, '9'))
+        self.assertNotIn('proxy_hostid', p7)
+        p5 = self.zc.montar_parametros(self.D, (5, 0, 37))
+        self.assertEqual(p5['proxy_hostid'], '9')
+        self.assertEqual(p7['host'], 'SW_CORE 01')
+        self.assertEqual(p7['interfaces'][0]['details'], {'version': 2, 'bulk': 1, 'community': 'leitura'})
+        self.assertEqual(p7['tags'], [{'tag': 'crm_acesso_id', 'value': '5'}])
+
+    def test_validacoes(self):
+        for campo, valor in (('ip', '999.1.1.1'), ('porta', '0'), ('grupos', []), ('community', '')):
+            with self.assertRaises(ValueError):
+                self.zc.montar_parametros(dict(self.D, **{campo: valor}), (7, 0, 0))
+        with self.assertRaises(ValueError):
+            self.zc.montar_parametros(dict(self.D, snmp_versao='3'), (7, 0, 0))
+
+
+class CadastroCriarTest(_Base):
+    def test_cria_e_vincula_como_manual(self):
+        from django.contrib.auth.models import User
+        from monitoramento import zabbix_cadastro as zc
+        u = User.objects.create_user('noc_cad')
+        a = self.acesso('NOVO', '10.5.5.5')
+        chamadas = []
+
+        def rpc(url, metodo, params, auth=None, config=None):
+            chamadas.append(metodo)
+            return [] if metodo == 'host.get' else {'hostids': ['777']}
+
+        with mock.patch('monitoramento.services._rpc', side_effect=rpc), \
+             mock.patch('monitoramento.services._get_auth_token', return_value='t'), \
+             mock.patch('monitoramento.services._get_zabbix_version', return_value=(7, 0, 0)):
+            r = zc.criar(a, dict(CadastroParametrosTest.D, proxy=''), u)
+        self.assertEqual(r['hostid'], '777')
+        self.assertEqual(chamadas, ['host.get', 'host.create'])
+        v = ZabbixHostVinculo.objects.get(acesso=a)
+        self.assertEqual((v.zabbix_hostid, v.origem, v.criado_no_zabbix_por), ('777', 'manual', u))
+
+    def test_nome_repetido_e_sem_permissao(self):
+        from monitoramento import zabbix_cadastro as zc
+        a = self.acesso('NOVO', '10.5.5.5')
+        with mock.patch('monitoramento.services._rpc', return_value=[{'hostid': '1'}]), \
+             mock.patch('monitoramento.services._get_auth_token', return_value='t'), \
+             mock.patch('monitoramento.services._get_zabbix_version', return_value=(7, 0, 0)):
+            with self.assertRaisesRegex(ValueError, 'Já existe'):
+                zc.criar(a, CadastroParametrosTest.D)
+
+        def rpc(url, metodo, params, auth=None, config=None):
+            if metodo == 'host.create':
+                raise Exception('No permissions to referred object or it does not exist!')
+            return []
+        with mock.patch('monitoramento.services._rpc', side_effect=rpc), \
+             mock.patch('monitoramento.services._get_auth_token', return_value='t'), \
+             mock.patch('monitoramento.services._get_zabbix_version', return_value=(7, 0, 0)):
+            with self.assertRaisesRegex(ValueError, 'permissão de escrita'):
+                zc.criar(a, CadastroParametrosTest.D)
+        self.assertFalse(ZabbixHostVinculo.objects.filter(acesso=a).exists())
