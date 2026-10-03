@@ -156,6 +156,18 @@ def listar_clientes(request):
 
     modulos_habilitados = _perms.modulos_habilitados_dict_para_listagem(request.user, cliente)
 
+    # Status do Zabbix nos cards: só quando o cliente tem Zabbix cadastrado e
+    # a conta pode usar a ferramenta de Monitoramento (mesma regra do
+    # ferramenta_instancia_required das rotas /monitoramento/zabbix/vinculos/).
+    from monitoramento.vinculo_zabbix import tem_zabbix
+    if is_admin_puro:
+        _pode_monitoramento = True
+    elif _perms.is_consultor(request.user) or _perms.is_operador(request.user):
+        _pode_monitoramento = _perms.ferramenta_habilitada(request.user, 'monitoramento')
+    else:
+        _pode_monitoramento = _perms.portal_pode_usar_ferramenta(request.user, 'monitoramento')
+    zabbix_vinculo = _pode_monitoramento and tem_zabbix(cliente.id)
+
     response = render(request, 'listar.html', {
         'cliente': cliente,
         'funcoes': funcoes,
@@ -173,6 +185,7 @@ def listar_clientes(request):
         'is_superuser': is_superuser,
         'acessos_somente_leitura': _perms.acessos_somente_leitura(request.user),
         'modulos_habilitados': modulos_habilitados,
+        'zabbix_vinculo': zabbix_vinculo,
         'destinos_padrao': DESTINOS_PADRAO,
         'acessos_com_erro_backup': acessos_com_erro_backup,
         'blocos_rpki_invalidos_cliente': blocos_rpki_invalidos_cliente,

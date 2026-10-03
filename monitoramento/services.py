@@ -144,7 +144,6 @@ def listar_hosts(config, busca: str = "") -> list:
     params = {
         "output":           ["hostid", "host", "name", "status"],
         "selectInterfaces": ["ip", "port", "type", "available"],
-        "limit":            300,
     }
     if busca:
         params["search"]      = {"name": busca, "host": busca}
@@ -174,6 +173,27 @@ def listar_hosts(config, busca: str = "") -> list:
             "ip":        ip,
         })
     return result
+
+
+def hosts_para_vinculo(config) -> list:
+    """Todos os hosts (sem limite) com todos os IPs de interface — base do
+    casamento Acesso ↔ host em monitoramento/vinculo_zabbix.py. `listar_hosts`
+    só guarda o IP da primeira interface, e host com SNMP + agent costuma ter
+    IPs diferentes em cada uma."""
+    auth  = _get_auth_token(config)
+    hosts = _rpc(config.url, "host.get", {
+        "output":           ["hostid", "host", "name", "status"],
+        "selectInterfaces": ["ip"],
+    }, auth, config=config)
+    return [
+        {
+            "hostid": h["hostid"],
+            "host":   h["host"],
+            "name":   h.get("name") or h["host"],
+            "ips":    sorted({i.get("ip", "") for i in h.get("interfaces", []) if i.get("ip")}),
+        }
+        for h in hosts
+    ]
 
 
 # ──────────────────────────────────────────────────────────────

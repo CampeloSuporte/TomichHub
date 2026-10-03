@@ -21,6 +21,12 @@ urlpatterns = [
     path('zabbix/interfaces/',  views.listar_interfaces_zabbix, name='zabbix_interfaces'),
     path('zabbix/historico/',   views.historico_item_zabbix,   name='zabbix_historico'),
 
+    # ── Vínculo Acesso ↔ host Zabbix (aba Acessos) ──────────
+    path('zabbix/vinculos/status/',      views.vinculos_status,      name='zabbix_vinculos_status'),
+    path('zabbix/vinculos/hosts/',       views.vinculos_hosts,       name='zabbix_vinculos_hosts'),
+    path('zabbix/vinculos/sincronizar/', views.vinculos_sincronizar, name='zabbix_vinculos_sincronizar'),
+    path('zabbix/vinculos/definir/',     views.vinculos_definir,     name='zabbix_vinculos_definir'),
+
     # ── Topologias (CRUD) ────────────────────────────────────
     path('topologias/listar/',  views.listar_topologias,       name='topologias_listar'),
     path('topologias/criar/',   views.criar_topologia,         name='topologias_criar'),

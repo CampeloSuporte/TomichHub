@@ -813,3 +813,97 @@ def salvar_dash_config(request):
         defaults={'dados': dados},
     )
     return JsonResponse({'success': True})
+
+
+# ──────────────────────────────────────────────────────────────
+# VÍNCULO ACESSO ↔ HOST ZABBIX (aba Acessos)
+# ──────────────────────────────────────────────────────────────
+
+def _vinculo_pode_editar(request) -> bool:
+    from usuario import perms as _perms
+    return not _perms.acessos_somente_leitura(request.user)
+
+
+@login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
+def vinculos_status(request):
+    """Status no Zabbix dos acessos vinculados do cliente (cache de 60s)."""
+    from . import vinculo_zabbix as vz
+
+    cliente_id = request.GET.get('id')
+    if not _pode_acessar_cliente(request, cliente_id):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    if not vz.tem_zabbix(cliente_id):
+        return JsonResponse({'zabbix': False, 'acessos': {}})
+    try:
+        return JsonResponse({'zabbix': True, 'acessos': vz.status_cliente(cliente_id)})
+    except Exception as e:
+        logger.warning("[ZBX-VINC] status cliente %s: %s", cliente_id, e)
+        return JsonResponse({'zabbix': True, 'acessos': {}, 'error': str(e)})
+
+
+@login_required(login_url='login')
+@ferramenta_instancia_required('monitoramento')
+def vinculos_hosts(request):
+    """Hosts do Zabbix do cliente para o seletor manual."""
+    from . import vinculo_zabbix as vz
+
+    cliente_id = request.GET.get('id')
+    if not _pode_acessar_cliente(request, cliente_id):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    try:
+        hosts = vz.hosts_do_cliente(cliente_id)
+        hosts = sorted(hosts, key=lambda h: h['name'].lower())
+        return JsonResponse({'hosts': [{'hostid': h['hostid'], 'name': h['name'], 'ips': h['ips']}
+                                       for h in hosts]})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=502)
+
+
+@login_required(login_url='login')
+@require_http_methods(["POST"])
+@ferramenta_instancia_required('monitoramento')
+def vinculos_sincronizar(request):
+    from . import vinculo_zabbix as vz
+
+    cliente_id = request.POST.get('id')
+    if not _pode_acessar_cliente(request, cliente_id) or not _vinculo_pode_editar(request):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    try:
+        return JsonResponse({'success': True, 'resumo': vz.sincronizar(cliente_id)})
+    except Exception as e:
+        logger.warning("[ZBX-VINC] sincronizar cliente %s: %s", cliente_id, e)
+        return JsonResponse({'success': False, 'error': str(e)}, status=502)
+
+
+@login_required(login_url='login')
+@require_http_methods(["POST"])
+@ferramenta_instancia_required('monitoramento')
+def vinculos_definir(request):
+    """POST acesso_id + modo: 'host' (com hostid), 'nenhum' ou 'auto'."""
+    from clientes.models import Acesso
+    from . import vinculo_zabbix as vz
+
+    acesso = Acesso.objects.filter(id=request.POST.get('acesso_id')).first()
+    if not acesso or not _pode_acessar_cliente(request, acesso.cliente_id) or not _vinculo_pode_editar(request):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    modo = request.POST.get('modo')
+    try:
+        if modo == 'host':
+            hostid = (request.POST.get('hostid') or '').strip()
+            if not hostid:
+                return JsonResponse({'error': 'Escolha um host.'}, status=400)
+            vz.definir_manual(acesso, hostid)
+        elif modo == 'nenhum':
+            vz.definir_manual(acesso, '')
+        elif modo == 'auto':
+            vz.voltar_automatico(acesso)
+        else:
+            return JsonResponse({'error': 'Modo inválido.'}, status=400)
+        return JsonResponse({'success': True})
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except Exception as e:
+        logger.warning("[ZBX-VINC] definir acesso %s: %s", acesso.id, e)
+        return JsonResponse({'error': str(e)}, status=502)
