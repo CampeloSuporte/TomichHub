@@ -487,8 +487,22 @@ def montar_parametros(dados: dict, versao_zbx: tuple, detalhes_v3: dict = None) 
 
 
 def criar(acesso, dados: dict, user=None) -> dict:
+    # Um cadastro por acesso de cada vez: dois cliques (ou duas confirmações)
+    # chegavam juntos e criavam o host em dobro — caso real no Sartor
+    trava = f'zbx_cad_trava:{acesso.id}'
+    if not cache.add(trava, 1, 180):
+        raise ValueError('Já há um cadastro deste acesso em andamento. Aguarde terminar.')
+    try:
+        return _criar(acesso, dados, user)
+    finally:
+        cache.delete(trava)
+
+
+def _criar(acesso, dados: dict, user=None) -> dict:
     from .vinculo_zabbix import _ck, _config
 
+    if ZabbixHostVinculo.objects.filter(acesso=acesso).exclude(zabbix_hostid='').exists():
+        raise ValueError('Este acesso já está vinculado a um host do Zabbix.')
     cfg = _config(acesso.cliente_id)
     auth = services._get_auth_token(cfg)
     dados = dict(dados, acesso_id=acesso.id)

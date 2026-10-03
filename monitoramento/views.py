@@ -328,15 +328,31 @@ def salvar_zabbix_config(request):
         },
     )
 
+    from . import vinculo_zabbix as vz
+    vz.limpar_cache(cliente_id)
+
     tunel = None
     try:
         config, tunel = _get_config_com_tunel(config, cliente_id)
         version = services.testar_conexao(config)
-        return JsonResponse({'success': True, 'message': f'Conectado! Zabbix v{version}'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': f'Configurado, mas teste falhou: {e}'})
     finally:
         _fechar_tunel(tunel)
+
+    # Já casa os acessos com os hosts: sem isso os cards só ganhavam o Zabbix
+    # depois de recarregar a página (caso real: Sartor, config salva com a
+    # página aberta e nenhum host aparecendo)
+    msg = f'Conectado! Zabbix v{version}'
+    try:
+        r = vz.sincronizar(cliente_id)
+        msg += f' · {r["vinculados"]} de {r["acessos"]} acessos vinculados aos hosts pelo IP'
+        if r['ambiguos']:
+            msg += f' ({len(r["ambiguos"])} com mais de um host no mesmo IP: escolha no card)'
+    except Exception as e:
+        logger.warning("[ZBX-VINC] sincronismo após salvar config do cliente %s: %s", cliente_id, e)
+        msg += ' · não consegui vincular os acessos agora; use "Sincronizar Zabbix" na aba Acessos'
+    return JsonResponse({'success': True, 'message': msg})
 
 
 @login_required(login_url='login')

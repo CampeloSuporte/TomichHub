@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-03 (Zabbix: status em 5.0/5.2, cadastro em dobro, confirmação escondida)
+
+### Corrigido
+
+- **Cards sem status do Zabbix em clientes com Zabbix 5.0/5.2** (Sartor, cliente 37): até a 5.2 a
+  disponibilidade fica no host, não na interface, e a consulta quebrava. Vale também para a
+  topologia da aba Monitoramento.
+- **Confirmação do cadastro abria por trás do painel "Cadastrar no Zabbix"**, e cliques repetidos
+  criavam o host em dobro. A confirmação agora fica por cima, o botão trava no primeiro clique e o
+  servidor recusa um segundo cadastro do mesmo acesso.
+- **Zabbix configurado com a página aberta não aparecia nos cards**: salvar a configuração já
+  vincula os acessos pelo IP (e diz quantos), e a aba Acessos percebe o Zabbix novo sem recarregar.
+
+---
+
 ## [Não publicado] — 2026-10-03 (Zabbix: SNMP configurado no MikroTik e voltagem no card)
 
 ### Adicionado

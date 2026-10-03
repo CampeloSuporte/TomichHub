@@ -48,6 +48,15 @@ def _ck(nome, cliente_id):
     return f'zbx_vinc_{nome}:{cliente_id}'
 
 
+def limpar_cache(cliente_id):
+    """Esquece tudo o que foi guardado sobre o Zabbix do cliente (config
+    trocada: outra URL/senha, ou Zabbix que estava fora e voltou)."""
+    for nome in ('sync', 'indisp', 'status', 'hosts', 'metricas'):
+        cache.delete(_ck(nome, cliente_id))
+    for chave in (f'zbx_agent_cfg:{cliente_id}', f'zbx_cad_opcoes:{cliente_id}', f'zbx_cad_vizinhos:{cliente_id}'):
+        cache.delete(chave)
+
+
 def ip_do_acesso(host: str) -> str:
     """'https://10.0.0.1:8443/zabbix' → '10.0.0.1'. Devolve '' se não for IP."""
     h = (host or '').strip()

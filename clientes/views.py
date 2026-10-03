@@ -166,7 +166,10 @@ def listar_clientes(request):
         _pode_monitoramento = _perms.ferramenta_habilitada(request.user, 'monitoramento')
     else:
         _pode_monitoramento = _perms.portal_pode_usar_ferramenta(request.user, 'monitoramento')
-    zabbix_vinculo = _pode_monitoramento and tem_zabbix(cliente.id)
+    # A parte do Zabbix nos cards vem para quem pode usar Monitoramento mesmo
+    # sem Zabbix ainda: configurado depois, com a página aberta, aparece sem recarregar
+    zabbix_vinculo = _pode_monitoramento
+    zabbix_configurado = _pode_monitoramento and tem_zabbix(cliente.id)
 
     response = render(request, 'listar.html', {
         'cliente': cliente,
@@ -186,6 +189,7 @@ def listar_clientes(request):
         'acessos_somente_leitura': _perms.acessos_somente_leitura(request.user),
         'modulos_habilitados': modulos_habilitados,
         'zabbix_vinculo': zabbix_vinculo,
+        'zabbix_configurado': zabbix_configurado,
         'destinos_padrao': DESTINOS_PADRAO,
         'acessos_com_erro_backup': acessos_com_erro_backup,
         'blocos_rpki_invalidos_cliente': blocos_rpki_invalidos_cliente,
