@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-03 (Monitoramento: clonar gráfico)
+
+### Adicionado
+
+- **Botão Clonar nos gráficos da aba Monitoramento**: abre a janela já preenchida com o host, o
+  título e os itens do gráfico de origem; ao salvar, cria um gráfico novo na aba atual (com o mesmo
+  período), sem alterar o original. Basta trocar a interface.
+
+---
+
 ## [Não publicado] — 2026-10-03 (Gráficos: descrição da porta no sinal óptico)
 
 ### Corrigido
