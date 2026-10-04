@@ -106,6 +106,8 @@
         .ac-zbx-metrica { padding: 2px 4px; border: none; border-radius: 3px; background: none; color: var(--text-light); font: inherit; }
         .ac-zbx-metrica:hover, .ac-zbx-metrica:focus-visible { background: rgba(88, 166, 255, .08); color: var(--cyan); outline: none; }
         .ac-zbx-metrica[hidden] { display: none; }
+        .ac-zbx-temp-valor.alerta { color: var(--yellow); }
+        .ac-zbx-temp-valor.falha { color: var(--red); }
         .ac-cpu-barra { width: 56px; height: 4px; overflow: hidden; border-radius: 2px; background: var(--border); }
         .ac-cpu-barra span { display: block; height: 100%; background: var(--green); }
         .ac-cpu.alerta .ac-cpu-barra span { background: var(--yellow); }
@@ -585,6 +587,10 @@
                                         <div class="ac-linha ac-zbx-cpu" hidden>
                                             <span class="ac-rotulo">CPU</span>
                                             <span class="ac-valor"><button type="button" class="ac-zbx-metrica" title="Histórico da CPU" onclick="abrirGraficosZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}', 'cpu')"><span class="ac-cpu"><span class="ac-cpu-barra"><span></span></span><span class="ac-cpu-valor"></span></span></button></span>
+                                        </div>
+                                        <div class="ac-linha ac-zbx-temp" hidden>
+                                            <span class="ac-rotulo">Temperatura</span>
+                                            <span class="ac-valor"><button type="button" class="ac-zbx-metrica ac-zbx-temp-valor" title="Histórico da temperatura" onclick="abrirGraficosZabbix({{ acesso.id }}, '{{ acesso.tipo|escapejs }}', 'temperatura')"></button></span>
                                         </div>
                                         <div class="ac-linha ac-zbx-volt" hidden>
                                             <span class="ac-rotulo">Voltagem</span>
@@ -7112,6 +7118,15 @@ function getCsrfToken(){
                 caixa.querySelector('.ac-cpu-barra span').style.width = `${Math.min(100, Math.max(0, v.cpu))}%`;
                 caixa.querySelector('.ac-cpu-valor').textContent = `${Number.isInteger(v.cpu) ? v.cpu : v.cpu.toFixed(1)}%`;
             }
+            const lTemp = card.querySelector('.ac-zbx-temp');
+            lTemp.hidden = !(vinculado && v.temp != null);
+            if (!lTemp.hidden) {
+                const b = lTemp.querySelector('.ac-zbx-temp-valor');
+                b.textContent = `${Number.isInteger(v.temp) ? v.temp : v.temp.toFixed(1)} °C`;
+                b.className = `ac-zbx-metrica ac-zbx-temp-valor ${v.temp >= 85 ? 'falha' : (v.temp >= 70 ? 'alerta' : '')}`;
+                b.title = (v.temps ? `Sensores: ${v.temps.map((x) => x + ' °C').join(' · ')} (mostrando o mais quente). ` : '') +
+                          'Clique para ver o histórico.';
+            }
             const lVolt = card.querySelector('.ac-zbx-volt');
             const temVolt = vinculado && v.volt != null;
             const ativar = lVolt.querySelector('.ac-zbx-volt-ativar');
@@ -7370,6 +7385,7 @@ function getCsrfToken(){
               <button type="button" data-aba="interfaces">Interfaces</button>
               <button type="button" data-aba="opticos">Sinal óptico</button>
               <button type="button" data-aba="cpu">CPU</button>
+              <button type="button" data-aba="temperatura">Temperatura</button>
               <button type="button" data-aba="voltagem">Voltagem</button>
               <div class="zg-filtros">
                 <input type="search" class="form-control form-control-sm zg-busca" placeholder="Filtrar por nome..." autocomplete="off">
@@ -7437,6 +7453,11 @@ function getCsrfToken(){
                         itens: g.itens.map((i) => i.itemid)};
             });
         }
+        if (ZG.aba === 'temperatura') {
+            return d.temperatura.map((c) => ({chave: c.itemid, nome: c.nome, v1: c.valor == null ? 'sem leitura' : `${c.valor} °C`, v2: '',
+                                              c1: c.valor >= 85 ? 'zg-falha' : (c.valor >= 70 ? 'zg-alerta' : ''), itens: [c.itemid]}))
+                .sort((a, b) => (parseFloat(b.v1) || -99) - (parseFloat(a.v1) || -99));
+        }
         if (ZG.aba === 'voltagem') {
             return d.voltagem.map((c) => ({chave: c.itemid, nome: c.nome, v1: c.valor == null ? 'sem leitura' : `${c.valor.toFixed(2)} V`, v2: '', itens: [c.itemid]}));
         }
@@ -7451,7 +7472,8 @@ function getCsrfToken(){
         m.querySelector('[data-aba="opticos"]').textContent = `Sinal óptico (${d.opticos.filter((g) => !g.vazio).length})`;
         m.querySelector('[data-aba="cpu"]').textContent = `CPU (${d.cpu.length})`;
         m.querySelector('[data-aba="voltagem"]').textContent = `Voltagem (${d.voltagem.length})`;
-        const rotuloTodos = {interfaces: 'mostrar sem tráfego', opticos: 'mostrar sem leitura', cpu: '', voltagem: ''}[ZG.aba];
+        m.querySelector('[data-aba="temperatura"]').textContent = `Temperatura (${d.temperatura.length})`;
+        const rotuloTodos = {interfaces: 'mostrar sem tráfego', opticos: 'mostrar sem leitura', cpu: '', voltagem: '', temperatura: ''}[ZG.aba];
         m.querySelector('.zg-todos-rotulo').textContent = rotuloTodos;
         m.querySelector('.zg-todos').parentElement.style.display = rotuloTodos ? '' : 'none';
 
@@ -7461,7 +7483,7 @@ function getCsrfToken(){
 
         const lista = m.querySelector('.zg-lista');
         lista.innerHTML = '';
-        const cab = {interfaces: ['Interface', 'Entrada', 'Saída'], opticos: ['Interface', 'RX (pior)', 'TX'], cpu: ['Item', 'Atual', ''], voltagem: ['Item', 'Atual', '']}[ZG.aba];
+        const cab = {interfaces: ['Interface', 'Entrada', 'Saída'], opticos: ['Interface', 'RX (pior)', 'TX'], cpu: ['Item', 'Atual', ''], voltagem: ['Item', 'Atual', ''], temperatura: ['Sensor', 'Atual', '']}[ZG.aba];
         const cabEl = document.createElement('div');
         cabEl.className = 'zg-linha zg-cab';
         cab.forEach((t) => { const s = document.createElement('span'); s.textContent = t; cabEl.appendChild(s); });
@@ -7487,7 +7509,8 @@ function getCsrfToken(){
             vazio.textContent = {interfaces: 'Nenhuma interface com tráfego neste host.',
                                  opticos: 'Nenhum sinal óptico com leitura neste host.',
                                  cpu: 'Nenhum item de CPU neste host.',
-                                 voltagem: 'Nenhum item de voltagem do equipamento neste host.'}[ZG.aba];
+                                 voltagem: 'Nenhum item de voltagem do equipamento neste host.',
+                                 temperatura: 'Nenhum sensor de temperatura do equipamento neste host.'}[ZG.aba];
             lista.appendChild(vazio);
         }
         if (selecionarPrimeiro) {
@@ -7526,7 +7549,8 @@ function getCsrfToken(){
             const optico = ZG.aba === 'opticos';
             const bps = series.every((s) => s.units === 'bps');
             const volt = ZG.aba === 'voltagem';
-            const fmt = bps ? zgBps : (optico ? zgDbm : (volt ? (v) => `${v.toFixed(2)} V` : (v) => `${v.toFixed(1)}%`));
+            const temp = ZG.aba === 'temperatura';
+            const fmt = bps ? zgBps : (optico ? zgDbm : (volt ? (v) => `${v.toFixed(2)} V` : (temp ? (v) => `${v.toFixed(1)} °C` : (v) => `${v.toFixed(1)}%`)));
             const datasets = series.map((s, i) => {
                 let rotulo = s.name;
                 if (bps) rotulo = /received|in\b|entrada/i.test(s.name) ? 'Entrada' : (/sent|out\b|sa[ií]da/i.test(s.name) ? 'Saída' : s.name);

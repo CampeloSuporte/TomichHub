@@ -184,6 +184,17 @@ gráficos; a linha de CPU também abre a aba CPU).
   (rota `zabbix/vinculos/voltagem/ativar/`). Equipamento sem sensor deixa o item
   sem leitura ("sem leitura" no card).
 
+## Temperatura
+
+Linha **Temperatura** no card (mais quente dos sensores do equipamento;
+amarelo ≥70 °C, vermelho ≥85 °C) e aba "Temperatura" nos gráficos.
+`zabbix_metricas.escolher_temperatura`: "temp" na chave/nome, unidade °C/C/ºC/Cº
+(variações reais dos templates) ou vazia; exclui SFP/XFP/QSFP/óptico/DDM/TCV,
+PON/GPON/EPON, interface/porta/`x/y/z`, limites (`tempTholdLow`), walks/JSON e
+"Tempo de resposta". Prioridade: CPU/MPU/placa/chassi/slot/sensor > genérica >
+fonte/ventoinha. Leitura 0 (sem suporte) ou fora de −20…150 °C (ex.: 214748 de
+OLT Huawei) é descartada.
+
 ## Também corrigido
 
 `services.listar_hosts` tinha `limit: 300` e cortava hosts em Zabbix maiores

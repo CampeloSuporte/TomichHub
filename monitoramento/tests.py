@@ -631,3 +631,22 @@ class OpticoDescricaoTest(TestCase):
         self.assertIn('XGigabitEthernet0/0/1(HUAWEI NE8000)', g)
         self.assertFalse(g['XGigabitEthernet0/0/1(HUAWEI NE8000)']['vazio'])
         self.assertTrue(g['40GE0/0/5']['vazio'])
+
+
+class TemperaturaTest(TestCase):
+    from monitoramento import zabbix_metricas as zm
+
+    def test_temperatura_do_equipamento_e_nao_de_modulo(self):
+        itens = [_it('1', 'hwEntityOpticalTemperature[x]', '100GE0/3/0: Temperatura', 'C', '31'),
+                 _it('2', 'temperatureSensorCurrentTemperature[3]', 'Temperatura no Sensor TCV 100G 1/1/10', '°C', '60'),
+                 _it('3', 'tempTholdLow[1]', 'Limite Inferior de Temperatura na Interface X', '°C', '0'),
+                 _it('4', 'icmppingsec', 'ICMP - Tempo de Resposta', 's', '0.003'),
+                 _it('5', 'pkSfpDiagTemperature_1', 'Temperature SFP Gpon 1/1', 'ºC', '40'),
+                 _it('6', 'hwEntityTemperature[1]', 'Temperatura no Slot MPU Board 0', '°C', '39'),
+                 _it('7', 'sensor.temp.value[mtxrHlProcessorTemperature.0]', 'CPU: Temperature', '°C', '47')]
+        self.assertEqual(sorted(i['itemid'] for i in self.zm.escolher_temperatura(itens)), ['6', '7'])
+
+    def test_leitura_implausivel(self):
+        self.assertIsNone(self.zm.celsius('214748'))
+        self.assertIsNone(self.zm.celsius('0'))
+        self.assertEqual(self.zm.celsius('67.28'), 67.28)
