@@ -15,6 +15,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-04 (Gráficos: porta UP/DOWN no sinal óptico e nas interfaces)
+
+### Adicionado
+
+- **Estado da porta (UP/DOWN) no sinal óptico e na lista de interfaces** dos gráficos do Zabbix:
+  bolinha verde (up), vermelha (down/lowerLayerDown/notPresent) ou amarela (testing/dormant), pelo
+  status operacional do Zabbix (`net.if.status`, `ifOperStatus[...]`, `datacom.if.status`). Porta
+  sem item de status no Zabbix fica sem indicador.
+
+### Corrigido
+
+- **Limiares do módulo óptico apareciam como interfaces no sinal óptico** ("100GE0/3/0: High
+  Threshold", "Low Warning"): ficam de fora. No NE8000 Juína, de 23 grupos para os 7 reais.
+
+---
+
 ## [Não publicado] — 2026-10-04 (Acessos: temperatura do equipamento no card)
 
 ### Adicionado

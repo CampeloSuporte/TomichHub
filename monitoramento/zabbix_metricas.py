@@ -217,6 +217,9 @@ def opticos(itens):
             continue
         if int(it.get('value_type', 3)) not in (0, 3):
             continue
+        # Limiares do módulo ("100GE0/3/0: High Threshold") não são leitura de sinal
+        if re.search(r'threshold|warning|alarm|limite|thold|\bhigh\b|\blow\b', nome, re.I):
+            continue
         sentido = _opt_sentido(nome, it.get('key_', ''))
         if not sentido:
             continue
@@ -340,3 +343,41 @@ def escolher_temperatura(itens):
         return []
     melhor = max(s for s, _ in pontuados)
     return [it for s, it in pontuados if s == melhor]
+
+
+# ── Estado operacional das portas (up/down) ──────────────────
+
+_OPER_KEY = re.compile(r'^(net\.if\.status|ifoperstatus|[\w.]*\.if\.status|[\w.]*ifoperstatus)\[', re.I)
+_OPER_NOME = re.compile(r'operational status|status operacional|oper(ational)?\s*state|^status da interface', re.I)
+_OPER_NAO = re.compile(r'admin|onu|\bpon\b|gpon|epon|bgp|peer|ospf|fan|ventoinha|fonte|power|corrente|shutdown|'
+                       r'status (rx|tx)|duplex', re.I)
+# ifOperStatus (RFC 2863): 1 up, 2 down, 3 testing, 5 dormant, 6 notPresent, 7 lowerLayerDown
+_OPER_VALOR = {'1': 'up', '2': 'down', '3': 'testing', '5': 'dormant', '6': 'down', '7': 'down'}
+
+
+def porta_base(nome: str) -> str:
+    """Só o nome da porta, sem descrição: 'XGigabitEthernet0/0/1(HUAWEI)',
+    'XGigabitEthernet0/0/1 - P2P-X', 'Interface ge1: Bits' → 'xgigabitethernet0/0/1'."""
+    n = re.sub(r'^\s*(status da interface|interface)\s+', '', nome or '', flags=re.I)
+    return re.split(r'[\s(:]', n.strip(), maxsplit=1)[0].lower()
+
+
+def status_portas(itens) -> dict:
+    """{porta_base: 'up'|'down'|...} pelos itens de estado operacional."""
+    saida = {}
+    for it in itens:
+        key, nome = it.get('key_', ''), it.get('name', '')
+        if not (_OPER_KEY.match(key) or _OPER_NOME.search(nome)) or _OPER_NAO.search(f'{key} {nome}'):
+            continue
+        valor = str(it.get('lastvalue') or '').split('.')[0]
+        estado = _OPER_VALOR.get(valor)
+        if not estado:
+            continue
+        # A porta vem do parâmetro da chave quando ele é um nome (ifOperStatus[XGigabitEthernet0/0/1]);
+        # se é índice SNMP (net.if.status[ifOperStatus.12]), vem do nome do item
+        param = re.search(r'\[([^\]]+)\]', key)
+        base = param.group(1).lower() if param and re.search(r'[a-z].*\d', param.group(1), re.I) \
+            and not param.group(1).lower().startswith('ifoperstatus') else porta_base(nome)
+        if base:
+            saida[base] = estado
+    return saida
