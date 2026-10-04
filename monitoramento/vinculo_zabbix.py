@@ -290,8 +290,8 @@ def status_cliente(cliente_id) -> dict:
 # ──────────────────────────────────────────────────────────────
 
 _BUSCA_METRICAS = {
-    'key_': ['cpu', 'uptime', 'duty', 'processor', '1.3.6.1.2.1.1.3.0', 'volt'],
-    'name': ['cpu', 'uptime', 'processador', 'processor', 'volt', 'tens'],
+    'key_': ['cpu', 'uptime', 'duty', 'processor', '1.3.6.1.2.1.1.3.0', 'volt', 'temp'],
+    'name': ['cpu', 'uptime', 'processador', 'processor', 'volt', 'tens', 'temp'],
 }
 
 
@@ -326,7 +326,8 @@ def _mapa_metricas(cfg, cliente_id, hostids) -> dict:
         up = zm.escolher_uptime(its)
         mapa[hid] = {'cpu': [it['itemid'] for it in zm.escolher_cpu(its)],
                      'uptime': up['itemid'] if up else None,
-                     'volt': [(it['itemid'], it.get('units', '')) for it in zm.escolher_voltagem(its)]}
+                     'volt': [(it['itemid'], it.get('units', '')) for it in zm.escolher_voltagem(its)],
+                     'temp': [it['itemid'] for it in zm.escolher_temperatura(its)]}
     cache.set(ck, mapa, _TTL_METRICAS)
     return mapa
 
@@ -338,6 +339,7 @@ def _metricas(cfg, cliente_id, hostids) -> dict:
     ids = [i for h in hostids for i in mapa.get(h, {}).get('cpu', [])]
     ids += [mapa[h]['uptime'] for h in hostids if mapa.get(h, {}).get('uptime')]
     ids += [i for h in hostids for i, _ in mapa.get(h, {}).get('volt', [])]
+    ids += [i for h in hostids for i in mapa.get(h, {}).get('temp', [])]
     if not ids:
         return {}
     auth = services._get_auth_token(cfg)
@@ -363,6 +365,12 @@ def _metricas(cfg, cliente_id, hostids) -> dict:
                 dados['volts'] = [round(t, 1) for t in tensoes]
         elif m.get('volt'):
             dados['volt_sem_leitura'] = True
+        temps = [zm.celsius(ultimos.get(i)) for i in m.get('temp', [])]
+        temps = [t for t in temps if t is not None]
+        if temps:
+            dados['temp'] = round(max(temps), 1)
+            if len(temps) > 1:
+                dados['temps'] = sorted(round(t, 1) for t in temps)
         if dados:
             saida[h] = dados
     return saida
@@ -427,6 +435,8 @@ def itens_graficos(acesso) -> dict:
         'cpu': [_item_json(i) for i in cpu],
         'voltagem': [dict(_item_json(i), valor=zm.volts(i.get('lastvalue'), i.get('units')))
                      for i in zm.escolher_voltagem(itens)],
+        'temperatura': [dict(_item_json(i), valor=zm.celsius(i.get('lastvalue')))
+                        for i in zm.escolher_temperatura(itens)],
         'uptime': _item_json(up) if up else None,
     }
 

@@ -15,6 +15,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-04 (Acessos: temperatura do equipamento no card)
+
+### Adicionado
+
+- **Temperatura no card do acesso vinculado ao Zabbix**, com o sensor mais quente (amarelo a partir
+  de 70 °C, vermelho a partir de 85 °C; os outros sensores no tooltip). O clique abre o histórico na
+  nova aba "Temperatura" dos gráficos. Só entra a temperatura do equipamento (CPU, placa, chassi):
+  SFP, transceiver, porta PON, limites e "Tempo de resposta" ficam de fora, assim como leituras 0 e
+  absurdas. Encontrada em 243 hosts dos clientes com Zabbix.
+
+---
+
 ## [Não publicado] — 2026-10-03 (Monitoramento: clonar gráfico)
 
 ### Adicionado

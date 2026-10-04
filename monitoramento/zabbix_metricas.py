@@ -290,3 +290,53 @@ def escolher_voltagem(itens):
         return []
     melhor = max(s for s, _ in pontuados)
     return [it for s, it in pontuados if s == melhor]
+
+
+# ── Temperatura do equipamento ───────────────────────────────
+
+_TEMP_SIM = re.compile(r'temp', re.I)
+# Módulo óptico/porta/PON tem temperatura própria; limites, walks, JSON e
+# "Tempo de resposta" não são leitura de temperatura
+_TEMP_NAO = re.compile(
+    r'sfp|xfp|qsfp|optic|[oó]ptic|ddm|transceiver|\btcv\b|gpon|epon|\bpon\b|interface|module|m[oó]dulo|'
+    r'lane|thold|threshold|limite|alarm|walk|status|json|sensores|tempo|resposta|benchmark|discovery|'
+    r'icmp|\bport\b|porta|\d+/\d+/\d+',
+    re.I,
+)
+_TEMP_UNIDADES = {'c', '°c', 'ºc', 'cº', 'c°', 'â°c', ''}
+
+
+def celsius(valor):
+    """Leitura plausível de temperatura de equipamento, ou None (0 = sensor
+    sem suporte; 214748 = lixo de OID de OLT)."""
+    try:
+        v = float(valor)
+    except (TypeError, ValueError):
+        return None
+    return v if v != 0 and -20 < v < 150 else None
+
+
+def _temp_score(it):
+    key, nome = it.get('key_', ''), it.get('name', '')
+    texto = f'{key} {nome}'
+    if not _TEMP_SIM.search(texto) or _TEMP_NAO.search(texto):
+        return 0
+    if (it.get('units') or '').strip().lower() not in _TEMP_UNIDADES:
+        return 0
+    if int(it.get('value_type', 3)) not in (0, 3):
+        return 0
+    if re.search(r'cpu|processor|mpu|board|placa|device|system|sistema|chassi|slot|ipu|switch|\bolt\b|sensor', texto, re.I):
+        return 90
+    if re.search(r'psu|power supply|fonte|fan|ventoinha', texto, re.I):
+        return 50
+    return 70
+
+
+def escolher_temperatura(itens):
+    """Itens de temperatura do equipamento do melhor tipo (várias placas ou
+    sensores = vários itens; o card mostra o mais quente)."""
+    pontuados = [(s, it) for it in itens if (s := _temp_score(it))]
+    if not pontuados:
+        return []
+    melhor = max(s for s, _ in pontuados)
+    return [it for s, it in pontuados if s == melhor]
