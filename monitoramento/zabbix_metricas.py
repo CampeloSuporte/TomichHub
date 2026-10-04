@@ -381,3 +381,12 @@ def status_portas(itens) -> dict:
         if base:
             saida[base] = estado
     return saida
+
+
+def sem_luz(membros) -> bool:
+    """RX ou TX sem luz: −40 dBm é o piso do Huawei/Datacom para "nada"."""
+    for m in membros:
+        v = para_dbm(m['item'].get('lastvalue'), m['item'].get('units'))
+        if v is not None and v <= -39.9:
+            return True
+    return False
