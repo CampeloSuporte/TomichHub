@@ -46,6 +46,13 @@ por IP: é o caso típico da escolha manual.
 
 ## Quando sincroniza
 
+- Ao **salvar a configuração do Zabbix** na aba Monitoramento: limpa os caches do
+  cliente (`vinculo_zabbix.limpar_cache`) e já vincula; a mensagem diz quantos
+  acessos casaram (Sartor: 69 de 87). Antes disso, configurar o Zabbix com a
+  página aberta não mostrava nada nos cards até recarregar.
+- A parte do Zabbix nos cards (oculta) vem para toda conta que pode usar
+  Monitoramento, mesmo sem Zabbix: o status responde `zabbix: false` e a página
+  tenta de novo ao abrir a aba Acessos e a cada 60s, sem desistir.
 - Botão **Sincronizar Zabbix** na barra da aba Acessos (mostra o resumo).
 - Ao abrir a aba, se o cliente não foi sincronizado nas últimas 6h.
 - Task `monitoramento.tasks.sincronizar_vinculos_zabbix` às 05:20 (beat em
@@ -70,6 +77,15 @@ por IP: é o caso típico da escolha manual.
 | `zabbix/vinculos/hosts/` | GET | hosts para o seletor manual |
 | `zabbix/vinculos/sincronizar/` | POST | refaz os vínculos automáticos |
 | `zabbix/vinculos/definir/` | POST | `modo=host` (+`hostid`), `nenhum` ou `auto` |
+| `zabbix/vinculos/itens/` | GET | interfaces, óptico, CPU, temperatura, voltagem do host (`acesso_id`) |
+| `zabbix/vinculos/historico/` | GET | séries (`acesso_id`, `itemids`, `periodo` 1h…30d); só itens do host vinculado |
+| `zabbix/vinculos/cadastro/previa/` | GET | sugestão de cadastro (nada é escrito) |
+| `zabbix/vinculos/cadastro/criar/` | POST JSON | SNMP no MikroTik + `host.create` + item de voltagem |
+| `zabbix/vinculos/voltagem/ativar/` | POST | item de voltagem num MikroTik já monitorado |
+
+Todas exigem a ferramenta Monitoramento e acesso ao cliente; as de escrita
+(`sincronizar`, `definir`, `cadastro/*`, `voltagem/ativar`) recusam login
+somente leitura.
 
 ## CPU, uptime e gráficos (só com host vinculado)
 
@@ -194,6 +210,75 @@ PON/GPON/EPON, interface/porta/`x/y/z`, limites (`tempTholdLow`), walks/JSON e
 "Tempo de resposta". Prioridade: CPU/MPU/placa/chassi/slot/sensor > genérica >
 fonte/ventoinha. Leitura 0 (sem suporte) ou fora de −20…150 °C (ex.: 214748 de
 OLT Huawei) é descartada.
+
+## Estado das portas (UP/DOWN)
+
+Bolinha antes do nome em cada linha do **Sinal óptico** e das **Interfaces**:
+verde UP, vermelha DOWN, amarela testing/dormant. `zabbix_metricas.status_portas`
+lê o status operacional (`ifOperStatus`: 1 up, 2 down, 3 testing, 5 dormant,
+6 notPresent, 7 lowerLayerDown) nos formatos reais:
+
+- `net.if.status[ifOperStatus.N]` "Interface X(desc): Operational status" (padrão);
+- `ifOperStatus[XGigabitEthernet0/0/1]` "Status da Interface X - desc" (Sartor);
+- `datacom.if.status[N]` "Interface X: Operational status".
+
+Ficam de fora status administrativo, ONU, PON, BGP, OSPF, ventoinha, fonte,
+corrente, shutdown e os "Status RX/TX" de limiar. O casamento com a linha é pelo
+nome da porta sem a descrição (`porta_base`: até o primeiro espaço, "(" ou ":").
+
+**DOWN inferido**: templates com LLD de interfaces filtrado em `{#IFOPER}=^1$`
+(caso Sartor, regras "Interfaces Físicas" e "Interfaces Físicas Erros -
+Velocidade") só criam item de status para porta que estava UP — porta down nunca
+tem status. Sem item de status e **sem luz** (RX ou TX ≤ −40 dBm, piso do
+Huawei/Datacom), a linha óptica sai DOWN com `status_inferido` e o tooltip explica.
+Com luz e sem item, fica sem bolinha (não dá para afirmar). A correção de verdade
+é tirar esse filtro do template no Zabbix do cliente.
+
+**Limiares não são sinal**: itens "High Threshold", "Low Warning", alarmes e
+limites do módulo óptico são ignorados no agrupamento (no NE8000 Juína viravam 16
+"interfaces" a mais).
+
+## Compatibilidade com Zabbix 5.0/5.2
+
+Até a 5.2 a disponibilidade fica no **host** (`available`, `snmp_available`,
+`ipmi_available`, `jmx_available`); da 5.4 em diante, em cada interface. Pedir
+`selectInterfaces: ["available"]` num 5.2 devolve `interfaces: [[]]` e o status
+quebrava com `'list' object has no attribute 'get'` (Sartor 5.2.7, cliente 37
+5.0). `services.status_nodes` e `listar_hosts` escolhem a forma pela versão
+(`_avail_no_host`) e interpretam as duas (`_disponibilidade`) — vale também para a
+topologia da aba Monitoramento.
+
+Outras diferenças tratadas: grupos via `selectHostGroups` (≥ 6.2) ou
+`selectGroups`; proxy por `monitored_by`+`proxyid` (≥ 7.0) ou `proxy_hostid`;
+nome do proxy em `name` (≥ 7.0) ou `host`; tags em item só a partir da 5.4.
+
+## Cadastro: trava contra duplicidade e confirmação visível
+
+- As caixas `uiConfirm`/`uiAlert`/`uiToast` do `base.html` ficam dentro de um
+  bloco com camada própria e abriam **por trás** do painel "Cadastrar no Zabbix"
+  (que fica no `<body>`). `zbxCaixasNoTopo()` move as três para o fim do `<body>`
+  ao abrir qualquer janela do Zabbix.
+- Com a confirmação escondida, cliques repetidos criaram o host duas vezes no
+  Sartor (12125/12126). Agora: `ZC.enviando` trava desde o 1º clique; o servidor
+  usa `cache.add('zbx_cad_trava:<acesso>')` (180 s) e recusa acesso que já tem
+  vínculo com host.
+
+## Armadilhas conhecidas
+
+- **IP do Zabbix ≠ IP de coleta**: a URL da API pode não ser o IP de onde o Zabbix
+  consulta (NAT/rede interna; ex.: equipamento liberando só `172.31.10.2` com a
+  API em `170.79.92.46`). A prévia avisa; o `addresses` fica só com o IP informado.
+- **Macro global ≠ community do equipamento** (`{$SNMP_COMMUNITY}`=TOMICH com
+  equipamento em `green-ro`): a prévia usa a do backup.
+- **Worktree sem `media/`**: renderizar a página de um cliente com documento
+  anexado ou ler backup a partir do worktree falha/engana — validar pelo
+  `/opt/crm`.
+- **SNMP no MikroTik não foi validado contra equipamento real** no
+  desenvolvimento (SSH aos equipamentos dos clientes bloqueado no ambiente do
+  assistente); o parser cobre a saída de `/snmp print` e
+  `/snmp community print terse` por testes.
+- **Voltagem em RouterOS v7**: o OID `mtxrHlVoltage` pode não responder; o card
+  mostra "sem leitura".
 
 ## Também corrigido
 

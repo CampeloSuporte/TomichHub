@@ -154,6 +154,7 @@ Ambas as rotas exigem login e verificam permissão via `_pode_acessar_cliente`.
 | `activeTabId` | `number` | ID da aba atualmente visível |
 | `nextTabId` | `number` | Próximo ID de aba a ser criada |
 | `nextChartId` | `number` | Próximo ID de gráfico a ser criado |
+| `_cloneHours` | `number\|null` | Período herdado ao clonar; `null` em adicionar/editar |
 | `charts` | `Array` | Alias para `_activeTab().charts` — sincronizado por `_sync()` |
 
 ### Funções públicas da API `GRAPH`
@@ -174,7 +175,8 @@ Ambas as rotas exigem login e verificam permissão via `_pode_acessar_cliente`.
 | Função | Descrição |
 |--------|-----------|
 | `abrirModalAdd()` | Abre modal de adição (opera na aba ativa) |
-| `abrirModalEdit(id)` | Abre modal de edição de um gráfico |
+| `abrirModalEdit(id, clonar=false)` | Abre modal de edição de um gráfico; com `clonar`, o mesmo modal preenchido cria um gráfico novo |
+| `clonarChart(id)` | Botão **Clonar** do card (entre Expandir e Editar): `abrirModalEdit(id, true)` — `_editingChart=null` e `_cloneHours` = período do original, então salvar adiciona um card na aba ativa sem alterar o de origem |
 | `salvarChart()` | Salva gráfico novo ou editado na aba ativa |
 | `removerChart(id)` | Remove gráfico da aba ativa |
 | `atualizarTodos()` | Força atualização de todos os gráficos da aba |

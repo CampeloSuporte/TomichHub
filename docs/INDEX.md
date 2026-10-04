@@ -2,19 +2,25 @@
 
 ## 🔥 Implementações Recentes
 
-### Sessão 58 — 03/10/2026: status do Zabbix nos cards de Acessos
+### Sessão 58 — 03-04/10/2026: Zabbix nos cards de Acessos
 
 **O que foi implementado?**
 - 🔗 **Vínculo Acesso ↔ host Zabbix** casado pelo IP (todas as interfaces), com desempate por nome
-  idêntico e escolha manual que o sincronismo respeita.
-- 🟢 **Status no card** (disponível, alerta, indisponível) com cache de 60s e sincronismo diário.
-- 🐛 Aba Monitoramento listava no máximo 300 hosts do Zabbix.
+  idêntico e escolha manual que o sincronismo respeita; sincroniza ao salvar a configuração.
+- 🟢 **Status, CPU, uptime, temperatura e voltagem no card**, com histórico ao clicar.
+- 📈 **Gráficos do host**: interfaces, sinal óptico (RX/TX por interface, com descrição e porta
+  UP/DOWN), CPU, temperatura e voltagem, de 1h a 30 dias.
+- ➕ **Cadastrar no Zabbix** o acesso que não casou: template do padrão do cliente ou oficial do
+  modelo (lido no backup), SNMP configurado no MikroTik por SSH e item de voltagem.
+- 📋 **Clonar gráfico** na aba Monitoramento.
+- 🐛 Zabbix 5.0/5.2 (disponibilidade no host), limite de 300 hosts, cadastro em dobro.
 
 **Onde está documentado?**
 
 | Documentação | Tema |
 |--------------|------|
-| **[ZABBIX_VINCULO_ACESSOS.md](ZABBIX_VINCULO_ACESSOS.md)** | Regras do casamento, sincronismo, desempenho, rotas |
+| **[ZABBIX_VINCULO_ACESSOS.md](ZABBIX_VINCULO_ACESSOS.md)** | Casamento, métricas, gráficos, cadastro, SNMP, portas, versões, armadilhas |
+| **[monitoramento.md](monitoramento.md)** | Botão Clonar no painel de gráficos |
 
 ---
 
