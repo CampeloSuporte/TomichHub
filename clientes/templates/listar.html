@@ -7452,7 +7452,7 @@ function getCsrfToken(){
                 const tx = g.itens.filter((i) => i.sentido === 'tx').map((i) => i.dbm).filter((v) => v != null);
                 const rxMin = rx.length ? Math.min(...rx) : null;
                 const txMed = tx.length ? tx.reduce((a, b) => a + b, 0) / tx.length : null;
-                return {chave: g.interface, nome: g.interface + (g.itens.length > 2 ? ` (${g.itens.length} leituras)` : ''), st: g.status,
+                return {chave: g.interface, nome: g.interface + (g.itens.length > 2 ? ` (${g.itens.length} leituras)` : ''), st: g.status, stInf: g.status_inferido,
                         v1: zgDbm(rxMin), v2: zgDbm(txMed), c1: zgClasseRx(rxMin), vazio: g.vazio,
                         itens: g.itens.map((i) => i.itemid)};
             });
@@ -7505,7 +7505,8 @@ function getCsrfToken(){
                 if (idx === 0 && l.st) {
                     const p = document.createElement('span');
                     p.className = `zg-porta ${l.st === 'up' || l.st === 'down' ? l.st : 'outro'}`;
-                    p.title = `Porta ${l.st === 'up' ? 'UP' : (l.st === 'down' ? 'DOWN' : l.st)}`;
+                    p.title = `Porta ${l.st === 'up' ? 'UP' : (l.st === 'down' ? 'DOWN' : l.st)}` +
+                              (l.stInf ? ' (sem luz; o Zabbix não tem status desta porta — o template só descobre portas UP)' : '');
                     p.setAttribute('aria-label', p.title);
                     s.prepend(p);
                 }

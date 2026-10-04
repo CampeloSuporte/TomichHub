@@ -15,6 +15,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-04 (Gráficos: porta sem luz aparece DOWN)
+
+### Corrigido
+
+- **Porta down sem indicador no sinal óptico**: templates cujo LLD de interfaces filtra
+  `{#IFOPER}=^1$` (caso Sartor) só criam o item de status para portas UP, então a porta down não
+  tem status no Zabbix. Sem item de status e sem luz (RX ou TX ≤ −40 dBm), a porta agora aparece
+  DOWN, com o motivo no tooltip. Ex.: XGigabitEthernet0/0/2 do switch Lucas do Rio Verde.
+
+---
+
 ## [Não publicado] — 2026-10-04 (Gráficos: porta UP/DOWN no sinal óptico e nas interfaces)
 
 ### Adicionado

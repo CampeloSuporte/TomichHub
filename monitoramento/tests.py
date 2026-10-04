@@ -672,3 +672,19 @@ class StatusPortaTest(TestCase):
                  _it('3', 'c', '100GE0/3/0: Rx Power Low Warning', 'dBm', '-14')]
         g = self.zm.opticos(itens)
         self.assertEqual([m['item']['itemid'] for m in g[0]['itens']], ['1'])
+
+
+class StatusInferidoTest(_Base):
+    def test_sem_item_de_status_e_sem_luz_vira_down(self):
+        itens = [_it('1', 'rxpower[XGigabitEthernet0/0/2]', 'Potência Recebida (RX) na Interface XGigabitEthernet0/0/2 - P2P - Ramo 1', 'dBm', '-40'),
+                 _it('2', 'txpower[XGigabitEthernet0/0/2]', 'Potência Transmitida (TX) na Interface XGigabitEthernet0/0/2 - P2P - Ramo 1', 'dBm', '-40'),
+                 _it('3', 'rxpower[XGigabitEthernet0/0/5]', 'Potência Recebida (RX) na Interface XGigabitEthernet0/0/5 - Ramo 1', 'dBm', '-4.8'),
+                 _it('4', 'ifOperStatus[XGigabitEthernet0/0/1]', 'Status da Interface XGigabitEthernet0/0/1 - X', '', '1'),
+                 _it('5', 'rxpower[XGigabitEthernet0/0/1]', 'Potência Recebida (RX) na Interface XGigabitEthernet0/0/1 - X - Ramo 1', 'dBm', '-25')]
+        a = self.acesso('SW', '10.0.0.1')
+        vz.sincronizar(self.cliente.id)
+        with mock.patch('monitoramento.vinculo_zabbix._itens_do_host', return_value=itens):
+            g = {o['interface'].split(' ')[0]: o for o in vz.itens_graficos(a)['opticos']}
+        self.assertEqual((g['XGigabitEthernet0/0/2']['status'], g['XGigabitEthernet0/0/2']['status_inferido']), ('down', True))
+        self.assertEqual(g['XGigabitEthernet0/0/5']['status'], '')
+        self.assertEqual((g['XGigabitEthernet0/0/1']['status'], g['XGigabitEthernet0/0/1']['status_inferido']), ('up', False))

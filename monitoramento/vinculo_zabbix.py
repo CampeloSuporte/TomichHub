@@ -422,9 +422,15 @@ def itens_graficos(acesso) -> dict:
 
     opts = []
     for g in zm.com_descricao(zm.opticos(itens), zm.interfaces(itens)):
+        status = estados.get(zm.porta_base(g['interface']), '')
+        inferido = False
+        if not status and not g['vazio'] and zm.sem_luz(g['itens']):
+            # Templates com LLD filtrado em {#IFOPER}=^1$ só criam o item de
+            # status para portas UP: porta down fica sem status. Sem luz = down
+            status, inferido = 'down', True
         opts.append({
             'interface': g['interface'], 'vazio': g['vazio'],
-            'status': estados.get(zm.porta_base(g['interface']), ''),
+            'status': status, 'status_inferido': inferido,
             'itens': [dict(_item_json(m['item']), sentido=m['sentido'], lane=m['lane'],
                            dbm=zm.para_dbm(m['item'].get('lastvalue'), m['item'].get('units')))
                       for m in g['itens']],
