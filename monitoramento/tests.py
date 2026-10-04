@@ -650,3 +650,25 @@ class TemperaturaTest(TestCase):
         self.assertIsNone(self.zm.celsius('214748'))
         self.assertIsNone(self.zm.celsius('0'))
         self.assertEqual(self.zm.celsius('67.28'), 67.28)
+
+
+class StatusPortaTest(TestCase):
+    from monitoramento import zabbix_metricas as zm
+
+    def test_formatos_de_status_operacional(self):
+        itens = [_it('1', 'net.if.status[ifOperStatus.12]', 'Interface 25GE0/5/29(UPLINK): Operational status', '', '2'),
+                 _it('2', 'ifOperStatus[XGigabitEthernet0/0/1]', 'Status da Interface XGigabitEthernet0/0/1 - P2P', '', '1'),
+                 _it('3', 'datacom.if.status[1]', 'Interface GigabitEthernet1/1/1: Operational status', '', '7'),
+                 _it('4', 'net.if.admin.status[x]', 'Interface ge9(): Admin status', '', '2'),
+                 _it('5', 'statusShutdown[XGigabitEthernet0/0/9]', 'Status Shutdown XGigabitEthernet0/0/9', '', '1'),
+                 _it('6', 'onu.status[1]', 'ONU Status 1.2.2', '', '1')]
+        self.assertEqual(self.zm.status_portas(itens), {'25ge0/5/29': 'down', 'xgigabitethernet0/0/1': 'up',
+                                                         'gigabitethernet1/1/1': 'down'})
+        self.assertEqual(self.zm.porta_base('XGigabitEthernet0/0/1 - P2P-SW-HU-TAPURAH-P10'), 'xgigabitethernet0/0/1')
+        self.assertEqual(self.zm.porta_base('XGigabitEthernet0/0/1(HUAWEI NE8000)'), 'xgigabitethernet0/0/1')
+
+    def test_limiares_do_modulo_nao_sao_sinal(self):
+        itens = [_it('1', 'a', '100GE0/3/0: Rx Power', 'dBm', '-7'), _it('2', 'b', '100GE0/3/0: Rx Power High Threshold', 'dBm', '4'),
+                 _it('3', 'c', '100GE0/3/0: Rx Power Low Warning', 'dBm', '-14')]
+        g = self.zm.opticos(itens)
+        self.assertEqual([m['item']['itemid'] for m in g[0]['itens']], ['1'])

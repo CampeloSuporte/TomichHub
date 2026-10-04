@@ -141,6 +141,10 @@
         .zg-linha span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .zg-linha span + span { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: right; white-space: nowrap; }
         .zg-cab { color: #8b949e; font-size: 11px; }
+        .zg-porta { display: inline-block; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; vertical-align: middle; }
+        .zg-porta.up { background: #3fb950; }
+        .zg-porta.down { background: #f85149; }
+        .zg-porta.outro { background: #d29922; }
         .zg-ok { color: #3fb950; } .zg-alerta { color: #d29922; } .zg-falha { color: #f85149; } .zg-mudo { color: #6e7681; }
         .zc-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 14px; }
         .zc-campo label { display: block; margin-bottom: 3px; color: #8b949e; font-size: 11px; }
@@ -7438,7 +7442,7 @@ function getCsrfToken(){
         const d = ZG.dados;
         if (ZG.aba === 'interfaces') {
             return d.interfaces
-                .map((i) => ({chave: i.nome, nome: i.nome, v1: zgBps(i.in), v2: zgBps(i.out),
+                .map((i) => ({chave: i.nome, nome: i.nome, st: i.status, v1: zgBps(i.in), v2: zgBps(i.out),
                               vazio: !(i.in > 0 || i.out > 0), ordem: (i.in || 0) + (i.out || 0), itens: i.itens}))
                 .sort((a, b) => b.ordem - a.ordem);
         }
@@ -7448,7 +7452,7 @@ function getCsrfToken(){
                 const tx = g.itens.filter((i) => i.sentido === 'tx').map((i) => i.dbm).filter((v) => v != null);
                 const rxMin = rx.length ? Math.min(...rx) : null;
                 const txMed = tx.length ? tx.reduce((a, b) => a + b, 0) / tx.length : null;
-                return {chave: g.interface, nome: g.interface + (g.itens.length > 2 ? ` (${g.itens.length} leituras)` : ''),
+                return {chave: g.interface, nome: g.interface + (g.itens.length > 2 ? ` (${g.itens.length} leituras)` : ''), st: g.status,
                         v1: zgDbm(rxMin), v2: zgDbm(txMed), c1: zgClasseRx(rxMin), vazio: g.vazio,
                         itens: g.itens.map((i) => i.itemid)};
             });
@@ -7493,10 +7497,18 @@ function getCsrfToken(){
             const b = document.createElement('button');
             b.type = 'button';
             b.className = 'zg-linha' + (ZG.sel && ZG.sel.chave === l.chave ? ' ativo' : '');
-            [[l.nome, ''], [l.v1, l.c1 || ''], [l.v2, l.c2 || '']].forEach(([t, c]) => {
+            [[l.nome, ''], [l.v1, l.c1 || ''], [l.v2, l.c2 || '']].forEach(([t, c], idx) => {
                 const s = document.createElement('span');
                 s.textContent = t;
                 if (c) s.className = c;
+                // Estado operacional da porta (ifOperStatus) antes do nome
+                if (idx === 0 && l.st) {
+                    const p = document.createElement('span');
+                    p.className = `zg-porta ${l.st === 'up' || l.st === 'down' ? l.st : 'outro'}`;
+                    p.title = `Porta ${l.st === 'up' ? 'UP' : (l.st === 'down' ? 'DOWN' : l.st)}`;
+                    p.setAttribute('aria-label', p.title);
+                    s.prepend(p);
+                }
                 b.appendChild(s);
             });
             b.addEventListener('click', () => { ZG.sel = l; zgRender(false); zgPlotar(); });

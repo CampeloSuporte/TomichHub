@@ -408,12 +408,14 @@ def itens_graficos(acesso) -> dict:
     v = _vinculo_ativo(acesso)
     itens = _itens_do_host(acesso.cliente_id, v.zabbix_hostid)
 
+    estados = zm.status_portas(itens)
     ifaces = []
     for g in zm.interfaces(itens):
         ent, sai = g['in'], g['out']
         ifaces.append({
             'nome': g['nome'],
             'itens': [i['itemid'] for i in (ent, sai) if i],
+            'status': estados.get(zm.porta_base(g['nome']), ''),
             'in': _float(ent.get('lastvalue')) if ent else None,
             'out': _float(sai.get('lastvalue')) if sai else None,
         })
@@ -422,6 +424,7 @@ def itens_graficos(acesso) -> dict:
     for g in zm.com_descricao(zm.opticos(itens), zm.interfaces(itens)):
         opts.append({
             'interface': g['interface'], 'vazio': g['vazio'],
+            'status': estados.get(zm.porta_base(g['interface']), ''),
             'itens': [dict(_item_json(m['item']), sentido=m['sentido'], lane=m['lane'],
                            dbm=zm.para_dbm(m['item'].get('lastvalue'), m['item'].get('units')))
                       for m in g['itens']],
