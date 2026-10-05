@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-05 (Backup do banco no Google Drive)
+
+### Adicionado
+
+- **Backup diário do banco** (`tools/backup_drive/`): o `crm_db` não tinha backup — o git leva só o
+  código. Às 03:00 o `crm-backup-drive.timer` tira um `pg_dump` (~20 MB), confere que ele é legível,
+  guarda 7 dias em `/var/backups/crm/` e envia para a pasta `backup-banco-crm` do Google Drive com
+  conteúdo criptografado (rclone crypt, escopo `drive.file`), mantendo 30 dias. Restauração testada
+  a partir da cópia do Drive: 169/169 tabelas e 584/584 índices, sem erros. Ver
+  `docs/backup_banco_drive.md`.
+
+---
+
 ## [Não publicado] — 2026-10-03 (Terminal: reconectar sem apagar o histórico)
 
 ### Alterado

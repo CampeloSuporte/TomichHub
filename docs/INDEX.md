@@ -2,6 +2,21 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 59 — 05/10/2026: Backup do banco no Google Drive
+
+**O que foi implementado?**
+- 💾 **Backup diário do `crm_db`** às 03:00 (timer do systemd): `pg_dump` verificado, 7 dias locais
+  em `/var/backups/crm/` e 30 dias no Google Drive, pasta `backup-banco-crm`, criptografado (rclone crypt).
+- ✅ **Restauração testada** a partir da cópia do Drive (169 tabelas, 584 índices, sem erros).
+
+**Onde está documentado?**
+
+| Documentação | Tema |
+|--------------|------|
+| **[backup_banco_drive.md](backup_banco_drive.md)** | Fluxo, rclone/Drive, senhas, instalação, operação e restauração (SQL_ASCII) |
+
+---
+
 ### Sessão 58 — 03-04/10/2026: Zabbix nos cards de Acessos
 
 **O que foi implementado?**

@@ -1,0 +1,11 @@
+[Unit]
+Description=Backup do banco do CRM para o Google Drive
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/default/crm-backup-drive
+ExecStart=/opt/crm/tools/backup_drive/backup_drive.sh
+Nice=10
+IOSchedulingClass=idle
