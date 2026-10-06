@@ -1170,6 +1170,7 @@ def api_cliente_conversation_detail(request, cliente_id, conversation_id):
             'content': m.content,
             'message_type': m.message_type,
             'attachment_url': m.attachment_url or '',
+            'transcricao': m.transcricao,
             'is_internal': m.is_internal or m.sender_type == 'internal',
             'data': timezone.localtime(m.created_at).strftime('%d/%m/%Y'),
             'hora': timezone.localtime(m.created_at).strftime('%H:%M'),
@@ -2633,6 +2634,8 @@ def api_conversation_messages(request, conversation_id):
             # Bloco citado. Some junto com o conteúdo quando a mensagem foi
             # apagada — o rastro "Mensagem apagada" não cita ninguém.
             'reply': {} if m.deleted_at else m.citacao,
+            'transcricao': '' if m.deleted_at else m.transcricao,
+            'transcricao_status': '' if m.deleted_at else m.transcricao_status,
         })
 
     # Usuário está vendo a conversa (mini-chat flutuante) → marca como lida

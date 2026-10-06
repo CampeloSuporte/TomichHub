@@ -221,6 +221,13 @@ CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_TIMEZONE = 'America/Sao_Paulo'
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 min
 
+# Transcrição dos áudios do chat (atendimento/transcricao.py): faster-whisper
+# local, em CPU, numa fila Celery própria (celery-transcricao.service).
+TRANSCRICAO_AUDIO_ATIVA = True
+WHISPER_MODEL = 'small'          # base | small | medium
+WHISPER_CPU_THREADS = 4
+WHISPER_MODEL_DIR = BASE_DIR / 'tools' / 'whisper_models'
+
 
 # Adicione ao INSTALLED_APPS:
 INSTALLED_APPS += [

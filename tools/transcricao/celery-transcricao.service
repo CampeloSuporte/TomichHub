@@ -1,0 +1,23 @@
+# Worker Celery só da fila `transcricao` (áudios do chat do atendimento).
+# Separado do celery.service porque aquele roda com concurrency 1 e o beat
+# embutido: um áudio longo nele seguraria SLA, agendadas e alertas.
+# Instalar: cp tools/transcricao/celery-transcricao.service /etc/systemd/system/
+#           chmod 644 /etc/systemd/system/celery-transcricao.service
+#           systemctl daemon-reload && systemctl enable --now celery-transcricao
+[Unit]
+Description=Celery - transcricao de audios do atendimento
+After=network.target redis-server.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/crm
+Environment="PATH=/opt/crm/venv/bin:/usr/bin:/usr/sbin:/bin:/sbin"
+ExecStart=/opt/crm/venv/bin/celery -A crm worker -Q transcricao -n transcricao@%%h -l info --concurrency=1 --max-tasks-per-child=200
+Restart=on-failure
+RestartSec=5s
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

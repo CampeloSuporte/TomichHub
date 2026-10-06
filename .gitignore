@@ -72,6 +72,7 @@ wine-prefix/
 
 # Runner Rust do ampscan (varredura de amplificação DDoS) — binário compilado
 tools/ampscan_runner/target/
+tools/whisper_models/
 
 # Dumps de dados para reverter migracoes de dados (contem mensagens reais)
 backups/

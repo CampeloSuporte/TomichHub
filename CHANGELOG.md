@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-06 (Transcrição dos áudios do chat)
+
+### Adicionado
+
+- **Áudio do chat vira texto**: todo áudio do atendimento (do cliente ou do atendente) ganha o texto
+  falado embaixo do player, transcrito **no próprio servidor** pelo faster-whisper (Whisper offline, em
+  CPU), sem IA paga nem API externa. Roda numa fila Celery própria (`celery-transcricao.service`) para
+  não atrasar SLA e agendadas. Áudios reais medidos com o modelo `small`: 31 s em 7 s e 93 s em 15 s.
+  A transcrição também aparece na citação do áudio, no mini-chat e no modal do chamado, e entra no
+  contexto da IA do chamado. Ver `docs/ATENDIMENTO.md` → "Transcrição dos áudios do chat".
+
+---
+
 ## [Não publicado] — 2026-10-05 (Backup do banco no Google Drive)
 
 ### Adicionado

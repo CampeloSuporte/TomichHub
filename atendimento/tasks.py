@@ -1,3 +1,5 @@
+import os
+
 from celery import shared_task
 from celery.utils.log import get_task_logger
 from django.utils import timezone
@@ -91,13 +93,20 @@ def _contexto_conversa(conv, limite=12, incluir_inicio=0):
         inicio = [m for m in vivas.order_by('created_at')[:incluir_inicio]
                   if m.id not in ids_fim]
 
-    def _linha(m):
-        return f"{_ROTULO_SENDER.get(m.sender_type, m.sender_type)}: {m.content}"
+    # Áudio entra pelo que foi dito: o `content` dele é vazio (ou "Áudio"),
+    # e o pedido do cliente muitas vezes está justamente num áudio.
+    def _texto(m):
+        if m.message_type == 'audio' and m.transcricao:
+            return f"[áudio] {m.transcricao}"
+        return m.content
 
-    linhas = [_linha(m) for m in inicio if m.content]
+    def _linha(m):
+        return f"{_ROTULO_SENDER.get(m.sender_type, m.sender_type)}: {_texto(m)}"
+
+    linhas = [_linha(m) for m in inicio if _texto(m)]
     if linhas:
         linhas.append('(…)')
-    linhas += [_linha(m) for m in fim if m.content]
+    linhas += [_linha(m) for m in fim if _texto(m)]
     return "\n".join(linhas), inicio + fim
 
 
@@ -928,3 +937,35 @@ def enviar_mensagens_agendadas():
                 sm.status = 'failed'
             sm.save(update_fields=['attempts', 'last_error', 'status'])
             logger.error(f"Falha ao enviar mensagem agendada {sm.id}: {e}")
+
+
+@shared_task(time_limit=15 * 60, soft_time_limit=14 * 60)
+def transcrever_audio(message_id):
+    """Transcreve um áudio do chat (fila `transcricao`) e manda o texto para
+    a tela da conversa. Ver atendimento/transcricao.py."""
+    from .models import Message
+    from .services import _ws_send_conversation
+    from . import transcricao
+
+    msg = Message.objects.filter(id=message_id).first()
+    if not msg or msg.deleted_at or msg.transcricao_status in ('ok', 'vazia'):
+        return
+    caminho = transcricao.caminho_da_midia(msg.attachment_url)
+    try:
+        if not caminho or not os.path.isfile(caminho):
+            raise FileNotFoundError(f"arquivo do áudio não encontrado: {msg.attachment_url}")
+        texto = transcricao.transcrever_arquivo(caminho)
+        status = 'ok' if texto else 'vazia'
+    except Exception as e:
+        logger.warning(f"Transcrição do áudio {message_id} falhou: {e}")
+        texto, status = '', 'erro'
+
+    # Apagada enquanto transcrevia: não grava nem avisa — o texto traria de
+    # volta, por escrito, o que acabou de ser removido.
+    if not Message.objects.filter(id=message_id, deleted_at__isnull=True).update(
+            transcricao=texto, transcricao_status=status):
+        return
+    _ws_send_conversation(str(msg.conversation_id), {
+        'type': 'message_transcribed',
+        'message': {'id': str(msg.id), 'transcricao': texto, 'transcricao_status': status},
+    })
