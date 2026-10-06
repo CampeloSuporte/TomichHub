@@ -98,3 +98,5 @@ yamlordereddictloader==0.4.2
 zope.interface==8.0.1
 anthropic>=0.40.0
 openai>=1.50.0
+faster-whisper==1.2.1
+av>=11,<16  # PyAV 16+ removeu metadata_errors, que o faster-whisper 1.2.1 usa

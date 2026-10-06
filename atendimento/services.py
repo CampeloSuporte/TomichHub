@@ -16,6 +16,7 @@ from .models import (
     ConversationActivity, ChatFlow, ChatFlowSession, Category, GroupMemberName,
 )
 from .scope import atendentes_do_chamado
+from .transcricao import agendar as agendar_transcricao
 from clientes.models import Cliente
 
 logger = logging.getLogger(__name__)
@@ -1928,8 +1929,9 @@ class ConversationService:
     def _salvar_msg(conversation, message_id, content, detected_type,
                     push_name, attachment_url, sender_type='customer',
                     citacao=None, connection=None):
-        """Cria a mensagem (idempotente pelo external_id)."""
-        return Message.objects.get_or_create(
+        """Cria a mensagem (idempotente pelo external_id). Áudio novo já
+        entra na fila de transcrição."""
+        msg, created = Message.objects.get_or_create(
             external_id=message_id,
             defaults={
                 "conversation": conversation,
@@ -1941,6 +1943,9 @@ class ConversationService:
                 **ConversationService._campos_de_citacao(conversation, citacao, connection),
             },
         )
+        if created:
+            agendar_transcricao(msg)
+        return msg, created
 
     @staticmethod
     def _broadcast_msg(conversation, group, msg, inbox=True):
@@ -1961,6 +1966,8 @@ class ConversationService:
                 # Bloco citado, quando a mensagem é resposta a outra. Vazio
                 # ({}) na esmagadora maioria — a tela só desenha se vier.
                 "reply": msg.citacao,
+                "transcricao": msg.transcricao,
+                "transcricao_status": msg.transcricao_status,
             },
             "conversation": {
                 "id": str(conversation.id),
@@ -2684,6 +2691,7 @@ class ConversationService:
                 reply_to=citada,
                 reply_to_external_id=(citada.external_id if citada else None),
             )
+            agendar_transcricao(msg)
             conversation.last_message_at = now
             if conversation.status == 'new':
                 conversation.status = 'open'

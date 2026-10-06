@@ -389,6 +389,22 @@ class Message(models.Model):
         help_text='Quem escreveu a mensagem citada, idem.'
     )
 
+    # ── Transcrição de áudio ────────────────────────────────────────────
+    # Feita no próprio servidor (faster-whisper, offline) por uma task do
+    # Celery numa fila só dela — ver atendimento/transcricao.py. Fica fora de
+    # `content` de propósito: o áudio continua sendo áudio, e o texto é um
+    # complemento que pode chegar segundos depois ou nunca (lib ausente).
+    TRANSCRICAO_STATUS_CHOICES = [
+        ('', 'Não se aplica'),
+        ('pendente', 'Na fila'),
+        ('ok', 'Transcrito'),
+        ('vazia', 'Sem fala reconhecida'),
+        ('erro', 'Falhou'),
+    ]
+    transcricao = models.TextField(blank=True, default='')
+    transcricao_status = models.CharField(
+        max_length=10, blank=True, default='', choices=TRANSCRICAO_STATUS_CHOICES)
+
     class Meta:
         ordering = ['created_at']
         indexes = [
@@ -424,6 +440,10 @@ class Message(models.Model):
         if self.deleted_at:
             return 'Mensagem apagada'
         texto = ' '.join((self.content or '').split())
+        # Áudio citado mostra o que foi dito, quando já há transcrição — é
+        # bem mais útil que "🎤 Áudio" para saber a que a resposta se refere.
+        if self.message_type == 'audio' and self.transcricao:
+            texto = ' '.join(self.transcricao.split())
         if not texto or texto in self.CONTEUDO_VAZIO:
             return self.ROTULO_POR_TIPO.get(self.message_type, 'Mensagem')
         if self.message_type != 'text':

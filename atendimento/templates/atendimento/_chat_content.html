@@ -170,7 +170,7 @@
                 (white-space:pre-wrap), então qualquer indentação do template
                 aqui dentro vira linha em branco e recuo dentro do balão.
                 {% endcomment %}
-                <div class="msg-bubble">{% if not message.excluida %}{% with cit=message.citacao %}{% if cit %}<button type="button" class="msg-quote" data-quote-id="{{ cit.id }}" title="{% if cit.id %}Ir para a mensagem citada{% else %}A mensagem citada não está neste chamado{% endif %}"><div class="msg-quote-autor">{{ cit.sender_name }}</div><div class="msg-quote-texto">{{ cit.preview }}</div></button>{% endif %}{% endwith %}{% endif %}{% if message.excluida %}<span class="msg-apagada"><i class="fas fa-ban"></i>Mensagem apagada</span><span class="msg-meta"><span class="msg-time">{{ message.created_at|date:"H:i" }}</span></span>{% else %}{% if message.message_type == 'image' and message.attachment_url %}<img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'audio' and message.attachment_url %}<audio controls class="msg-audio-player" preload="none"><source src="{{ message.attachment_url }}"></audio>{% elif message.message_type == 'video' and message.attachment_url %}<video controls class="msg-video-player" preload="none"><source src="{{ message.attachment_url }}"></video>{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'document' and message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}</a>{% else %}<span class="msg-text">{{ message.content|urlize }}</span>{% endif %}<span class="msg-meta">{% if message.edited_at %}<span class="msg-edited" title="Editada às {{ message.edited_at|date:"H:i" }}">editada</span>{% endif %}<span class="msg-time">{{ message.created_at|date:"H:i" }}</span>{% if message.sender_type == 'agent' %}<i class="fas fa-check-double msg-tick"></i>{% endif %}</span>{% endif %}</div>{% if message.editavel and not message.excluida %}<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>{% endif %}{% if message.excluivel %}<button type="button" class="msg-del-btn" title="Apagar mensagem"><i class="fas fa-trash"></i></button>{% endif %}{% if message.reagivel %}<button type="button" class="msg-react-btn" title="Reagir" aria-label="Reagir à mensagem"><i class="far fa-smile"></i></button>{% endif %}{% if message.respondivel %}<button type="button" class="msg-reply-btn" title="Responder" aria-label="Responder a esta mensagem"><i class="fas fa-reply"></i></button>{% endif %}
+                <div class="msg-bubble">{% if not message.excluida %}{% with cit=message.citacao %}{% if cit %}<button type="button" class="msg-quote" data-quote-id="{{ cit.id }}" title="{% if cit.id %}Ir para a mensagem citada{% else %}A mensagem citada não está neste chamado{% endif %}"><div class="msg-quote-autor">{{ cit.sender_name }}</div><div class="msg-quote-texto">{{ cit.preview }}</div></button>{% endif %}{% endwith %}{% endif %}{% if message.excluida %}<span class="msg-apagada"><i class="fas fa-ban"></i>Mensagem apagada</span><span class="msg-meta"><span class="msg-time">{{ message.created_at|date:"H:i" }}</span></span>{% else %}{% if message.message_type == 'image' and message.attachment_url %}<img src="{{ message.attachment_url }}" class="msg-media-img" onclick="openLightbox(this.src)" title="Clique para ampliar">{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'audio' and message.attachment_url %}<audio controls class="msg-audio-player" preload="none"><source src="{{ message.attachment_url }}"></audio>{% if message.transcricao_status == 'ok' %}<div class="msg-transcricao" title="Transcrição automática">{{ message.transcricao }}</div>{% elif message.transcricao_status == 'pendente' %}<div class="msg-transcricao pendente"><i class="fas fa-spinner fa-spin"></i> Transcrevendo…</div>{% elif message.transcricao_status == 'vazia' %}<div class="msg-transcricao vazia">Sem fala reconhecida no áudio</div>{% elif message.transcricao_status == 'erro' %}<div class="msg-transcricao vazia">Não foi possível transcrever</div>{% endif %}{% elif message.message_type == 'video' and message.attachment_url %}<video controls class="msg-video-player" preload="none"><source src="{{ message.attachment_url }}"></video>{% if message.content %}<div class="msg-media-caption"><span class="msg-text">{{ message.content|urlize }}</span></div>{% endif %}{% elif message.message_type == 'document' and message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" class="msg-doc-link"><i class="fas fa-file-alt"></i> {{ message.content|default:"Documento" }}</a>{% else %}<span class="msg-text">{{ message.content|urlize }}</span>{% endif %}<span class="msg-meta">{% if message.edited_at %}<span class="msg-edited" title="Editada às {{ message.edited_at|date:"H:i" }}">editada</span>{% endif %}<span class="msg-time">{{ message.created_at|date:"H:i" }}</span>{% if message.sender_type == 'agent' %}<i class="fas fa-check-double msg-tick"></i>{% endif %}</span>{% endif %}</div>{% if message.editavel and not message.excluida %}<button type="button" class="msg-edit-btn" title="Editar mensagem"><i class="fas fa-pen"></i></button>{% endif %}{% if message.excluivel %}<button type="button" class="msg-del-btn" title="Apagar mensagem"><i class="fas fa-trash"></i></button>{% endif %}{% if message.reagivel %}<button type="button" class="msg-react-btn" title="Reagir" aria-label="Reagir à mensagem"><i class="far fa-smile"></i></button>{% endif %}{% if message.respondivel %}<button type="button" class="msg-reply-btn" title="Responder" aria-label="Responder a esta mensagem"><i class="fas fa-reply"></i></button>{% endif %}
                 {% with reacoes=message.reactions.all %}{% if reacoes %}
                 <div class="msg-reactions" data-reactions-for="{{ message.id }}">
                     {% for r in reacoes %}
@@ -799,6 +799,18 @@
     height: 36px;
     accent-color: var(--brand-600);
 }
+.msg-transcricao {
+    max-width: 240px;
+    margin-top: 4px;
+    font-size: 12.5px;
+    font-style: italic;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    word-break: break-word;
+    opacity: .85;
+}
+.msg-transcricao.pendente,
+.msg-transcricao.vazia { opacity: .55; }
 .msg-video-player {
     max-width: 280px;
     max-height: 200px;
@@ -1512,6 +1524,34 @@
         });
     }
 
+    /* Texto do áudio embaixo do player. Mesmo HTML do template (lado
+       servidor), para o balão ficar igual antes e depois do F5. */
+    function transcricaoHTML(status, texto) {
+        if (status === 'ok' && texto)
+            return '<div class="msg-transcricao" title="Transcrição automática">' + escapeHTML(texto) + '</div>';
+        if (status === 'pendente')
+            return '<div class="msg-transcricao pendente"><i class="fas fa-spinner fa-spin"></i> Transcrevendo…</div>';
+        if (status === 'vazia')
+            return '<div class="msg-transcricao vazia">Sem fala reconhecida no áudio</div>';
+        if (status === 'erro')
+            return '<div class="msg-transcricao vazia">Não foi possível transcrever</div>';
+        return '';
+    }
+
+    /* A transcrição chega por WebSocket segundos depois do áudio: troca só
+       o bloco embaixo do player, sem redesenhar o balão (o áudio pode estar
+       tocando). */
+    function aplicarTranscricao(msgId, status, texto) {
+        var msgEl = chatMsgs.querySelector('.msg[data-msg-id="' + msgId + '"]');
+        if (!msgEl) return;
+        var player = msgEl.querySelector('.msg-audio-player');
+        if (!player) return;
+        var atual = msgEl.querySelector('.msg-transcricao');
+        if (atual) atual.remove();
+        var html = transcricaoHTML(status, texto);
+        if (html) player.insertAdjacentHTML('afterend', html);
+    }
+
     function renderMediaBubble(msg) {
         var type = msg.message_type || 'text';
         var url  = encodeURI(msg.attachment_url || '');
@@ -1522,7 +1562,8 @@
                    (cap ? '<div class="msg-media-caption"><span class="msg-text">' + cap + '</span></div>' : '');
         }
         if (type === 'audio' && url) {
-            return '<audio controls class="msg-audio-player" preload="none"><source src="' + url + '"></audio>';
+            return '<audio controls class="msg-audio-player" preload="none"><source src="' + url + '"></audio>' +
+                   transcricaoHTML(msg.transcricao_status, msg.transcricao);
         }
         if (type === 'video' && url) {
             return '<video controls class="msg-video-player" preload="none"><source src="' + url + '"></video>' +
@@ -2642,6 +2683,10 @@
                        textos diferentes da MESMA mensagem do WhatsApp. */
                     if(p.type==='message_deleted'&&p.message) {
                         aplicarExclusao(String(p.message.id));
+                        return;
+                    }
+                    if(p.type==='message_transcribed'&&p.message) {
+                        aplicarTranscricao(String(p.message.id), p.message.transcricao_status, p.message.transcricao);
                         return;
                     }
                     if(p.type==='message_edited'&&p.message) {

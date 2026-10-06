@@ -4316,7 +4316,7 @@ function gcmRenderMsg(msg){
         var sc=cls==='agent'?'gcm-sender agent-s':'gcm-sender';
         var bc;
         if(msg.message_type==='image'&&msg.attachment_url)bc='<img src="'+msg.attachment_url+'" style="max-width:220px;max-height:220px;border-radius:5px;display:block;object-fit:cover;">';
-        else if(msg.message_type==='audio'&&msg.attachment_url)bc='<audio controls style="width:200px;height:32px;" preload="none"><source src="'+msg.attachment_url+'"></audio>';
+        else if(msg.message_type==='audio'&&msg.attachment_url)bc='<audio controls style="width:200px;height:32px;" preload="none"><source src="'+msg.attachment_url+'"></audio>'+(msg.transcricao?'<div style="margin-top:4px;font-size:12px;font-style:italic;opacity:.85;max-width:200px;">'+escG(msg.transcricao)+'</div>':'');
         else if(msg.message_type==='document'&&msg.attachment_url)bc='<a href="'+msg.attachment_url+'" target="_blank" style="color:#58a6ff;display:flex;align-items:center;gap:6px;font-size:12px;"><i class="fas fa-file-alt"></i>'+escG(msg.content||'Documento')+'</a>';
         else bc=escG(msg.content||'').replace(/\n/g,'<br>');
         el.innerHTML='<div class="gcm-msg-block"><div class="'+sc+'">'+sn+'</div><div class="gcm-bubble">'+bc+'</div><div class="gcm-time">'+(msg.created_at||'')+'</div></div>';

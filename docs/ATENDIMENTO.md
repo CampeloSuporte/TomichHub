@@ -2260,3 +2260,115 @@ falar com o WhatsApp, citação de outra conversa recusada, mídia citando, a
 resposta do cliente chegando pelo webhook (com e sem a original no CRM, texto
 e mídia), o resumo de mídia sem legenda e de mensagem apagada, o formato do
 `quoted`, o wamid voltando do `sendMedia`, a API e a tela.
+
+---
+
+## 🎤 Transcrição dos áudios do chat (06/10/2026)
+
+Todo áudio do chat ganha o texto falado embaixo do player, em itálico: o que o
+cliente manda pelo webhook e o que o atendente grava ou anexa. A transcrição
+roda **no próprio servidor**, offline, com o [faster-whisper](https://github.com/SYSTRAN/faster-whisper)
+(o Whisper da OpenAI reimplementado em CTranslate2) em CPU. Não há chave, crédito
+nem API externa, e o áudio do cliente não sai do servidor.
+
+### Fluxo
+
+1. `_salvar_msg` (webhook) ou `send_media` (atendente) cria a `Message` de áudio
+   e chama `transcricao.agendar(msg)`.
+2. `agendar` marca `transcricao_status='pendente'` (o balão mostra
+   "Transcrevendo…") e, **depois do commit**, enfileira `tasks.transcrever_audio`
+   na fila **`transcricao`**.
+3. O `celery-transcricao.service`, um worker só dessa fila com concurrency 1,
+   transcreve, grava `transcricao` e `transcricao_status` e manda
+   `message_transcribed` pelo WebSocket da conversa. A tela troca só o bloco
+   embaixo do player e não redesenha o balão, porque o áudio pode estar tocando.
+
+O worker é separado do `celery.service` de propósito: aquele roda com
+concurrency 1 e o beat embutido, e um áudio de 2 minutos ali seguraria SLA,
+mensagens agendadas e alertas.
+
+### Campos (`Message`, migration 0020)
+
+| Campo | Valores |
+|---|---|
+| `transcricao` | texto falado (vazio até terminar) |
+| `transcricao_status` | `''` não se aplica / lib ausente · `pendente` · `ok` · `vazia` (sem fala) · `erro` |
+
+Fica fora de `content` de propósito: o áudio continua sendo áudio, e o texto
+pode chegar segundos depois ou nunca.
+
+### Onde o texto aparece
+
+- **Balão do chat** (`_chat_content.html`, servidor e JS `transcricaoHTML`), no
+  mini-chat flutuante e no modal do chamado na aba Tarefas do cliente.
+- **Citação**: responder a um áudio mostra "🎤 Áudio *o que foi dito*" em vez
+  de só "🎤 Áudio".
+- **IA do chamado** (`_contexto_conversa`): o áudio entra como
+  `[áudio] texto`. Antes ele ficava de fora, e o pedido do cliente muitas vezes
+  está justamente num áudio.
+
+### Desempenho medido (modelo `small`, int8, 4 threads, áudios reais)
+
+| Áudio | Tempo |
+|---|---|
+| 4 s | 2,5 s |
+| 13 s | 3,6 s |
+| 31 s | 7,0 s |
+| 93 s | 15,1 s |
+
+A carga do modelo leva ~3 s e ~500 MB de RAM, uma vez por processo do worker.
+
+### Configuração (`crm/settings.py`)
+
+| Setting | Padrão | |
+|---|---|---|
+| `TRANSCRICAO_AUDIO_ATIVA` | `True` | desliga tudo sem desinstalar |
+| `WHISPER_MODEL` | `small` | `base` é mais rápido e erra mais; `medium` acerta mais e é ~3× mais lento |
+| `WHISPER_CPU_THREADS` | `4` | o servidor tem 10 núcleos; o resto fica para o web |
+| `WHISPER_MODEL_DIR` | `tools/whisper_models/` | modelo baixado na 1ª transcrição (gitignored, precisa ser gravável pelo `www-data`) |
+
+### Instalação
+
+```bash
+/opt/crm/venv/bin/pip install "faster-whisper==1.2.1" "av>=11,<16"
+mkdir -p /opt/crm/tools/whisper_models && chown www-data:www-data /opt/crm/tools/whisper_models
+cp /opt/crm/tools/transcricao/celery-transcricao.service /etc/systemd/system/
+chmod 644 /etc/systemd/system/celery-transcricao.service
+systemctl daemon-reload && systemctl enable --now celery-transcricao
+systemctl restart gunicorn daphne celery
+```
+
+**`av<16` é obrigatório**: o PyAV 16+ removeu o argumento `metadata_errors` que
+o faster-whisper 1.2.1 passa para `av.open`, e toda transcrição estoura com
+`TypeError`.
+
+Sem o pacote instalado, `transcricao.disponivel()` é `False`, nada é agendado e
+o chat segue como antes. Com o pacote instalado e sem o worker rodando, os
+áudios ficam "Transcrevendo…" e são processados quando o serviço subir, porque
+a fila fica guardada no Redis.
+
+### Guardas
+
+- Mensagem apagada não é transcrita. Se for apagada **durante** a transcrição,
+  o texto não é gravado nem enviado à tela, para não trazer de volta por
+  escrito o que acabou de ser removido.
+- Webhook repetido não enfileira de novo, porque `agendar` só roda quando o
+  `get_or_create` cria a mensagem.
+- Broker fora do ar vira `erro` e não derruba o recebimento da mensagem.
+- `caminho_da_midia` só aceita arquivo dentro do `MEDIA_ROOT`.
+- `vad_filter=True` corta silêncio antes do modelo. Sem isso, o Whisper
+  "inventa" frases ("Obrigado por assistir") em áudio sem fala.
+
+### Limitações
+
+- Áudios anteriores à instalação não são transcritos (não há backfill).
+- Sem WebSocket, o polling de fallback só traz mensagens novas. A transcrição
+  de um áudio já na tela aparece no F5.
+
+### Testes
+
+`atendimento/tests_transcricao.py` (19 casos, Whisper mockado): agendamento e
+fila, webhook duplicado, texto ou áudio sem arquivo fora da fila, broker fora,
+lib ausente, setting desligado, guarda de caminho, gravação e WebSocket, `vazia`,
+`erro`, arquivo sumido, mensagem apagada antes e durante a transcrição, contexto
+da IA e citação.

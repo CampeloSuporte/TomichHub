@@ -11419,7 +11419,8 @@ function getCsrfToken(){
         if (!m.attachment_url) return '';
         const url = _escapeHtmlKanban(m.attachment_url);
         if (m.message_type === 'image') return `<img src="${url}" alt="anexo" loading="lazy">`;
-        if (m.message_type === 'audio') return `<audio controls src="${url}" style="margin-top:6px;max-width:100%;"></audio>`;
+        if (m.message_type === 'audio') return `<audio controls src="${url}" style="margin-top:6px;max-width:100%;"></audio>` +
+            (m.transcricao ? `<div style="margin-top:4px;font-size:12.5px;font-style:italic;opacity:.85;">${_escapeHtmlKanban(m.transcricao)}</div>` : '');
         if (m.message_type === 'video') return `<video controls src="${url}" style="margin-top:6px;max-width:100%;border-radius:8px;"></video>`;
         return `<a href="${url}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;color:var(--accent-cyan);"><i class="fas fa-paperclip me-1"></i>Abrir anexo</a>`;
     }
