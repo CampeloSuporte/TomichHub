@@ -1312,8 +1312,8 @@ const GRAPH = (() => {
     return {
       type: 'line',
       data: { labels: [], datasets: [
-        { label: 'Download ↓', data: [], borderColor: C.in,  backgroundColor: C.inFill,  borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4, spanGaps: true },
-        { label: 'Upload ↑',   data: [], borderColor: C.out, backgroundColor: C.outFill, borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4, spanGaps: true },
+        { label: 'Download ↓', data: [], borderColor: C.in,  backgroundColor: C.inFill,  borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3, cubicInterpolationMode: 'monotone', spanGaps: true },
+        { label: 'Upload ↑',   data: [], borderColor: C.out, backgroundColor: C.outFill, borderWidth: 2, pointRadius: 0, fill: true, tension: 0.3, cubicInterpolationMode: 'monotone', spanGaps: true },
       ]},
       options: {
         animation: false, responsive: true, maintainAspectRatio: false,

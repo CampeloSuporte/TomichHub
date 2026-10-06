@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-06 (Quedas falsas no gráfico de tráfego)
+
+### Corrigido
+
+- **Gráfico do Monitoramento mostrava quedas que não aconteceram**: o contador de octetos de alguns
+  equipamentos é atualizado fora do ritmo da coleta do Zabbix e a série bruta vem em zigue-zague
+  (22,7 → 14,5 → 23,3 → 14,5 Gbps com ~18,7 reais). Pico e vale que se compensam agora viram a média do
+  trecho (volume preservado); queda real continua aparecendo. A linha do gráfico deixou de usar spline
+  que ultrapassava os pontos. Vale também para os gráficos Zabbix dos Acessos. Ver `docs/monitoramento.md`.
+
+---
+
 ## [Não publicado] — 2026-10-06 (Transcrição dos áudios do chat)
 
 ### Adicionado
