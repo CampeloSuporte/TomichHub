@@ -404,6 +404,10 @@ def historico_item(config, item_id, hours=1, limit=300):
                 bps = (delta * 8) / dt
                 taxa.append({'t': pontos[i]['t'], 'v': bps})
             pontos = taxa
+            units_lower = 'bps'
+
+    if fonte == 'history' and _eh_trafego(units_lower):
+        pontos = _corrigir_serrilhado(pontos)
 
     return _downsample(pontos, limit)
 
@@ -561,6 +565,49 @@ def _rate_de_contador(pontos: list, value_type: int, units: str) -> tuple:
             taxa.append({'t': pontos[i]['t'], 'v': (delta * 8) / dt})
         return taxa, True
     return pontos, False
+
+
+def _eh_trafego(units: str) -> bool:
+    u = (units or '').lower()
+    return any(x in u for x in ('bps', 'b/s', 'bit'))
+
+
+def _corrigir_serrilhado(pontos: list, limiar: float = 0.08) -> list:
+    """Desfaz o zigue-zague de contador em séries de tráfego.
+
+    Quando o equipamento atualiza o contador de octetos num ritmo diferente da
+    coleta do Zabbix, um intervalo recebe bytes "a mais" e o vizinho "a menos":
+    a série vira 22.7 → 14.5 → 23.3 → 14.5 Gbps com tráfego real estável em
+    ~18.7. No gráfico isso aparece como queda que não aconteceu (falso
+    positivo). Assinatura: pontos consecutivos fora da mediana local com sinais
+    alternados (um vale sempre compensado por um pico). Cada trecho assim vira
+    a média do próprio trecho — o volume trafegado é preservado. Queda real
+    (vale sem pico compensando, ou vários pontos baixos seguidos) não alterna
+    sinal e fica intacta.
+    """
+    n = len(pontos)
+    if n < 4:
+        return pontos
+    vals = [p['v'] for p in pontos]
+    desvio = []
+    for i in range(n):
+        janela = sorted(vals[max(0, i - 3):i + 4])
+        base = janela[len(janela) // 2]
+        d = vals[i] - base
+        desvio.append(d if base > 0 and abs(d) > limiar * base else 0.0)
+
+    saida = [dict(p) for p in pontos]
+    i = 0
+    while i < n:
+        j = i
+        while j + 1 < n and desvio[j] and desvio[j + 1] and (desvio[j] > 0) != (desvio[j + 1] > 0):
+            j += 1
+        if j > i:
+            media = sum(vals[i:j + 1]) / (j - i + 1)
+            for k in range(i, j + 1):
+                saida[k]['v'] = media
+        i = j + 1
+    return saida
 
 
 def buscar_hosts(config, busca: str = '', limit: int = 30) -> list:
@@ -774,6 +821,8 @@ def historico_janela(config, item_id, ts_from: int, ts_till: int,
     pontos, convertido = _rate_de_contador(pontos, value_type, units)
     if convertido:
         units = 'bps'
+    if fonte == 'history' and _eh_trafego(units):
+        pontos = _corrigir_serrilhado(pontos)
     if not pontos:
         return {
             'itemid': str(item_id), 'name': nome, 'hostname': hostname,

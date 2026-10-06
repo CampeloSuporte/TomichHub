@@ -224,6 +224,21 @@ para no máximo `limit` pontos (padrão 300) — é isso que mantém o gráfico 
 Contador acumulativo de bytes continua virando taxa (`bps`) pela diferença entre pontos
 consecutivos, tanto no `history` quanto no `trend`.
 
+### Serrilhado de contador (falsa queda)
+
+Quando o roteador atualiza o contador de octetos num ritmo diferente da coleta do Zabbix, um
+intervalo recebe bytes "a mais" e o seguinte "a menos". Caso real (NE_8000_JUINA, coleta de 3 min):
+`20.4 → 22.7 → 14.5 → 23.3 → 14.5 → 17.0` Gbps com tráfego estável em ~18.7 — o gráfico mostrava
+quedas de ~8 Gbps que não existiram. `_corrigir_serrilhado()` procura pontos consecutivos fora da
+mediana local (±8%, janela de 7) com **sinais alternados** e troca o trecho pela média dele, o que
+preserva o volume trafegado. Queda real (vale sem pico compensando, ou vários pontos baixos seguidos)
+não alterna sinal e continua aparecendo. Só vale para séries de tráfego (`bps`/contador convertido)
+vindas do `history` — `trend` já é média horária. Aplicado em `historico_item` (aba Monitoramento) e
+`historico_janela` (gráficos dos Acessos e Agent NOC).
+
+No front, a linha usa `cubicInterpolationMode: 'monotone'`: a spline antiga (`tension: 0.4`)
+ultrapassava os pontos e aprofundava ainda mais os vales.
+
 ### Intervalo do poll por período
 
 Janela longa não muda a cada 15s, então o `setInterval` acompanha o período escolhido (o badge
@@ -269,6 +284,12 @@ Clientes só acessam o dashboard do próprio cliente. Admins/operadores acessam 
 ---
 
 ## Histórico de Alterações
+
+### 2026-10-06 — Quedas falsas no gráfico de tráfego
+
+**Problema:** o gráfico mostrava quedas bruscas (ex.: 23 → 14,5 Gbps) que o tráfego real não teve,
+gerando falso positivo. **Causa:** serrilhado do contador do equipamento nos dados brutos do Zabbix +
+spline que exagerava os vales. **Correção:** ver "Serrilhado de contador (falsa queda)" acima.
 
 ### 2026-08-31 — Períodos de 12h/24h corrigidos e 7d/30d adicionados
 

@@ -688,3 +688,28 @@ class StatusInferidoTest(_Base):
         self.assertEqual((g['XGigabitEthernet0/0/2']['status'], g['XGigabitEthernet0/0/2']['status_inferido']), ('down', True))
         self.assertEqual(g['XGigabitEthernet0/0/5']['status'], '')
         self.assertEqual((g['XGigabitEthernet0/0/1']['status'], g['XGigabitEthernet0/0/1']['status_inferido']), ('up', False))
+
+
+class SerrilhadoContadorTest(TestCase):
+    """Zigue-zague de contador (pico + vale que se compensam) não pode virar
+    queda falsa no gráfico; queda real tem que continuar aparecendo."""
+
+    @staticmethod
+    def _serie(vals):
+        from monitoramento.services import _corrigir_serrilhado
+        return [round(p['v'], 2) for p in _corrigir_serrilhado(
+            [{'t': i * 180, 'v': v} for i, v in enumerate(vals)])]
+
+    def test_pico_e_vale_viram_media(self):
+        # Dados reais do NE_8000_JUINA (Gbps), coleta de 3 em 3 min
+        out = self._serie([19.19, 19.3, 20.42, 22.74, 14.53, 23.28, 14.48, 17.02, 16.61, 16.56])
+        self.assertEqual(out[3:7], [18.76] * 4)
+        self.assertEqual(out[:3], [19.19, 19.3, 20.42])
+
+    def test_queda_real_preservada(self):
+        vals = [18, 18, 18, 0, 18, 18, 18, 18, 0, 0, 0, 18, 18, 18]
+        self.assertEqual(self._serie(vals), vals)
+
+    def test_ruido_pequeno_intacto(self):
+        vals = [10.0, 10.3, 9.8, 10.2, 9.9, 10.1]
+        self.assertEqual(self._serie(vals), vals)
