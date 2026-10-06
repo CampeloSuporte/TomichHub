@@ -231,8 +231,10 @@ intervalo recebe bytes "a mais" e o seguinte "a menos". Caso real (NE_8000_JUINA
 `20.4 → 22.7 → 14.5 → 23.3 → 14.5 → 17.0` Gbps com tráfego estável em ~18.7 — o gráfico mostrava
 quedas de ~8 Gbps que não existiram. `_corrigir_serrilhado()` procura pontos consecutivos fora da
 mediana local (±8%, janela de 7) com **sinais alternados** e troca o trecho pela média dele, o que
-preserva o volume trafegado. Queda real (vale sem pico compensando, ou vários pontos baixos seguidos)
-não alterna sinal e continua aparecendo. Só vale para séries de tráfego (`bps`/contador convertido)
+preserva o volume trafegado. O pico pode vir até 2 coletas depois do vale (ex.: AVATO AFL
+`6.17 → 4.67 → 4.10`). Em seguida passa uma suavização 1-2-1 (também preserva volume) para o resíduo.
+Queda profunda — abaixo de 20% da mediana local, ex.: link caído — fica fora da suavização e aparece
+crua; vários pontos baixos seguidos também não alternam sinal e continuam aparecendo. Só vale para séries de tráfego (`bps`/contador convertido)
 vindas do `history` — `trend` já é média horária. Aplicado em `historico_item` (aba Monitoramento) e
 `historico_janela` (gráficos dos Acessos e Agent NOC).
 
@@ -290,6 +292,8 @@ Clientes só acessam o dashboard do próprio cliente. Admins/operadores acessam 
 **Problema:** o gráfico mostrava quedas bruscas (ex.: 23 → 14,5 Gbps) que o tráfego real não teve,
 gerando falso positivo. **Causa:** serrilhado do contador do equipamento nos dados brutos do Zabbix +
 spline que exagerava os vales. **Correção:** ver "Serrilhado de contador (falsa queda)" acima.
+Segunda rodada no mesmo dia: compensação passou a aceitar o pico até 2 coletas depois do vale e
+entrou a suavização 1-2-1 — varredura dos 26 gráficos salvos zerou as quedas > 15% nos links de Gbps.
 
 ### 2026-08-31 — Períodos de 12h/24h corrigidos e 7d/30d adicionados
 

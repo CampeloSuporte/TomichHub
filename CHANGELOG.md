@@ -14,6 +14,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   (22,7 → 14,5 → 23,3 → 14,5 Gbps com ~18,7 reais). Pico e vale que se compensam agora viram a média do
   trecho (volume preservado); queda real continua aparecendo. A linha do gráfico deixou de usar spline
   que ultrapassava os pontos. Vale também para os gráficos Zabbix dos Acessos. Ver `docs/monitoramento.md`.
+- Segunda rodada: o pico que compensa o vale pode vir até 2 coletas depois, e a série ganhou suavização
+  1-2-1 (preserva volume). Link caído (< 20% da mediana) continua aparecendo cru.
 
 ---
 

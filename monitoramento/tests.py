@@ -702,14 +702,22 @@ class SerrilhadoContadorTest(TestCase):
 
     def test_pico_e_vale_viram_media(self):
         # Dados reais do NE_8000_JUINA (Gbps), coleta de 3 em 3 min
-        out = self._serie([19.19, 19.3, 20.42, 22.74, 14.53, 23.28, 14.48, 17.02, 16.61, 16.56])
-        self.assertEqual(out[3:7], [18.76] * 4)
-        self.assertEqual(out[:3], [19.19, 19.3, 20.42])
+        vals = [19.19, 19.3, 20.42, 22.74, 14.53, 23.28, 14.48, 17.02, 16.61, 16.56]
+        out = self._serie(vals)
+        for v in out[3:7]:
+            self.assertAlmostEqual(v, 18.7, delta=0.6)
+        # volume (média) preservado
+        self.assertAlmostEqual(sum(out) / len(out), sum(vals) / len(vals), delta=0.3)
+
+    def test_pico_uma_coleta_depois(self):
+        # LINK AVATO AFL: pico 6.17 compensado pelo vale 4.10 duas coletas depois
+        out = self._serie([4.91, 4.85, 6.17, 4.67, 4.10, 4.91, 4.85, 4.88])
+        self.assertTrue(all(4.6 <= v <= 5.2 for v in out), out)
 
     def test_queda_real_preservada(self):
         vals = [18, 18, 18, 0, 18, 18, 18, 18, 0, 0, 0, 18, 18, 18]
         self.assertEqual(self._serie(vals), vals)
 
-    def test_ruido_pequeno_intacto(self):
-        vals = [10.0, 10.3, 9.8, 10.2, 9.9, 10.1]
-        self.assertEqual(self._serie(vals), vals)
+    def test_ruido_pequeno_so_suaviza(self):
+        out = self._serie([10.0, 10.3, 9.8, 10.2, 9.9, 10.1])
+        self.assertTrue(all(9.8 <= v <= 10.3 for v in out), out)

@@ -576,37 +576,64 @@ def _corrigir_serrilhado(pontos: list, limiar: float = 0.08) -> list:
     """Desfaz o zigue-zague de contador em séries de tráfego.
 
     Quando o equipamento atualiza o contador de octetos num ritmo diferente da
-    coleta do Zabbix, um intervalo recebe bytes "a mais" e o vizinho "a menos":
+    coleta do Zabbix, um intervalo recebe bytes "a mais" e um vizinho "a menos":
     a série vira 22.7 → 14.5 → 23.3 → 14.5 Gbps com tráfego real estável em
     ~18.7. No gráfico isso aparece como queda que não aconteceu (falso
-    positivo). Assinatura: pontos consecutivos fora da mediana local com sinais
-    alternados (um vale sempre compensado por um pico). Cada trecho assim vira
-    a média do próprio trecho — o volume trafegado é preservado. Queda real
-    (vale sem pico compensando, ou vários pontos baixos seguidos) não alterna
-    sinal e fica intacta.
+    positivo).
+
+    1. Compensação: pontos fora da mediana local com sinais alternados, a até
+       2 coletas um do outro (o pico às vezes vem uma coleta depois), viram a
+       média do trecho — o volume trafegado é preservado.
+    2. Suavização 1-2-1 (também preserva volume) para o resíduo do serrilhado.
+       Queda profunda (< 20% da mediana local, ex.: link caído) fica fora da
+       suavização e aparece crua, assim como os vizinhos não a "puxam".
     """
     n = len(pontos)
     if n < 4:
         return pontos
     vals = [p['v'] for p in pontos]
-    desvio = []
-    for i in range(n):
-        janela = sorted(vals[max(0, i - 3):i + 4])
-        base = janela[len(janela) // 2]
-        d = vals[i] - base
-        desvio.append(d if base > 0 and abs(d) > limiar * base else 0.0)
 
-    saida = [dict(p) for p in pontos]
-    i = 0
-    while i < n:
-        j = i
-        while j + 1 < n and desvio[j] and desvio[j + 1] and (desvio[j] > 0) != (desvio[j + 1] > 0):
-            j += 1
-        if j > i:
+    def _bases(vs):
+        out = []
+        for i in range(n):
+            janela = sorted(vs[max(0, i - 3):i + 4])
+            out.append(janela[len(janela) // 2])
+        return out
+
+    base = _bases(vals)
+    desvio = [
+        (vals[i] - base[i]) if base[i] > 0 and abs(vals[i] - base[i]) > limiar * base[i] else 0.0
+        for i in range(n)
+    ]
+
+    corr = list(vals)
+    sig = [i for i in range(n) if desvio[i]]
+    k = 0
+    while k < len(sig):
+        m = k
+        while (m + 1 < len(sig) and sig[m + 1] - sig[m] <= 2
+               and (desvio[sig[m]] > 0) != (desvio[sig[m + 1]] > 0)):
+            m += 1
+        if m > k:
+            i, j = sig[k], sig[m]
             media = sum(vals[i:j + 1]) / (j - i + 1)
-            for k in range(i, j + 1):
-                saida[k]['v'] = media
-        i = j + 1
+            for x in range(i, j + 1):
+                corr[x] = media
+        k = m + 1
+
+    base = _bases(corr)
+    queda = [b > 0 and v < 0.2 * b for v, b in zip(corr, base)]
+    saida = [dict(p) for p in pontos]
+    for i in range(n):
+        if queda[i]:
+            saida[i]['v'] = corr[i]
+            continue
+        soma, peso = 2 * corr[i], 2
+        for j in (i - 1, i + 1):
+            if 0 <= j < n and not queda[j]:
+                soma += corr[j]
+                peso += 1
+        saida[i]['v'] = soma / peso
     return saida
 
 
