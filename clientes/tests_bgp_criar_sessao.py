@@ -510,3 +510,21 @@ class MontarComandosSalvaConfigCiscoTest(SimpleTestCase):
         comandos = _montar_comandos('ativar_sessao', 'huawei', dados_huawei, '10.0.0.1', {})
         self.assertNotIn('end', comandos)
         self.assertNotIn('write', comandos)
+
+
+class AplicarEfeitoLocalmenteToggleSessaoTest(SimpleTestCase):
+    """Regressão: Ativar/Desativar mandam a sessão só em `alvo` (params
+    vazio). O painel continuava "ativa" depois do `peer X ignore` no Huawei."""
+
+    def _dados(self, habilitada):
+        return {'sessoes': [{'nome': '2001:12F8:0:13::253', 'habilitada': habilitada}]}
+
+    def test_desativar_com_params_vazio_marca_desabilitada(self):
+        dados = self._dados(True)
+        aplicar_efeito_localmente('huawei', dados, 'desativar_sessao', '', '2001:12F8:0:13::253', {})
+        self.assertFalse(dados['sessoes'][0]['habilitada'])
+
+    def test_ativar_com_params_vazio_marca_habilitada(self):
+        dados = self._dados(False)
+        aplicar_efeito_localmente('huawei', dados, 'ativar_sessao', '', '2001:12F8:0:13::253', {})
+        self.assertTrue(dados['sessoes'][0]['habilitada'])

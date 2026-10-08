@@ -888,6 +888,12 @@ def aplicar_efeito_localmente(vendor, dados, tipo, nome_sessao, alvo, params):
         except Exception as e:
             logger.warning(f'aplicar_efeito_localmente ({tipo}) falhou (não crítico): {e}')
         return
+    if tipo in ('ativar_sessao', 'desativar_sessao'):
+        # Os botões Ativar/Desativar mandam a sessão em `alvo` com params
+        # vazio (é assim que _montar_comandos a encontra) — sem este
+        # fallback `nome_sessao` chegava '' e o painel seguia "ativa"
+        # depois do `peer X ignore` já aplicado no equipamento.
+        nome_sessao = nome_sessao or alvo
     try:
         sessao = _sessao_por_nome(dados, nome_sessao)
     except AcaoBgpNaoSuportada:
