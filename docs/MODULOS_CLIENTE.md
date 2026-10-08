@@ -11,7 +11,7 @@
 ## Visão Geral
 
 Cada aba da tela do cliente (Acessos, Backups, VPN, Topologia, Túneis SSH, Documentos,
-RPKI/IRR, Monitoramento, Documentação de Rede, Hotspot, Testes de Rede) pode ser habilitada
+RPKI/IRR, Monitoramento, Documentação de Rede, Testes de Rede) pode ser habilitada
 ou desabilitada **por login individual** (`User`), não por empresa — dois usuários vinculados
 à mesma `Cliente` podem ver conjuntos diferentes de ferramentas (ex: o financeiro da empresa
 não precisa ver VPN, mas o técnico de rede precisa). A seleção acontece em
@@ -57,7 +57,7 @@ class UsuarioModulo(models.Model):
         ('topologia', 'Topologia'), ('tuneis', 'Túneis SSH'),
         ('documentos', 'Documentos'), ('rpki_irr', 'RPKI/IRR'),
         ('monitoramento', 'Monitoramento'), ('documentacao', 'Documentação de Rede'),
-        ('hotspot', 'Hotspot'), ('testes_rede', 'Testes de Rede'),
+        ('testes_rede', 'Testes de Rede'),  # 'hotspot' removido em 08/10/2026
     ]
     usuario = models.ForeignKey(User, on_delete=models.CASCADE, related_name='modulos')
     modulo = models.CharField(max_length=30, choices=MODULO_CHOICES)
@@ -205,9 +205,8 @@ Pontos importantes:
 
 ### Lacuna conhecida
 
-Os módulos **Hotspot** (`clientes/hotspot_views.py`) e **Documentação de Rede**
-(`clientes/ipam_views.py`) estão protegidos **só na interface** (a aba some) — as views de
-ação desses dois arquivos ainda não têm `@modulo_habilitado_required` aplicado. O mesmo vale
+O módulo **Documentação de Rede** (`clientes/ipam_views.py`) está protegido **só na
+interface** (a aba some) — as views de ação desse arquivo ainda não têm `@modulo_habilitado_required` aplicado. O mesmo vale
 para **Monitoramento**, que vive na app `monitoramento` (fora de `clientes`). Um usuário que
 souber a URL exata ainda conseguiria usar essas três ferramentas por acesso direto mesmo
 desabilitadas — risco baixo (uso do próprio tenant, não vazamento entre clientes), mas vale

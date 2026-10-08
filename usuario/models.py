@@ -19,7 +19,6 @@ class UsuarioModulo(models.Model):
         ('rpki_irr', 'RPKI/IRR'),
         ('monitoramento', 'Monitoramento'),
         ('documentacao', 'Documentação de Rede'),
-        ('hotspot', 'Hotspot'),
         ('testes_rede', 'Testes de Rede'),
         ('tarefas', 'Tarefas'),
     ]
@@ -226,7 +225,6 @@ class InstanciaFerramenta(models.Model):
         ('documentos', 'Documentos'),
         ('rpki_irr', 'RPKI/IRR'),
         ('monitoramento', 'Monitoramento'),
-        ('hotspot', 'Hotspot'),
         ('ipam', 'IPAM'),
         ('scripts', 'Scripts'),
         ('bgp', 'BGP'),

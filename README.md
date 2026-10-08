@@ -14,7 +14,6 @@ Centraliza acesso remoto a equipamentos, IPAM, VPN, backups, RPKI/IRR, financeir
   - [Clientes e Equipamentos](#clientes-e-equipamentos)
   - [Terminal Web SSH/Telnet](#terminal-web-sshtelnet)
   - [WinBox e Acesso Web](#winbox-e-acesso-web)
-  - [Hotspot MikroTik](#hotspot-mikrotik)
   - [Backups Automatizados](#backups-automatizados)
   - [IPAM Nativo](#ipam-nativo)
   - [VPN — OpenVPN](#vpn--openvpn)
@@ -50,7 +49,6 @@ O TomichHub é uma plataforma NOC desenvolvida em Django com foco em provedores 
 - Monitor de tráfego em tempo real via Zabbix com múltiplas abas
 - Módulo financeiro completo (faturas, contratos, LOA, WhatsApp, PIX)
 - Agent NOC com inteligência artificial para análise e diagnóstico
-- Hotspot captive portal com cadastro de usuários
 
 ---
 
@@ -149,24 +147,11 @@ Acesso SSH e Telnet diretamente no navegador, sem instalar nenhum cliente:
   sem resposta ou erro), abre a conexão direta no navegador
 - Acesso por porta específica com tunelamento automático pelo ProxyServer
 
-### Hotspot MikroTik
+### Hotspot MikroTik (removido)
 
-Portal cativo integrado ao MikroTik para provedores de hotspot:
-
-- **Captive portal:** redireciona novos usuários para tela de cadastro (CPF/Telefone)
-- Compatível com mini-browsers iOS e Android (usa `<meta http-equiv="refresh">` sem depender de JS)
-- **Controle de banda por IP:** Queue Simple via DHCP Lease Script (ativo/inativo por MAC)
-- Configuração de limite de banda (download/upload) por plano do hotspot
-- Configuração do gateway, DHCP server e script de banda via interface web
-
-**Fluxo do captive portal:**
-```
-Usuário conecta ao WiFi
-  → MikroTik intercepta → /clientes/hotspot/login-html/<id>/
-  → CRM gera redirect para /clientes/hotspot/portal/<id>/
-  → Usuário preenche CPF/Telefone
-  → CRM autentica via API MikroTik → libera acesso
-```
+O módulo Hotspot saiu da plataforma em 08/10/2026. Só o captive portal público
+(`/clientes/hotspot/...`) segue no ar para os MikroTiks que ainda apontam para ele.
+Ver [docs/HOTSPOT_REMOCAO.md](docs/HOTSPOT_REMOCAO.md).
 
 ### Backups Automatizados
 
@@ -512,17 +497,6 @@ print(az.resolver_config(c.id).url)
 
 Detalhes de implementação em [docs/agent_noc.md](docs/agent_noc.md) — seção "Zabbix via API".
 
-### 4. Hotspot (por cliente com hotspot)
-
-**Cliente → Hotspot**
-
-- Gateway do hotspot
-- DHCP Server name
-- Limite de banda (se controle de banda ativado)
-- URL do portal é gerada automaticamente: `/clientes/hotspot/login-html/<id>/`
-
----
-
 ## Comandos do Dia a Dia
 
 ```bash
@@ -573,7 +547,7 @@ sudo -u postgres psql crm_db < backup_20260101.sql
 ├── clientes/                     # App principal
 │   ├── models.py                 # Cliente, Acesso, ProxyServer, IPAM, VPN, Backup...
 │   ├── views.py                  # Views gerais
-│   ├── hotspot_views.py          # Captive portal e controle de banda
+│   ├── hotspot_views.py          # Captive portal público (módulo Hotspot removido)
 │   ├── ipam_views.py             # IPAM nativo
 │   ├── firmware_views.py         # Gerenciador de arquivos/firmware
 │   ├── script_views.py           # Scripts de automação
@@ -634,6 +608,7 @@ sudo -u postgres psql crm_db < backup_20260101.sql
 | [docs/ATENDIMENTO.md](docs/ATENDIMENTO.md) | Módulo de atendimento — tickets, tarefas, Sala Virtual (WebRTC) |
 | [docs/INDEX.md](docs/INDEX.md) | Índice de toda a documentação |
 | [docs/monitoramento.md](docs/monitoramento.md) | Monitor de tráfego com sistema de abas |
+| [docs/HOTSPOT_REMOCAO.md](docs/HOTSPOT_REMOCAO.md) | Remoção do módulo Hotspot e o que ficou no ar |
 | [docs/HOTSPOT_CAPTIVE_PORTAL.md](docs/HOTSPOT_CAPTIVE_PORTAL.md) | Captive portal e bugs corrigidos |
 | [docs/HOTSPOT_CONTROLE_BANDA.md](docs/HOTSPOT_CONTROLE_BANDA.md) | Controle de banda via DHCP Queue Simple |
 | [docs/FINANCEIRO.md](docs/FINANCEIRO.md) | Módulo financeiro completo |
