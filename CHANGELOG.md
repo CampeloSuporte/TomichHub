@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-08 (BGP: peer desativado continuava "ativa")
+
+### Corrigido
+
+- **Automação BGP: Desativar/Ativar sessão não atualizava o painel**: o comando ia certo para o
+  equipamento (`peer X ignore` no Huawei), mas a sessão seguia "ativa" com o botão Desativar até o
+  próximo backup. Os botões mandam a sessão só em `alvo` e a atualização otimista do snapshot procurava
+  em `params.sessao` (vazio). Agora usa o `alvo` como fallback nesses dois tipos.
+
+---
+
 ## [Não publicado] — 2026-10-06 (Quedas falsas no gráfico de tráfego)
 
 ### Corrigido
