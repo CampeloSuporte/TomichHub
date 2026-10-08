@@ -1,5 +1,11 @@
 # Hotspot — Captive Portal (Redirecionamento para Login)
 
+> **Módulo removido em 08/10/2026.** A aba Hotspot, a permissão `hotspot` e todas as telas
+> internas (criar/editar, aplicar no MikroTik, banners, leads, integração disparo) saíram da
+> plataforma. Continuam no ar só os endpoints públicos do captive portal (`login-html`, `portal`,
+> `portal/conectar`, `pixel`), porque MikroTiks de clientes ainda apontam para eles, e os dados
+> (`HotspotConfig`, `HotspotLead`, ...) ficam no banco, sem tela. Ver `docs/HOTSPOT_REMOCAO.md`.
+
 **Data de Implementação:** 2026-06-13  
 **Arquivo principal:** `clientes/hotspot_views.py`  
 **Status:** ✅ Produção

@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-08 (Módulo Hotspot removido)
+
+### Removido
+
+- **Módulo Hotspot**: a aba Hotspot da tela do cliente, as telas internas (criar/editar, aplicar no
+  MikroTik, banners, leads, integração disparo) e a permissão `hotspot` saíram da plataforma. As
+  permissões já gravadas com essa chave são apagadas na migração `usuario/0014_remove_hotspot`.
+- O captive portal público continua no ar porque há MikroTiks de clientes apontando para ele, e os
+  dados (hotspots, leads, integrações) ficam no banco. Ver `docs/HOTSPOT_REMOCAO.md`.
+
+---
+
 ## [Não publicado] — 2026-10-08 (BGP: peer desativado continuava "ativa")
 
 ### Corrigido

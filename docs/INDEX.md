@@ -2,6 +2,16 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 60 — 08/10/2026: Módulo Hotspot removido
+
+- ✅ Aba Hotspot, rotas internas `/clientes/<id>/hotspot/...` e permissão `hotspot` removidas
+- ✅ Captive portal público mantido (hotspots da Villaggionet e Conecta ainda em uso); dados no banco
+- ✅ Migração `usuario/0014_remove_hotspot` apaga as permissões órfãs
+
+| Documento | O que cobre |
+|---|---|
+| **[HOTSPOT_REMOCAO.md](HOTSPOT_REMOCAO.md)** | O que saiu, o que ficou e como apagar de vez |
+
 ### Sessão 59 — 05/10/2026: Backup do banco no Google Drive
 
 **O que foi implementado?**

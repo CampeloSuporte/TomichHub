@@ -3,7 +3,7 @@ usuario/perms.py
 
 Ponto único de verdade para papel (Administrador/Consultor/Operador/portal
 do cliente) e escopo de instância. Decorators e views do núcleo (clientes,
-monitoramento, ipam, hotspot, bgp, scripts) devem checar permissão através
+monitoramento, ipam, bgp, scripts) devem checar permissão através
 destas funções em vez de `request.user.is_staff` cru.
 """
 from .models import (

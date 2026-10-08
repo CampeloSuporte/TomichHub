@@ -182,7 +182,7 @@ def ferramenta_instancia_required(ferramenta_key):
     """
     Equivalente a `modulo_habilitado_required`, para views que hoje não têm
     nenhum controle de ferramenta (só `@login_required`) — ex.: IPAM,
-    Hotspot, Scripts, BGP. Portal do cliente final: ver
+    Scripts, BGP. Portal do cliente final: ver
     `usuario.perms.portal_pode_usar_ferramenta` (toggle por login, capado
     pela instância do Consultor dono do cliente; ferramentas sem
     equivalente no portal, como 'scripts'/'bgp', ficam bloqueadas).

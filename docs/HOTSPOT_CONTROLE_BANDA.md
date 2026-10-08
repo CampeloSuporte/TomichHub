@@ -1,5 +1,11 @@
 # Hotspot — Controle de Banda via DHCP Queue Simple
 
+> **Módulo removido em 08/10/2026.** A aba Hotspot, a permissão `hotspot` e todas as telas
+> internas (criar/editar, aplicar no MikroTik, banners, leads, integração disparo) saíram da
+> plataforma. Continuam no ar só os endpoints públicos do captive portal (`login-html`, `portal`,
+> `portal/conectar`, `pixel`), porque MikroTiks de clientes ainda apontam para eles, e os dados
+> (`HotspotConfig`, `HotspotLead`, ...) ficam no banco, sem tela. Ver `docs/HOTSPOT_REMOCAO.md`.
+
 ## Visão Geral
 
 Funcionalidade que permite configurar controle de banda por IP no hotspot MikroTik usando Queue Simple ativado automaticamente pelo DHCP Lease Script. Cada dispositivo que recebe um IP do DHCP tem sua fila de banda criada automaticamente; ao liberar o IP, a fila é removida.
