@@ -450,7 +450,7 @@ input:checked + .toggle-slider:before{transform:translateX(18px)}
     cb.checked=!!(PERM_MAP[uid]&&PERM_MAP[uid].indexOf(gid)!==-1);
     cb.addEventListener('change',function(){
       post(URL_PERMS,{user_id:parseInt(uid),group_id:gid}).then(function(d){
-        if(!d||d.error){cb.checked=!cb.checked;alert('Erro ao alterar permissão');}
+        if(!d||d.error){cb.checked=!cb.checked;uiAlert('Erro ao alterar permissão');}
       });
     });
   });
@@ -527,7 +527,7 @@ input:checked + .toggle-slider:before{transform:translateX(18px)}
   document.getElementById('btnAddQM').addEventListener('click',function(){
     var title=document.getElementById('newQMTitle').value.trim();
     var body=document.getElementById('newQMBody').value.trim();
-    if(!title||!body){alert('Preencha título e mensagem');return;}
+    if(!title||!body){uiAlert('Preencha título e mensagem');return;}
     var btn=this; setLoading(btn,true);
     post(URL_QM,{title:title,body:body}).then(function(d){
       if(d.id){
@@ -542,14 +542,14 @@ input:checked + .toggle-slider:before{transform:translateX(18px)}
   });
 
   // ── Delete delegado ──
-  document.addEventListener('click',function(e){
+  document.addEventListener('click',async function(e){
     var btn=e.target.closest('.icon-btn.danger[data-kind]'); if(!btn) return;
     var kind=btn.dataset.kind,id=btn.dataset.id,row=btn.dataset.row;
     if(!id) return;
-    if(!confirm('Remover?')) return;
+    if(!await uiConfirm({titulo:'Remover', msg:'Remover este item?', btnLabel:'Remover'})) return;
     var urls={tag:'/atendimento/api/tags/'+id+'/',cat:'/atendimento/api/categories/'+id+'/',qm:'/atendimento/api/quick-messages/'+id+'/'};
     if(!urls[kind]) return;
-    del(urls[kind]).then(function(r){if(r.ok){var el=document.getElementById(row);if(el)el.remove();}else alert('Erro ao remover');});
+    del(urls[kind]).then(function(r){if(r.ok){var el=document.getElementById(row);if(el)el.remove();}else uiAlert('Erro ao remover');});
   });
 
   // ── Color pickers delegado ──
@@ -621,7 +621,7 @@ window.acSave = function(uid){
   var phone   = document.querySelector('.ac-phone[data-uid="'+uid+'"]').value.trim();
   var connId  = document.querySelector('.ac-conn[data-uid="'+uid+'"]').value;
   var enabled = document.querySelector('.ac-enabled[data-uid="'+uid+'"]').checked;
-  if(!phone){ alert('Informe o número de WhatsApp'); return; }
+  if(!phone){ uiAlert('Informe o número de WhatsApp'); return; }
   fetch('/atendimento/api/attendant-contacts/', {
     method:'POST',
     headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},
@@ -636,14 +636,14 @@ window.acSave = function(uid){
     setTimeout(function(){ res.style.display='none'; }, 3000);
   });
 };
-window.acDelete = function(uid){
-  if(!confirm('Remover contato deste atendente?')) return;
+window.acDelete = async function(uid){
+  if(!await uiConfirm({titulo:'Remover contato', msg:'Remover contato deste atendente?', btnLabel:'Remover'})) return;
   fetch('/atendimento/api/attendant-contacts/'+uid+'/', {
     method:'DELETE',
     headers:{'X-CSRFToken':'{{ csrf_token }}'}
   }).then(function(r){
     if(r.ok) location.reload();
-    else alert('Erro ao remover');
+    else uiAlert('Erro ao remover');
   });
 };
 

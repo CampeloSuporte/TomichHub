@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-09 (Diálogos no padrão da plataforma)
+
+### Alterado
+
+- **Confirmações e alertas no visual do CRM**: os ~45 `confirm()` e ~135 `alert()` nativos do
+  navegador (caixa cinza do sistema, fora do padrão — p.ex. ao desativar um cliente) foram trocados
+  pelo diálogo da plataforma (`uiConfirm` / `uiAlert`), com título, ícone e botão de ação próprios
+  (vermelho para excluir, laranja para atenção, azul para ações comuns). Vale para clientes,
+  financeiro, segurança, atendimento, BGP, topologia, racks, terminal e scripts.
+- O componente saiu de dentro do `base.html` para `static/js/ui_dialogs.js`, carregado também nas
+  telas que não herdam do base (atendimento, terminal, BGP, topologia, racks, portal). Fila de
+  diálogos, Esc/Tab/Enter, foco no Cancelar em ação destrutiva e `data-confirm` em formulários.
+  Ver `docs/DIALOGOS_PADRAO.md`.
+
+---
+
 ## [Não publicado] — 2026-10-09 (Desativar cliente)
 
 ### Adicionado

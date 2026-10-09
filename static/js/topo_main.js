@@ -926,7 +926,7 @@ class TopoEditor {
     const existentes = new Set(this.nodes.map(n => n.id));
     const voltando = (dados.nodes || []).filter(n => !n.grupo_borda && !existentes.has(n.id));
 
-    if (!confirm(`Desagrupar "${grupo.label}"?\n\n${voltando.length} dispositivo(s) voltam para este mapa `
+    if (!await uiConfirm(`Desagrupar "${grupo.label}"?\n\n${voltando.length} dispositivo(s) voltam para este mapa `
                + `e o mapa do grupo é excluído.`)) return;
 
     this._saveHistory();
@@ -1040,21 +1040,21 @@ class TopoEditor {
 
   /** Nodes de grupo entre os que estão sendo removidos: pede confirmação (os
    *  hosts lá dentro somem deste mapa junto) e apaga o sub-mapa de cada um. */
-  _confirmarRemoverGrupos(ids) {
+  async _confirmarRemoverGrupos(ids) {
     const grupos = this.nodes.filter(n => ids.has(n.id) && n.grupo);
     if (!grupos.length) return true;
     const qtd = grupos.reduce((a, g) => a + (g.grupo_membros || []).length, 0);
-    if (!confirm(`Remover ${grupos.length === 1 ? `o grupo "${grupos[0].label}"` : `${grupos.length} grupos`}?\n\n`
+    if (!await uiConfirm(`Remover ${grupos.length === 1 ? `o grupo "${grupos[0].label}"` : `${grupos.length} grupos`}?\n\n`
                + `${qtd} dispositivo(s) dentro dele(s) e o mapa do grupo serão apagados. `
                + `Use "Desagrupar" se quiser trazer os dispositivos de volta.`)) return false;
     grupos.forEach(g => { if (g.submap_id) this._excluirSubmapa(g.submap_id); });
     return true;
   }
 
-  _deleteSelected() {
+  async _deleteSelected() {
     if (this.selectedNodes.size > 1) {
       const ids = new Set(this.selectedNodes);
-      if (!this._confirmarRemoverGrupos(ids)) return;
+      if (!await this._confirmarRemoverGrupos(ids)) return;
       this._saveHistory();
       this._marcarHostsRemovidos(this.nodes.filter(n => ids.has(n.id)));
       this.nodes = this.nodes.filter(n => !ids.has(n.id));
@@ -1068,7 +1068,7 @@ class TopoEditor {
     }
     if (!this.selected) return;
     if (this.selected.type === 'node'
-        && !this._confirmarRemoverGrupos(new Set([this.selected.id]))) return;
+        && !await this._confirmarRemoverGrupos(new Set([this.selected.id]))) return;
     this._saveHistory();
     if (this.selected.type === 'node') {
       const id = this.selected.id;

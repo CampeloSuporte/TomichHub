@@ -376,10 +376,10 @@ window.TK = {
       }
     });
   },
-  deleteTask: function(){
+  deleteTask: async function(){
     var id = document.getElementById('taskId').value;
     if(!id) return;
-    if(!confirm('Excluir esta tarefa permanentemente?')) return;
+    if(!await uiConfirm({titulo:'Excluir tarefa', msg:'Excluir esta tarefa permanentemente?', btnLabel:'Excluir'})) return;
     api('DELETE', URL_TASK(id)).then(function(){
       document.getElementById('taskModal').style.display = 'none';
       _allTasks = _allTasks.filter(function(t){ return t.id !== id; });
@@ -401,7 +401,7 @@ window.TK = {
     var method = id ? 'PUT' : 'POST';
     var url    = id ? URL_TASK(id) : URL_TASKS;
     api(method, url, payload).then(function(t){
-      if(t.error){ alert('Erro: '+t.error); return; }
+      if(t.error){ uiAlert('Erro: '+t.error); return; }
       document.getElementById('taskModal').style.display = 'none';
       loadTasks();
     });

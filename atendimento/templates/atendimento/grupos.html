@@ -317,7 +317,7 @@ async function toggleAI(groupId, checkbox) {
     });
     if(!r.ok) {
         checkbox.checked = !checkbox.checked;
-        alert('Erro ao alterar IA');
+        uiAlert('Erro ao alterar IA');
     }
 }
 
@@ -354,7 +354,7 @@ async function saveClienteLink() {
         body: JSON.stringify({cliente_id: clienteId || null})
     });
     if (r.ok) { location.reload(); }
-    else { alert('Erro ao vincular cliente'); }
+    else { uiAlert('Erro ao vincular cliente'); }
 }
 
 async function saveCompanyLink() {
@@ -365,7 +365,7 @@ async function saveCompanyLink() {
         body:JSON.stringify({company_id: companyId || null})
     });
     if(r.ok) { location.reload(); }
-    else { alert('Erro ao vincular empresa'); }
+    else { uiAlert('Erro ao vincular empresa'); }
 }
 
 // ── Contato de telefone ───────────────────────────────────────────────────

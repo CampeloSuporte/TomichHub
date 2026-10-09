@@ -861,7 +861,7 @@ async function geoGerarGeofeed() {
     const destinos = [...document.querySelectorAll('#cor-destinos input[type=checkbox]:checked')]
         .map(el => el.value);
     if (destinos.length && !emailContato) {
-        alert('Informe o e-mail de contato.');
+        uiAlert('Informe o e-mail de contato.');
         document.getElementById('cor-email').focus();
         return;
     }
@@ -1225,7 +1225,7 @@ async function geoVerificarResposta(id, el) {
         } else {
             el.innerHTML = orig;
             el.style.pointerEvents = '';
-            alert(d.mensagem || 'Nenhuma resposta encontrada ainda.');
+            uiAlert(d.mensagem || 'Nenhuma resposta encontrada ainda.');
         }
     } catch(e) {
         el.innerHTML = orig;
@@ -1571,7 +1571,7 @@ async function geoBlocoExcluir(rowId) {
     const blocoId = row.dataset.blocoId;
 
     if (!blocoId) { row.remove(); return; }
-    if (!confirm('Remover este bloco do Geofeed?')) return;
+    if (!await uiConfirm({titulo:'Remover bloco', msg:'Remover este bloco do Geofeed?', btnLabel:'Remover'})) return;
 
     const url = '{% url "geo_blocos_excluir" 0 %}'.replace('/0/', `/${blocoId}/`);
     try {

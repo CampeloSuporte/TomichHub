@@ -298,10 +298,10 @@ function saveGrupos() {
             // fallback: mostra mensagem de sucesso
             showToast(d.message || 'Grupos salvos com sucesso!');
         } else {
-            alert('Erro: ' + (d.error || 'Falha ao salvar'));
+            uiAlert('Erro: ' + (d.error || 'Falha ao salvar'));
         }
     })
-    .catch(() => alert('Erro de conexão'))
+    .catch(() => uiAlert('Erro de conexão'))
     .finally(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Salvar vínculos'; });
 }
 
@@ -405,8 +405,8 @@ function autoSelecionarGrupos() {
 }
 
 /* ── Auto Vincular Todos (global) ── */
-function autoVincularTodos(force) {
-    if (force && !confirm('Isso vai re-analisar TODOS os grupos, inclusive os já vinculados, e pode alterar vínculos existentes. Continuar?')) return;
+async function autoVincularTodos(force) {
+    if (force && !await uiConfirm({titulo:'Re-analisar grupos', msg:'Isso vai re-analisar TODOS os grupos, inclusive os já vinculados, e pode alterar vínculos existentes. Continuar?', btnLabel:'Continuar', tipo:'aviso'})) return;
 
     const btn = force ? document.getElementById('autoVincularForceBtn') : document.getElementById('autoVincularBtn');
     btn.disabled = true;

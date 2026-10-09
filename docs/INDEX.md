@@ -2,6 +2,16 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 62 — 09/10/2026: Diálogos no padrão da plataforma
+
+- ✅ Todos os `confirm()`/`alert()` nativos trocados por `uiConfirm`/`uiAlert`
+- ✅ Componente único em `static/js/ui_dialogs.js` (inclusive telas standalone)
+- ✅ `data-confirm` para formulários, fila de diálogos, teclado e foco
+
+| Documento | O que cobre |
+|---|---|
+| **[DIALOGOS_PADRAO.md](DIALOGOS_PADRAO.md)** | API, onde é carregado, `data-confirm`, cuidados com reload |
+
 ### Sessão 61 — 09/10/2026: Desativar cliente
 
 - ✅ Botão ⏻ na lista de Clientes: desativa/reativa, selo **Inativo** na linha

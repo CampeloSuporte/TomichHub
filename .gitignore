@@ -35,6 +35,7 @@ static/js/*
 !static/js/rack_builder.js
 !static/js/acessar_equipamento.js
 !static/js/terminal_tab_manager.js
+!static/js/ui_dialogs.js
 !static/monitoramento/
 static/monitoramento/*
 !static/monitoramento/js/

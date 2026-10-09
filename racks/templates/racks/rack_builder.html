@@ -212,6 +212,8 @@ body.leitura .so-escrita{display:none!important}
   .eq .portas{display:none}
 }
 </style>
+    <!-- Diálogos padrão da plataforma (uiConfirm / uiAlert / uiToast) -->
+    <script src="/static/js/ui_dialogs.js?v=20261009"></script>
 </head>
 <body class="{% if somente_leitura %}leitura{% endif %}">
 {% csrf_token %}
@@ -267,6 +269,6 @@ body.leitura .so-escrita{display:none!important}
   };
 </script>
 <script src="/static/js/topo_engine.js?v=26"></script>
-<script src="/static/js/rack_builder.js?v=4"></script>
+<script src="/static/js/rack_builder.js?v=5"></script>
 </body>
 </html>

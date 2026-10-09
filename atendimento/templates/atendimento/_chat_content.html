@@ -1407,7 +1407,7 @@
 
     /* Usado pelo "+" e pelo arrastar-e-soltar: lê o arquivo e abre o preview. */
     function carregarArquivo(file) {
-        if (file.size > 15 * 1024 * 1024) { alert('Arquivo muito grande. Máximo 15MB.'); return; }
+        if (file.size > 15 * 1024 * 1024) { uiAlert('Arquivo muito grande. Máximo 15MB.'); return; }
         var reader = new FileReader();
         reader.onload = function(ev) {
             mediaBase64 = ev.target.result.split(',')[1];
@@ -1455,7 +1455,7 @@
         var files = e.dataTransfer.files;
         if (!files || !files.length) return;
         if (isSending) return;
-        if (files.length > 1) alert('Só um arquivo por vez — enviando "' + files[0].name + '".');
+        if (files.length > 1) uiAlert('Só um arquivo por vez — enviando "' + files[0].name + '".');
         closeAttachMenu();
         carregarArquivo(files[0]);
         var cap = document.getElementById('mediaCaption');
@@ -1497,7 +1497,7 @@
 
     /* ── Gravação ── */
     function startRecording() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert('Navegador não suporta gravação.'); return; }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { uiAlert('Navegador não suporta gravação.'); return; }
         navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
             var mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
             recorder = new MediaRecorder(stream, { mimeType: mimeType });
@@ -1524,7 +1524,7 @@
                 var ss = String(recSeconds % 60).padStart(2, '0');
                 document.getElementById('recTime').textContent = mm + ':' + ss;
             }, 1000);
-        }).catch(function() { alert('Não foi possível acessar o microfone.'); });
+        }).catch(function() { uiAlert('Não foi possível acessar o microfone.'); });
     }
 
     function stopRecording() {
@@ -1566,8 +1566,8 @@
                     renderMessage({id:d.message_id,content:d.content,sender_type:'agent',sender_name:'',message_type:mediaType,reply:d.reply,created_at:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})});
                 }
                 if (d.newly_assigned) _onNewlyAssigned();
-            } else { alert('Erro: '+(d.error||'Falha ao enviar')); }
-        }).catch(function(){alert('Erro de conexão');})
+            } else { uiAlert('Erro: '+(d.error||'Falha ao enviar')); }
+        }).catch(function(){uiAlert('Erro de conexão');})
         .finally(function(){
             isSending = false;
             if (mediaSendBtn) { mediaSendBtn.disabled = false; mediaSendBtn.innerHTML = '<i class="fas fa-paper-plane"></i>'; }
@@ -2577,12 +2577,12 @@
             } else {
                 msgInput.value = text;
                 if (citando) responderA(citando.id);
-                alert('Erro: ' + (d.error || 'Falha ao enviar'));
+                uiAlert('Erro: ' + (d.error || 'Falha ao enviar'));
             }
         }).catch(function(){
             msgInput.value = text;
             if (citando) responderA(citando.id);
-            alert('Erro de conexão');
+            uiAlert('Erro de conexão');
         }).finally(function(){
             isSending = false;
         });
@@ -2898,13 +2898,13 @@
                     transferModal.close();
                     _afterTransfer();
                 } else {
-                    alert('Erro: ' + (d.error || 'Falha ao transferir'));
+                    uiAlert('Erro: ' + (d.error || 'Falha ao transferir'));
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-exchange-alt" style="margin-right:5px;"></i>Confirmar Transferência';
                 }
             })
             .catch(function(){
-                alert('Erro de conexão');
+                uiAlert('Erro de conexão');
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-exchange-alt" style="margin-right:5px;"></i>Confirmar Transferência';
             });
@@ -2964,9 +2964,9 @@
             _mergeSelected = targetId;
             document.getElementById('mergeConfirmBtn').disabled = false;
         },
-        confirm: function() {
+        confirm: async function() {
             if (!_mergeSelected) return;
-            if (!confirm('Mesclar este chamado com o selecionado? As mensagens serão movidas e este chamado será fechado. Essa ação não pode ser desfeita.')) return;
+            if (!await uiConfirm({titulo:'Mesclar chamados', msg:'Mesclar este chamado com o selecionado? As mensagens serão movidas e este chamado será fechado. Essa ação não pode ser desfeita.', btnLabel:'Mesclar', tipo:'aviso'})) return;
             var btn = document.getElementById('mergeConfirmBtn');
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right:5px;"></i>Mesclando...';
@@ -2982,13 +2982,13 @@
                 if (d.success) {
                     window.location.href = '/atendimento/conversation/' + _mergeSelected + '/';
                 } else {
-                    alert('Erro: ' + (d.error || 'Falha ao mesclar'));
+                    uiAlert('Erro: ' + (d.error || 'Falha ao mesclar'));
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-object-group" style="margin-right:5px;"></i>Confirmar Mesclagem';
                 }
             })
             .catch(function(){
-                alert('Erro de conexão');
+                uiAlert('Erro de conexão');
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-object-group" style="margin-right:5px;"></i>Confirmar Mesclagem';
             });
@@ -3512,8 +3512,8 @@ window.taskPanel = {
         var el = document.getElementById('taskPanelEl');
         el.classList.toggle('open');
     },
-    removeConv: function(taskId){
-        if(!confirm('Desvincular esta conversa da tarefa?')) return;
+    removeConv: async function(taskId){
+        if(!await uiConfirm({titulo:'Desvincular', msg:'Desvincular esta conversa da tarefa?', btnLabel:'Desvincular', tipo:'aviso'})) return;
         fetch(URL_TC(taskId), {method:'DELETE', headers:{'X-CSRFToken':CSRF}})
             .then(function(r){
                 if(r.ok){
@@ -3673,13 +3673,13 @@ window.scheduledMsgs = {
         if (document.getElementById('tabInt').classList.contains('active')) return;
         var state = window.chatApp.getComposerState();
         if (!state.text && !state.mediaBase64) {
-            alert('Digite uma mensagem ou anexe uma mídia antes de agendar.');
+            uiAlert('Digite uma mensagem ou anexe uma mídia antes de agendar.');
             return;
         }
         /* Agendamento não leva a citação junto — melhor dizer isso agora do
            que deixar sair, dias depois, uma resposta sem a mensagem citada. */
         if (state.replyTo) {
-            alert('Mensagem agendada não sai citando outra. Envie agora, ou cancele a resposta (Esc) para agendar.');
+            uiAlert('Mensagem agendada não sai citando outra. Envie agora, ou cancele a resposta (Esc) para agendar.');
             return;
         }
         var dt = document.getElementById('scheduleDateTime');
@@ -3692,7 +3692,7 @@ window.scheduledMsgs = {
     },
     confirm: function() {
         var scheduledFor = document.getElementById('scheduleDateTime').value;
-        if (!scheduledFor) { alert('Escolha data e hora.'); return; }
+        if (!scheduledFor) { uiAlert('Escolha data e hora.'); return; }
 
         var state = window.chatApp.getComposerState();
         var body = { scheduled_for: scheduledFor };
@@ -3702,7 +3702,7 @@ window.scheduledMsgs = {
             body.fileName = state.mediaFileName;
             body.caption = state.mediaCaption;
         } else {
-            if (!state.text) { alert('Digite uma mensagem.'); return; }
+            if (!state.text) { uiAlert('Digite uma mensagem.'); return; }
             body.message = state.text;
         }
 
@@ -3719,9 +3719,9 @@ window.scheduledMsgs = {
                 window.chatApp.clearMedia();
                 scheduledMsgs._refreshBadge();
             } else {
-                alert('Erro: ' + (d.error || 'Falha ao agendar'));
+                uiAlert('Erro: ' + (d.error || 'Falha ao agendar'));
             }
-        }).catch(function(){ alert('Erro de conexão'); });
+        }).catch(function(){ uiAlert('Erro de conexão'); });
     },
     togglePanel: function() {
         var el = document.getElementById('schedulePanelEl');
@@ -3751,8 +3751,8 @@ window.scheduledMsgs = {
                 + '</div>';
         }).join('');
     },
-    cancel: function(id) {
-        if (!confirm('Cancelar esta mensagem agendada?')) return;
+    cancel: async function(id) {
+        if (!await uiConfirm({titulo:'Cancelar agendamento', msg:'Cancelar esta mensagem agendada?', btnLabel:'Cancelar mensagem', btnCancelar:'Voltar'})) return;
         fetch(URL_CANCEL(id), {method:'POST', headers:{'X-CSRFToken':CSRF}})
             .then(function(r){ return r.json(); })
             .then(function(d){
@@ -3761,7 +3761,7 @@ window.scheduledMsgs = {
                     if (el) el.remove();
                     scheduledMsgs._refreshBadge();
                 } else {
-                    alert('Erro: ' + (d.error || 'Falha ao cancelar'));
+                    uiAlert('Erro: ' + (d.error || 'Falha ao cancelar'));
                 }
             });
     },

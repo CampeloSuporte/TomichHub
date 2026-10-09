@@ -1380,6 +1380,8 @@ body {
 <style>
 {% block extra_css %}{% endblock %}
 </style>
+    <!-- Diálogos padrão da plataforma (uiConfirm / uiAlert / uiToast) -->
+    <script src="/static/js/ui_dialogs.js?v=20261009"></script>
 </head>
 <body>
 <div class="app-layout">
@@ -2286,10 +2288,10 @@ function saveDisplayName() {
             if (userNameEl) userNameEl.textContent = d.effective;
             closeDisplayNameModal();
         } else {
-            alert('Erro: ' + (d.error || 'Falha ao salvar'));
+            uiAlert('Erro: ' + (d.error || 'Falha ao salvar'));
         }
     })
-    .catch(() => alert('Erro ao conectar'))
+    .catch(() => uiAlert('Erro ao conectar'))
     .finally(() => { btn.disabled = false; btn.textContent = 'Salvar'; });
 }
 
@@ -2581,14 +2583,14 @@ function doStartConv(groupId, el) {
             }
         } else {
             window._activeInboxTab = _tabAnterior;
-            alert('Erro: ' + (d.error || 'Falha ao iniciar conversa'));
+            uiAlert('Erro: ' + (d.error || 'Falha ao iniciar conversa'));
             el.style.opacity = '';
             el.style.pointerEvents = '';
         }
     })
     .catch(function(){
         window._activeInboxTab = _tabAnterior;
-        alert('Erro de conexão');
+        uiAlert('Erro de conexão');
         el.style.opacity = '';
         el.style.pointerEvents = '';
     });
@@ -4011,9 +4013,9 @@ window.convCtxMenu = {
           document.getElementById('ctxTaskOverlay').style.display = 'none';
           showToast('Conversa adicionada à tarefa!');
         } else {
-          alert('Erro: '+(d.error||'desconhecido'));
+          uiAlert('Erro: '+(d.error||'desconhecido'));
         }
-      }).catch(function(){ alert('Erro ao salvar'); })
+      }).catch(function(){ uiAlert('Erro ao salvar'); })
       .finally(function(){ btn.disabled = false; });
   },
 };

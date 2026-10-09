@@ -84,7 +84,7 @@ function abrirModalEditarAcesso(acessoId) {
         })
         .catch(error => {
             console.error('❌ Erro ao buscar acesso:', error);
-            alert('Erro ao carregar dados do acesso');
+            uiAlert('Erro ao carregar dados do acesso');
         });
 }
 // Fechar modal de edição
@@ -258,7 +258,7 @@ function abrirModalEditarVPN(vpnId) {
         })
         .catch(error => {
             console.error('Erro:', error);
-            alert('Não foi possível carregar os dados da VPN.');
+            uiAlert('Não foi possível carregar os dados da VPN.');
         });
 }
 
@@ -315,7 +315,7 @@ function copiarTexto(texto) {
         setTimeout(() => tempMsg.remove(), 2000);
     }).catch(err => {
         console.error('Erro ao copiar:', err);
-        alert('Erro ao copiar para área de transferência');
+        uiAlert('Erro ao copiar para área de transferência');
     });
 }
 
@@ -447,7 +447,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     fileInputTopologia.files = files;
                     mostrarPreviewImagemTopologia(files[0]);
                 } else {
-                    alert('Por favor, selecione apenas arquivos de imagem.');
+                    uiAlert('Por favor, selecione apenas arquivos de imagem.');
                 }
             }
         });
@@ -596,7 +596,7 @@ function renderizarChamados(chamados) {
                         <i class="fas fa-eye me-1"></i> Visualizar
                     </button>
                     <form method="POST" action="/clientes/chamados/deletar/${chamado.id}/" style="display: inline;" 
-                          onsubmit="return confirm('Tem certeza que deseja excluir o chamado #${chamado.id}?')">
+                          data-confirm="Tem certeza que deseja excluir o chamado #${chamado.id}?" data-confirm-titulo="Excluir chamado" data-confirm-btn="Excluir">
                         <input type="hidden" name="csrfmiddlewaretoken" value="${getCookie('csrftoken')}">
                         <button type="submit" class="btn-action-chamado btn-delete-chamado">
                             <i class="fas fa-trash me-1"></i> Excluir

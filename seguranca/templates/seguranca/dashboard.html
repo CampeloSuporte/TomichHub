@@ -552,7 +552,7 @@ table.seg-tabela tr:hover td { background: rgba(88,166,255,.04); }
         });
         // Sessão expirada vira 302 pro login e o json() estoura — trata antes.
         if (resp.redirected || resp.status === 401) {
-            alert('Sua sessão expirou. Faça login novamente.');
+            await uiAlert('Sua sessão expirou. Faça login novamente.');
             window.location.reload();
             return null;
         }
@@ -572,38 +572,38 @@ table.seg-tabela tr:hover td { background: rgba(88,166,255,.04); }
         const r = await post("{% url 'seguranca_desbloquear' %}", {id: btn.dataset.id});
         if (!r) return;
         if (r.ok) { window.location.reload(); }
-        else { alert(r.erro || 'Falha ao liberar.'); btn.disabled = false; }
+        else { uiAlert(r.erro || 'Falha ao liberar.'); btn.disabled = false; }
     });
 
     const btnTodos = document.getElementById('btnLiberarTodos');
     if (btnTodos) btnTodos.addEventListener('click', async function () {
-        if (!confirm('Liberar TODAS as contas e IPs bloqueados agora?')) return;
+        if (!await uiConfirm({titulo:'Liberar bloqueios', msg:'Liberar TODAS as contas e IPs bloqueados agora?', btnLabel:'Liberar todos', tipo:'aviso'})) return;
         btnTodos.disabled = true;
         const r = await post("{% url 'seguranca_desbloquear_todos' %}", {});
         if (!r) return;
         if (r.ok) { window.location.reload(); }
-        else { alert(r.erro || 'Falha ao liberar.'); btnTodos.disabled = false; }
+        else { uiAlert(r.erro || 'Falha ao liberar.'); btnTodos.disabled = false; }
     });
 
     {% if is_admin_seguranca %}
     // ── Fail2ban ─────────────────────────────────────────────────────
     ligar('.btn-desbanir', async function () {
         const btn = this;
-        if (!confirm('Remover ' + btn.dataset.ip + ' da blacklist do fail2ban?')) return;
+        if (!await uiConfirm({titulo:'Desbanir IP', msg:'Remover ' + btn.dataset.ip + ' da blacklist do fail2ban?', btnLabel:'Desbanir', tipo:'info'})) return;
         btn.disabled = true;
         const r = await post("{% url 'seguranca_fail2ban_desbanir' %}", {ip: btn.dataset.ip});
         if (!r) return;
         if (r.ok) { window.location.reload(); }
-        else { alert(r.erro || 'Falha ao liberar o IP.'); btn.disabled = false; }
+        else { uiAlert(r.erro || 'Falha ao liberar o IP.'); btn.disabled = false; }
     });
 
     ligar('.btn-banir', async function () {
         const btn = this;
-        if (!confirm('Banir ' + btn.dataset.ip + ' no fail2ban?')) return;
+        if (!await uiConfirm({titulo:'Banir IP', msg:'Banir ' + btn.dataset.ip + ' no fail2ban?', btnLabel:'Banir'})) return;
         btn.disabled = true;
         const r = await post("{% url 'seguranca_fail2ban_banir' %}", {ip: btn.dataset.ip});
         if (!r) return;
-        alert(r.ok ? r.mensagem : (r.erro || 'Falha ao banir.'));
+        await uiAlert(r.ok ? r.mensagem : (r.erro || 'Falha ao banir.'));
         if (r.ok) window.location.reload(); else btn.disabled = false;
     });
 
@@ -613,10 +613,10 @@ table.seg-tabela tr:hover td { background: rgba(88,166,255,.04); }
         const ip = document.getElementById('inputBanirIp').value.trim();
         const jail = document.getElementById('selectBanirJail').value;
         if (!ip) return;
-        if (!confirm('Banir ' + ip + ' na jail ' + jail + '?')) return;
+        if (!await uiConfirm({titulo:'Banir IP', msg:'Banir ' + ip + ' na jail ' + jail + '?', btnLabel:'Banir'})) return;
         const r = await post("{% url 'seguranca_fail2ban_banir' %}", {ip: ip, jail: jail});
         if (!r) return;
-        alert(r.ok ? r.mensagem : (r.erro || 'Falha ao banir.'));
+        await uiAlert(r.ok ? r.mensagem : (r.erro || 'Falha ao banir.'));
         if (r.ok) window.location.reload();
     });
     {% endif %}

@@ -232,7 +232,7 @@
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                                 {% if usuarios.tem_2fa %}
-                                                <form method="post" action="{% url 'resetar_2fa_admin' %}" style="display:inline" onsubmit="return confirm('Resetar o 2FA de {{ usuarios.username|escapejs }}? O usuário vai precisar configurar de novo.');">
+                                                <form method="post" action="{% url 'resetar_2fa_admin' %}" style="display:inline" data-confirm="Resetar o 2FA de {{ usuarios.username }}? O usuário vai precisar configurar de novo." data-confirm-titulo="Resetar 2FA" data-confirm-btn="Resetar" data-confirm-tipo="aviso">
                                                     {% csrf_token %}
                                                     <input type="hidden" name="id" value="{{ usuarios.id }}">
                                                     <button type="submit" class="btn-action" style="color:#ffaa00" title="Resetar 2FA">

@@ -373,6 +373,8 @@
     @media (max-width: 700px) { .cs2-grid { grid-template-columns: 1fr; } }
 
 </style>
+    <!-- Diálogos padrão da plataforma (uiConfirm / uiAlert / uiToast) -->
+    <script src="/static/js/ui_dialogs.js?v=20261009"></script>
 </head>
 <body>
 {% csrf_token %}
@@ -828,21 +830,21 @@ async function adicionarCommunity(idxSessao, nomeSessao) {
     const valorInput = document.getElementById(`comm-valor-${idxSessao}`);
     const label = labelInput.value.trim();
     const valor = valorInput.value.trim();
-    if (!label || !valor) { alert('Preencha rótulo e valor.'); return; }
+    if (!label || !valor) { uiAlert('Preencha rótulo e valor.'); return; }
     const r = await fetch(`/clientes/bgp/${ACESSO_ID}/communities/criar/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken') },
         body: JSON.stringify({ sessao: nomeSessao, label, valor }),
     });
     const data = await r.json();
-    if (!r.ok) { alert(data.error || 'Erro ao salvar community.'); return; }
+    if (!r.ok) { uiAlert(data.error || 'Erro ao salvar community.'); return; }
     if (!COMMUNITIES_BY_SESSAO[nomeSessao]) COMMUNITIES_BY_SESSAO[nomeSessao] = [];
     COMMUNITIES_BY_SESSAO[nomeSessao].push({ id: data.id, label: data.label, valor: data.valor });
     renderizar(SNAPSHOT.dados);
 }
 
 async function removerCommunity(id, nomeSessao) {
-    if (!confirm('Remover esta community?')) return;
+    if (!await uiConfirm({titulo:'Remover community', msg:'Remover esta community?', btnLabel:'Remover'})) return;
     await fetch(`/clientes/bgp/${ACESSO_ID}/communities/${id}/deletar/`, {
         method: 'POST', headers: { 'X-CSRFToken': _getCookie('csrftoken') },
     });
@@ -902,7 +904,7 @@ async function atualizarAgora() {
         });
         const data = await r.json();
         if (!r.ok) {
-            alert('Não foi possível atualizar: ' + (data.error || data.status || 'erro desconhecido'));
+            uiAlert('Não foi possível atualizar: ' + (data.error || data.status || 'erro desconhecido'));
         } else {
             await carregar();
             if (data.status === 'sem_novidade') {
@@ -917,7 +919,7 @@ async function atualizarAgora() {
                 const msg = data.mensagem || 'Nenhum backup novo desde a última ação.';
                 badge.title = msg;
                 badge.classList.add('aviso-sem-novidade');
-                alert(
+                uiAlert(
                     '⚠ Nada foi atualizado.\n\n' + msg + '\n\n' +
                     'O "Atualizar agora" só relê o último backup já salvo em disco — ele NÃO conecta ao vivo ' +
                     'no equipamento. Se algo mudou direto no equipamento (por SSH, outro operador, etc.) e você ' +
@@ -927,7 +929,7 @@ async function atualizarAgora() {
             }
         }
     } catch (e) {
-        alert('Erro ao atualizar: ' + e);
+        uiAlert('Erro ao atualizar: ' + e);
     } finally {
         btn.disabled = false;
         btn.textContent = '🔄 Atualizar agora';
@@ -2306,7 +2308,7 @@ function csEscolherExistente(slot, nome) {
 
 function csEscolherNova(slot) {
     const cidr = document.getElementById(`cs-${slot}-cidr`).value.trim();
-    if (!cidr) { alert('Informe o CIDR.'); return; }
+    if (!cidr) { uiAlert('Informe o CIDR.'); return; }
     csEscolhas[slot] = { modo: 'nova', cidr };
     document.getElementById(`cs-${slot}-resumo`).textContent = `Nova prefix-list: ${cidr}`;
 }
@@ -2412,7 +2414,7 @@ function renderizarCandidatasNovoAnuncio(candidatas) {
 
 function confirmarNovoAnuncioMikrotik() {
     const prefixo = document.getElementById('naPrefixoMikrotik').value.trim();
-    if (!prefixo) { alert('Informe o prefixo.'); return; }
+    if (!prefixo) { uiAlert('Informe o prefixo.'); return; }
     const sessao = naSessaoAtual;
     fecharNovoAnuncio();
     pedirAcao('novo_anuncio', prefixo, { sessao, prefixo }, `Anunciar ${prefixo}`);
@@ -2429,7 +2431,7 @@ function pedirAcaoNovoAnuncio(lista) {
 // "🔍 Existente" / "Criar nova" já usado no modal de Configurar nova sessão.
 function confirmarNovoAnuncioNovaLista() {
     const cidr = document.getElementById('naNovoCidr').value.trim();
-    if (!cidr) { alert('Informe o CIDR.'); return; }
+    if (!cidr) { uiAlert('Informe o CIDR.'); return; }
     const sessao = naSessaoAtual;
     fecharNovoAnuncio();
     pedirAcao('novo_anuncio', cidr, { sessao, prefixo: cidr }, `Anunciar prefix-list nova (${cidr})`);

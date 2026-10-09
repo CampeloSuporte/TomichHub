@@ -492,6 +492,8 @@ textarea.code {
 .modal p { font-size: 12px; color: var(--text2); margin-bottom: 16px; line-height: 1.6; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
 </style>
+    <!-- Diálogos padrão da plataforma (uiConfirm / uiAlert / uiToast) -->
+    <script src="/static/js/ui_dialogs.js?v=20261009"></script>
 </head>
 <body>
 
@@ -1030,7 +1032,7 @@ async function salvarScript() {
 async function deletarScriptAtual() {
     const id = document.getElementById('scriptId').value;
     if (!id) return;
-    if (!confirm('Excluir este script permanentemente?')) return;
+    if (!await uiConfirm({titulo:'Excluir script', msg:'Excluir este script permanentemente?', btnLabel:'Excluir'})) return;
 
     try {
         const r = await fetch(`/clientes/scripts/deletar/${id}/`, {
