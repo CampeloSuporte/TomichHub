@@ -16,7 +16,7 @@ Plataforma de atendimento ao cliente integrada ao CRM, similar ao Chatwoot. Cent
 |---------|-----------|
 | Dashboard | Estatísticas em tempo real de chamados abertos, resolvidos, agentes online |
 | Inbox | 3 abas: Assumidos / Abertos / Em Andamento — **indicador de mensagem não lida** em tempo real |
-| Chat | Visual estilo **WhatsApp Dark** — bolhas com rabicho, ✓✓ de enviado, campo em pílula; envio de mídia, tags, transferência, terminal de hosts |
+| Chat | Visual estilo **WhatsApp Dark** — bolhas com rabicho, ✓✓ de enviado, campo em pílula; envio de mídia (pelo "+", colando imagem ou **arrastando o arquivo para o chat**), tags, transferência, terminal de hosts |
 | **Tarefas** | Board em 4 colunas com vinculação de conversas e lembretes automáticos |
 | **Contatos 1:1** | Além dos grupos, contato de telefone criado à mão — e a escolha de **quem atende** cada contato/grupo (ninguém marcado = atendimento geral) |
 | **Editar / apagar** | Mensagem enviada pode ser reescrita (15 min) ou **apagada para todos** — nos dois casos o WhatsApp muda junto |
@@ -426,6 +426,7 @@ systemctl restart gunicorn daphne celery
 | 04/09/2026 | **Editar mensagem enviada** — corrige o balão no CRM e reescreve a mensagem no WhatsApp do grupo (janela de 15 min, só do autor, só texto); edição feita pelo cliente no celular passou a atualizar o balão em vez de virar "[sem conteúdo]" |
 | 11/09/2026 | **Reagir com emoji** — carinha ao lado do balão, as seis reações do WhatsApp + "+"; a reação chega ao celular do cliente e vira pílula no CRM (uma por conta, clicar tira); em grupo a key com `participant` vem do `findMessages` da Evolution |
 | 29/09/2026 | **Sala Virtual** — escolher qual microfone usar (seta ao lado do botão do mic); troca na hora, sem renegociar |
+| 09/10/2026 | **Arrastar arquivo para o chat** — soltar um arquivo em qualquer ponto da conversa abre o mesmo preview do "+" (legenda + enviar), como no WhatsApp Web; um arquivo por vez, limite de 15 MB; arquivo solto fora do chat não faz o navegador sair do CRM |
 
 ---
 
