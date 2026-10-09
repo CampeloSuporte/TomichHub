@@ -79,6 +79,10 @@ class Cliente(models.Model):
         verbose_name='Notas do Agent NOC',
         help_text='Informações, peculiaridades e contexto do cliente para o Agent NOC (topologia, acordos, restrições).'
     )
+    # Cliente desativado continua cadastrado (acessos, histórico, faturas),
+    # mas não recebe mais cobrança — nem a automática nem a manual.
+    ativo = models.BooleanField(default=True, verbose_name='Ativo')
+    desativado_em = models.DateTimeField(null=True, blank=True, verbose_name='Desativado em')
 
     objects = ClienteManager()
 

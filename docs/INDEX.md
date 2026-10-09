@@ -2,6 +2,16 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 61 — 09/10/2026: Desativar cliente
+
+- ✅ Botão ⏻ na lista de Clientes: desativa/reativa, selo **Inativo** na linha
+- ✅ Cliente inativo fora da cobrança automática (WhatsApp) e da manual
+- ✅ Campos `Cliente.ativo` / `desativado_em` (migração `clientes/0119`)
+
+| Documento | O que cobre |
+|---|---|
+| **[FINANCEIRO.md](FINANCEIRO.md)** | Seção "Cliente desativado não recebe cobrança" |
+
 ### Sessão 60 — 08/10/2026: Módulo Hotspot removido
 
 - ✅ Aba Hotspot, rotas internas `/clientes/<id>/hotspot/...` e permissão `hotspot` removidas

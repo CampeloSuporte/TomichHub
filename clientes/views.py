@@ -952,6 +952,29 @@ def deletar_cliente(request):
 
 
 @login_required(login_url='login')
+@backoffice_required
+@require_http_methods(['POST'])
+def alternar_status_cliente(request):
+    """Ativa/desativa o cliente. Desativado não recebe cobrança (financeiro
+    filtra por cliente.ativo); o cadastro e o histórico ficam intactos."""
+    cliente = get_object_or_404(Cliente, id=request.POST.get('id'))
+
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        messages.error(request, 'Você não possui permissão para alterar este cliente.')
+        return redirect('cadastrar_cliente')
+
+    cliente.ativo = not cliente.ativo
+    cliente.desativado_em = None if cliente.ativo else timezone.now()
+    cliente.save(update_fields=['ativo', 'desativado_em'])
+
+    if cliente.ativo:
+        messages.success(request, f'Cliente "{cliente.nome_empresa}" reativado. As cobranças voltam a ser enviadas.')
+    else:
+        messages.success(request, f'Cliente "{cliente.nome_empresa}" desativado. Nenhuma cobrança será enviada.')
+    return redirect('cadastrar_cliente')
+
+
+@login_required(login_url='login')
 @modulo_habilitado_required('acessos')
 def buscar_acesso(request, acesso_id):
     """
