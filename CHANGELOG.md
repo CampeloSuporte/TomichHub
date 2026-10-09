@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-09 (Atendimento: arrastar arquivo para o chat)
+
+### Adicionado
+
+- **Arrastar arquivo direto para o chat**: igual ao WhatsApp Web, soltar um arquivo em cima da conversa
+  mostra "Solte o arquivo para enviar" e abre o mesmo preview do botão "+" (legenda opcional + enviar),
+  sem precisar abrir o menu de anexo. Imagem, áudio, vídeo e documento são reconhecidos pelo tipo; um
+  arquivo por vez (o limite de 15 MB continua). Arrastar texto não ativa a área, e soltar o arquivo fora
+  do chat não faz mais o navegador abrir o arquivo e sair do CRM. Ver `docs/ATENDIMENTO.md`.
+
+---
+
 ## [Não publicado] — 2026-10-08 (Módulo Hotspot removido)
 
 ### Removido

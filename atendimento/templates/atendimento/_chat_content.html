@@ -1,6 +1,14 @@
 <div class="chat-layout" id="chatLayout">
 <div class="chat-main" id="chatMainArea">
 
+    <!-- Arrastar arquivo para o chat (igual WhatsApp Web) -->
+    <div class="drop-overlay" id="dropOverlay">
+        <div class="drop-overlay-box">
+            <i class="fas fa-file-arrow-up"></i>
+            <div>Solte o arquivo para enviar</div>
+        </div>
+    </div>
+
     <!-- ── Header ── -->
     <div class="chat-header">
         <button class="chat-back-btn" onclick="voltarParaListaMobile()" title="Voltar para a lista">
@@ -844,6 +852,20 @@
     grid-template-rows: auto auto 1fr auto !important;
 }
 
+/* ── Arrastar arquivo para o chat ── */
+#chatMainArea { position: relative; }
+.drop-overlay {
+    display: none; position: absolute; inset: 0; z-index: 50;
+    background: rgba(0,0,0,0.45); padding: 16px; pointer-events: none;
+}
+.drop-overlay.visible { display: flex; }
+.drop-overlay-box {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    border: 2px dashed var(--wa-green, #25d366); border-radius: 12px;
+    background: var(--wa-panel); color: var(--text); font-size: 15px; font-weight: 600;
+}
+.drop-overlay-box i { font-size: 40px; color: var(--wa-green, #25d366); }
+
 /* ── Painel de Tarefas ── */
 .task-panel {
     width: 0;
@@ -1379,7 +1401,12 @@
     /* ── Arquivo ── */
     function handleFileSelect(e) {
         var file = e.target.files[0];
-        if (!file) return;
+        e.target.value = '';
+        if (file) carregarArquivo(file);
+    }
+
+    /* Usado pelo "+" e pelo arrastar-e-soltar: lê o arquivo e abre o preview. */
+    function carregarArquivo(file) {
         if (file.size > 15 * 1024 * 1024) { alert('Arquivo muito grande. Máximo 15MB.'); return; }
         var reader = new FileReader();
         reader.onload = function(ev) {
@@ -1392,8 +1419,54 @@
             showMediaPreview(file.name, mediaType, mediaType === 'image' ? ev.target.result : null);
         };
         reader.readAsDataURL(file);
-        e.target.value = '';
     }
+
+    /* ── Arrastar arquivo para o chat ──
+       Só reage a arquivos (texto/link arrastado segue normal). O contador evita
+       o pisca-pisca do dragleave ao passar por cima dos filhos. Um arquivo por vez,
+       como o composer já funciona; o resto é ignorado com aviso. */
+    var chatMain    = document.getElementById('chatMainArea');
+    var dropOverlay = document.getElementById('dropOverlay');
+    var _dragDepth  = 0;
+    function _temArquivo(e) {
+        var t = e.dataTransfer && e.dataTransfer.types;
+        return !!t && Array.prototype.indexOf.call(t, 'Files') !== -1;
+    }
+    function _fecharDrop() { _dragDepth = 0; dropOverlay.classList.remove('visible'); }
+    chatMain.addEventListener('dragenter', function(e) {
+        if (!_temArquivo(e)) return;
+        e.preventDefault();
+        _dragDepth++;
+        dropOverlay.classList.add('visible');
+    });
+    chatMain.addEventListener('dragover', function(e) {
+        if (!_temArquivo(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+    });
+    chatMain.addEventListener('dragleave', function(e) {
+        if (!_temArquivo(e)) return;
+        if (--_dragDepth <= 0) _fecharDrop();
+    });
+    chatMain.addEventListener('drop', function(e) {
+        if (!_temArquivo(e)) return;
+        e.preventDefault();
+        _fecharDrop();
+        var files = e.dataTransfer.files;
+        if (!files || !files.length) return;
+        if (isSending) return;
+        if (files.length > 1) alert('Só um arquivo por vez — enviando "' + files[0].name + '".');
+        closeAttachMenu();
+        carregarArquivo(files[0]);
+        var cap = document.getElementById('mediaCaption');
+        if (cap) cap.focus();
+    });
+    /* Arquivo solto fora do chat não pode fazer o navegador abrir o arquivo e sair do CRM. */
+    function docDragBloqueio(e) {
+        if (_temArquivo(e) && !chatMain.contains(e.target)) { e.preventDefault(); e.dataTransfer.dropEffect = 'none'; }
+    }
+    document.addEventListener('dragover', docDragBloqueio);
+    document.addEventListener('drop', docDragBloqueio);
 
     function showMediaPreview(name, type, previewSrc) {
         var preview = document.getElementById('mediaPreview');
@@ -3222,6 +3295,8 @@
             clearInterval(_lapisTimer);
             document.removeEventListener('click', docClick);
             document.removeEventListener('click', reacaoDocClick);
+            document.removeEventListener('dragover', docDragBloqueio);
+            document.removeEventListener('drop', docDragBloqueio);
         }
     };
 })();
