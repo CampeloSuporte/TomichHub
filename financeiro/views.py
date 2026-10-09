@@ -3732,7 +3732,8 @@ def api_testar_whatsapp(request):
 @acesso_financeiro_restrito
 @require_http_methods(['POST'])
 def api_enviar_cobranca_manual(request):
-    """Envia cobrança manual via WhatsApp para uma fatura específica (ignora wa_ativo)."""
+    """Envia cobrança manual via WhatsApp para uma fatura específica (ignora wa_ativo,
+    mas respeita cliente desativado)."""
     from .whatsapp import montar_texto_cobranca, enviar_mensagem, _normalizar_telefone
     data = json.loads(request.body)
     fatura_id = data.get('fatura_id')
@@ -3744,6 +3745,9 @@ def api_enviar_cobranca_manual(request):
         ).select_related('cliente').get(pk=fatura_id)
     except Fatura.DoesNotExist:
         return JsonResponse({'ok': False, 'erro': 'Fatura não encontrada.'}, status=404)
+
+    if not fatura.cliente.ativo:
+        return JsonResponse({'ok': False, 'erro': 'Cliente desativado: cobranças não são enviadas. Reative o cliente para cobrar.'})
 
     jid = _normalizar_telefone(getattr(fatura.cliente, 'telefone', None))
     if not jid:

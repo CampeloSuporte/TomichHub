@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-09 (Desativar cliente)
+
+### Adicionado
+
+- **Botão de desativar/reativar cliente** (ícone ⏻ na lista de Clientes, ao lado de Editar/Excluir):
+  o cliente fica marcado como **Inativo** (selo na linha, com a data no tooltip) e deixa de receber
+  cobranças — a rotina diária de WhatsApp (8:30) ignora as faturas dele e o envio manual pelo
+  financeiro é recusado com aviso. Cadastro, acessos, histórico e faturas continuam intactos; reativar
+  volta tudo ao normal. Campos novos `Cliente.ativo` / `desativado_em` (migração `clientes/0119`).
+  Ver `docs/FINANCEIRO.md`.
+
+---
+
 ## [Não publicado] — 2026-10-09 (Atendimento: arrastar arquivo para o chat)
 
 ### Adicionado

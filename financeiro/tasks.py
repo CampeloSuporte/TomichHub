@@ -17,6 +17,7 @@ def enviar_alertas_whatsapp():
       - wa_dias_antes dias antes do vencimento (aviso prévio)
       - no dia do vencimento
       - depois de vencida (qualquer dia de atraso)
+    Cliente desativado (Cliente.ativo=False) fica de fora.
     """
     from .models import ConfiguracaoFinanceira, Fatura
     from .whatsapp import enviar_cobranca_fatura
@@ -43,18 +44,21 @@ def enviar_alertas_whatsapp():
     faturas_aviso = Fatura.objects.filter(
         data_vencimento=aviso_em,
         status__in=['ABERTA', 'RASCUNHO'],
+        cliente__ativo=True,
     ).select_related('cliente')
 
     # 2) No dia do vencimento
     faturas_hoje = Fatura.objects.filter(
         data_vencimento=hoje,
         status__in=['ABERTA', 'RASCUNHO'],
+        cliente__ativo=True,
     ).select_related('cliente')
 
     # 3) Vencidas (qualquer dia de atraso)
     faturas_vencidas = Fatura.objects.filter(
         data_vencimento__lt=hoje,
         status__in=['ABERTA', 'RASCUNHO'],
+        cliente__ativo=True,
     ).select_related('cliente')
 
     total_ok = total_erro = 0

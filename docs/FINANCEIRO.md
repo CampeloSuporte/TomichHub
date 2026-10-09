@@ -541,3 +541,21 @@ Evolution API.
 
 **Última atualização:** 27/07/2026
 **Versão:** 2.0 (com recorrências e privacidade)
+
+---
+
+## Cliente desativado não recebe cobrança (2026-10-09)
+
+Na lista de **Clientes** (`/clientes/cadastrar/`), o botão ⏻ desativa ou reativa o cliente
+(`clientes.views.alternar_status_cliente`, POST, mesma permissão do Editar). O cliente desativado:
+
+- fica com `Cliente.ativo = False` e `desativado_em` preenchido; aparece na lista com o selo
+  **Inativo** e a linha esmaecida;
+- **não entra** na task `financeiro.tasks.enviar_alertas_whatsapp` (filtro `cliente__ativo=True`
+  nas três consultas: aviso prévio, dia do vencimento e vencidas);
+- tem o envio manual recusado em `api_enviar_cobranca_manual` ("Cliente desativado: cobranças não são
+  enviadas"); `whatsapp.enviar_cobranca_fatura` também recusa, como segunda trava.
+
+Nada é apagado: acessos, faturas e histórico continuam lá. As faturas em aberto do período inativo
+**não** são canceladas — ao reativar, as vencidas voltam a ser cobradas na próxima rodada da task.
+

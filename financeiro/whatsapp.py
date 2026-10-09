@@ -266,6 +266,9 @@ def enviar_cobranca_fatura(fatura) -> tuple[bool, str]:
     if not cfg or not cfg.wa_ativo:
         return False, 'WhatsApp não habilitado.'
 
+    if not fatura.cliente.ativo:
+        return False, 'Cliente desativado: cobrança não enviada.'
+
     jid = _normalizar_telefone(getattr(fatura.cliente, 'telefone', None))
     if not jid:
         return False, f'Telefone inválido ou ausente: {fatura.cliente.telefone!r}'
