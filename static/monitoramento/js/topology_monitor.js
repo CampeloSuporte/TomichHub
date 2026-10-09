@@ -256,7 +256,7 @@ const MON = (() => {
     if (!topoId) { _resetCanvas(); return; }
 
     const data = await _get(`${URL.topoCarregar}?topo_id=${topoId}&cliente_id=${clienteId}`);
-    if (data.error) { alert(data.error); return; }
+    if (data.error) { uiAlert(data.error); return; }
 
     nextId = 1;
     nodes  = data.nodes.map(n => {
@@ -717,7 +717,7 @@ const MON = (() => {
         links: links.map(l => ({ id:l.id, source:l.source, target:l.target, label:l.label,
                                   itemid_in:l.itemid_in, itemid_out:l.itemid_out, itemid_status:l.itemid_status })),
       });
-      if (data.error) alert(`Erro: ${data.error}`);
+      if (data.error) uiAlert(`Erro: ${data.error}`);
       else { _toast('Topologia salva!', 'success'); await carregarTopologiaSelecionada(); }
     } finally {
       if (btn) { btn.disabled = false; btn.textContent = 'Salvar'; }
@@ -733,12 +733,12 @@ const MON = (() => {
 
   async function criarTopologia() {
     const nome = document.getElementById('mon-nova-nome').value.trim();
-    if (!nome) { alert('Informe o nome da topologia'); return; }
+    if (!nome) { uiAlert('Informe o nome da topologia'); return; }
     const data = await _post(URL.topoCriar, {
       cliente_id: clienteId, nome,
       descricao: document.getElementById('mon-nova-desc').value,
     });
-    if (data.error) { alert(data.error); return; }
+    if (data.error) { uiAlert(data.error); return; }
     fecharModal('mon-modal-nova');
     await _carregarListaTopologias();
     topoId = data.id;
@@ -752,9 +752,9 @@ const MON = (() => {
 
   async function deletarTopologia() {
     if (!topoId) return;
-    if (!confirm('Tem certeza que deseja excluir esta topologia?')) return;
+    if (!await uiConfirm('Tem certeza que deseja excluir esta topologia?')) return;
     const data = await _post(`${URL.topoDeletar}${topoId}/`, {});
-    if (data.error) { alert(data.error); return; }
+    if (data.error) { uiAlert(data.error); return; }
     await _carregarListaTopologias();
     _resetCanvas();
   }

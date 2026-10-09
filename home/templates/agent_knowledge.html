@@ -492,7 +492,7 @@ async function editarArtigo(id) {
     mostrarEditor();
     document.getElementById('overlayArtigo').style.display = 'flex';
   } catch(e) {
-    alert('Erro ao carregar artigo: ' + e.message);
+    uiAlert('Erro ao carregar artigo: ' + e.message);
   }
 }
 
@@ -500,7 +500,7 @@ async function salvarArtigo() {
   const id       = document.getElementById('artigoId').value;
   const titulo   = document.getElementById('fTitulo').value.trim();
   const conteudo = document.getElementById('fConteudo').value.trim();
-  if (!titulo || !conteudo) { alert('Título e conteúdo são obrigatórios.'); return; }
+  if (!titulo || !conteudo) { uiAlert('Título e conteúdo são obrigatórios.'); return; }
 
   const tags = document.getElementById('fTags').value.split(',').map(t => t.trim()).filter(Boolean);
   const payload = {
@@ -518,7 +518,7 @@ async function salvarArtigo() {
   });
   const data = await resp.json();
   if (data.ok) { fecharArtigoOverlay(); location.reload(); }
-  else alert('Erro: ' + (data.erro || 'desconhecido'));
+  else uiAlert('Erro: ' + (data.erro || 'desconhecido'));
 }
 
 // ── Preview Markdown ──────────────────────────────────────────────────────────
@@ -564,7 +564,7 @@ document.getElementById('btnConfirmarDeletar').addEventListener('click', async (
   const resp = await fetch(url, { method: 'POST', headers: {'X-CSRFToken': CSRF} });
   const data = await resp.json();
   if (data.ok) { fecharDeletarOverlay(); location.reload(); }
-  else alert('Erro ao deletar: ' + (data.erro || 'desconhecido'));
+  else uiAlert('Erro ao deletar: ' + (data.erro || 'desconhecido'));
 });
 
 // ── Upload PDF ────────────────────────────────────────────────────────────────
@@ -613,7 +613,7 @@ function arquivoSelecionado(input) {
 
 function processarArquivo(file) {
   if (!file.name.toLowerCase().endsWith('.pdf')) {
-    alert('Apenas arquivos PDF são aceitos.'); return;
+    uiAlert('Apenas arquivos PDF são aceitos.'); return;
   }
   _arquivoPDF = file;
   document.getElementById('nomeArquivoSelecionado').textContent = `📄 ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`;
@@ -624,9 +624,9 @@ function processarArquivo(file) {
 }
 
 async function enviarPDF() {
-  if (!_arquivoPDF) { alert('Selecione um arquivo PDF primeiro.'); return; }
+  if (!_arquivoPDF) { uiAlert('Selecione um arquivo PDF primeiro.'); return; }
   const titulo = document.getElementById('upTitulo').value.trim();
-  if (!titulo)  { alert('Informe o título do documento.'); return; }
+  if (!titulo)  { uiAlert('Informe o título do documento.'); return; }
 
   const btn = document.getElementById('btnEnviarPDF');
   btn.disabled = true;
@@ -685,7 +685,7 @@ async function enviarPDF() {
     }
   } catch(e) {
     progressMsg.textContent = 'Erro de conexão.';
-    alert('Erro: ' + e.message);
+    uiAlert('Erro: ' + e.message);
     btn.disabled = false;
     btn.innerHTML = '<i class="bi bi-upload me-1"></i>Processar e Salvar';
   }

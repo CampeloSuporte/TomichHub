@@ -1783,8 +1783,8 @@ const GRAPH = (() => {
     const outId    = document.getElementById('grph-m-item-out-id').value || null;
     const titulo   = (document.getElementById('grph-m-titulo') || {}).value?.trim() || '';
 
-    if (!hostid)         { alert('Selecione um host.'); return; }
-    if (!inId && !outId) { alert('Selecione pelo menos um item (Download ou Upload).'); return; }
+    if (!hostid)         { uiAlert('Selecione um host.'); return; }
+    if (!inId && !outId) { uiAlert('Selecione pelo menos um item (Download ou Upload).'); return; }
 
     const itens     = itensCache[hostid] || [];
     const inItem    = itens.find(i => i.itemid === inId);

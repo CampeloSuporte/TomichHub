@@ -571,7 +571,7 @@ select.kb-input { background:var(--dark-700); cursor:pointer; }
     };
 
     window.deleteBoardConfirm = async function(boardId, name) {
-        if (!confirm('Excluir o quadro "' + name + '" e todos seus dados?')) return;
+        if (!await uiConfirm('Excluir o quadro "' + name + '" e todos seus dados?')) return;
         try {
             await api('/atendimento/api/kanban/boards/' + boardId + '/', { method:'DELETE' });
             if (activeBoardId === boardId) activeBoardId = null;
@@ -619,7 +619,7 @@ select.kb-input { background:var(--dark-700); cursor:pointer; }
         var col = findCol(colId);
         var cardCount = col ? col.cards.length : 0;
         var msg = 'Excluir coluna' + (cardCount ? ' e os ' + cardCount + ' card(s) dentro dela' : '') + '?';
-        if (!confirm(msg)) return;
+        if (!await uiConfirm(msg)) return;
         try {
             await api('/atendimento/api/kanban/boards/' + activeBoardId + '/columns/' + colId + '/', { method:'DELETE' });
             toast('Coluna excluída');
@@ -673,7 +673,7 @@ select.kb-input { background:var(--dark-700); cursor:pointer; }
 
     window.kbDeleteCard = async function(cardId) {
         var card = findCard(cardId);
-        if (!confirm('Excluir "' + (card ? card.title : 'este card') + '"?')) return;
+        if (!await uiConfirm('Excluir "' + (card ? card.title : 'este card') + '"?')) return;
         var col = findCardCol(cardId);
         try {
             await api('/atendimento/api/kanban/boards/' + activeBoardId + '/columns/' + (col ? col.id : activeColForCard) + '/cards/' + cardId + '/', { method:'DELETE' });

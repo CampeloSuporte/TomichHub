@@ -549,7 +549,7 @@ document.addEventListener('keydown', (e) => {
         }
 
         if (!_acessoId) {
-            alert('Nenhum terminal ativo. Abra uma conexão SSH primeiro.');
+            uiAlert('Nenhum terminal ativo. Abra uma conexão SSH primeiro.');
             return;
         }
 
@@ -627,8 +627,8 @@ document.addEventListener('keydown', (e) => {
 
     window.spiExecutar = async function() {
         if (_executando) return;
-        if (!_scriptAtual) { alert('Selecione um script primeiro.'); return; }
-        if (!_acessoId)    { alert('Nenhum equipamento ativo.'); return; }
+        if (!_scriptAtual) { uiAlert('Selecione um script primeiro.'); return; }
+        if (!_acessoId)    { uiAlert('Nenhum equipamento ativo.'); return; }
 
         const params = {};
         let ok = true;
@@ -638,7 +638,7 @@ document.addEventListener('keydown', (e) => {
             if (p.obrigatorio && !val) { if(el) el.style.borderColor='#ff5555'; ok = false; }
             else { if(el) el.style.borderColor=''; params[p.nome] = val; }
         }
-        if (!ok) { alert('Preencha todos os campos obrigatórios (*).'); return; }
+        if (!ok) { uiAlert('Preencha todos os campos obrigatórios (*).'); return; }
 
         _executando = true;
         spInlineTab('output');

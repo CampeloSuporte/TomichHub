@@ -1065,7 +1065,7 @@ document.getElementById('formNovoJob')?.addEventListener('submit', async functio
     // Coleta IDs selecionados
     const selecionados = Array.from(document.querySelectorAll('.host-cb:checked')).map(cb => cb.value);
     if (selecionados.length === 0) {
-        alert('Selecione pelo menos um host na tabela acima.');
+        uiAlert('Selecione pelo menos um host na tabela acima.');
         return;
     }
 
@@ -1088,12 +1088,12 @@ document.getElementById('formNovoJob')?.addEventListener('submit', async functio
         if (data.ok) {
             window.location.reload();
         } else {
-            alert('Erro: ' + (data.erro || 'Desconhecido'));
+            uiAlert('Erro: ' + (data.erro || 'Desconhecido'));
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-rocket me-2"></i>Iniciar Job';
         }
     } catch (err) {
-        alert('Erro de comunicação: ' + err);
+        uiAlert('Erro de comunicação: ' + err);
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-rocket me-2"></i>Iniciar Job';
     }
@@ -1170,18 +1170,18 @@ async function atualizarJob(jobId) {
 
 // ─── Remover antigos ──────────────────────────────────────────────────────────
 async function removerAntigos(jobId) {
-    if (!confirm('Confirma a remoção dos usuários antigos em todos os hosts concluídos com sucesso?\n\nEsta ação é irreversível.')) return;
+    if (!await uiConfirm('Confirma a remoção dos usuários antigos em todos os hosts concluídos com sucesso?\n\nEsta ação é irreversível.')) return;
     try {
         const resp = await fetch(`/clientes/trocar-senhas/${jobId}/remover-antigos/`, {
             method: 'POST', headers: {'X-CSRFToken': CSRF, 'Content-Type': 'application/json'},
         });
         const data = await resp.json();
         if (data.ok) {
-            alert('✓ Remoção iniciada em background. Atualize a página em alguns instantes.');
+            uiAlert('✓ Remoção iniciada em background. Atualize a página em alguns instantes.');
         } else {
-            alert('Erro: ' + (data.erro || 'Desconhecido'));
+            uiAlert('Erro: ' + (data.erro || 'Desconhecido'));
         }
-    } catch(e) { alert('Erro: ' + e); }
+    } catch(e) { uiAlert('Erro: ' + e); }
 }
 </script>
 {% endblock %}

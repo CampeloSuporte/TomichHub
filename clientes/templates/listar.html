@@ -6244,7 +6244,7 @@ function getCsrfToken(){
     }
     </script>
 
-    <script src="{% static 'js/terminal_tab_manager.js' %}?v=protos2"></script>
+    <script src="{% static 'js/terminal_tab_manager.js' %}?v=protos3"></script>
 
     <script>
     // ============================================
@@ -7392,7 +7392,7 @@ function getCsrfToken(){
 
 
     <script src="{% static 'js/main.js' %}?v=funcaotab3fix"></script>
-    <script src="{% static 'js/listar_acesso.js' %}?v=2"></script>
+    <script src="{% static 'js/listar_acesso.js' %}?v=3"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
 
@@ -8779,10 +8779,8 @@ function getCsrfToken(){
                 <pre style="font-family:'Inter', sans-serif;font-size:11px;color:#c8dde8;margin:0;white-space:pre-wrap;word-break:break-word">${b.mensagem}</pre>
             </div>` : '';
 
-        uiAlert({ titulo: 'Detalhes do Backup', msg: ' ', icone: `fas ${statusIcon}`, iconeCor: statusColor });
-        // uiAlert usa textContent — injeta HTML diretamente após abertura
-        document.getElementById('ui-alert-msg').innerHTML =
-            `<table style="width:100%;border-collapse:collapse">${tableRows}</table>${mensagemHtml}`;
+        uiAlert({ titulo: 'Detalhes do Backup', icone: `fas ${statusIcon}`, iconeCor: statusColor,
+            msgHtml: `<table style="width:100%;border-collapse:collapse">${tableRows}</table>${mensagemHtml}` });
     }
 
     /**
@@ -8888,7 +8886,7 @@ function getCsrfToken(){
         if (event) event.preventDefault();
         if (moduloBloqueado(nomeAba)) {
             if (event) event.stopPropagation();
-            alert('Este módulo não está disponível no seu contrato. Fale com o suporte para mais informações.');
+            uiAlert('Este módulo não está disponível no seu contrato. Fale com o suporte para mais informações.');
             return;
         }
         document.querySelectorAll('.tab-content-main').forEach(tab => tab.style.display = 'none');
@@ -11954,7 +11952,7 @@ function getCsrfToken(){
         sel.senha = document.getElementById('crtSenhaPadrao').value || '';
         selected.push(sel);
       });
-      if (!selected.length) { alert('Selecione ao menos um host.'); return; }
+      if (!selected.length) { uiAlert('Selecione ao menos um host.'); return; }
       const btn = document.getElementById('crtBtnImportar');
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Importando...';
@@ -11969,7 +11967,7 @@ function getCsrfToken(){
       } catch(e) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-download me-1"></i> Importar Selecionados';
-        alert('Erro: ' + e.message);
+        uiAlert('Erro: ' + e.message);
       }
     },
 

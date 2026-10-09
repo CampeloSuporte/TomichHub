@@ -51,7 +51,7 @@ class TerminalTabManager {
         const opcoes = 'width=1400,height=800,menubar=no,toolbar=no,location=no,status=no';
         this.terminalWindow = window.open(url, this.terminalWindowName, opcoes);
         if (!this.terminalWindow) {
-            alert('⚠️ Não foi possível abrir a janela do terminal. Verifique se bloqueadores de popup estão desabilitados.');
+            uiAlert('⚠️ Não foi possível abrir a janela do terminal. Verifique se bloqueadores de popup estão desabilitados.');
             return;
         }
         this.terminalWindow.focus();
@@ -132,7 +132,7 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
         if (typeof showSuccess === 'function') {
             showSuccess('NAVEGADOR ABERTO', `Acessando ${url}`, 3000);
         } else {
-            alert('Abrindo: ' + url);
+            uiAlert('Abrindo: ' + url);
         }
         
         return;  // ⚠️ IMPORTANTE: Parar aqui e NÃO abrir o terminal
@@ -239,7 +239,7 @@ async function abrirWebProxyComFallback(acessoId, scheme, porta, host) {
     // Aba aberta já no clique: depois do await o navegador bloquearia o popup
     const janela = window.open('', '_blank');
     if (!janela) {
-        alert('⚠️ Não foi possível abrir a nova aba. Verifique se bloqueadores de popup estão desabilitados.');
+        uiAlert('⚠️ Não foi possível abrir a nova aba. Verifique se bloqueadores de popup estão desabilitados.');
         return;
     }
     _avisoJanelaWeb(janela, `Conectando via proxy do CRM a ${host}:${porta}…`);
@@ -340,7 +340,7 @@ function abrirWinboxWeb(acessoId) {
     const janela = window.open(winboxUrl, `WINBOX_WEB_${acessoId}`, opcoes);
     
     if (!janela) {
-        alert('⚠️ Não foi possível abrir o Winbox Web. Verifique se bloqueadores de popup estão desabilitados.');
+        uiAlert('⚠️ Não foi possível abrir o Winbox Web. Verifique se bloqueadores de popup estão desabilitados.');
         return;
     }
     

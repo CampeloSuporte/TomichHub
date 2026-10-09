@@ -384,7 +384,7 @@ async function bulkAcao(acao) {
     const ids = [...document.querySelectorAll('.chk-despesa:checked')].map(c => parseInt(c.dataset.id));
     if (!ids.length) return;
     const labels = {'deletar':'Excluir','privada':'Marcar como Privada','publica':'Marcar como Pública','pagar':'Marcar como Paga'};
-    if (!confirm(`${labels[acao]} ${ids.length} despesa(s) selecionada(s)?`)) return;
+    if (!await uiConfirm(`${labels[acao]} ${ids.length} despesa(s) selecionada(s)?`)) return;
     try {
         const r = await fetch('/financeiro/api/despesas/bulk/', {
             method: 'POST',
@@ -393,8 +393,8 @@ async function bulkAcao(acao) {
         });
         const d = await r.json();
         if (d.sucesso) { mostrarToast(d.msg, acao==='deletar'?'danger':'success'); carregarDespesas(); carregarResumo(); }
-        else alert('Erro: ' + d.erro);
-    } catch(e) { alert('Erro de conexão: ' + e.message); }
+        else uiAlert('Erro: ' + d.erro);
+    } catch(e) { uiAlert('Erro de conexão: ' + e.message); }
 }
 
 // ── Nova Despesa ─────────────────────────────────────────────────────────────
@@ -495,28 +495,28 @@ async function enviarEditar() {
 
 // ── Pagar ────────────────────────────────────────────────────────────────────
 async function pagarDespesa(id) {
-    if (!confirm('Marcar despesa como paga?')) return;
+    if (!await uiConfirm({titulo:'Pagar despesa', msg:'Marcar despesa como paga?', btnLabel:'Marcar como paga', tipo:'info'})) return;
     try {
         const r = await fetch(`/financeiro/api/despesa/${id}/pagar/`, {
             method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body:'{}'
         });
         const d = await r.json();
         if (d.sucesso) { mostrarToast('Despesa marcada como paga!', 'success'); carregarDespesas(); carregarResumo(); }
-        else alert('Erro: ' + d.erro);
-    } catch(e) { alert('Erro de conexão: ' + e.message); }
+        else uiAlert('Erro: ' + d.erro);
+    } catch(e) { uiAlert('Erro de conexão: ' + e.message); }
 }
 
 // ── Deletar ──────────────────────────────────────────────────────────────────
 async function deletar(id, nome) {
-    if (!confirm(`Excluir "${nome}"?`)) return;
+    if (!await uiConfirm({titulo:'Excluir despesa', msg:`Excluir "${nome}"?`, btnLabel:'Excluir'})) return;
     try {
         const r = await fetch(`/financeiro/api/despesa/${id}/deletar/`, {
             method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF}, body:'{}'
         });
         const d = await r.json();
         if (d.sucesso) { mostrarToast('Despesa deletada.', 'danger'); carregarDespesas(); carregarResumo(); }
-        else alert('Erro: ' + d.erro);
-    } catch(e) { alert('Erro de conexão: ' + e.message); }
+        else uiAlert('Erro: ' + d.erro);
+    } catch(e) { uiAlert('Erro de conexão: ' + e.message); }
 }
 
 // ── Toast ────────────────────────────────────────────────────────────────────

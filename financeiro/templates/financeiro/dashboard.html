@@ -2237,7 +2237,7 @@ function gerarLinkAssinatura() {
             document.getElementById('linkAssinaturaBox').style.display = 'block';
             carregarContratosAluguel();
         } else {
-            alert('Erro: ' + (d.erro || ''));
+            uiAlert('Erro: ' + (d.erro || ''));
         }
     });
 }
@@ -2308,7 +2308,7 @@ function gerarLinkLOA() {
             document.getElementById('loaLinkBox').style.display = 'block';
             carregarLOAs();
         } else {
-            alert('Erro: ' + (d.erro || 'Erro ao gerar LOA'));
+            uiAlert('Erro: ' + (d.erro || 'Erro ao gerar LOA'));
         }
     });
 }
@@ -2402,8 +2402,8 @@ function gerarLinkLOA() {
         });
     };
 
-    window.limparAssinaturaLocador = function() {
-        if (!confirm('Remover a assinatura salva?')) return;
+    window.limparAssinaturaLocador = async function() {
+        if (!await uiConfirm({titulo:'Remover assinatura', msg:'Remover a assinatura salva?', btnLabel:'Remover'})) return;
         fetch('/financeiro/api/assinatura-locador/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
@@ -2968,15 +2968,15 @@ async function enviarEditarDespesa(e) {
 }
 
 async function deletarDespesa(id, nome) {
-    if (!confirm(`Excluir a despesa "${nome}"?`)) return;
+    if (!await uiConfirm({titulo:'Excluir despesa', msg:`Excluir a despesa "${nome}"?`, btnLabel:'Excluir'})) return;
     try {
         const r = await fetch(`/financeiro/api/despesa/${id}/deletar/`, {
             method: 'POST', headers: {'X-CSRFToken': csrf(), 'Content-Type': 'application/json'},
         });
         const d = await r.json();
         if (d.sucesso) { mostrarToast(d.msg, 'warning'); carregarDespesas(); carregarDespesasDashboard(); }
-        else alert('Erro: ' + d.erro);
-    } catch(e) { alert('Erro de conexão: ' + e.message); }
+        else uiAlert('Erro: ' + d.erro);
+    } catch(e) { uiAlert('Erro de conexão: ' + e.message); }
 }
 
 function toggleMesesRecorrencia(sel, wrapId) {
@@ -2997,7 +2997,7 @@ function toggleParcelas(sel) {
 }
 
 async function pagarDespesa(id) {
-    if (!confirm('Confirmar pagamento desta despesa?')) return;
+    if (!await uiConfirm({titulo:'Pagar despesa', msg:'Confirmar pagamento desta despesa?', btnLabel:'Confirmar pagamento', tipo:'info'})) return;
     try {
         const r = await fetch(`/financeiro/api/despesa/${id}/pagar/`, {
             method: 'POST', headers: {'X-CSRFToken': csrf(), 'Content-Type': 'application/json'},
@@ -3007,8 +3007,8 @@ async function pagarDespesa(id) {
             mostrarToast(d.msg, 'success');
             carregarDespesas();
             carregarDespesasDashboard();
-        } else alert('Erro: ' + d.erro);
-    } catch(e) { alert('Erro de conexão: ' + e.message); }
+        } else uiAlert('Erro: ' + d.erro);
+    } catch(e) { uiAlert('Erro de conexão: ' + e.message); }
 }
 
 // Despesas são carregadas pelo DOMContentLoaded principal
@@ -3320,7 +3320,7 @@ function abrirPreviewWa(faturaId) {
 
 function enviarTestWhatsApp() {
   const numero = document.getElementById('waNumeroTeste').value.trim();
-  if (!numero) { alert('Informe o número de teste.'); return; }
+  if (!numero) { uiAlert('Informe o número de teste.'); return; }
   const res = document.getElementById('waTesteResultado');
   res.style.display = 'block';
   res.style.background = '#161b22';
@@ -3422,8 +3422,8 @@ function salvarConfigWhatsApp() {
   });
 }
 
-function enviarCobrancaManual(faturaId) {
-  if (!confirm('Enviar cobrança via WhatsApp para esta fatura?')) return;
+async function enviarCobrancaManual(faturaId) {
+  if (!await uiConfirm({titulo:'Enviar cobrança', msg:'Enviar cobrança via WhatsApp para esta fatura?', btnLabel:'Enviar', tipo:'info'})) return;
   fetch('/financeiro/api/whatsapp/enviar-cobranca/', {
     method: 'POST',
     headers: {'Content-Type':'application/json','X-CSRFToken': getCookie('csrftoken')},

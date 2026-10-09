@@ -805,6 +805,8 @@
         .btn-terminal.btn-agent { border-color: #aa00ff; color: #cc66ff; }
         .btn-terminal.btn-agent:hover, .btn-terminal.btn-agent.ativo { background: rgba(170,0,255,.1); border-color: #cc66ff; color: #cc66ff; }
     </style>
+    <!-- Diálogos padrão da plataforma (uiConfirm / uiAlert / uiToast) -->
+    <script src="/static/js/ui_dialogs.js?v=20261009"></script>
 </head>
 <body>
     <div class="terminal-container">
@@ -2730,11 +2732,11 @@
             if (sel && sel.value) spAcesoId = parseInt(sel.value);
 
             if (!spAcesoId) {
-                alert('Selecione o equipamento alvo no topo do painel.');
+                uiAlert('Selecione o equipamento alvo no topo do painel.');
                 return;
             }
             if (!spScriptAtual) {
-                alert('Selecione um script.');
+                uiAlert('Selecione um script.');
                 return;
             }
 
@@ -2750,7 +2752,7 @@
             });
 
             if (faltando.length) {
-                alert('Parâmetros obrigatórios não preenchidos:\n• ' + faltando.join('\n• '));
+                uiAlert('Parâmetros obrigatórios não preenchidos:\n• ' + faltando.join('\n• '));
                 return;
             }
 

@@ -586,9 +586,9 @@ const GRAPH = (() => {
     const hostid   = document.getElementById('grph-m-hostid').value;
     const hostname = document.getElementById('grph-m-hostname').value;
     const raw      = document.getElementById('grph-m-iface').value;
-    if (!hostid || !raw) { alert('Selecione um host e uma interface.'); return; }
+    if (!hostid || !raw) { uiAlert('Selecione um host e uma interface.'); return; }
     let d;
-    try { d = JSON.parse(raw); } catch { alert('Interface inválida.'); return; }
+    try { d = JSON.parse(raw); } catch { uiAlert('Interface inválida.'); return; }
 
     if (_editingChart !== null) {
       const c = charts.find(x => x.id === _editingChart);

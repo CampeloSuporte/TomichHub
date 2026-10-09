@@ -137,7 +137,7 @@
                 location.reload();
             }
         } catch (error) {
-            alert('Erro ao criar conexão');
+            uiAlert('Erro ao criar conexão');
             console.error(error);
         }
     });
@@ -149,7 +149,7 @@
         })
         .then(r => r.json())
         .then(data => {
-            alert(data.message || 'Conexão OK!');
+            uiAlert(data.message || 'Conexão OK!');
         });
     }
 
@@ -165,10 +165,9 @@
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                alert(`✓ ${data.message}`);
-                location.reload();
+                uiAlert(`✓ ${data.message}`).then(() => location.reload());
             } else {
-                alert(`✗ Erro: ${data.message}`);
+                uiAlert(`✗ Erro: ${data.message}`);
             }
         })
         .finally(() => {
@@ -184,8 +183,7 @@
         })
         .then(r => r.json())
         .then(data => {
-            alert(data.message || 'Webhook configurado!');
-            location.reload();
+            uiAlert(data.message || 'Webhook configurado!').then(() => location.reload());
         });
     }
 

@@ -760,7 +760,7 @@ class RackBuilder {
     const e = this._eq(id);
     if (!e) return;
     const n = this._cabosDe(id).length;
-    if (!confirm(`Remover ${e.nome} do rack?` + (n ? `\n\n${n} cabo(s) ligado(s) a ele também serão excluídos.` : ''))) return;
+    if (!await uiConfirm(`Remover ${e.nome} do rack?` + (n ? `\n\n${n} cabo(s) ligado(s) a ele também serão excluídos.` : ''))) return;
     if (await this._post(`/racks/equipamento/${id}/excluir/`)) { this.sel = null; this.render(); this._toast('Removido'); }
   }
 
@@ -819,7 +819,7 @@ class RackBuilder {
     const r = this.estado.racks.find(x => x.id === id);
     if (!r) return;
     const n = r.equipamentos.length;
-    if (!confirm(`Excluir o rack ${r.nome}?` + (n ? `\n\nOs ${n} equipamento(s) montados nele e os cabos deles também serão excluídos.` : ''))) return;
+    if (!await uiConfirm(`Excluir o rack ${r.nome}?` + (n ? `\n\nOs ${n} equipamento(s) montados nele e os cabos deles também serão excluídos.` : ''))) return;
     if (await this._post(`/racks/rack/${id}/excluir/`)) this._toast('Rack excluído');
   }
 
@@ -936,7 +936,7 @@ class RackBuilder {
   async excluirConexao(id) {
     const c = this.estado.conexoes.find(x => x.id === id);
     const doMapa = c && c.topologia_link_id && !c.orfao;
-    if (!confirm(doMapa
+    if (!await uiConfirm(doMapa
       ? 'Excluir este cabo?\n\nO enlace continua no mapa, mas não vai recriar o cabo. Para voltar, use "Cabear de novo" na aba Conexões.'
       : 'Excluir este cabo?')) return;
     if (await this._post(`/racks/conexao/${id}/excluir/`)) this._toast('Cabo excluído');

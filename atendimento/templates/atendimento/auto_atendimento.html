@@ -291,7 +291,7 @@ async function saveFlow() {
         active: document.getElementById('flowActive').checked,
         group_ids: groupIds,
     };
-    if (!payload.name) return alert('Nome é obrigatório');
+    if (!payload.name) return uiAlert('Nome é obrigatório');
     const url = id ? `/atendimento/api/chat-flows/${id}/` : '/atendimento/api/chat-flows/';
     const method = id ? 'PUT' : 'POST';
     const r = await fetch(url, {
@@ -299,7 +299,7 @@ async function saveFlow() {
         body: JSON.stringify(payload)
     });
     if (r.ok) { location.reload(); }
-    else { const d = await r.json(); alert('Erro: ' + (d.error || 'desconhecido')); }
+    else { const d = await r.json(); uiAlert('Erro: ' + (d.error || 'desconhecido')); }
 }
 
 async function toggleFlow(id, active) {
@@ -312,16 +312,16 @@ async function toggleFlow(id, active) {
     // quando o fluxo é o universal, sem grupos específicos), então não dá pra
     // só deixar o toggle marcado sem atualizar o resto da página.
     if (r.ok) location.reload();
-    else alert('Erro ao atualizar o fluxo');
+    else uiAlert('Erro ao atualizar o fluxo');
 }
 
 async function deleteFlow(id) {
-    if (!confirm('Remover este fluxo?')) return;
+    if (!await uiConfirm({titulo:'Remover fluxo', msg:'Remover este fluxo?', btnLabel:'Remover'})) return;
     const r = await fetch(`/atendimento/api/chat-flows/${id}/`, { method: 'DELETE', headers: {'X-CSRFToken': CSRF} });
     // Mesmo motivo do toggleFlow: excluir um fluxo pode mudar quais grupos
     // aparecem como "ativos" no auto atendimento.
     if (r.ok) location.reload();
-    else alert('Erro ao remover o fluxo');
+    else uiAlert('Erro ao remover o fluxo');
 }
 
 function buildGroupItem(groupId, name, conn, excluded) {
@@ -386,12 +386,12 @@ async function removeGroupAuto(groupId) {
         });
     } catch (e) {
         if (btn) btn.disabled = false;
-        alert('Erro de conexão ao atualizar o grupo');
+        uiAlert('Erro de conexão ao atualizar o grupo');
         return;
     }
     if (!r.ok) {
         if (btn) btn.disabled = false;
-        alert('Erro ao atualizar o grupo');
+        uiAlert('Erro ao atualizar o grupo');
         return;
     }
     const d = await r.json();

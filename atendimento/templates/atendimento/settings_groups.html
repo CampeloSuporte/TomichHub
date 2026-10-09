@@ -230,13 +230,12 @@
             });
 
             if (response.ok) {
-                alert('✓ Grupo vinculado com sucesso!');
-                location.reload();
+                uiAlert('✓ Grupo vinculado com sucesso!').then(() => location.reload());
             } else {
-                alert('✗ Erro ao vincular grupo');
+                uiAlert('✗ Erro ao vincular grupo');
             }
         } catch (error) {
-            alert('Erro na requisição');
+            uiAlert('Erro na requisição');
             console.error(error);
         }
     });
@@ -253,10 +252,9 @@
         .then(r => r.json())
         .then(data => {
             if (data.success) {
-                alert(`✓ ${data.message}`);
-                location.reload();
+                uiAlert(`✓ ${data.message}`).then(() => location.reload());
             } else {
-                alert(`✗ Erro: ${data.message}`);
+                uiAlert(`✗ Erro: ${data.message}`);
             }
         })
         .finally(() => {
@@ -265,8 +263,8 @@
         });
     }
 
-    function autoLinkAll(connectionId) {
-        if (confirm('Deseja vincular todos os grupos automaticamente?\nSerão vinculados por nome do cliente.')) {
+    async function autoLinkAll(connectionId) {
+        if (await uiConfirm({titulo:'Vincular grupos', msg:'Deseja vincular todos os grupos automaticamente?\nSerão vinculados por nome do cliente.', btnLabel:'Vincular', tipo:'info'})) {
             fetch(`/atendimento/api/connection/${connectionId}/auto-link/`, {
                 method: 'POST',
                 headers: {'X-CSRFToken': '{{ csrf_token }}'}
@@ -274,10 +272,9 @@
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
-                    alert(`✓ ${data.linked_count} grupos vinculados automaticamente!`);
-                    location.reload();
+                    uiAlert(`✓ ${data.linked_count} grupos vinculados automaticamente!`).then(() => location.reload());
                 } else {
-                    alert(`✗ Erro: ${data.message}`);
+                    uiAlert(`✗ Erro: ${data.message}`);
                 }
             });
         }
