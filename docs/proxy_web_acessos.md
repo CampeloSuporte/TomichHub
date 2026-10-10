@@ -233,6 +233,25 @@ grande some). O CRM contorna isso, ver "Buraco negro de PMTU no servidor do prox
 
 ---
 
+### Menu "WhatsApp" do TOMICH OBSERVER sai do proxy — Corrigido em 10/10/2026
+
+**Sintoma:** abrindo o Observer pelo proxy (acesso 1238), as telas nativas
+navegam normalmente, mas o item **WhatsApp** do menu lateral leva para
+`https://crm.../whatsapp/` (raiz do CRM, fora do proxy) e não abre.
+
+**Causa:** o item não é do React — é injetado pelo `/whatsapp/nav-inject.js`
+do device (o `/jogos/nav-inject.js` faz o mesmo), que clona um link do menu e
+troca o destino com `link.setAttribute('href', '/whatsapp/')`. O proxy só
+intercepta o *setter* `HTMLAnchorElement.href`, não `setAttribute`, e o nó
+clonado não tem o handler do React Router: o clique vira navegação nativa
+para um path absoluto do mesmo origin.
+
+**Solução:** o script injetado escuta `mousedown`/`click`/`auxclick`/
+`contextmenu`/`keydown` em captura no `document` e, antes da navegação,
+passa o `href` do `<a>` clicado por `_rw()` (prefixa o `proxy_base` em path
+absoluto fora dele). Ignora `#…`, `//host`, `javascript:`, `mailto:` etc.
+Cobre também "abrir em nova aba" (botão do meio / menu de contexto).
+
 ### Buraco negro de PMTU no servidor do proxy SSH — Contornado em 15/09/2026
 
 **Sintoma:** acesso 1455 (DS TECH, `10.0.100.200:80`, proxy "tunnel dstech" = ProxyIsp

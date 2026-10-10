@@ -117,6 +117,14 @@ class RewriteReactRouterBasenameTest(SimpleTestCase):
         ).decode()
         self.assertIn('window.__crmRouterBase=function(l)', html)
 
+    def test_html_injetado_corrige_href_de_link_no_clique(self):
+        # nav-inject.js do Observer cria o menu WhatsApp com setAttribute('href','/whatsapp/')
+        html = ProxyEngine(None).rewrite_content(
+            b'<html><head></head><body></body></html>', 'text/html', BASE, '10.0.0.1'
+        ).decode()
+        self.assertIn("closest('a[href]')", html)
+        self.assertIn("'mousedown','click','auxclick','contextmenu','keydown'", html)
+
 
 class VersionarAssetsTest(SimpleTestCase):
     """Bundle antigo em cache (max-age de 30 dias do device) segurava o bug do

@@ -1552,6 +1552,26 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
       return _wo.call(this,u,name,feat);
     }};
   }})();
+  // Links injetados por script via setAttribute('href','/rota/') não passam
+  // pelo setter de HTMLAnchorElement.href acima — ex: o nav-inject.js do
+  // TOMICH OBSERVER clona um item do menu React e troca o href para
+  // "/whatsapp/". O clique virava navegação nativa para a raiz do CRM.
+  // Corrige o atributo do <a> no momento da interação (antes da navegação).
+  (function(){{
+    function _fixA(e){{
+      try{{
+        var a=e.target&&e.target.closest&&e.target.closest('a[href]');
+        if(!a)return;
+        var h=a.getAttribute('href');
+        if(!h||h.charAt(0)==='#'||h.indexOf('//')===0||/^(javascript|mailto|tel|data|blob):/i.test(h))return;
+        var f=_rw(h);
+        if(typeof f==='string'&&f!==h)a.setAttribute('href',f);
+      }}catch(err){{}}
+    }}
+    ['mousedown','click','auxclick','contextmenu','keydown'].forEach(function(ev){{
+      document.addEventListener(ev,_fixA,true);
+    }});
+  }})();
   // React Router / Vue Router usam history.pushState e history.replaceState.
   // Sem interceptar, a navegação SPA muda a URL para a raiz do CRM (ex: https://crm/),
   // saindo do contexto do proxy.
