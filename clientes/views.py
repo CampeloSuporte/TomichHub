@@ -2752,6 +2752,10 @@ def _executar_comandos_cisco(client, comandos, usuario='', senha='',
 
 
 
+_RE_MORE_HUAWEI = re.compile(r'-{2,}\s*More\s*-{2,}\s*$')
+_RE_MORE_HUAWEI_LINHA = re.compile(r'[ \t]*-{2,}\s?More\s?-{2,}[ \t]*')
+
+
 def _executar_comandos_huawei(client, comandos):
     """
     Huawei VRP: invoke_shell com terminal de 10000 colunas.
@@ -2785,8 +2789,22 @@ def _executar_comandos_huawei(client, comandos):
             # Aguardar o output completo (silence detection)
             resultado = _ler_ate_silencio(channel, silencio=3.0, max_wait=120)
 
+            # Paginação ainda ligada: o "screen-length 0 temporary" pode se
+            # perder se for digitado enquanto o banner de login ainda chega
+            # (visto no SW-HU-NOVA-MONTE-VERDE, VRP V200R010 — o backup parava
+            # no primeiro "---- More ----" com 1,7 KB). Segue as páginas com
+            # espaço em vez de depender só do screen-length.
+            paginas = 0
+            while resultado and _RE_MORE_HUAWEI.search(resultado[-300:]) and paginas < 2000:
+                channel.send(' ')
+                resultado += _ler_ate_silencio(channel, silencio=1.5, max_wait=60)
+                paginas += 1
+            if paginas:
+                print(f"    ↪️ {paginas} página(s) seguidas com espaço")
+
             if resultado:
                 resultado = limpar_ansi(resultado)
+                resultado = _RE_MORE_HUAWEI_LINHA.sub('', resultado)
 
                 # Remover o eco do comando enviado (primeira linha)
                 linhas = resultado.split('\n')

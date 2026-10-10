@@ -92,3 +92,34 @@ class BackupHuaweiDeteccaoTest(TestCase):
             resultado = realizar_backup(self.acesso)
         self.assertFalse(resultado['sucesso'])
         self.assertFalse(BackupLog.objects.filter(acesso=self.acesso, status='SUCESSO').exists())
+
+
+class PaginacaoHuaweiTest(TestCase):
+    """SW-HU-NOVA-MONTE-VERDE (VRP V200R010): o "screen-length 0 temporary"
+    se perdeu no meio do banner e o backup parava no primeiro
+    "---- More ----". O coletor agora segue as páginas com espaço."""
+
+    def test_segue_more_e_remove_marcador(self):
+        from clientes.views import _executar_comandos_huawei
+
+        canal = mock.Mock()
+        client = mock.Mock()
+        client.invoke_shell.return_value = canal
+        leituras = [
+            'banner',                                           # login
+            'n\n<SW>',                                          # screen-length perdido
+            'display current-configuration\n#\nsysname SW\n  ---- More ----',
+            '\x1b[42D                                          \x1b[42D vlan batch 30\n  ---- More ----',
+            '\x1b[42D                                          \x1b[42D#\nreturn\n<SW>',
+            '',                                                 # quit
+        ]
+        with mock.patch('clientes.views._ler_ate_silencio', side_effect=leituras), \
+                mock.patch('clientes.views.time.sleep'):
+            saida = _executar_comandos_huawei(
+                client, ['screen-length 0 temporary', 'display current-configuration'])
+
+        espacos = [c for c in canal.send.call_args_list if c.args == (' ',)]
+        self.assertEqual(len(espacos), 2)
+        self.assertNotIn('More', saida)
+        self.assertIn('vlan batch 30', saida)
+        self.assertIn('return', saida)

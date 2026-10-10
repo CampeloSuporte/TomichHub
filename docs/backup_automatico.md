@@ -241,6 +241,11 @@ Na mesma correção, `_backup_tem_conteudo` passou a ignorar a saída dos comand
 ("Info: The max number of VTY users…") e sozinha bastava para gravar como **SUCESSO** um backup de
 ~1 KB sem configuração nenhuma. Agora esse caso vira erro ("Backup vazio") e aparece no histórico.
 
+Ainda no Huawei, `_executar_comandos_huawei` segue o `---- More ----` com espaço (até 2000
+páginas) e remove o marcador do arquivo. Em VRP antigo (SW-HU-NOVA-MONTE-VERDE, V200R010) o
+`screen-length 0 temporary` às vezes é digitado enquanto o banner de login ainda chega e se perde;
+a paginação fica ligada e o backup parava na primeira página (1,7 KB).
+
 ### KEX para equipamentos de CPU limitada (ZTE etc.)
 
 A conexão `paramiko.SSHClient().connect()` usada pelo backup passa
