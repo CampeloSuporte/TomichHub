@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-10 (Backup Huawei falhava calado)
+
+### Corrigido
+
+- **Backup de switch Huawei sem "huawei" no nome/modelo saía vazio e marcado como SUCESSO**: a
+  detecção de fabricante do `realizar_backup` agora também considera o fabricante do template de
+  backup. Antes, hosts como "SW-HU-TUTILANDIA" (modelo vazio) rodavam um `exec_command` por
+  comando, o VRP derrubava a sessão e o `display current-configuration` voltava
+  "SSH session not active" — 9 switches da Sartor e 1 de outro cliente, toda madrugada.
+- **Banner do `screen-length` não conta mais como conteúdo**: `_backup_tem_conteudo` ignora a
+  saída dos comandos de paginação; backup só com o banner de login passa a ser registrado como
+  erro. Ver `docs/backup_automatico.md`.
+
+---
+
 ## [Não publicado] — 2026-10-10 (Proxy web: links injetados por script)
 
 ### Corrigido

@@ -2107,6 +2107,14 @@ def realizar_backup(acesso, usuario=None):
                 _partes_deteccao.append(str(acesso.modelo.nome))
         if acesso.tipo:
             _partes_deteccao.append(acesso.tipo)
+        # O fabricante do template também entra: são os comandos dele que vão
+        # rodar. Sem isso, Huawei com modelo vazio e nome abreviado ("SW-HU-…",
+        # "Switch Lucas") caía no exec_command por comando — o VRP encerra a
+        # sessão depois do primeiro exec e o "display current-configuration"
+        # voltava "SSH session not active" toda madrugada (Sartor, 10/2026).
+        _fab_template = (acesso.backup_template.fabricante or '').strip()
+        if _fab_template.upper() != 'GENERICO':
+            _partes_deteccao.append(_fab_template)
         modelo_nome = ' '.join(_partes_deteccao).lower()
 
         is_huawei   = 'huawei' in modelo_nome
@@ -2406,6 +2414,13 @@ def realizar_backup(acesso, usuario=None):
             except:
                 pass
 
+_RE_CMD_PAGINACAO = re.compile(
+    r'(screen-length|terminal\s+(length|pager|page-break|datadump)|no\s+page\b|'
+    r'disable\s+clipaging|set\s+cli\s+screen-length)',
+    re.IGNORECASE,
+)
+
+
 def _backup_tem_conteudo(output, minimo=40):
     """
     True se pelo menos um comando do template devolveu saída de verdade.
@@ -2415,13 +2430,23 @@ def _backup_tem_conteudo(output, minimo=40):
     "Comando: ..." e era gravado como SUCESSO (visto nos Raisecom, que só
     tinham "ERRO: " de socket.timeout dentro do arquivo). Aqui descartamos
     separadores, cabeçalhos de comando e linhas de erro e olhamos o que sobra.
+
+    A saída dos comandos de paginação ("screen-length 0 temporary",
+    "terminal length 0"...) também não conta: no Huawei ela traz o banner de
+    login ("Info: The max number of VTY users...") e, sozinha, bastava para
+    gravar como SUCESSO um backup cujo "display current-configuration" tinha
+    falhado.
     """
     corpo = []
+    em_paginacao = False
     for linha in (output or '').splitlines():
         limpa = linha.strip().lstrip('#').strip()   # MikroTik prefixa tudo com "#"
         if not limpa or set(limpa) == {'='}:
             continue
-        if limpa.startswith('Comando:') or limpa.startswith('ERRO:'):
+        if limpa.startswith('Comando:'):
+            em_paginacao = bool(_RE_CMD_PAGINACAO.match(limpa[len('Comando:'):].strip()))
+            continue
+        if em_paginacao or limpa.startswith('ERRO:'):
             continue
         corpo.append(limpa)
     return len('\n'.join(corpo)) >= minimo
