@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-10 (Proxy web: links injetados por script)
+
+### Corrigido
+
+- **Menu "WhatsApp" do TOMICH OBSERVER não abria pelo proxy web**: o link é criado por um script
+  do próprio equipamento com `setAttribute('href','/whatsapp/')`, que escapava da reescrita do
+  proxy e mandava o navegador para a raiz do CRM. Agora o proxy corrige o `href` de qualquer
+  `<a>` no momento do clique (inclusive nova aba). Ver `docs/proxy_web_acessos.md`.
+
+---
+
 ## [Não publicado] — 2026-10-09 (Diálogos no padrão da plataforma)
 
 ### Alterado
