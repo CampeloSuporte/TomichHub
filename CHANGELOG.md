@@ -17,6 +17,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **Banner do `screen-length` não conta mais como conteúdo**: `_backup_tem_conteudo` ignora a
   saída dos comandos de paginação; backup só com o banner de login passa a ser registrado como
   erro. Ver `docs/backup_automatico.md`.
+- **Backup Huawei cortado no `---- More ----`**: quando o `screen-length 0 temporary` se perde no
+  banner de login (VRP V200R010), o coletor agora segue as páginas com espaço em vez de gravar só a
+  primeira.
 
 ---
 
