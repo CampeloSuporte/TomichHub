@@ -228,6 +228,19 @@ modelo_nome = ' '.join(_partes_deteccao).lower()
 `acesso.tipo` costuma estar correto mesmo quando o modelo cadastrado não está — mesmo fallback já
 usado em `consumers.py` para a detecção de fabricante do terminal interativo.
 
+**Atualização (2026-10-10):** o `fabricante` do **template de backup** também entra na string
+(exceto `GENERICO`) — são os comandos dele que vão rodar. Switches Huawei da Sartor cadastrados
+como "SW-HU-TUTILANDIA", "Switch Lucas"… com modelo vazio não eram reconhecidos como Huawei e
+caíam no `exec_command` por comando (`_executar_comandos_sem_pty`); o VRP encerra a sessão depois
+do primeiro exec e o `display current-configuration` voltava `ERRO: SSH session not active` toda
+madrugada.
+
+Na mesma correção, `_backup_tem_conteudo` passou a ignorar a saída dos comandos de paginação
+(`screen-length`, `terminal length/pager/page-break/datadump`, `no page`, `disable clipaging`,
+`set cli screen-length` — `_RE_CMD_PAGINACAO`). No Huawei essa saída traz o banner de login
+("Info: The max number of VTY users…") e sozinha bastava para gravar como **SUCESSO** um backup de
+~1 KB sem configuração nenhuma. Agora esse caso vira erro ("Backup vazio") e aparece no histórico.
+
 ### KEX para equipamentos de CPU limitada (ZTE etc.)
 
 A conexão `paramiko.SSHClient().connect()` usada pelo backup passa
