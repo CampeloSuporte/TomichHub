@@ -14,6 +14,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   tira a linha da lista e reaplica a pesquisa digitada — o usuário continua na mesma consulta.
   Sessão expirada vira aviso legível em vez de erro genérico.
 
+---
+
 ## [Não publicado] — 2026-10-11 (Quantidade de hosts por função)
 
 ### Adicionado
