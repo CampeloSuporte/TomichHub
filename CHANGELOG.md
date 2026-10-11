@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-11 (Ferramentas de rede nativas no portal do cliente)
+
+### Adicionado
+
+- **Ferramentas de Rede do dashboard do cliente agora são nativas**: Ping, Traceroute, MTR, Teste
+  de Portas e Teste de Qualidade (latência/jitter/perda) rodam a partir do proxy SSH do próprio
+  cliente, com resultado em tabela e indicadores; a Calculadora IP (IPv4/IPv6) é calculada no
+  servidor. Antes os cartões abriam páginas do tomich.com.br num iframe, testando a partir de lá.
+  Ver `docs/FERRAMENTAS_REDE_CLIENTE.md`.
+
+### Segurança
+
+- **Injeção de comando na aba "Testes de Rede"**: `teste_rede_cliente` montava o shell do proxy
+  com o destino digitado sem validar; agora só aceita IP ou hostname.
+
+---
+
 ## [Não publicado] — 2026-10-11 (Página do cliente no celular)
 
 ### Corrigido

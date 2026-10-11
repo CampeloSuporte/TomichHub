@@ -1881,10 +1881,76 @@ def cliente_dashboard(request):
         status__in=['aberto', 'em_andamento']
     ).order_by('-data_criacao')[:5]
 
+    proxy = ProxyServer.objects.filter(cliente=cliente, ativo=True).first()
+
     return render(request, 'cliente_dashboard.html', {
         'cliente': cliente,
         'chamados_abertos': chamados_abertos,
+        'proxy_ferramentas': proxy,
     })
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+def ferramenta_rede_cliente(request):
+    """
+    Ferramentas de rede do dashboard do cliente, executadas a partir do proxy
+    SSH do próprio cliente (ver clientes/ferramentas_rede.py).
+
+    Usuário cliente: usa o cliente vinculado. Equipe (backoffice): informa
+    cliente_id e precisa enxergar o cliente.
+    """
+    from django.core.cache import cache as _cache
+    from . import ferramentas_rede as fr
+
+    try:
+        body = json.loads(request.body or b'{}')
+    except ValueError:
+        return JsonResponse({'error': 'Requisição inválida.'}, status=400)
+    if not isinstance(body, dict):
+        return JsonResponse({'error': 'Requisição inválida.'}, status=400)
+
+    if _perms.is_backoffice(request.user):
+        cliente = Cliente.objects.filter(id=body.get('cliente_id') or 0).first()
+        if not cliente or not _perms.pode_acessar_cliente(request.user, cliente):
+            return JsonResponse({'error': 'Sem permissão.'}, status=403)
+    else:
+        try:
+            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
+        except Cliente.DoesNotExist:
+            return JsonResponse({'error': 'Você não está vinculado a um cliente.'}, status=403)
+
+    ferramenta = body.get('ferramenta')
+    if ferramenta == 'calculadora':
+        try:
+            return JsonResponse(fr.executar('calculadora', body, executor=None))
+        except fr.ErroValidacao as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    proxy = ProxyServer.objects.filter(cliente=cliente, ativo=True).first()
+    if not proxy:
+        return JsonResponse({'error': 'Nenhum proxy ativo cadastrado para este cliente. '
+                                      'Peça ao suporte para configurar o proxy.'}, status=400)
+
+    # Um teste por vez por usuário: cada um abre SSH no proxy do cliente.
+    trava = f'ferramenta_rede:{request.user.id}'
+    if not _cache.add(trava, 1, 150):
+        return JsonResponse({'error': 'Já existe um teste em andamento. Aguarde terminar.'}, status=429)
+    try:
+        resultado = fr.executar(ferramenta, body, executor=lambda cmd, timeout: _ssh_exec(proxy, cmd, timeout))
+    except fr.ErroValidacao as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    except paramiko.AuthenticationException:
+        return JsonResponse({'error': f'O proxy {proxy.nome} recusou o login SSH.'}, status=502)
+    except Exception as e:
+        logger.warning('ferramenta_rede_cliente %s cliente=%s proxy=%s: %s', ferramenta, cliente.id, proxy.id, e)
+        msg = 'tempo esgotado' if isinstance(e, socket.timeout) else (str(e) or e.__class__.__name__)
+        return JsonResponse({'error': f'Falha ao executar no proxy {proxy.nome}: {msg}'}, status=502)
+    finally:
+        _cache.delete(trava)
+
+    resultado['proxy'] = proxy.nome
+    return JsonResponse(resultado)
 
 @login_required(login_url='login')
 @modulo_habilitado_required('backups')
@@ -6260,6 +6326,14 @@ def teste_rede_cliente(request, cliente_id):
     wait            = max(1, min(10,  int(body.get('wait', 3))))
     destino_unico   = (body.get('destino_unico') or '').strip()
     destinos_extras = [d.strip() for d in body.get('destinos_extras', []) if d.strip()]
+
+    # Destinos viram comando de shell no proxy: só IP/hostname.
+    from .ferramentas_rede import validar_destino, ErroValidacao
+    try:
+        destino_unico   = validar_destino(destino_unico) if destino_unico else ''
+        destinos_extras = [validar_destino(d) for d in destinos_extras]
+    except ErroValidacao as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
     # Montar lista final de destinos
     if destino_unico:
