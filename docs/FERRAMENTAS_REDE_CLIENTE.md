@@ -1,8 +1,12 @@
 # Ferramentas de Rede do cliente
 
-Tela inicial do portal do cliente (`/clientes/dashboard/`). Os seis cartões antes
-abriam páginas externas (tomich.com.br) num iframe; desde 11/10/2026 são nativos
-do CRM e os testes **saem da rede do cliente, pelo proxy SSH dele**.
+Aba **Ferramentas** da página do cliente (`/clientes/listar/?id=…`), que substituiu
+a aba "Testes de Rede". As ferramentas são sub-abas; "Conectividade" (lote de
+destinos padrão) e "DNS", que já existiam, continuam como as duas últimas.
+Até 11/10/2026 eram cartões na tela inicial do portal (`/clientes/dashboard/`)
+abrindo páginas do tomich.com.br num iframe; agora são nativas do CRM e os testes
+**saem da rede do cliente, pelo proxy SSH dele**. O dashboard ficou só com o
+botão "Ir para Acessos".
 
 | Ferramenta | Onde roda | Comando no proxy |
 |---|---|---|
@@ -17,15 +21,19 @@ do CRM e os testes **saem da rede do cliente, pelo proxy SSH dele**.
 
 - `clientes/ferramentas_rede.py` — validação, comandos, leitura das saídas e a
   calculadora. Não depende de Django; recebe o executor (`_ssh_exec` no proxy).
-- `views.ferramenta_rede_cliente` — `POST /clientes/dashboard/ferramentas/`
-  (JSON `{ferramenta, destino, ipv, pacotes|ciclos, portas, entrada}`).
-  - Usuário do portal: usa o cliente vinculado (`get_by_usuario_vinculado`).
-  - Equipe (backoffice): manda `cliente_id` e precisa de `pode_acessar_cliente`.
+- `views.ferramenta_rede_cliente` — `POST /clientes/ferramentas-rede/`
+  (JSON `{cliente_id, ferramenta, destino, ipv, pacotes|ciclos, portas, entrada}`).
+  - Equipe (backoffice): precisa de `pode_acessar_cliente`.
+  - Login do portal: o `cliente_id` tem que estar entre os clientes vinculados.
+  - Liberação: mesmo módulo `testes_rede` da aba (rótulo "Ferramentas de Rede");
+    bloqueado responde 403 em JSON.
   - Proxy: primeiro `ProxyServer` ativo do cliente. Sem proxy só a calculadora
     funciona (o cartão avisa).
   - Um teste por vez por usuário (trava `ferramenta_rede:<user_id>` no Redis, 150 s).
-- `clientes/templates/cliente_dashboard.html` — modal único com o formulário de
-  cada ferramenta e o resultado em tabela/indicadores + saída completa.
+- `clientes/templates/_ferramentas_rede.html` — painel incluído na aba
+  (`{% include %}` em listar.html): formulário de cada ferramenta e o resultado em
+  tabela/indicadores + saída completa. `testeRedeSubAba` troca a ferramenta
+  (`frSelecionar`) ou mostra Conectividade/DNS.
 
 ## Segurança
 

@@ -9,7 +9,7 @@ from . import bgp_views as bgpv
 
 urlpatterns = [
     path('dashboard/', views.cliente_dashboard, name='cliente_dashboard'),
-    path('dashboard/ferramentas/', views.ferramenta_rede_cliente, name='ferramenta_rede_cliente'),
+    path('ferramentas-rede/', views.ferramenta_rede_cliente, name='ferramenta_rede_cliente'),
     path('listar/', views.listar_clientes, name='listar_clientes'),
     path('cadastrar/', views.cadastrar_cliente, name='cadastrar_cliente'),
     path('cadastrar_acesso/', views.cadastrar_acesso, name='cadastrar_acesso'),

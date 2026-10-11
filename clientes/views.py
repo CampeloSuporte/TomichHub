@@ -191,6 +191,7 @@ def listar_clientes(request):
         'zabbix_vinculo': zabbix_vinculo,
         'zabbix_configurado': zabbix_configurado,
         'destinos_padrao': DESTINOS_PADRAO,
+        'proxy_ferramentas': proxies.filter(ativo=True).first(),
         'acessos_com_erro_backup': acessos_com_erro_backup,
         'blocos_rpki_invalidos_cliente': blocos_rpki_invalidos_cliente,
         'blocos_irr_invalidos_cliente': blocos_irr_invalidos_cliente,
@@ -1881,12 +1882,9 @@ def cliente_dashboard(request):
         status__in=['aberto', 'em_andamento']
     ).order_by('-data_criacao')[:5]
 
-    proxy = ProxyServer.objects.filter(cliente=cliente, ativo=True).first()
-
     return render(request, 'cliente_dashboard.html', {
         'cliente': cliente,
         'chamados_abertos': chamados_abertos,
-        'proxy_ferramentas': proxy,
     })
 
 
@@ -1894,11 +1892,13 @@ def cliente_dashboard(request):
 @require_http_methods(['POST'])
 def ferramenta_rede_cliente(request):
     """
-    Ferramentas de rede do dashboard do cliente, executadas a partir do proxy
-    SSH do próprio cliente (ver clientes/ferramentas_rede.py).
+    Aba "Ferramentas" da página do cliente (Ping, Traceroute, MTR, Portas,
+    Qualidade, Calculadora IP), executadas a partir do proxy SSH do próprio
+    cliente (ver clientes/ferramentas_rede.py).
 
-    Usuário cliente: usa o cliente vinculado. Equipe (backoffice): informa
-    cliente_id e precisa enxergar o cliente.
+    Recebe cliente_id. Equipe precisa enxergar o cliente; login do portal, estar
+    vinculado a ele. Vale a mesma liberação do módulo "testes_rede" da aba — em
+    JSON, não o redirect do modulo_habilitado_required (o fetch não seguiria).
     """
     from django.core.cache import cache as _cache
     from . import ferramentas_rede as fr
@@ -1910,15 +1910,22 @@ def ferramenta_rede_cliente(request):
     if not isinstance(body, dict):
         return JsonResponse({'error': 'Requisição inválida.'}, status=400)
 
+    try:
+        cliente_id = int(body.get('cliente_id') or 0)
+    except (TypeError, ValueError):
+        cliente_id = 0
     if _perms.is_backoffice(request.user):
-        cliente = Cliente.objects.filter(id=body.get('cliente_id') or 0).first()
+        cliente = Cliente.objects.filter(id=cliente_id).first()
         if not cliente or not _perms.pode_acessar_cliente(request.user, cliente):
             return JsonResponse({'error': 'Sem permissão.'}, status=403)
+        liberado = _perms.is_admin(request.user) or _perms.ferramenta_habilitada(request.user, 'testes_rede')
     else:
-        try:
-            cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
-        except Cliente.DoesNotExist:
-            return JsonResponse({'error': 'Você não está vinculado a um cliente.'}, status=403)
+        cliente = Cliente.objects.filter_by_usuario_vinculado(request.user).filter(id=cliente_id).first()
+        if not cliente:
+            return JsonResponse({'error': 'Sem permissão.'}, status=403)
+        liberado = _perms.portal_pode_usar_ferramenta(request.user, 'testes_rede')
+    if not liberado:
+        return JsonResponse({'error': 'As Ferramentas de Rede não estão liberadas para o seu usuário.'}, status=403)
 
     ferramenta = body.get('ferramenta')
     if ferramenta == 'calculadora':

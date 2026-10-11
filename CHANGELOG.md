@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-11 (Aba Ferramentas na página do cliente)
+
+### Alterado
+
+- **Ferramentas de Rede saíram do dashboard e viraram a aba "Ferramentas"** da página do cliente,
+  no lugar de "Testes de Rede": Ping, Traceroute, MTR, Portas, Qualidade e Calculadora IP como
+  sub-abas, seguidas de Conectividade e DNS (que já existiam). O dashboard do cliente ficou só com
+  o botão "Ir para Acessos". O módulo `testes_rede` passou a se chamar "Ferramentas de Rede" na
+  liberação de módulos (migração `usuario.0015`, só rótulo). O endpoint agora é
+  `POST /clientes/ferramentas-rede/` com `cliente_id` e respeita a liberação do módulo.
+
+---
+
 ## [Não publicado] — 2026-10-11 (Ferramentas de rede nativas no portal do cliente)
 
 ### Adicionado

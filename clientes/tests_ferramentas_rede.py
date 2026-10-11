@@ -123,6 +123,7 @@ class ViewTest(TestCase):
         self.url = reverse('ferramenta_rede_cliente')
 
     def _post(self, **corpo):
+        corpo.setdefault('cliente_id', self.cliente.id)
         return self.client.post(self.url, json.dumps(corpo), content_type='application/json')
 
     def test_ping_roda_no_proxy_do_cliente(self):
@@ -168,10 +169,36 @@ class ViewTest(TestCase):
         self.client.force_login(outro)
         self.assertEqual(self._post(ferramenta='ping', destino='8.8.8.8').status_code, 403)
 
-    def test_dashboard_sem_iframe_externo(self):
+    def test_cliente_de_outro_login_recusado(self):
+        outro = Cliente.objects.create(nome_empresa='Outro', cnpj='66.666.666/0001-66', endereco='R', email='o@example.com')
+        ProxyServer.objects.create(cliente=outro, nome='PX-OUTRO', host='10.9.9.7', usuario='u', senha='s')
+        with mock.patch('clientes.views._ssh_exec') as ssh:
+            r = self._post(ferramenta='ping', destino='8.8.8.8', cliente_id=outro.id)
+        self.assertEqual(r.status_code, 403)
+        ssh.assert_not_called()
+
+    def test_modulo_desabilitado_responde_json(self):
+        with mock.patch('usuario.perms.portal_pode_usar_ferramenta', return_value=False), \
+             mock.patch('clientes.views._ssh_exec') as ssh:
+            r = self._post(ferramenta='ping', destino='8.8.8.8')
+        self.assertEqual(r.status_code, 403)
+        self.assertIn('Ferramentas', r.json()['error'])
+        ssh.assert_not_called()
+
+    def test_dashboard_sem_ferramentas(self):
         html = self.client.get(reverse('cliente_dashboard')).content.decode()
+        self.assertNotIn('Ferramentas de Rede', html)
         self.assertNotIn('tomich.com.br/ping', html)
-        self.assertIn("abrirFerramenta('mtr')", html)
+        self.assertIn('Ir para Acessos', html)
+
+    def test_aba_ferramentas_na_pagina_do_cliente(self):
+        html = self.client.get(reverse('listar_clientes') + f'?id={self.cliente.id}').content.decode()
+        self.assertIn('</i>Ferramentas\n', html)
+        self.assertNotIn('🔬 Testes de Rede', html)
+        for aba in ('ping', 'traceroute', 'mtr', 'portas', 'qualidade', 'calculadora', 'conectividade', 'dns'):
+            self.assertIn(f"testeRedeSubAba(event, '{aba}')", html)
+        self.assertIn('id="fr-painel"', html)
+        self.assertIn(f'FR_CLIENTE_ID = {self.cliente.id};', html)
         self.assertIn('PX-FR', html)
 
 
