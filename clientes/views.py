@@ -1855,10 +1855,10 @@ def toggle_proxy_status(request, proxy_id):
 @login_required(login_url='login')
 def cliente_dashboard(request):
     """
-    Dashboard exclusivo para clientes
-    - Ferramentas de rede
-    - Chamados abertos
-    - Link para acessos
+    Entrada do login do portal do cliente: vai direto para a página de acessos
+    do cliente vinculado. A tela de dashboard (ferramentas + botão "Ir para
+    Acessos") saiu em 11/10/2026 — as ferramentas viraram a aba Ferramentas.
+    A rota continua porque login/atendimento redirecionam para ela.
     """
     if not request.user.is_authenticated:
         return redirect('login')
@@ -1869,23 +1869,13 @@ def cliente_dashboard(request):
     if _perms.is_backoffice(request.user):
         return redirect('cadastrar_cliente')
 
-    # Buscar cliente vinculado
     try:
         cliente = Cliente.objects.get_by_usuario_vinculado(request.user)
     except Cliente.DoesNotExist:
         messages.error(request, 'Você não está vinculado a um cliente.')
         return redirect('login')
 
-    # Buscar chamados abertos do cliente
-    chamados_abertos = Chamado.objects.filter(
-        cliente=cliente,
-        status__in=['aberto', 'em_andamento']
-    ).order_by('-data_criacao')[:5]
-
-    return render(request, 'cliente_dashboard.html', {
-        'cliente': cliente,
-        'chamados_abertos': chamados_abertos,
-    })
+    return redirect(f"{reverse('listar_clientes')}?id={cliente.id}")
 
 
 @login_required(login_url='login')

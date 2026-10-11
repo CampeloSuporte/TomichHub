@@ -185,11 +185,9 @@ class ViewTest(TestCase):
         self.assertIn('Ferramentas', r.json()['error'])
         ssh.assert_not_called()
 
-    def test_dashboard_sem_ferramentas(self):
-        html = self.client.get(reverse('cliente_dashboard')).content.decode()
-        self.assertNotIn('Ferramentas de Rede', html)
-        self.assertNotIn('tomich.com.br/ping', html)
-        self.assertIn('Ir para Acessos', html)
+    def test_dashboard_vai_direto_para_acessos(self):
+        r = self.client.get(reverse('cliente_dashboard'))
+        self.assertRedirects(r, reverse('listar_clientes') + f'?id={self.cliente.id}', fetch_redirect_response=False)
 
     def test_aba_ferramentas_na_pagina_do_cliente(self):
         html = self.client.get(reverse('listar_clientes') + f'?id={self.cliente.id}').content.decode()

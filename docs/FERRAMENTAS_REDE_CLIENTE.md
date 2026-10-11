@@ -5,8 +5,8 @@ a aba "Testes de Rede". As ferramentas são sub-abas; "Conectividade" (lote de
 destinos padrão) e "DNS", que já existiam, continuam como as duas últimas.
 Até 11/10/2026 eram cartões na tela inicial do portal (`/clientes/dashboard/`)
 abrindo páginas do tomich.com.br num iframe; agora são nativas do CRM e os testes
-**saem da rede do cliente, pelo proxy SSH dele**. O dashboard ficou só com o
-botão "Ir para Acessos".
+**saem da rede do cliente, pelo proxy SSH dele**. O dashboard deixou de existir:
+`/clientes/dashboard/` redireciona direto para a página de acessos do cliente.
 
 | Ferramenta | Onde roda | Comando no proxy |
 |---|---|---|
