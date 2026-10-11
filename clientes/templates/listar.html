@@ -275,6 +275,31 @@
         @media (prefers-reduced-motion: reduce) {
             .acesso-escolha, .acesso-escolha-painel { animation: none; }
         }
+
+        /* Alertas de erro (backup/RPKI): caminhos e mensagens sem espaço
+           ("banner[Errno 104]", /opt/crm/media/...) estouravam a caixa. */
+        .alerta-cliente li, .alerta-cliente code { overflow-wrap: anywhere; word-break: break-word; }
+
+        /* Celular (iPhone ~390px) */
+        @media (max-width: 768px) {
+            .main-content > .container-fluid { overflow-x: hidden; }
+            .main-content h4 { font-size: 1.05rem; overflow-wrap: anywhere; }
+            .alerta-cliente { padding: 10px 12px !important; gap: 8px !important; font-size: 14px; }
+
+            /* Abas: uma linha só, rolando na horizontal, em vez de 5 linhas empilhadas */
+            #mainTabs, .server-tabs {
+                flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+                -webkit-overflow-scrolling: touch; scrollbar-width: none;
+            }
+            #mainTabs::-webkit-scrollbar, .server-tabs::-webkit-scrollbar { display: none; }
+            #mainTabs .nav-item, .server-tabs .nav-item { flex: 0 0 auto; }
+            #mainTabs .nav-link, .server-tabs .nav-link { white-space: nowrap; padding: 10px 14px; }
+
+            /* Busca ocupa a linha inteira; botões quebram embaixo sem esmagar o input */
+            .acessos-toolbar { flex-wrap: wrap; justify-content: flex-start !important; }
+            .acessos-toolbar .acessos-busca { flex: 1 1 100%; max-width: none !important; flex-wrap: nowrap; }
+            .acessos-toolbar > .btn { flex: 1 1 auto; white-space: nowrap; }
+        }
     </style>
     {% endblock %}
     {% block content %}
@@ -284,7 +309,7 @@
     <div class="main-content">
         <div class="container-fluid">
             <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
                 <div class="d-flex align-items-center gap-3 flex-wrap">
                     <h4 class="mb-0">{{ cliente.nome_empresa}} CNPJ:{{ cliente.cnpj}}</h4>
                     {% if is_superuser %}
@@ -369,9 +394,9 @@
             </div>
 
             {% if acessos_com_erro_backup %}
-            <div id="alertaErroBackup" style="background:rgba(220,53,69,.12);border:1px solid rgba(220,53,69,.5);border-radius:6px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;">
+            <div id="alertaErroBackup" class="alerta-cliente" style="background:rgba(220,53,69,.12);border:1px solid rgba(220,53,69,.5);border-radius:6px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;">
                 <i class="fas fa-exclamation-triangle" style="color:#dc3545;font-size:18px;margin-top:2px;flex-shrink:0;"></i>
-                <div style="flex:1;">
+                <div style="flex:1;min-width:0;">
                     <strong style="color:#dc3545;">Erro de Backup</strong>
                     — {{ acessos_com_erro_backup|length }} equipamento{{ acessos_com_erro_backup|length|pluralize }} com falha no último backup:
                     <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--text-light);">
@@ -387,9 +412,9 @@
             {% endif %}
 
             {% if blocos_rpki_invalidos_cliente or blocos_irr_invalidos_cliente %}
-            <div id="alertaErroRpkiIrr" style="background:rgba(210,153,34,.12);border:1px solid rgba(210,153,34,.5);border-radius:6px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;">
+            <div id="alertaErroRpkiIrr" class="alerta-cliente" style="background:rgba(210,153,34,.12);border:1px solid rgba(210,153,34,.5);border-radius:6px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;">
                 <i class="fas fa-exclamation-triangle" style="color:#d29922;font-size:18px;margin-top:2px;flex-shrink:0;"></i>
-                <div style="flex:1;">
+                <div style="flex:1;min-width:0;">
                     <strong style="color:#d29922;">Erro de Validação RPKI/IRR</strong>
                     — {{ total_blocos_rpki_irr_invalidos_cliente }} bloco{{ total_blocos_rpki_irr_invalidos_cliente|pluralize }} de IP com problema:
                     <ul style="margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--text-light);">
@@ -481,8 +506,8 @@
 
         <!-- ABA ACESSOS -->
             <div id="tab-acessos" class="tab-content-main" style="display: {% if is_admin_puro or modulos_habilitados.acessos %}block{% else %}none{% endif %};">
-                <div class="d-flex justify-content-end gap-2 mb-3 align-items-center">
-                    <div class="input-group input-group-sm" style="max-width:280px;">
+                <div class="d-flex justify-content-end gap-2 mb-3 align-items-center acessos-toolbar">
+                    <div class="input-group input-group-sm acessos-busca" style="max-width:280px;">
                         <span class="input-group-text" style="background:var(--card-bg);border-color:var(--border);color:var(--text-muted);">
                             <i class="fas fa-search"></i>
                         </span>
