@@ -1819,10 +1819,7 @@ function renderizarBackups(backups) {
         }
         
         {% if not is_cliente %}
-        html += `<form method="POST" action="/clientes/backups/deletar/${backup.id}/" style="display: inline;" onsubmit="event.preventDefault()">`;
-        html += '<input type="hidden" name="csrfmiddlewaretoken" value="' + getCookie('csrftoken') + '">';
-        html += '<button type="submit" class="btn-action btn-delete" title="Excluir" onclick="uiConfirm({ titulo: \'Excluir Backup\', msg: \'Tem certeza que deseja excluir este backup?\', icone: \'fas fa-trash\', iconeCor: \'#e06060\', btnLabel: \'Excluir\' }).then(ok => { if (ok) this.closest(\'form\').submit() })"><i class="fas fa-trash"></i></button>';
-        html += '</form>';
+        html += `<button type="button" class="btn-action btn-delete" title="Excluir" onclick="excluirBackup(${backup.id}, this)"><i class="fas fa-trash"></i></button>`;
         {% endif %}
         
         html += '</div></td>';

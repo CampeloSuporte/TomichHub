@@ -4077,13 +4077,17 @@ def download_backup(request, backup_id):
 @login_required(login_url='login')
 @modulo_habilitado_required('backups')
 def deletar_backup(request, backup_id):
-    """Deleta backup"""
+    """Deleta backup. Chamado via fetch (responde JSON, a tela não recarrega e a
+    pesquisa da aba Backups continua) ou por form comum (redireciona)."""
+    ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     if request.method == 'POST':
         cliente_id = None
         try:
             backup = get_object_or_404(BackupLog, id=backup_id)
 
             if not _perms.pode_acessar_cliente(request.user, backup.cliente):
+                if ajax:
+                    return JsonResponse({'success': False, 'error': 'Sem permissão'}, status=403)
                 messages.error(request, 'Sem permissão')
                 return redirect('listar_clientes')
 
@@ -4098,10 +4102,14 @@ def deletar_backup(request, backup_id):
             # Deletar registro
             backup.delete()
 
+            if ajax:
+                return JsonResponse({'success': True})
             messages.success(request, 'Backup excluído!')
             return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
 
         except Exception as e:
+            if ajax:
+                return JsonResponse({'success': False, 'error': str(e)}, status=400)
             messages.error(request, f'Erro: {str(e)}')
             return redirect(reverse('listar_clientes') + (f'?id={cliente_id}' if cliente_id else ''))
 
