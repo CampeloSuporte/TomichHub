@@ -276,6 +276,15 @@
             .acesso-escolha, .acesso-escolha-painel { animation: none; }
         }
 
+        /* Quantidade de hosts na aba de cada função (CGNAT 2, BORDA 5...) */
+        .funcao-qtd {
+            display: inline-block; min-width: 20px; margin-left: 6px; padding: 1px 6px;
+            border-radius: 10px; background: rgba(139,148,158,.15); color: var(--text-muted);
+            font-size: 10px; font-weight: 600; line-height: 16px; text-align: center;
+            letter-spacing: 0; font-variant-numeric: tabular-nums; vertical-align: 1px;
+        }
+        #funcaoTabs .nav-link.active .funcao-qtd { background: rgba(88,166,255,.18); color: var(--cyan, #58a6ff); }
+
         /* Alertas de erro (backup/RPKI): caminhos e mensagens sem espaço
            ("banner[Errno 104]", /opt/crm/media/...) estouravam a caixa. */
         .alerta-cliente li, .alerta-cliente code { overflow-wrap: anywhere; word-break: break-word; }
@@ -558,7 +567,7 @@
                         <a class="nav-link {% if forloop.first %}active{% endif %}" href="#" 
                         onclick="mostrarFuncao(event, '{{ grupo.grouper }}')">
                             <!-- ✅ MUDANÇA 2: Exibir nome da função a partir do primeiro item do grupo -->
-                            {{ grupo.list.0.funcao }}
+                            {{ grupo.list.0.funcao|default:'Sem função' }}<span class="funcao-qtd" title="{{ grupo.list|length }} host{{ grupo.list|length|pluralize }}">{{ grupo.list|length }}</span>
                         </a>
                     </li>
                     {% endfor %}

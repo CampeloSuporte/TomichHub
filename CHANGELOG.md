@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-11 (Quantidade de hosts por função)
+
+### Adicionado
+
+- **Contador de hosts nas abas de função** da página do cliente (CGNAT, BORDA, BRAS...): cada aba
+  mostra quantos acessos tem; a aba ativa destaca o número em azul.
+
+---
+
 ## [Não publicado] — 2026-10-11 (Login do cliente vai direto para os acessos)
 
 ### Removido
