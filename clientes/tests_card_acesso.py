@@ -232,3 +232,14 @@ class BotaoAutomacaoBgpTest(_Base):
 
         InstanciaFerramenta.objects.create(instancia=instancia, ferramenta='bgp', habilitado=True)
         self.assertIn(f"/clientes/bgp/{self.acesso.id}/", self._html())
+
+
+class QuantidadePorFuncaoTest(_Base):
+    def test_aba_da_funcao_mostra_quantidade_de_hosts(self):
+        funcao = Funcao_equipamento.objects.create(descricao='CGNAT')
+        self.acesso.funcao = funcao
+        self.acesso.save()
+        Acesso.objects.create(cliente=self.cliente, tipo='CGNAT-2', host='200.200.200.11', porta=22,
+                              protocolo='SSH', usuario='a', senha='b', funcao=funcao)
+        html = self._html()
+        self.assertIn('CGNAT<span class="funcao-qtd" title="2 hosts">2</span>', html)
