@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-11 (Excluir backup sem recarregar a página)
+
+### Corrigido
+
+- **Excluir backup na aba Backups** não recarrega mais a página: o botão chama
+  `/clientes/backups/deletar/<id>/` via fetch (responde JSON quando vem com `X-Requested-With`),
+  tira a linha da lista e reaplica a pesquisa digitada — o usuário continua na mesma consulta.
+  Sessão expirada vira aviso legível em vez de erro genérico.
+
 ## [Não publicado] — 2026-10-11 (Quantidade de hosts por função)
 
 ### Adicionado

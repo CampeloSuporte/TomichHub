@@ -8751,13 +8751,10 @@ function getCsrfToken(){
             // Excluir — apenas para admins
             {% if not is_cliente %}
             html += `
-                <form method="POST" action="/clientes/backups/deletar/${backup.id}/" style="display:inline;" onsubmit="event.preventDefault()">
-                    <input type="hidden" name="csrfmiddlewaretoken" value="${getCookie('csrftoken')}">
-                    <button type="submit" class="btn btn-sm" style="background:rgba(220,53,69,.12);border:1px solid rgba(220,53,69,.4);color:#dc3545;padding:4px 8px;" title="Excluir backup"
-                        onclick="uiConfirm({titulo:'Excluir Backup',msg:'Tem certeza que deseja excluir este backup?',icone:'fas fa-trash',iconeCor:'#e06060',btnLabel:'Excluir'}).then(ok=>{if(ok)this.closest('form').submit()})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </form>
+                <button type="button" class="btn btn-sm" style="background:rgba(220,53,69,.12);border:1px solid rgba(220,53,69,.4);color:#dc3545;padding:4px 8px;" title="Excluir backup"
+                    onclick="excluirBackup(${backup.id}, this)">
+                    <i class="fas fa-trash"></i>
+                </button>
             `;
             {% endif %}
 
@@ -8775,6 +8772,38 @@ function getCsrfToken(){
         `;
         
         container.innerHTML = html;
+    }
+
+
+    /**
+    * Exclui o backup sem recarregar a página: tira da lista e reaplica a
+    * pesquisa digitada, para o usuário continuar na mesma consulta.
+    */
+    async function excluirBackup(backupId, btn) {
+        const ok = await uiConfirm({titulo:'Excluir Backup',msg:'Tem certeza que deseja excluir este backup?',icone:'fas fa-trash',iconeCor:'#e06060',btnLabel:'Excluir'});
+        if (!ok) return;
+        if (btn) btn.disabled = true;
+        try {
+            const r = await fetch(`/clientes/backups/deletar/${backupId}/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest'},
+            });
+            // Sessão expirada: o @login_required devolve 302 para o login (HTML)
+            if (r.redirected || !(r.headers.get('content-type') || '').includes('json')) {
+                throw new Error('Sessão expirada — faça login novamente');
+            }
+            const data = await r.json();
+            if (!data.success) throw new Error(data.error || 'Erro ao excluir');
+
+            backupsOriginais = backupsOriginais.filter(b => b.id !== backupId);
+            _backupMap.delete(backupId);
+            const pesquisa = document.getElementById('pesquisaBackup');
+            filtrarBackups(pesquisa ? pesquisa.value : '');
+            uiToast('Backup excluído', 'ok');
+        } catch (e) {
+            if (btn) btn.disabled = false;
+            uiToast(e.message, 'erro');
+        }
     }
 
 
