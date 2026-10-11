@@ -19,7 +19,7 @@ class UsuarioModulo(models.Model):
         ('rpki_irr', 'RPKI/IRR'),
         ('monitoramento', 'Monitoramento'),
         ('documentacao', 'Documentação de Rede'),
-        ('testes_rede', 'Testes de Rede'),
+        ('testes_rede', 'Ferramentas de Rede'),
         ('tarefas', 'Tarefas'),
     ]
 
@@ -228,7 +228,7 @@ class InstanciaFerramenta(models.Model):
         ('ipam', 'IPAM'),
         ('scripts', 'Scripts'),
         ('bgp', 'BGP'),
-        ('testes_rede', 'Testes de Rede'),
+        ('testes_rede', 'Ferramentas de Rede'),
         ('lg', 'Pesquisa LG'),
         ('geoip', 'Geolocalização IP'),
         ('firmware', 'Firmware'),

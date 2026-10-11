@@ -491,7 +491,7 @@
                 {% if is_admin_puro or modulos_habilitados.testes_rede %}
                 <li class="nav-item">
                     <a class="nav-link" onclick="trocarAba(event, 'testes-rede')">
-                        🔬 Testes de Rede
+                        <i class="fas fa-tools me-1"></i>Ferramentas
                     </a>
                 </li>
                 {% endif %}
@@ -5782,16 +5782,22 @@ function getCsrfToken(){
                 <!-- Cabeçalho -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
-                        <h5 class="mb-1" style="color: var(--primary-green);">🔬 Testes de Rede</h5>
+                        <h5 class="mb-1" style="color: var(--primary-green);"><i class="fas fa-tools me-2"></i>Ferramentas de Rede</h5>
                         <small style="color: var(--text-muted);">Diagnósticos executados via proxy SSH do cliente</small>
                     </div>
                 </div>
 
                 <!-- Sub-Tabs internas -->
                 <ul class="nav server-tabs mb-4" id="testeRedeSubTabs">
+                    <li class="nav-item"><a class="nav-link active" href="#" onclick="testeRedeSubAba(event, 'ping')"><i class="fas fa-wifi me-1"></i>Ping</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" onclick="testeRedeSubAba(event, 'traceroute')"><i class="fas fa-sitemap me-1"></i>Traceroute</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" onclick="testeRedeSubAba(event, 'mtr')"><i class="fas fa-chart-line me-1"></i>MTR</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" onclick="testeRedeSubAba(event, 'portas')"><i class="fas fa-network-wired me-1"></i>Portas</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" onclick="testeRedeSubAba(event, 'qualidade')"><i class="fas fa-signal me-1"></i>Qualidade</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" onclick="testeRedeSubAba(event, 'calculadora')"><i class="fas fa-calculator me-1"></i>Calculadora IP</a></li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="#" onclick="testeRedeSubAba(event, 'conectividade')">
-                            📡 Testes de Conectividade
+                        <a class="nav-link" href="#" onclick="testeRedeSubAba(event, 'conectividade')">
+                            📡 Conectividade
                         </a>
                     </li>
                     <li class="nav-item">
@@ -5801,8 +5807,11 @@ function getCsrfToken(){
                     </li>
                 </ul>
 
+                <!-- ─── Sub-abas: Ping, Traceroute, MTR, Portas, Qualidade, Calculadora ─── -->
+                {% include '_ferramentas_rede.html' %}
+
                 <!-- ─── Sub-aba: Conectividade ───────────────────────────────── -->
-                <div id="tr-sub-conectividade">
+                <div id="tr-sub-conectividade" style="display:none;">
                     <div class="alert mb-3" style="background:rgba(88,166,255,.08);border-left:3px solid var(--accent-cyan);color:var(--text-light);">
                         <i class="fas fa-info-circle me-2" style="color:var(--accent-cyan)"></i>
                         Executa <strong>ping</strong> e <strong>MTR / traceroute</strong> via proxy SSH para os destinos selecionados.
@@ -11190,7 +11199,10 @@ function getCsrfToken(){
     function testeRedeSubAba(event, aba) {
         event.preventDefault();
         document.querySelectorAll('#testeRedeSubTabs .nav-link').forEach(el => el.classList.remove('active'));
-        event.target.classList.add('active');
+        event.currentTarget.classList.add('active');
+        const ferramenta = typeof FR_DEF !== 'undefined' && aba in FR_DEF;
+        document.getElementById('fr-painel').style.display = ferramenta ? '' : 'none';
+        if (ferramenta) frSelecionar(aba);
         document.getElementById('tr-sub-conectividade').style.display = aba === 'conectividade' ? '' : 'none';
         document.getElementById('tr-sub-dns').style.display = aba === 'dns' ? '' : 'none';
     }
