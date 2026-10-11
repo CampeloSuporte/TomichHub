@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-11 (Página do cliente no celular)
+
+### Corrigido
+
+- **Página do cliente deformada no iPhone**: os alertas de erro de backup e RPKI/IRR quebram
+  caminhos e mensagens longas em vez de estourar a caixa; as abas principais e as de função
+  (CGNAT, BORDA...) ficam numa linha só com rolagem horizontal; a busca de acessos ocupa a linha
+  inteira e os botões (Adicionar, Importar Host, Auditoria, Sincronizar Zabbix) quebram embaixo
+  sem esmagar o campo.
+- **Toast "Operação concluída" transparente**: o tema genérico `.alert-success { background: …08
+  !important }` sobrescrevia o fundo do `.terminal-alert` e o texto da página aparecia por trás.
+  Ajuste feito em `static/css/style.css` (servido direto pelo nginx, fora do git).
+
+---
+
 ## [Não publicado] — 2026-10-10 (Backup Huawei falhava calado)
 
 ### Corrigido
