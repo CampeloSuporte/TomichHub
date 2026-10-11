@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-11 (Login do cliente vai direto para os acessos)
+
+### Removido
+
+- **Tela de dashboard do cliente**: `/clientes/dashboard/` agora redireciona direto para a página de
+  acessos do cliente vinculado (`/clientes/listar/?id=…`); a rota continua porque o login e o
+  atendimento apontam para ela. Saiu também o botão "Voltar ao Dashboard" da barra do cliente.
+
+---
+
 ## [Não publicado] — 2026-10-11 (Aba Ferramentas na página do cliente)
 
 ### Alterado
