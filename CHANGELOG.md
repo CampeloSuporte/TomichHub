@@ -23,9 +23,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Corrigido
 
-- Hermes do atendimento (`198.18.1.2`, rede do servidor do Hermes) caía no túnel da Conecta ISP,
-  que declara `198.18.1.0/24`, e recebia RST. A URL do Hermes passou a ser o IP público
-  `45.235.72.113:8642`, que sai pela internet.
+- Hermes do atendimento (`http://198.18.1.2:8642/v1`) caía no túnel da Conecta ISP, que declara
+  `198.18.1.0/24`, e recebia RST. Com a tabela main livre de redes de cliente, o CRM chega no
+  Hermes pelo gateway do servidor (`eth0`), sem passar por VPN.
 
 ## [Não publicado] — 2026-10-11 (Hermes Agent no atendimento)
 
