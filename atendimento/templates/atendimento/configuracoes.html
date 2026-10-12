@@ -38,6 +38,11 @@
 .toggle-slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
 input:checked + .toggle-slider{background:var(--active)}
 input:checked + .toggle-slider:before{transform:translateX(18px)}
+.cfg-info{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;margin:2px 0 14px;border:1px solid var(--border);border-left:3px solid var(--active);border-radius:6px;background:rgba(255,255,255,0.02);font-size:12px;line-height:1.6;color:var(--muted)}
+.cfg-info i{color:var(--active);margin-top:3px}
+.cfg-info b{color:var(--text);font-weight:600}
+.cfg-info code{font-family:'JetBrains Mono',monospace;font-size:11px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:var(--active);white-space:nowrap}
+.cfg-info ul{margin:4px 0 0;padding-left:16px}
 .cfg-fb{margin-top:8px;font-size:12px;display:none;padding:6px 10px;border-radius:6px}
 .cfg-fb.ok{background:rgba(34,197,94,.1);color:#22c55e;display:block}
 .cfg-fb.err{background:rgba(239,68,68,.1);color:#ef4444;display:block}
@@ -69,8 +74,8 @@ input:checked + .toggle-slider:before{transform:translateX(18px)}
     <div class="cfg-section">
       <h3><i class="fas fa-robot" style="color:var(--active)"></i> Configuração da IA</h3>
 
-      {# Falha da IA fica visível aqui: sem isso, uma conta sem crédito passa
-         despercebida e os chamados vão fechando com resolução de fallback. #}
+      {% comment %}Falha da IA fica visível aqui: sem isso, uma conta sem crédito passa
+         despercebida e os chamados vão fechando com resolução de fallback.{% endcomment %}
       {% if ai_last_error %}
       <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;margin-bottom:14px;
                   border:1px solid #e0a060;border-radius:6px;background:rgba(224,160,96,.08)">
@@ -150,11 +155,22 @@ input:checked + .toggle-slider:before{transform:translateX(18px)}
           <label>Modelo (Hermes)</label>
           <input type="text" class="cfg-input" id="aiHermesModel" value="{{ ai_hermes_model }}">
         </div>
-        <p style="color:var(--muted);font-size:12px;margin:0 0 12px">
-          O Hermes usa o modelo configurado no próprio servidor dele (OpenRouter, Gemini…).
-          No atendimento: escreva <b>@hermes</b> num comentário interno para perguntar sobre o chamado,
-          ou <b>"Hermes, fechar o atendimento"</b> para encerrar com a resolução redigida por ele.
-        </p>
+        <div class="cfg-info">
+          <i class="fas fa-circle-info"></i>
+          <div>
+            O Hermes responde com o modelo configurado no próprio servidor dele (OpenRouter, Gemini…).
+            No chat do atendimento, marque <b>Comentário Interno</b> e escreva:
+            <ul>
+              <li><code>@hermes o que já foi verificado?</code> — responde como nota interna, o cliente não vê.</li>
+              <li><code>Hermes, fechar o atendimento</code> — encerra o chamado com a resolução redigida por ele.</li>
+            </ul>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+          <button class="btn-cyber" id="btnTestHermes" type="button"><i class="fas fa-plug"></i> Testar conexão</button>
+          <span style="font-size:11px;color:var(--muted)">Testa com os valores digitados, sem precisar salvar.</span>
+        </div>
+        <div class="cfg-fb" id="hermesTestResult" style="margin:-6px 0 14px"></div>
       </div>
 
       <div class="cfg-field">
@@ -438,6 +454,7 @@ input:checked + .toggle-slider:before{transform:translateX(18px)}
   var CSRF = '{{ csrf_token }}';
   var PERM_MAP = {{ perm_map_json|safe }};
   var URL_SETTINGS   = '{% url "atendimento:api_settings" %}';
+  var URL_IA_TESTAR  = '{% url "atendimento:api_ia_testar_hermes" %}';
   var URL_TAGS       = '{% url "atendimento:api_tags_list" %}';
   var URL_CATS       = '{% url "atendimento:api_categories_list" %}';
   var URL_QM         = '{% url "atendimento:api_quick_messages_list" %}';
@@ -497,6 +514,18 @@ input:checked + .toggle-slider:before{transform:translateX(18px)}
     document.getElementById('aiOpenaiFields').style.display = provider==='openai' ? '' : 'none';
     document.getElementById('aiHermesFields').style.display = provider==='hermes' ? '' : 'none';
   }
+  document.getElementById('btnTestHermes').addEventListener('click',function(){
+    var btn=this; setLoading(btn,true);
+    fb('hermesTestResult',true,'Testando… o Hermes pode levar alguns segundos.');
+    post(URL_IA_TESTAR,{
+      url:document.getElementById('aiHermesUrl').value.trim(),
+      api_key:document.getElementById('aiHermesApiKey').value,
+      model:document.getElementById('aiHermesModel').value.trim()||'hermes-agent'
+    })
+      .then(function(d){fb('hermesTestResult',!!d.ok,d.ok?('Conectado — resposta: '+d.resposta):('Sem comunicação: '+(d.error||'erro desconhecido')));})
+      .catch(function(){fb('hermesTestResult',false,'Falha ao chamar o teste.');})
+      .finally(function(){setLoading(btn,false);});
+  });
   document.getElementById('eyeBtnHermes').addEventListener('click',function(){
     var i=document.getElementById('aiHermesApiKey'),ic=document.getElementById('eyeIconHermes');
     if(i.type==='password'){i.type='text';ic.className='fas fa-eye-slash';}
