@@ -669,17 +669,58 @@ class NotaInternaTest(TestCase):
 
         mock_delay.assert_not_called()
 
+    @mock.patch('atendimento.tasks.responder_nota_interna_ia.delay')
     @mock.patch('atendimento.tasks.responder_tomichinho.delay')
     @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
     @mock.patch('atendimento.services.EvolutionAPIClient')
-    def test_tomichinho_em_nota_interna_nao_dispara_ia(self, mock_client_cls, mock_tarefa, mock_tomichinho):
+    def test_tomichinho_em_nota_interna_responde_so_como_nota(
+            self, mock_client_cls, mock_tarefa, mock_tomichinho, mock_nota):
         # "tomichinho" numa nota interna não pode gerar resposta automática
-        # pro WhatsApp — só "abrir tarefa" é tratado em nota interna.
+        # pro WhatsApp — a resposta vem como outra nota interna.
         ConversationService.send_message(
             self.conversation, 'tomichinho, o que você acha disso?', self.agent, is_internal=True)
 
         mock_tomichinho.assert_not_called()
         mock_tarefa.assert_not_called()
+        mock_nota.assert_called_once_with(
+            str(self.conversation.id), 'tomichinho, o que você acha disso?', 'Tomichinho')
+
+    @mock.patch('atendimento.tasks.responder_nota_interna_ia.delay')
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_hermes_em_nota_interna_dispara_resposta_interna(self, mock_client_cls, mock_nota):
+        ConversationService.send_message(
+            self.conversation, '@Hermes o que já foi verificado?', self.agent, is_internal=True)
+
+        mock_nota.assert_called_once_with(
+            str(self.conversation.id), '@Hermes o que já foi verificado?', 'Hermes')
+
+    @mock.patch('atendimento.tasks.responder_nota_interna_ia.delay')
+    @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_hermes_fechar_atendimento_fecha_sem_resposta_extra(
+            self, mock_client_cls, mock_fechar, mock_nota):
+        ConversationService.send_message(
+            self.conversation, 'Hermes, fechar o atendimento', self.agent, is_internal=True)
+
+        mock_fechar.assert_called_once_with(
+            str(self.conversation.id), 'Hermes, fechar o atendimento', True)
+        mock_nota.assert_not_called()
+
+    @mock.patch('atendimento.tasks.responder_nota_interna_ia.delay')
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_hermes_na_caixa_normal_nao_dispara_resposta(self, mock_client_cls, mock_nota):
+        mock_client_cls.return_value.send_text.return_value = (True, 'remote-1')
+        ConversationService.send_message(self.conversation, 'hermes, tudo certo?', self.agent)
+
+        mock_nota.assert_not_called()
+
+    @mock.patch('atendimento.tasks.responder_nota_interna_ia.delay')
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_palavra_que_so_contem_hermes_nao_dispara(self, mock_client_cls, mock_nota):
+        ConversationService.send_message(
+            self.conversation, 'cliente usa hermeskit no roteador', self.agent, is_internal=True)
+
+        mock_nota.assert_not_called()
 
     @mock.patch('atendimento.services.EvolutionAPIClient')
     def test_api_send_message_com_is_internal_salva_como_nota(self, mock_client_cls):
@@ -1254,6 +1295,90 @@ class GatilhoAgenteIATest(TestCase):
     def test_mencionar_uma_tarefa_sem_pedir_para_criar_nao_dispara(self, mock_tomichinho, mock_tarefa):
         self._webhook('essa tarefa já está atrasada, alguém viu?', 'M5')
         mock_tarefa.assert_not_called()
+
+
+class ResponderNotaInternaIATaskTest(TestCase):
+    """@hermes num comentário interno: a resposta fica só no CRM."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai', return_value='Já foi trocado o cabo da porta 3.')
+    def test_resposta_vira_nota_interna_e_nao_vai_ao_whatsapp(self, mock_call_ai, mock_client_cls):
+        from atendimento.tasks import responder_nota_interna_ia
+
+        resultado = responder_nota_interna_ia(
+            str(self.conversation.id), '@hermes o que já foi feito?', 'Hermes')
+
+        self.assertTrue(resultado['ok'])
+        mock_client_cls.return_value.send_text.assert_not_called()
+        msg = Message.objects.get(content='Já foi trocado o cabo da porta 3.')
+        self.assertEqual(msg.sender_type, 'internal')
+        self.assertEqual(msg.sender_name, 'Hermes')
+        self.assertTrue(msg.is_internal)
+        self.assertEqual(mock_call_ai.call_args.kwargs['sessao'], self.conversation.id)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai', return_value=None)
+    def test_sem_resposta_avisa_na_nota_interna(self, mock_call_ai, mock_client_cls):
+        from atendimento.tasks import responder_nota_interna_ia
+
+        responder_nota_interna_ia(str(self.conversation.id), '@hermes?', 'Hermes')
+
+        msg = Message.objects.get(sender_name='Hermes')
+        self.assertTrue(msg.content.startswith('⚠️ Hermes não respondeu'))
+        mock_client_cls.return_value.send_text.assert_not_called()
+
+
+class HermesProviderTest(TestCase):
+    """Hermes Agent como provedor em call_ai (API compatível com a OpenAI)."""
+
+    def _resp(self, texto):
+        r = mock.Mock()
+        r.choices = [mock.Mock(message=mock.Mock(content=texto))]
+        return r
+
+    @mock.patch('openai.OpenAI')
+    def test_chama_api_server_do_hermes(self, mock_openai):
+        from atendimento.models import SystemSetting
+        from atendimento.ai import call_ai
+        SystemSetting.set('ai_provider', 'hermes')
+        SystemSetting.set('ai_hermes_url', 'http://10.0.0.5:8642')
+        SystemSetting.set('ai_hermes_api_key', 'chave')
+        mock_openai.return_value.chat.completions.create.return_value = self._resp('ok do hermes')
+
+        self.assertEqual(call_ai('sys', 'user', sessao='abc'), 'ok do hermes')
+
+        kwargs = mock_openai.call_args.kwargs
+        self.assertEqual(kwargs['base_url'], 'http://10.0.0.5:8642/v1')
+        self.assertEqual(kwargs['api_key'], 'chave')
+        self.assertEqual(kwargs['default_headers'], {'X-Hermes-Session-Key': 'crm-abc'})
+        create = mock_openai.return_value.chat.completions.create.call_args.kwargs
+        self.assertEqual(create['model'], 'hermes-agent')
+
+    def test_url_normalizada(self):
+        from atendimento.ai import hermes_base_url
+        for url in ('http://h:8642', 'http://h:8642/', 'http://h:8642/v1',
+                    'http://h:8642/v1/chat/completions'):
+            self.assertEqual(hermes_base_url(url), 'http://h:8642/v1')
+
+    def test_hermes_sem_url_retorna_none_e_registra_erro(self):
+        from atendimento.models import SystemSetting
+        from atendimento.ai import call_ai, ultimo_erro_ia
+        SystemSetting.set('ai_provider', 'hermes')
+        self.assertIsNone(call_ai('sys', 'user'))
+        self.assertIn('Hermes', ultimo_erro_ia())
+
+    @mock.patch('atendimento.ai._call_hermes', return_value=(None, 'fora do ar'))
+    @mock.patch('atendimento.ai._call_claude', return_value=('resposta claude', None))
+    def test_hermes_fora_cai_no_claude_configurado(self, mock_claude, mock_hermes):
+        from atendimento.models import SystemSetting
+        from atendimento.ai import call_ai
+        SystemSetting.set('ai_provider', 'hermes')
+        SystemSetting.set('ai_hermes_url', 'http://h:8642')
+        SystemSetting.set('ai_api_key', 'sk-ant')
+        self.assertEqual(call_ai('sys', 'user'), 'resposta claude')
 
 
 class ResponderTomichinhoTaskTest(TestCase):

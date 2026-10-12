@@ -1,5 +1,6 @@
 """Cliente fino para a IA configurada em Configurações → Integração IA
-(SystemSetting: ai_provider/ai_api_key/ai_model/ai_openai_api_key/ai_openai_model).
+(SystemSetting: ai_provider/ai_api_key/ai_model/ai_openai_api_key/ai_openai_model
+e, para o Hermes Agent, ai_hermes_url/ai_hermes_api_key/ai_hermes_model).
 
 Só chamada síncrona de turno único (sem tools, sem streaming) — usado pelo
 agente "Tomichinho" do atendimento (resumo de chamados parados, resposta a
@@ -25,7 +26,14 @@ logger = logging.getLogger(__name__)
 AI_ERRO_KEY = 'ai_last_error'
 AI_ERRO_AT_KEY = 'ai_last_error_at'
 
-_NOME_PROVEDOR = {'claude': 'Claude', 'openai': 'ChatGPT'}
+_NOME_PROVEDOR = {'claude': 'Claude', 'openai': 'ChatGPT', 'hermes': 'Hermes'}
+PROVEDORES = ('claude', 'openai', 'hermes')
+
+# O Hermes é um agente (roda ferramentas no servidor dele antes de responder),
+# não um modelo cru: 30s, o padrão dos outros provedores, corta resposta boa.
+# Sem passar muito disso: o worker do Celery roda com concurrency=1 e fica
+# parado esperando enquanto o Hermes pensa.
+_TIMEOUT_PADRAO = {'claude': 30, 'openai': 30, 'hermes': 90}
 
 
 def ultimo_erro_ia():
@@ -84,7 +92,8 @@ def _motivo_legivel(e):
     return txt[:200]
 
 
-def call_ai(system_prompt, user_prompt, max_tokens=600, timeout=30, max_retries=2):
+def call_ai(system_prompt, user_prompt, max_tokens=600, timeout=None, max_retries=2,
+            sessao=None):
     """Texto da IA, ou None se ela não está configurada ou falhou.
 
     Tenta o provedor escolhido em Configurações e, se ele falhar, o OUTRO
@@ -94,17 +103,31 @@ def call_ai(system_prompt, user_prompt, max_tokens=600, timeout=30, max_retries=
 
     `timeout`/`max_retries` valem por provedor. Quem chama de dentro de uma
     requisição HTTP (ex.: documentos de rede) precisa baixá-los para caber no
-    timeout do gunicorn; as tasks do Celery ficam com o padrão do SDK.
+    timeout do gunicorn; as tasks do Celery ficam com o padrão de cada
+    provedor (`_TIMEOUT_PADRAO`).
+
+    `sessao` só é usado pelo Hermes (header X-Hermes-Session-Key): um id
+    estável (ex.: o do chamado) pra memória dele não misturar conversas.
     """
     from .models import SystemSetting
 
     provider = (SystemSetting.get('ai_provider', 'claude') or 'claude').strip()
-    ordem = ['openai', 'claude'] if provider == 'openai' else ['claude', 'openai']
+    if provider not in PROVEDORES:
+        provider = 'claude'
+    ordem = [provider] + [p for p in PROVEDORES if p != provider]
+    chamadas = {'claude': _call_claude, 'openai': _call_openai, 'hermes': _call_hermes}
 
     motivos = []
     for p in ordem:
-        chamada = _call_openai if p == 'openai' else _call_claude
-        texto, erro = chamada(system_prompt, user_prompt, max_tokens, timeout, max_retries)
+        if p != provider and not _configurado(p):
+            # Fallback só pra quem tem credencial salva — "Hermes: sem URL"
+            # no aviso de erro de quem nunca usou Hermes seria só ruído.
+            continue
+        t = timeout if timeout is not None else _TIMEOUT_PADRAO[p]
+        if p == 'hermes':
+            texto, erro = _call_hermes(system_prompt, user_prompt, max_tokens, t, max_retries, sessao)
+        else:
+            texto, erro = chamadas[p](system_prompt, user_prompt, max_tokens, t, max_retries)
         if texto:
             if p != provider:
                 logger.warning(
@@ -118,6 +141,14 @@ def call_ai(system_prompt, user_prompt, max_tokens=600, timeout=30, max_retries=
     logger.error(f"IA indisponível — {resumo}")
     _registrar_erro(resumo)
     return None
+
+
+def _configurado(provedor):
+    from .models import SystemSetting
+    if provedor == 'hermes':
+        return bool(SystemSetting.get('ai_hermes_url', '').strip())
+    chave = 'ai_openai_api_key' if provedor == 'openai' else 'ai_api_key'
+    return bool(SystemSetting.get(chave, '').strip())
 
 
 def _call_claude(system_prompt, user_prompt, max_tokens, timeout=30, max_retries=2):
@@ -168,4 +199,54 @@ def _call_openai(system_prompt, user_prompt, max_tokens, timeout=30, max_retries
         return (texto, None) if texto else (None, 'resposta vazia')
     except Exception as e:
         logger.warning(f"Falha ao chamar OpenAI (agente IA atendimento): {e}")
+        return None, _motivo_legivel(e)
+
+
+def hermes_base_url(url):
+    """Aceita a URL como a pessoa cola ("http://host:8642", ".../v1",
+    ".../v1/chat/completions") e devolve a base que o SDK da OpenAI espera."""
+    url = (url or '').strip().rstrip('/')
+    for sufixo in ('/chat/completions', '/responses'):
+        if url.endswith(sufixo):
+            url = url[:-len(sufixo)]
+    if not url.endswith('/v1'):
+        url += '/v1'
+    return url
+
+
+def _call_hermes(system_prompt, user_prompt, max_tokens, timeout=90, max_retries=2, sessao=None):
+    """Hermes Agent pelo API Server dele (compatível com a OpenAI). Retorna
+    (texto, erro). O Hermes usa o modelo/provedor configurado no próprio
+    servidor (OpenRouter, Gemini…); `ai_hermes_model` é só o nome que a API
+    dele espera ("hermes-agent")."""
+    from .models import SystemSetting
+
+    url = SystemSetting.get('ai_hermes_url', '').strip()
+    api_key = SystemSetting.get('ai_hermes_api_key', '').strip()
+    model = (SystemSetting.get('ai_hermes_model', 'hermes-agent') or 'hermes-agent').strip()
+    if not url:
+        return None, 'sem URL do Hermes configurada'
+    try:
+        import openai
+        headers = {}
+        if sessao:
+            headers['X-Hermes-Session-Key'] = f'crm-{sessao}'[:256]
+        client = openai.OpenAI(
+            base_url=hermes_base_url(url), api_key=api_key or 'sem-chave',
+            timeout=timeout, max_retries=min(max_retries, 1), default_headers=headers or None,
+        )
+        resp = client.chat.completions.create(
+            model=model,
+            max_tokens=max_tokens,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        texto = (resp.choices[0].message.content or '').strip()
+        return (texto, None) if texto else (None, 'resposta vazia')
+    except Exception as e:
+        logger.warning(f"Falha ao chamar Hermes (agente IA atendimento): {e}")
+        if type(e).__name__ == 'APIConnectionError':
+            return None, f'Hermes inacessível em {hermes_base_url(url)} — confira se o API Server está ligado e liberado para este servidor'
         return None, _motivo_legivel(e)

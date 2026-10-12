@@ -1321,6 +1321,7 @@ def configuracoes(request):
     # Coleta settings em uma única query
     setting_keys = ['ai_provider','ai_api_key','ai_model','ai_system_prompt',
                     'ai_openai_api_key','ai_openai_model',
+                    'ai_hermes_url','ai_hermes_api_key','ai_hermes_model',
                     'ai_last_error','ai_last_error_at',
                     'daily_alert_enabled','daily_alert_time','daily_alert_group',
                     'notif_abertos_enabled','notif_abertos_group_id','msg_encerramento',
@@ -1350,6 +1351,9 @@ def configuracoes(request):
         'ai_model': settings_qs.get('ai_model', 'claude-sonnet-4-6'),
         'ai_openai_key': settings_qs.get('ai_openai_api_key', ''),
         'ai_openai_model': settings_qs.get('ai_openai_model', 'gpt-4o'),
+        'ai_hermes_url': settings_qs.get('ai_hermes_url', ''),
+        'ai_hermes_key': settings_qs.get('ai_hermes_api_key', ''),
+        'ai_hermes_model': settings_qs.get('ai_hermes_model', '') or 'hermes-agent',
         'ai_prompt': settings_qs.get('ai_system_prompt', ''),
         # Último erro da IA (gravado por atendimento/ai.py) — é o que avisa que
         # as automações estão saindo no fallback em vez de escritas pela IA.
@@ -1510,6 +1514,7 @@ def api_settings(request):
     if request.method == 'GET':
         keys = ['ai_provider', 'ai_api_key', 'ai_model', 'ai_system_prompt',
                 'ai_openai_api_key', 'ai_openai_model',
+                'ai_hermes_url', 'ai_hermes_api_key', 'ai_hermes_model',
                 'daily_alert_enabled', 'daily_alert_time', 'daily_alert_group']
         data = {}
         for k in keys:
@@ -1519,11 +1524,13 @@ def api_settings(request):
             data['ai_api_key_masked'] = '•' * 20
         if data.get('ai_openai_api_key'):
             data['ai_openai_api_key_masked'] = '•' * 20
+        if data.get('ai_hermes_api_key'):
+            data['ai_hermes_api_key_masked'] = '•' * 20
         return JsonResponse(data)
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            secret_keys = {'ai_api_key', 'ai_openai_api_key'}
+            secret_keys = {'ai_api_key', 'ai_openai_api_key', 'ai_hermes_api_key'}
             for k, v in data.items():
                 if k.startswith('_'):
                     continue

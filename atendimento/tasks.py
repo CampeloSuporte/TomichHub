@@ -127,6 +127,10 @@ def _resolucao_de_fallback(historico):
     for m in historico:
         if m.sender_type not in ('agent', 'internal'):
             continue
+        # Respostas do assistente a perguntas em nota interna (@hermes) são
+        # conversa com a IA, não tratativa do atendente.
+        if m.sender_name in ('Hermes', 'Tomichinho'):
+            continue
         texto = (m.content or '').strip()
         # Confirmações do agente IA ("✅ Chamado #123 encerrado.", "✅ Tarefa
         # aberta: …") entram como nota interna e não são tratativa.
@@ -196,12 +200,55 @@ def responder_tomichinho(conversation_id):
     resposta = call_ai(
         system_prompt=system_prompt,
         user_prompt=f"Histórico recente da conversa:\n{contexto}\n\nResponda à última mensagem do grupo.",
+        sessao=conv.id,
     )
     if not resposta:
         logger.warning(f"Agente IA (tomichinho) sem resposta para conversa {conversation_id} — IA não configurada ou falhou")
         return {'ok': False}
 
     _ia_enviar(conv, conv.group, conv.group.connection, resposta)
+    return {'ok': True}
+
+
+@shared_task
+def responder_nota_interna_ia(conversation_id, pergunta, nome='Hermes'):
+    """Assistente chamado num COMENTÁRIO INTERNO ("@hermes, o que já foi
+    verificado aqui?"): responde também como nota interna, só no CRM. É o
+    par privado de `responder_tomichinho`, que fala no grupo do WhatsApp —
+    pergunta feita entre a equipe não pode virar mensagem pro cliente."""
+    from .models import Conversation, SystemSetting
+    from .services import _ia_enviar
+    from .ai import call_ai, ultimo_erro_ia
+
+    try:
+        conv = Conversation.objects.select_related('group', 'group__connection').get(id=conversation_id)
+    except Conversation.DoesNotExist:
+        return {'skipped': True, 'reason': 'conversation not found'}
+    if not conv.group or not conv.group.connection:
+        return {'skipped': True, 'reason': 'sem grupo/conexão'}
+
+    contexto, _historico = _contexto_conversa(conv, limite=30, incluir_inicio=4)
+    base = SystemSetting.get('ai_system_prompt', '').strip()
+    system_prompt = (
+        (base + "\n\n" if base else "") +
+        f"Agora você é o {nome}, assistente INTERNO da equipe de suporte. "
+        "Quem pergunta é um atendente, num comentário interno que o cliente "
+        "não vê. Responda em português, de forma direta e técnica, usando o "
+        "histórico do chamado (cada linha marcada com quem falou). Não "
+        "escreva como se falasse com o cliente e não invente dados que não "
+        "estejam no histórico."
+    )
+    resposta = call_ai(
+        system_prompt=system_prompt,
+        user_prompt=f"Histórico do chamado:\n{contexto}\n\nPergunta do atendente: {pergunta}",
+        max_tokens=800,
+        sessao=conv.id,
+    )
+    if not resposta:
+        resposta = (f"⚠️ {nome} não respondeu ({ultimo_erro_ia() or 'IA não configurada'}). "
+                    "Revise em Configurações → Integração IA.")
+    _ia_enviar(conv, conv.group, conv.group.connection, resposta,
+               sender_name=nome, sender_type='internal', enviar_whatsapp=False)
     return {'ok': True}
 
 
@@ -257,6 +304,7 @@ def abrir_tarefa_ia(conversation_id, texto_comando, is_internal=False):
         ),
         user_prompt=f"Histórico recente da conversa:\n{contexto}\n\nComando que disparou a tarefa: {texto_comando}",
         max_tokens=400,
+        sessao=conv.id,
     )
     titulo, descricao = '', ''
     if resposta:
@@ -363,6 +411,7 @@ def fechar_chamado_ia(conversation_id, texto_comando, is_internal=False):
         ),
         user_prompt=f"Histórico da conversa:\n{contexto}\n\nComando que pediu o fechamento: {texto_comando}",
         max_tokens=500,
+        sessao=conv.id,
     )
     resolucao = ''
     if resposta:
