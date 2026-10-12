@@ -60,6 +60,7 @@ urlpatterns = [
 
     # APIs novas — Configurações do sistema
     path('api/settings/', views.api_settings, name='api_settings'),
+    path('api/settings/ia/testar-hermes/', views.api_ia_testar_hermes, name='api_ia_testar_hermes'),
     path('api/permissions/', views.api_permissions, name='api_permissions'),
 
     # APIs novas — Empresas

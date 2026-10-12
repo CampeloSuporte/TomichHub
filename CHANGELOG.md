@@ -20,7 +20,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - Fechamento por IA ("Hermes, fechar o atendimento") usa o provedor configurado — com Hermes
   selecionado, é ele quem redige a resolução. Respostas do assistente em nota interna ficam
   fora da resolução de fallback.
+- Botão **Testar conexão** do Hermes na Integração IA (testa com os valores digitados, sem salvar).
 - Agent NOC (terminal) **não** foi alterado.
+
+### Corrigido
+
+- Comentário de template `{# … #}` em duas linhas aparecia como texto no topo da Integração IA
+  (`{# #}` do Django é só de uma linha) — trocado por `{% comment %}`. Instruções do Hermes viraram
+  um bloco informativo no padrão da página.
 
 ---
 

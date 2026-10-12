@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponseForbidden
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q, Count, F
 from django.utils import timezone
@@ -1545,6 +1545,27 @@ def api_settings(request):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
     return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@admin_required
+@require_POST
+def api_ia_testar_hermes(request):
+    """Botão "Testar conexão" do Hermes: chama o API Server com os valores
+    da tela (salvos ou não) e devolve a resposta ou o motivo da falha. Não
+    mexe no aviso de erro da IA — é só um teste."""
+    from atendimento.ai import testar_hermes
+    try:
+        data = json.loads(request.body or '{}')
+    except ValueError:
+        data = {}
+    chave = data.get('api_key') or ''
+    if not chave or set(chave) == {'•'}:
+        chave = SystemSetting.get('ai_hermes_api_key', '')
+    texto, erro = testar_hermes(data.get('url') or SystemSetting.get('ai_hermes_url', ''),
+                                chave, data.get('model') or 'hermes-agent')
+    if texto:
+        return JsonResponse({'ok': True, 'resposta': texto[:300]})
+    return JsonResponse({'ok': False, 'error': erro})
 
 
 # ─── Permissions ───

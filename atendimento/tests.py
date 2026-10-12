@@ -1381,6 +1381,42 @@ class HermesProviderTest(TestCase):
         self.assertEqual(call_ai('sys', 'user'), 'resposta claude')
 
 
+class TelaIntegracaoIATest(TestCase):
+    """Tela Configurações → Integração IA: campos do Hermes e teste de conexão."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            'adm_ia', password='x', is_staff=True, is_superuser=True, is_active=True)
+        _dar_2fa(self.admin)
+        self.client.force_login(self.admin)
+
+    def test_comentario_do_template_nao_aparece_na_tela(self):
+        from atendimento.models import SystemSetting
+        SystemSetting.set('ai_last_error', 'Hermes: fora do ar')
+        resp = self.client.get(reverse('atendimento:settings_configuracoes'))
+        self.assertEqual(resp.status_code, 200)
+        self.assertNotContains(resp, '{#')
+        self.assertContains(resp, 'id="aiHermesUrl"')
+        self.assertContains(resp, 'id="btnTestHermes"')
+
+    @mock.patch('atendimento.ai._hermes_chat', return_value=('ok, uso gemini', None))
+    def test_testar_conexao_usa_chave_salva_quando_campo_mascarado(self, mock_chat):
+        from atendimento.models import SystemSetting
+        SystemSetting.set('ai_hermes_api_key', 'chave-salva')
+        resp = self.client.post(
+            reverse('atendimento:api_ia_testar_hermes'),
+            json.dumps({'url': 'http://h:8642/v1', 'api_key': '••••', 'model': 'hermes-agent'}),
+            content_type='application/json')
+        self.assertEqual(resp.json(), {'ok': True, 'resposta': 'ok, uso gemini'})
+        self.assertEqual(mock_chat.call_args.args[:3], ('http://h:8642/v1', 'chave-salva', 'hermes-agent'))
+
+    @mock.patch('atendimento.ai._hermes_chat', return_value=(None, 'Hermes inacessível'))
+    def test_testar_conexao_devolve_motivo(self, _mock):
+        resp = self.client.post(reverse('atendimento:api_ia_testar_hermes'),
+                                json.dumps({'url': 'http://h:8642'}), content_type='application/json')
+        self.assertEqual(resp.json(), {'ok': False, 'error': 'Hermes inacessível'})
+
+
 class ResponderTomichinhoTaskTest(TestCase):
     """Task que efetivamente lê o histórico e responde no grupo via IA."""
 

@@ -221,9 +221,25 @@ def _call_hermes(system_prompt, user_prompt, max_tokens, timeout=90, max_retries
     dele espera ("hermes-agent")."""
     from .models import SystemSetting
 
-    url = SystemSetting.get('ai_hermes_url', '').strip()
-    api_key = SystemSetting.get('ai_hermes_api_key', '').strip()
-    model = (SystemSetting.get('ai_hermes_model', 'hermes-agent') or 'hermes-agent').strip()
+    return _hermes_chat(
+        SystemSetting.get('ai_hermes_url', ''), SystemSetting.get('ai_hermes_api_key', ''),
+        SystemSetting.get('ai_hermes_model', ''), system_prompt, user_prompt,
+        max_tokens, timeout, max_retries, sessao)
+
+
+def testar_hermes(url, api_key, model):
+    """Botão "Testar conexão" da tela: usa os valores digitados (ainda não
+    salvos) e não toca no registro de erro da IA."""
+    return _hermes_chat(url, api_key, model, 'Responda em uma frase curta, em português.',
+                        'Teste de conexão do CRM: responda "ok" e diga qual modelo você usa.',
+                        max_tokens=80, timeout=45, max_retries=0)
+
+
+def _hermes_chat(url, api_key, model, system_prompt, user_prompt, max_tokens,
+                 timeout, max_retries, sessao=None):
+    url = (url or '').strip()
+    api_key = (api_key or '').strip()
+    model = (model or '').strip() or 'hermes-agent'
     if not url:
         return None, 'sem URL do Hermes configurada'
     try:
