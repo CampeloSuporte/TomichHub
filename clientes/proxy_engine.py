@@ -396,6 +396,19 @@ class _TunnelConnPool:
 # 3. Motor principal
 # ──────────────────────────────────────────────────────────────────────────────
 
+class _AdaptadorOrigem(requests.adapters.HTTPAdapter):
+    """HTTPAdapter cujas conexões saem com um IP de origem fixo (o do túnel
+    OpenVPN do cliente — ver clientes.vpn_rota)."""
+
+    def __init__(self, origem, **kwargs):
+        self._origem = origem
+        super().__init__(**kwargs)
+
+    def init_poolmanager(self, *args, **kwargs):
+        kwargs['source_address'] = (self._origem, 0)
+        super().init_poolmanager(*args, **kwargs)
+
+
 class ProxyEngine:
     """
     Decide a rota (direto vs. túnel SSH) e executa a requisição HTTP/HTTPS.
@@ -425,10 +438,14 @@ class ProxyEngine:
 
     _ssh_pool = SSHConnectionPool()
 
-    def __init__(self, proxy_server=None, device_username: str = None, device_password: str = None):
+    def __init__(self, proxy_server=None, device_username: str = None, device_password: str = None,
+                 origem: str = None):
         self.proxy_server    = proxy_server
         self.device_username = device_username or ''
         self.device_password = device_password or ''
+        # IP do túnel OpenVPN do cliente: o caminho direto sai com essa origem
+        # para usar a tabela de rotas isolada do túnel (clientes.vpn_rota).
+        self.origem          = origem
 
     # ── Helpers estáticos ─────────────────────────────────────────────────────
 
@@ -533,21 +550,37 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
     # host:porta. O cookie jar recusa tudo: cookie de equipamento nunca pode
     # ficar guardado aqui, porque a sessão é compartilhada entre usuários e
     # acessos — o Cookie de cada requisição vem só do browser (a<id>_NOME).
+    # Com origem (túnel OpenVPN), uma sessão à parte por origem: o pool de
+    # conexões não pode misturar a saída pela internet com a do túnel.
     _http_session = None
+    _http_sessoes_origem: dict = {}
     _http_session_lock = threading.Lock()
 
+    @staticmethod
+    def _nova_sessao(origem=None) -> requests.Session:
+        sessao = requests.Session()
+        sessao.cookies.set_policy(http.cookiejar.DefaultCookiePolicy(allowed_domains=[]))
+        if origem:
+            adaptador = _AdaptadorOrigem(origem, pool_connections=64, pool_maxsize=16)
+        else:
+            adaptador = requests.adapters.HTTPAdapter(pool_connections=64, pool_maxsize=16)
+        sessao.mount('http://', adaptador)
+        sessao.mount('https://', adaptador)
+        return sessao
+
     @classmethod
-    def _sessao_direta(cls) -> requests.Session:
+    def _sessao_direta(cls, origem=None) -> requests.Session:
+        if origem:
+            with cls._http_session_lock:
+                sessao = cls._http_sessoes_origem.get(origem)
+                if sessao is None:
+                    sessao = cls._http_sessoes_origem[origem] = cls._nova_sessao(origem)
+                return sessao
         if cls._http_session is not None:
             return cls._http_session
         with cls._http_session_lock:
             if cls._http_session is None:
-                sessao = requests.Session()
-                sessao.cookies.set_policy(http.cookiejar.DefaultCookiePolicy(allowed_domains=[]))
-                adaptador = requests.adapters.HTTPAdapter(pool_connections=64, pool_maxsize=16)
-                sessao.mount('http://', adaptador)
-                sessao.mount('https://', adaptador)
-                cls._http_session = sessao
+                cls._http_session = cls._nova_sessao()
             return cls._http_session
 
     # ── Método principal ──────────────────────────────────────────────────────
@@ -646,7 +679,7 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
             digest_auth = (HTTPDigestAuth(self.device_username, self.device_password)
                            if self.device_username else None)
 
-            r = self._sessao_direta().request(
+            r = self._sessao_direta(self.origem).request(
                 method=method, url=url, headers=merged,
                 data=body or None, verify=False,
                 allow_redirects=False, timeout=timeout,

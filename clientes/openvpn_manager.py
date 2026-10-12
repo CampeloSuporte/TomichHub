@@ -691,8 +691,12 @@ def executar_config_openvpn(config_id):
         porta_conexao = acesso.porta or 22
 
         if is_private_ip(acesso.host):
-            if vpn_cobre_ip(acesso.cliente, acesso.host):
-                pass  # Alcançável pelo túnel OpenVPN — conecta direto
+            tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host)
+            if tunel_vpn:
+                # Alcançável pelo túnel OpenVPN — relay com a origem dele
+                from . import vpn_rota
+                host_conexao, porta_conexao = vpn_rota.endpoint_local(
+                    tunel_vpn, acesso.host, porta_conexao)
             else:
                 proxy = ProxyServer.objects.filter(
                     cliente=acesso.cliente, ativo=True
@@ -893,8 +897,11 @@ def adicionar_usuario_openvpn(usuario_id):
         porta_conexao = acesso.porta or 22
 
         if is_private_ip(acesso.host):
-            if vpn_cobre_ip(acesso.cliente, acesso.host):
-                pass
+            tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host)
+            if tunel_vpn:
+                from . import vpn_rota
+                host_conexao, porta_conexao = vpn_rota.endpoint_local(
+                    tunel_vpn, acesso.host, porta_conexao)
             else:
                 proxy = ProxyServer.objects.filter(
                     cliente=acesso.cliente, ativo=True

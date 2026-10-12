@@ -58,7 +58,7 @@ class RoteamentoTest(SimpleTestCase):
     def test_mikrotik_vai_por_exec(self):
         acesso = _acesso('Mikrotik')
         self.assertEqual(c.platform_ssh_exec(acesso, '/interface print'), 'saida-exec')
-        self.routeros.assert_called_once_with(acesso, '/interface print', 25, proxy=None)
+        self.routeros.assert_called_once_with(acesso, '/interface print', 25, proxy=None, origem=None)
         self.pexpect.assert_not_called()
 
     def test_mikrotik_so_no_tipo(self):
@@ -76,14 +76,14 @@ class RoteamentoTest(SimpleTestCase):
                 mock.patch('clientes.models.ProxyServer.objects') as objetos:
             objetos.filter.return_value.first.return_value = proxy
             c.platform_ssh_exec(acesso, '/interface print')
-        self.routeros.assert_called_once_with(acesso, '/interface print', 25, proxy=proxy)
+        self.routeros.assert_called_once_with(acesso, '/interface print', 25, proxy=proxy, origem=None)
         self.via_proxy.assert_not_called()
 
     def test_sem_fabricante_cai_para_exec_quando_o_shell_detecta_routeros(self):
         self.pexpect.side_effect = c._RouterOSDetectado()
         acesso = _acesso()
         self.assertEqual(c.platform_ssh_exec(acesso, '/interface print'), 'saida-exec')
-        self.routeros.assert_called_once_with(acesso, '/interface print', 25, proxy=None)
+        self.routeros.assert_called_once_with(acesso, '/interface print', 25, proxy=None, origem=None)
 
 
 class RouterOSExecTest(SimpleTestCase):

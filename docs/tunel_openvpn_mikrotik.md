@@ -9,9 +9,12 @@ Aqui **a CRM é o servidor** OpenVPN e o **MikroTik do cliente é o client** —
 do cliente como servidor para o NOC discar.
 
 Serve para alcançar equipamentos em IP privado do cliente sem ProxyServer SSH: com o túnel de pé,
-a rota existe no kernel e proxy web, Terminal SSH, WinBox, backup e monitoramento conectam direto.
+proxy web, Terminal SSH, WinBox, backup e monitoramento conectam pelo túnel — saindo com a
+origem dele, porque as redes do cliente ficam numa **tabela de rotas isolada** (abaixo).
 
 Código: [`clientes/openvpn_tunnel_manager.py`](../clientes/openvpn_tunnel_manager.py) ·
+[`clientes/vpn_rota.py`](../clientes/vpn_rota.py) ·
+[`deploy/openvpn/crm-ovpn-rotas`](../deploy/openvpn/crm-ovpn-rotas) ·
 views `vpn_ovpn_*` em [`clientes/views.py`](../clientes/views.py) · modelo `VPNOpenVPN`.
 
 ---
@@ -28,6 +31,8 @@ Cada túnel roda em **uma instância systemd dedicada**:
 | Porta TCP | `1195 + N` (1194 = servidor legado, descomissionado) |
 | Sub-rede | N-ésimo `/29` de `10.91.0.0/16` — servidor `.1`, cliente `.2` |
 | CCD | `/etc/openvpn/ccd-instancias/server-crm-N/<common_name>` |
+| Redes (kernel) | `/etc/openvpn/server/server-crm-N.rotas` → tabela `1000+N` |
+| Regra | `ip rule from <IP do servidor no /29> lookup 1000+N` |
 | PKI | `/etc/openvpn/pki-crm` (CA própria, gerada em Python via `cryptography`) |
 
 Isolamento é por **processo**: cada instância aceita só o CN daquele cliente
@@ -44,38 +49,48 @@ Uma rede do cliente só é alcançável se **as duas** diretivas existirem:
 
 | Diretiva | Onde | O que faz |
 |----------|------|-----------|
-| `route 10.20.0.0 255.255.0.0` | `.conf` da instância | põe a rota no **kernel** → o pacote chega na `tun-crm-N` |
+| `10.20.0.0/16` no `.rotas` | `/etc/openvpn/server/server-crm-N.rotas` | o script `up` põe a rota na **tabela isolada** do túnel → o pacote chega na `tun-crm-N` |
 | `iroute 10.20.0.0 255.255.0.0` | arquivo **CCD** do cliente | diz ao **OpenVPN** que a rede fica atrás daquele cliente |
 
 Sem o `iroute`, o OpenVPN em modo `--server` não tem rota na tabela interna dele e **descarta o
 pacote em silêncio**. O sintoma é traiçoeiro: o túnel sobe, o handshake fecha, `/ping` do IP do /29
 responde — e **nada** da rede interna do cliente é alcançável.
 
-Ambas são geradas a partir de `VPNOpenVPN.redes_privadas`, no `.conf` e no CCD, tanto ao criar
+Ambas são geradas a partir de `VPNOpenVPN.redes_privadas`, no `.rotas` e no CCD, tanto ao criar
 (`criar_instancia_servidor`) quanto ao editar as redes (`atualizar_redes_instancia`).
 
 ---
 
-## Escolha das redes — por que faixa ampla é armadilha
+## Tabela de rotas isolada por túnel (desde 12/10/2026)
 
-A tabela de rotas do kernel é **uma só** e roteia por **destino**. Dois clientes declarando
-`10.0.0.0/8` instalam duas rotas para o mesmo prefixo: só uma vale, e o tráfego destinado ao
-equipamento do cliente A entra no roteador do cliente B — que ainda mascara a origem e pode
-entregar num equipamento de mesmo IP na rede dele.
+As redes de um cliente **não entram na tabela main** do servidor. O `.conf` da instância não tem
+diretiva `route`; tem `up /usr/local/sbin/crm-ovpn-rotas` (cópia versionada em
+`deploy/openvpn/`, instalada `root:root 0755` — o OpenVPN roda o script como root antes de largar
+privilégios). O script, a cada subida da instância:
 
-Por isso:
+1. cria `ip rule from <IP do servidor no /29> lookup 1000+N`;
+2. limpa a tabela `1000+N` e instala nela o `/29` do túnel, cada rede do `.rotas` via
+   `tun-crm-N` e um `unreachable default` (tráfego com origem no túnel nunca cai na main).
 
-- O modal de criação sugere as **`/24` dos acessos privados já cadastrados** do cliente
-  (`sugerir_redes`), em vez das faixas CGNAT+RFC1918.
-- `redes_em_conflito()` recusa criar/editar um túnel com rede **idêntica** à de outro túnel
-  OpenVPN ativo ou já presente na tabela de rotas do kernel, dizendo de quem ela é.
-- Prefixos de tamanhos diferentes (um `/24` dentro do `/8` de outro cliente) são permitidos: o
-  kernel casa o mais específico primeiro, o resultado é determinístico.
-- Em tempo de conexão, `vpn_cobre_ip` (views) e `_rota_confere` (consumers) conferem o `dev` real
-  da rota antes de usar o caminho direto — ver [proxy_web_acessos.md](proxy_web_acessos.md).
+Consequências:
 
-Sobreposição de espaço de endereço entre clientes continua sendo limitação de roteamento IP, não
-de arquitetura de túnel: o kernel só pode mandar um pacote destinado a um IP para UM lugar.
+- **Tráfego do próprio CRM sai pela tabela main** (internet). Antes, qualquer IP dentro de uma
+  faixa declarada por um cliente entrava na VPN dele — o Hermes do atendimento em `198.18.1.2`
+  caía no túnel da Conecta ISP em vez de ir pela internet.
+- **Clientes diferentes podem declarar a mesma faixa** (`10.0.0.0/8`, CGNAT…): cada um na sua
+  tabela. `redes_em_conflito()` só recusa rede idêntica em dois túneis do **mesmo** cliente.
+- **Toda conexão a equipamento via túnel precisa sair com a origem dele.** Conectar "direto" no
+  IP sai pela main/internet e não chega. `clientes/vpn_rota.py`:
+  - `tunel_para(cliente, host)` / `vpn_cobre_ip` — túnel que entrega o host, conferindo
+    `ip route get <host> from <origem>` (o `dev` tem que ser a `tun-crm-N` dele);
+  - `conectar(tunel, host, porta)` — socket com `source_address`;
+  - `endpoint_local(tunel, host, porta)` — relay em `127.0.0.1` (para netmiko, paramiko via
+    `hostname`, requests, navegador do WinBox Web…), no formato do `criar_ssh_tunnel`;
+  - `origem(tunel)` — para `ssh -b`, `ping -I`, `mtr -a`, `traceroute -s`, e o
+    `ProxyEngine(origem=…)` do proxy web.
+
+O modal de criação ainda sugere as **`/24` dos acessos privados já cadastrados** do cliente
+(`sugerir_redes`) — não por colisão, mas para a tabela do túnel ficar legível.
 
 ---
 
@@ -85,7 +100,9 @@ de arquitetura de túnel: o kernel só pode mandar um pacote destinado a um IP p
 systemctl status openvpn-server@server-crm-1
 journalctl -u openvpn-server@server-crm-1 -n 50 --no-pager
 cat /etc/openvpn/ccd-instancias/server-crm-1/*        # tem linha iroute?
-ip route get 198.18.10.2                              # dev bate com tun-crm-1?
+ip rule | grep 100                                    # from 10.91.0.9 lookup 1001
+ip route show table 1001                              # redes do túnel 1
+ip route get 198.18.10.2 from 10.91.0.9               # dev bate com tun-crm-1?
 ping -c2 10.91.0.10                                   # IP do cliente no /29
 ```
 
@@ -93,8 +110,9 @@ ping -c2 10.91.0.10                                   # IP do cliente no /29
 |---------|----------------|
 | `/import` morre com `Script Error: syntax error` na linha da `ovpn-client` | nome de parâmetro que não existe naquela versão do RouterOS — conferir `?v=` no log do nginx |
 | Túnel `running`, ping do `/29` OK, rede interna morta | falta `iroute` no CCD |
-| `ip route get` sai por outra `tun-crm-*` | rede ampla colidindo com outro cliente |
-| Proxy cai em "Nenhum proxy SSH ativo" | `vpn_cobre_ip` recusou: rota não é daquele túnel |
+| Tabela `1000+N` vazia / sem `ip rule` | script `up` não rodou: `/usr/local/sbin/crm-ovpn-rotas` ausente/sem `+x`, ou `.conf` antigo com `route` — editar as redes do túnel regrava tudo |
+| Proxy cai em "Nenhum proxy SSH ativo" | `vpn_cobre_ip` recusou: túnel desconectado ou rede fora do `.rotas` |
+| Função nova conecta no IP privado e dá timeout | não passou pela origem do túnel — usar `clientes/vpn_rota.py` |
 | Tela barra a ação citando proxy SSH, mas o túnel está de pé | pré-checagem de front-end perguntando só por `ProxyServer` — usar `/clientes/proxies/ativo/?acesso_id=N`, que responde `alcancavel` |
 | Unit em loop de restart | `.conf` inexistente — `systemctl disable --now` + `reset-failed` |
 | `IP packet with unknown IP version=0 seen` no log | ruído do keepalive do RouterOS, inofensivo |

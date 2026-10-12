@@ -217,6 +217,29 @@ def _responde_como_zabbix(url: str, timeout: float = 6) -> bool:
         return False
 
 
+def _config_url_local(config, parsed, local_port):
+    """Cópia do config com a URL apontando para 127.0.0.1:local_port (túnel
+    SSH ou relay do túnel OpenVPN), mantendo o path original."""
+    # Montar URL local mantendo o path original
+    nova_url = f"{parsed.scheme}://127.0.0.1:{local_port}"
+    if parsed.path:
+        nova_url += parsed.path
+
+    # Criar config temporário com URL substituída
+    class _ConfigProxy:
+        pass
+
+    cfg           = _ConfigProxy()
+    cfg.id        = config.id  # mantém estável p/ cache de token/metadados mesmo com a porta local do túnel mudando
+    cfg.url       = nova_url
+    cfg.usuario   = config.usuario
+    cfg.senha     = config.senha
+    cfg.api_token = getattr(config, 'api_token', None)
+    cfg.ativo     = config.ativo
+
+    return cfg
+
+
 def _get_config_com_tunel(config, cliente_id):
     """
     Decide entre falar direto com a URL do Zabbix ou por túnel SSH via o
@@ -256,9 +279,14 @@ def _get_config_com_tunel(config, cliente_id):
                 from clientes.views import vpn_cobre_ip
                 from clientes.models import Cliente as _Cliente
                 _cli = _Cliente.objects.get(id=cliente_id)
-                if vpn_cobre_ip(_cli, zbx_host):
-                    logger.info(f"[ZBX] Túnel OpenVPN cobre {zbx_host} — conectando diretamente")
-                    return config, None
+                _tunel_vpn = vpn_cobre_ip(_cli, zbx_host)
+                if _tunel_vpn:
+                    # Tabela de rotas isolada do túnel: relay local com a
+                    # origem dele (clientes.vpn_rota)
+                    from clientes import vpn_rota
+                    _, _porta_vpn = vpn_rota.endpoint_local(_tunel_vpn, zbx_host, zbx_port)
+                    logger.info(f"[ZBX] Túnel OpenVPN cobre {zbx_host} — relay 127.0.0.1:{_porta_vpn}")
+                    return _config_url_local(config, parsed, _porta_vpn), None
             except Exception as _e:
                 logger.debug(f"[ZBX] vpn_cobre_ip check falhou: {_e}")
             raise Exception(
@@ -275,25 +303,8 @@ def _get_config_com_tunel(config, cliente_id):
         raise Exception(f"Falha ao criar túnel SSH para {zbx_host}:{zbx_port}")
 
     local_port, _, _ = tunel
-
-    # Montar URL local mantendo o path original
-    nova_url = f"{parsed.scheme}://127.0.0.1:{local_port}"
-    if parsed.path:
-        nova_url += parsed.path
-
-    # Criar config temporário com URL substituída
-    class _ConfigProxy:
-        pass
-
-    cfg           = _ConfigProxy()
-    cfg.id        = config.id  # mantém estável p/ cache de token/metadados mesmo com a porta local do túnel mudando
-    cfg.url       = nova_url
-    cfg.usuario   = config.usuario
-    cfg.senha     = config.senha
-    cfg.api_token = getattr(config, 'api_token', None)
-    cfg.ativo     = config.ativo
-
-    logger.info(f"[ZBX TUNNEL] usando túnel: {config.url} → {nova_url}")
+    cfg = _config_url_local(config, parsed, local_port)
+    logger.info(f"[ZBX TUNNEL] usando túnel: {config.url} → {cfg.url}")
     return cfg, tunel
 
 

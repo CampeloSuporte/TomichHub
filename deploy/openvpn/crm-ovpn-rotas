@@ -1,0 +1,57 @@
+#!/bin/sh
+# Script `up` das instâncias OpenVPN dedicadas do CRM (server-crm-N).
+# Instalado em /usr/local/sbin/crm-ovpn-rotas (root:root 0755) — o OpenVPN o
+# executa como root, antes de largar privilégios para nobody.
+#
+# Isola as redes de cada cliente numa tabela de rotas PRÓPRIA do túnel
+# (1000+N), em vez da tabela principal do servidor:
+#   - a tabela main não tem nenhuma rede de cliente: o tráfego do próprio CRM
+#     (APIs, Hermes, internet) nunca entra em VPN de cliente por acaso;
+#   - só usa a tabela N o tráfego que sai com o IP do servidor neste túnel
+#     como origem (ip rule from <ip do túnel>) — o CRM faz esse bind quando
+#     conecta num equipamento DESTE cliente (clientes/vpn_rota.py);
+#   - dois clientes podem declarar a mesma faixa (10.0.0.0/8 etc.) sem
+#     colidir, cada um na sua tabela.
+#
+# As redes vêm de /etc/openvpn/server/<instância>.rotas (um CIDR por linha),
+# gravado pelo CRM (www-data). Como esse arquivo não é de root, cada linha é
+# validada antes de virar argumento do `ip`.
+set -u
+
+case "${dev:-}" in
+    tun-crm-[0-9]*) ;;
+    *) echo "crm-ovpn-rotas: dev inválido '${dev:-}'" >&2; exit 1 ;;
+esac
+N="${dev#tun-crm-}"
+case "$N" in *[!0-9]*|'') echo "crm-ovpn-rotas: N inválido" >&2; exit 1 ;; esac
+TABELA=$((1000 + N))
+ORIGEM="${ifconfig_local:-}"
+ROTAS="/etc/openvpn/server/server-crm-${N}.rotas"
+
+case "$ORIGEM" in
+    *[!0-9.]*|'') echo "crm-ovpn-rotas: ifconfig_local inválido '$ORIGEM'" >&2; exit 1 ;;
+esac
+
+# Regra de origem: idempotente (remove as anteriores desta tabela antes).
+while ip -4 rule del lookup "$TABELA" 2>/dev/null; do :; done
+ip -4 rule add from "$ORIGEM" lookup "$TABELA" pref "$TABELA"
+
+ip -4 route flush table "$TABELA" 2>/dev/null
+# Sub-rede do próprio túnel (o /29) e bloqueio do resto: tráfego com origem
+# no túnel só vai para as redes deste cliente, nunca cai na tabela main.
+SUBNET=$(ip -4 route show dev "$dev" proto kernel scope link | awk 'NR==1{print $1}')
+[ -n "$SUBNET" ] && ip -4 route replace "$SUBNET" dev "$dev" table "$TABELA"
+ip -4 route replace unreachable default table "$TABELA"
+
+if [ -f "$ROTAS" ]; then
+    while IFS= read -r cidr || [ -n "$cidr" ]; do
+        cidr=$(printf '%s' "$cidr" | tr -d ' \r\t')
+        [ -z "$cidr" ] && continue
+        case "$cidr" in
+            *[!0-9./]*) echo "crm-ovpn-rotas: ignorando '$cidr'" >&2; continue ;;
+        esac
+        ip -4 route replace "$cidr" dev "$dev" table "$TABELA" \
+            || echo "crm-ovpn-rotas: falha ao instalar $cidr" >&2
+    done < "$ROTAS"
+fi
+exit 0

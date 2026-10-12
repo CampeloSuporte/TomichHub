@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-12 (Túneis OpenVPN com rotas isoladas por cliente)
+
+### Alterado
+
+- **Rotas de cada túnel OpenVPN numa tabela própria** (`1000+N`), usada só pelo tráfego com a
+  origem do túnel (`ip rule from 10.91.x.y`). A tabela main do servidor não tem mais nenhuma
+  rede de cliente: o tráfego do próprio CRM vai pela internet, mesmo para IP dentro de uma faixa
+  que algum cliente declarou. Script `up` versionado em `deploy/openvpn/crm-ovpn-rotas`
+  (instalado em `/usr/local/sbin`); redes em `/etc/openvpn/server/server-crm-N.rotas`.
+- Clientes diferentes podem declarar a mesma faixa; a validação de conflito vale só entre
+  túneis do mesmo cliente.
+- Terminal SSH/Telnet, WinBox, WinBox Web/VNC, console WebSocket, proxy web, backup, scripts,
+  diagnóstico PON, ping/porta/traceroute, Zabbix e exec do Agent conectam com a origem do túnel
+  (`clientes/vpn_rota.py`: bind de origem ou relay local).
+
+### Corrigido
+
+- Hermes do atendimento (`198.18.1.2`, rede do servidor do Hermes) caía no túnel da Conecta ISP,
+  que declara `198.18.1.0/24`, e recebia RST. A URL do Hermes passou a ser o IP público
+  `45.235.72.113:8642`, que sai pela internet.
+
 ## [Não publicado] — 2026-10-11 (Hermes Agent no atendimento)
 
 ### Adicionado
