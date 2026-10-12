@@ -1,0 +1,14 @@
+# Rotas isoladas do túnel OpenVPN do CRM (tabela 1000+N, ver crm-ovpn-rotas).
+# Instalar em /etc/systemd/system/ junto com o drop-in
+# openvpn-server@.service.d/crm-rotas.conf, que faz toda instância
+# openvpn-server@server-crm-N puxar este unit — inclusive as criadas pelo CRM.
+[Unit]
+Description=Rotas isoladas do túnel OpenVPN %i (CRM)
+After=openvpn-server@%i.service
+BindsTo=openvpn-server@%i.service
+PartOf=openvpn-server@%i.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/crm-ovpn-rotas %i

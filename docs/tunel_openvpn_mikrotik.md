@@ -49,7 +49,7 @@ Uma rede do cliente só é alcançável se **as duas** diretivas existirem:
 
 | Diretiva | Onde | O que faz |
 |----------|------|-----------|
-| `10.20.0.0/16` no `.rotas` | `/etc/openvpn/server/server-crm-N.rotas` | o script `up` põe a rota na **tabela isolada** do túnel → o pacote chega na `tun-crm-N` |
+| `10.20.0.0/16` no `.rotas` | `/etc/openvpn/server/server-crm-N.rotas` | o unit `crm-ovpn-rotas@` põe a rota na **tabela isolada** do túnel → o pacote chega na `tun-crm-N` |
 | `iroute 10.20.0.0 255.255.0.0` | arquivo **CCD** do cliente | diz ao **OpenVPN** que a rede fica atrás daquele cliente |
 
 Sem o `iroute`, o OpenVPN em modo `--server` não tem rota na tabela interna dele e **descarta o
@@ -64,9 +64,24 @@ Ambas são geradas a partir de `VPNOpenVPN.redes_privadas`, no `.rotas` e no CCD
 ## Tabela de rotas isolada por túnel (desde 12/10/2026)
 
 As redes de um cliente **não entram na tabela main** do servidor. O `.conf` da instância não tem
-diretiva `route`; tem `up /usr/local/sbin/crm-ovpn-rotas` (cópia versionada em
-`deploy/openvpn/`, instalada `root:root 0755` — o OpenVPN roda o script como root antes de largar
-privilégios). O script, a cada subida da instância:
+diretiva `route` nem `up`. Quem instala as rotas é o unit **`crm-ovpn-rotas@server-crm-N`**
+(`BindsTo`/`PartOf` da instância), puxado por um drop-in em `openvpn-server@.service.d/` — vale
+também para instâncias novas criadas pelo CRM. Ele roda `/usr/local/sbin/crm-ovpn-rotas`
+(`root:root 0755`). Arquivos versionados em `deploy/openvpn/`; instalação:
+
+```bash
+install -o root -g root -m 0755 deploy/openvpn/crm-ovpn-rotas /usr/local/sbin/
+install -m 0644 deploy/openvpn/crm-ovpn-rotas@.service /etc/systemd/system/
+install -D -m 0644 deploy/openvpn/openvpn-server@.service.d/crm-rotas.conf /etc/systemd/system/openvpn-server@.service.d/crm-rotas.conf
+systemctl daemon-reload
+```
+
+Por que não `up` do OpenVPN: o unit `openvpn-server@` do Debian tem `LimitNPROC=10` e, neste
+servidor (container LXC), o root conta nesse limite — o OpenVPN morre com
+`openvpn_execve: unable to fork: Resource temporarily unavailable` e a instância não sobe
+(aconteceu na primeira aplicação, 12/10/2026). Um unit à parte tem limites próprios.
+
+O script, a cada subida da instância:
 
 1. cria `ip rule from <IP do servidor no /29> lookup 1000+N`;
 2. limpa a tabela `1000+N` e instala nela o `/29` do túnel, cada rede do `.rotas` via
@@ -110,7 +125,8 @@ ping -c2 10.91.0.10                                   # IP do cliente no /29
 |---------|----------------|
 | `/import` morre com `Script Error: syntax error` na linha da `ovpn-client` | nome de parâmetro que não existe naquela versão do RouterOS — conferir `?v=` no log do nginx |
 | Túnel `running`, ping do `/29` OK, rede interna morta | falta `iroute` no CCD |
-| Tabela `1000+N` vazia / sem `ip rule` | script `up` não rodou: `/usr/local/sbin/crm-ovpn-rotas` ausente/sem `+x`, ou `.conf` antigo com `route` — editar as redes do túnel regrava tudo |
+| Tabela `1000+N` vazia / sem `ip rule` | `systemctl status crm-ovpn-rotas@server-crm-N` — unit/drop-in não instalados, script sem `+x`, ou `.conf` antigo com `route` (editar as redes do túnel regrava tudo) |
+| Instância não sobe: `unable to fork` | `.conf` com `up`/script — o `LimitNPROC=10` barra; tirar o `up` (o unit `crm-ovpn-rotas@` faz o trabalho) |
 | Proxy cai em "Nenhum proxy SSH ativo" | `vpn_cobre_ip` recusou: túnel desconectado ou rede fora do `.rotas` |
 | Função nova conecta no IP privado e dá timeout | não passou pela origem do túnel — usar `clientes/vpn_rota.py` |
 | Tela barra a ação citando proxy SSH, mas o túnel está de pé | pré-checagem de front-end perguntando só por `ProxyServer` — usar `/clientes/proxies/ativo/?acesso_id=N`, que responde `alcancavel` |

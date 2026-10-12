@@ -16,8 +16,8 @@ client-config-dir + ccd-exclusive, com um único arquivo CCD).
 Rotas isoladas por túnel (12/10/2026): as redes de um cliente NÃO vão para a
 tabela principal do servidor. Cada instância instala as suas numa tabela
 própria (1000+N), usada só pelo tráfego cuja ORIGEM é o IP do servidor
-naquele túnel (`ip rule from 10.91.x.y lookup 1000+N`, feito pelo script
-`up` deploy/openvpn/crm-ovpn-rotas). Consequências:
+naquele túnel (`ip rule from 10.91.x.y lookup 1000+N`, feito pelo unit
+crm-ovpn-rotas@ — deploy/openvpn/). Consequências:
   - o tráfego do próprio CRM (APIs, Hermes, internet) sai pela tabela main
     e nunca entra na VPN de um cliente só porque a faixa coincide — foi o
     que aconteceu com o Hermes em 198.18.1.2, que caía no túnel da Conecta;
@@ -446,7 +446,10 @@ def _ccd_dir(interface_nome):
     return f'{CCD_BASE_DIR}/{interface_nome}'
 
 
-SCRIPT_ROTAS = '/usr/local/sbin/crm-ovpn-rotas'   # cópia versionada: deploy/openvpn/
+# Quem instala as redes na tabela isolada é o unit crm-ovpn-rotas@<instância>,
+# puxado por toda openvpn-server@ (drop-in) — cópias versionadas em deploy/openvpn/.
+# Não é `up` do OpenVPN: o LimitNPROC=10 do unit dele barra o fork do script.
+SCRIPT_ROTAS = '/usr/local/sbin/crm-ovpn-rotas'
 
 
 def _rotas_path(interface_nome):
@@ -454,8 +457,8 @@ def _rotas_path(interface_nome):
 
 
 def _gerar_conteudo_rotas(vpn):
-    """Um CIDR normalizado por linha — lido pelo script `up` (crm-ovpn-rotas),
-    que instala as redes na tabela isolada do túnel."""
+    """Um CIDR normalizado por linha — lido pelo crm-ovpn-rotas, que instala as
+    redes na tabela isolada do túnel."""
     linhas = []
     for rede in vpn.redes_lista():
         try:
@@ -471,7 +474,8 @@ def _gerar_conteudo_conf(vpn):
     """Gera o conteúdo do arquivo de config da instância dedicada deste túnel.
 
     Sem diretivas `route`: elas instalariam as redes do cliente na tabela main
-    do servidor. Quem instala é o script `up`, na tabela isolada do túnel."""
+    do servidor. Quem instala é o unit crm-ovpn-rotas@, na tabela isolada do
+    túnel."""
     tun_dev = vpn.interface_nome.replace('server-crm-', 'tun-crm-')
     return f"""port {vpn.porta}
 proto tcp-server
@@ -490,9 +494,8 @@ ccd-exclusive
 topology subnet
 server {_subnet_for(vpn.subnet_n).network_address} 255.255.255.248
 
-# Redes do cliente: tabela de rotas isolada deste túnel ({_rotas_path(vpn.interface_nome)})
-script-security 2
-up {SCRIPT_ROTAS}
+# Redes do cliente: tabela de rotas isolada deste túnel, instalada pelo unit
+# crm-ovpn-rotas@{vpn.interface_nome} a partir de {_rotas_path(vpn.interface_nome)}
 
 keepalive 10 60
 persist-key
