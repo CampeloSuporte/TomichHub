@@ -1,7 +1,12 @@
 #!/bin/sh
-# Script `up` das instâncias OpenVPN dedicadas do CRM (server-crm-N).
-# Instalado em /usr/local/sbin/crm-ovpn-rotas (root:root 0755) — o OpenVPN o
-# executa como root, antes de largar privilégios para nobody.
+# Rotas isoladas de uma instância OpenVPN dedicada do CRM (server-crm-N).
+# Instalado em /usr/local/sbin/crm-ovpn-rotas (root:root 0755) e executado
+# pelo unit crm-ovpn-rotas@server-crm-N.service (deploy/openvpn/), que sobe
+# junto com openvpn-server@server-crm-N.
+#
+# Não é script `up` do OpenVPN de propósito: o unit openvpn-server@ tem
+# LimitNPROC=10 e, neste servidor (container LXC), o root conta nesse
+# limite — o OpenVPN não consegue nem fazer fork para rodar o script.
 #
 # Isola as redes de cada cliente numa tabela de rotas PRÓPRIA do túnel
 # (1000+N), em vez da tabela principal do servidor:
@@ -13,24 +18,35 @@
 #   - dois clientes podem declarar a mesma faixa (10.0.0.0/8 etc.) sem
 #     colidir, cada um na sua tabela.
 #
-# As redes vêm de /etc/openvpn/server/<instância>.rotas (um CIDR por linha),
+# As redes vêm de /etc/openvpn/server/server-crm-N.rotas (um CIDR por linha),
 # gravado pelo CRM (www-data). Como esse arquivo não é de root, cada linha é
 # validada antes de virar argumento do `ip`.
 set -u
 
-case "${dev:-}" in
-    tun-crm-[0-9]*) ;;
-    *) echo "crm-ovpn-rotas: dev inválido '${dev:-}'" >&2; exit 1 ;;
+INSTANCIA="${1:-}"
+case "$INSTANCIA" in
+    server-crm-[0-9]*) ;;
+    *) echo "crm-ovpn-rotas: instância inválida '$INSTANCIA'" >&2; exit 1 ;;
 esac
-N="${dev#tun-crm-}"
+N="${INSTANCIA#server-crm-}"
 case "$N" in *[!0-9]*|'') echo "crm-ovpn-rotas: N inválido" >&2; exit 1 ;; esac
+DEV="tun-crm-${N}"
 TABELA=$((1000 + N))
-ORIGEM="${ifconfig_local:-}"
-ROTAS="/etc/openvpn/server/server-crm-${N}.rotas"
+ROTAS="/etc/openvpn/server/${INSTANCIA}.rotas"
 
-case "$ORIGEM" in
-    *[!0-9.]*|'') echo "crm-ovpn-rotas: ifconfig_local inválido '$ORIGEM'" >&2; exit 1 ;;
-esac
+# O OpenVPN (Type=notify) só avisa "pronto" depois de configurar a tun, mas
+# espera um pouco por garantia.
+i=0
+while [ $i -lt 20 ]; do
+    ORIGEM=$(ip -4 -o addr show dev "$DEV" 2>/dev/null | awk '{split($4, a, "/"); print a[1]; exit}')
+    [ -n "$ORIGEM" ] && break
+    sleep 0.5
+    i=$((i + 1))
+done
+if [ -z "${ORIGEM:-}" ]; then
+    echo "crm-ovpn-rotas: $DEV sem endereço IPv4" >&2
+    exit 1
+fi
 
 # Regra de origem: idempotente (remove as anteriores desta tabela antes).
 while ip -4 rule del lookup "$TABELA" 2>/dev/null; do :; done
@@ -39,8 +55,8 @@ ip -4 rule add from "$ORIGEM" lookup "$TABELA" pref "$TABELA"
 ip -4 route flush table "$TABELA" 2>/dev/null
 # Sub-rede do próprio túnel (o /29) e bloqueio do resto: tráfego com origem
 # no túnel só vai para as redes deste cliente, nunca cai na tabela main.
-SUBNET=$(ip -4 route show dev "$dev" proto kernel scope link | awk 'NR==1{print $1}')
-[ -n "$SUBNET" ] && ip -4 route replace "$SUBNET" dev "$dev" table "$TABELA"
+SUBNET=$(ip -4 route show dev "$DEV" proto kernel scope link | awk 'NR==1{print $1}')
+[ -n "$SUBNET" ] && ip -4 route replace "$SUBNET" dev "$DEV" table "$TABELA"
 ip -4 route replace unreachable default table "$TABELA"
 
 if [ -f "$ROTAS" ]; then
@@ -50,8 +66,9 @@ if [ -f "$ROTAS" ]; then
         case "$cidr" in
             *[!0-9./]*) echo "crm-ovpn-rotas: ignorando '$cidr'" >&2; continue ;;
         esac
-        ip -4 route replace "$cidr" dev "$dev" table "$TABELA" \
+        ip -4 route replace "$cidr" dev "$DEV" table "$TABELA" \
             || echo "crm-ovpn-rotas: falha ao instalar $cidr" >&2
     done < "$ROTAS"
 fi
+echo "crm-ovpn-rotas: $INSTANCIA → tabela $TABELA (origem $ORIGEM)"
 exit 0

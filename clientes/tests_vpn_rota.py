@@ -25,8 +25,8 @@ class ConfInstanciaTest(SimpleTestCase):
     def test_conf_nao_instala_rotas_na_tabela_main(self):
         conf = ovpnm._gerar_conteudo_conf(_vpn_fake())
         self.assertNotRegex(conf, r'(?m)^route ')
-        self.assertIn(f'up {ovpnm.SCRIPT_ROTAS}', conf)
-        self.assertIn('script-security 2', conf)
+        # sem `up`: o LimitNPROC do unit do OpenVPN barra o fork (ver deploy/openvpn)
+        self.assertNotRegex(conf, r'(?m)^(up|script-security) ')
 
     def test_arquivo_rotas_normaliza_cidr(self):
         self.assertEqual(ovpnm._gerar_conteudo_rotas(_vpn_fake()),

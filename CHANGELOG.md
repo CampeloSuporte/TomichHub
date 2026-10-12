@@ -12,8 +12,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **Rotas de cada túnel OpenVPN numa tabela própria** (`1000+N`), usada só pelo tráfego com a
   origem do túnel (`ip rule from 10.91.x.y`). A tabela main do servidor não tem mais nenhuma
   rede de cliente: o tráfego do próprio CRM vai pela internet, mesmo para IP dentro de uma faixa
-  que algum cliente declarou. Script `up` versionado em `deploy/openvpn/crm-ovpn-rotas`
-  (instalado em `/usr/local/sbin`); redes em `/etc/openvpn/server/server-crm-N.rotas`.
+  que algum cliente declarou. Quem instala é o unit `crm-ovpn-rotas@server-crm-N` (puxado por
+  drop-in em toda `openvpn-server@`), não um `up` do OpenVPN — o `LimitNPROC=10` do unit dele barra
+  o fork no container. Arquivos em `deploy/openvpn/`; redes em `/etc/openvpn/server/server-crm-N.rotas`.
 - Clientes diferentes podem declarar a mesma faixa; a validação de conflito vale só entre
   túneis do mesmo cliente.
 - Terminal SSH/Telnet, WinBox, WinBox Web/VNC, console WebSocket, proxy web, backup, scripts,
