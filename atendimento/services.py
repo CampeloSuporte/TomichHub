@@ -370,9 +370,11 @@ def _disparar_acoes_ia(conversation, content, is_internal=False) -> None:
     equipe não pode gerar resposta no WhatsApp do cliente.
     """
     texto = _normalizar_texto((content or '').lower())
+    acionou = False
     if _pede_abertura_de_tarefa(texto):
         from .tasks import abrir_tarefa_ia
         abrir_tarefa_ia.delay(str(conversation.id), content, is_internal)
+        acionou = True
     # Chamado já encerrado não reabre nem refaz resolução — e a própria
     # "Mensagem de encerramento" das configurações ("Finalizamos seu
     # atendimento...") passa por aqui depois do fechamento, então sem esta
@@ -380,6 +382,28 @@ def _disparar_acoes_ia(conversation, content, is_internal=False) -> None:
     if _pede_fechamento_de_chamado(texto) and conversation.status not in ('resolved', 'closed'):
         from .tasks import fechar_chamado_ia
         fechar_chamado_ia.delay(str(conversation.id), content, is_internal)
+        acionou = True
+    # Pergunta ao assistente num comentário interno ("@hermes, o que já foi
+    # feito aqui?"): responde como outra nota interna. Se a mesma nota já
+    # pediu uma ação ("Hermes, fechar o atendimento"), a confirmação da ação
+    # é a resposta — não sai uma segunda.
+    if is_internal and not acionou:
+        nome = _assistente_chamado(texto)
+        if nome:
+            from .tasks import responder_nota_interna_ia
+            responder_nota_interna_ia.delay(str(conversation.id), content, nome)
+
+
+_ASSISTENTES = (('hermes', 'Hermes'), ('tomichinho', 'Tomichinho'))
+
+
+def _assistente_chamado(texto_normalizado: str):
+    """Nome do assistente citado na nota interna ("hermes"/"tomichinho",
+    palavra inteira), ou None."""
+    for chave, nome in _ASSISTENTES:
+        if _re.search(r'\b%s\b' % chave, texto_normalizado):
+            return nome
+    return None
 
 
 def _disparar_agente_ia(conversation, content) -> None:

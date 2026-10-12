@@ -134,7 +134,7 @@ def status(textos):
     from atendimento.models import SystemSetting
 
     provedor = (SystemSetting.get('ai_provider', 'claude') or 'claude').strip()
-    nome = {'openai': 'ChatGPT', 'claude': 'Claude'}.get(provedor, provedor)
+    nome = {'openai': 'ChatGPT', 'claude': 'Claude', 'hermes': 'Hermes'}.get(provedor, provedor)
     if textos:
         return {'usada': True, 'provedor': nome, 'motivo': ''}
     return {'usada': False, 'provedor': nome, 'motivo': ultimo_erro_ia() or 'IA não configurada ou resposta inválida'}

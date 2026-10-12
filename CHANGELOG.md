@@ -5,6 +5,25 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-11 (Hermes Agent no atendimento)
+
+### Adicionado
+
+- **Hermes Agent como provedor de IA do atendimento** (Configurações → Integração IA): URL do
+  API Server, `API_SERVER_KEY` e modelo (`hermes-agent`). Usa a API compatível com a OpenAI;
+  manda `X-Hermes-Session-Key: crm-<id do chamado>` para a memória do Hermes não misturar
+  chamados. Timeout 90s (é agente, não modelo cru). Se o provedor escolhido falhar, cai nos
+  outros que tiverem credencial salva.
+- **`@hermes` (ou "tomichinho") em comentário interno**: a IA responde com outra nota interna,
+  usando o histórico do chamado — nada sai pro WhatsApp. Se a nota pede ação
+  ("Hermes, fechar o atendimento"), só a ação roda, sem resposta extra.
+- Fechamento por IA ("Hermes, fechar o atendimento") usa o provedor configurado — com Hermes
+  selecionado, é ele quem redige a resolução. Respostas do assistente em nota interna ficam
+  fora da resolução de fallback.
+- Agent NOC (terminal) **não** foi alterado.
+
+---
+
 ## [Não publicado] — 2026-10-11 (Excluir backup sem recarregar a página)
 
 ### Corrigido
