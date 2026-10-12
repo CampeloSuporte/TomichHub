@@ -2203,9 +2203,12 @@ def realizar_backup(acesso, usuario=None):
             proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
             if not proxy:
                 # Verificar se um túnel OpenVPN ativo cobre este IP
-                if vpn_cobre_ip(acesso.cliente, acesso.host):
-                    print(f"✅ Túnel OpenVPN cobre {acesso.host} — conectando diretamente")
-                    # host_conexao e porta_conexao já apontam para o host diretamente via VPN
+                tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host)
+                if tunel_vpn:
+                    print(f"✅ Túnel OpenVPN cobre {acesso.host} — conectando pelo túnel")
+                    from . import vpn_rota
+                    host_conexao, porta_conexao = vpn_rota.endpoint_local(
+                        tunel_vpn, acesso.host, porta_conexao)
                 else:
                     raise Exception(
                         "IP privado sem proxy SSH ativo e sem túnel OpenVPN cobrindo o host. "
@@ -3606,51 +3609,19 @@ def _vpn_declara_ip(vpn, host_ip):
 
 
 def vpn_cobre_ip(cliente, host):
-    """Verifica se existe túnel OpenVPN (aba Túneis) desse cliente que
-    realmente entregue o IP do host — nesse caso a conexão pode ser feita
-    direto, sem SSH tunnel.
+    """Túnel OpenVPN (aba Túneis) desse cliente que realmente entrega o IP do
+    host, ou None — nesse caso a conexão vai pelo túnel, sem SSH tunnel.
 
-    Declarar a rede em `redes_privadas` não basta: a rota é do kernel, que é
-    único e roteia por DESTINO. Se dois clientes declaram a mesma faixa ampla
-    (o padrão CGNAT+RFC1918), só uma rota vale e a outra jogaria a conexão
-    dentro do túnel do cliente ERRADO — que ainda mascara a origem e pode
-    entregar num equipamento de mesmo IP na rede dele. Por isso o `dev` real
-    do `ip route get` tem que bater com a interface daquele túnel; quando não
-    bate, retorna False e o chamador cai no ProxyServer SSH, que é o caminho
-    correto."""
+    O túnel retornado tem tabela de rotas isolada: a conexão só chega no
+    equipamento saindo com a origem dele (clientes.vpn_rota — `conectar`,
+    `endpoint_local` ou `origem`). Conectar no host sem isso sai pela tabela
+    main, ou seja, pela internet."""
     try:
-        import ipaddress as _ipa
-        from .models import VPNOpenVPN
-        from . import openvpn_tunnel_manager as _ovpnm
-        host_ip = _ipa.ip_address(host)
-
-        candidatos = []   # (tunel, dev_esperado)
-        for tunel in VPNOpenVPN.objects.filter(cliente=cliente, ativo=True, cert_emitido=True):
-            if _vpn_declara_ip(tunel, host_ip):
-                candidatos.append((tunel, _ovpnm.dev_tun(tunel)))
-
-        if not candidatos:
-            return False
-
-        dev_real = _ovpnm.rota_dev_para(host)
-        if not dev_real:
-            # Sem conseguir consultar o kernel, mantém o comportamento antigo
-            # (confia na declaração) em vez de derrubar acesso que funcionava.
-            return True
-
-        for vpn, dev_esperado in candidatos:
-            if dev_esperado and dev_real == dev_esperado:
-                return True
-
-        logger.warning(
-            f'⚠️ Túnel de {cliente.nome_empresa} declara {host}, mas a rota do kernel sai por '
-            f'"{dev_real}" (esperado {[d for _, d in candidatos]}) — provável colisão de faixa '
-            f'ampla com outro cliente. Tratando como NÃO coberto para não cair na rede errada.'
-        )
-        return False
-    except Exception:
-        pass
-    return False
+        from . import vpn_rota
+        return vpn_rota.tunel_para(cliente, host)
+    except Exception as e:
+        logger.warning(f'vpn_cobre_ip({host}) falhou: {e}')
+    return None
 
 
 def criar_ssh_tunnel(proxy_server, equipamento_host, equipamento_porta, timeout=10):
@@ -4499,9 +4470,11 @@ def ping_acesso(request, acesso_id):
             ).first()
 
             if not proxy:
-                if vpn_cobre_ip(acesso.cliente, host):
+                tunel_vpn = vpn_cobre_ip(acesso.cliente, host)
+                if tunel_vpn:
                     print(f"✅ Túnel OpenVPN cobre {host} — ping direto pelo túnel")
-                    resultado = ping_direto(host)
+                    from . import vpn_rota
+                    resultado = ping_direto(host, origem=vpn_rota.origem(tunel_vpn))
                 else:
                     return JsonResponse({
                         'error': 'IP privado sem proxy SSH ativo',
@@ -4550,16 +4523,21 @@ def status_acesso(request, acesso_id):
     porta = acesso.porta
 
     proxy = None
+    origem = None
     if is_private_ip(host):
         proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
-        if not proxy and not vpn_cobre_ip(acesso.cliente, host):
-            return JsonResponse({'error': 'IP privado sem proxy SSH ativo'}, status=400)
+        if not proxy:
+            tunel_vpn = vpn_cobre_ip(acesso.cliente, host)
+            if not tunel_vpn:
+                return JsonResponse({'error': 'IP privado sem proxy SSH ativo'}, status=400)
+            from . import vpn_rota
+            origem = vpn_rota.origem(tunel_vpn)
 
     try:
         if proxy:
             ping, porta_aberta = _status_via_proxy(proxy, host, porta)
         else:
-            ping, porta_aberta = _status_direto(host, porta)
+            ping, porta_aberta = _status_direto(host, porta, origem=origem)
     except Exception as e:
         logging.getLogger(__name__).warning('status_acesso %s: %s', acesso_id, e)
         return JsonResponse({'error': f'Não foi possível testar pelo proxy: {e}'}, status=502)
@@ -4575,11 +4553,13 @@ def status_acesso(request, acesso_id):
 _PING_CURTO = ['ping', '-c', '3', '-i', '0.5', '-W', '1']
 
 
-def _status_direto(host, porta):
-    """(resultado do ping, porta aberta?) sem proxy. Porta None = sem porta."""
+def _status_direto(host, porta, origem=None):
+    """(resultado do ping, porta aberta?) sem proxy. Porta None = sem porta.
+    `origem`: IP do túnel OpenVPN do cliente (tabela de rotas isolada)."""
     import subprocess
     try:
-        r = subprocess.run(_PING_CURTO + [host], capture_output=True, text=True, timeout=10)
+        cmd = _PING_CURTO + (['-I', origem] if origem else []) + [host]
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
         ping = parsear_output_ping(r.stdout, host, r.returncode)
     except (subprocess.TimeoutExpired, OSError):
         ping = {'status': 'timeout'}
@@ -4587,7 +4567,8 @@ def _status_direto(host, porta):
     porta_aberta = None
     if porta:
         try:
-            with socket.create_connection((host, int(porta)), timeout=3):
+            with socket.create_connection((host, int(porta)), timeout=3,
+                                          source_address=(origem, 0) if origem else None):
                 porta_aberta = True
         except OSError:
             porta_aberta = False
@@ -4621,10 +4602,11 @@ def _status_via_proxy(proxy, host, porta):
         ssh.close()
 
 
-def ping_direto(host, packets=10):
+def ping_direto(host, packets=10, origem=None):
     """
     ✅ Ping direto para IP público
     Compatível com Linux e Windows
+    `origem`: IP do túnel OpenVPN do cliente (tabela de rotas isolada).
     """
     try:
         import subprocess
@@ -4636,7 +4618,7 @@ def ping_direto(host, packets=10):
         if sistema == 'Windows':
             cmd = ['ping', '-n', str(packets), host]
         else:  # Linux/Mac
-            cmd = ['ping', '-c', str(packets), host]
+            cmd = ['ping', '-c', str(packets)] + (['-I', origem] if origem else []) + [host]
 
         print(f"📤 Executando: {' '.join(cmd)}")
 
@@ -4822,8 +4804,10 @@ def traceroute_acesso(request, acesso_id):
         if eh_privado:
             proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
             if not proxy:
-                if vpn_cobre_ip(acesso.cliente, host):
-                    resultado = _traceroute_direto(host)
+                tunel_vpn = vpn_cobre_ip(acesso.cliente, host)
+                if tunel_vpn:
+                    from . import vpn_rota
+                    resultado = _traceroute_direto(host, origem=vpn_rota.origem(tunel_vpn))
                 else:
                     return JsonResponse({'error': 'IP privado sem proxy SSH ativo', 'host': host}, status=400)
             else:
@@ -4837,7 +4821,7 @@ def traceroute_acesso(request, acesso_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-def _traceroute_direto(host):
+def _traceroute_direto(host, origem=None):
     import subprocess, platform, re
     sistema = platform.system()
     if sistema == 'Windows':
@@ -4846,9 +4830,11 @@ def _traceroute_direto(host):
         # prefere mtr, cai para traceroute
         import shutil
         if shutil.which('mtr'):
-            cmd = ['mtr', '--report', '--report-cycles', '3', '--no-dns', host]
+            cmd = ['mtr', '--report', '--report-cycles', '3', '--no-dns'] \
+                + (['-a', origem] if origem else []) + [host]
         elif shutil.which('traceroute'):
-            cmd = ['traceroute', '-n', '-w', '2', '-m', '20', host]
+            cmd = ['traceroute', '-n', '-w', '2', '-m', '20'] \
+                + (['-s', origem] if origem else []) + [host]
         else:
             cmd = ['tracepath', '-n', host]
 
@@ -6847,11 +6833,15 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
 
     # ── Proxy SSH se IP privado ───────────────────────────────────────
     proxy_srv = None
+    origem_vpn = None
     if ProxyEngine.is_private_ip(target_host):
         proxy_srv = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
         if not proxy_srv:
-            if vpn_cobre_ip(acesso.cliente, target_host):
-                pass  # VPN ativa cobre este IP — acesso direto sem proxy
+            tunel_vpn = vpn_cobre_ip(acesso.cliente, target_host)
+            if tunel_vpn:
+                # VPN cobre este IP — direto, saindo com a origem do túnel
+                from . import vpn_rota
+                origem_vpn = vpn_rota.origem(tunel_vpn)
             else:
                 return _falha_proxy_web(
                     ProxyEngine.get_error_page(
@@ -6869,7 +6859,8 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
     dev_user, dev_senha = _credenciais_basic_do_browser(request) or (acesso.usuario, acesso.senha)
     engine = ProxyEngine(proxy_srv,
                          device_username=dev_user,
-                         device_password=dev_senha)
+                         device_password=dev_senha,
+                         origem=origem_vpn)
 
     _django_cookies = {'sessionid', 'csrftoken', 'messages'}
     raw_cookie = request.META.get('HTTP_COOKIE', '')
@@ -8277,25 +8268,23 @@ def vpn_ovpn_listar(request, cliente_id):
     })
 
 
-def _ovpn_erro_conflito(redes_raw, excluir_vpn_id=None):
-    """Mensagem de erro se alguma rede pedida se sobrepõe à de outro túnel/VPN
-    ativo, ou '' se estiver tudo livre. Criar o túnel assim mesmo não deixaria
-    dois clientes acessíveis — instalaria uma segunda rota para o mesmo
-    prefixo, que o kernel ignora, e mandaria o tráfego para a rede errada."""
+def _ovpn_erro_conflito(redes_raw, excluir_vpn_id=None, cliente=None):
+    """Mensagem de erro se alguma rede pedida repete a de outro túnel ativo do
+    MESMO cliente, ou '' se estiver tudo livre. Entre clientes diferentes não
+    há conflito: cada túnel instala suas redes numa tabela de rotas isolada
+    (ver openvpn_tunnel_manager)."""
     import re as _re
     redes = [r.strip() for r in _re.split(r'[,\n]+', redes_raw) if r.strip()]
-    conflitos = ovpnm.redes_em_conflito(redes, excluir_vpn_id=excluir_vpn_id)
+    conflitos = ovpnm.redes_em_conflito(redes, excluir_vpn_id=excluir_vpn_id, cliente=cliente)
     if not conflitos:
         return ''
     linhas = [f'• {rede} já é declarada pelo {rotulo}'
               for rede, _outra, rotulo in conflitos[:6]]
     return (
-        'Estas redes já são roteadas por outro túnel/VPN ativo:\n'
+        'Estas redes já são roteadas por outro túnel deste cliente:\n'
         + '\n'.join(linhas)
-        + '\n\nO kernel roteia por destino: uma segunda rota para o mesmo prefixo é '
-          'ignorada e o tráfego acabaria indo para a rede do outro cliente. '
-          'Declare as sub-redes específicas deste cliente (ex: 192.168.88.0/24) '
-          'em vez das faixas amplas.'
+        + '\n\nCom a mesma rede em dois túneis fica ambíguo por qual deles chegar '
+          'no equipamento. Remova a rede de um dos túneis.'
     )
 
 
@@ -8305,9 +8294,9 @@ def _ovpn_erro_conflito(redes_raw, excluir_vpn_id=None):
 def vpn_ovpn_criar(request, cliente_id):
     """
     Cria um túnel OpenVPN em uma instância DEDICADA (porta/interface/sub-rede
-    próprias). Evita que dois clientes com as mesmas redes "alcançáveis" (o
-    padrão CGNAT+RFC1918) tenham tráfego roteado pro cliente errado quando
-    ambos estão conectados ao mesmo tempo.
+    e tabela de rotas próprias). Dois clientes com as mesmas redes
+    "alcançáveis" (o padrão CGNAT+RFC1918) não colidem: cada túnel roteia
+    só o tráfego que sai com a origem dele.
     """
     cliente = get_object_or_404(Cliente, id=cliente_id)
     try:
@@ -8315,7 +8304,7 @@ def vpn_ovpn_criar(request, cliente_id):
         nome      = body.get('nome', 'VPN MikroTik').strip() or 'VPN MikroTik'
         redes_raw = body.get('redes_privadas', '').strip() or '\n'.join(ovpnm.REDES_PADRAO)
 
-        erro_conflito = _ovpn_erro_conflito(redes_raw)
+        erro_conflito = _ovpn_erro_conflito(redes_raw, cliente=cliente)
         if erro_conflito:
             return JsonResponse({'ok': False, 'erro': erro_conflito}, status=400)
 

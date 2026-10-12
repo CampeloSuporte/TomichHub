@@ -111,7 +111,7 @@ class StatusAcessoViewTest(_Base):
         r = self._status()
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.json(), {'responde': True, 'ping_ms': 4.2, 'porta': 22, 'porta_aberta': True})
-        status_direto.assert_called_once_with('200.200.200.10', 22)
+        status_direto.assert_called_once_with('200.200.200.10', 22, origem=None)
 
     @mock.patch('clientes.views._status_direto')
     def test_host_com_esquema_e_caminho(self, status_direto):
@@ -119,7 +119,7 @@ class StatusAcessoViewTest(_Base):
         self.acesso.host = 'https://200.200.200.10/zabbix'
         self.acesso.save()
         self.assertEqual(self._status().json()['responde'], False)
-        status_direto.assert_called_once_with('200.200.200.10', 22)
+        status_direto.assert_called_once_with('200.200.200.10', 22, origem=None)
 
     def test_privado_sem_proxy_nem_vpn(self):
         self.acesso.host = '10.105.200.102'

@@ -1663,8 +1663,14 @@ def _conectar_ssh_acesso(acesso):
             porta_conexao = ssh_tunnel['local_port']
             import time
             time.sleep(1)
-        elif not vpn_cobre_ip(acesso.cliente, acesso.host):
-            raise Exception('IP privado sem proxy SSH ativo nem VPN cobrindo o host.')
+        else:
+            tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host)
+            if not tunel_vpn:
+                raise Exception('IP privado sem proxy SSH ativo nem VPN cobrindo o host.')
+            # Tabela de rotas isolada do túnel: relay com a origem dele
+            from . import vpn_rota
+            host_conexao, porta_conexao = vpn_rota.endpoint_local(
+                tunel_vpn, acesso.host, porta_conexao)
 
     kex_algorithms = [
         'diffie-hellman-group14-sha256',

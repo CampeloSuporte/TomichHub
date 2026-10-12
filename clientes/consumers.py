@@ -236,51 +236,14 @@ class _TerminalSessionRegistry:
 _terminal_sessions = _TerminalSessionRegistry()
 
 
-def _rota_confere(host: str, dev_esperado: str) -> bool:
-    """
-    A rota que o kernel usa para `host` sai mesmo pela interface desse túnel?
-
-    Declarar a rede em `redes_privadas` não prova nada: a tabela de rotas é
-    única e roteia por DESTINO, então quando dois clientes declaram a mesma
-    faixa ampla (10.0.0.0/8 e afins) só uma rota vale e o tráfego do outro
-    entraria no túnel do cliente ERRADO. Sem `dev` esperado, ou sem conseguir
-    consultar o kernel, mantém o comportamento antigo (confia na declaração)
-    para não derrubar acesso que já funcionava.
-    """
-    if not dev_esperado:
-        return True
-    from . import openvpn_tunnel_manager as _ovpnm
-    dev_real = _ovpnm.rota_dev_para(host)
-    if not dev_real:
-        return True
-    if dev_real == dev_esperado:
-        return True
-    logger.warning(
-        f'⚠️ {host} é declarado por um túnel em {dev_esperado}, mas a rota do kernel sai por '
-        f'"{dev_real}" — colisão de faixa com outro cliente; ignorando esse túnel.'
-    )
-    return False
-
-
 def _tunel_ovpn_cobre(cliente, host):
     """
     Túnel OpenVPN ativo desse cliente que entrega o IP do host, ou None.
-    Confere a rota real (`_rota_confere`) — declarar a rede não basta.
+    A conexão tem que sair com a origem do túnel (clientes.vpn_rota).
     """
     try:
-        import ipaddress as _ipa
-        from .models import VPNOpenVPN
-        from . import openvpn_tunnel_manager as _ovpnm
-
-        host_ip = _ipa.ip_address(host)
-        for tunel in VPNOpenVPN.objects.filter(cliente=cliente, ativo=True, cert_emitido=True):
-            for rede_str in tunel.redes_lista():
-                try:
-                    if host_ip in _ipa.ip_network(rede_str, strict=False):
-                        if _rota_confere(host, _ovpnm.dev_tun(tunel)):
-                            return tunel
-                except ValueError:
-                    pass
+        from . import vpn_rota
+        return vpn_rota.tunel_para(cliente, host)
     except Exception as e:
         logger.warning(f"⚠️ Erro ao verificar túnel OpenVPN: {e}")
     return None
@@ -652,11 +615,10 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
 
     def _tunel_ovpn_cobre_ip(self, cliente, host):
         """
-        Túnel OpenVPN (aba Túneis) que cobre o IP do host, ou None. Cada
-        túnel roda em instância dedicada com sua própria interface
-        (tun-crm-N) e instala a rota do cliente, então não precisa de
-        source-bind — basta a rota do kernel apontar para a tun DESTE túnel,
-        o que `_rota_confere` valida (ver vpn_cobre_ip em views.py).
+        Túnel OpenVPN (aba Túneis) que cobre o IP do host, ou None. As redes
+        do cliente ficam na tabela isolada do túnel: a conexão precisa sair
+        com a origem dele (`self._origem_vpn`, usada por connect_ssh,
+        _connect_ssh_paramiko_direct e connect_telnet).
         """
         tunel = _tunel_ovpn_cobre(cliente, host)
         if tunel:
@@ -959,17 +921,19 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
 
             is_private = self.is_private_ip(acesso.host)
             is_cgnat   = getattr(acesso, 'tipo', '') == 'CGNAT'
+            self._origem_vpn = None
 
             if is_private:
                 # IP privado: túnel OpenVPN do cliente ou proxy SSH
                 tunel_ovpn = self._tunel_ovpn_cobre_ip(acesso.cliente, acesso.host)
                 if tunel_ovpn:
-                    # Instância dedicada por cliente — a rota do kernel já sai
-                    # pela tun certa (conferida em `_rota_confere`), sem
-                    # precisar de source-bind.
+                    # Tabela de rotas isolada do túnel: só a origem dele chega
+                    # na rede do cliente.
+                    from . import vpn_rota
+                    self._origem_vpn = vpn_rota.origem(tunel_ovpn)
                     self.send_json({'type': 'info', 'message': f'🔒 Conectando via Túnel OpenVPN ({tunel_ovpn.nome})...'})
                     if protocol == 'ssh':
-                        self.connect_ssh(acesso)
+                        self.connect_ssh(acesso, source_ip=self._origem_vpn)
                     else:
                         self.connect_telnet(acesso)
                 else:
@@ -1287,7 +1251,9 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         logger.info(f"🔗 [PARAMIKO DIRECT] {acesso.host}:{acesso.porta}")
 
         # 1. Abrir socket TCP direto para o equipamento
-        sock = socket.create_connection((acesso.host, int(acesso.porta)), timeout=15)
+        origem_vpn = getattr(self, '_origem_vpn', None)
+        sock = socket.create_connection((acesso.host, int(acesso.porta)), timeout=15,
+                                        source_address=(origem_vpn, 0) if origem_vpn else None)
         try:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except Exception:
@@ -1924,7 +1890,16 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
 
     def connect_telnet(self, acesso):
         try:
-            self.telnet_client = telnetlib.Telnet(acesso.host, int(acesso.porta), timeout=10)
+            origem_vpn = getattr(self, '_origem_vpn', None)
+            if origem_vpn:
+                # telnetlib não aceita origem: abre o socket e entrega pronto
+                self.telnet_client = telnetlib.Telnet()
+                self.telnet_client.host, self.telnet_client.port = acesso.host, int(acesso.porta)
+                self.telnet_client.timeout = 10
+                self.telnet_client.sock = socket.create_connection(
+                    (acesso.host, int(acesso.porta)), timeout=10, source_address=(origem_vpn, 0))
+            else:
+                self.telnet_client = telnetlib.Telnet(acesso.host, int(acesso.porta), timeout=10)
             self.send_json({'type': 'info', 'message': f'Conectando Telnet a {acesso.host}:{acesso.porta}...'})
             self.authenticate_telnet(acesso.usuario, acesso.senha)
             self.send_json({'type': 'connected', 'message': f'✓ Conectado Telnet a {acesso.host}:{acesso.porta}'})
@@ -2351,15 +2326,16 @@ class WinboxConsumer(SSHConsumer):
                     target_host = '127.0.0.1'
                     target_port = local_port
                 else:
-                    # Cliente só-túnel (sem ProxyServer SSH) — a rota já
-                    # existe no kernel via OpenVPN. Ver mesmo fallback em
-                    # conectar_vnc() acima.
+                    # Cliente só-túnel (sem ProxyServer SSH) — sai pela tabela
+                    # isolada do túnel OpenVPN (relay com a origem dele). Ver
+                    # mesmo fallback em conectar_vnc() acima.
                     from .views import vpn_cobre_ip
-                    if not vpn_cobre_ip(acesso.cliente, host):
+                    from . import vpn_rota
+                    tunel_vpn = vpn_cobre_ip(acesso.cliente, host)
+                    if not tunel_vpn:
                         raise Exception(f"Nenhum proxy SSH ativo nem VPN cobrindo {host} para {acesso.cliente.nome_empresa}")
-                    self.send_json({'type': 'info', 'message': f'🔌 Conectando Winbox diretamente a {host}:{porta} (via VPN)...'})
-                    target_host = host
-                    target_port = porta
+                    self.send_json({'type': 'info', 'message': f'🔌 Conectando Winbox a {host}:{porta} (via VPN)...'})
+                    target_host, target_port = vpn_rota.endpoint_local(tunel_vpn, host, porta)
             else:
                 self.send_json({'type': 'info', 'message': f'🔌 Conectando Winbox diretamente a {host}:{porta}...'})
                 target_host = host
@@ -2534,10 +2510,12 @@ class WinboxVNCConsumer(SSHConsumer):
                     # ativo" pra qualquer cliente só-VPN, mesmo com o IP
                     # perfeitamente alcançável.
                     from .views import vpn_cobre_ip
-                    if not vpn_cobre_ip(acesso.cliente, host):
+                    from . import vpn_rota
+                    tunel_vpn = vpn_cobre_ip(acesso.cliente, host)
+                    if not tunel_vpn:
                         raise Exception(f"Nenhum proxy SSH ativo nem VPN cobrindo {host} para {acesso.cliente.nome_empresa}")
-                    target_host = host
-                    target_port = porta
+                    # Tabela isolada do túnel: relay local com a origem dele
+                    target_host, target_port = vpn_rota.endpoint_local(tunel_vpn, host, porta)
 
             else:
                 target_host = host
@@ -2703,11 +2681,15 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                     # é direto. Sem isso a página do Proxmox abria (HTTP ia pela VPN)
                     # mas a WebSocket da console morria com "Connection failed".
                     from .views import vpn_cobre_ip
-                    if not vpn_cobre_ip(acesso.cliente, target_host):
+                    from . import vpn_rota
+                    tunel_vpn = vpn_cobre_ip(acesso.cliente, target_host)
+                    if not tunel_vpn:
                         raise Exception(
                             f'IP privado {target_host} sem proxy SSH ativo e sem '
                             f'túnel VPN cobrindo esse IP ({acesso.cliente})'
                         )
+                    # Tabela isolada do túnel: relay local com a origem dele
+                    connect_host, connect_port = vpn_rota.endpoint_local(tunel_vpn, target_host, porta)
 
             raw_sock = socket.create_connection((connect_host, connect_port), timeout=10)
 
@@ -3068,7 +3050,7 @@ def _abrir_canal_proxy(proxy, acesso):
         )
 
 
-def _routeros_exec(acesso, comando: str, timeout: int = 25, proxy=None) -> str:
+def _routeros_exec(acesso, comando: str, timeout: int = 25, proxy=None, origem=None) -> str:
     """
     Executa comando em RouterOS por exec sem PTY (ver _ROUTEROS_PROBE_RE). Várias
     linhas vão num exec só: o RouterOS roda uma a uma e segue adiante se alguma
@@ -3077,7 +3059,9 @@ def _routeros_exec(acesso, comando: str, timeout: int = 25, proxy=None) -> str:
     if proxy:
         sock = _abrir_canal_proxy(proxy, acesso)
     else:
-        sock = socket.create_connection((acesso.host, int(acesso.porta)), timeout=12)
+        # origem: IP do túnel OpenVPN do cliente (tabela de rotas isolada)
+        sock = socket.create_connection((acesso.host, int(acesso.porta)), timeout=12,
+                                        source_address=(origem, 0) if origem else None)
     transport = paramiko.Transport(sock)
     try:
         transport._preferred_kex = _ZTE_PREFERRED_KEX
@@ -3223,27 +3207,30 @@ def platform_ssh_exec(acesso, comando: str, timeout: int = 25) -> str:
         except ValueError:
             return False
 
-    def _executar(proxy=None) -> str:
-        """proxy=None → conexão direta (rota pública ou pela tun do cliente)."""
+    def _executar(proxy=None, origem=None) -> str:
+        """proxy=None → conexão direta (rota pública ou, com `origem`, pela
+        tabela isolada do túnel OpenVPN do cliente)."""
         if is_routeros:
-            return _routeros_exec(acesso, comando, timeout, proxy=proxy)
+            return _routeros_exec(acesso, comando, timeout, proxy=proxy, origem=origem)
         try:
             if proxy:
                 return _paramiko_proxy_exec(proxy, acesso, comando, is_huawei, timeout)
-            cmd_line = f"ssh {_SSH_FLAGS} -p {acesso.porta} {acesso.usuario}@{acesso.host}"
+            bind = f"-b {origem} " if origem else ""
+            cmd_line = f"ssh {bind}{_SSH_FLAGS} -p {acesso.porta} {acesso.usuario}@{acesso.host}"
             return _pexpect_exec(cmd_line, acesso.senha, comando, is_huawei, timeout)
         except _RouterOSDetectado:
             # Cadastro sem fabricante MikroTik: a sonda de terminal entregou.
             # Ela chega antes de qualquer envio, então repetir por exec não
             # duplica comando.
-            return _routeros_exec(acesso, comando, timeout, proxy=proxy)
+            return _routeros_exec(acesso, comando, timeout, proxy=proxy, origem=origem)
 
     # Roteamento: IP privado → túnel OpenVPN do cliente ou proxy; público → direto
     if _is_private(acesso.host):
-        if _tunel_ovpn_cobre(acesso.cliente, acesso.host):
-            # Rota já existe no kernel pela tun daquele cliente — direto, sem
-            # proxy e sem source bind.
-            return _executar()
+        tunel_vpn = _tunel_ovpn_cobre(acesso.cliente, acesso.host)
+        if tunel_vpn:
+            # Sem proxy, saindo com a origem do túnel (tabela isolada dele)
+            from . import vpn_rota
+            return _executar(origem=vpn_rota.origem(tunel_vpn))
         # sem proxy/VPN, tenta direto
         return _executar(ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first())
     elif getattr(acesso, 'tipo', '') == 'CGNAT':

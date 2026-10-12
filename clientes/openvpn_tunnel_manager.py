@@ -13,14 +13,19 @@ Isolamento é por processo, não por certificado compartilhado num daemon
 único — cada instância só aceita a UMA conexão daquele cliente (via
 client-config-dir + ccd-exclusive, com um único arquivo CCD).
 
-IMPORTANTE — o que isso resolve e o que NÃO resolve:
-Isso elimina a classe de bug em que apagar/editar o túnel de um cliente
-afeta outro. NÃO elimina o problema de dois clientes DIFERENTES terem, ao
-mesmo tempo, a MESMA rede "alcançável" declarada (ex: ambos com
-172.16.0.0/12 no CGNAT padrão) — isso é uma limitação de roteamento IP por
-destino (o kernel só pode mandar um pacote destinado a um IP específico
-para UM lugar), não uma limitação de arquitetura de túnel. Daí a checagem
-em `redes_em_conflito` e a conferência do `dev` real em `vpn_cobre_ip`.
+Rotas isoladas por túnel (12/10/2026): as redes de um cliente NÃO vão para a
+tabela principal do servidor. Cada instância instala as suas numa tabela
+própria (1000+N), usada só pelo tráfego cuja ORIGEM é o IP do servidor
+naquele túnel (`ip rule from 10.91.x.y lookup 1000+N`, feito pelo script
+`up` deploy/openvpn/crm-ovpn-rotas). Consequências:
+  - o tráfego do próprio CRM (APIs, Hermes, internet) sai pela tabela main
+    e nunca entra na VPN de um cliente só porque a faixa coincide — foi o
+    que aconteceu com o Hermes em 198.18.1.2, que caía no túnel da Conecta;
+  - dois clientes podem declarar a mesma faixa (10.0.0.0/8, CGNAT…) sem
+    colidir: cada um na sua tabela;
+  - para falar com um equipamento do cliente, o CRM tem que sair com a
+    origem do túnel — `clientes/vpn_rota.py` faz isso (bind de origem ou
+    relay local em 127.0.0.1 para libs que não aceitam bind).
 """
 import ipaddress
 import logging
@@ -71,27 +76,25 @@ def _cidr_to_route(cidr):
     return str(net.network_address), str(net.netmask)
 
 
-def rota_dev_para(host):
+def rota_dev_para(host, origem=None):
     """
     Interface que o kernel REALMENTE usa para alcançar `host` ('tun-crm-1',
-    'eth0'…), ou None se não der para determinar.
-
-    Necessário porque declarar uma rede em `redes_privadas` não garante que a
-    rota do kernel aponte para aquele túnel: quando dois clientes declaram a
-    mesma faixa ampla (10.0.0.0/8 etc.), o kernel roteia por destino e só uma
-    das rotas vale — a outra vira uma promessa falsa que joga o tráfego no
-    túnel do cliente errado.
+    'eth0'…), ou None se não der para determinar. Com `origem` (IP do
+    servidor num túnel), consulta a rota que esse tráfego usaria — é a
+    tabela isolada daquele túnel, não a main.
     """
+    cmd = ['ip', 'route', 'get', str(host)]
+    if origem:
+        cmd += ['from', str(origem)]
     try:
-        r = subprocess.run(['ip', 'route', 'get', str(host)],
-                           capture_output=True, text=True, timeout=5)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
         if r.returncode != 0:
             return None
         partes = r.stdout.split()
         if 'dev' in partes:
             return partes[partes.index('dev') + 1]
     except Exception as e:
-        logger.debug(f'rota_dev_para({host}) falhou: {e}')
+        logger.debug(f'rota_dev_para({host}, {origem}) falhou: {e}')
     return None
 
 
@@ -116,56 +119,32 @@ def dev_tun(vpn):
     return (vpn.interface_nome or '').replace('server-crm-', 'tun-crm-')
 
 
-def _rotas_kernel():
-    """{prefixo: [devs]} das rotas IPv4 já instaladas (fora a default). O mesmo
-    prefixo pode aparecer em mais de uma interface — é exatamente o estado que
-    esta checagem existe para evitar."""
-    rotas = {}
+def origem_tunel(vpn):
+    """IP do servidor no /29 deste túnel. É a origem que seleciona a tabela de
+    rotas isolada do túnel (ver docstring do módulo)."""
+    if vpn.subnet_n is None:
+        return None
+    return _server_ip(vpn.subnet_n)
+
+
+def tabela_tunel(vpn):
+    """Número da tabela de rotas isolada do túnel (1000+N, N de tun-crm-N) —
+    o mesmo cálculo do script crm-ovpn-rotas."""
     try:
-        r = subprocess.run(['ip', '-4', 'route', 'show'],
-                           capture_output=True, text=True, timeout=5)
-        if r.returncode != 0:
-            return rotas
-        for linha in r.stdout.splitlines():
-            partes = linha.split()
-            if not partes or partes[0] == 'default' or 'dev' not in partes:
-                continue
-            prefixo = partes[0] if '/' in partes[0] else f'{partes[0]}/32'
-            try:
-                ipaddress.ip_network(prefixo, strict=False)
-            except ValueError:
-                continue
-            dev = partes[partes.index('dev') + 1]
-            devs = rotas.setdefault(prefixo, [])
-            if dev not in devs:
-                devs.append(dev)
-    except Exception as e:
-        logger.debug(f'_rotas_kernel falhou: {e}')
-    return rotas
+        return 1000 + int(dev_tun(vpn).rsplit('-', 1)[1])
+    except (ValueError, IndexError):
+        return None
 
 
-def redes_em_conflito(redes, excluir_vpn_id=None):
+def redes_em_conflito(redes, excluir_vpn_id=None, cliente=None):
     """
     Retorna [(rede_pedida, rede_do_outro, rótulo_do_outro), ...] para toda
-    rede IDÊNTICA a uma já declarada por OUTRO túnel OpenVPN ativo, ou já
-    presente na tabela de rotas do kernel por outra interface.
+    rede IDÊNTICA a uma já declarada por OUTRO túnel ativo do MESMO cliente.
 
-    Por que isso é obrigatório: a rota vive no kernel, que é único e roteia por
-    DESTINO. Duas instâncias declarando 10.0.0.0/8 instalam duas rotas para o
-    mesmo prefixo — só uma é usada, e o tráfego destinado ao equipamento do
-    cliente A entra no roteador do cliente B (que ainda mascara a origem e
-    tenta entregar em um IP igual na rede dele). Foi exatamente o que
-    aconteceu em produção: os dois túneis ativos declaravam as 5 faixas
-    padrão, o 198.18.10.2 da TOPNET saía pelo tun da INFORTECLINE e nenhum
-    dos dois funcionava.
-
-    Prefixos de tamanhos diferentes (um /24 dentro do /8 de outro cliente) NÃO
-    entram aqui: o kernel casa o mais específico primeiro, então o resultado é
-    determinístico e é justamente o que se quer ao declarar a rede exata do
-    cliente. O que sobra dessa sobreposição — o outro cliente perder aquela
-    fatia — é a limitação de espaço de endereço já documentada no topo do
-    arquivo, e é coberta em tempo de conexão pelo `dev` real da rota
-    (`vpn_cobre_ip`, views.py).
+    Entre clientes diferentes não há conflito: cada túnel tem sua tabela de
+    rotas isolada, então a TOPNET e a INFORTECLINE podem declarar 10.0.0.0/8
+    ao mesmo tempo. Dentro do mesmo cliente, dois túneis com a mesma rede
+    deixariam ambíguo por qual deles chegar no equipamento.
     """
     from .models import VPNOpenVPN
 
@@ -176,23 +155,18 @@ def redes_em_conflito(redes, excluir_vpn_id=None):
         except ValueError:
             continue
 
+    if cliente is None and excluir_vpn_id:
+        proprio = VPNOpenVPN.objects.filter(id=excluir_vpn_id).select_related('cliente').first()
+        cliente = proprio.cliente if proprio else None
+    if cliente is None:
+        return []
+
     existentes = []
-    ovpn_qs = VPNOpenVPN.objects.filter(ativo=True).exclude(id=excluir_vpn_id)
-    for outro in ovpn_qs.select_related('cliente'):
-        rotulo = f'túnel OpenVPN "{outro.nome}" ({outro.cliente.nome_empresa})'
+    ovpn_qs = VPNOpenVPN.objects.filter(ativo=True, cliente=cliente).exclude(id=excluir_vpn_id)
+    for outro in ovpn_qs:
+        rotulo = f'túnel OpenVPN "{outro.nome}" deste mesmo cliente'
         for r in outro.redes_lista():
             existentes.append((r, rotulo))
-    # Rotas que já estão no kernel mas não saem de nenhum registro do banco —
-    # rota posta na mão, resto de configuração antiga etc. Foi assim que
-    # 198.18.1.0/24 (Conecta ISP) passou batido pela checagem só-de-banco.
-    dev_proprio = ''
-    if excluir_vpn_id:
-        proprio = VPNOpenVPN.objects.filter(id=excluir_vpn_id).first()
-        dev_proprio = dev_tun(proprio) if proprio else ''
-    for prefixo, devs in _rotas_kernel().items():
-        for dev in devs:
-            if dev and dev != dev_proprio:
-                existentes.append((prefixo, f'rota já existente no kernel via {dev}'))
 
     conflitos = []
     for rede_str, alvo in alvos:
@@ -398,9 +372,9 @@ def sugerir_redes(cliente):
     """
     Sugere as sub-redes /24 dos equipamentos privados JÁ cadastrados nos
     Acessos do cliente. É o que o modal de criação pré-preenche no lugar das
-    faixas amplas: faixa ampla é cômoda mas colide com o outro cliente que
-    também declarou 10.0.0.0/8, e aí nenhum dos dois funciona (ver
-    `redes_em_conflito`). O operador pode ajustar/incluir outras redes.
+    faixas amplas — com as tabelas isoladas por túnel a faixa ampla não
+    colide mais com outro cliente, mas declarar só o que existe mantém a
+    tabela do túnel legível. O operador pode ajustar/incluir outras redes.
     """
     from .models import Acesso
     redes = []
@@ -472,17 +446,32 @@ def _ccd_dir(interface_nome):
     return f'{CCD_BASE_DIR}/{interface_nome}'
 
 
-def _gerar_conteudo_conf(vpn):
-    """Gera o conteúdo do arquivo de config da instância dedicada deste túnel."""
-    linhas_rotas = []
+SCRIPT_ROTAS = '/usr/local/sbin/crm-ovpn-rotas'   # cópia versionada: deploy/openvpn/
+
+
+def _rotas_path(interface_nome):
+    return f'{SERVER_DIR}/{interface_nome}.rotas'
+
+
+def _gerar_conteudo_rotas(vpn):
+    """Um CIDR normalizado por linha — lido pelo script `up` (crm-ovpn-rotas),
+    que instala as redes na tabela isolada do túnel."""
+    linhas = []
     for rede in vpn.redes_lista():
         try:
-            net, mask = _cidr_to_route(rede)
+            net = ipaddress.ip_network(rede, strict=False)
         except ValueError:
             continue
-        linhas_rotas.append(f'route {net} {mask}')
-    rotas_str = '\n'.join(linhas_rotas)
+        if net.version == 4:
+            linhas.append(str(net))
+    return '\n'.join(linhas) + '\n'
 
+
+def _gerar_conteudo_conf(vpn):
+    """Gera o conteúdo do arquivo de config da instância dedicada deste túnel.
+
+    Sem diretivas `route`: elas instalariam as redes do cliente na tabela main
+    do servidor. Quem instala é o script `up`, na tabela isolada do túnel."""
     tun_dev = vpn.interface_nome.replace('server-crm-', 'tun-crm-')
     return f"""port {vpn.porta}
 proto tcp-server
@@ -501,7 +490,9 @@ ccd-exclusive
 topology subnet
 server {_subnet_for(vpn.subnet_n).network_address} 255.255.255.248
 
-{rotas_str}
+# Redes do cliente: tabela de rotas isolada deste túnel ({_rotas_path(vpn.interface_nome)})
+script-security 2
+up {SCRIPT_ROTAS}
 
 keepalive 10 60
 persist-key
@@ -564,6 +555,9 @@ def _escrever_arquivos_instancia(vpn):
     with open(f'{ccd_dir}/{vpn.common_name}', 'w') as f:
         f.write(_gerar_conteudo_ccd(vpn))
 
+    with open(_rotas_path(vpn.interface_nome), 'w') as f:
+        f.write(_gerar_conteudo_rotas(vpn))
+
     with open(_conf_path(vpn.interface_nome), 'w') as f:
         f.write(_gerar_conteudo_conf(vpn))
 
@@ -586,8 +580,8 @@ def criar_instancia_servidor(vpn):
 
 
 def atualizar_redes_instancia(vpn):
-    """Reescreve as rotas da instância (kernel via `route` E interna via
-    `iroute` no ccd) e reinicia SÓ ela (reconexão breve apenas para este
+    """Reescreve as rotas da instância (kernel, na tabela isolada via .rotas,
+    E interna via `iroute` no ccd) e reinicia SÓ ela (reconexão breve apenas para este
     cliente — zero impacto nos demais túneis, que rodam em instâncias/
     processos totalmente separados)."""
     _escrever_arquivos_instancia(vpn)
@@ -614,11 +608,11 @@ def _desabilitar_unit(interface_nome):
 def remover_instancia_servidor(vpn):
     """Para e remove por completo a instância dedicada deste túnel."""
     _desabilitar_unit(vpn.interface_nome)
-    conf_path = _conf_path(vpn.interface_nome)
-    try:
-        os.remove(conf_path)
-    except OSError:
-        pass
+    for path in (_conf_path(vpn.interface_nome), _rotas_path(vpn.interface_nome)):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
     ccd_dir = _ccd_dir(vpn.interface_nome)
     try:
         for f in os.listdir(ccd_dir):

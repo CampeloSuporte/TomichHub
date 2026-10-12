@@ -202,8 +202,10 @@ def _conectar_script(acesso, fabricante: str):
             porta_conexao = local_port
             tunel_ssh = (ssh, server_sock)
 
-        elif vpn_cobre_ip(acesso.cliente, host):
-            pass  # conecta diretamente pelo túnel OpenVPN
+        elif (tunel_vpn := vpn_cobre_ip(acesso.cliente, host)):
+            # túnel OpenVPN: relay local com a origem dele (tabela isolada)
+            from clientes import vpn_rota
+            host_conexao, porta_conexao = vpn_rota.endpoint_local(tunel_vpn, host, porta_conexao)
         else:
             raise Exception(
                 f"IP privado ({host}) sem proxy SSH ou túnel OpenVPN configurado para este cliente."
