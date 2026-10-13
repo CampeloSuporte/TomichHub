@@ -38,13 +38,13 @@ O pipeline roda automaticamente todos os dias às **01h00** via Celery Beat.
 
 ### OLT VSOL (`_executar_comandos_vsol`)
 
-Template "Backup OLT VSOL" = `enable` + `show running-config`. O executor próprio entra quando o
+Template "Backup OLT VSOL" = `enable` + `terminal length 0` + `show running-config`. O executor próprio entra quando o
 **nome do template** contém "vsol" (não o modelo: há FiberHome/CDATA cadastradas com modelo
 "OLT VSOL" que fazem backup pelo template FiberHome). Roteiro, igual ao console:
 
 1. `Login:` / `Password:` dentro do shell → usuário e senha do acesso;
 2. `enable` → `Password:` → **senha ADM** do acesso (sem ela, a senha do login);
-3. `show running-config`, seguindo `--More--` com espaço.
+3. `terminal length 0` (desliga a paginação) e `show running-config`; se ainda vier `--More--`, segue com espaço.
 
 Senha de enable errada (`% Bad passwords`, prompt volta a `>`) vira erro legível no log do backup.
 O backup é sempre SSH: acesso VSOL só com HTTP/HTTPS precisa do SSH como protocolo extra.

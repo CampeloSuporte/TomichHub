@@ -48,6 +48,8 @@ class FakeOltVsol:
         if self.estado == 'enable_senha':
             self.estado = 'priv' if linha == self.senha_enable else 'user'
             return self._sai('\r\nOLT_MARI# ' if linha == self.senha_enable else '\r\n% Bad passwords\r\nOLT_MARI> ')
+        if self.estado == 'priv' and linha == 'terminal length 0':
+            return self._sai('terminal length 0\r\nOLT_MARI# ')
         if self.estado == 'priv' and linha == 'show running-config':
             self.restantes = self.paginas
             return self._sai('show running-config\r\n!\r\nhostname OLT_MARI\r\ninterface gpon 0/1\r\n --More-- ')
@@ -71,7 +73,7 @@ class BackupVsolTests(TestCase):
 
     def test_login_enable_e_paginacao(self):
         canal = FakeOltVsol()
-        output = self._rodar(canal, ['enable', 'show running-config'])
+        output = self._rodar(canal, ['enable', 'terminal length 0', 'show running-config'])
         self.assertIn('hostname OLT_MARI', output)
         self.assertIn('onu 2 type GPON sn VSOL0002', output)
         self.assertNotIn('More', output)
