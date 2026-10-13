@@ -5403,10 +5403,13 @@ def executar_validacao_rpki_irr(bloco):
         # ✅ VALIDAÇÃO IRR
         irr_resultado = validar_irr(bloco.bloco, bloco.asn, bloco.irr_registry)
 
-        # ✅ Atualizar bloco
-        bloco.rpki_valido = rpki_resultado['valido']
-        bloco.rpki_status = rpki_resultado['status']
-        bloco.rpki_mensagem = rpki_resultado['mensagem']
+        # ✅ Atualizar bloco — se nenhuma API RPKI respondeu, preserva o
+        # último status conhecido (falha transitória de consulta não é
+        # mudança de ROA; antes isso fazia o alerta "vira e volta").
+        if not (rpki_resultado.get('indisponivel') and bloco.rpki_status):
+            bloco.rpki_valido = rpki_resultado['valido']
+            bloco.rpki_status = rpki_resultado['status']
+            bloco.rpki_mensagem = rpki_resultado['mensagem']
 
         bloco.irr_valido = irr_resultado['valido']
         bloco.irr_status = irr_resultado['status']
@@ -5482,7 +5485,7 @@ def validar_rpki(bloco, asn):
     # ==========================
     # API PRIMÁRIA: RIPE Stat RPKI Validation
     # ==========================
-    print(f"\n[1/2] 🌐 RIPE Stat RPKI Validation...")
+    print(f"\n[1/3] 🌐 RIPE Stat RPKI Validation...")
     try:
         url = f"https://stat.ripe.net/data/rpki-validation/data.json?resource=AS{asn_limpo}&prefix={bloco}"
         print(f"      URL: {url}")
@@ -5572,17 +5575,12 @@ def validar_rpki(bloco, asn):
                 }
 
         else:
-            print(f"❌ Status HTTP: {resp.status_code}")
-            return {
-                'valido': False,
-                'status': 'Error',
-                'mensagem': f'Erro HTTP {resp.status_code}',
-                'detalhes': f'RIPE Stat retornou erro: {resp.text[:200]}'
-            }
+            # 5xx/429 do RIPE Stat é transitório — segue para os fallbacks.
+            print(f"❌ Status HTTP: {resp.status_code} — tentando fallback")
 
     except requests.exceptions.Timeout:
         # Timeout do RIPE Stat costuma ser pontual/transitório — retornar erro
-        # direto aqui (como antes) descartava o fallback do Cloudflare RPKI
+        # direto aqui (como antes) descartava os fallbacks (Routinator)
         # logo abaixo, que resolveria a mesma consulta sem esperar a próxima
         # rodada agendada. Cai no fallback como qualquer outra exceção.
         print(f"⏱️ Timeout — tentando fallback")
@@ -5590,43 +5588,50 @@ def validar_rpki(bloco, asn):
         print(f"❌ {type(e).__name__}: {e}")
 
     # ==========================
-    # FALLBACK: Cloudflare RPKI (se RIPE falhar)
+    # FALLBACK: Routinator públicos (LACNIC e RIPE NCC)
     # ==========================
-    print(f"\n[2/2] 🌐 Cloudflare RPKI (fallback)...")
-    try:
-        url = f"https://rpki.cloudflare.com/api/v1/validity/{asn_limpo}/{bloco}"
-        print(f"      URL: {url}")
-        print(f"      Conectando...", end=" ", flush=True)
-
-        resp = requests.get(url, timeout=10, headers={'User-Agent': 'CONEXA-CRM/1.0'})
-        print(f"✅ {resp.status_code}")
-
-        if resp.status_code == 200:
-            data = resp.json()
-            validity = data.get('validity', {})
-            state = validity.get('state', '').upper()
-
+    # O antigo fallback rpki.cloudflare.com/api/v1/validity não existe mais
+    # (404), então qualquer soluço do RIPE Stat virava "Validação RPKI não
+    # disponível" e o bloco piscava em vermelho até a próxima validação.
+    # Os dois Routinator abaixo expõem a mesma API /api/v1/validity e são
+    # independentes do RIPE Stat (o da LACNIC nem é da RIPE).
+    estados_routinator = {
+        'valid': (True, 'Valid', 'ROA válido encontrado'),
+        'invalid': (False, 'Invalid', 'ROA inválido - conflito detectado'),
+        'not-found': (False, 'Unknown', 'ROA não encontrado'),
+    }
+    for idx, (nome, base) in enumerate((
+        ('LACNIC Routinator', 'https://routinator.lacnic.net'),
+        ('RIPE NCC Routinator', 'https://rpki-validator.ripe.net'),
+    ), 2):
+        print(f"\n[{idx}/3] 🌐 {nome} (fallback)...")
+        try:
+            url = f"{base}/api/v1/validity/AS{asn_limpo}/{bloco}"
+            print(f"      URL: {url}")
+            resp = requests.get(url, timeout=10, headers={'User-Agent': 'CONEXA-CRM/1.0'})
+            if resp.status_code != 200:
+                print(f"      ⚠️ HTTP {resp.status_code}")
+                continue
+            validity = resp.json().get('validated_route', {}).get('validity', {})
+            state = (validity.get('state') or '').lower()
             print(f"      📋 State: {state}")
-
-            if state == 'VALID':
-                print(f"      ✅ ROA VÁLIDA")
-                return {
-                    'valido': True,
-                    'status': 'Valid',
-                    'mensagem': 'ROA válido encontrado',
-                    'detalhes': f'{bloco} possui ROA válida para AS{asn_limpo} (Cloudflare RPKI)'
-                }
-            elif state == 'INVALID':
-                print(f"      ❌ ROA INVÁLIDA")
-                return {
-                    'valido': False,
-                    'status': 'Invalid',
-                    'mensagem': 'ROA inválido',
-                    'detalhes': f'ROA conflita para {bloco} e AS{asn_limpo}'
-                }
-
-    except Exception as e:
-        print(f"      ⚠️ Indisponível")
+            if state not in estados_routinator:
+                continue
+            valido, status, mensagem = estados_routinator[state]
+            if state == 'valid':
+                detalhes = f'{bloco} possui ROA válida para AS{asn_limpo} ({nome})'
+            elif state == 'invalid':
+                vrps = validity.get('VRPs', {})
+                conflitos = [
+                    f"{v.get('asn', '?')} para {v.get('prefix', '?')}"
+                    for v in vrps.get('unmatched_as', []) + vrps.get('unmatched_length', [])
+                ] or ['Conflito não especificado']
+                detalhes = f'{bloco} entra em conflito com ROA(s): {" ou ".join(conflitos)} ({nome})'
+            else:
+                detalhes = f'{bloco} / AS{asn_limpo} não possui ROA publicado. Publique em: https://my.lacnic.net'
+            return {'valido': valido, 'status': status, 'mensagem': mensagem, 'detalhes': detalhes}
+        except Exception as e:
+            print(f"      ⚠️ Indisponível: {type(e).__name__}")
 
     # ==========================
     # Nenhuma API funcionou
@@ -5636,7 +5641,10 @@ def validar_rpki(bloco, asn):
         'valido': False,
         'status': 'Unknown',
         'mensagem': 'Validação RPKI não disponível',
-        'detalhes': f'Não foi possível validar {bloco} / AS{asn_limpo}. Verifique em: https://routinator.lacnic.net'
+        'detalhes': f'Não foi possível validar {bloco} / AS{asn_limpo}. Verifique em: https://routinator.lacnic.net',
+        # Falha de consulta, não resultado: executar_validacao_rpki_irr
+        # mantém o status anterior do bloco em vez de sobrescrevê-lo.
+        'indisponivel': True,
     }
 
 

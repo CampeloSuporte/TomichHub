@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-13 (RPKI "não disponível" intermitente)
+
+### Corrigido
+
+- **Alerta "Validação RPKI não disponível" que ia e voltava** (ex. CALLFRAN 45.228.38.0/24): o
+  fallback do Cloudflare RPKI dava 404 (API extinta), então qualquer falha pontual do RIPE Stat
+  marcava o bloco como `Unknown`. Fallbacks agora são os Routinator da LACNIC e do RIPE NCC, erro
+  HTTP do RIPE Stat também usa o fallback, e quando nenhuma fonte responde o bloco mantém o
+  último status conhecido. Detalhes em `docs/RPKI_IRR.md`.
+
 ## [Não publicado] — 2026-10-12 (Template de backup OLT VSOL)
 
 ### Adicionado
