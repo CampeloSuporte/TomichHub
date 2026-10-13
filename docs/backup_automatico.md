@@ -33,7 +33,21 @@ O pipeline roda automaticamente todos os dias às **01h00** via Celery Beat.
 | 15 | Backup fiberhome | GENERICO | Fiberhome |
 | 16 | Backup hillstone | GENERICO | Hillstone |
 | 17 | Backup A10 | GENERICO | A10 Networks |
+| 19 | Backup OLT VSOL | GENERICO | OLT VSOL (V1600…) — escolhido à mão no acesso |
 | 11 | Backup Genérico | GENERICO | Fallback para fabricantes não mapeados |
+
+### OLT VSOL (`_executar_comandos_vsol`)
+
+Template "Backup OLT VSOL" = `enable` + `show running-config`. O executor próprio entra quando o
+**nome do template** contém "vsol" (não o modelo: há FiberHome/CDATA cadastradas com modelo
+"OLT VSOL" que fazem backup pelo template FiberHome). Roteiro, igual ao console:
+
+1. `Login:` / `Password:` dentro do shell → usuário e senha do acesso;
+2. `enable` → `Password:` → **senha ADM** do acesso (sem ela, a senha do login);
+3. `show running-config`, seguindo `--More--` com espaço.
+
+Senha de enable errada (`% Bad passwords`, prompt volta a `>`) vira erro legível no log do backup.
+O backup é sempre SSH: acesso VSOL só com HTTP/HTTPS precisa do SSH como protocolo extra.
 
 ---
 

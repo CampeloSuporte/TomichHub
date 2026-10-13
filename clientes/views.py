@@ -2191,6 +2191,12 @@ def realizar_backup(acesso, usuario=None):
         # (socket.timeout, str() vazia → "ERRO: " no arquivo) e o backup saía
         # só com os cabeçalhos. Só funciona por shell interativo, como Cisco/ZTE.
         is_raisecom = 'raisecom' in modelo_nome
+        # VSOL (V1600…): a CLI pede um segundo "Login:/Password:" dentro do
+        # shell e o show running-config só roda após "enable" + senha. Vai
+        # pelo NOME do template, não pelo modelo: há OLTs FiberHome/CDATA
+        # cadastradas com modelo "OLT VSOL" que fazem backup pelo template
+        # FiberHome ("cd service") e não podem mudar de fluxo.
+        is_vsol = 'vsol' in (acesso.backup_template.nome or '').lower()
 
         print(f"🏭 Huawei: {is_huawei} | A10: {is_a10} | Cisco: {is_cisco} | ZTE: {is_zte} | Parks: {is_parks} | MikroTik: {is_mikrotik} | Raisecom: {is_raisecom}")
 
@@ -2318,7 +2324,12 @@ def realizar_backup(acesso, usuario=None):
             # comandos seguintes do template.
             precisa_shell_persistente = any(c.strip().lower().startswith('cd ') for c in comandos)
 
-            if is_huawei:
+            if is_vsol:
+                output = _executar_comandos_vsol(
+                    client, comandos, acesso.usuario, acesso.senha,
+                    acesso.senha_adm or acesso.senha,
+                )
+            elif is_huawei:
                 output = _executar_comandos_huawei(client, comandos)
             elif is_a10:
                 output = _executar_comandos_a10(client, comandos, acesso.senha_adm)
@@ -2892,6 +2903,105 @@ def _executar_comandos_huawei(client, comandos):
         time.sleep(0.5)
         channel.close()
     except:
+        pass
+
+    return output
+
+
+_RE_MORE_VSOL = re.compile(r'-{2,}\s*More\s*-{2,}[^\n]*$', re.IGNORECASE)
+_RE_MORE_VSOL_LINHA = re.compile(r'[ \t]*-{2,}\s*More\s*-{2,}[^\S\n]*(\x08+\s*\x08+)?', re.IGNORECASE)
+
+
+def _executar_comandos_vsol(client, comandos, usuario='', senha='', senha_enable=''):
+    """
+    OLT VSOL (V1600D/V1600G…): invoke_shell com o mesmo roteiro do console:
+
+        Login: admin / Password:      (login interno, depois do SSH)
+        OLT# enable / Password:       (senha de enable = senha_adm, ou a do login)
+        OLT# show running-config
+
+    O "enable" do template é tratado aqui com a senha; reenviá-lo no laço faria
+    o comando seguinte ser lido como senha. A paginação ("--More--") é seguida
+    com espaço, como no Huawei, já que nem todo firmware aceita "terminal length 0".
+    """
+    output = ""
+
+    channel = client.invoke_shell(term='vt100', width=200, height=50)
+    channel.settimeout(120)
+
+    time.sleep(2)
+    tela = _ler_ate_silencio(channel, silencio=2.0, max_wait=15)
+    print(f"    📋 Banner: {tela[-100:]!r}")
+
+    ultima = (tela.strip().splitlines() or [''])[-1].lower()
+    if any(k in ultima for k in ('login:', 'username:', 'user:')):
+        print(f"    🔐 Login interno — enviando usuário...")
+        channel.send(usuario + '\n')
+        tela = _ler_ate_silencio(channel, silencio=1.5, max_wait=15)
+        ultima = (tela.strip().splitlines() or [''])[-1].lower()
+    if 'password' in ultima:
+        print(f"    🔐 Enviando senha do login...")
+        channel.send(senha + '\n')
+        tela = _ler_ate_silencio(channel, silencio=2.0, max_wait=15)
+        if any(k in tela.lower() for k in ('fail', 'incorrect', 'invalid')):
+            raise Exception("Login interno da OLT VSOL recusado (usuário/senha)")
+
+    print(f"    🔐 Enviando enable...")
+    channel.send('enable\n')
+    tela = _ler_ate_silencio(channel, silencio=1.5, max_wait=10)
+    if 'password' in tela.lower():
+        print(f"    🔑 Enviando senha de enable...")
+        channel.send((senha_enable or '') + '\n')
+        tela = _ler_ate_silencio(channel, silencio=2.0, max_wait=10)
+        ultima = (tela.strip().splitlines() or [''])[-1].strip()
+        # Senha errada: a VSOL diz "% Bad passwords" e volta ao prompt "OLT>".
+        if ('password' in ultima.lower() or ultima.endswith('>')
+                or any(k in tela.lower() for k in ('bad pass', 'fail', 'incorrect', 'invalid', 'denied'))):
+            raise Exception("Senha de enable incorreta na OLT VSOL (campo senha ADM do acesso)")
+    print(f"    📋 Após enable: {tela[-100:]!r}")
+
+    for i, comando in enumerate(comandos, 1):
+        if comando.strip().lower() in ('enable', 'en'):
+            print(f"  [{i}/{len(comandos)}] {comando} (já enviado — ignorando)")
+            continue
+
+        print(f"  [{i}/{len(comandos)}] {comando}")
+        output += f"\n{'='*60}\nComando: {comando}\n{'='*60}\n"
+
+        try:
+            channel.send(comando + '\n')
+            silencio = 5.0 if 'show' in comando.lower() else 2.0
+            resultado = _ler_ate_silencio(channel, silencio=silencio, max_wait=180)
+
+            paginas = 0
+            while resultado and _RE_MORE_VSOL.search(resultado[-300:]) and paginas < 5000:
+                channel.send(' ')
+                resultado += _ler_ate_silencio(channel, silencio=1.5, max_wait=60)
+                paginas += 1
+            if paginas:
+                print(f"    ↪️ {paginas} página(s) seguidas com espaço")
+
+            if resultado:
+                resultado = _RE_MORE_VSOL_LINHA.sub('', resultado)
+                resultado = limpar_ansi(resultado)
+                linhas = resultado.split('\n')
+                if linhas and comando.strip() in linhas[0]:
+                    linhas = linhas[1:]
+                resultado = '\n'.join(linhas)
+                output += resultado + "\n"
+                print(f"    ✅ {len(resultado)} bytes")
+            else:
+                print(f"    ⚠️ Output vazio")
+
+        except Exception as e:
+            print(f"    ❌ {e}")
+            output += f"ERRO: {str(e)}\n"
+
+    try:
+        channel.send('exit\n')
+        time.sleep(0.5)
+        channel.close()
+    except Exception:
         pass
 
     return output
