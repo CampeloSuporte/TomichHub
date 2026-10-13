@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-12 (Template de backup OLT VSOL)
+
+### Adicionado
+
+- **Template "Backup OLT VSOL"** (`enable` + `show running-config`) com executor próprio
+  (`_executar_comandos_vsol`): responde ao `Login:/Password:` interno da CLI, entra no `enable`
+  com a senha ADM do acesso (ou a do login) e segue o `--More--`. Ativado pelo nome do template,
+  sem mexer nas OLTs FiberHome/CDATA cadastradas com modelo VSOL. Detalhes em
+  `docs/backup_automatico.md`.
+
 ## [Não publicado] — 2026-10-12 (Túneis OpenVPN com rotas isoladas por cliente)
 
 ### Alterado
