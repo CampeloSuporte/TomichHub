@@ -30,13 +30,33 @@ O resultado atualiza `rpki_valido`/`rpki_status`/`rpki_mensagem` e
 
 ## Validação RPKI (`validar_rpki`)
 
-Duas fontes, em ordem, com fallback automático:
+Três fontes, em ordem, com fallback automático:
 
 1. **RIPE Stat** (`https://stat.ripe.net/data/rpki-validation/data.json?resource=AS{asn}&prefix={bloco}`)
    — fonte primária.
-2. **Cloudflare RPKI** (`https://rpki.cloudflare.com/api/v1/validity/{asn}/{bloco}`) — fallback,
-   usado sempre que a fonte primária falhar por qualquer motivo (erro HTTP, timeout, resposta
-   inesperada).
+2. **LACNIC Routinator** (`https://routinator.lacnic.net/api/v1/validity/AS{asn}/{bloco}`) — fallback.
+3. **RIPE NCC Routinator** (`https://rpki-validator.ripe.net/api/v1/validity/AS{asn}/{bloco}`) — fallback.
+
+Os fallbacks são usados sempre que a fonte anterior falhar por qualquer motivo (erro HTTP,
+timeout, resposta inesperada). Os dois Routinator têm a mesma API; `state` `valid` / `invalid` /
+`not-found` vira `Valid` / `Invalid` / `Unknown`.
+
+Se **nenhuma** responder, `validar_rpki` devolve `indisponivel: True` e
+`executar_validacao_rpki_irr` **mantém o status RPKI anterior** do bloco (o log da rodada ainda
+registra a falha). Falha de consulta não é mudança de ROA e não deve acender o alerta.
+
+### Correção — fallback Cloudflare morto e alerta "vira e volta" (2026-10-13)
+
+**Sintoma:** `RPKI — 45.228.38.0/24: Unknown — Validação RPKI não disponível` (cliente
+**CALLFRAN**, AS271699) aparecia de vez em quando; revalidando, voltava `Valid`.
+
+**Causa raiz:** o fallback `rpki.cloudflare.com/api/v1/validity/...` responde **404** (a API não
+existe mais), então qualquer soluço do RIPE Stat (timeout de 15s, 5xx) ia direto para "não
+disponível" e sobrescrevia o `Valid` do bloco até a próxima validação. Erro HTTP do RIPE Stat
+também retornava sem tentar o fallback. Acontecia com vários clientes (≈2–6 blocos em alguns dias).
+
+**Correção:** Cloudflare trocado pelos Routinator da LACNIC e do RIPE NCC; HTTP != 200 do RIPE Stat
+segue para os fallbacks; e "não disponível" preserva o último status conhecido.
 
 ### Correção — timeout do RIPE Stat pulava o fallback (2026-07-27)
 
