@@ -45,6 +45,10 @@
         /* Cor da marca: faixa no topo, fundo do ícone e nome do fabricante.
            Vem de Modelo_equipamento.fabricante (slug); sem mapeamento fica ciano. */
         .ac-card { --ac-marca: var(--cyan); border-top: 3px solid var(--ac-marca); }
+        /* Host desativado (Acesso.ativo=False): apagado, fora de todo backup */
+        .ac-card-inativo { opacity: .55; }
+        .ac-card-inativo:hover { opacity: .85; }
+        .ac-tag-inativo { margin-left: 6px; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; vertical-align: middle; color: #e06060; border: 1px solid rgba(224,96,96,.5); }
         .ac-card[data-fabricante="huawei"] { --ac-marca: #f85149; }
         .ac-card[data-fabricante="zte"] { --ac-marca: #2f81f7; }
         .ac-card[data-fabricante="cisco"] { --ac-marca: #1fb6e8; }
@@ -581,12 +585,12 @@
                         <div class="col-xl-3 col-lg-4 col-md-6 mb-4 acesso-card"
                              data-tipo="{{ acesso.tipo|lower }}"
                              data-host="{{ acesso.host|lower }} {{ acesso.host_ipv6|lower }}">
-                            <div class="card h-100 ac-card" data-fabricante="{{ acesso.modelo.fabricante|default:''|slugify }}">
+                            <div class="card h-100 ac-card{% if not acesso.ativo %} ac-card-inativo{% endif %}" data-fabricante="{{ acesso.modelo.fabricante|default:''|slugify }}">
                                 <div class="card-body">
                                     <div class="ac-cabecalho">
                                         <span class="ac-icone" title="{{ acesso.funcao|default:'Sem função' }}">{% with f=acesso.funcao.descricao|default:''|upper %}<i class="fas {% if 'OLT' in f %}fa-circle-nodes{% elif 'SWITCH' in f %}fa-arrow-right-arrow-left{% elif 'ROTEADOR' in f or 'BORDA' in f or 'BRAS' in f %}fa-route{% elif 'CGNAT' in f %}fa-shuffle{% elif 'FIREWALL' in f %}fa-fire{% elif 'HIPERVISOR' in f or 'VM' in f %}fa-server{% elif 'RADIO' in f or 'APS' in f %}fa-tower-broadcast{% elif 'MONITORAMENTO' in f %}fa-chart-line{% elif 'EMAIL' in f %}fa-envelope{% elif 'RDP' in f %}fa-desktop{% elif 'WEB' in f or 'DOCUMENTA' in f %}fa-globe{% else %}fa-hard-drive{% endif %}"></i>{% endwith %}</span>
                                         <div class="ac-titulo">
-                                            <h5 class="mb-0">{{ acesso.tipo }}</h5>
+                                            <h5 class="mb-0">{{ acesso.tipo }}{% if not acesso.ativo %} <span class="ac-tag-inativo" title="Host desativado: fora de todo backup. Reative em Editar.">Desativado</span>{% endif %}</h5>
                                             <div class="ac-sub">{% if acesso.modelo %}<span class="ac-fabricante">{{ acesso.modelo.fabricante }}</span>{% if acesso.modelo.nome_sem_fabricante %} {{ acesso.modelo.nome_sem_fabricante }}{% endif %} · {% endif %}<span class="copyable" title="Copiar IP" onclick="copiarTexto('{{ acesso.host|escapejs }}')">{{ acesso.host }}</span></div>
                                         </div>
                                         <span class="ac-dot" title="Clique em Ping para testar"></span>
@@ -696,7 +700,7 @@
                                 </div>
                                 <div class="ac-rodape">
                                     <div class="ac-acoes">
-                                        {% if acesso.backup_habilitado %}
+                                        {% if acesso.backup_habilitado and acesso.ativo %}
                                         <button type="button" class="ac-acao backup-btn" title="Executar backup" onclick="executarBackup({{ acesso.id }}, '{{ acesso.tipo }}')"><i class="fas fa-database"></i></button>
                                         {% endif %}
                                         <button type="button" class="ac-acao ac-acao-comentarios" title="Comentários" onclick="abrirModalComentariosAcesso({{ acesso.id }}, '{{ acesso.tipo }}')"><i class="fas fa-comments"></i></button>
@@ -9110,6 +9114,9 @@ function getCsrfToken(){
                 // ✅ 5. Notas do Agent NOC
                 const notasEl = document.getElementById('dup1_notas');
                 if (notasEl) notasEl.value = data.notas || '';
+
+                // Botão Desativar/Reativar host (modal_acessos.html)
+                if (typeof _pintarBotaoAtivoAcesso === 'function') _pintarBotaoAtivoAcesso(data.ativo !== false);
 
                 // ✅ 6. Define o action do form
                 document.getElementById('formEditarAcesso').action = `/clientes/acessos/editar/${acessoId}/`;

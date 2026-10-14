@@ -421,3 +421,32 @@ protocolo padrão é SSH; senão, a do primeiro SSH cadastrado como protocolo ex
 (`AcessoProtocolo`); sem SSH em lugar nenhum, o comportamento antigo (porta padrão, ou 22). Um host
 com HTTP como padrão e SSH extra passa a fazer backup pelo SSH extra, e o log mostra
 `🔑 SSH do protocolo extra: porta N`. Ver [acessos_protocolos_extras.md](acessos_protocolos_extras.md).
+
+---
+
+## Host desativado (`Acesso.ativo`) — Adicionado em 2026-10-13
+
+Botão **Desativar host / Reativar host** no rodapé do modal **Editar Acesso**
+(`POST /clientes/acessos/ativo/<id>/` → `alternar_ativo_acesso`, mesma permissão
+de editar: `pode_alterar_acesso`). Serve para equipamento fora de operação que
+não deve mais gerar tentativa de backup, sem excluir o cadastro.
+
+Por que um campo próprio e não só desmarcar "Habilitar Backup": a rotina diária
+`habilitar_backups_automaticos` religa o backup de todo host SSH com modelo e
+`backup_habilitado=False`. O host desativado fica fora de:
+
+| Ponto | Onde |
+|---|---|
+| Agendador (com e sem Celery) | `agendar_backups_pendentes*` filtram `ativo=True` |
+| Task individual | `executar_backup_agendado` devolve `ignorado` |
+| Habilitação automática / correção de template | `habilitar_backups_automaticos` |
+| Detecção de modelo via backup | `detectar_modelos_via_backup` |
+| Backup manual (botão do card, Backup em Massa) | `executar_backup_acesso` responde 400; botão some do card |
+| Listas do Backup em Massa e "hosts sem backup" | filtram `ativo=True` |
+| Alerta de erro de backup na tela do cliente | ignora desativado |
+
+A configuração de backup (habilitado, template, automático) é preservada; ao
+reativar, o host volta às rotinas como estava. No card, o host desativado
+aparece apagado com o selo **Desativado**. Acesso SSH/Web ao host continua
+funcionando normalmente.
+

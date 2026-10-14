@@ -21,6 +21,7 @@ urlpatterns = [
     path('alternar-status-cliente/', views.alternar_status_cliente, name='alternar_status_cliente'),
     path('acessos/buscar/<int:acesso_id>/', views.buscar_acesso, name='buscar_acesso'),
     path('acessos/editar/<int:acesso_id>/', views.editar_acesso, name='editar_acesso'),
+    path('acessos/ativo/<int:acesso_id>/', views.alternar_ativo_acesso, name='alternar_ativo_acesso'),
     path('acessos/deletar/<int:acesso_id>/', views.deletar_acesso, name='deletar_acesso'),
     path('acessos/<int:acesso_id>/protocolos/adicionar/', views.adicionar_protocolo_acesso, name='adicionar_protocolo_acesso'),
     path('acessos/protocolos/<int:protocolo_id>/remover/', views.remover_protocolo_acesso, name='remover_protocolo_acesso'),

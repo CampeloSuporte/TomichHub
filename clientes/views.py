@@ -135,7 +135,7 @@ def listar_clientes(request):
 
     # ── Detectar acessos com erro de backup ─────────────────────────────
     acessos_com_erro_backup = []
-    for ac in acessos_do_cliente.filter(backup_habilitado=True):
+    for ac in acessos_do_cliente.filter(ativo=True, backup_habilitado=True):
         ultimo_backup = BackupLog.objects.filter(acesso=ac).order_by('-data_backup').first()
         if ultimo_backup and ultimo_backup.status == 'ERRO':
             acessos_com_erro_backup.append({
@@ -1011,6 +1011,7 @@ def buscar_acesso(request, acesso_id):
             'backup_template_nome': acesso.backup_template.nome if acesso.backup_template else '',
             'backup_automatico': acesso.backup_automatico,
             'notas': acesso.notas or '',
+            'ativo': acesso.ativo,
         }
 
         return JsonResponse(data)
@@ -1098,6 +1099,22 @@ def editar_acesso(request, acesso_id):
             return redirect(f"{reverse('listar_clientes')}?id={acesso.cliente.id}")
 
     return redirect('listar_clientes')
+
+
+@login_required(login_url='login')
+@modulo_habilitado_required('acessos')
+@require_http_methods(['POST'])
+def alternar_ativo_acesso(request, acesso_id):
+    """Botão Desativar/Reativar do Editar Acesso. Host desativado continua
+    cadastrado e acessível, mas sai de todo backup — inclusive da
+    habilitação automática diária (`habilitar_backups_automaticos`), que
+    religaria o backup se bastasse desmarcar o checkbox."""
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+    if not _perms.pode_alterar_acesso(request.user, acesso):
+        return JsonResponse({'success': False, 'error': 'Sem permissão para alterar este acesso.'}, status=403)
+    acesso.ativo = not acesso.ativo
+    acesso.save(update_fields=['ativo'])
+    return JsonResponse({'success': True, 'ativo': acesso.ativo})
 
 
 @login_required(login_url='login')
@@ -1962,6 +1979,11 @@ def executar_backup_acesso(request, acesso_id):
         # Verificar permissão
         if not _perms.pode_acessar_acesso(request.user, acesso):
             return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+        if not acesso.ativo:
+            return JsonResponse({
+                'error': 'Host desativado — reative no Editar Acesso para fazer backup'
+            }, status=400)
 
         # Verificar se backup está habilitado
         if not acesso.backup_habilitado:
@@ -4226,7 +4248,7 @@ def listar_acessos_backup_habilitado(request):
     if not _perms.pode_acessar_cliente(request.user, cliente):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
-    acessos = Acesso.objects.filter(cliente=cliente, backup_habilitado=True).order_by('tipo')
+    acessos = Acesso.objects.filter(cliente=cliente, ativo=True, backup_habilitado=True).order_by('tipo')
     return JsonResponse({
         'acessos': [{'id': a.id, 'tipo': a.tipo, 'host': a.host, 'backup_habilitado': True} for a in acessos]
     })
@@ -4247,7 +4269,7 @@ def listar_acessos_sem_backup(request):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     acessos = Acesso.objects.filter(
-        cliente=cliente, protocolo='SSH', backup_habilitado=False
+        cliente=cliente, ativo=True, protocolo='SSH', backup_habilitado=False
     ).select_related('backup_template').order_by('tipo')
 
     return JsonResponse({
