@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-13 (Backup com Permission denied)
+
+### Corrigido
+
+- **Backup de alguns hosts falhando com `[Errno 13] Permission denied`** (ex. NUCLEO-UNIAO-2):
+  8 pastas de `media/backups/` tinham sido criadas por `root` em backups rodados pelo shell, e o
+  app (`www-data`) não gravava mais nelas. Dono corrigido com `chown -R www-data:www-data`; sem
+  mudança de código. Diagnóstico e como testar sem repetir o problema em
+  `docs/backup_automatico.md`.
+
 ## [Não publicado] — 2026-10-13 (Desativar host)
 
 ### Adicionado

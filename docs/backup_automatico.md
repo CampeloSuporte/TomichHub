@@ -450,3 +450,31 @@ reativar, o host volta às rotinas como estava. No card, o host desativado
 aparece apagado com o selo **Desativado**. Acesso SSH/Web ao host continua
 funcionando normalmente.
 
+---
+
+## `[Errno 13] Permission denied` ao gravar o backup — 2026-10-13
+
+Sintoma: backup de um host específico falha com
+`Erro: [Errno 13] Permission denied: '/opt/crm/media/backups/cliente_41/acesso_1586/...rsc'`,
+enquanto os demais hosts gravam normalmente.
+
+Causa: a pasta `media/backups/cliente_X/acesso_N/` foi criada por `root` — backup
+disparado à mão via `manage.py shell` logado como root. O gunicorn e o celery rodam
+como `www-data` e não conseguem mais gravar ali. Em 13/10/2026 eram 8 pastas nessa
+situação (criadas em 03/08, 02/09 e 10/10), todas corrigidas.
+
+Diagnóstico e correção:
+
+```bash
+find /opt/crm/media/backups ! -user www-data
+chown -R www-data:www-data /opt/crm/media/backups
+```
+
+Para testar backup real pelo shell sem criar o problema, rode como o usuário do app:
+
+```bash
+sudo -u www-data /opt/crm/venv/bin/python /opt/crm/manage.py shell
+```
+
+Não aplicar o `chown` em `media/firmware`: o dono root ali é do TFTP/FTP.
+
