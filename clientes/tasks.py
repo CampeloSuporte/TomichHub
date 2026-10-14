@@ -38,7 +38,7 @@ def executar_backup_agendado(self, acesso_id):
     try:
         acesso = Acesso.objects.get(id=acesso_id)
         
-        if not acesso.backup_habilitado or not acesso.backup_automatico:
+        if not acesso.ativo or not acesso.backup_habilitado or not acesso.backup_automatico:
             logger.warning(
                 f"⚠️ Backup agendado foi desabilitado para {acesso.tipo}"
             )
@@ -125,6 +125,7 @@ def agendar_backups_pendentes():
     try:
         # ✅ BUSCAR ACESSOS COM BACKUP AUTOMÁTICO
         acessos = Acesso.objects.filter(
+            ativo=True,
             backup_habilitado=True,
             backup_automatico=True,
             backup_template__isnull=False
@@ -425,6 +426,7 @@ def agendar_backups_pendentes_SEM_CELERY():
     try:
         # ✅ BUSCAR ACESSOS
         acessos_automaticos = Acesso.objects.filter(
+            ativo=True,
             backup_habilitado=True,
             backup_automatico=True,
             backup_template__isnull=False
@@ -798,6 +800,7 @@ def habilitar_backups_automaticos(self):
       - usa protocolo SSH
       - tem modelo cadastrado
       - ainda não tem backup_habilitado=True
+      - está ativo (host desativado no Editar Acesso nunca é religado)
 
     Habilita backup_habilitado, backup_automatico e seleciona o template
     correto conforme o fabricante do modelo.
@@ -836,6 +839,7 @@ def habilitar_backups_automaticos(self):
 
     # ── Candidatos: SSH + modelo preenchido + não é VM nem hipervisor ─────────
     candidatos = Acesso.objects.filter(
+        ativo=True,
         protocolo='SSH',
         modelo__isnull=False,
         backup_habilitado=False,
@@ -873,6 +877,7 @@ def habilitar_backups_automaticos(self):
 
     # ── Também atualiza template de quem já tem backup mas template errado/nulo
     sem_template_existentes = Acesso.objects.filter(
+        ativo=True,
         protocolo='SSH',
         modelo__isnull=False,
         backup_habilitado=True,
@@ -1061,7 +1066,7 @@ def detectar_modelos_via_backup(self):
     total = verificados = atualizados = sem_backup = sem_match = 0
 
     # Candidatos: acessos com backup habilitado
-    acessos = Acesso.objects.filter(backup_habilitado=True).select_related('modelo')
+    acessos = Acesso.objects.filter(ativo=True, backup_habilitado=True).select_related('modelo')
 
     for acesso in acessos:
         total += 1

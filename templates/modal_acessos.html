@@ -397,6 +397,13 @@
                     <span class="status-text">Sistema online</span>
                 </div>
                 <div class="modal-footer-acesso">
+                    <!-- Desativar/Reativar: host desativado sai de todo backup (inclusive
+                         da habilitação automática diária) sem ser excluído. Texto e cor
+                         preenchidos por _pintarBotaoAtivoAcesso ao abrir o modal. -->
+                    <button type="button" id="btnAlternarAtivoAcesso" class="btn-cancel-modal"
+                            style="margin-right:auto;" onclick="alternarAtivoAcesso()">
+                        <i class="fas fa-power-off me-2"></i> <span>Desativar host</span>
+                    </button>
                     <button type="button" class="btn-cancel-modal" onclick="fecharModalEditarAcesso()">
                         <i class="fas fa-times me-2"></i> Cancelar
                     </button>
@@ -2367,6 +2374,54 @@ document.addEventListener('click', function(e) {
 });
 
 // ─── AJAX form submission for acesso modals (no full-page redirect) ───
+function _pintarBotaoAtivoAcesso(ativo) {
+    const btn = document.getElementById('btnAlternarAtivoAcesso');
+    if (!btn) return;
+    btn.dataset.ativo = ativo ? '1' : '0';
+    btn.querySelector('span').textContent = ativo ? 'Desativar host' : 'Reativar host';
+    btn.title = ativo
+        ? 'Desativa o host: para de gerar tentativas de backup (manual, agendado e automático)'
+        : 'Reativa o host: volta a entrar nas rotinas de backup';
+    btn.style.color = ativo ? '#e06060' : '#3fb950';
+    btn.style.borderColor = ativo ? 'rgba(224,96,96,.5)' : 'rgba(63,185,80,.5)';
+}
+
+function alternarAtivoAcesso() {
+    const btn = document.getElementById('btnAlternarAtivoAcesso');
+    const acessoId = document.getElementById('edit_acesso_id').value;
+    if (!btn || !acessoId) return;
+    const ativo = btn.dataset.ativo !== '0';
+    uiConfirm(ativo ? {
+        titulo: 'Desativar host',
+        msg: 'O host continua cadastrado, mas deixa de gerar tentativas de backup (manual, agendado e a habilitação automática diária). Desativar?',
+        icone: 'fas fa-power-off', iconeCor: '#e06060', btnLabel: 'Desativar'
+    } : {
+        titulo: 'Reativar host',
+        msg: 'O host volta a entrar nas rotinas de backup. Reativar?',
+        icone: 'fas fa-power-off', iconeCor: '#3fb950', btnLabel: 'Reativar'
+    }).then(ok => {
+        if (!ok) return;
+        btn.disabled = true;
+        fetch(`/clientes/acessos/ativo/${acessoId}/`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': document.querySelector('#formEditarAcesso [name=csrfmiddlewaretoken]').value }
+        })
+        .then(r => r.json())
+        .then(json => {
+            if (!json.success) { btn.disabled = false; uiAlert(json.error || 'Erro ao alterar o host.'); return; }
+            fecharModalEditarAcesso();
+            sessionStorage.setItem('abaAtiva', 'acessos');
+            const funcaoLinkAtivo = document.querySelector('#funcaoTabs .nav-link.active');
+            if (funcaoLinkAtivo) {
+                const m = (funcaoLinkAtivo.getAttribute('onclick') || '').match(/mostrarFuncao\(event,\s*'([^']+)'\)/);
+                if (m) sessionStorage.setItem('funcaoAtiva', m[1]);
+            }
+            location.reload();
+        })
+        .catch(() => { btn.disabled = false; uiAlert('Erro de comunicação ao alterar o host.'); });
+    });
+}
+
 function _acessoAjaxSubmit(formId, fecharFn) {
     const formEl = document.getElementById(formId);
     if (!formEl) return;

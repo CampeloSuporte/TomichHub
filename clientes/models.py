@@ -119,6 +119,12 @@ class Acesso(models.Model):
     senha = models.CharField(max_length=100)
     senha_adm = models.CharField(max_length=100, blank=True)
     vlan = models.IntegerField(null=True, blank=True)
+    ativo = models.BooleanField(
+        default=True,
+        verbose_name='Ativo',
+        help_text='Host desativado fica fora de todo backup (manual, agendado e '
+                  'da habilitação automática diária), mas continua cadastrado.'
+    )
     backup_habilitado = models.BooleanField(default=False, verbose_name="Habilitar Backup")
     backup_template = models.ForeignKey(
         'BackupTemplate', 

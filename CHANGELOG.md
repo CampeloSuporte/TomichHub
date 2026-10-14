@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-13 (Desativar host)
+
+### Adicionado
+
+- **Botão "Desativar host" no Editar Acesso**: o host continua cadastrado e acessível, mas deixa
+  de gerar qualquer tentativa de backup — manual, agendado e a habilitação automática diária, que
+  religava o backup de quem só tinha o checkbox desmarcado. No card ele aparece apagado com o
+  selo "Desativado"; "Reativar host" no mesmo lugar devolve às rotinas com a configuração de
+  backup preservada. Novo campo `Acesso.ativo` (migração `0120`). Detalhes em
+  `docs/backup_automatico.md`.
+
 ## [Não publicado] — 2026-10-13 (RPKI "não disponível" intermitente)
 
 ### Corrigido
