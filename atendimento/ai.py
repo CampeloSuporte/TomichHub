@@ -235,6 +235,38 @@ def testar_hermes(url, api_key, model):
                         max_tokens=80, timeout=45, max_retries=0)
 
 
+# Quando o modelo por trás do Hermes falha (cota do Gemini, 429, chave
+# inválida...), o API Server dele NÃO devolve erro HTTP: responde 200 com um
+# aviso feito para o terminal dele ("...rate-limited every one of 3 attempts
+# ... send /retry ... Provider said: Gemini HTTP 429"). Sem esta checagem o
+# aviso virava resposta do agente, nota interna e até resolução de chamado.
+_HERMES_MARCAS_ERRO = ('provider said:', 'hermes fallback add', 'send /retry',
+                       'switch models with /model')
+_HERMES_MARCAS_COTA = ('429', 'rate-limit', 'rate limit', 'resource_exhausted',
+                       'quota', 'cota')
+
+
+def hermes_erro_provedor(texto):
+    """Motivo legível se `texto` é o aviso de falha do provedor do Hermes (e
+    não uma resposta de verdade); None caso contrário."""
+    import re
+    t = (texto or '').lower()
+    if not any(m in t for m in _HERMES_MARCAS_ERRO):
+        return None
+    m = re.search(r'^\s*(.+?)\s+rate-limited', texto or '', re.M)
+    quem = f"o provedor do Hermes ({m.group(1).strip()[:60]})" if m else 'o provedor de IA do Hermes'
+    if any(c in t for c in _HERMES_MARCAS_COTA):
+        motivo = f'{quem} recusou por cota/limite de requisições esgotado'
+    else:
+        motivo = f'{quem} falhou'
+    m = re.search(r'retry in\s+((?:\d+h)?(?:\d+m)?)', t)
+    if m and m.group(1):
+        motivo += f' — libera em ~{m.group(1)}'
+    if 'free_tier' in t or 'free tier' in t:
+        motivo += ' (chave no plano gratuito: ative o faturamento ou configure um fallback no Hermes)'
+    return motivo
+
+
 def _hermes_chat(url, api_key, model, system_prompt, user_prompt, max_tokens,
                  timeout, max_retries, sessao=None):
     url = (url or '').strip()
@@ -260,6 +292,10 @@ def _hermes_chat(url, api_key, model, system_prompt, user_prompt, max_tokens,
             ],
         )
         texto = (resp.choices[0].message.content or '').strip()
+        erro = hermes_erro_provedor(texto)
+        if erro:
+            logger.warning(f"Hermes respondeu com erro do provedor dele: {texto[:300]}")
+            return None, erro
         return (texto, None) if texto else (None, 'resposta vazia')
     except Exception as e:
         logger.warning(f"Falha ao chamar Hermes (agente IA atendimento): {e}")

@@ -2755,7 +2755,7 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
         prompt e ele pede cada uma num bloco ```tool {json}```; o CRM executa
         pelo mesmo `_dispatch_tool` do Claude/OpenAI e devolve o resultado."""
         import openai as openai_lib
-        from atendimento.ai import hermes_base_url
+        from atendimento.ai import hermes_base_url, hermes_erro_provedor
 
         url, api_key, model = await sync_to_async(_hermes_credenciais)()
         # O protocolo vai no topo e é relembrado na pergunta: no fim de um
@@ -2794,6 +2794,13 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
                 await self._atualizar_tokens(total_tokens_in, total_tokens_out)
 
             texto = (response.choices[0].message.content or "") if response.choices else ""
+            erro_provedor = hermes_erro_provedor(texto)
+            if erro_provedor:
+                # Aviso de falha do modelo por trás do Hermes, vindo como
+                # resposta normal — não entra no histórico como fala do agent.
+                err = f"❌ Hermes indisponível: {erro_provedor}."
+                await self._registrar_log('error', f"{err}\n\n{texto[:1000]}")
+                return err
             chamadas = _hermes_extrair_tools(texto)
             if not chamadas:
                 resposta_final = texto.strip() or "(sem resposta)"
