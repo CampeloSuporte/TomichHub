@@ -151,7 +151,7 @@
         <div class="cfg-card-body">
             <div style="font-size:.78rem;color:var(--muted);margin-bottom:1rem">
                 Selecione qual provedor de inteligência artificial o Agent NOC usará para processar as mensagens.
-                Ambos suportam as mesmas ferramentas (SSH, base de conhecimento, escalamento).
+                Todos usam as mesmas ferramentas do CRM (SSH, base de conhecimento, escalamento).
             </div>
             <div class="d-flex gap-3 flex-wrap" id="provedor-cards">
                 <div class="provedor-card {% if agent_cfg.provedor_ia == 'claude' %}provedor-ativo{% endif %}"
@@ -181,6 +181,27 @@
                         {% if agent_cfg.provedor_ia == 'openai' %}<span class="ms-auto status-pill" style="background:rgba(16,163,127,.12);color:#10a37f;border:1px solid rgba(16,163,127,.3)">● ativo</span>{% endif %}
                     </div>
                     <div style="font-size:.73rem;color:rgba(200,221,232,.6)">gpt-4o · gpt-4o-mini · gpt-4-turbo</div>
+                </div>
+                <div class="provedor-card {% if agent_cfg.provedor_ia == 'hermes' %}provedor-ativo{% endif %}"
+                     id="card-hermes" onclick="selecionarProvedor('hermes')"
+                     style="flex:1;min-width:200px;cursor:pointer;border-radius:8px;padding:16px;
+                            border:2px solid {% if agent_cfg.provedor_ia == 'hermes' %}#d29922{% else %}rgba(210,153,34,.2){% endif %};
+                            background:{% if agent_cfg.provedor_ia == 'hermes' %}rgba(210,153,34,.07){% else %}var(--bg3){% endif %};
+                            transition:all .2s">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <span style="font-size:1.4rem">🪽</span>
+                        <span style="font-family:'Inter',sans-serif;font-size:.85rem;color:#d29922">Hermes</span>
+                        <span style="font-size:.7rem;color:var(--muted)">Agent</span>
+                        {% if agent_cfg.provedor_ia == 'hermes' %}<span class="ms-auto status-pill" style="background:rgba(210,153,34,.12);color:#d29922;border:1px solid rgba(210,153,34,.3)">● ativo</span>{% endif %}
+                    </div>
+                    <div style="font-size:.73rem;color:rgba(200,221,232,.6)">
+                        Só no terminal (grupos WhatsApp seguem no Claude). URL e chave vêm da Integração IA do atendimento.
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mt-2">
+                        <button class="btn-or" onclick="event.stopPropagation(); testarHermes()">Testar conexão</button>
+                        <span class="status-pill status-unk" id="hermes-status">● não testado</span>
+                    </div>
+                    <div class="result-box" id="hermes-result"></div>
                 </div>
             </div>
         </div>
@@ -472,31 +493,9 @@ async function selecionarProvedor(provedor) {
     });
     const d = await r.json();
     if (d.ok) {
-        mostrarToast(`✓ Provedor alterado para ${provedor === 'claude' ? 'Claude' : 'ChatGPT'}`, 'ok');
-        // Atualiza visual dos cards sem recarregar a página
-        const isOpenAI = provedor === 'openai';
-        const cardClaude = document.getElementById('card-claude');
-        const cardOpenAI = document.getElementById('card-openai');
-
-        cardClaude.style.borderColor = isOpenAI ? 'rgba(88,166,255,.12)' : 'var(--cy)';
-        cardClaude.style.background  = isOpenAI ? 'var(--bg3)' : 'rgba(88,166,255,.07)';
-        cardOpenAI.style.borderColor = isOpenAI ? '#10a37f' : 'rgba(16,163,127,.2)';
-        cardOpenAI.style.background  = isOpenAI ? 'rgba(16,163,127,.07)' : 'var(--bg3)';
-
-        // Remove badges de ativo
-        cardClaude.querySelectorAll('.status-pill').forEach(el => el.remove());
-        cardOpenAI.querySelectorAll('.status-pill').forEach(el => el.remove());
-
-        // Adiciona badge no ativo
-        const badge = document.createElement('span');
-        badge.className = 'ms-auto status-pill status-ok';
-        badge.textContent = '● ativo';
-        if (isOpenAI) {
-            badge.style.cssText = 'background:rgba(16,163,127,.12);color:#10a37f;border:1px solid rgba(16,163,127,.3)';
-            cardOpenAI.querySelector('.d-flex').appendChild(badge);
-        } else {
-            cardClaude.querySelector('.d-flex').appendChild(badge);
-        }
+        const nomes = {claude: 'Claude', openai: 'ChatGPT', hermes: 'Hermes'};
+        mostrarToast(`✓ Provedor alterado para ${nomes[provedor] || provedor}`, 'ok');
+        setTimeout(() => location.reload(), 600);
     } else {
         mostrarToast(`✕ ${d.erro}`, 'erro');
     }
@@ -544,6 +543,26 @@ async function testarOpenAI() {
             st.className = 'status-pill status-err'; st.textContent = '● erro';
             rb.className = 'result-box show'; rb.style.color = 'var(--rd)';
             rb.textContent = `✕ ${d.erro}`;
+        }
+    } catch(e) {
+        st.className = 'status-pill status-err'; st.textContent = '● erro';
+    }
+}
+
+async function testarHermes() {
+    const st = document.getElementById('hermes-status');
+    st.className = 'status-pill status-unk'; st.textContent = '⏳ testando (até 45s)...';
+    const rb = document.getElementById('hermes-result');
+    try {
+        const r = await fetch('{% url "agent_testar_hermes" %}', {method:'POST', headers:{'X-CSRFToken':CSRF}});
+        const d = await r.json();
+        rb.className = 'result-box show';
+        if (d.ok) {
+            st.className = 'status-pill status-ok'; st.textContent = `● ${d.modelo}`;
+            rb.style.color = ''; rb.textContent = `✓ ${d.resposta}`;
+        } else {
+            st.className = 'status-pill status-err'; st.textContent = '● erro';
+            rb.style.color = 'var(--rd)'; rb.textContent = `✕ ${d.erro}`;
         }
     } catch(e) {
         st.className = 'status-pill status-err'; st.textContent = '● erro';

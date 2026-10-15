@@ -2429,7 +2429,7 @@ def agent_config(request):
 
         if secao == 'provedor':
             provedor = data.get('provedor_ia', 'claude')
-            if provedor not in ('claude', 'openai'):
+            if provedor not in ('claude', 'openai', 'hermes'):
                 return JsonResponse({'ok': False, 'erro': 'Provedor inválido.'}, status=400)
             agent_cfg.provedor_ia = provedor
             agent_cfg.save()
@@ -2489,7 +2489,11 @@ def agent_token_stats(request):
 
     # Custo estimado (preços aproximados por 1M tokens)
     provedor = cfg.provedor_ia
-    if provedor == 'claude':
+    if provedor == 'hermes':
+        # O custo fica no provedor configurado no servidor do Hermes.
+        modelo = 'hermes-agent'
+        custo_in = custo_out = 0.0
+    elif provedor == 'claude':
         modelo = cfg.claude_model
         # Preços claude-sonnet-4-6: $3/$15 por 1M
         if 'opus' in modelo:
@@ -2598,6 +2602,22 @@ def agent_testar_openai(request):
         return JsonResponse({'ok': False, 'erro': 'Pacote "openai" não instalado. Execute: pip install openai'})
     except Exception as e:
         return JsonResponse({'ok': False, 'erro': str(e)})
+
+
+@login_required(login_url='login')
+@admin_required
+@require_http_methods(['POST'])
+def agent_testar_hermes(request):
+    """Testa o Hermes com a URL/chave da Integração IA do atendimento."""
+    from atendimento.ai import testar_hermes
+    from home.agent_engine import _hermes_credenciais
+    url, api_key, model = _hermes_credenciais()
+    if not url:
+        return JsonResponse({'ok': False, 'erro': 'URL do Hermes não configurada (Atendimento → Configurações → Integração IA).'})
+    resposta, erro = testar_hermes(url, api_key, model)
+    if erro:
+        return JsonResponse({'ok': False, 'erro': erro})
+    return JsonResponse({'ok': True, 'resposta': resposta, 'modelo': model or 'hermes-agent'})
 
 
 @login_required(login_url='login')

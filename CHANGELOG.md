@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-14 (Hermes no Agent NOC do terminal)
+
+### Adicionado
+
+- **Hermes Agent como provedor do Agent NOC no terminal web** (card Hermes em Sistema →
+  Configurações → Agent NOC, com Testar conexão). Usa a URL/chave da Integração IA do
+  atendimento. O Hermes ignora o function calling da API, então as ferramentas do CRM vão
+  descritas no prompt e ele as pede em blocos ```` ```tool ```` — o CRM executa com a mesma
+  aprovação de comandos de escrita. Grupos WhatsApp continuam no Claude com a chave de cada
+  grupo.
+
 ## [Não publicado] — 2026-10-13 (Backup com Permission denied)
 
 ### Corrigido
