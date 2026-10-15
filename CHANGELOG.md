@@ -7,6 +7,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Não publicado] — 2026-10-14 (Hermes no Agent NOC do terminal)
 
+### Corrigido
+
+- **Aviso de cota do Hermes virava resposta.** Quando o modelo por trás do Hermes falha (ex.:
+  Gemini no plano gratuito, `429 RESOURCE_EXHAUSTED`), o API Server dele responde 200 com um
+  aviso para o terminal dele ("rate-limited … send /retry … Provider said: …"). O CRM agora
+  reconhece esse aviso (`atendimento.ai.hermes_erro_provedor`) e trata como falha: no
+  atendimento cai no fallback/erro registrado em vez de virar nota interna ou resolução de
+  chamado; no Agent NOC mostra "❌ Hermes indisponível" sem gravar no histórico.
+
 ### Adicionado
 
 - **Hermes Agent como provedor do Agent NOC no terminal web** (card Hermes em Sistema →

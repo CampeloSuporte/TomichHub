@@ -38,6 +38,11 @@ Suporta três provedores de IA configuráveis:
   leva ~25–60 s. Header `X-Hermes-Session-Key: crm-noc-<sessão>`.
 - Custo no monitor de tokens fica zerado: quem cobra é o provedor configurado no Hermes.
 - Botão **Testar conexão** no card (`agent/config/testar-hermes/`).
+- Falha do modelo por trás do Hermes (cota/429 do Gemini etc.) chega como resposta **200**
+  com um aviso em texto. `atendimento.ai.hermes_erro_provedor()` reconhece pelas marcas
+  `Provider said:`, `send /retry`, `hermes fallback add`, `switch models with /model`; o agent
+  responde "❌ Hermes indisponível: …" e não põe o aviso no histórico. O atendimento usa a mesma
+  função em `_hermes_chat`, então o aviso nunca vira nota nem resolução de chamado.
 
 ---
 

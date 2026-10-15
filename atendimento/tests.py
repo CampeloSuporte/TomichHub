@@ -1381,6 +1381,62 @@ class HermesProviderTest(TestCase):
         self.assertEqual(call_ai('sys', 'user'), 'resposta claude')
 
 
+# Aviso real do Hermes (14/10/2026) com a chave Gemini no plano gratuito:
+# chega como resposta 200 normal, não como erro HTTP.
+AVISO_COTA_HERMES = """Google AI Studio rate-limited every one of 3 attempts — it looks temporarily unavailable. Wait a minute and send /retry, or switch models with /model. To avoid this in future, add a backup provider with `hermes fallback add`.
+
+Provider said: Gemini HTTP 429 (RESOURCE_EXHAUSTED): You exceeded your current quota, please check your plan and billing details.
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash
+Please retry in 23h12m26.245120174s.
+
+Your Google API key is on the free tier (a few hundred requests/day for Gemini Flash models)."""
+
+
+class HermesErroProvedorTest(TestCase):
+    """Aviso de falha do modelo por trás do Hermes não pode virar resposta."""
+
+    def _resp(self, texto):
+        r = mock.Mock()
+        r.choices = [mock.Mock(message=mock.Mock(content=texto))]
+        return r
+
+    def test_reconhece_aviso_de_cota(self):
+        from atendimento.ai import hermes_erro_provedor
+        motivo = hermes_erro_provedor(AVISO_COTA_HERMES)
+        self.assertIn('Google AI Studio', motivo)
+        self.assertIn('cota', motivo)
+        self.assertIn('23h12m', motivo)
+        self.assertIn('plano gratuito', motivo)
+
+    def test_resposta_normal_que_fala_de_cota_nao_e_erro(self):
+        from atendimento.ai import hermes_erro_provedor
+        for texto in ('O cliente estourou a cota de banda e recebeu HTTP 429 no portal.',
+                      'Rate limit do BGP ajustado; quota de prefixos em 1000.', '', None):
+            self.assertIsNone(hermes_erro_provedor(texto))
+
+    @mock.patch('atendimento.ai._call_claude', return_value=(None, 'sem chave'))
+    @mock.patch('openai.OpenAI')
+    def test_call_ai_nao_devolve_o_aviso_e_registra_erro(self, mock_openai, _claude):
+        from atendimento.models import SystemSetting
+        from atendimento.ai import call_ai, ultimo_erro_ia
+        SystemSetting.set('ai_provider', 'hermes')
+        SystemSetting.set('ai_hermes_url', 'http://h:8642')
+        mock_openai.return_value.chat.completions.create.return_value = self._resp(AVISO_COTA_HERMES)
+        self.assertIsNone(call_ai('sys', 'user'))
+        self.assertIn('cota', ultimo_erro_ia())
+
+    @mock.patch('atendimento.ai._call_claude', return_value=('resposta claude', None))
+    @mock.patch('openai.OpenAI')
+    def test_aviso_do_hermes_cai_no_fallback(self, mock_openai, _claude):
+        from atendimento.models import SystemSetting
+        from atendimento.ai import call_ai
+        SystemSetting.set('ai_provider', 'hermes')
+        SystemSetting.set('ai_hermes_url', 'http://h:8642')
+        SystemSetting.set('ai_api_key', 'sk-ant')
+        mock_openai.return_value.chat.completions.create.return_value = self._resp(AVISO_COTA_HERMES)
+        self.assertEqual(call_ai('sys', 'user'), 'resposta claude')
+
+
 class TelaIntegracaoIATest(TestCase):
     """Tela Configurações → Integração IA: campos do Hermes e teste de conexão."""
 
