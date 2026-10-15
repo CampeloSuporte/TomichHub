@@ -44,6 +44,7 @@ urlpatterns = [
     path('agent/config/token-stats/',                   views.agent_token_stats,              name='agent_token_stats'),
     path('agent/config/testar-claude/',                 views.agent_testar_claude,            name='agent_testar_claude'),
     path('agent/config/testar-openai/',                 views.agent_testar_openai,            name='agent_testar_openai'),
+    path('agent/config/testar-hermes/',                 views.agent_testar_hermes,            name='agent_testar_hermes'),
     path('agent/config/testar-evolution/',              views.agent_testar_evolution,         name='agent_testar_evolution'),
     path('agent/grupos/',                               views.agent_grupos,                   name='agent_grupos'),
     path('agent/grupos/sync/',                          views.agent_sync_grupos,              name='agent_sync_grupos'),

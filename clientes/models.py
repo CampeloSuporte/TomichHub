@@ -1723,6 +1723,7 @@ class AgentConfig(models.Model):
     PROVEDORES = [
         ('claude',  'Claude (Anthropic)'),
         ('openai',  'ChatGPT (OpenAI)'),
+        ('hermes',  'Hermes Agent'),
     ]
 
     # Provedor ativo

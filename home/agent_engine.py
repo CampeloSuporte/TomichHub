@@ -2549,8 +2549,15 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
         )(ultima_atividade=timezone.now())
 
         provedor = config.provedor_ia or 'claude'
+        # Hermes vale só pro terminal: os grupos WhatsApp seguem no Claude com
+        # a chave de cada cliente (créditos dele), como antes.
+        if provedor == 'hermes' and self.canal == 'whatsapp':
+            provedor = 'claude'
 
-        if provedor == 'openai':
+        if provedor == 'hermes':
+            if not (await sync_to_async(_hermes_credenciais)())[0]:
+                return "❌ Hermes sem URL configurada (Atendimento → Configurações → Integração IA)."
+        elif provedor == 'openai':
             if not config.openai_api_key:
                 return "❌ Chave de API do OpenAI não configurada."
         else:
@@ -2581,7 +2588,9 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
 
         await self.notify_cb({"type": "thinking", "content": "Processando..."})
 
-        if provedor == 'openai':
+        if provedor == 'hermes':
+            return await self._processar_com_hermes()
+        elif provedor == 'openai':
             return await self._processar_com_openai(config)
         else:
             return await self._processar_com_claude(config)
@@ -2736,6 +2745,76 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
 
         return await self._finalizar_resposta(resposta_final, total_tokens_in, total_tokens_out, t0)
 
+    # ── Processamento via Hermes Agent ───────────────────────────
+
+    async def _processar_com_hermes(self) -> str:
+        """Hermes pelo API Server dele (compatível com a OpenAI). Ele ignora
+        o `tools` da requisição e roda as ferramentas do próprio servidor —
+        que não alcança a rede dos clientes nem passa pela aprovação do
+        operador. Por isso as ferramentas do CRM vão descritas no system
+        prompt e ele pede cada uma num bloco ```tool {json}```; o CRM executa
+        pelo mesmo `_dispatch_tool` do Claude/OpenAI e devolve o resultado."""
+        import openai as openai_lib
+        from atendimento.ai import hermes_base_url
+
+        url, api_key, model = await sync_to_async(_hermes_credenciais)()
+        # O protocolo vai no topo e é relembrado na pergunta: no fim de um
+        # system prompt longo o Hermes o ignorava e tentava o equipamento
+        # pelas ferramentas dele, até estourar o timeout.
+        system_prompt = _HERMES_PROTOCOLO_TOOLS + "\n\n" + await self._build_system_prompt()
+        historico = [dict(m) for m in self._historico[-20:]]
+        if historico and historico[-1].get('role') == 'user':
+            historico[-1]['content'] = f"{historico[-1]['content']}\n\n{_HERMES_LEMBRETE}"
+        messages = [{"role": "system", "content": system_prompt}] + historico
+
+        client = openai_lib.AsyncOpenAI(
+            base_url=hermes_base_url(url), api_key=api_key or 'sem-chave',
+            timeout=180, max_retries=0,
+            default_headers={'X-Hermes-Session-Key': f'crm-noc-{self.sessao_id}'},
+        )
+
+        t0 = time.monotonic()
+        total_tokens_in = total_tokens_out = 0
+        resposta_final = ""
+
+        for _ in range(_HERMES_MAX_RODADAS):
+            try:
+                response = await client.chat.completions.create(
+                    model=model or 'hermes-agent', messages=messages,
+                )
+            except openai_lib.APIError as exc:
+                err = f"❌ Erro no Hermes: {exc}"
+                await self._registrar_log('error', err)
+                return err
+
+            uso = response.usage
+            if uso:
+                total_tokens_in  += uso.prompt_tokens or 0
+                total_tokens_out += uso.completion_tokens or 0
+                await self._atualizar_tokens(total_tokens_in, total_tokens_out)
+
+            texto = (response.choices[0].message.content or "") if response.choices else ""
+            chamadas = _hermes_extrair_tools(texto)
+            if not chamadas:
+                resposta_final = texto.strip() or "(sem resposta)"
+                break
+
+            messages.append({"role": "assistant", "content": texto})
+            resultados = []
+            for nome, args in chamadas:
+                await self.notify_cb({"type": "thinking", "content": f"Executando: {nome}..."})
+                try:
+                    resultado = await self._dispatch_tool(nome, args)
+                except Exception as exc:
+                    resultado = f"❌ Erro ao executar {nome}: {exc}"
+                resultados.append(f"Resultado de {nome} {json.dumps(args, ensure_ascii=False)}:\n{resultado}")
+            messages.append({"role": "user", "content": "\n\n".join(resultados)})
+        else:
+            resposta_final = ("⚠️ Hermes pediu ferramentas demais seguidas sem concluir — "
+                              "interrompido. Refaça a pergunta de forma mais específica.")
+
+        return await self._finalizar_resposta(resposta_final, total_tokens_in, total_tokens_out, t0)
+
     # ── Helpers compartilhados ────────────────────────────────────
 
     async def _atualizar_tokens(self, tokens_in: int, tokens_out: int):
@@ -2762,6 +2841,68 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
             "duracao_ms": duracao_ms,
         })
         return resposta_final
+
+
+# ─────────────────────────────────────────────────────────────────
+# Hermes: ferramentas do CRM por texto
+# ─────────────────────────────────────────────────────────────────
+
+_HERMES_MAX_RODADAS = 15
+
+_HERMES_TOOL_RE = re.compile(r"```tool\s*(\{.*?\})\s*```", re.S)
+
+
+def _hermes_credenciais():
+    """(url, api_key, model) do Hermes — os mesmos da Integração IA do
+    atendimento, para não manter duas cópias da credencial."""
+    from atendimento.models import SystemSetting
+    return (SystemSetting.get('ai_hermes_url', '').strip(),
+            SystemSetting.get('ai_hermes_api_key', '').strip(),
+            SystemSetting.get('ai_hermes_model', '').strip())
+
+
+def _hermes_extrair_tools(texto: str) -> list[tuple[str, dict]]:
+    """Blocos ```tool {"name": ..., "arguments": {...}}``` da resposta do
+    Hermes. Bloco com JSON inválido ou ferramenta desconhecida é ignorado."""
+    validas = {t['name'] for t in TOOLS_DEFINITION}
+    chamadas = []
+    for bloco in _HERMES_TOOL_RE.findall(texto or ''):
+        try:
+            d = json.loads(bloco)
+        except ValueError:
+            continue
+        nome = d.get('name') if isinstance(d, dict) else None
+        args = d.get('arguments') or d.get('input') or {}
+        if nome in validas and isinstance(args, dict):
+            chamadas.append((nome, args))
+    return chamadas
+
+
+def _hermes_protocolo_tools() -> str:
+    tools = "\n".join(
+        f"- {t['name']}: {t['description']} Parâmetros: "
+        f"{json.dumps(t['input_schema'].get('properties', {}), ensure_ascii=False)}"
+        f" (obrigatórios: {', '.join(t['input_schema'].get('required', [])) or 'nenhum'})"
+        for t in TOOLS_DEFINITION
+    )
+    return (
+        "## Ferramentas do CRM (OBRIGATÓRIO)\n"
+        "Você roda num servidor que NÃO alcança a rede dos clientes. NÃO use as "
+        "ferramentas do seu próprio ambiente (terminal, ping, ssh, web) para "
+        "consultar equipamentos ou dados de clientes — use somente as ferramentas "
+        "do CRM abaixo. Para chamar uma, responda com um bloco exatamente assim "
+        "(pode haver mais de um bloco na mesma resposta):\n"
+        "```tool\n{\"name\": \"execute_command\", \"arguments\": {\"acesso_id\": 123, \"comando\": \"display version\"}}\n```\n"
+        "O CRM executa e devolve o resultado na próxima mensagem. Quando tiver a "
+        "resposta final para o operador, responda em texto normal, sem bloco tool.\n\n"
+        + tools
+    )
+
+
+_HERMES_PROTOCOLO_TOOLS = _hermes_protocolo_tools()
+
+_HERMES_LEMBRETE = ("(Lembrete do CRM: para consultar equipamentos ou dados do cliente use "
+                    "somente as ferramentas do CRM, num bloco ```tool```; não use as suas.)")
 
 
 # ─────────────────────────────────────────────────────────────────

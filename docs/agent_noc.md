@@ -12,9 +12,32 @@ O Agent NOC é um assistente de inteligência artificial integrado ao CRM que re
 mensagens via WhatsApp (Evolution API) e executa ações automatizadas na infraestrutura
 de rede (SSH, consultas, backups, etc.).
 
-Suporta dois provedores de IA configuráveis:
+Suporta três provedores de IA configuráveis:
 - **Claude** (Anthropic): `claude-sonnet-4-6`, `claude-opus-4-6`, `claude-haiku-4-5`
 - **OpenAI**: `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`
+- **Hermes Agent** (só no terminal web — ver abaixo)
+
+### Hermes no terminal — Adicionado em 2026-10-14
+
+- Escolhido no card **Hermes** em Sistema → Configurações → Agent NOC. URL, chave e modelo
+  **não** ficam no `AgentConfig`: vêm da Integração IA do atendimento (`ai_hermes_url`,
+  `ai_hermes_api_key`, `ai_hermes_model` em `atendimento.SystemSetting`), lidos por
+  `_hermes_credenciais()`.
+- Vale só para `canal='terminal'`. Com Hermes ativo, os grupos WhatsApp continuam no Claude
+  com a chave de cada grupo (créditos do cliente).
+- O API Server do Hermes **ignora o `tools` da requisição** e roda as ferramentas do próprio
+  servidor (198.18.1.2), que não alcança a rede dos clientes nem passa pela aprovação do
+  operador. Por isso as ferramentas do CRM vão no topo do system prompt
+  (`_HERMES_PROTOCOLO_TOOLS`) e o Hermes as pede em blocos
+  ```` ```tool {"name": ..., "arguments": {...}}``` ````; `_hermes_extrair_tools()` lê os blocos
+  e o CRM executa via `_dispatch_tool` — mesma aprovação de escrita do Claude/OpenAI.
+- O protocolo precisa ficar no **topo** do system prompt e ser relembrado na última pergunta
+  (`_HERMES_LEMBRETE`): no fim do prompt longo do agent o Hermes o ignorava, tentava o
+  equipamento sozinho e estourava o timeout (180 s por chamada).
+- Até 15 rodadas de ferramenta por pergunta (`_HERMES_MAX_RODADAS`). Cada chamada ao Hermes
+  leva ~25–60 s. Header `X-Hermes-Session-Key: crm-noc-<sessão>`.
+- Custo no monitor de tokens fica zerado: quem cobra é o provedor configurado no Hermes.
+- Botão **Testar conexão** no card (`agent/config/testar-hermes/`).
 
 ---
 
