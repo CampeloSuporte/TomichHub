@@ -267,6 +267,23 @@ mensagem "sua conta não possui acesso ao sistema". A função agora recebe o `r
 desloga a conta nesse caminho (sem o logout, a conta ficaria autenticada e o `GET` de
 `/auth/login/` mandaria de volta para cá — laço infinito de redirect).
 
+### Desativar o login de um usuário
+
+Em **Sistema → Usuários**, o botão <i>usuário riscado</i> (vermelho) desativa o login e o
+<i>usuário com check</i> (verde) reativa. Nada é apagado: chamados, tarefas, módulos, 2FA e
+senha ficam como estão; a linha ganha o selo **Desativado**.
+
+- Liga o `is_active=False` do Django. O `authenticate()` recusa a senha certa; a tela mostra
+  a mesma mensagem genérica de senha errada e o painel registra **usuário inativo**.
+- Quem já estava logado cai no próximo clique (o `get_user()` da sessão devolve anônimo); o
+  token da API também para. Terminal SSH/WebSocket já aberto só fecha quando reconectar.
+- Login com 2FA pendente (senha aceita, código ainda não digitado) não completa se a conta for
+  desativada nesse intervalo.
+- Escopo igual ao reset de 2FA (`perms.pode_resetar_2fa`): o Administrador alcança todos; o
+  Consultor, os Operadores e logins de portal da própria instância. Ninguém desativa o próprio
+  login.
+- View `usuario.views.alternar_ativo_usuario` (`POST /auth/usuarios/alternar-ativo/`).
+
 ---
 
 ## 6. Operação

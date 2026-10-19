@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-19 (Desativar usuário)
+
+### Adicionado
+
+- **Desativar/reativar o login de um usuário** em Sistema → Usuários. A conta desativada não
+  entra mais (nem com a senha certa), quem estava logado cai no próximo clique e o token da API
+  para; nada é apagado e o selo **Desativado** aparece na linha. Administrador alcança todos;
+  Consultor, os usuários da própria instância. Detalhes em `docs/SEGURANCA.md`.
+
 ## [Não publicado] — 2026-10-14 (Hermes no Agent NOC do terminal)
 
 ### Corrigido

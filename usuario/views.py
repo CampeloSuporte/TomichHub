@@ -611,7 +611,9 @@ def verificar_2fa(request):
 
     if request.method == 'POST':
         codigo = request.POST.get('codigo', '')
-        user = User.objects.filter(id=user_id).first()
+        # is_active de novo aqui: a conta pode ter sido desativada entre a
+        # senha (que já passou pelo authenticate) e o código.
+        user = User.objects.filter(id=user_id, is_active=True).first()
         device = getattr(user, 'totp_device', None) if user else None
 
         if device and device.confirmado and (totp_lib.verificar_codigo(device, codigo) or totp_lib.verificar_backup_code(device, codigo)):
@@ -811,4 +813,36 @@ def resetar_2fa_admin(request):
 
     TOTPDevice.objects.filter(usuario=usuario).delete()
     messages.success(request, f"2FA de '{usuario.username}' foi resetado.")
+    return redirect(destino)
+
+@login_required(login_url='login')
+@perms.pode_gerenciar_usuarios_required
+def alternar_ativo_usuario(request):
+    """Desativa/reativa o login de um usuário sem apagar nada dele.
+
+    Desativar = `is_active=False`: o `ModelBackend` recusa no
+    `authenticate()` (a tentativa cai como MOTIVO_USUARIO_INATIVO, com a
+    mesma mensagem genérica de senha errada), o TokenAuthentication da API
+    recusa o token e o `get_user()` da sessão devolve anônimo — quem já
+    estava logado cai no próximo request. Mesmo escopo do reset de 2FA
+    (`perms.pode_resetar_2fa`): Consultor alcança Operadores e logins de
+    portal da própria instância."""
+    destino = 'cadastrar_cliente' if request.POST.get('next') == 'cliente' else 'cadastrar_usuario'
+    if request.method != 'POST':
+        return redirect(destino)
+
+    usuario = get_object_or_404(User, id=request.POST.get('id'))
+    if not perms.pode_resetar_2fa(request.user, usuario):
+        messages.error(request, 'Você não possui permissão para alterar este usuário.')
+        return redirect(destino)
+    if usuario.id == request.user.id:
+        messages.error(request, 'Você não pode desativar o próprio login.')
+        return redirect(destino)
+
+    usuario.is_active = not usuario.is_active
+    usuario.save(update_fields=['is_active'])
+    if usuario.is_active:
+        messages.success(request, f"Usuário '{usuario.username}' reativado — já pode entrar de novo.")
+    else:
+        messages.success(request, f"Usuário '{usuario.username}' desativado — não consegue mais entrar no sistema.")
     return redirect(destino)

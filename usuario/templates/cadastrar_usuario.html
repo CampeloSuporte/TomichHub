@@ -57,6 +57,13 @@
 .role-badge.consultor  { background: rgba(88,166,255,.1); border: 1px solid rgba(88,166,255,.3); color: var(--cyan); }
 .role-badge.operador   { background: rgba(210,153,34,.1); border: 1px solid rgba(210,153,34,.3); color: #d29922; }
 .role-badge.cliente    { background: rgba(63,185,80,.1);  border: 1px solid rgba(63,185,80,.3);  color: var(--green); }
+.status-inativo {
+    display: inline-flex; align-items: center; gap: 4px; margin-top: 3px;
+    padding: 1px 8px; border-radius: 20px; font-size: .62rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .5px;
+    background: rgba(139,148,158,.12); border: 1px solid rgba(139,148,158,.35); color: var(--text-muted);
+}
+tr.usuario-inativo .user-avatar, tr.usuario-inativo .user-name { opacity: .5; }
 
 /* Seções dentro dos modais */
 .form-section { margin-bottom: 22px; }
@@ -202,7 +209,7 @@
                                     </thead>
                                     <tbody>
                                         {% for usuarios in usuario%}
-                                        <tr>
+                                        <tr{% if not usuarios.is_active %} class="usuario-inativo"{% endif %}>
                                             <td>{{usuarios.id}}</td>
                                             <td>
                                                 <div class="user-cell">
@@ -213,6 +220,9 @@
                                                         <div class="user-name">{{usuarios.username}}</div>
                                                         {% if usuarios.date_joined %}
                                                         <div class="user-joined">desde {{ usuarios.date_joined|date:"d/m/Y" }}</div>
+                                                        {% endif %}
+                                                        {% if not usuarios.is_active %}
+                                                        <div class="status-inativo"><i class="fas fa-ban"></i> Desativado</div>
                                                         {% endif %}
                                                     </div>
                                                 </div>
@@ -239,6 +249,25 @@
                                                         <i class="fas fa-mobile-alt"></i>
                                                     </button>
                                                 </form>
+                                                {% endif %}
+                                                {% if usuarios.id != request.user.id %}
+                                                {% if usuarios.is_active %}
+                                                <form method="post" action="{% url 'alternar_ativo_usuario' %}" style="display:inline" data-confirm="Desativar {{ usuarios.username }}? O login deixa de funcionar e quem estiver logado cai no próximo clique. Nada é apagado — dá pra reativar depois." data-confirm-titulo="Desativar usuário" data-confirm-btn="Desativar" data-confirm-tipo="perigo">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="id" value="{{ usuarios.id }}">
+                                                    <button type="submit" class="btn-action" style="color:var(--red)" title="Desativar login">
+                                                        <i class="fas fa-user-slash"></i>
+                                                    </button>
+                                                </form>
+                                                {% else %}
+                                                <form method="post" action="{% url 'alternar_ativo_usuario' %}" style="display:inline" data-confirm="Reativar {{ usuarios.username }}? O login volta a funcionar com a mesma senha." data-confirm-titulo="Reativar usuário" data-confirm-btn="Reativar" data-confirm-tipo="aviso">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="id" value="{{ usuarios.id }}">
+                                                    <button type="submit" class="btn-action" style="color:var(--green)" title="Reativar login">
+                                                        <i class="fas fa-user-check"></i>
+                                                    </button>
+                                                </form>
+                                                {% endif %}
                                                 {% endif %}
                                             </div>
                                         </td>
