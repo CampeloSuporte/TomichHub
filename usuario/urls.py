@@ -13,4 +13,5 @@ urlpatterns = [
     path('2fa/', views.configurar_2fa, name='configurar_2fa'),
     path('2fa/verificar/', views.verificar_2fa, name='verificar_2fa'),
     path('2fa/resetar/', views.resetar_2fa_admin, name='resetar_2fa_admin'),
+    path('usuarios/alternar-ativo/', views.alternar_ativo_usuario, name='alternar_ativo_usuario'),
 ]

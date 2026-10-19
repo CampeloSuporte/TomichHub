@@ -469,3 +469,73 @@ class AcessosSomenteLeituraTest(TestCase):
             reverse('adicionar_protocolo_acesso', args=[self.acesso.id]), {'protocolo': 'TELNET', 'porta': 23}
         )
         self.assertEqual(r.status_code, 403)
+
+
+class DesativarUsuarioTest(TestCase):
+    """Desativar login (is_active=False) sem apagar o usuário: não entra mais,
+    quem já estava logado cai, e dá pra reativar."""
+
+    def setUp(self):
+        self.admin = _criar_admin_staff()
+        self.client.force_login(self.admin)
+        self.alvo = User.objects.create_user(username='alvo', password='x', is_active=True)
+
+    def _alternar(self, user):
+        return self.client.post(reverse('alternar_ativo_usuario'), {'id': user.id})
+
+    def test_desativa_e_derruba_sessao_existente(self):
+        from django.test import Client
+        sessao_alvo = Client()
+        sessao_alvo.force_login(self.alvo)
+
+        self.assertEqual(self._alternar(self.alvo).status_code, 302)
+        self.alvo.refresh_from_db()
+        self.assertFalse(self.alvo.is_active)
+        self.assertTrue(User.objects.filter(id=self.alvo.id).exists())
+
+        # sessão antiga vira anônima no próximo request
+        resp = sessao_alvo.get(reverse('trocar_senha'))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn(reverse('login'), resp['Location'])
+
+    def test_reativa(self):
+        self._alternar(self.alvo)
+        self._alternar(self.alvo)
+        self.alvo.refresh_from_db()
+        self.assertTrue(self.alvo.is_active)
+
+    def test_nao_desativa_a_si_mesmo(self):
+        self._alternar(self.admin)
+        self.admin.refresh_from_db()
+        self.assertTrue(self.admin.is_active)
+
+    def test_consultor_nao_alcanca_outra_instancia(self):
+        inst_a = Instancia.objects.create(nome='A')
+        inst_b = Instancia.objects.create(nome='B')
+        consultor = User.objects.create_user(username='cons', password='x', is_staff=True)
+        PerfilUsuario.objects.create(usuario=consultor, role=PerfilUsuario.ROLE_CONSULTOR, instancia=inst_a)
+        TOTPDevice.objects.create(usuario=consultor, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+        op_a = User.objects.create_user(username='op_a', password='x', is_staff=True)
+        PerfilUsuario.objects.create(usuario=op_a, role=PerfilUsuario.ROLE_OPERADOR, instancia=inst_a)
+        op_b = User.objects.create_user(username='op_b', password='x', is_staff=True)
+        PerfilUsuario.objects.create(usuario=op_b, role=PerfilUsuario.ROLE_OPERADOR, instancia=inst_b)
+
+        self.client.force_login(consultor)
+        self._alternar(op_a)
+        self._alternar(op_b)
+        op_a.refresh_from_db()
+        op_b.refresh_from_db()
+        self.assertFalse(op_a.is_active)
+        self.assertTrue(op_b.is_active)
+
+    def test_2fa_pendente_nao_completa_se_desativado(self):
+        TOTPDevice.objects.create(usuario=self.alvo, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+        import pyotp
+        self.client.logout()
+        sessao = self.client.session
+        sessao['2fa_user_id'] = self.alvo.id
+        sessao.save()
+        self.alvo.is_active = False
+        self.alvo.save()
+        self.client.post(reverse('verificar_2fa'), {'codigo': pyotp.TOTP('JBSWY3DPEHPK3PXP').now()})
+        self.assertNotIn('_auth_user_id', self.client.session)
