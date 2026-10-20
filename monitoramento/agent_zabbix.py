@@ -570,10 +570,27 @@ def _rotulos(serie: dict) -> tuple:
     return host, iface, ramo or iface
 
 
+# Palavras que não identificam o site no nome do host ("sw-hu-juruena" × "SWITCH-HUAWEI-JURUENA")
+_HOST_GENERICO = {'sw', 'switch', 'hu', 'huawei', 'dt', 'datacom', 'mk', 'mikrotik', 'cisco',
+                  'juniper', 'olt', 'rb', 'ccr', 'router', 'roteador', 'bng', 'bras', 'reg', 'pop'}
+
+
+def _variantes_host(host: str) -> list[str]:
+    """O nome como veio e, se não casar, cada palavra que identifica o site."""
+    palavras = [w for w in re.split(r'[\s\-_.·/]+', host.lower())
+                if len(w) >= 3 and w not in _HOST_GENERICO]
+    return list(dict.fromkeys([host] + palavras))
+
+
 def itens_de_sinal(cfg, host: str, item: str = '') -> list[str]:
     """itemids de potência óptica (dBm) de um host — RX por padrão, TX só se pedido."""
     termos = item or 'Recebida'
-    itens = services.buscar_itens(cfg, host, termos, limit=200)
+    itens = []
+    for h in _variantes_host(host):
+        itens = [i for i in services.buscar_itens(cfg, h, termos, limit=200)
+                 if (i.get('units') or '').strip().lower() == 'dbm']
+        if itens:
+            break
     quer_tx = bool(re.search(r'\btx\b|transmit', item or '', re.I))
     escolhidos = []
     for i in itens:
@@ -608,7 +625,11 @@ def comparar_sinal(cliente_id, itemids: list | None = None, buscas: list | None 
             continue
         achados = itens_de_sinal(cfg, h, it)
         if not achados:
-            avisos.append(f"⚠️ nenhum item de sinal (dBm) em host '{h}'" + (f" com '{it}'" if it else ''))
+            avisos.append(
+                f"⚠️ nenhum item de sinal (dBm) achado com host '{h}'" + (f" e item '{it}'" if it else '')
+                + " — isso NÃO quer dizer que não é monitorado: confira o nome do host/porta com "
+                  "zabbix_buscar_item e chame de novo com o nome certo antes de responder."
+            )
         ids.extend(achados)
     ids = list(dict.fromkeys(ids))[:16]
     if not ids:
@@ -773,4 +794,11 @@ def comparar_sinal(cliente_id, itemids: list | None = None, buscas: list | None 
               "DEPOIS = leitura mais frequente na última hora"
               + ('; fonte: médias horárias (trends) — history expirado' if 'trends' in fonte else '')
               + ')')
-    return '\n\n\n'.join(blocos) + ('\n\n' + '\n'.join(avisos) if avisos else '') + rodape
+    instrucao = (
+        "[INSTRUÇÃO DO CRM — não repasse esta linha] Responda ao operador com os blocos abaixo "
+        "EXATAMENTE neste formato de texto (é o padrão do relatório do NOC): sem tabela, sem "
+        "títulos markdown, sem reescrever números. Pode só trocar o nome do host pelo nome curto "
+        "do site (ex: JURUENA, REG.JUINA) e acrescentar no fim uma conclusão de 1-2 linhas.\n\n"
+    )
+    return (instrucao + '\n\n\n'.join(blocos)
+            + ('\n\n' + '\n'.join(avisos) if avisos else '') + rodape)
