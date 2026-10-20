@@ -520,6 +520,22 @@ vale derrubar o editor.
 
 ---
 
+## Caneta (lousa) — 2026-10-20
+
+O botão de lápis na barra (`#btn-lousa`, `toggleLousa()`) liga o rabisco livre por cima do mapa. Ele
+serve para ilustrar algo durante uma conversa ou num print. **Clicar de novo desliga a caneta e apaga
+tudo o que foi rabiscado.**
+
+- **Onde fica o traço:** os traços são `<path class="lousa-traco">` na camada `#lousa-layer`. Ela é
+  a última do `#viewport`, então o traço fica por cima de tudo e acompanha zoom e pan.
+  `vector-effect: non-scaling-stroke` mantém a espessura em 3 px em qualquer zoom.
+- **O que não acontece:** o traço não entra em `nodes`/`links`, não marca o mapa como alterado, não
+  vai para o desfazer e não é salvo.
+- **Eventos:** os ouvintes ficam em **captura** no próprio SVG (`_lousaDown`/`_lousaMove`, além de
+  mouseup/click/dblclick/contextmenu). Com a caneta ligada, começar um traço em cima de um node ou de
+  um link não seleciona nem arrasta nada. O scroll (zoom) continua funcionando.
+- **Outros modos:** ligar a caneta desliga o modo conexão e a seleção por área.
+
 ## Conexões (Links)
 
 ### Propriedades de uma conexão
