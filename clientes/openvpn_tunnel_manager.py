@@ -370,26 +370,12 @@ def revogar_certificado(common_name):
 
 def sugerir_redes(cliente):
     """
-    Sugere as sub-redes /24 dos equipamentos privados JÁ cadastrados nos
-    Acessos do cliente. É o que o modal de criação pré-preenche no lugar das
-    faixas amplas — com as tabelas isoladas por túnel a faixa ampla não
-    colide mais com outro cliente, mas declarar só o que existe mantém a
-    tabela do túnel legível. O operador pode ajustar/incluir outras redes.
+    Redes que o modal de criação já traz preenchidas: todas as faixas
+    privadas/CGNAT (REDES_PADRAO). Com a tabela de rotas isolada por túnel
+    a faixa ampla não colide com outro cliente, então não há motivo para
+    obrigar o operador a listar /24 por /24. Ele ainda pode editar.
     """
-    from .models import Acesso
-    redes = []
-    for host in Acesso.objects.filter(cliente=cliente).values_list('host', flat=True):
-        ip_raw = (host or '').strip().split(':')[0]
-        try:
-            ip = ipaddress.ip_address(ip_raw)
-        except ValueError:
-            continue
-        if ip.version != 4 or not ip.is_private:
-            continue
-        rede = str(ipaddress.ip_network(f'{ip}/24', strict=False))
-        if rede not in redes:
-            redes.append(rede)
-    return sorted(redes)
+    return list(REDES_PADRAO)
 
 
 def gerar_common_name(cliente):
