@@ -308,7 +308,11 @@ class TopoEditor {
         if (e.key === 'Escape') this.fecharPon();
         return;
       }
+      // Ctrl+F abre a busca de host do mapa (no lugar do "localizar" do
+      // navegador, que não acha nada dentro do SVG de forma útil).
+      if (e.ctrlKey && (e.key === 'f' || e.key === 'F')) { e.preventDefault(); this.abrirBusca(); return; }
       if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+      if (e.key === '/') { e.preventDefault(); this.abrirBusca(); return; }
       if (e.ctrlKey && e.key === 's') { e.preventDefault(); this.save(); }
       if (e.ctrlKey && e.key === 'z') { this.undo(); }
       if (e.ctrlKey && e.key === 'y') { this.redo(); }
@@ -2841,6 +2845,97 @@ class TopoEditor {
     // pro canvas depois, se a pessoa quiser desenhar o enlace).
     this._toast('Host fora do diagrama — abrindo os serviços dele');
     this.abrirL2vpn(destino.acesso_id, destino.nome);
+  }
+
+  // ── Busca de host no mapa ─────────────────────────────────────────────────
+  // Botão de lupa na barra (ou Ctrl+F / "/"): digita parte do nome, IP ou
+  // função e o mapa vai até o host, seleciona e pisca o anel. Host que está
+  // dentro de um grupo (sub-mapa) leva ao ícone do grupo.
+
+  abrirBusca() {
+    const box = document.getElementById('busca-host');
+    if (!box) return;
+    const btn = document.getElementById('btn-busca');
+    if (btn) {
+      const r = btn.getBoundingClientRect();
+      box.style.top = (r.bottom + 8) + 'px';
+      box.style.left = Math.max(8, Math.min(r.left - 120, window.innerWidth - 340)) + 'px';
+    }
+    box.hidden = false;
+    btn && btn.classList.add('active');
+    if (!this._buscaFora) {   // clique fora do painel fecha a busca
+      this._buscaFora = e => {
+        if (box.hidden || box.contains(e.target) || (btn && btn.contains(e.target))) return;
+        this.fecharBusca();
+      };
+      document.addEventListener('mousedown', this._buscaFora, true);
+    }
+    const inp = document.getElementById('busca-host-input');
+    inp.value = '';
+    this._buscaSel = 0;
+    this._buscaRender('');
+    setTimeout(() => inp.focus(), 0);
+  }
+
+  fecharBusca() {
+    const box = document.getElementById('busca-host');
+    if (box) box.hidden = true;
+    const btn = document.getElementById('btn-busca');
+    btn && btn.classList.remove('active');
+  }
+
+  _buscaNorm(s) {
+    return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  }
+
+  /** Hosts que batem com o texto: nome primeiro (começa com > contém), depois
+   *  IP e função. Inclui os membros dos grupos, apontando para o ícone do grupo. */
+  _buscaResultados(q) {
+    const t = this._buscaNorm(q).trim();
+    const itens = [];
+    for (const n of this.nodes) {
+      if (['area', 'text_box'].includes(n.type)) continue;
+      itens.push({id: n.id, label: n.label || '', ip: n.ip || '', funcao: n.funcao || '', alvo: n.id, grupo: null});
+      (n.grupo_membros || []).forEach(m => itens.push({id: m.id, label: m.label || '', ip: '', funcao: '', alvo: n.id, grupo: n.label}));
+    }
+    if (!t) return itens.filter(i => !i.grupo).sort((a, b) => a.label.localeCompare(b.label)).slice(0, 12);
+    const pontua = i => {
+      const nome = this._buscaNorm(i.label);
+      if (nome.startsWith(t)) return 0;
+      if (nome.includes(t)) return 1;
+      if (this._buscaNorm(i.ip).includes(t)) return 2;
+      if (this._buscaNorm(i.funcao).includes(t)) return 3;
+      return 9;
+    };
+    return itens.map(i => ({...i, p: pontua(i)})).filter(i => i.p < 9)
+      .sort((a, b) => a.p - b.p || a.label.localeCompare(b.label)).slice(0, 12);
+  }
+
+  _buscaRender(q) {
+    this._buscaLista = this._buscaResultados(q);
+    if (this._buscaSel >= this._buscaLista.length) this._buscaSel = 0;
+    const ul = document.getElementById('busca-host-lista');
+    ul.innerHTML = this._buscaLista.length ? this._buscaLista.map((i, k) => `
+      <li class="${k === this._buscaSel ? 'sel' : ''}" data-k="${k}">
+        <span class="bh-nome">${this._esc(i.label)}</span>
+        <span class="bh-info">${this._esc(i.grupo ? 'no grupo ' + i.grupo : (i.ip || i.funcao || ''))}</span>
+      </li>`).join('') : '<li class="vazio">Nenhum host com esse nome no mapa</li>';
+  }
+
+  _buscaTecla(e) {
+    const n = (this._buscaLista || []).length;
+    if (e.key === 'ArrowDown' && n) { e.preventDefault(); this._buscaSel = (this._buscaSel + 1) % n; this._buscaRender(e.target.value); }
+    else if (e.key === 'ArrowUp' && n) { e.preventDefault(); this._buscaSel = (this._buscaSel - 1 + n) % n; this._buscaRender(e.target.value); }
+    else if (e.key === 'Enter') { e.preventDefault(); this._buscaIr(this._buscaSel); }
+    else if (e.key === 'Escape') { e.preventDefault(); this.fecharBusca(); }
+  }
+
+  _buscaIr(k) {
+    const i = (this._buscaLista || [])[k];
+    if (!i) return;
+    this.fecharBusca();
+    this._focarNode(i.alvo);
+    if (i.grupo) this._toast(`${i.label} está dentro do grupo "${i.grupo}" — duplo-clique no ícone para abrir`);
   }
 
   _focarNode(nodeId) {
