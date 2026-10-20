@@ -1020,3 +1020,26 @@ class PolicyLocalVaziaTest(SimpleTestCase):
         linha = self._linha(montar_mapa(dados))
         self.assertFalse(linha['editavel'])
         self.assertIn('não foi encontrada', linha['avisos'][0])
+
+
+class PdfCommunitiesTest(SimpleTestCase):
+    """`bgp_community_pdf.gerar_pdf_communities` — o PDF do padrão sai do mesmo
+    mapa do painel e diz a quem cada community pertence e o que aplica."""
+
+    def test_pdf_lista_dono_e_efeito_de_cada_community(self):
+        import fitz
+        from django.utils import timezone
+
+        from clientes.bgp_community_pdf import gerar_pdf_communities
+
+        mapa = montar_mapa(dados_base())
+        pdf = gerar_pdf_communities(mapa, 'Cliente — RT-BORDA', timezone.now())
+        self.assertTrue(pdf.startswith(b'%PDF'))
+        texto = ''.join(p.get_text() for p in fitz.open(stream=pdf, filetype='pdf'))
+        self.assertIn('Communities por circuito', texto)
+        for cid, c in mapa['circuitos'].items():
+            self.assertIn(cid, texto)
+            for a in c['acoes'].values():
+                self.assertIn(a['community'], texto)
+        self.assertIn('Anuncia com 2 prepends', texto)
+        self.assertIn('Bloqueia o anúncio', texto)

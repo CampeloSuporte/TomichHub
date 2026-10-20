@@ -258,6 +258,7 @@ urlpatterns = [
     path('bgp/<int:acesso_id>/communities/criar/',   bgpv.bgp_communities_criar,  name='bgp_communities_criar'),
     path('bgp/<int:acesso_id>/communities/<int:community_id>/deletar/', bgpv.bgp_communities_deletar, name='bgp_communities_deletar'),
     path('bgp/<int:acesso_id>/community-mapa/',  bgpv.bgp_community_mapa,     name='bgp_community_mapa'),
+    path('bgp/<int:acesso_id>/community-mapa/pdf/', bgpv.bgp_community_pdf, name='bgp_community_pdf'),
     path('bgp/<int:acesso_id>/escanear-prefixo/', bgpv.bgp_escanear_prefixo, name='bgp_escanear_prefixo'),
     path('bgp/<int:acesso_id>/validar-anuncios/', bgpv.bgp_validar_anuncios, name='bgp_validar_anuncios'),
 
