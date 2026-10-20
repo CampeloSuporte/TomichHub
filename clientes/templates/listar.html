@@ -9495,7 +9495,7 @@ function getCsrfToken(){
             if (!el) return;
 
             // Redes /24 dos acessos privados já cadastrados — o modal usa como
-            // sugestão no lugar das faixas amplas, que colidem entre clientes.
+            // sugestão (faixa ampla também é aceita: cada túnel tem tabela própria).
             window._tovpnRedesSugeridas = d.redes_sugeridas || [];
 
             if (!d.vpns || !d.vpns.length) {
@@ -9560,9 +9560,10 @@ function getCsrfToken(){
                     <textarea id="tovpnRedes" class="form-control" rows="6"
                         placeholder="192.168.88.0/24&#10;10.10.0.0/16"
                         style="background:#0d1117;border-color:rgba(227,179,65,.15);color:#e6edf3;font-family:'Inter', sans-serif;font-size:.82rem">${(window._tovpnRedesSugeridas || []).join('\n')}</textarea>
-                    <small style="color:#666">Sugerido a partir dos acessos privados já cadastrados. Use as redes
-                    <b>específicas</b> do cliente — faixas amplas (10.0.0.0/8, 192.168.0.0/16…) colidem com outro
-                    cliente que declare a mesma faixa e o túnel é recusado.</small>
+                    <small style="color:#666">Sugerido a partir dos acessos privados já cadastrados. Cada túnel tem
+                    tabela de rotas <b>isolada</b>: pode declarar qualquer faixa privada (10.0.0.0/8, 192.168.0.0/16,
+                    100.64.0.0/10…) mesmo que outro cliente use a mesma. Só não pode repetir rede entre dois túneis
+                    deste cliente.</small>
                 </div>
                 <div style="display:flex;gap:10px;justify-content:flex-end">
                     <button onclick="document.getElementById('tovpn-modal-overlay').remove()"
