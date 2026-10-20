@@ -1725,3 +1725,27 @@ aqui o snapshot local é atualizado com o circuito **inteiro** — filtros, node
 da policy de saída e as sessões —, porque tudo isso foi gerado por este módulo
 linha a linha. Sem isso o slot recém-criado continuaria aparecendo como vago
 até o próximo backup, e o operador aplicaria tudo de novo.
+
+## PDF do padrão de communities (Huawei, adicionado em 2026-10-19)
+
+Botão **📄 PDF das communities** no cabeçalho do card "Anúncios por community". Abre em
+nova aba `GET /clientes/bgp/<acesso_id>/community-mapa/pdf/` (`bgp_views.bgp_community_pdf`),
+que monta o mesmo `montar_mapa` do painel e passa para
+`clientes/bgp_community_pdf.py::gerar_pdf_communities` (reportlab, A4 paisagem). Leitura pura
+do snapshot — mesmas checagens (`_checar_staff` + `_checar_acesso`), 404 sem snapshot ou sem
+circuito no padrão, 422 para fabricante não Huawei.
+
+Seções do PDF:
+
+1. **Como ler uma community** — `<ASN>:<grupo><ação>`, faixas de grupo por tipo de circuito
+   (501-510 / 601-610 / 611-615) e a tabela sufixo → ação → o que aplica (catálogo `ACOES`).
+2. **Communities por circuito** — para cada `c-NN`/`ix-NN`/`cdn-NN`: grupo, nome/AS do peer,
+   sessões, e cada community com a ação, o efeito (prepend já com o AS de `prepend_as`), o
+   community-filter e se está conforme o padrão (senão mostra a esperada) + ações ausentes.
+3. **Grupos globais** — cada `glob-*`, com o alcance real (quais circuitos a policy de saída
+   casa); sem circuito, aparece como "sem efeito".
+4. **Communities aplicadas por prefixo** — o que cada `RT-BGP-LOCAL-*` carimba, a quem pertence
+   e o que aplica; communities órfãs (ASN trocado ou sem filtro) saem em destaque como sem efeito.
+
+Os textos "o que aplica" vivem em `_o_que_aplica`/`_o_que_aplica_global` — ao criar uma ação
+nova no catálogo, inclua a descrição lá.

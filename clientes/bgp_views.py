@@ -9,7 +9,7 @@ import json
 import logging
 
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -36,6 +36,7 @@ from .bgp_community_auto import (
     comandos_provisionar_circuito,
     montar_mapa,
 )
+from .bgp_community_pdf import gerar_pdf_communities
 from .bgp_matcher import listar_prefix_lists
 from .models import Acesso, AcaoBgp, BgpCommunity, BgpSnapshot
 from usuario import perms as _perms
@@ -350,6 +351,46 @@ def bgp_community_mapa(request, acesso_id):
     mapa['suportado'] = True
     mapa['as_local'] = (sessoes[0].get('as_local', '') if sessoes else '') or snap.dados.get('as_local', '')
     return JsonResponse(mapa)
+
+
+@login_required(login_url='login')
+@require_http_methods(["GET"])
+def bgp_community_pdf(request, acesso_id):
+    """
+    GET /clientes/bgp/<acesso_id>/community-mapa/pdf/ — o mesmo mapa de
+    `bgp_community_mapa` em PDF: a quem cada community pertence (circuito ou
+    grupo global) e o que ela aplica, mais as communities de cada prefixo.
+    Leitura pura do snapshot, como o mapa.
+    """
+    erro = _checar_staff(request)
+    if erro:
+        return erro
+    acesso = get_object_or_404(Acesso.objects.select_related('cliente'), id=acesso_id)
+    erro = _checar_acesso(request, acesso)
+    if erro:
+        return erro
+    try:
+        snap = BgpSnapshot.objects.get(acesso_id=acesso_id)
+    except BgpSnapshot.DoesNotExist:
+        return JsonResponse({'error': 'Sem snapshot BGP para este host.'}, status=404)
+    try:
+        mapa = montar_mapa(snap.dados, snap.vendor)
+    except AcaoBgpNaoSuportada as e:
+        return JsonResponse({'error': str(e)}, status=422)
+    if not mapa['circuitos']:
+        return JsonResponse({'error': 'Este equipamento não tem communities no padrão '
+                                      '`c-NN`/`ix-NN`/`cdn-NN` — nada a documentar.'}, status=404)
+
+    sessoes = snap.dados.get('sessoes') or []
+    mapa['as_local'] = (sessoes[0].get('as_local', '') if sessoes else '') or snap.dados.get('as_local', '')
+    cliente = getattr(acesso.cliente, 'nome_empresa', '') if acesso.cliente_id else ''
+    titulo = ' — '.join(x for x in (cliente, acesso.tipo, acesso.host) if x)
+    pdf = gerar_pdf_communities(mapa, titulo, timezone.localtime(timezone.now()))
+
+    nome = ''.join(ch if ch.isalnum() or ch in '-_' else '_' for ch in (acesso.tipo or f'acesso_{acesso.id}'))[:50]
+    resp = HttpResponse(pdf, content_type='application/pdf')
+    resp['Content-Disposition'] = f'inline; filename="communities_{nome}.pdf"'
+    return resp
 
 
 @login_required(login_url='login')

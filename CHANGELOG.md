@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-19 (PDF do padrão de communities BGP)
+
+### Adicionado
+
+- **PDF das communities na Automação BGP** (Huawei). Botão **📄 PDF das communities** no card
+  "Anúncios por community" gera, a partir do padrão descoberto no snapshot, um PDF dizendo a
+  qual circuito/grupo global cada community pertence e o que ela aplica (anunciar, prepend,
+  no-export, blackhole, bloquear, origem), com a legenda do padrão, divergências e as
+  communities carimbadas em cada prefixo. Detalhes em `docs/bgp_automacao.md`.
+
 ## [Não publicado] — 2026-10-19 (Desativar usuário)
 
 ### Adicionado
