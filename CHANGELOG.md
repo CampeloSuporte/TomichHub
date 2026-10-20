@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-20 (Topologia: rótulos de link)
+
+### Corrigido
+
+- **IP e interface sobrepostos em link com dobra.** Os rótulos das pontas seguiam a reta entre os
+  dois nodes, ignorando os waypoints. Agora cada ponta usa o próprio trecho até a dobra. No mapa da
+  Sartor, as sobreposições caíram de 25 para 10; as que sobram são de links diferentes chegando pelo
+  mesmo lado.
+
+### Adicionado
+
+- **Rótulos de link arrastáveis.** IP, interface e a caixa de banda/VLAN/cost podem ser arrastados.
+  A posição fica salva no link (`rotulos`), e o painel do link tem o botão "Voltar rótulos à
+  posição automática". Detalhes em `docs/topologia.md`.
+
 ## [Não publicado] — 2026-10-19 (Túneis: texto do modal OpenVPN)
 
 ### Corrigido
