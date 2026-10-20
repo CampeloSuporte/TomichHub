@@ -520,6 +520,21 @@ vale derrubar o editor.
 
 ---
 
+## Busca de host no mapa — 2026-10-20
+
+A lupa na barra (`#btn-busca`, `abrirBusca()`), ou **Ctrl+F** / **/**, abre um campo para achar
+host. O Ctrl+F do editor substitui o do navegador, que não acha nada útil dentro do SVG.
+
+- **Resultados:** até 12. Primeiro vem nome que começa com o texto, depois nome que contém o
+  texto, depois IP e função. A busca ignora acento e maiúscula (`_buscaResultados`).
+- **Navegação:** ↑/↓ mudam a seleção, Enter ou clique vai até o host e Esc fecha. Clicar fora do
+  painel também fecha.
+- **Ir até o host:** reaproveita `_focarNode`, que centraliza com zoom mínimo de 90%, seleciona o
+  host e pisca o anel.
+- **Host dentro de grupo:** os membros dos grupos (`grupo_membros`) também aparecem, com
+  "no grupo X". Escolher um deles leva até o **ícone do grupo** e mostra um aviso para abrir o
+  sub-mapa.
+
 ## Caneta (lousa) — 2026-10-20
 
 O botão de lápis na barra (`#btn-lousa`, `toggleLousa()`) liga o rabisco livre por cima do mapa. Ele

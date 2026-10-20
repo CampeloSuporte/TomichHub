@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-20 (Topologia: busca de host)
+
+### Adicionado
+
+- **Busca de host na topologia.** A lupa na barra (ou Ctrl+F / "/") abre um campo que aceita nome,
+  IP ou função. Escolher um resultado leva o mapa até o host, que fica selecionado e com o anel
+  piscando. Host que está dentro de um grupo leva até o ícone do grupo. Detalhes em
+  `docs/topologia.md`.
+
 ## [Não publicado] — 2026-10-20 (Topologia: caneta)
 
 ### Adicionado

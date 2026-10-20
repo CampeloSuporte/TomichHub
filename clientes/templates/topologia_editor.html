@@ -506,6 +506,18 @@ body.props-off #props{transform:translateX(calc(100% + 20px));opacity:0;pointer-
 #canvas-svg.lousa-on *{cursor:crosshair !important}
 #lousa-layer{pointer-events:none}
 .lousa-traco{fill:none;stroke:#ff5c5c;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+/* Busca de host no mapa (botão de lupa / Ctrl+F) */
+#busca-host{position:fixed;z-index:70;width:330px;background:rgba(18,24,31,.98);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-md);padding:8px}
+#busca-host[hidden]{display:none}
+#busca-host .bh-campo{display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);border-radius:9px;background:#0b0f15}
+#busca-host .bh-campo i{color:var(--cyan);font-size:.8rem}
+#busca-host input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:.85rem}
+#busca-host ul{list-style:none;margin:6px 0 0;padding:0;max-height:340px;overflow-y:auto}
+#busca-host li{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:.8rem}
+#busca-host li.sel,#busca-host li:hover{background:rgba(0,217,255,.12)}
+#busca-host li.vazio{color:var(--muted);cursor:default;background:none}
+#busca-host .bh-nome{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#busca-host .bh-info{color:var(--muted);font-family:'Courier New',monospace;font-size:.72rem;white-space:nowrap}
 .link-tag{cursor:move}
 .link-tag:hover rect{stroke:var(--cyan);stroke-opacity:.9}
 /* Text box node */
@@ -621,6 +633,7 @@ body:not(.pal-off) #legend-panel{left:236px}
     <button class="tb-btn" id="btn-snap" onclick="topo.toggleSnap()" data-tip="Alinhar à grade"><i class="fas fa-magnet"></i></button>
     <button class="tb-btn" id="btn-connect" onclick="topo.toggleConnectMode()" data-tip="Modo conexão (C)"><i class="fas fa-share-nodes"></i></button>
     <button class="tb-btn" id="btn-area-select" onclick="topo.toggleAreaSelect()" data-tip="Seleção por área (ou Ctrl + arrastar)"><i class="fas fa-vector-square"></i></button>
+    <button class="tb-btn" id="btn-busca" onclick="topo.abrirBusca()" data-tip="Buscar host no mapa (Ctrl+F ou /)"><i class="fas fa-magnifying-glass"></i></button>
     <button class="tb-btn" id="btn-lousa" onclick="topo.toggleLousa()" data-tip="Caneta: rabiscar por cima do mapa só para ilustrar — clique de novo para apagar tudo (não é salvo)"><i class="fas fa-pen"></i></button>
     <button class="tb-btn dim" id="btn-agrupar" {% if cenario %}hidden{% endif %} onclick="topo.agruparSelecionados()" data-tip="Agrupar os selecionados num ícone só, com mapa próprio — Ctrl+clique nos hosts, depois aqui (G)"><i class="fas fa-object-group"></i></button>
   </div>
@@ -755,6 +768,12 @@ body:not(.pal-off) #legend-panel{left:236px}
   }
 </script>
 <script src="/static/js/topo_engine.js?v=26"></script>
-<script src="/static/js/topo_main.js?v=57"></script>
+<div id="busca-host" hidden>
+  <div class="bh-campo"><i class="fas fa-magnifying-glass"></i>
+    <input id="busca-host-input" type="text" autocomplete="off" spellcheck="false" placeholder="Nome, IP ou função do host"
+           oninput="topo._buscaSel=0;topo._buscaRender(this.value)" onkeydown="topo._buscaTecla(event)"></div>
+  <ul id="busca-host-lista" onmousedown="event.preventDefault()" onclick="const li=event.target.closest('li[data-k]'); if(li) topo._buscaIr(+li.dataset.k)"></ul>
+</div>
+<script src="/static/js/topo_main.js?v=58"></script>
 </body>
 </html>
