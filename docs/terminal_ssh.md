@@ -439,3 +439,97 @@ Tudo é frontend, no `TerminalManager` — nenhuma sessão SSH é aberta ou fech
 - `aplicarLayout()` é o único lugar que mostra/esconde painéis e marca abas; depois dele
   `refitTerminaisVisiveis()` refaz o `fit()` dos dois xterm, e o `onResize` já existente manda o
   novo `cols/rows` ao PTY de cada host.
+- **Divisor arrastável e orientação (2026-10-20).** Entre as duas metades fica o `#splitDivisor`
+  (`order: 1`; os painéis usam `order` 0 e 2). Arrastar muda a variável CSS `--split-pct` da
+  primeira metade (15–85%) e refaz o `fit()` a cada frame. Duplo clique volta a 50%. O botão ao lado
+  de **Tela única** (ou `Ctrl+Shift+O`) alterna entre lado a lado e um em cima do outro
+  (`.terminal-content.empilhado`). No celular é sempre empilhado. Tamanho e orientação ficam em
+  `localStorage['terminalPrefs']`.
+
+---
+
+## Busca, copiar/colar, atalhos e renderizador — Adicionado em 2026-10-20
+
+Tudo é frontend, em `clientes/templates/terminal.html`. O backend não mudou. O link externo
+(`terminal_externo.html`) e o modal do terminal (`modal_ssh_terminal.html`) continuam como antes.
+
+### Busca no histórico (`xterm-addon-search` 0.13.0)
+
+- Arquivo: `/opt/crm/static/js/xterm-addon-search.min.js`. Assim como o `xterm.min.js` e os outros
+  addons, é biblioteca de terceiros e **não é versionado**: num servidor novo, baixe com
+  `curl -L https://cdn.jsdelivr.net/npm/xterm-addon-search@0.13.0/lib/xterm-addon-search.js -o static/js/xterm-addon-search.min.js`.
+  Essa versão casa com o xterm 5.3.0.
+- `Ctrl+Shift+F` ou **🔍 Buscar** abre a barra `#termBusca` no canto da área do terminal. A barra
+  age sempre no terminal **ativo**: trocar de aba limpa o destaque da anterior e refaz a busca na
+  nova. Texto selecionado no terminal vira o termo.
+- Opções: diferenciar maiúsculas (`Aa`) e regex (`.*`). Uma regex inválida não é enviada ao
+  addon. O contador vem do `onDidChangeResults`. O addon para de contar em 1000 ocorrências, e aí
+  aparece `1000+`.
+- Os destaques usam decorações, que exigem `allowProposedApi: true` no `new Terminal`.
+- O `scrollback` subiu de 5.000 para 20.000 linhas. Assim um `show running-config` inteiro cabe e a
+  busca alcança o começo.
+
+### Copiar e colar
+
+- `Ctrl+C` **com seleção** copia e não manda nada ao equipamento. Sem seleção, continua sendo o
+  `^C` de interrupção. `Ctrl+Shift+C` só copia. `Ctrl+Shift+A` seleciona todo o histórico.
+- `Ctrl+V` / `Ctrl+Shift+V`: o handler do xterm devolve `false` **sem** `preventDefault`, e o
+  navegador faz a colagem nativa. Isso não precisa de permissão de leitura da área de transferência.
+- **Toda colagem** passa por `colarNoTerminal()`: um listener de `paste` em captura no painel,
+  antes do xterm. Com mais de uma linha (sem contar a quebra final), abre o `uiConfirm` com o host e
+  as 10 primeiras linhas. Cada linha vira um comando, e colar um bloco de config no equipamento
+  errado é um acidente comum. Com o terminal desconectado, nada é colado.
+- Preferências na janela **⌨ Atalhos** (F1), todas ligadas por padrão:
+  - copiar ao selecionar (PuTTY);
+  - botão direito copia com seleção e cola sem seleção (`navigator.clipboard.readText`, que o
+    navegador pode pedir para autorizar; se negar, avisa para usar Ctrl+V);
+  - confirmar colagem de várias linhas.
+- Escrever na área de transferência usa `navigator.clipboard.writeText` em contexto seguro. Fora
+  dele, cai no `execCommand('copy')` com um textarea temporário e devolve o foco ao terminal.
+
+### Atalhos
+
+Os atalhos têm duas portas de entrada:
+
+- `tratarAtalhoTerminal()`, chamado pelo `attachCustomKeyEventHandler` quando o foco está no
+  xterm. Devolver `true` impede que a tecla vire bytes para o equipamento.
+- `tratarAtalhoGlobal()`, chamado pelo `keydown` do documento quando o foco está no resto da
+  página.
+
+O evento já tratado sai marcado com `__atalhoTratado` e não roda duas vezes. Num campo de texto
+(busca, Agent, Wiki) só valem `Ctrl+Shift+F` e `F1`; o resto das teclas é do campo. A comparação usa
+`e.code` (tecla física), então funciona igual em ABNT2 e US.
+
+| Tecla | Ação |
+|---|---|
+| `Ctrl+Shift+F` | Buscar no histórico |
+| `Ctrl+Shift+K` | Limpar a tela |
+| `Ctrl` `+` / `-` / `0` | Fonte de todas as abas (9–28px, salva). Só com foco no terminal; fora dele é o zoom do navegador |
+| `Alt+1…9` | Ir para a aba N (na ordem da barra) |
+| `Ctrl+Shift+←/→` | Aba anterior / próxima |
+| `Ctrl+Shift+D` | Dividir / tela única |
+| `Ctrl+Shift+O` | Lado a lado ↔ empilhado |
+| `F6` | Passar o teclado para a outra metade |
+| `F1` | Janela de atalhos e preferências |
+| `Ctrl+R` | Reconectar (já existia) |
+
+### Renderizador: WebGL com Canvas de reserva
+
+Antes, só se usava o Canvas, por medo de perder o contexto WebGL. Agora `carregarRenderer()` tenta
+o WebGL (`xterm-addon-webgl` 0.16, que já era carregado e não era usado). Isso é o que segura saída
+grande sem engasgar a aba. Há duas defesas:
+
+- só as primeiras `WEBGL_MAX = 10` abas usam WebGL, porque o Chrome derruba o contexto mais antigo
+  depois de ~16 por página;
+- `onContextLoss` descarta o addon e carrega o Canvas na mesma aba, sem perder o conteúdo.
+
+Sem WebGL2 (GPU desligada, VM sem aceleração), a aba nasce direto em Canvas. O renderizador de
+cada aba fica em `tObj.renderer` (`webgl` | `canvas` | `dom`).
+
+### Teste
+
+Foi testado num Chrome headless com um WebSocket falso injetado na página, que despeja 3.000 linhas.
+O teste rodou com WebGL (swiftshader) e sem GPU (Canvas) e cobriu: busca (contador, próximo, regex,
+sem resultado, Esc), Ctrl+C com e sem seleção, colagem de 1 linha direta, de 3 linhas com
+confirmação e pelo botão direito, Alt+1, Ctrl+Shift+→, divisor arrastado a 30% com `resize` no PTY,
+empilhar, F6, fonte e F1.
