@@ -781,3 +781,15 @@ class CompararSinalTest(TestCase):
         s = self._serie('1', 1, lambda t: -30.0, lambda t: -30.0, 0, 0)
         txt = self._rodar([s])
         self.assertIn('Nenhum rompimento', txt)
+
+    def test_leitura_isolada_em_menos_40_nao_e_rompimento(self):
+        """Lado com só um soluço herda o rompimento do outro lado do enlace."""
+        s1 = self._serie('1', 1, lambda t: -28.0, lambda t: -28.0, 0, 2 * 3600)
+        s2 = self._serie('2', 1, lambda t: -28.5, lambda t: -28.5, 0, 0,
+                         host='SW-OUTRO - 10.0.0.2')
+        s2['name'] = s2['name'].replace('100GE0/0/2', '1/1/10')
+        meio = len(s2['pontos']) // 2
+        s2['pontos'][meio] = (s2['pontos'][meio][0], -40.0)
+        txt = self._rodar([s1, s2])
+        self.assertNotIn('Nenhum rompimento', txt)
+        self.assertIn('horário do outro lado do enlace', txt)
