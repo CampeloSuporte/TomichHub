@@ -1592,6 +1592,7 @@ apaga** logins já salvos indevidamente — isso precisa ser removido manualment
   - Instância systemd dedicada por túnel (porta, `tun-crm-N`, `/29`, CCD, PKI)
   - `route` (kernel) × `iroute` (tabela interna do OpenVPN) — as duas são obrigatórias
   - Escolha das redes, validação de conflito e conferência do `dev` real da rota
+  - Tabela de rotas isolada por túnel (1000+N) e modal que já traz todas as faixas privadas/CGNAT
   - Diagnóstico rápido e correções de 13/08/2026
 
 - **[winbox_vnc.md](winbox_vnc.md)** — WinBox Web via VNC no browser (e o acesso RDP, mesmo padrão)

@@ -104,8 +104,26 @@ Consequências:
   - `origem(tunel)` — para `ssh -b`, `ping -I`, `mtr -a`, `traceroute -s`, e o
     `ProxyEngine(origem=…)` do proxy web.
 
-O modal de criação ainda sugere as **`/24` dos acessos privados já cadastrados** do cliente
-(`sugerir_redes`) — não por colisão, mas para a tabela do túnel ficar legível.
+### Redes que o modal já traz (desde 19/10/2026)
+
+O modal **Novo Túnel OpenVPN** abre com **todas as faixas privadas/CGNAT** já declaradas
+(`sugerir_redes()` → `REDES_PADRAO`):
+
+```
+100.64.0.0/10
+172.16.0.0/12
+10.0.0.0/8
+192.168.0.0/16
+198.18.0.0/15
+```
+
+Antes trazia só as `/24` dos acessos privados cadastrados (e vinha vazio em cliente sem acesso
+privado, mostrando apenas o placeholder cinza). Como cada túnel tem tabela própria, a faixa ampla
+não colide com outro cliente. O operador pode editar a lista livremente.
+
+**Exceção — segundo túnel no mesmo cliente:** se o cliente já tem um túnel com essas faixas, o
+segundo com as mesmas é recusado por `redes_em_conflito()` (seria ambíguo por qual túnel chegar no
+equipamento). Nesse caso, troque as faixas do segundo pelas redes específicas dele.
 
 ---
 
@@ -179,6 +197,8 @@ Os dois túneis em produção (TOPNET e INFORTECLINE) estavam **100% sem tráfeg
    só as rotas da `tun-crm-2`, então o `198.18.10.2` da TOPNET saía pelo túnel da INFORTECLINE.
    Ajustados para as redes específicas de cada um (`198.18.10.0/24`; `10.192.195.0/24` +
    `172.31.120.0/24`), e novos túneis passam pela validação de conflito.
+   *(Desde 12/10/2026 isso não acontece mais entre clientes diferentes: cada túnel tem tabela
+   isolada — ver acima.)*
 3. **`vpn_cobre_ip` mentia** — respondia "coberto" com base só na declaração, mandando o proxy para
    dentro do túnel do cliente errado. Agora confere o `dev` real da rota.
 4. **Unit zumbi** `openvpn-server@server-crm-999` acumulou **558 mil** reinícios apontando para um
