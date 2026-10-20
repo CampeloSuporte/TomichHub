@@ -5,6 +5,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-19 (Túneis: texto do modal OpenVPN)
+
+### Corrigido
+
+- **Modal "Novo Túnel OpenVPN" dizia que faixa ampla colide com outro cliente.** Desde 12/10 cada
+  túnel tem tabela de rotas própria (1000+N) e dois clientes podem declarar a mesma faixa privada;
+  o aviso agora diz isso. A única recusa que sobra é repetir rede entre túneis do mesmo cliente.
+
 ## [Não publicado] — 2026-10-19 (Agent NOC: sinal antes × depois do rompimento)
 
 ### Adicionado
