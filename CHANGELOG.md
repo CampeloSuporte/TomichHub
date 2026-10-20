@@ -12,6 +12,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **Modal "Novo Túnel OpenVPN" dizia que faixa ampla colide com outro cliente.** Desde 12/10 cada
   túnel tem tabela de rotas própria (1000+N) e dois clientes podem declarar a mesma faixa privada;
   o aviso agora diz isso. A única recusa que sobra é repetir rede entre túneis do mesmo cliente.
+- **Modal já vem com todas as faixas declaradas** (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`,
+  `100.64.0.0/10`, `198.18.0.0/15`) em vez dos /24 tirados dos acessos cadastrados.
 
 ## [Não publicado] — 2026-10-19 (Agent NOC: sinal antes × depois do rompimento)
 
