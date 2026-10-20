@@ -549,6 +549,12 @@ IPs e interfaces no mesmo ponto (Sartor, SWITCH-HUAWEI-ARIPUANA). Com waypoints,
 comprimento do link deixa de valer: o trecho até a dobra pode ser curto, e o rótulo cairia em cima do
 node. Link sem waypoint continua exatamente como antes.
 
+**Interface em cima, IP embaixo (2026-10-20):** cada ponta tem um único bloco, com a interface no
+topo e o IP logo abaixo, centrados na mesma coluna e do mesmo lado da linha. Num enlace horizontal o
+bloco fica abaixo da linha; num vertical, à direita. Antes, IP e interface ficavam em lados opostos, e
+num enlace horizontal o IP aparecia acima da interface. A colisão com a caixa do meio e entre as duas
+pontas é resolvida pelo bloco inteiro (`bloco()`/`partes()` em `_renderLink`).
+
 **Arraste:** IP, interface e a caixa de banda/VLAN/cost ficam dentro de `<g class="link-tag"
 data-link data-k>` e podem ser arrastados (`lblDrag` em `_onDown`/`_aplicarMove`/`_onUp`). O
 desvio vai para `link.rotulos[k]` e é **somado** à posição automática, então o rótulo acompanha o

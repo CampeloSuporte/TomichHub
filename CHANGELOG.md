@@ -14,6 +14,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   Sartor, as sobreposições caíram de 25 para 10; as que sobram são de links diferentes chegando pelo
   mesmo lado.
 
+### Alterado
+
+- **IP fica logo abaixo da interface.** Em cada ponta do link, interface e IP formam um bloco único
+  e alinhado, com a porta em cima e o IP embaixo, do mesmo lado da linha. Antes ficavam em lados
+  opostos.
+
 ### Adicionado
 
 - **Rótulos de link arrastáveis.** IP, interface e a caixa de banda/VLAN/cost podem ser arrastados.

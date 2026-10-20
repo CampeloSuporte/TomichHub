@@ -1408,13 +1408,11 @@ class TopoEditor {
     const dx = tgt.x - src.x, dy = tgt.y - src.y;
     const linkLen = Math.hypot(dx, dy) || 1;
     const ux = dx / linkLen, uy = dy / linkLen;
-    const raioA = (src.w || 64) / 2 + 14;
-    const raioB = (tgt.w || 64) / 2 + 14;
 
-    // Vetor PERPENDICULAR à linha, sempre apontando "para cima" (ny <= 0). O IP
-    // fica de um lado da linha e a interface do outro — em vez de um
-    // deslocamento fixo em Y, que num link quase vertical jogava os dois
-    // rótulos na mesma coluna.
+    // Vetor PERPENDICULAR à linha, sempre apontando "para cima" (ny <= 0). O
+    // bloco interface+IP de cada ponta vai para o lado oposto (-1) — em vez de
+    // um deslocamento fixo em Y, que num link quase vertical jogava os
+    // rótulos em cima da linha.
     let nx = -uy, ny = ux;
     if (ny > 0) { nx = -nx; ny = -ny; }
 
@@ -1493,14 +1491,26 @@ class TopoEditor {
     const normA = dobrado ? paraCima(pontaA) : {nx, ny};
     const normB = dobrado ? paraCima(pontaB) : {nx, ny};
     const limite = f => dobrado ? Infinity : linkLen * f;
-    const clearIpA = Math.min(raioA + 16 + ipLocalW/2, limite(0.45));
-    const clearIpB = Math.min(raioB + 16 + ipRemoteW/2, limite(0.45));
-    const clearIfA = Math.min(raioA + ifAW/2 + 6, limite(0.4));
-    const clearIfB = Math.min(raioB + ifBW/2 + 6, limite(0.4));
+    // Cada ponta tem UM bloco: interface em cima e IP logo abaixo, centrados
+    // na mesma coluna, do mesmo lado da linha (lado -1: abaixo num enlace
+    // horizontal, à direita num vertical). Antes IP e interface ficavam em
+    // lados opostos da linha — num enlace horizontal o IP ia para CIMA da
+    // interface, e num vertical os dois ficavam desalinhados. Pedido da
+    // equipe em 2026-10-20: ler "porta → IP" de cima para baixo.
+    const H_IF = 12, H_IP = 14, GAP_BLOCO = 2;
+    const bloco = (no, ponta, norm, nome, ip, wIf, wIp) => {
+      if (!nome && !ip) return null;
+      const largura = Math.max(nome ? wIf : 0, ip ? wIp : 0);
+      const altura = (nome ? H_IF : 0) + (ip ? H_IP : 0) + (nome && ip ? GAP_BLOCO : 0);
+      const raio = (no.w || 64) / 2 + 14;
+      const along = Math.min(raio + largura/2 + 6, limite(0.45));
+      const c = caixa(no, ponta, norm, along, -1, largura, altura);
+      c.nome = nome; c.ip = ip;
+      return c;
+    };
 
     // Caixa de um rótulo: ponto no trecho da ponta a `along` px do node e
-    // afastada `perp` px para o `lado` (+1 = lado do IP, -1 = lado da
-    // interface), na perpendicular daquele trecho.
+    // afastada `perp` px para o `lado`, na perpendicular daquele trecho.
     const caixa = (no, ponta, norm, along, lado, largura, altura) => {
       const c = {bx: no.x + ponta.ux*along, by: no.y + ponta.uy*along,
                  nx: norm.nx, ny: norm.ny, lado, hw: largura/2, hh: altura/2};
@@ -1515,39 +1525,39 @@ class TopoEditor {
     const sobrepoe = (a, b) =>
       Math.abs(a.cx - b.cx) < a.hw + b.hw + 2 && Math.abs(a.cy - b.cy) < a.hh + b.hh + 2;
 
-    const cxIpA = caixa(src, pontaA, normA, clearIpA, +1, ipLocalW, 14);
-    const cxIpB = caixa(tgt, pontaB, normB, clearIpB, +1, ipRemoteW, 14);
-    const cxIfA = caixa(src, pontaA, normA, clearIfA, -1, ifAW, 12);
-    const cxIfB = caixa(tgt, pontaB, normB, clearIfB, -1, ifBW, 12);
+    const blocoA = bloco(src, pontaA, normA, link.iface_a, link.ip_local, ifAW, ipLocalW);
+    const blocoB = bloco(tgt, pontaB, normB, link.iface_b, link.ip_remote, ifBW, ipRemoteW);
 
-    // Link curto: o clamp por linkLen empurra os rótulos das pontas para perto
-    // do meio, em cima da banda/VLAN e um em cima do outro (os dois IPs ficam
-    // do MESMO lado da linha). Nesses casos o rótulo sai mais para fora na
-    // perpendicular — só se afasta da linha, então não volta a colidir com o
-    // que já foi resolvido.
-    const mesmoLado = [[link.ip_local && cxIpA, link.ip_remote && cxIpB],
-                       [link.iface_a && cxIfA, link.iface_b && cxIfB]];
-    for (const par of mesmoLado) {
-      for (const c of par) {
-        if (c && sobrepoe(c, caixaMeio)) {
-          const distMeio = (caixaMeio.cx - c.bx) * c.nx + (caixaMeio.cy - c.by) * c.ny;
-          const extMeio = ext(caixaMeio.hw, caixaMeio.hh, c.nx, c.ny);
-          afastar(c, Math.max(c.perp, c.lado * distMeio + extMeio + 3 + ext(c.hw, c.hh, c.nx, c.ny)));
-        }
-      }
-      const [a, b] = par;
-      if (a && b && sobrepoe(a, b)) {
-        const [perto, longe] = a.perp <= b.perp ? [a, b] : [b, a];
-        afastar(longe, perto.perp + ext(perto.hw, perto.hh, longe.nx, longe.ny) + 3 + ext(longe.hw, longe.hh, longe.nx, longe.ny));
-        // Pontas com perpendiculares diferentes (link dobrado): a conta acima
-        // é aproximada, então empurra mais um pouco até desgrudar.
-        for (let i = 0; i < 20 && sobrepoe(a, b); i++) afastar(longe, longe.perp + 6);
+    // Link curto: o clamp por linkLen empurra os blocos para perto do meio,
+    // em cima da banda/VLAN e um em cima do outro (os dois ficam do MESMO lado
+    // da linha). Nesses casos o bloco sai mais para fora na perpendicular — só
+    // se afasta da linha, então não volta a colidir com o que já foi resolvido.
+    for (const c of [blocoA, blocoB]) {
+      if (c && sobrepoe(c, caixaMeio)) {
+        const distMeio = (caixaMeio.cx - c.bx) * c.nx + (caixaMeio.cy - c.by) * c.ny;
+        const extMeio = ext(caixaMeio.hw, caixaMeio.hh, c.nx, c.ny);
+        afastar(c, Math.max(c.perp, c.lado * distMeio + extMeio + 3 + ext(c.hw, c.hh, c.nx, c.ny)));
       }
     }
-    // Desvio manual por cima do automático.
-    [['ipA', cxIpA], ['ipB', cxIpB], ['ifA', cxIfA], ['ifB', cxIfB]].forEach(([k, c]) => {
-      c.k = k; c.cx += desvio(k).dx; c.cy += desvio(k).dy;
-    });
+    if (blocoA && blocoB && sobrepoe(blocoA, blocoB)) {
+      const [perto, longe] = blocoA.perp <= blocoB.perp ? [blocoA, blocoB] : [blocoB, blocoA];
+      afastar(longe, perto.perp + ext(perto.hw, perto.hh, longe.nx, longe.ny) + 3 + ext(longe.hw, longe.hh, longe.nx, longe.ny));
+      // Pontas com perpendiculares diferentes (link dobrado): a conta acima
+      // é aproximada, então empurra mais um pouco até desgrudar.
+      for (let i = 0; i < 20 && sobrepoe(blocoA, blocoB); i++) afastar(longe, longe.perp + 6);
+    }
+
+    // Do bloco saem as duas caixas: interface no topo, IP embaixo. O desvio
+    // manual (arraste) continua por rótulo, somado por cima.
+    const partes = (b, kIf, kIp, wIf, wIp) => {
+      const topo = b ? b.cy - b.hh : 0;
+      const cIf = {k: kIf, cx: b ? b.cx : 0, cy: topo + H_IF/2, hw: wIf/2, hh: H_IF/2};
+      const cIp = {k: kIp, cx: b ? b.cx : 0, cy: topo + (b && b.nome ? H_IF + GAP_BLOCO : 0) + H_IP/2, hw: wIp/2, hh: H_IP/2};
+      for (const c of [cIf, cIp]) { c.cx += desvio(c.k).dx; c.cy += desvio(c.k).dy; }
+      return [cIf, cIp];
+    };
+    const [cxIfA, cxIpA] = partes(blocoA, 'ifA', 'ipA', ifAW, ipLocalW);
+    const [cxIfB, cxIpB] = partes(blocoB, 'ifB', 'ipB', ifBW, ipRemoteW);
 
     const ipHtml = (c, ip) => !ip ? '' : `<g class="link-tag" data-link="${link.id}" data-k="${c.k}">
       <rect x="${c.cx-c.hw}" y="${c.cy-7}" width="${c.hw*2}" height="14" rx="5" fill="#0b0f15" fill-opacity=".92" stroke="${color}" stroke-opacity=".35"/>
