@@ -476,6 +476,12 @@ Ramo 1: -0.51 dB ↓ diminuiu
 Resumo: 2 diminuíram, 2 iguais. ✅ Variação até 0.51 dB, dentro da oscilação normal da leitura
 ```
 
+- **Host tolerante**: o modelo costuma abreviar (`sw-hu-juruena` para `SWITCH-HUAWEI-JURUENA`).
+  Se o nome não casa, `_variantes_host()` tenta cada palavra que identifica o site (ignorando
+  sw/hu/dt/switch/huawei/datacom/reg…). Busca vazia volta com aviso de "confira o nome e chame de
+  novo", porque no teste real o Claude concluiu, errado, que a ponta "não tinha DDM".
+- **Formato**: o retorno abre com uma instrução para o modelo repassar os blocos como vieram
+  (sem tabela/markdown). No 1º teste o Claude tinha convertido tudo em tabela.
 - **Entrada**: `buscas=[{host, item}]`, uma por lado do enlace (`item` = descrição da porta);
   `itens_de_sinal()` pega os itens em **dBm** de RX da porta (TX só se `item` pedir `tx`),
   ignorando os "Limite Superior/Inferior". Ou `itemids` direto (máx 16).
