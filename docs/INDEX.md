@@ -357,6 +357,9 @@
 - 🔎 **Duas tools novas**: `zabbix_buscar_item` (acha host/item pela descrição da interface, ex:
   "painera", "wirelink") e `zabbix_historico` (até 4 itens no mesmo gráfico, com mín/méd/máx e
   linha vermelha marcando a hora do evento).
+- 🔁 **Sinal antes × depois do rompimento** (`zabbix_comparar_sinal`): acha a queda no histórico
+  (RX em -40 dBm) e devolve, ramo a ramo, o RX de antes, o atual e se aumentou/diminuiu, no padrão
+  do relatório manual do NOC.
 - 🔌 **Zero cadastro novo**: usa o `ZabbixConfig` do cliente ou o **acesso HTTP/HTTPS com "zabbix"
   no tipo** que já existe, incluindo o túnel SSH do ProxyServer quando o Zabbix está em IP privado.
 - 🕰️ **`history` ↔ `trends`**: janela de dias atrás continua tendo gráfico mesmo com o histórico
