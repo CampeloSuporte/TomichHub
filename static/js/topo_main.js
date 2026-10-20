@@ -33,6 +33,11 @@ const TOPO_ORDEM_IFACE = [
   '10g', 'sfp+', '20g', '30g', '40g', '50g', '100g',
 ];
 
+// Cor fixa das conexões marcadas como transporte (link.transporte). Vence a
+// cor da interface: o ponto é o transporte se destacar do resto do mapa, e
+// nenhuma interface de TOPO_IFACES usa esse magenta.
+const TOPO_COR_TRANSPORTE = '#ff2e97';
+
 class TopoEditor {
   constructor(cfg) {
     this.clienteId = cfg.clienteId;
@@ -49,6 +54,11 @@ class TopoEditor {
     this.effectsOn = true; // fluxo animado nos links + pulso nos nodes do CRM
     this.connectMode = false;
     this.connectSrc = null;
+    // Conexão sendo traçada ponto a ponto: {pts: [{x,y}], clique} — ver _iniciarRota.
+    this.rota = null;
+    // "Mostrar transportes": esmaece tudo que não é transporte (estado de UI, não é salvo).
+    this.verTransportes = false;
+    this._hostsTransp = new Set();
     this.dragging = null;
     this.panning = null;
     this.selected = null;
@@ -88,6 +98,10 @@ class TopoEditor {
     this.nodesLayer = document.getElementById('nodes-layer');
     this.linksLayer = document.getElementById('links-layer');
     this.preview = document.getElementById('connect-preview');
+    // Pontos já marcados da conexão em traçado, logo acima da prévia.
+    this.rotaLayer = document.createElementNS('http://www.w3.org/2000/svg','g');
+    this.rotaLayer.id = 'rota-layer';
+    this.preview.after(this.rotaLayer);
     this.rubberEl = document.getElementById('rubber-band');
 
     // Camada para handles de waypoints (acima dos links, abaixo dos nós)
@@ -316,6 +330,7 @@ class TopoEditor {
       if (e.ctrlKey && e.key === 's') { e.preventDefault(); this.save(); }
       if (e.ctrlKey && e.key === 'z') { this.undo(); }
       if (e.ctrlKey && e.key === 'y') { this.redo(); }
+      if (this.rota && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); this._desfazerPontoRota(); return; }
       if (e.key === 'Delete' || e.key === 'Backspace') { this._deleteSelected(); }
       if (e.key === 'c' || e.key === 'C') { this.toggleConnectMode(); }
       if (e.key === 'g' || e.key === 'G') { this.agruparSelecionados(); }
@@ -445,6 +460,23 @@ class TopoEditor {
   _onDown(e) {
     if (e.button !== 0) return;
     const target = e.target;
+
+    // Traçando uma conexão ponto a ponto: clique num host conclui; clique em
+    // qualquer outro lugar (vazio, área, outro link) marca uma dobra. O
+    // ponto só entra no _onUp se o mouse não andou — arrastar continua sendo
+    // pan, para dar para levar a linha até um host fora da tela.
+    if (this.rota) {
+      const nodeEl = target.closest && target.closest('.node');
+      if (nodeEl && !this._ehArea(nodeEl.dataset.id)) {
+        if (nodeEl.dataset.id !== this.connectSrc) this._concluirRota(nodeEl.dataset.id);
+        e.stopPropagation();
+        return;
+      }
+      this.rota.clique = {x: e.clientX, y: e.clientY, pt: this._svgPoint(e)};
+      this.panning = {startX: e.clientX, startY: e.clientY, px: this.panX, py: this.panY};
+      e.stopPropagation();
+      return;
+    }
 
     // Botão de rack no host montado: vai direto para ele na tela de racks,
     // sem selecionar nem começar a arrastar o node.
@@ -714,12 +746,7 @@ class TopoEditor {
       this.panY = this.panning.py + (e.clientY - this.panning.startY);
       this._agendarVP();
     } else if (this.connectSrc) {
-      const pt = this._svgPoint(e);
-      const src = this.nodes.find(n => n.id === this.connectSrc);
-      if (src) {
-        this.preview.setAttribute('d', `M${src.x},${src.y} L${pt.x},${pt.y}`);
-        this.preview.style.display = '';
-      }
+      this._desenharRota(this._svgPoint(e));
     }
   }
 
@@ -749,14 +776,27 @@ class TopoEditor {
     if (this.dragging) { this._saveHistory(); this.dragging = null; }
     if (this.panning)  { this.panning = null; }
 
+    if (this.rota && this.rota.clique) {
+      const c = this.rota.clique;
+      this.rota.clique = null;
+      if (Math.hypot(e.clientX - c.x, e.clientY - c.y) < 5) this._marcarPontoRota(c.pt);
+      else this._desenharRota(this._svgPoint(e));
+      return;
+    }
+
     if (this.anchorDrag && this.connectSrc) {
       const el = document.elementFromPoint(e.clientX, e.clientY);
       const nodeEl = el ? el.closest('.node') : null;
-      if (nodeEl && nodeEl.dataset.id !== this.connectSrc) {
-        this.addLink(this.connectSrc, nodeEl.dataset.id);
-      }
+      const alvo = nodeEl && !this._ehArea(nodeEl.dataset.id) ? nodeEl.dataset.id : null;
       this.anchorDrag = false;
-      this._cancelConnect();
+      if (alvo && alvo !== this.connectSrc) {
+        this.addLink(this.connectSrc, alvo);
+        this._cancelConnect();
+      } else {
+        // Soltou no vazio (ou clicou na âncora sem arrastar): em vez de
+        // descartar a conexão, começa a traçar o caminho ponto a ponto.
+        this._iniciarRota(alvo ? null : this._svgPoint(e));
+      }
     }
   }
 
@@ -1068,9 +1108,58 @@ class TopoEditor {
   }
 
   _cancelConnect() {
+    const tracando = !!this.rota;
     this.connectSrc = null;
+    this.rota = null;
     this.preview.style.display = 'none';
+    this.rotaLayer.innerHTML = '';
     document.querySelectorAll('.node.connecting').forEach(n => n.classList.remove('connecting'));
+    if (tracando) this._updateMultiSelectStatus();
+  }
+
+  // ── Conexão traçada ponto a ponto ───────────────────────────────────────
+  // Puxar da âncora e soltar fora de um host não descarta mais a conexão: o
+  // ponto onde soltou vira a primeira dobra e a linha segue o mouse. Cada
+  // clique no mapa marca mais uma dobra (waypoint) e o clique num host fecha
+  // o enlace com esse caminho. Backspace desfaz a última dobra, Esc cancela.
+
+  _iniciarRota(pt) {
+    this.rota = {pts: [], clique: null};
+    if (pt) this.rota.pts.push({x: this._snap(pt.x), y: this._snap(pt.y)});
+    this._desenharRota(pt);
+    this._updateMultiSelectStatus();
+  }
+
+  _marcarPontoRota(pt) {
+    const x = this._snap(pt.x), y = this._snap(pt.y), ult = this.rota.pts[this.rota.pts.length - 1];
+    if (ult && ult.x === x && ult.y === y) return;   // duplo-clique / snap no mesmo ponto
+    this.rota.pts.push({x, y});
+    this._desenharRota(pt);
+  }
+
+  _desfazerPontoRota() {
+    if (!this.rota.pts.length) { this._cancelConnect(); return; }
+    this.rota.pts.pop();
+    this._desenharRota(this._moveEvt ? this._svgPoint(this._moveEvt) : null);
+  }
+
+  _concluirRota(tgtId) {
+    const src = this.connectSrc;
+    const waypoints = this.rota.pts.map(p => ({x: p.x, y: p.y}));
+    this._cancelConnect();
+    this.addLink(src, tgtId, {waypoints});
+  }
+
+  /** Prévia tracejada: host de origem → dobras já marcadas → cursor. */
+  _desenharRota(cursor) {
+    const src = this.nodes.find(n => n.id === this.connectSrc);
+    if (!src) return;
+    const marcados = this.rota ? this.rota.pts : [];
+    const pts = [src, ...marcados, ...(cursor ? [cursor] : [])];
+    this.preview.setAttribute('d', pts.map((p, i) => `${i ? 'L' : 'M'}${p.x},${p.y}`).join(' '));
+    this.preview.style.display = '';
+    this.rotaLayer.innerHTML = marcados.map(p =>
+      `<circle class="rota-pt" cx="${p.x}" cy="${p.y}" r="4.5"/>`).join('');
   }
 
   _select(type, id) {
@@ -1215,7 +1304,9 @@ class TopoEditor {
     if (btn) btn.classList.toggle('dim', this.selectedNodes.size < 2);
     const el = document.getElementById('st-mode');
     if (!el) return;
-    if (this.selectedNodes.size > 1) {
+    if (this.rota) {
+      el.textContent = 'Traçando conexão: clique no mapa para dobrar o caminho e no host de destino para concluir — Backspace desfaz o ponto, Esc cancela';
+    } else if (this.selectedNodes.size > 1) {
       el.textContent = `${this.selectedNodes.size} selecionados (Ctrl+clique adiciona) — arraste para mover ou "Agrupar" (G)`;
     } else {
       el.textContent = 'Modo: ' + (this.lousaOn ? 'Caneta (clique de novo no lápis para apagar)' : this.connectMode ? 'Conexão' : this.areaSelectMode ? 'Seleção de área' : 'Seleção');
@@ -1261,6 +1352,7 @@ class TopoEditor {
       iface_a:   extra.iface_a   || '',          // interface lado A (ex: eth0, ge0/0/1)
       iface_b:   extra.iface_b   || '',          // interface lado B
     };
+    if (extra.transporte) link.transporte = true;  // ver TOPO_COR_TRANSPORTE
     if (TOPO_CENARIO) link.tobe = extra.tobe || {estado: 'novo', papel: 'principal'};
     this.links.push(link);
     this._renderLink(link);
@@ -1294,6 +1386,7 @@ class TopoEditor {
     // Anel pulsante (CSS) só em nodes vinculados a um Acesso real do CRM —
     // ver `.node[data-live="1"] .node-ring` no <style> do template.
     if (node.acesso_id) el.dataset.live = '1'; else delete el.dataset.live;
+    el.classList.toggle('transp-host', this._hostsTransp.has(node.id));
     const tobe = TOPO_CENARIO ? (node.tobe || {}) : null;
     el.classList.toggle('tobe-novo', !!tobe && tobe.estado === 'novo');
     el.classList.toggle('tobe-remover', !!tobe && tobe.estado === 'remover');
@@ -1400,7 +1493,7 @@ class TopoEditor {
     if (!src || !tgt) { linkGroup.remove(); return; }
 
     const ifaceDef = TOPO_IFACES[link.iface] || TOPO_IFACES['1g'];
-    const color = link.color || ifaceDef.color;
+    const color = link.transporte ? TOPO_COR_TRANSPORTE : (link.color || ifaceDef.color);
     const w     = ifaceDef.w;
     const dash  = link.style === 'dashed' ? '8,4' : link.style === 'dotted' ? '2,4' : '';
     const d     = this._linkPath(link);
@@ -1633,6 +1726,7 @@ class TopoEditor {
       ${ifAHtml}${ifBHtml}
       ${labelHtml}`;
 
+    linkGroup.classList.toggle('transporte', !!link.transporte);
     if (TOPO_CENARIO) {
       const t = link.tobe || {};
       linkGroup.classList.toggle('tobe-novo', t.estado === 'novo');
@@ -1672,6 +1766,7 @@ class TopoEditor {
       const el = this.nodesLayer.querySelector(`[data-id="${id}"]`);
       if (el) el.classList.add('multi-selected');
     });
+    this._aplicarTransportes();
     this._updateStatus();
   }
 
@@ -2976,6 +3071,13 @@ class TopoEditor {
         <select class="prop-select" id="pl-iface">${ifaceOpts}</select>
       </div>
       <div class="prop-group">
+        <label class="tobe-chk" style="font-size:.78rem">
+          <input type="checkbox" id="pl-transp" ${link.transporte ? 'checked' : ''}>
+          <span style="color:${TOPO_COR_TRANSPORTE};font-weight:600">Transporte</span>
+        </label>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:3px">Linha em cor própria; aparece no botão "Transportes" da barra.</div>
+      </div>
+      <div class="prop-group">
         <label class="prop-label">Label</label>
         <input class="prop-input" id="pl-label" placeholder="Link name" value="${this._esc(link.label||'')}">
       </div>
@@ -3306,8 +3408,11 @@ class TopoEditor {
     link.ospf_cost_b = document.getElementById('pl-costb').value.trim();
     link.style     = document.getElementById('pl-style').value;
     link.shape     = document.getElementById('pl-shape').value;
+    if (document.getElementById('pl-transp').checked) link.transporte = true;
+    else delete link.transporte;
     if (TOPO_CENARIO) this._applyTobeLink(link);
     this._renderLink(link);
+    this._aplicarTransportes();
     this._renderLinkHandles(link);
     this._setDirty();
     this._toast('Aplicado');
@@ -4092,6 +4197,33 @@ class TopoEditor {
     if (hint) hint.classList.toggle('show', !this.nodes.length);
   }
 
+  // ── Mostrar transportes ─────────────────────────────────────────────────
+  // Esmaece tudo que não é transporte, deixando à vista só as conexões
+  // marcadas (link.transporte) e os hosts nas pontas delas. Só CSS
+  // (#canvas-svg.transp-on): nada é redesenhado nem salvo.
+
+  toggleTransportes() {
+    if (!this.verTransportes && !this.links.some(l => l.transporte)) {
+      this._toast('Nenhuma conexão marcada como transporte — marque em "Transporte" no painel da conexão', 'error');
+      return;
+    }
+    this.verTransportes = !this.verTransportes;
+    this._aplicarTransportes();
+  }
+
+  /** Recalcula quais hosts ficam acesos. Roda depois de qualquer mudança que
+   *  possa ligar/desligar um transporte (aplicar no painel, remover, undo). */
+  _aplicarTransportes() {
+    const hosts = new Set();
+    this.links.forEach(l => { if (l.transporte) { hosts.add(l.src); hosts.add(l.tgt); } });
+    this._hostsTransp = hosts;
+    this.svg.querySelectorAll('.node').forEach(el => el.classList.toggle('transp-host', hosts.has(el.dataset.id)));
+    if (!hosts.size) this.verTransportes = false;   // desmarcou o último: volta ao mapa normal
+    this.svg.classList.toggle('transp-on', this.verTransportes);
+    const btn = document.getElementById('btn-transportes');
+    if (btn) btn.classList.toggle('active', this.verTransportes);
+  }
+
   // ── Legenda de tipos de interface ───────────────────────────────────────
 
   toggleLegend() {
@@ -4108,7 +4240,7 @@ class TopoEditor {
           <span><i class="fas fa-ethernet"></i> Interfaces</span>
           <i class="fas fa-times legend-close" onclick="topo.toggleLegend()"></i>
         </div>
-        <div class="legend-grid">${itens}</div>`;
+        <div class="legend-grid">${itens}<div class="legend-item"><span class="legend-swatch" style="background:${TOPO_COR_TRANSPORTE}"></span>Transporte</div></div>`;
       panel.dataset.built = '1';
     }
     panel.classList.toggle('show', show);

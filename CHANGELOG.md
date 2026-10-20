@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-20 (Topologia: conexão traçada ponto a ponto e transportes)
+
+### Adicionado
+
+- **Traçar uma conexão pelo mapa.** Puxar da âncora de um host e soltar no vazio não descarta mais
+  a conexão: o ponto vira a primeira dobra e a linha segue o mouse. Cada clique no mapa marca outra
+  dobra e o clique num host fecha o enlace com esse caminho. Clicar na âncora sem arrastar também
+  começa o traçado. `Backspace` desfaz a última dobra, `Esc` cancela, e arrastar no vazio continua
+  movendo o mapa para alcançar um host fora da tela.
+- **Conexão de transporte.** O painel da conexão tem a caixa **Transporte**: a linha passa a ser
+  magenta (`#ff2e97`), por cima da cor da interface, e entra na legenda.
+- **Botão "Transportes" na barra.** Esmaece todo o resto e deixa acesos só os enlaces de transporte
+  e os hosts nas pontas deles. Clicar de novo volta ao normal. Sem transporte marcado, só avisa.
+
+Detalhes em `docs/topologia.md`. Teste de navegador: `clientes/tests_topologia_rota_navegador.py`.
+
+---
+
 ## [Não publicado] — 2026-10-20 (Terminal SSH: busca, copiar/colar, atalhos)
 
 ### Adicionado

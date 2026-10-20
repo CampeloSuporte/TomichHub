@@ -5,7 +5,7 @@
 - `static/js/topo_engine.js`
 - `static/js/topo_main.js`
 
-**Atualizado em:** 2026-09-24
+**Atualizado em:** 2026-10-20
 
 ---
 
@@ -40,7 +40,7 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 | `topo_engine.js` | Definição de tipos (`DEVICES`), interfaces (`IFACES`) e paths SVG dos ícones (`ICONS`) |
 | `topo_main.js` | Classe `TopoEditor` — lógica de renderização, eventos, persistência e importação |
 
-Versão atual: **topo_engine v=26 / topo_main v=50** (parâmetro de cache-busting no HTML).
+Versão atual: **topo_engine v=26 / topo_main v=59** (parâmetro de cache-busting no HTML).
 
 **Estes dois JS ficam em `static/` e mesmo assim são versionados.** `static/` é o
 `STATIC_ROOT` (destino do `collectstatic`) e está no `.gitignore`, mas esses dois
@@ -520,6 +520,43 @@ vale derrubar o editor.
 
 ---
 
+## Conexão traçada ponto a ponto — 2026-10-20
+
+Antes, puxar da âncora e soltar fora de um host descartava a conexão: o enlace era sempre uma reta
+de host a host, e o caminho só podia ser dobrado depois, pelos waypoints. Agora dá para **levar a
+linha pelo mapa** enquanto ela é criada:
+
+| Ação | Efeito |
+|---|---|
+| Puxar da âncora e soltar no vazio | O ponto vira a 1ª dobra; a linha tracejada segue o mouse |
+| Clicar na âncora sem arrastar (ou num host no modo conexão) | Começa o traçado sem dobra |
+| Clique no mapa (vazio, área ou em cima de outro enlace) | Marca mais uma dobra |
+| Clique num host (diferente da origem) | Cria o enlace com as dobras como `waypoints` |
+| Arrastar no vazio | Pan, sem marcar ponto (o clique só vale se o mouse andou < 5 px) |
+| `Backspace`/`Delete` | Desfaz a última dobra (sem dobras, cancela) |
+| `Esc`, ou trocar de modo (conexão/área/caneta) | Cancela sem criar nada |
+
+A barra de status mostra a instrução enquanto `topo.rota` existe. As dobras respeitam o snap à grade
+e ficam desenhadas em `#rota-layer` (logo acima do `#connect-preview`). O enlace criado é igual a
+qualquer outro: os pontos continuam editáveis pelos handles de waypoint. Código em `topo_main.js`:
+`_iniciarRota`, `_marcarPontoRota`, `_desfazerPontoRota`, `_concluirRota`, `_desenharRota`. O clique
+durante o traçado é tratado no começo de `_onDown`, antes de seleção, rótulos e handles.
+
+## Transportes — 2026-10-20
+
+- **Marcar:** caixa **Transporte** no painel da conexão (gravada no **Aplicar**). Grava
+  `link.transporte = true`; desmarcar apaga o campo. A linha usa `TOPO_COR_TRANSPORTE` (`#ff2e97`,
+  magenta que nenhuma interface usa), por cima de `link.color` e da cor da interface. Banda, IP e
+  interface continuam como antes. A legenda ganhou o item "Transporte".
+- **Botão "Transportes"** (barra, antes da legenda): liga `#canvas-svg.transp-on`. Enlaces sem
+  `.transporte` caem para 8% de opacidade e hosts sem `.transp-host` para 16%. Só CSS, sem
+  redesenho e sem efeito no `dados_json`. Sem nenhum transporte marcado, o botão avisa e não liga.
+  Desmarcar o último transporte desliga o modo sozinho.
+- `_aplicarTransportes()` recalcula os hosts das pontas (`_hostsTransp`) e roda no Aplicar do painel
+  e no fim de `_renderAll` (remoção, undo/redo, carga). `_renderNode` reaplica a classe do host.
+
+Teste de navegador (Chrome headless, mouse real): `clientes/tests_topologia_rota_navegador.py`.
+
 ## Busca de host no mapa — 2026-10-20
 
 A lupa na barra (`#btn-busca`, `abrirBusca()`), ou **Ctrl+F** / **/**, abre um campo para achar
@@ -570,6 +607,7 @@ tudo o que foi rabiscado.**
 | `shape` | `straight`\|`curved`\|`wavy` | Forma da linha |
 | `waypoints` | `[{x,y}, ...]` | Pontos intermediários que dobram a linha |
 | `rotulos` | `{meio\|ipA\|ipB\|ifA\|ifB: {dx,dy}}` | Desvio manual de cada rótulo, arrastado pelo usuário (opcional) |
+| `transporte` | `true` (ausente = não) | Enlace de transporte: linha em `TOPO_COR_TRANSPORTE` (`#ff2e97`) e destaque no botão **Transportes** |
 
 ### Rótulos de IP/Interface em link dobrado e arraste — 2026-10-20
 
