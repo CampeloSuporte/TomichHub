@@ -538,6 +538,22 @@ vale derrubar o editor.
 | `style` | `solid`\|`dashed`\|`dotted` | Estilo do traço |
 | `shape` | `straight`\|`curved`\|`wavy` | Forma da linha |
 | `waypoints` | `[{x,y}, ...]` | Pontos intermediários que dobram a linha |
+| `rotulos` | `{meio\|ipA\|ipB\|ifA\|ifB: {dx,dy}}` | Desvio manual de cada rótulo, arrastado pelo usuário (opcional) |
+
+### Rótulos de IP/Interface em link dobrado e arraste — 2026-10-20
+
+**Posição automática:** cada ponta posiciona o IP e a interface ao longo do **seu primeiro trecho**:
+do node até o waypoint vizinho, e não mais pela reta src→tgt. Num link dobrado em L, essa reta apontava
+para onde a linha não passa. Assim, dois links que chegavam ao mesmo node por lados opostos empilhavam
+IPs e interfaces no mesmo ponto (Sartor, SWITCH-HUAWEI-ARIPUANA). Com waypoints, o clamp por
+comprimento do link deixa de valer: o trecho até a dobra pode ser curto, e o rótulo cairia em cima do
+node. Link sem waypoint continua exatamente como antes.
+
+**Arraste:** IP, interface e a caixa de banda/VLAN/cost ficam dentro de `<g class="link-tag"
+data-link data-k>` e podem ser arrastados (`lblDrag` em `_onDown`/`_aplicarMove`/`_onUp`). O
+desvio vai para `link.rotulos[k]` e é **somado** à posição automática, então o rótulo acompanha o
+node quando ele é movido. Clique sem arrastar seleciona o link. O painel do link tem **"Voltar
+rótulos à posição automática"** (`_resetRotulos`), que apaga `link.rotulos`.
 
 ### Tipos de Interface (`IFACES`)
 

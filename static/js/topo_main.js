@@ -59,6 +59,7 @@ class TopoEditor {
     this.hostsRemovidos = new Set();
     this._hostsCrm = [];  // última lista de /topologia/hosts/ (nomes da paleta)
     this.wpDrag = null;   // {linkId, wpIdx} — arrastar waypoint
+    this.lblDrag = null;  // {linkId, k, ...} — arrastar rótulo de link (link.rotulos)
     this.areaResizing = null; // {id, corner, fx, fy} — arrastar canto de uma Área
     this._propsGen = 0;   // invalida fetch de interfaces em voo ao trocar seleção
     this._ifaceCache = {}; // acesso_id -> [interfaces] (extraídas do backup)
@@ -428,6 +429,21 @@ class TopoEditor {
       return;
     }
 
+    // Rótulo de link (IP, interface ou banda/VLAN): arrasta só o rótulo. O
+    // desvio fica em link.rotulos e é somado à posição automática.
+    const tag = target.closest && target.closest('.link-tag');
+    if (tag) {
+      const link = this.links.find(l => l.id === tag.dataset.link);
+      if (!link) return;
+      const k = tag.dataset.k;
+      const pt = this._svgPoint(e);
+      const atual = (link.rotulos && link.rotulos[k]) || {dx: 0, dy: 0};
+      this.lblDrag = {linkId: link.id, k, x0: pt.x, y0: pt.y, dx0: atual.dx, dy0: atual.dy, mexeu: false};
+      e.stopPropagation();
+      e.preventDefault();
+      return;
+    }
+
     // Waypoint handle drag
     if (target.classList.contains('wp-handle')) {
       const linkId = target.dataset.linkId;
@@ -571,6 +587,19 @@ class TopoEditor {
   }
 
   _aplicarMove(e) {
+    if (this.lblDrag) {
+      const s = this.lblDrag;
+      const link = this.links.find(l => l.id === s.linkId);
+      if (link) {
+        const pt = this._svgPoint(e);
+        link.rotulos = link.rotulos || {};
+        link.rotulos[s.k] = {dx: Math.round(s.dx0 + pt.x - s.x0), dy: Math.round(s.dy0 + pt.y - s.y0)};
+        s.mexeu = true;
+        this._renderLink(link);
+        this._setDirty();
+      }
+      return;
+    }
     if (this.wpDrag) {
       const pt = this._svgPoint(e);
       const link = this.links.find(l => l.id === this.wpDrag.linkId);
@@ -669,6 +698,14 @@ class TopoEditor {
 
   _onUp(e) {
     this._flushMove();
+    if (this.lblDrag) {
+      const s = this.lblDrag;
+      this.lblDrag = null;
+      // Clique sem arrastar: seleciona o link, como clicar na linha.
+      if (s.mexeu) this._saveHistory();
+      else this._select('link', s.linkId);
+      return;
+    }
     if (this.wpDrag) { this._saveHistory(); this.wpDrag = null; return; }
     if (this.areaResizing) {
       const id = this.areaResizing.id;
@@ -1352,7 +1389,12 @@ class TopoEditor {
     } else {
       midPt = {x:(src.x+tgt.x)/2, y:(src.y+tgt.y)/2};
     }
-    const mx = midPt.x, my = midPt.y;
+    // Deslocamento manual de cada rótulo (arrastado pelo usuário), guardado
+    // no próprio link: {meio|ipA|ipB|ifA|ifB: {dx, dy}}. O cálculo automático
+    // continua valendo — o arraste só soma o desvio por cima dele.
+    const rot = link.rotulos || {};
+    const desvio = k => rot[k] || {dx: 0, dy: 0};
+    const mx = midPt.x + desvio('meio').dx, my = midPt.y + desvio('meio').dy;
 
     const userLbl  = link.label || '';
 
@@ -1404,13 +1446,13 @@ class TopoEditor {
     const bgW = Math.max(56, ...lblLines.map(l => l.text.length * 5.7 + 14));
     const bgH = lblLines.length * lblLineH + 4;
     const bgY = my - bgH/2 - 2;
-    const labelHtml = `
+    const labelHtml = `<g class="link-tag" data-link="${link.id}" data-k="meio">
       <rect x="${mx-bgW/2}" y="${bgY}" width="${bgW}" height="${bgH}" rx="6" fill="#0b0f15" fill-opacity=".92" stroke="${color}" stroke-opacity=".3"/>
       ${lblLines.map((l,i) => {
         const y = bgY + lblLineH*(i+1) - 1;
         const attrs = l.fill ? ` fill="${l.fill}" font-size="10" font-weight="${l.weight}"` : '';
         return `<text class="link-label" x="${mx}" y="${y}"${attrs}>${this._esc(l.text)}</text>`;
-      }).join('')}`;
+      }).join('')}</g>`;
     const caixaMeio = {cx: mx, cy: bgY + bgH/2, hw: bgW/2, hh: bgH/2};
 
     // Largura de cada rótulo, calculada ANTES da posição — precisa entrar na
@@ -1427,61 +1469,92 @@ class TopoEditor {
     // visto em produção — texto cortado pela borda do node em links
     // horizontais). Em link vertical isso sobra, mas tira o rótulo de cima do
     // nome/IP escritos embaixo do node.
-    const clearIpA = Math.min(raioA + 16 + ipLocalW/2, linkLen * 0.45);
-    const clearIpB = Math.min(raioB + 16 + ipRemoteW/2, linkLen * 0.45);
-    const clearIfA = Math.min(raioA + ifAW/2 + 6, linkLen * 0.4);
-    const clearIfB = Math.min(raioB + ifBW/2 + 6, linkLen * 0.4);
+    //
+    // Com waypoints, cada ponta segue o SEU primeiro trecho (node → waypoint
+    // vizinho), não a reta src→tgt: num link dobrado em L a reta aponta para
+    // um lugar onde a linha não passa, e dois links que chegam ao mesmo node
+    // por lados opostos (um pela esquerda, outro pela direita) tinham os IPs e
+    // as interfaces empilhados no mesmo ponto (visto na Sartor em 2026-10-20,
+    // SWITCH-HUAWEI-ARIPUANA). Aí o clamp por comprimento não se aplica: o
+    // trecho até a dobra pode ser curto e o rótulo cairia em cima do node.
+    const pts = [{x: src.x, y: src.y}, ...wps, {x: tgt.x, y: tgt.y}];
+    const trecho = (o, p) => {
+      const tx = p.x - o.x, ty = p.y - o.y, len = Math.hypot(tx, ty) || 1;
+      return {ux: tx / len, uy: ty / len};
+    };
+    const paraCima = t => {
+      let a = -t.uy, b = t.ux;
+      if (b > 0 || (b === 0 && a > 0)) { a = -a; b = -b; }
+      return {nx: a, ny: b};
+    };
+    const dobrado = wps.length > 0;
+    const pontaA = dobrado ? trecho(src, pts[1]) : {ux, uy};
+    const pontaB = dobrado ? trecho(tgt, pts[pts.length - 2]) : {ux: -ux, uy: -uy};
+    const normA = dobrado ? paraCima(pontaA) : {nx, ny};
+    const normB = dobrado ? paraCima(pontaB) : {nx, ny};
+    const limite = f => dobrado ? Infinity : linkLen * f;
+    const clearIpA = Math.min(raioA + 16 + ipLocalW/2, limite(0.45));
+    const clearIpB = Math.min(raioB + 16 + ipRemoteW/2, limite(0.45));
+    const clearIfA = Math.min(raioA + ifAW/2 + 6, limite(0.4));
+    const clearIfB = Math.min(raioB + ifBW/2 + 6, limite(0.4));
 
-    // Caixa de um rótulo: ponto na linha a `along` px do node (sentido +1 a
-    // partir do src, -1 a partir do tgt) e afastada `perp` px para o `lado`
-    // (+1 = lado do IP, -1 = lado da interface).
-    const caixa = (no, sentido, along, lado, largura, altura) => {
-      const c = {bx: no.x + ux*along*sentido, by: no.y + uy*along*sentido,
-                 lado, hw: largura/2, hh: altura/2};
-      afastar(c, GAP_LINHA + ext(c.hw, c.hh, nx, ny));
+    // Caixa de um rótulo: ponto no trecho da ponta a `along` px do node e
+    // afastada `perp` px para o `lado` (+1 = lado do IP, -1 = lado da
+    // interface), na perpendicular daquele trecho.
+    const caixa = (no, ponta, norm, along, lado, largura, altura) => {
+      const c = {bx: no.x + ponta.ux*along, by: no.y + ponta.uy*along,
+                 nx: norm.nx, ny: norm.ny, lado, hw: largura/2, hh: altura/2};
+      afastar(c, GAP_LINHA + ext(c.hw, c.hh, c.nx, c.ny));
       return c;
     };
     const afastar = (c, perp) => {
       c.perp = perp;
-      c.cx = c.bx + c.lado * nx * perp;
-      c.cy = c.by + c.lado * ny * perp;
+      c.cx = c.bx + c.lado * c.nx * perp;
+      c.cy = c.by + c.lado * c.ny * perp;
     };
     const sobrepoe = (a, b) =>
       Math.abs(a.cx - b.cx) < a.hw + b.hw + 2 && Math.abs(a.cy - b.cy) < a.hh + b.hh + 2;
 
-    const cxIpA = caixa(src, +1, clearIpA, +1, ipLocalW, 14);
-    const cxIpB = caixa(tgt, -1, clearIpB, +1, ipRemoteW, 14);
-    const cxIfA = caixa(src, +1, clearIfA, -1, ifAW, 12);
-    const cxIfB = caixa(tgt, -1, clearIfB, -1, ifBW, 12);
+    const cxIpA = caixa(src, pontaA, normA, clearIpA, +1, ipLocalW, 14);
+    const cxIpB = caixa(tgt, pontaB, normB, clearIpB, +1, ipRemoteW, 14);
+    const cxIfA = caixa(src, pontaA, normA, clearIfA, -1, ifAW, 12);
+    const cxIfB = caixa(tgt, pontaB, normB, clearIfB, -1, ifBW, 12);
 
     // Link curto: o clamp por linkLen empurra os rótulos das pontas para perto
     // do meio, em cima da banda/VLAN e um em cima do outro (os dois IPs ficam
     // do MESMO lado da linha). Nesses casos o rótulo sai mais para fora na
     // perpendicular — só se afasta da linha, então não volta a colidir com o
     // que já foi resolvido.
-    const distMeio = (caixaMeio.cx - src.x) * nx + (caixaMeio.cy - src.y) * ny;
-    const extMeio = ext(caixaMeio.hw, caixaMeio.hh, nx, ny);
     const mesmoLado = [[link.ip_local && cxIpA, link.ip_remote && cxIpB],
                        [link.iface_a && cxIfA, link.iface_b && cxIfB]];
     for (const par of mesmoLado) {
       for (const c of par) {
         if (c && sobrepoe(c, caixaMeio)) {
-          afastar(c, Math.max(c.perp, c.lado * distMeio + extMeio + 3 + ext(c.hw, c.hh, nx, ny)));
+          const distMeio = (caixaMeio.cx - c.bx) * c.nx + (caixaMeio.cy - c.by) * c.ny;
+          const extMeio = ext(caixaMeio.hw, caixaMeio.hh, c.nx, c.ny);
+          afastar(c, Math.max(c.perp, c.lado * distMeio + extMeio + 3 + ext(c.hw, c.hh, c.nx, c.ny)));
         }
       }
       const [a, b] = par;
       if (a && b && sobrepoe(a, b)) {
         const [perto, longe] = a.perp <= b.perp ? [a, b] : [b, a];
-        afastar(longe, perto.perp + ext(perto.hw, perto.hh, nx, ny) + 3 + ext(longe.hw, longe.hh, nx, ny));
+        afastar(longe, perto.perp + ext(perto.hw, perto.hh, longe.nx, longe.ny) + 3 + ext(longe.hw, longe.hh, longe.nx, longe.ny));
+        // Pontas com perpendiculares diferentes (link dobrado): a conta acima
+        // é aproximada, então empurra mais um pouco até desgrudar.
+        for (let i = 0; i < 20 && sobrepoe(a, b); i++) afastar(longe, longe.perp + 6);
       }
     }
+    // Desvio manual por cima do automático.
+    [['ipA', cxIpA], ['ipB', cxIpB], ['ifA', cxIfA], ['ifB', cxIfB]].forEach(([k, c]) => {
+      c.k = k; c.cx += desvio(k).dx; c.cy += desvio(k).dy;
+    });
 
-    const ipHtml = (c, ip) => !ip ? '' : `
+    const ipHtml = (c, ip) => !ip ? '' : `<g class="link-tag" data-link="${link.id}" data-k="${c.k}">
       <rect x="${c.cx-c.hw}" y="${c.cy-7}" width="${c.hw*2}" height="14" rx="5" fill="#0b0f15" fill-opacity=".92" stroke="${color}" stroke-opacity=".35"/>
-      <text class="link-ip" x="${c.cx}" y="${c.cy+3}">${this._esc(ip)}</text>`;
-    const ifHtml = (c, nome) => !nome ? '' : `
+      <text class="link-ip" x="${c.cx}" y="${c.cy+3}">${this._esc(ip)}</text></g>`;
+    const ifHtml = (c, nome) => !nome ? '' : `<g class="link-tag" data-link="${link.id}" data-k="${c.k}">
       <rect x="${c.cx-c.hw}" y="${c.cy-6}" width="${c.hw*2}" height="12" rx="4" fill="#0b0f15" fill-opacity=".92"/>
-      <text class="link-iface" x="${c.cx}" y="${c.cy+2.5}" fill="${color}">${this._esc(nome)}</text>`;
+      <text class="link-iface" x="${c.cx}" y="${c.cy+2.5}" fill="${color}">${this._esc(nome)}</text></g>`;
     const ipLocalHtml  = ipHtml(cxIpA, link.ip_local);
     const ipRemoteHtml = ipHtml(cxIpB, link.ip_remote);
     const ifAHtml = ifHtml(cxIfA, link.iface_a);
@@ -2843,6 +2916,11 @@ class TopoEditor {
         <strong>Duplo-clique</strong> em um waypoint para removê-lo.
         ${wps.length > 0 ? `<br><br><button class="prop-btn" onclick="topo._clearWaypoints('${id}')" style="margin-top:4px"><i class="fas fa-minus-circle"></i> Limpar waypoints (${wps.length})</button>` : ''}
       </div>
+      <div class="prop-group" style="background:rgba(88,166,255,.07);border-radius:6px;padding:8px;font-size:.75rem;color:var(--muted)">
+        <i class="fas fa-arrows-alt" style="color:var(--cyan);margin-right:5px"></i>
+        <strong style="color:var(--text)">Rótulos:</strong> arraste o IP, a interface ou a caixa de banda/VLAN para onde ficar melhor.
+        ${link.rotulos && Object.keys(link.rotulos).length ? `<br><button class="prop-btn" onclick="topo._resetRotulos('${id}')" style="margin-top:6px"><i class="fas fa-undo"></i> Voltar rótulos à posição automática</button>` : ''}
+      </div>
       ${TOPO_CENARIO ? this._tobeLinkHtml(link) : ''}
       <button class="prop-btn" onclick="topo._applyLinkProps('${id}')"><i class="fas fa-check"></i> Aplicar</button>
       <button class="prop-btn danger" onclick="topo._deleteSelected()"><i class="fas fa-trash"></i> Remover</button>`;
@@ -3180,6 +3258,16 @@ class TopoEditor {
     });
   }
 
+  _resetRotulos(id) {
+    const link = this.links.find(l => l.id === id);
+    if (!link) return;
+    this._saveHistory();
+    delete link.rotulos;
+    this._renderLink(link);
+    this._showLinkProps(id);
+    this._setDirty();
+  }
+
   _clearWaypoints(id) {
     const link = this.links.find(l => l.id === id);
     if (!link) return;
@@ -3436,7 +3524,7 @@ class TopoEditor {
   _agendarAutoSave(ms = 1000) {
     clearTimeout(this._autoSaveTimer);
     this._autoSaveTimer = setTimeout(() => {
-      if (this.dragging || this.groupDragging || this.wpDrag || this.areaResizing) {
+      if (this.dragging || this.groupDragging || this.wpDrag || this.lblDrag || this.areaResizing) {
         this._agendarAutoSave(ms);   // ainda com a mão no mapa
         return;
       }
@@ -3569,7 +3657,7 @@ class TopoEditor {
     if (this._syncHostsEmVoo) return;
     // Com a mão no mapa, deixa para a próxima rodada — node novo no meio de um
     // arraste bagunça o desenho e o histórico do desfazer.
-    if (this.dragging || this.groupDragging || this.wpDrag || this.areaResizing) return;
+    if (this.dragging || this.groupDragging || this.wpDrag || this.lblDrag || this.areaResizing) return;
     this._syncHostsEmVoo = true;
     this._ultimoSyncHosts = Date.now();
     try {
