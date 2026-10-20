@@ -5,6 +5,30 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-20 (Terminal SSH: busca, copiar/colar, atalhos)
+
+### Adicionado
+
+- **Busca no histórico do terminal.** `Ctrl+Shift+F` ou **🔍 Buscar** abre uma barra com contador,
+  próximo/anterior, maiúsculas e regex. Todas as ocorrências ficam destacadas. O histórico subiu
+  para 20 mil linhas, então um running-config inteiro cabe e pode ser buscado.
+- **Copiar e colar como num terminal de verdade.** `Ctrl+C` com seleção copia (sem seleção continua
+  sendo `^C`). `Ctrl+Shift+C/V` também funcionam. Selecionar já copia (como no PuTTY), e o botão
+  direito copia ou cola. Colar mais de uma linha pede confirmação mostrando o host e as linhas.
+- **Atalhos de teclado.** `Alt+1…9` e `Ctrl+Shift+←/→` trocam de aba. `Ctrl+Shift+D` divide a tela,
+  `Ctrl+Shift+O` alterna a orientação e `F6` troca de metade. `Ctrl +/-/0` muda a fonte e
+  `Ctrl+Shift+K` limpa a tela. `F1` (ou **⌨ Atalhos**) lista os atalhos e as preferências.
+- **Tela dividida redimensionável.** A divisa entre as metades pode ser arrastada (duplo clique volta
+  ao meio). Um botão alterna entre lado a lado e um em cima do outro. Tamanho e orientação ficam
+  salvos no navegador.
+
+### Alterado
+
+- **Renderização por GPU (WebGL)** nas primeiras 10 abas, com troca automática para Canvas se o
+  contexto cair ou o navegador não tiver WebGL. Saída grande rola mais leve.
+
+Detalhes em `docs/terminal_ssh.md`. Arquivo novo fora do git: `static/js/xterm-addon-search.min.js`.
+
 ## [Não publicado] — 2026-10-20 (Topologia: busca de host)
 
 ### Adicionado

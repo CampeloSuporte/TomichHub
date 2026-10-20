@@ -173,9 +173,63 @@
         .terminal-pane.active { display: flex; }
         /* Tela dividida: dois painéis lado a lado (empilhados no celular) */
         .terminal-content.split { flex-direction: row; }
-        .terminal-content.split .terminal-pane { flex: 1 1 0 !important; width: auto; border-top: 2px solid transparent; }
-        .terminal-content.split .terminal-pane.split-segundo { border-left: 1px solid #30363d; }
+        .terminal-content.split.empilhado { flex-direction: column; }
+        .terminal-content.split .terminal-pane { flex: 1 1 0 !important; width: auto; height: auto; border-top: 2px solid transparent; }
+        /* A primeira metade tem o tamanho arrastado no divisor; a segunda fica com o resto */
+        .terminal-content.split .terminal-pane.split-primeiro { flex: 0 0 calc(var(--split-pct, 50%) - 3px) !important; }
         .terminal-content.split .terminal-pane.split-foco { border-top-color: #58a6ff; }
+        .split-divisor { display: none; flex: 0 0 6px; background: #161b22; cursor: col-resize; position: relative; z-index: 2; touch-action: none; }
+        .split-divisor::after { content: ''; position: absolute; inset: 0 2px; background: #30363d; transition: background .15s; }
+        .split-divisor:hover::after, .split-divisor.arrastando::after { background: #58a6ff; }
+        .terminal-content.split .split-divisor { display: block; }
+        .terminal-content.split.empilhado .split-divisor { cursor: row-resize; }
+        .terminal-content.split.empilhado .split-divisor::after { inset: 2px 0; }
+        /* Durante o arrasto o mouse não pode cair dentro do xterm/iframe do WinBox */
+        .terminal-content.redimensionando .terminal-pane { pointer-events: none; user-select: none; }
+        .btn-split-orient { display: none; margin-left: -4px; padding: 4px 7px; }
+        .btn-split-orient.visivel { display: flex; }
+
+        /* ─── BUSCA NO TERMINAL ─── */
+        .term-busca {
+            position: absolute; top: 8px; right: 18px; z-index: 20; display: none; align-items: center; gap: 4px;
+            background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 5px 6px;
+            box-shadow: 0 6px 18px rgba(0,0,0,.45); font-family: 'Inter',sans-serif;
+        }
+        .term-busca.aberta { display: flex; }
+        .term-busca input {
+            width: 220px; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; color: #e6edf3;
+            font-family: 'Cascadia Code','JetBrains Mono','Consolas',monospace; font-size: 12px; padding: 5px 8px; outline: none;
+        }
+        .term-busca input:focus { border-color: #58a6ff; }
+        .term-busca input.sem-resultado { border-color: #f85149; }
+        .term-busca-cont { min-width: 54px; text-align: center; font-size: 11px; color: #7d8590; white-space: nowrap; }
+        .term-busca button {
+            background: transparent; border: 1px solid transparent; color: #7d8590; border-radius: 4px;
+            min-width: 26px; height: 26px; cursor: pointer; font-size: 12px; font-family: inherit;
+        }
+        .term-busca button:hover { border-color: #30363d; color: #e6edf3; }
+        .term-busca button.ligado { background: rgba(88,166,255,.15); border-color: #58a6ff; color: #58a6ff; }
+
+        /* ─── ATALHOS ─── */
+        .atalhos-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 10050; display: none; align-items: center; justify-content: center; padding: 16px; }
+        .atalhos-overlay.aberto { display: flex; }
+        .atalhos-card {
+            background: #161b22; border: 1px solid #30363d; border-radius: 8px; width: 560px; max-width: 100%;
+            max-height: 90vh; overflow-y: auto; padding: 18px 20px; font-family: 'Inter',sans-serif; color: #e6edf3;
+        }
+        .atalhos-card h3 { margin: 0 0 12px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .atalhos-card h3 button { background: transparent; border: none; color: #7d8590; cursor: pointer; font-size: 15px; }
+        .atalhos-card h4 { margin: 14px 0 6px; font-size: 11px; color: #7d8590; text-transform: uppercase; letter-spacing: .6px; }
+        .atalhos-tabela { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .atalhos-tabela td { padding: 4px 0; vertical-align: top; }
+        .atalhos-tabela td:first-child { width: 46%; white-space: nowrap; }
+        .atalhos-tabela kbd {
+            display: inline-block; background: #0d1117; border: 1px solid #30363d; border-bottom-width: 2px; border-radius: 4px;
+            padding: 1px 6px; font-family: 'Cascadia Code','Consolas',monospace; font-size: 11px; color: #e6edf3;
+        }
+        .atalhos-pref { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; padding: 5px 0; cursor: pointer; }
+        .atalhos-pref input { margin-top: 2px; accent-color: #58a6ff; }
+        .atalhos-pref small { display: block; color: #7d8590; font-size: 11px; margin-top: 1px; }
         .xterm { flex: 1; overflow: hidden; width: 100%; height: 100%; position: relative; min-height: 0; min-width: 0; }
         .xterm-screen { width: 100%; height: 100%; }
         .xterm-viewport { background-color: #0d1117; }
@@ -615,7 +669,11 @@
             .terminal-tab { padding: 5px 10px; font-size: 10px; }
             .btn-split span { display: none; } /* só o ícone */
             .terminal-content.split { flex-direction: column; }
-            .terminal-content.split .terminal-pane.split-segundo { border-left: none; border-bottom: none; box-shadow: 0 -1px 0 #30363d; }
+            .terminal-content.split .split-divisor { cursor: row-resize; flex-basis: 10px; }
+            .terminal-content.split .split-divisor::after { inset: 4px 0; }
+            .btn-split-orient.visivel { display: none; } /* no celular é sempre empilhado */
+            .term-busca { left: 8px; right: 8px; top: 6px; }
+            .term-busca input { flex: 1; width: auto; min-width: 0; font-size: 16px; /* evita zoom no iOS */ }
 
             /* Footer escondido no mobile — ações no drawer */
             .terminal-footer { display: none; }
@@ -874,12 +932,26 @@
                 <div class="terminal-tabs-bar">
                     <div class="terminal-tabs" id="terminalTabs"></div>
                     <button class="btn-split" id="btnSplit" onclick="terminalManager.toggleSplit()"
-                            title="Dividir a tela com dois terminais">
+                            title="Dividir a tela com dois terminais (Ctrl+Shift+D)">
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><line x1="8" y1="2.5" x2="8" y2="13.5"/></svg>
                         <span>Dividir tela</span>
                     </button>
+                    <button class="btn-split btn-split-orient" id="btnSplitOrient" onclick="terminalManager.alternarOrientacao()"
+                            title="Alternar entre lado a lado e um em cima do outro (Ctrl+Shift+O)">
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><line x1="1.5" y1="8" x2="14.5" y2="8"/></svg>
+                    </button>
                 </div>
                 <div class="terminal-content" id="terminalContent" style="flex:1;min-height:0;">
+                    <div class="term-busca" id="termBusca">
+                        <input type="text" id="termBuscaInput" placeholder="Buscar no terminal..." spellcheck="false" autocomplete="off">
+                        <span class="term-busca-cont" id="termBuscaCont"></span>
+                        <button id="termBuscaCase" onclick="alternarOpcaoBusca('caseSensitive')" title="Diferenciar maiúsculas/minúsculas">Aa</button>
+                        <button id="termBuscaRegex" onclick="alternarOpcaoBusca('regex')" title="Expressão regular">.*</button>
+                        <button onclick="buscarNoTerminal(-1)" title="Anterior (Shift+Enter)">↑</button>
+                        <button onclick="buscarNoTerminal(1)" title="Próximo (Enter)">↓</button>
+                        <button onclick="fecharBusca()" title="Fechar (Esc)">✕</button>
+                    </div>
+                    <div class="split-divisor" id="splitDivisor" title="Arraste para redimensionar · duplo clique volta ao meio"></div>
                     <div class="terminal-pane active">
                         <div class="terminal-empty">
                             <div style="font-size:32px;opacity:.4;">⌨</div>
@@ -901,13 +973,15 @@
                     {% if request.user.is_staff %}
                     <button class="btn-terminal btn-agent" id="btnAgent" onclick="toggleAgentPanel()" title="Agent NOC — assistente de IA">🤖 Agent</button>
                     {% endif %}
-                    <button class="btn-terminal" onclick="limparTela()">✕ Limpar</button>
+                    <button class="btn-terminal" onclick="abrirBusca()" title="Buscar no histórico do terminal (Ctrl+Shift+F)">🔍 Buscar</button>
+                    <button class="btn-terminal" onclick="limparTela()" title="Limpar a tela (Ctrl+Shift+K)">✕ Limpar</button>
                     <button class="btn-terminal" id="btnColorize" onclick="toggleColorize()">🎨 Cores: ON</button>
                     <button class="btn-terminal" onclick="reconectarTerminalAtivo()">↻ Reconectar</button>
                     <button class="btn-terminal btn-share" id="btnShare" onclick="toggleCompartilhar()" title="Compartilhar esta sessão em tempo real com outros usuários autorizados neste host">🔗 Compartilhar</button>
                     <button class="btn-terminal btn-link-externo" id="btnLinkExterno" onclick="abrirModalLinkExterno()" title="Gerar um link temporário para alguém de fora do CRM acessar este terminal (ex: suporte de fabricante)">🌐 Link Externo</button>
                     <button class="btn-terminal" onclick="fecharTodosTerminais()">⏻ Fechar Todos</button>
                     <button class="btn-terminal" onclick="window.close()">✕ Fechar Aba</button>
+                    <button class="btn-terminal" onclick="abrirAtalhos()" title="Atalhos de teclado e preferências de copiar/colar (F1)">⌨ Atalhos</button>
                 </div>
             </div>
 
@@ -927,6 +1001,9 @@
         <div class="mobile-menu-handle"></div>
         <div class="mobile-menu-item" onclick="ativarTecladoMobile();fecharMenuMobile()">
             <span>⌨</span><span>Abrir Teclado</span>
+        </div>
+        <div class="mobile-menu-item" onclick="fecharMenuMobile();abrirBusca()">
+            <span>🔍</span><span>Buscar no Terminal</span>
         </div>
         <div class="mobile-menu-item" onclick="limparTela();fecharMenuMobile()">
             <span>✕</span><span>Limpar Tela</span>
@@ -995,6 +1072,44 @@
                 <div class="link-externo-expira" id="linkExternoExpiraTexto"></div>
                 <button class="btn-le-revogar" onclick="revogarLinkExterno()">Revogar agora</button>
             </div>
+        </div>
+    </div>
+
+    <!-- ── Atalhos de teclado + preferências de copiar/colar ── -->
+    <div class="atalhos-overlay" id="atalhosOverlay" onclick="if(event.target===this) fecharAtalhos()">
+        <div class="atalhos-card">
+            <h3><span>⌨ Atalhos do terminal</span><button onclick="fecharAtalhos()" title="Fechar (Esc)">✕</button></h3>
+            <h4>Copiar e colar</h4>
+            <table class="atalhos-tabela">
+                <tr><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td><td>Copia a seleção (sem seleção, envia Ctrl+C ao equipamento)</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd></td><td>Copia a seleção</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>V</kbd> · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd></td><td>Cola</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>Seleciona todo o histórico</td></tr>
+                <tr><td>Botão direito</td><td>Com seleção copia, sem seleção cola</td></tr>
+            </table>
+            <h4>Busca e tela</h4>
+            <table class="atalhos-tabela">
+                <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></td><td>Buscar no histórico (<kbd>Enter</kbd> próximo, <kbd>Shift</kbd>+<kbd>Enter</kbd> anterior)</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd></td><td>Limpar a tela</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>+</kbd> · <kbd>Ctrl</kbd>+<kbd>-</kbd> · <kbd>Ctrl</kbd>+<kbd>0</kbd></td><td>Aumentar · diminuir · fonte padrão</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>R</kbd></td><td>Reconectar o terminal ativo</td></tr>
+            </table>
+            <h4>Abas e tela dividida</h4>
+            <table class="atalhos-tabela">
+                <tr><td><kbd>Alt</kbd>+<kbd>1</kbd>…<kbd>9</kbd></td><td>Ir para a aba 1…9</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd> / <kbd>→</kbd></td><td>Aba anterior / próxima</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd></td><td>Dividir a tela / voltar a uma</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd></td><td>Lado a lado ↔ um em cima do outro</td></tr>
+                <tr><td><kbd>F6</kbd></td><td>Passar o teclado para a outra metade</td></tr>
+                <tr><td><kbd>F1</kbd></td><td>Esta janela</td></tr>
+            </table>
+            <h4>Preferências</h4>
+            <label class="atalhos-pref"><input type="checkbox" id="prefCopiarAoSelecionar" onchange="salvarPrefTerminal('copiarAoSelecionar', this.checked)">
+                <span>Copiar ao selecionar<small>Igual ao PuTTY: soltar o mouse já copia o texto selecionado.</small></span></label>
+            <label class="atalhos-pref"><input type="checkbox" id="prefBotaoDireito" onchange="salvarPrefTerminal('botaoDireito', this.checked)">
+                <span>Botão direito copia/cola<small>Desligado, o botão direito abre o menu normal do navegador.</small></span></label>
+            <label class="atalhos-pref"><input type="checkbox" id="prefConfirmarColagem" onchange="salvarPrefTerminal('confirmarColagem', this.checked)">
+                <span>Confirmar antes de colar várias linhas<small>Cada linha vira um comando no equipamento; a confirmação mostra o que vai ser enviado.</small></span></label>
         </div>
     </div>
 
@@ -1122,6 +1237,7 @@
     <script src="/static/js/xterm-addon-fit.min.js"></script>
     <script src="/static/js/xterm-addon-canvas.min.js"></script>
     <script src="/static/js/xterm-addon-webgl.min.js"></script>
+    <script src="/static/js/xterm-addon-search.min.js"></script>
     <script>
 
     // ============================================================
@@ -1770,6 +1886,21 @@
     }
 
     // ============================================================
+    // PREFERÊNCIAS DO TERMINAL (por navegador)
+    // ============================================================
+    const FONTE_PADRAO = 15;
+    const PREFS_TERMINAL_KEY = 'terminalPrefs';
+    const prefsTerminal = Object.assign(
+        { copiarAoSelecionar: true, botaoDireito: true, confirmarColagem: true,
+          empilhado: false, splitPct: 50, fonte: FONTE_PADRAO },
+        (() => { try { return JSON.parse(localStorage.getItem(PREFS_TERMINAL_KEY) || '{}'); } catch(_) { return {}; } })()
+    );
+    function salvarPrefTerminal(chave, valor) {
+        prefsTerminal[chave] = valor;
+        try { localStorage.setItem(PREFS_TERMINAL_KEY, JSON.stringify(prefsTerminal)); } catch(_) {}
+    }
+
+    // ============================================================
     // TERMINAL MANAGER
     // ============================================================
     class TerminalManager {
@@ -1826,16 +1957,19 @@
             const terminalId = `terminal-${++this.tabCounter}`;
             try {
                 // Tamanho de fonte menor no mobile para melhor aproveitamento da tela
-                const fontSizeMobile = window.innerWidth < 400 ? 10 : window.innerWidth < 640 ? 11 : 15;
+                const fontSizeMobile = window.innerWidth < 400 ? 10 : window.innerWidth < 640 ? 11 : (prefsTerminal.fonte || FONTE_PADRAO);
                 const terminal = new Terminal({
                     cursorBlink: false,
                     fontSize: fontSizeMobile,
+                    // Decorações da busca (destaque de todas as ocorrências) usam a API proposta
+                    allowProposedApi: true,
                     fontFamily: "'Cascadia Code','JetBrains Mono','Menlo','Consolas','Courier New',monospace",
                     fontWeight: 400, fontWeightBold: 500, lineHeight: 1.2, letterSpacing: 0,
                     theme: { background: '#0d1117', foreground: '#e6edf3', cursor: '#58a6ff', selectionBackground: 'rgba(88,166,255,0.25)', black: '#21262d', red: '#f85149', green: '#3fb950', yellow: '#d29922', blue: '#388bfd', magenta: '#bc8cff', cyan: '#39c5cf', white: '#b1bac4', brightBlack: '#484f58', brightRed: '#ff7b72', brightGreen: '#56d364', brightYellow: '#e3b341', brightBlue: '#79c0ff', brightMagenta: '#d2a8ff', brightCyan: '#56d4dd', brightWhite: '#f0f6fc',
                              selectionBackground:'rgba(88,166,255,0.25)',
                              black:'#0d1117', white:'#e6edf3', brightBlack:'#2a3a4a', brightWhite:'#ffffff' },
-                    scrollback: 5000, rows: 24, cols: 120,
+                    // 20 mil linhas: um running-config de concentrador inteiro cabe e a busca alcança o começo
+                    scrollback: 20000, rows: 24, cols: 120,
                     // convertEol:false — a sessão SSH/Telnet já é um PTY real e envia \r\n
                     // corretamente; forçar a conversão duplicava a quebra de linha e causava
                     // "pular linha" em saídas/digitação rápidas (equipamento já manda \r\n).
@@ -1846,8 +1980,13 @@
                 });
                 const fitAddon = new FitAddon.FitAddon();
                 terminal.loadAddon(fitAddon);
+                const searchAddon = new SearchAddon.SearchAddon();
+                terminal.loadAddon(searchAddon);
+                searchAddon.onDidChangeResults(r => atualizarContagemBusca(terminalId, r));
                 terminal.attachCustomKeyEventHandler(arg => {
                     if (arg.ctrlKey && arg.keyCode === 87) return false;
+                    // Atalhos da página (busca, abas, copiar...) não viram bytes para o equipamento
+                    if (arg.type === 'keydown' && tratarAtalhoTerminal(arg, terminalId)) return false;
                     return true;
                 });
 
@@ -1872,15 +2011,14 @@
                 this.focarAoClicar(pane, terminalId);
                 terminal.open(pane);
 
-                // Canvas renderer — acelerado via 2D API, sem context loss do WebGL
-                try { terminal.loadAddon(new CanvasAddon.CanvasAddon()); } catch(_) {}
-
                 const tObj = {
-                    id: terminalId, terminal, fitAddon, pane, acesso: acessoData,
+                    id: terminalId, terminal, fitAddon, searchAddon, pane, acesso: acessoData,
                     socket: null, connected: false, wsRetries: 0, hadSshError: false,
                     shared: false, viewers: [], isPhysical: true, criadoEm: agoraMs
                 };
                 this.terminals.set(terminalId, tObj);
+                carregarRenderer(tObj);
+                ligarCopiarColar(tObj);
                 this.criarAba(terminalId, acessoData);
                 this.ativarTerminal(terminalId);
 
@@ -1976,9 +2114,11 @@
                 const i = this.splitPanes.indexOf(this.activeTerminal);
                 this.splitPanes[i >= 0 ? i : 1] = terminalId;
             }
+            const anterior = this.activeTerminal;
             this.activeTerminal = terminalId;
             if (tObj.acesso) window._spActiveAcesso = tObj.acesso;
             this.aplicarLayout();
+            if (anterior !== terminalId) buscaTrocouTerminal(anterior);
             if (tObj.tipo !== 'winbox' && !isMobile()) setTimeout(() => tObj.terminal?.focus(), 60);
             atualizarBotaoCompartilhar();
         }
@@ -2002,21 +2142,59 @@
                 this.split = true; this.splitPanes = [this.activeTerminal, outro];
             }
             this.aplicarLayout();
+            this.focarAtivo();
+        }
+
+        focarAtivo() {
             const t = this.terminals.get(this.activeTerminal);
             if (t && t.tipo !== 'winbox' && !isMobile()) setTimeout(() => t.terminal?.focus(), 60);
+        }
+
+        // Lado a lado ↔ um em cima do outro (no celular é sempre empilhado)
+        alternarOrientacao() {
+            if (!this.split || isMobile()) return;
+            salvarPrefTerminal('empilhado', !prefsTerminal.empilhado);
+            this.aplicarLayout();
+            this.focarAtivo();
+        }
+
+        // F6: o teclado passa para a outra metade da tela dividida
+        alternarMetade() {
+            if (!this.split) return;
+            const outro = this.splitPanes.find(id => id !== this.activeTerminal);
+            if (outro) { this.ativarTerminal(outro); this.focarAtivo(); }
+        }
+
+        // Alt+N / Ctrl+Shift+←→: navegação pelas abas na ordem em que aparecem
+        irParaAba(indice, relativo) {
+            const ids = Array.from(document.querySelectorAll('#terminalTabs .terminal-tab'))
+                .map(el => el.id.replace(/^tab-/, '')).filter(id => this.terminals.has(id));
+            if (!ids.length) return;
+            let alvo;
+            if (relativo) {
+                const i = ids.indexOf(this.activeTerminal);
+                alvo = ids[(i + indice + ids.length) % ids.length];
+            } else {
+                alvo = ids[indice];
+            }
+            if (alvo) { this.ativarTerminal(alvo); this.focarAtivo(); }
         }
 
         // Mostra/esconde os painéis e marca as abas conforme o modo (uma tela ou dividida)
         aplicarLayout() {
             const visiveis = this.split ? this.splitPanes : [this.activeTerminal];
-            document.getElementById('terminalContent').classList.toggle('split', this.split);
+            const content = document.getElementById('terminalContent');
+            content.classList.toggle('split', this.split);
+            content.classList.toggle('empilhado', this.split && (isMobile() || !!prefsTerminal.empilhado));
+            content.style.setProperty('--split-pct', (prefsTerminal.splitPct || 50) + '%');
             this.terminals.forEach((t, id) => {
                 const pos = visiveis.indexOf(id);
                 const vis = pos >= 0;
                 t.pane.classList.toggle('active', vis);
                 t.pane.style.display = vis ? 'flex' : 'none';
-                t.pane.style.order = vis ? pos : '';
-                t.pane.classList.toggle('split-segundo', this.split && pos === 1);
+                // Ordem 0 e 2: o divisor (order 1) fica entre as duas metades
+                t.pane.style.order = vis ? pos * 2 : '';
+                t.pane.classList.toggle('split-primeiro', this.split && pos === 0);
                 t.pane.classList.toggle('split-foco', this.split && id === this.activeTerminal);
                 const tab = document.getElementById(`tab-${id}`);
                 if (tab) {
@@ -2028,10 +2206,12 @@
             if (btn) {
                 btn.classList.toggle('visivel', this.terminals.size >= 2 || this.split);
                 btn.classList.toggle('ativo', this.split);
-                btn.title = this.split ? 'Voltar a um terminal por vez' : 'Dividir a tela com dois terminais';
+                btn.title = (this.split ? 'Voltar a um terminal por vez' : 'Dividir a tela com dois terminais') + ' (Ctrl+Shift+D)';
                 const lbl = btn.querySelector('span');
                 if (lbl) lbl.textContent = this.split ? 'Tela única' : 'Dividir tela';
             }
+            const btnOrient = document.getElementById('btnSplitOrient');
+            if (btnOrient) btnOrient.classList.toggle('visivel', this.split);
             setTimeout(() => refitTerminaisVisiveis(), 50);
         }
 
@@ -2173,6 +2353,344 @@
 
     const terminalManager = new TerminalManager();
     window.terminalManager = terminalManager;
+
+    // ============================================================
+    // RENDERIZADOR — WebGL (GPU) quando dá, Canvas como reserva
+    // ============================================================
+    // O WebGL é o que segura saída grande (show running-config, display
+    // current-configuration) sem engasgar a aba. Mas o navegador limita os
+    // contextos WebGL por página (~16 no Chrome) e derruba o mais antigo quando
+    // passa, e o contexto também cai sozinho (GPU reiniciada, driver, aba muito
+    // tempo em segundo plano). Por isso: só as primeiras WEBGL_MAX abas usam
+    // WebGL e, se o contexto de uma cair, ela troca para Canvas na hora sem
+    // perder o que está na tela.
+    const WEBGL_MAX = 10;
+    function carregarRenderer(tObj) {
+        const emWebgl = Array.from(terminalManager.terminals.values()).filter(t => t.renderer === 'webgl').length;
+        if (typeof WebglAddon !== 'undefined' && emWebgl < WEBGL_MAX) {
+            try {
+                const webgl = new WebglAddon.WebglAddon();
+                webgl.onContextLoss(() => {
+                    try { webgl.dispose(); } catch(_) {}
+                    carregarCanvas(tObj);
+                });
+                tObj.terminal.loadAddon(webgl);
+                tObj.renderer = 'webgl';
+                return;
+            } catch(_) { /* sem WebGL2 no navegador/GPU — cai no Canvas */ }
+        }
+        carregarCanvas(tObj);
+    }
+    function carregarCanvas(tObj) {
+        try { tObj.terminal.loadAddon(new CanvasAddon.CanvasAddon()); tObj.renderer = 'canvas'; }
+        catch(_) { tObj.renderer = 'dom'; }
+    }
+
+    // ============================================================
+    // COPIAR / COLAR
+    // ============================================================
+    function escreverClipboard(texto, tObj) {
+        const fallback = () => {
+            const ta = document.createElement('textarea');
+            ta.value = texto; ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+            document.body.appendChild(ta); ta.select();
+            try { document.execCommand('copy'); } catch(_) {}
+            ta.remove();
+            if (tObj && tObj.terminal) tObj.terminal.focus();
+        };
+        if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(texto).catch(fallback);
+        else fallback();
+    }
+
+    function copiarSelecao(tObj, avisar) {
+        if (!tObj || !tObj.terminal || !tObj.terminal.hasSelection()) return false;
+        escreverClipboard(tObj.terminal.getSelection(), tObj);
+        if (avisar) mostrarToast('⎘ Seleção copiada');
+        return true;
+    }
+
+    // Toda colagem passa por aqui (Ctrl+V, botão direito). Várias linhas viram
+    // vários comandos no equipamento — colar um bloco de config no roteador
+    // errado é um acidente comum, então pede confirmação mostrando o começo.
+    async function colarNoTerminal(tObj, texto) {
+        if (!tObj || !tObj.terminal || !texto) return;
+        if (!tObj.socket || tObj.socket.readyState !== WebSocket.OPEN) {
+            mostrarToast('⚠ Terminal desconectado — nada foi colado', 'erro'); return;
+        }
+        const linhas = texto.replace(/\r\n?/g, '\n').replace(/\n+$/, '').split('\n');
+        if (linhas.length > 1 && prefsTerminal.confirmarColagem) {
+            const amostra = linhas.slice(0, 10).join('\n') +
+                (linhas.length > 10 ? `\n… (+${linhas.length - 10} linhas)` : '');
+            const host = tObj.acesso ? `${tObj.acesso.tipo || ''} ${tObj.acesso.host || ''}`.trim() : '';
+            const ok = await uiConfirm({
+                tipo: 'aviso', titulo: `Colar ${linhas.length} linhas?`, btnLabel: `Colar ${linhas.length} linhas`,
+                msgHtml: `<div style="margin-bottom:8px">Cada linha é enviada como um comando${host ? ` em <b>${escStr(host)}</b>` : ''}.</div>` +
+                    `<pre style="max-height:220px;overflow:auto;background:#0d1117;border:1px solid #30363d;border-radius:4px;padding:8px;font-size:11px;white-space:pre;text-align:left;margin:0">${escStr(amostra)}</pre>`,
+            });
+            if (!ok) { tObj.terminal.focus(); return; }
+        }
+        tObj.terminal.paste(texto);
+        tObj.terminal.focus();
+    }
+
+    async function colarDoClipboard(tObj) {
+        if (!navigator.clipboard || !navigator.clipboard.readText) {
+            mostrarToast('Use Ctrl+V para colar', 'erro'); return;
+        }
+        try { colarNoTerminal(tObj, await navigator.clipboard.readText()); }
+        catch(_) { mostrarToast('Navegador bloqueou a leitura da área de transferência — use Ctrl+V', 'erro'); }
+    }
+
+    function ligarCopiarColar(tObj) {
+        const pane = tObj.pane;
+        // Captura antes do xterm: a colagem nativa (Ctrl+V, menu do navegador) passa pela confirmação
+        pane.addEventListener('paste', e => {
+            e.preventDefault(); e.stopImmediatePropagation();
+            colarNoTerminal(tObj, (e.clipboardData || window.clipboardData).getData('text'));
+        }, true);
+        pane.addEventListener('mouseup', e => {
+            if (e.button !== 0 || !prefsTerminal.copiarAoSelecionar) return;
+            setTimeout(() => copiarSelecao(tObj, true), 0);
+        });
+        pane.addEventListener('contextmenu', e => {
+            if (!prefsTerminal.botaoDireito) return;
+            e.preventDefault();
+            if (tObj.terminal.hasSelection()) {
+                copiarSelecao(tObj, true);
+                tObj.terminal.clearSelection();
+            } else {
+                colarDoClipboard(tObj);
+            }
+        });
+    }
+
+    // ============================================================
+    // FONTE (Ctrl + / Ctrl - / Ctrl 0) — vale para todas as abas
+    // ============================================================
+    function mudarFonte(delta) {
+        const atual = prefsTerminal.fonte || FONTE_PADRAO;
+        const nova = delta === 0 ? FONTE_PADRAO : Math.max(9, Math.min(28, atual + delta));
+        salvarPrefTerminal('fonte', nova);
+        terminalManager.terminals.forEach(t => { if (t.terminal) t.terminal.options.fontSize = nova; });
+        refitTerminaisVisiveis();
+        mostrarToast(`🔠 Fonte ${nova}px`);
+    }
+
+    // ============================================================
+    // BUSCA NO HISTÓRICO (addon search)
+    // ============================================================
+    const opcoesBusca = { caseSensitive: false, regex: false };
+    const DECORACOES_BUSCA = {
+        matchBackground: '#9e6a03', matchBorder: '#d29922', matchOverviewRuler: '#d29922',
+        activeMatchBackground: '#f0883e', activeMatchBorder: '#ffa657', activeMatchColorOverviewRuler: '#f0883e',
+    };
+    const elBusca = document.getElementById('termBusca');
+    const elBuscaInput = document.getElementById('termBuscaInput');
+    const elBuscaCont = document.getElementById('termBuscaCont');
+
+    function terminalDaBusca() {
+        const t = terminalManager.activeTerminal && terminalManager.terminals.get(terminalManager.activeTerminal);
+        return t && t.searchAddon ? t : null;
+    }
+    function buscaAberta() { return elBusca.classList.contains('aberta'); }
+
+    function abrirBusca() {
+        if (!terminalDaBusca()) { mostrarToast('⚠ Nenhum terminal SSH ativo', 'erro'); return; }
+        elBusca.classList.add('aberta');
+        // Texto selecionado no terminal vira o termo (igual ao Ctrl+F dos editores)
+        const t = terminalDaBusca();
+        const sel = t.terminal.hasSelection() ? t.terminal.getSelection() : '';
+        if (sel && !sel.includes('\n') && sel.length < 200) elBuscaInput.value = sel;
+        elBuscaInput.focus(); elBuscaInput.select();
+        if (elBuscaInput.value) buscarNoTerminal(0);
+    }
+
+    function fecharBusca() {
+        elBusca.classList.remove('aberta');
+        const t = terminalDaBusca();
+        if (t) { t.searchAddon.clearDecorations(); t.terminal.focus(); }
+        elBuscaCont.textContent = '';
+        elBuscaInput.classList.remove('sem-resultado');
+    }
+
+    // dir: 1 próximo, -1 anterior, 0 enquanto digita (fica na ocorrência atual)
+    function buscarNoTerminal(dir) {
+        const t = terminalDaBusca(); if (!t) return;
+        const termo = elBuscaInput.value;
+        if (!termo) {
+            t.searchAddon.clearDecorations(); t.terminal.clearSelection();
+            elBuscaCont.textContent = ''; elBuscaInput.classList.remove('sem-resultado');
+            return;
+        }
+        if (opcoesBusca.regex) {
+            try { new RegExp(termo); } catch(_) { elBuscaCont.textContent = 'regex inválida'; elBuscaInput.classList.add('sem-resultado'); return; }
+        }
+        const opts = { ...opcoesBusca, decorations: DECORACOES_BUSCA, incremental: dir === 0 };
+        const achou = dir < 0 ? t.searchAddon.findPrevious(termo, opts) : t.searchAddon.findNext(termo, opts);
+        elBuscaInput.classList.toggle('sem-resultado', !achou);
+        if (!achou) elBuscaCont.textContent = 'nada';
+    }
+
+    function atualizarContagemBusca(terminalId, r) {
+        if (terminalId !== terminalManager.activeTerminal || !buscaAberta() || !r) return;
+        if (!r.resultCount) { elBuscaCont.textContent = elBuscaInput.value ? 'nada' : ''; return; }
+        // O addon para de contar em 1000 ocorrências (resultIndex -1 nesse caso)
+        elBuscaCont.textContent = r.resultIndex < 0 ? `${r.resultCount}+` : `${r.resultIndex + 1} de ${r.resultCount}`;
+    }
+
+    function alternarOpcaoBusca(chave) {
+        opcoesBusca[chave] = !opcoesBusca[chave];
+        document.getElementById(chave === 'regex' ? 'termBuscaRegex' : 'termBuscaCase').classList.toggle('ligado', opcoesBusca[chave]);
+        elBuscaInput.focus();
+        buscarNoTerminal(0);
+    }
+
+    // Trocou de aba com a busca aberta: limpa o destaque da anterior e busca na nova
+    function buscaTrocouTerminal(anteriorId) {
+        const ant = anteriorId && terminalManager.terminals.get(anteriorId);
+        if (ant && ant.searchAddon) ant.searchAddon.clearDecorations();
+        if (!buscaAberta()) return;
+        if (!terminalDaBusca()) { fecharBusca(); return; }
+        elBuscaCont.textContent = '';
+        buscarNoTerminal(0);
+    }
+
+    elBuscaInput.addEventListener('input', () => buscarNoTerminal(0));
+    elBuscaInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); buscarNoTerminal(e.shiftKey ? -1 : 1); }
+        else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fecharBusca(); }
+    });
+
+    // ============================================================
+    // TELA DIVIDIDA — divisor arrastável
+    // ============================================================
+    (function() {
+        const divisor = document.getElementById('splitDivisor');
+        const content = document.getElementById('terminalContent');
+        let arrastando = false, pendente = false;
+        const refitThrottled = () => {
+            if (pendente) return; pendente = true;
+            requestAnimationFrame(() => { pendente = false; refitTerminaisVisiveis(); });
+        };
+        divisor.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            arrastando = true;
+            divisor.setPointerCapture(e.pointerId);
+            divisor.classList.add('arrastando'); content.classList.add('redimensionando');
+        });
+        divisor.addEventListener('pointermove', e => {
+            if (!arrastando) return;
+            const r = content.getBoundingClientRect();
+            const vertical = content.classList.contains('empilhado');
+            const pct = vertical ? (e.clientY - r.top) / r.height * 100 : (e.clientX - r.left) / r.width * 100;
+            prefsTerminal.splitPct = Math.round(Math.max(15, Math.min(85, pct)) * 10) / 10;
+            content.style.setProperty('--split-pct', prefsTerminal.splitPct + '%');
+            refitThrottled();
+        });
+        const soltar = e => {
+            if (!arrastando) return;
+            arrastando = false;
+            try { divisor.releasePointerCapture(e.pointerId); } catch(_) {}
+            divisor.classList.remove('arrastando'); content.classList.remove('redimensionando');
+            salvarPrefTerminal('splitPct', prefsTerminal.splitPct);
+            refitTerminaisVisiveis();
+            terminalManager.focarAtivo();
+        };
+        divisor.addEventListener('pointerup', soltar);
+        divisor.addEventListener('pointercancel', soltar);
+        divisor.addEventListener('dblclick', () => {
+            salvarPrefTerminal('splitPct', 50);
+            content.style.setProperty('--split-pct', '50%');
+            refitTerminaisVisiveis();
+        });
+    })();
+
+    // ============================================================
+    // ATALHOS DE TECLADO
+    // ============================================================
+    // Duas portas de entrada: o handler de teclas do xterm (foco no terminal —
+    // devolver false impede que a tecla vire bytes para o equipamento) e o
+    // keydown do documento (foco no resto da página). O evento marcado em
+    // __atalhoTratado não é executado de novo quando sobe até o documento.
+
+    // Só faz sentido com o foco dentro do terminal
+    function tratarAtalhoTerminal(e, terminalId) {
+        const tObj = terminalManager.terminals.get(terminalId);
+        if (!tObj) return false;
+        const ctrl = e.ctrlKey || e.metaKey;
+        let feito = false;
+        if (ctrl && !e.altKey && e.code === 'KeyC' && (e.shiftKey || tObj.terminal.hasSelection())) {
+            // Ctrl+C com seleção copia (sem seleção segue como interrupção ^C)
+            if (copiarSelecao(tObj, true) && !e.shiftKey) tObj.terminal.clearSelection();
+            e.preventDefault(); feito = true;
+        } else if (ctrl && !e.altKey && e.code === 'KeyV') {
+            // Sem preventDefault: o navegador faz a colagem nativa, que cai no
+            // listener 'paste' do painel (confirmação de várias linhas) — e não
+            // depende de permissão de leitura da área de transferência.
+            feito = true;
+        } else if (ctrl && e.shiftKey && !e.altKey && e.code === 'KeyA') {
+            tObj.terminal.selectAll(); e.preventDefault(); feito = true;
+        } else if (ctrl && !e.shiftKey && !e.altKey && ['Equal', 'NumpadAdd'].includes(e.code)) {
+            mudarFonte(1); e.preventDefault(); feito = true;
+        } else if (ctrl && !e.shiftKey && !e.altKey && ['Minus', 'NumpadSubtract'].includes(e.code)) {
+            mudarFonte(-1); e.preventDefault(); feito = true;
+        } else if (ctrl && !e.shiftKey && !e.altKey && ['Digit0', 'Numpad0'].includes(e.code)) {
+            mudarFonte(0); e.preventDefault(); feito = true;
+        } else {
+            feito = tratarAtalhoGlobal(e);
+        }
+        if (feito) e.__atalhoTratado = true;
+        return feito;
+    }
+
+    // Valem com o foco em qualquer lugar da página
+    function tratarAtalhoGlobal(e) {
+        const ctrl = e.ctrlKey || e.metaKey;
+        const el = document.activeElement;
+        const emCampo = el && el.matches && el.matches('input, textarea, select, [contenteditable="true"]')
+                        && !el.classList.contains('xterm-helper-textarea');
+        let acao = null;
+        if (ctrl && e.shiftKey && !e.altKey && e.code === 'KeyF') acao = abrirBusca;
+        else if (e.key === 'F1' && !ctrl && !e.altKey) acao = abrirAtalhos;
+        // Num campo de texto (busca, Agent, Wiki) o resto dos atalhos é do campo
+        else if (emCampo) return false;
+        else if (ctrl && e.shiftKey && !e.altKey && e.code === 'KeyD') acao = () => terminalManager.toggleSplit();
+        else if (ctrl && e.shiftKey && !e.altKey && e.code === 'KeyO') acao = () => terminalManager.alternarOrientacao();
+        else if (ctrl && e.shiftKey && !e.altKey && e.code === 'KeyK') acao = limparTela;
+        else if (ctrl && e.shiftKey && !e.altKey && e.code === 'ArrowLeft') acao = () => terminalManager.irParaAba(-1, true);
+        else if (ctrl && e.shiftKey && !e.altKey && e.code === 'ArrowRight') acao = () => terminalManager.irParaAba(1, true);
+        else if (e.key === 'F6' && !ctrl && !e.altKey && !e.shiftKey) acao = () => terminalManager.alternarMetade();
+        else if (e.altKey && !ctrl && !e.shiftKey && /^Digit[1-9]$/.test(e.code)) {
+            const n = parseInt(e.code.slice(5), 10) - 1;
+            acao = () => terminalManager.irParaAba(n, false);
+        }
+        if (!acao) return false;
+        e.preventDefault();
+        acao();
+        return true;
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.__atalhoTratado) return;
+        tratarAtalhoGlobal(e);
+    });
+
+    // ── Janela de atalhos + preferências ──
+    function abrirAtalhos() {
+        document.getElementById('prefCopiarAoSelecionar').checked = !!prefsTerminal.copiarAoSelecionar;
+        document.getElementById('prefBotaoDireito').checked = !!prefsTerminal.botaoDireito;
+        document.getElementById('prefConfirmarColagem').checked = !!prefsTerminal.confirmarColagem;
+        document.getElementById('atalhosOverlay').classList.add('aberto');
+    }
+    function fecharAtalhos() {
+        document.getElementById('atalhosOverlay').classList.remove('aberto');
+        terminalManager.focarAtivo();
+    }
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && document.getElementById('atalhosOverlay').classList.contains('aberto')) {
+            e.preventDefault(); e.stopPropagation(); fecharAtalhos();
+        }
+    }, true);
 
     function limparTela() {
         if (terminalManager.activeTerminal) {
