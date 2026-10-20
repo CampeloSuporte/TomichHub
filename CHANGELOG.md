@@ -5,6 +5,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-20 (Topologia: caneta)
+
+### Adicionado
+
+- **Caneta na topologia.** O botão de lápis na barra permite rabiscar por cima do mapa para ilustrar.
+  Clicar de novo apaga tudo. O rabisco acompanha zoom e pan, não seleciona nem move nada, e nunca é
+  salvo no diagrama. Detalhes em `docs/topologia.md`.
+
 ## [Não publicado] — 2026-10-20 (Topologia: rótulos de link)
 
 ### Corrigido

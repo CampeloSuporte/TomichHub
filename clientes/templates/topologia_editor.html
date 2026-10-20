@@ -501,6 +501,11 @@ body.props-off #props{transform:translateX(calc(100% + 20px));opacity:0;pointer-
 .link-ip{font-size:9px;fill:#ffffff;font-weight:700;text-anchor:middle;font-family:'Courier New',monospace;pointer-events:none}
 /* Link interface labels (lado A/B) */
 .link-iface{font-size:8px;text-anchor:middle;font-family:'Courier New',monospace;pointer-events:none;font-weight:600;opacity:.9}
+/* Lousa (caneta): rabisco ilustrativo por cima do mapa, nunca salvo */
+#canvas-svg.lousa-on{cursor:crosshair}
+#canvas-svg.lousa-on *{cursor:crosshair !important}
+#lousa-layer{pointer-events:none}
+.lousa-traco{fill:none;stroke:#ff5c5c;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
 .link-tag{cursor:move}
 .link-tag:hover rect{stroke:var(--cyan);stroke-opacity:.9}
 /* Text box node */
@@ -616,6 +621,7 @@ body:not(.pal-off) #legend-panel{left:236px}
     <button class="tb-btn" id="btn-snap" onclick="topo.toggleSnap()" data-tip="Alinhar à grade"><i class="fas fa-magnet"></i></button>
     <button class="tb-btn" id="btn-connect" onclick="topo.toggleConnectMode()" data-tip="Modo conexão (C)"><i class="fas fa-share-nodes"></i></button>
     <button class="tb-btn" id="btn-area-select" onclick="topo.toggleAreaSelect()" data-tip="Seleção por área (ou Ctrl + arrastar)"><i class="fas fa-vector-square"></i></button>
+    <button class="tb-btn" id="btn-lousa" onclick="topo.toggleLousa()" data-tip="Caneta: rabiscar por cima do mapa só para ilustrar — clique de novo para apagar tudo (não é salvo)"><i class="fas fa-pen"></i></button>
     <button class="tb-btn dim" id="btn-agrupar" {% if cenario %}hidden{% endif %} onclick="topo.agruparSelecionados()" data-tip="Agrupar os selecionados num ícone só, com mapa próprio — Ctrl+clique nos hosts, depois aqui (G)"><i class="fas fa-object-group"></i></button>
   </div>
   <div class="tb-group">
@@ -749,6 +755,6 @@ body:not(.pal-off) #legend-panel{left:236px}
   }
 </script>
 <script src="/static/js/topo_engine.js?v=26"></script>
-<script src="/static/js/topo_main.js?v=56"></script>
+<script src="/static/js/topo_main.js?v=57"></script>
 </body>
 </html>

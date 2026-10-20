@@ -69,6 +69,8 @@ class TopoEditor {
     this.rubberBand = null;         // {x0,y0,x1,y1} durante o arraste do laço de seleção
     this.groupDragging = null;      // {startX,startY,positions:{id:{x,y}}} arrasto em grupo
     this.areaSelectMode = false;    // toggle do botão "Área" — troca pan por laço de seleção
+    this.lousaOn = false;           // toggle do botão "Caneta" — rabisco só ilustrativo, nunca salvo
+    this._traco = null;             // <path> do traço em andamento na lousa
     // ── Estado da navegação (pan/zoom/arraste) ──────────────────────────────
     // O mapa é um SVG só: qualquer movimento rasteriza a cena inteira de novo,
     // com todos os drop-shadows, blurs e fluxos animados junto. Estes campos
@@ -99,6 +101,13 @@ class TopoEditor {
     this.areasLayer = document.createElementNS('http://www.w3.org/2000/svg','g');
     this.areasLayer.id = 'areas-layer';
     this.vp.insertBefore(this.areasLayer, this.linksLayer);
+
+    // Camada da lousa (caneta): por cima de tudo e dentro do viewport, então o
+    // rabisco acompanha zoom e pan. Não entra em nodes/links — não é salva,
+    // não vai para o desfazer e some ao desligar a caneta.
+    this.lousaLayer = document.createElementNS('http://www.w3.org/2000/svg','g');
+    this.lousaLayer.id = 'lousa-layer';
+    this.vp.appendChild(this.lousaLayer);
 
     // Retoca a animação de fade do painel de propriedades (`#props-fade` no CSS)
     // toda vez que o conteúdo troca — só setar innerHTML de novo no mesmo nó
@@ -250,6 +259,20 @@ class TopoEditor {
       }
       this.addNode(type, this._snap(pt.x), this._snap(pt.y));
     });
+
+    // Lousa (caneta): ouvintes em CAPTURA no próprio SVG, então rodam antes
+    // dos cliques de node/link e, com stopPropagation, nada é selecionado nem
+    // arrastado enquanto se rabisca. O scroll (zoom) continua normal.
+    svg.addEventListener('mousedown', e => this._lousaDown(e), true);
+    svg.addEventListener('mousemove', e => this._lousaMove(e), true);
+    for (const tipo of ['mouseup', 'click', 'dblclick', 'contextmenu']) {
+      svg.addEventListener(tipo, e => {
+        if (!this.lousaOn) return;
+        if (tipo === 'mouseup') this._traco = null;
+        e.stopPropagation(); e.preventDefault();
+      }, true);
+    }
+    window.addEventListener('mouseup', () => { this._traco = null; });
 
     svg.addEventListener('mousedown', e => this._onDown(e));
     svg.addEventListener('mousemove', e => this._onMove(e));
@@ -1191,7 +1214,7 @@ class TopoEditor {
     if (this.selectedNodes.size > 1) {
       el.textContent = `${this.selectedNodes.size} selecionados (Ctrl+clique adiciona) — arraste para mover ou "Agrupar" (G)`;
     } else {
-      el.textContent = 'Modo: ' + (this.connectMode ? 'Conexão' : this.areaSelectMode ? 'Seleção de área' : 'Seleção');
+      el.textContent = 'Modo: ' + (this.lousaOn ? 'Caneta (clique de novo no lápis para apagar)' : this.connectMode ? 'Conexão' : this.areaSelectMode ? 'Seleção de área' : 'Seleção');
     }
   }
 
@@ -3303,6 +3326,45 @@ class TopoEditor {
     btn.classList.toggle('active', this.connectMode);
     document.getElementById('canvas-svg').style.cursor = this.connectMode ? 'crosshair' : 'default';
     this._updateMultiSelectStatus();
+  }
+
+  /** Caneta: liga o rabisco livre por cima do mapa. Clicar de novo desliga e
+   *  APAGA tudo que foi rabiscado — é só para ilustrar numa conversa/print,
+   *  nada disso é salvo no diagrama. */
+  toggleLousa() {
+    this.lousaOn = !this.lousaOn;
+    this._traco = null;
+    if (this.lousaOn) {
+      if (this.connectMode) this.toggleConnectMode();
+      if (this.areaSelectMode) this.toggleAreaSelect();
+      this._cancelConnect();
+    } else {
+      this.lousaLayer.innerHTML = '';
+    }
+    document.getElementById('btn-lousa').classList.toggle('active', this.lousaOn);
+    this.svg.classList.toggle('lousa-on', this.lousaOn);
+    this._updateMultiSelectStatus();
+  }
+
+  _lousaDown(e) {
+    if (!this.lousaOn || e.button !== 0) return;
+    e.stopPropagation(); e.preventDefault();
+    const pt = this._svgPoint(e);
+    const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    p.setAttribute('class', 'lousa-traco');
+    p.setAttribute('d', `M${pt.x.toFixed(1)},${pt.y.toFixed(1)} l0.01,0`);  // clique solto vira um ponto
+    this.lousaLayer.appendChild(p);
+    this._traco = {el: p, d: `M${pt.x.toFixed(1)},${pt.y.toFixed(1)}`};
+  }
+
+  _lousaMove(e) {
+    if (!this.lousaOn) return;
+    e.stopPropagation();
+    if (!this._traco) return;
+    if (!(e.buttons & 1)) { this._traco = null; return; }   // soltou fora do mapa
+    const pt = this._svgPoint(e);
+    this._traco.d += ` L${pt.x.toFixed(1)},${pt.y.toFixed(1)}`;
+    this._traco.el.setAttribute('d', this._traco.d);
   }
 
   toggleAreaSelect() {
