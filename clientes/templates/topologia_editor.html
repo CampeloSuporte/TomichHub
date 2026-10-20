@@ -265,6 +265,12 @@ body.nav-busy .link{transition:none}
 .link-arrow{overflow:visible}
 /* Connect preview */
 #connect-preview{fill:none;stroke:var(--cyan);stroke-width:2;stroke-dasharray:6 4;pointer-events:none;opacity:.7}
+/* Dobras já marcadas da conexão traçada ponto a ponto (ver _iniciarRota) */
+.rota-pt{fill:#0d1117;stroke:var(--cyan);stroke-width:2;pointer-events:none}
+/* Mostrar transportes (toggleTransportes): esmaece o que não é transporte.
+   Opacidade no grupo inteiro — rótulos, IPs e pacotes somem junto da linha. */
+#canvas-svg.transp-on .link-group:not(.transporte){opacity:.08}
+#canvas-svg.transp-on .node:not(.transp-host){opacity:.16}
 /* Multi-seleção (laço de área / shift+clique) e arrasto em grupo */
 .node.multi-selected .node-body{filter:drop-shadow(0 0 9px var(--cyan))}
 .node.multi-selected .node-ring{stroke:var(--cyan)!important;stroke-opacity:1!important;stroke-dasharray:4 2}
@@ -638,6 +644,7 @@ body:not(.pal-off) #legend-panel{left:236px}
     <button class="tb-btn dim" id="btn-agrupar" {% if cenario %}hidden{% endif %} onclick="topo.agruparSelecionados()" data-tip="Agrupar os selecionados num ícone só, com mapa próprio — Ctrl+clique nos hosts, depois aqui (G)"><i class="fas fa-object-group"></i></button>
   </div>
   <div class="tb-group">
+    <button class="tb-btn" id="btn-transportes" onclick="topo.toggleTransportes()" data-tip="Mostrar transportes: destaca só as conexões marcadas como transporte e os hosts ligados por elas"><i class="fas fa-route"></i> Transportes</button>
     <button class="tb-btn" id="btn-legend" onclick="topo.toggleLegend()" data-tip="Legenda de interfaces"><i class="fas fa-list-ul"></i></button>
     <button class="tb-btn" id="btn-effects" onclick="topo.toggleEffects()" data-tip="Efeitos: fluxo nos links e pulso nos hosts do CRM"><i class="fas fa-bolt"></i></button>
     <button class="tb-btn" id="btn-fullscreen" onclick="topo.toggleFullscreen()" data-tip="Editar em tela cheia (F)"><i class="fas fa-expand"></i></button>
@@ -774,6 +781,6 @@ body:not(.pal-off) #legend-panel{left:236px}
            oninput="topo._buscaSel=0;topo._buscaRender(this.value)" onkeydown="topo._buscaTecla(event)"></div>
   <ul id="busca-host-lista" onmousedown="event.preventDefault()" onclick="const li=event.target.closest('li[data-k]'); if(li) topo._buscaIr(+li.dataset.k)"></ul>
 </div>
-<script src="/static/js/topo_main.js?v=58"></script>
+<script src="/static/js/topo_main.js?v=59"></script>
 </body>
 </html>
