@@ -17,7 +17,9 @@ from __future__ import annotations
 
 import logging
 import re
+import statistics
 import time
+from collections import Counter
 from datetime import datetime
 from urllib.parse import urlparse
 
@@ -404,3 +406,371 @@ def _amostras_txt(pontos: list, units: str, n: int = 6) -> str:
         f"{chart._dt_local(p['t']):%d/%m %H:%M}={chart.formatar_valor(p['v'], units)}"
         for p in escolhidos
     )
+
+
+# ──────────────────────────────────────────────────────────────
+# Sinal óptico antes × depois do rompimento
+# ──────────────────────────────────────────────────────────────
+#
+# Reproduz o relatório que o NOC fazia à mão depois de um reparo de fibra:
+# para cada ramo (lane) do transceptor, a leitura de RX antes do rompimento e a
+# leitura atual, e quanto mudou. O rompimento é achado no próprio histórico —
+# transceptor sem luz reporta -40 dBm (piso do DDM), então a queda é o trecho
+# em que o RX fica nesse piso.
+
+_PISO_SEM_LUZ    = -38.0   # abaixo disso o DDM está no piso (-40 dBm / -inf) = sem luz
+_QUEDA_RELATIVA  = 10.0    # ou 10 dB abaixo da referência da janela (enlaces de sinal alto)
+_JANELA_ANTES    = 6 * 3600   # patamar "antes": leituras das 6h anteriores à queda…
+_IGNORAR_ANTES   = 1800       # …menos os 30 min finais (a fibra costuma degradar antes de romper)
+_N_DEPOIS        = 12         # patamar "depois": ~1h de leituras mais recentes (coleta de 5 min)
+_UNIR_QUEDAS     = 1800    # quedas a menos de 30 min uma da outra = um evento (emenda/flap)
+_OSCILACAO_DB    = 0.6     # até isso é oscilação da leitura (DDM Huawei anda em degraus de ~0,5 dB)
+_PERDA_RELEVANTE = 1.0     # perda acima disso após o reparo merece verificar a fusão
+
+_RE_RAMO  = re.compile(r'\s*-?\s*Ramo\s*(\d+)\s*$', re.I)
+_RE_IFACE = re.compile(r'Interface\s*-?\s*(.+)$', re.I)
+
+
+def _serie_bruta(cfg, itemid, ts_from: int, ts_till: int) -> dict:
+    """
+    Série crua (sem reamostrar) de um item: o rompimento precisa da leitura
+    exata de cada coleta, e historico_janela() reamostra e prefere trends em
+    janelas longas. Cai em trends (médias horárias) se o history expirou.
+    """
+    auth = services._get_auth_token(cfg)
+    info = services._rpc(cfg.url, 'item.get', {
+        'itemids': [str(itemid)],
+        'output':  ['name', 'units', 'value_type'],
+        'selectHosts': ['name'],
+    }, auth, config=cfg)
+    if not info:
+        raise Exception(f'item {itemid} não encontrado no Zabbix')
+    meta = info[0]
+    vt   = int(meta.get('value_type', 0))
+    if vt not in (0, 3):
+        raise Exception(f'item "{meta.get("name")}" não é numérico')
+
+    # DESC + reverse: se o limite cortar, perde-se o começo da janela, não o "agora"
+    bruto = services._rpc(cfg.url, 'history.get', {
+        'itemids': [str(itemid)], 'history': vt,
+        'time_from': int(ts_from), 'time_till': int(ts_till),
+        'sortfield': 'clock', 'sortorder': 'DESC', 'limit': 20000,
+    }, auth, config=cfg)
+    pontos = [(int(p['clock']), float(p['value'])) for p in reversed(bruto)]
+    fonte  = 'history'
+    if not pontos:
+        bruto = services._rpc(cfg.url, 'trend.get', {
+            'itemids': [str(itemid)],
+            'time_from': int(ts_from), 'time_till': int(ts_till), 'limit': 20000,
+        }, auth, config=cfg)
+        pontos = sorted((int(p['clock']), float(p['value_avg'])) for p in bruto)
+        fonte  = 'trends'
+
+    hosts = meta.get('hosts') or []
+    return {
+        'itemid':   str(itemid),
+        'name':     meta.get('name', ''),
+        'units':    meta.get('units', ''),
+        'hostname': hosts[0].get('name', '') if hosts else '',
+        'pontos':   pontos,
+        'fonte':    fonte,
+    }
+
+
+def _corte_sem_luz(pontos: list) -> float:
+    """Valor a partir do qual a leitura conta como sem luz para esta série."""
+    vals = sorted(v for _, v in pontos)
+    ref  = vals[int(len(vals) * 0.75)] if vals else _PISO_SEM_LUZ
+    return max(_PISO_SEM_LUZ, ref - _QUEDA_RELATIVA)
+
+
+def _quedas(pontos: list, corte: float) -> list:
+    """
+    Trechos sem luz: [{'ini', 'retorno'}] — `ini` é a 1ª coleta sem luz,
+    `retorno` a 1ª coleta com luz depois (None = continua sem luz).
+    Trechos muito próximos são unidos (a emenda costuma piscar).
+    """
+    trechos = []
+    atual = None
+    for t, v in pontos:
+        if v <= corte:
+            if atual is None:
+                atual = {'ini': t, 'retorno': None}
+                trechos.append(atual)
+        elif atual is not None:
+            atual['retorno'] = t
+            atual = None
+
+    unidos = []
+    for tr in trechos:
+        if unidos and unidos[-1]['retorno'] and tr['ini'] - unidos[-1]['retorno'] < _UNIR_QUEDAS:
+            unidos[-1]['retorno'] = tr['retorno']
+        else:
+            unidos.append(dict(tr))
+    return unidos
+
+
+def _lacuna(pontos: list) -> dict | None:
+    """Maior buraco de coleta da janela (equipamento inalcançável na queda)."""
+    if len(pontos) < 3:
+        return None
+    passos = sorted(b[0] - a[0] for a, b in zip(pontos, pontos[1:]))
+    minimo = max(_UNIR_QUEDAS, passos[len(passos) // 2] * 6)
+    maior  = None
+    for a, b in zip(pontos, pontos[1:]):
+        if b[0] - a[0] >= minimo and (maior is None or b[0] - a[0] > maior['retorno'] - maior['ini']):
+            maior = {'ini': a[0] + 1, 'retorno': b[0], 'sem_coleta': True}
+    return maior
+
+
+def _leitura_tipica(vals: list):
+    """
+    Patamar de uma sequência de leituras do DDM: a leitura mais frequente (o DDM
+    é quantizado e alterna entre 2-3 valores). Empate → a pior (mais baixa).
+    Sem repetição (médias de trends) → mediana.
+    """
+    if not vals:
+        return None
+    cont = Counter(round(v, 2) for v in vals)
+    maior = max(cont.values())
+    if maior == 1:
+        return statistics.median_low(vals)
+    return min(v for v, n in cont.items() if n == maior)
+
+
+def _fmt_dur(seg: int) -> str:
+    seg = max(int(seg), 0)
+    d, r = divmod(seg, 86400)
+    h, r = divmod(r, 3600)
+    m = r // 60
+    if d:
+        return f"{d}d {h:02d}h{m:02d}"
+    if h:
+        return f"{h}h{m:02d}"
+    return f"{m}min"
+
+
+def _fmt_dbm(v) -> str:
+    if v is None:
+        return 'sem leitura'
+    if v <= _PISO_SEM_LUZ:
+        return f"{v:.2f} (sem luz)"
+    return f"{v:.2f}"
+
+
+def _rotulos(serie: dict) -> tuple:
+    """('SWITCH-HUAWEI-JURUENA', '100GE0/0/2 - SW-DT-REG-JUINA', 'Ramo 1')"""
+    host = (serie['hostname'] or '').split(' - ')[0].strip() or serie['hostname']
+    nome = serie['name'] or f"item {serie['itemid']}"
+    m = _RE_RAMO.search(nome)
+    ramo = f"Ramo {m.group(1)}" if m else ''
+    sem_ramo = _RE_RAMO.sub('', nome).strip(' -')
+    mi = _RE_IFACE.search(sem_ramo)
+    iface = mi.group(1).strip(' -') if mi else sem_ramo
+    return host, iface, ramo or iface
+
+
+def itens_de_sinal(cfg, host: str, item: str = '') -> list[str]:
+    """itemids de potência óptica (dBm) de um host — RX por padrão, TX só se pedido."""
+    termos = item or 'Recebida'
+    itens = services.buscar_itens(cfg, host, termos, limit=200)
+    quer_tx = bool(re.search(r'\btx\b|transmit', item or '', re.I))
+    escolhidos = []
+    for i in itens:
+        nome = i.get('name', '')
+        if (i.get('units') or '').strip().lower() != 'dbm' or nome.lower().startswith('limite'):
+            continue
+        eh_rx = bool(re.search(r'recebida|\brx\b|rxpower', nome + ' ' + i.get('key_', ''), re.I))
+        if eh_rx != quer_tx:
+            escolhidos.append((nome, i['itemid']))
+    return [iid for _, iid in sorted(escolhidos)]
+
+
+def comparar_sinal(cliente_id, itemids: list | None = None, buscas: list | None = None,
+                   rompimento: str = '', periodo: str = '3d') -> str:
+    """
+    Sinal antes do rompimento × sinal atual, por ramo, no formato do relatório
+    manual do NOC (SINAL DE RECEPÇÃO ANTES / DEPOIS + diferença e resumo).
+
+    itemids    : itens de potência (dBm) já conhecidos
+    buscas     : [{'host': 'juruena', 'item': 'reg-juina'}, ...] — acha os itens de RX
+    rompimento : hora aproximada do rompimento (opcional — sem ela é detectado)
+    periodo    : quanto olhar para trás procurando a queda (padrão 3d, máx 30d)
+    """
+    cfg = resolver_config(cliente_id)
+
+    ids = [str(i).strip() for i in (itemids or []) if str(i).strip()]
+    avisos = []
+    for b in (buscas or []):
+        b = b if isinstance(b, dict) else {'host': str(b)}
+        h, it = (b.get('host') or '').strip(), (b.get('item') or '').strip()
+        if not h:
+            continue
+        achados = itens_de_sinal(cfg, h, it)
+        if not achados:
+            avisos.append(f"⚠️ nenhum item de sinal (dBm) em host '{h}'" + (f" com '{it}'" if it else ''))
+        ids.extend(achados)
+    ids = list(dict.fromkeys(ids))[:16]
+    if not ids:
+        return '\n'.join(avisos) or 'Nenhum item informado (passe itemids ou buscas com host/item).'
+
+    m = _RE_DUR.match(periodo or '')
+    dur = 3 * 86400
+    if m:
+        dur = int(m.group(1)) * {'m': 60, 'h': 3600, 'd': 86400, 'w': 604800, 's': 1}[m.group(2).lower()]
+    dur = min(max(dur, 3600), 30 * 86400)
+    agora = int(time.time())
+    ts_romp = _parse_datahora(rompimento) if rompimento else None
+    ts_from = min(agora - dur, (ts_romp or agora) - 6 * 3600)
+
+    series = []
+    for iid in ids:
+        try:
+            s = _serie_bruta(cfg, iid, ts_from, agora)
+        except Exception as exc:
+            avisos.append(f"❌ item {iid}: {exc}")
+            continue
+        if not s['pontos']:
+            avisos.append(f"⚠️ {s['hostname']} — {s['name']}: sem coletas na janela")
+            continue
+        s['corte'] = _corte_sem_luz(s['pontos'])
+        s['quedas'] = _quedas(s['pontos'], s['corte'])
+        s['host'], s['iface'], s['ramo'] = _rotulos(s)
+        series.append(s)
+    if not series:
+        return '\n'.join(avisos)
+
+    # Agrupa por porta (host + interface): os ramos de uma porta rompem juntos
+    grupos = {}
+    for s in series:
+        grupos.setdefault((s['host'], s['iface']), []).append(s)
+
+    def _evento(ss: list) -> dict | None:
+        """Queda da porta: a última (ou a que casa com `rompimento`), unindo os ramos."""
+        cands = []
+        for s in ss:
+            qs = s['quedas']
+            if ts_romp:
+                qs = [q for q in qs if (q['retorno'] or agora) >= ts_romp - 3600]
+                q = qs[0] if qs else None
+            else:
+                q = qs[-1] if qs else None
+            if q:
+                cands.append(q)
+        if not cands:
+            return None
+        ini = min(q['ini'] for q in cands)
+        rets = [q['retorno'] for q in cands]
+        return {'ini': ini, 'retorno': None if None in rets else max(rets)}
+
+    eventos = {k: _evento(v) for k, v in grupos.items()}
+    # Porta sem queda própria (ex.: o equipamento ficou sem coleta) herda a do enlace
+    comuns = [e for e in eventos.values() if e]
+    for k, ss in grupos.items():
+        if eventos[k]:
+            continue
+        if comuns:
+            eventos[k] = {'ini': min(e['ini'] for e in comuns),
+                          'retorno': max((e['retorno'] or agora) for e in comuns), 'herdado': True}
+        else:
+            lac = _lacuna(ss[0]['pontos'])
+            if lac and (not ts_romp or lac['retorno'] >= ts_romp - 3600):
+                eventos[k] = lac
+            elif ts_romp:
+                eventos[k] = {'ini': ts_romp, 'retorno': ts_romp, 'informado': True}
+
+    blocos = []
+    for (host, iface), ss in grupos.items():
+        ev = eventos[(host, iface)]
+        ss.sort(key=lambda s: (s['ramo'] if s['ramo'].startswith('Ramo') else 'z' + s['ramo']))
+        cab = f"(SINAL)\n{host} · {iface}"
+        if not ev:
+            blocos.append(
+                cab + f"\nNenhum rompimento (sinal em -40 dBm / sem luz) nos últimos {_fmt_dur(dur)}."
+                "\nInforme a hora do rompimento (parâmetro `rompimento`) ou aumente o `periodo`."
+                + "\nAtual: " + ' · '.join(f"{s['ramo']}: {_fmt_dbm(s['pontos'][-1][1])}" for s in ss)
+            )
+            continue
+
+        linhas_antes, linhas_depois, linhas_dif, deltas = [], [], [], []
+        ainda_fora = False
+        for s in ss:
+            ok = [(t, v) for t, v in s['pontos'] if v > s['corte']]
+            antes = [v for t, v in ok
+                     if ev['ini'] - _JANELA_ANTES <= t < ev['ini'] - _IGNORAR_ANTES]
+            if not antes:   # queda logo no começo da janela / coleta esparsa
+                antes = [v for t, v in ok if t < ev['ini']][-5:]
+            v_antes = _leitura_tipica(antes)
+            ultimo_t, ultimo_v = s['pontos'][-1]
+            if ultimo_v <= s['corte']:
+                v_depois = ultimo_v
+                ainda_fora = True
+            else:
+                depois = [v for t, v in ok if t >= (ev['retorno'] or agora)][-_N_DEPOIS:]
+                v_depois = _leitura_tipica(depois) if depois else ultimo_v
+            linhas_antes.append(f"{s['ramo']}: {_fmt_dbm(v_antes)}")
+            linhas_depois.append(f"{s['ramo']}: {_fmt_dbm(v_depois)}")
+            if v_antes is None or v_depois <= s['corte']:
+                linhas_dif.append(f"{s['ramo']}: —")
+                continue
+            d = round(v_depois - v_antes, 2)
+            deltas.append((d, s['ramo']))
+            if abs(d) < 0.01:
+                linhas_dif.append(f"{s['ramo']}: 0.00 dB = igual")
+            elif d > 0:
+                linhas_dif.append(f"{s['ramo']}: +{d:.2f} dB ↑ aumentou")
+            else:
+                linhas_dif.append(f"{s['ramo']}: {d:.2f} dB ↓ diminuiu")
+
+        d_ini = chart._dt_local(ev['ini'])
+        if ev.get('informado'):
+            quando = f"Rompimento informado: {d_ini:%d/%m %H:%M}"
+        elif ainda_fora or not ev.get('retorno'):
+            quando = f"Rompimento: {d_ini:%d/%m %H:%M} → ainda sem sinal ({_fmt_dur(agora - ev['ini'])})"
+        else:
+            d_ret = chart._dt_local(ev['retorno'])
+            tipo = ' (sem coleta no período)' if ev.get('sem_coleta') else ''
+            quando = (f"Rompimento: {d_ini:%d/%m %H:%M} → normalizou {d_ret:%d/%m %H:%M} "
+                      f"({_fmt_dur(ev['retorno'] - ev['ini'])} fora){tipo}")
+        if ev.get('herdado'):
+            quando += ' — horário do outro lado do enlace'
+
+        if ainda_fora:
+            resumo = "⛔ Ainda sem sinal — refaça a comparação depois da normalização."
+        elif not deltas:
+            resumo = "Sem leituras antes do rompimento para comparar (histórico expirado?)."
+        else:
+            sub = sum(1 for d, _ in deltas if d >= 0.01)
+            caiu = sum(1 for d, _ in deltas if d <= -0.01)
+            igual = len(deltas) - sub - caiu
+            pior_d, pior_r = min(deltas)
+            maior = max(abs(d) for d, _ in deltas)
+            partes = [f"{n} {um if n == 1 else varios}" for n, um, varios in (
+                (sub, 'aumentou', 'aumentaram'), (caiu, 'diminuiu', 'diminuíram'),
+                (igual, 'igual', 'iguais')) if n]
+            resumo = ', '.join(partes) + '.'
+            if pior_d <= -_PERDA_RELEVANTE:
+                resumo += (f" ⚠️ Perda adicional de {abs(pior_d):.2f} dB no {pior_r} após o reparo"
+                           " — verificar fusões/emendas.")
+            elif maior <= _OSCILACAO_DB:
+                resumo += (f" ✅ Variação até {maior:.2f} dB, dentro da oscilação normal da leitura —"
+                           " sinal voltou ao patamar de antes.")
+            elif pior_d > -0.01:
+                resumo += f" ✅ Sinal melhorou (até +{maior:.2f} dB)."
+            else:
+                resumo += f" ℹ️ Variação pequena (pior: {pior_r} {pior_d:.2f} dB)."
+
+        blocos.append(
+            cab + f"\n{quando}\n"
+            "SINAL DE RECEPÇÃO ANTES:\n" + '\n'.join(linhas_antes)
+            + "\n\nSINAL DE RECEPÇÃO DEPOIS:\n" + '\n'.join(linhas_depois)
+            + "\n\nDIFERENÇA:\n" + '\n'.join(linhas_dif)
+            + f"\nResumo: {resumo}"
+        )
+
+    fonte = {s['fonte'] for s in series}
+    rodape = ("\n\n(ANTES = leitura mais frequente nas 6h anteriores à queda, sem os 30 min finais; "
+              "DEPOIS = leitura mais frequente na última hora"
+              + ('; fonte: médias horárias (trends) — history expirado' if 'trends' in fonte else '')
+              + ')')
+    return '\n\n\n'.join(blocos) + ('\n\n' + '\n'.join(avisos) if avisos else '') + rodape

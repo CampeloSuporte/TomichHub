@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-19 (Agent NOC: sinal antes × depois do rompimento)
+
+### Adicionado
+
+- **Agent NOC compara o sinal antes do rompimento com o atual** (tool `zabbix_comparar_sinal`).
+  Acha sozinho o rompimento no histórico do Zabbix (RX em -40 dBm = sem luz) e devolve, ramo a
+  ramo, o **SINAL DE RECEPÇÃO ANTES**, o **DEPOIS** (atual) e a **DIFERENÇA** (aumentou/diminuiu,
+  em dB), com um resumo — no mesmo padrão do relatório manual do NOC. Funciona com as duas pontas
+  do enlace numa chamada só. Detalhes em `docs/agent_noc.md`.
+
 ## [Não publicado] — 2026-10-19 (PDF do padrão de communities BGP)
 
 ### Adicionado

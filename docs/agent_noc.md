@@ -454,3 +454,46 @@ no switch brasnorte" → o agent chamou `zabbix_buscar_item(host='brasnorte',
 item='paineiras bits')`, escolheu os itemids de `Bits received`/`Bits sent` da
 `100GE0/0/4(LINK-PAINEIRAS)`, chamou `zabbix_historico` e respondeu com a análise do pico
 noturno + o PNG das duas curvas.
+
+### Sinal antes × depois do rompimento (`zabbix_comparar_sinal`)
+
+Automatiza o relatório que o NOC montava à mão depois de um reparo de fibra: para cada
+ramo (lane) do transceptor, o RX **antes do rompimento**, o RX **atual** e a diferença.
+
+```
+(SINAL)
+SWITCH-HUAWEI-JURUENA · 100GE0/0/2 - SW-DT-REG-JUINA
+Rompimento: 19/10 08:56 → normalizou 19/10 20:28 (11h32 fora)
+SINAL DE RECEPÇÃO ANTES:
+Ramo 1: -30.46
+...
+SINAL DE RECEPÇÃO DEPOIS:
+Ramo 1: -30.97
+...
+DIFERENÇA:
+Ramo 1: -0.51 dB ↓ diminuiu
+...
+Resumo: 2 diminuíram, 2 iguais. ✅ Variação até 0.51 dB, dentro da oscilação normal da leitura
+```
+
+- **Entrada**: `buscas=[{host, item}]`, uma por lado do enlace (`item` = descrição da porta);
+  `itens_de_sinal()` pega os itens em **dBm** de RX da porta (TX só se `item` pedir `tx`),
+  ignorando os "Limite Superior/Inferior". Ou `itemids` direto (máx 16).
+- **Rompimento detectado sozinho** (`periodo` padrão `3d`, até `30d`): leitura ≤ -38 dBm (o
+  DDM sem luz reporta -40) ou 10 dB abaixo do p75 da janela conta como sem luz; trechos a menos
+  de 30 min um do outro viram um evento (a emenda pisca). Vale a **última** queda, ou a que
+  casa com `rompimento` quando o operador informa a hora. Os ramos da mesma porta são unidos;
+  porta sem queda própria herda o horário do outro lado; sem queda nenhuma, um buraco de coleta
+  conta como queda.
+- **ANTES** = leitura **mais frequente** nas 6h anteriores à queda, **sem os 30 min finais** —
+  na Sartor a fibra já oscilava 0,5 dB na última hora antes de romper, e o NOC usa o patamar
+  estável. **DEPOIS** = leitura mais frequente da última hora (~12 coletas). O DDM é
+  quantizado (Huawei anda em degraus de ~0,51 dB), por isso moda e não média; empate → a pior.
+- **Resumo**: até 0,6 dB = oscilação normal; perda > 1 dB em algum ramo → aviso para verificar
+  fusões; link ainda em -40 → "ainda sem sinal".
+- Usa `_serie_bruta()` (history cru, `DESC`+reverse para o limite não cortar o "agora"; cai em
+  trends se expirou) — `historico_janela()` reamostra e não serve para pegar a leitura exata.
+
+Validado ao vivo na Sartor (rompimento JURUENA ↔ REG.JUINA de 19/10/2026): ANTES de REG.JUINA
+idêntico ao relatório manual nos 4 ramos; DEPOIS de JURUENA idêntico; o restante difere só pelo
+degrau de quantização do DDM.

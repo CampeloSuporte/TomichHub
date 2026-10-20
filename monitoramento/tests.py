@@ -721,3 +721,63 @@ class SerrilhadoContadorTest(TestCase):
     def test_ruido_pequeno_so_suaviza(self):
         out = self._serie([10.0, 10.3, 9.8, 10.2, 9.9, 10.1])
         self.assertTrue(all(9.8 <= v <= 10.3 for v in out), out)
+
+
+class CompararSinalTest(TestCase):
+    """Sinal RX antes do rompimento × atual, no padrão do relatório do NOC."""
+
+    AGORA = 1_760_000_000
+
+    def _serie(self, itemid, ramo, antes, depois, ini_queda, fim_queda, host='SW-JURUENA - 10.0.0.1'):
+        # coleta de 5 em 5 min: 8h antes da queda, a queda (-40), 2h depois
+        pontos, t = [], self.AGORA - 8 * 3600 - (fim_queda - ini_queda) - 2 * 3600
+        while t < self.AGORA:
+            if t < self.AGORA - 2 * 3600 - (fim_queda - ini_queda):
+                v = antes(t)
+            elif t < self.AGORA - 2 * 3600:
+                v = -40.0
+            else:
+                v = depois(t)
+            pontos.append((t, v))
+            t += 300
+        return {'itemid': itemid, 'hostname': host, 'units': 'dBm', 'fonte': 'history',
+                'name': f'Potência Recebida (RX) na Interface 100GE0/0/2 - SW-DT-REG - Ramo {ramo}',
+                'pontos': pontos}
+
+    def _rodar(self, series, **kw):
+        por_id = {s['itemid']: s for s in series}
+        with mock.patch('monitoramento.agent_zabbix.resolver_config',
+                        return_value=SimpleNamespace(id='x', url='http://z')), \
+             mock.patch('monitoramento.agent_zabbix._serie_bruta',
+                        side_effect=lambda cfg, iid, a, b: por_id[iid]), \
+             mock.patch('monitoramento.agent_zabbix.time.time', return_value=self.AGORA):
+            from monitoramento import agent_zabbix
+            return agent_zabbix.comparar_sinal(1, itemids=list(por_id), **kw)
+
+    def test_patamar_ignora_degradacao_antes_de_romper_e_resume(self):
+        corte = self.AGORA - 2 * 3600 - 3 * 3600   # início da queda
+        # estável em -30.45; nos 30 min antes de romper oscila para -30.96
+        antes = lambda t: -30.96 if t >= corte - 1800 else -30.45
+        series = [
+            self._serie('1', 1, antes, lambda t: -30.45, 0, 3 * 3600),
+            self._serie('2', 2, lambda t: -29.58, lambda t: -31.0, 0, 3 * 3600),
+        ]
+        txt = self._rodar(series)
+        self.assertIn('(SINAL)\nSW-JURUENA · 100GE0/0/2 - SW-DT-REG', txt)
+        self.assertIn('SINAL DE RECEPÇÃO ANTES:\nRamo 1: -30.45\nRamo 2: -29.58', txt)
+        self.assertIn('SINAL DE RECEPÇÃO DEPOIS:\nRamo 1: -30.45\nRamo 2: -31.00', txt)
+        self.assertIn('Ramo 1: 0.00 dB = igual', txt)
+        self.assertIn('Ramo 2: -1.42 dB ↓ diminuiu', txt)
+        self.assertIn('Perda adicional de 1.42 dB no Ramo 2', txt)
+        self.assertIn('(3h00 fora)', txt)
+
+    def test_ainda_sem_sinal(self):
+        s = self._serie('1', 1, lambda t: -30.0, lambda t: -40.0, 0, 3600)
+        txt = self._rodar([s])
+        self.assertIn('ainda sem sinal', txt)
+        self.assertIn('Ramo 1: -40.00 (sem luz)', txt)
+
+    def test_sem_rompimento_na_janela(self):
+        s = self._serie('1', 1, lambda t: -30.0, lambda t: -30.0, 0, 0)
+        txt = self._rodar([s])
+        self.assertIn('Nenhum rompimento', txt)

@@ -657,6 +657,51 @@ TOOLS_DEFINITION: list[dict] = [
         },
     },
     {
+        "name": "zabbix_comparar_sinal",
+        "description": (
+            "Compara o sinal óptico (RX, dBm) ANTES do rompimento com o sinal ATUAL, ramo a ramo, "
+            "e devolve pronto o relatório no padrão do NOC: '(SINAL) / SINAL DE RECEPÇÃO ANTES / "
+            "SINAL DE RECEPÇÃO DEPOIS / DIFERENÇA' com quanto aumentou ou diminuiu e um resumo. "
+            "Acha sozinho o rompimento no histórico do Zabbix (trecho com o RX em -40 dBm = sem luz). "
+            "Use para 'sinal antes e depois do rompimento', 'conferir o sinal depois da fusão/reparo', "
+            "'comparar o sinal com o de antes'. Para as duas pontas do enlace, passe uma busca por lado."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "buscas": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "host": {"type": "string", "description": "Texto parcial do host no Zabbix (ex: 'juruena')."},
+                            "item": {"type": "string", "description": "Descrição da interface/porta (ex: 'reg-juina', '100GE0/0/2'). Acha os itens de RX dela."},
+                        },
+                    },
+                    "description": "Uma entrada por lado do enlace. Ex: [{'host':'juruena','item':'reg-juina'}, {'host':'reg-juina','item':'sw-hu-juruena'}].",
+                },
+                "itemids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Alternativa às buscas: itemids de potência RX (dBm) já conhecidos (máx 16).",
+                },
+                "rompimento": {
+                    "type": "string",
+                    "description": "Hora aproximada do rompimento ('AAAA-MM-DD HH:MM'), só se o operador informar. Sem ela é detectado no histórico.",
+                },
+                "periodo": {
+                    "type": "string",
+                    "description": "Quanto olhar para trás procurando a queda: '3d' (padrão), '7d', até '30d'.",
+                },
+                "cliente_nome": {
+                    "type": "string",
+                    "description": "Nome (parcial) do cliente — usar apenas em modo de acesso global.",
+                },
+            },
+            "required": [],
+        },
+    },
+    {
         "name": "fetch_host_config",
         "description": (
             "Coleta a configuração completa de um host via SSH (display current-configuration ou equivalente) "
@@ -852,6 +897,30 @@ TOOLS_OPENAI: list[dict] = [
                     "cliente_nome": {"type": "string", "description": "Nome parcial do cliente (modo global)"},
                 },
                 "required": ["itemids"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "zabbix_comparar_sinal",
+            "description": (
+                "Sinal óptico RX antes do rompimento × atual, por ramo, no padrão do NOC (SINAL DE "
+                "RECEPÇÃO ANTES / DEPOIS / DIFERENÇA + resumo). Detecta o rompimento no histórico do Zabbix."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "buscas": {"type": "array", "items": {"type": "object", "properties": {
+                                   "host": {"type": "string"}, "item": {"type": "string"}}},
+                               "description": "Uma {host, item} por lado do enlace (item = descrição da porta)"},
+                    "itemids":    {"type": "array", "items": {"type": "string"},
+                                   "description": "Alternativa: itemids de RX (dBm), máx 16"},
+                    "rompimento": {"type": "string", "description": "Hora do rompimento, se informada"},
+                    "periodo":    {"type": "string", "description": "Quanto olhar para trás: '3d' (padrão) até '30d'"},
+                    "cliente_nome": {"type": "string", "description": "Nome parcial do cliente (modo global)"},
+                },
+                "required": [],
             },
         },
     },
@@ -1325,6 +1394,18 @@ comparação antes/depois, "ontem", "na hora do rompimento", "pico", "média"** 
 períodos antes e depois quando houver `marcador`, e interprete (ex: queda de -18 dBm para -40 dBm =
 fibra rompida; tráfego caindo a zero = enlace fora). O gráfico já foi enviado — não descreva a
 imagem, analise os números.
+
+### Sinal antes × depois do rompimento (tool `zabbix_comparar_sinal`)
+Pedido do tipo "sinal antes e depois do rompimento", "conferir o sinal depois da fusão/reparo",
+"comparar o sinal atual com o de antes" → use **`zabbix_comparar_sinal`** (não `zabbix_historico`).
+- Uma busca por lado do enlace: `buscas=[{{"host": "juruena", "item": "reg-juina"}},
+  {{"host": "reg-juina", "item": "sw-hu-juruena"}}]` — `item` é a descrição da porta; a tool pega
+  sozinha os itens de RX (todos os ramos/lanes) dela.
+- Não precisa da hora: o rompimento é achado no histórico (RX em -40 dBm). Só passe `rompimento`
+  se o operador informar, e `periodo` maior ("7d") se a queda foi há mais de 3 dias.
+- A resposta já vem no padrão do NOC (`(SINAL)` / `SINAL DE RECEPÇÃO ANTES:` / `SINAL DE RECEPÇÃO
+  DEPOIS:` / `DIFERENÇA:` / `Resumo:`). **Repasse os blocos como vieram**, sem reescrever os
+  números; pode só trocar o nome do host pelo nome curto do site (ex: JURUENA, REG.JUINA).
 """
 
         notas_cliente_section = ''
@@ -2463,6 +2544,30 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
 
         return _noc_truncar(resultado.get('texto', ''), 3000)
 
+    async def _tool_zabbix_comparar_sinal(self, itemids: list, buscas: list,
+                                          rompimento: str = '', periodo: str = '3d',
+                                          cliente_nome: str = '') -> str:
+        from monitoramento import agent_zabbix
+
+        cliente_id, nome = await self._zabbix_cliente_id(cliente_nome)
+        if not cliente_id:
+            return f"❌ {nome}"
+
+        try:
+            texto = await sync_to_async(agent_zabbix.comparar_sinal)(
+                cliente_id, itemids, buscas, rompimento or '', periodo or '3d',
+            )
+        except agent_zabbix.ZabbixIndisponivel as exc:
+            return f"❌ Zabbix de {nome}: {exc}"
+        except Exception as exc:
+            logger.warning('zabbix_comparar_sinal falhou: %s', exc)
+            return f"❌ Erro ao comparar o sinal no Zabbix de {nome}: {exc}"
+
+        await self._registrar_log(
+            'system', f"zabbix_comparar_sinal buscas={buscas!r} itemids={itemids!r} → {len(texto)} chars"
+        )
+        return _noc_truncar(texto, 6000)
+
     async def _dispatch_tool(self, tool_name: str, tool_input: dict) -> str:
         if tool_name == 'execute_command':
             return await self._tool_execute_command(
@@ -2519,6 +2624,21 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
                 tool_input.get('marcador', ''),
                 tool_input.get('titulo', ''),
                 graf,
+                tool_input.get('cliente_nome', ''),
+            )
+        elif tool_name == 'zabbix_comparar_sinal':
+            ids_raw = tool_input.get('itemids') or []
+            if isinstance(ids_raw, str):
+                ids_raw = [i.strip() for i in ids_raw.replace(';', ',').split(',') if i.strip()]
+            buscas = tool_input.get('buscas') or []
+            if isinstance(buscas, dict):
+                buscas = [buscas]
+            if not buscas and tool_input.get('host'):
+                buscas = [{'host': tool_input.get('host'), 'item': tool_input.get('item', '')}]
+            return await self._tool_zabbix_comparar_sinal(
+                ids_raw, buscas,
+                tool_input.get('rompimento', ''),
+                tool_input.get('periodo', '3d'),
                 tool_input.get('cliente_nome', ''),
             )
         elif tool_name == 'fetch_host_config':
