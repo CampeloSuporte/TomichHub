@@ -423,6 +423,7 @@ _QUEDA_RELATIVA  = 10.0    # ou 10 dB abaixo da referência da janela (enlaces d
 _JANELA_ANTES    = 6 * 3600   # patamar "antes": leituras das 6h anteriores à queda…
 _IGNORAR_ANTES   = 1800       # …menos os 30 min finais (a fibra costuma degradar antes de romper)
 _N_DEPOIS        = 12         # patamar "depois": ~1h de leituras mais recentes (coleta de 5 min)
+_MIN_LEITURAS_QUEDA = 2     # queda de 1 leitura só é soluço do DDM
 _UNIR_QUEDAS     = 1800    # quedas a menos de 30 min uma da outra = um evento (emenda/flap)
 _OSCILACAO_DB    = 0.6     # até isso é oscilação da leitura (DDM Huawei anda em degraus de ~0,5 dB)
 _PERDA_RELEVANTE = 1.0     # perda acima disso após o reparo merece verificar a fusão
@@ -495,11 +496,17 @@ def _quedas(pontos: list, corte: float) -> list:
     for t, v in pontos:
         if v <= corte:
             if atual is None:
-                atual = {'ini': t, 'retorno': None}
+                atual = {'ini': t, 'retorno': None, 'n': 0}
                 trechos.append(atual)
+            atual['n'] += 1
         elif atual is not None:
             atual['retorno'] = t
             atual = None
+
+    # Uma leitura isolada em -40 no meio de leituras boas é soluço do DDM, não
+    # rompimento (visto em Guarantã: 1 coleta em -40 às 13:42, o rompimento
+    # real foi 13:00→13:25). Exceção: a última leitura — o link pode estar caindo agora.
+    trechos = [tr for tr in trechos if tr['n'] >= _MIN_LEITURAS_QUEDA or tr['retorno'] is None]
 
     unidos = []
     for tr in trechos:
@@ -575,32 +582,70 @@ _HOST_GENERICO = {'sw', 'switch', 'hu', 'huawei', 'dt', 'datacom', 'mk', 'mikrot
                   'juniper', 'olt', 'rb', 'ccr', 'router', 'roteador', 'bng', 'bras', 'reg', 'pop'}
 
 
-def _variantes_host(host: str) -> list[str]:
-    """O nome como veio e, se não casar, cada palavra que identifica o site."""
+def _hosts_do_pedido(cfg, host: str) -> list:
+    """
+    Hosts do Zabbix para o nome que o modelo mandou. Tenta o nome como veio
+    (e com hífens no lugar de espaços); depois os hosts que contêm TODAS as
+    palavras que identificam o site; só então uma palavra sozinha.
+    """
+    for h in dict.fromkeys([host, re.sub(r'\s+', '-', host.strip())]):
+        achados = services.buscar_hosts(cfg, h, limit=10)
+        if achados:
+            return achados
     palavras = [w for w in re.split(r'[\s\-_.·/]+', host.lower())
                 if len(w) >= 3 and w not in _HOST_GENERICO]
-    return list(dict.fromkeys([host] + palavras))
+    por_palavra = {w: services.buscar_hosts(cfg, w, limit=50) for w in palavras}
+    for achados in por_palavra.values():
+        todos = [x for x in achados if all(w in x['name'].lower() for w in palavras)]
+        if todos:
+            return todos
+    for achados in por_palavra.values():
+        if achados:
+            return achados[:10]
+    return []
 
 
-def itens_de_sinal(cfg, host: str, item: str = '') -> list[str]:
-    """itemids de potência óptica (dBm) de um host — RX por padrão, TX só se pedido."""
-    termos = item or 'Recebida'
-    itens = []
-    for h in _variantes_host(host):
-        itens = [i for i in services.buscar_itens(cfg, h, termos, limit=200)
-                 if (i.get('units') or '').strip().lower() == 'dbm']
-        if itens:
-            break
+# Palavras do pedido que não ajudam a achar a porta ("sinal da porta nova santa")
+_ITEM_GENERICO = {'rx', 'tx', 'sinal', 'porta', 'interface', 'potencia', 'potência', 'link',
+                  'enlace', 'de', 'do', 'da', 'para', 'com'}
+
+
+def _itens_dbm(cfg, host: str) -> list:
+    """Todos os itens em dBm do host — filtro pela unidade, não pelo texto do nome."""
+    auth = services._get_auth_token(cfg)
+    hosts = _hosts_do_pedido(cfg, host)
+    if hosts:
+        itens = services._rpc(cfg.url, 'item.get', {
+            'hostids': [x['hostid'] for x in hosts],
+            'output':  ['itemid', 'name', 'key_', 'lastvalue'],
+            'filter':  {'status': '0', 'units': ['dBm', 'dbm', 'DBm', 'DBM']},
+            'limit':   2000,
+        }, auth, config=cfg)
+        return [i for i in itens if not i.get('name', '').lower().startswith('limite')]
+    return []
+
+
+def itens_de_sinal(cfg, host: str, item: str = '') -> tuple:
+    """
+    (itemids, portas_do_host) de potência óptica de um host — RX por padrão, TX
+    só se pedido. A porta casa por palavras da descrição; se nem todas casam
+    ("nova santa helena" × "P2P-SW-NOVA-SANTA"), as do fim vão sendo largadas.
+    """
     quer_tx = bool(re.search(r'\btx\b|transmit', item or '', re.I))
-    escolhidos = []
-    for i in itens:
-        nome = i.get('name', '')
-        if (i.get('units') or '').strip().lower() != 'dbm' or nome.lower().startswith('limite'):
-            continue
-        eh_rx = bool(re.search(r'recebida|\brx\b|rxpower', nome + ' ' + i.get('key_', ''), re.I))
-        if eh_rx != quer_tx:
-            escolhidos.append((nome, i['itemid']))
-    return [iid for _, iid in sorted(escolhidos)]
+    lado = [i for i in _itens_dbm(cfg, host)
+            if bool(re.search(r'recebida|\brx|rxpower', i['name'] + ' ' + i.get('key_', ''), re.I))
+            != quer_tx]
+    portas = sorted({_RE_RAMO.sub('', i['name']).split('Interface')[-1].strip(' -') for i in lado})
+
+    termos = [t for t in re.split(r'[\s\-_]+', (item or '').lower())
+              if len(t) >= 2 and t not in _ITEM_GENERICO]
+    escolhidos = lado if not termos else []
+    for n in range(len(termos), 0, -1):
+        escolhidos = [i for i in lado
+                      if all(t in (i['name'] + ' ' + i.get('key_', '')).lower() for t in termos[:n])]
+        if escolhidos:
+            break
+    return [i['itemid'] for i in sorted(escolhidos, key=lambda i: i['name'])], portas
 
 
 def comparar_sinal(cliente_id, itemids: list | None = None, buscas: list | None = None,
@@ -623,11 +668,18 @@ def comparar_sinal(cliente_id, itemids: list | None = None, buscas: list | None 
         h, it = (b.get('host') or '').strip(), (b.get('item') or '').strip()
         if not h:
             continue
-        achados = itens_de_sinal(cfg, h, it)
-        if not achados:
+        achados, portas = itens_de_sinal(cfg, h, it)
+        if not achados and portas:
+            avisos.append(
+                f"⚠️ host '{h}' TEM sinal óptico monitorado, mas nenhuma porta casou com '{it}'. "
+                "Portas com RX nesse host: " + '; '.join(portas[:30])
+                + ". Chame zabbix_comparar_sinal de novo com o item = descrição da porta certa "
+                  "antes de responder."
+            )
+        elif not achados:
             avisos.append(
                 f"⚠️ nenhum item de sinal (dBm) achado com host '{h}'" + (f" e item '{it}'" if it else '')
-                + " — isso NÃO quer dizer que não é monitorado: confira o nome do host/porta com "
+                + " — isso NÃO quer dizer que não é monitorado: confira o nome do host com "
                   "zabbix_buscar_item e chame de novo com o nome certo antes de responder."
             )
         ids.extend(achados)

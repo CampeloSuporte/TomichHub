@@ -15,6 +15,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   em dB), com um resumo — no mesmo padrão do relatório manual do NOC. Funciona com as duas pontas
   do enlace numa chamada só. Detalhes em `docs/agent_noc.md`.
 
+### Corrigido
+
+- **Comparar sinal achava "sem DDM" em switch que tem DDM** (Guarantã ↔ Nova Santa Helena,
+  SWITCH-HUAWEI-JURUENA). A busca exigia todas as palavras do pedido na descrição da porta
+  ("nova santa helena" × `P2P-SW-NOVA-SANTA`) e o nome exato do host (`sw-hu-juruena`). Agora pega
+  os itens em dBm do host pela unidade, larga as palavras do fim até casar e, se não achar, devolve
+  as portas com RX para o agent tentar de novo.
+- **Uma leitura isolada em -40 dBm não conta mais como rompimento**: o lado com só um soluço herda
+  o horário do outro lado do enlace, em vez de mostrar um "rompimento" de 5 min em outra hora.
+
 ## [Não publicado] — 2026-10-19 (PDF do padrão de communities BGP)
 
 ### Adicionado

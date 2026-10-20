@@ -476,10 +476,16 @@ Ramo 1: -0.51 dB ↓ diminuiu
 Resumo: 2 diminuíram, 2 iguais. ✅ Variação até 0.51 dB, dentro da oscilação normal da leitura
 ```
 
-- **Host tolerante**: o modelo costuma abreviar (`sw-hu-juruena` para `SWITCH-HUAWEI-JURUENA`).
-  Se o nome não casa, `_variantes_host()` tenta cada palavra que identifica o site (ignorando
-  sw/hu/dt/switch/huawei/datacom/reg…). Busca vazia volta com aviso de "confira o nome e chame de
-  novo", porque no teste real o Claude concluiu, errado, que a ponta "não tinha DDM".
+- **Host tolerante**: o modelo abrevia ou separa por espaço (`sw-hu-juruena`, `nova santa helena`
+  para `SWITCH-HUAWEI-JURUENA`, `SWITCH-DATACOM-DD-NOVA-SANTA-HELENA`). `_hosts_do_pedido()` tenta
+  o nome como veio (e com hífens). Depois tenta os hosts que contêm **todas** as palavras do site
+  (ignorando sw/hu/dt/switch/huawei/datacom/reg…) e, só por último, uma palavra sozinha.
+- **Porta tolerante**: `itens_de_sinal()` pega todos os itens do host com **unidade dBm** direto
+  pela API (`filter units`, sem depender do nome) e casa a porta pelas palavras do pedido. Se nem
+  todas casam, larga as do fim: "nova santa helena" casa `P2P-SW-NOVA-SANTA`. Foi o caso real de
+  Guarantã: o agent disse que o switch "não tinha DDM", mas a busca exigia "helena" na descrição.
+- **Porta não achada**: o aviso lista as portas com RX que o host tem e pede para chamar de novo.
+  Busca vazia nunca vira "não é monitorado".
 - **Formato**: o retorno abre com uma instrução para o modelo repassar os blocos como vieram
   (sem tabela/markdown). No 1º teste o Claude tinha convertido tudo em tabela.
 - **Entrada**: `buscas=[{host, item}]`, uma por lado do enlace (`item` = descrição da porta);
@@ -491,6 +497,9 @@ Resumo: 2 diminuíram, 2 iguais. ✅ Variação até 0.51 dB, dentro da oscilaç
   casa com `rompimento` quando o operador informa a hora. Os ramos da mesma porta são unidos;
   porta sem queda própria herda o horário do outro lado; sem queda nenhuma, um buraco de coleta
   conta como queda.
+- **Leitura isolada não é queda**: um trecho sem luz precisa de ≥ 2 coletas seguidas
+  (`_MIN_LEITURAS_QUEDA`), a não ser que seja a leitura atual. Em Guarantã houve 1 coleta em -40
+  às 13:42, e o rompimento real foi 13:00→13:25 (visto em Nova Santa Helena).
 - **ANTES** = leitura **mais frequente** nas 6h anteriores à queda, **sem os 30 min finais** —
   na Sartor a fibra já oscilava 0,5 dB na última hora antes de romper, e o NOC usa o patamar
   estável. **DEPOIS** = leitura mais frequente da última hora (~12 coletas). O DDM é
