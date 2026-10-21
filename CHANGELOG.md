@@ -16,7 +16,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   nos acessos do cliente. A digitação com Tab (`pa\ti i\tSENHA`) é coberta lendo o eco do
   equipamento.
 - **Registros antigos limpos** com `python manage.py mascarar_senhas_auditoria`. Em 20/10/2026
-  foram 510 comandos e 1526 transcripts.
+  foram 510 comandos e 1529 transcripts.
 
 Detalhes em `docs/AUDITORIA_ACESSOS.md`. Testes: `clientes/tests_auditoria_mascara.py`.
 
