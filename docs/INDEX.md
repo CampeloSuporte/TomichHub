@@ -2,6 +2,16 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 63 — 21/10/2026: L2VPN como transporte de empresa
+
+- ✅ Coluna **Empresa** na sub-aba L2VPN: "Marcar transporte" associa o serviço a uma empresa (existente ou nova)
+- ✅ Sub-aba **Empresas** em Documentação de Rede: todas as L2VPN da empresa com switch, VLAN, MTU, peer resolvido e interfaces
+- ✅ Modelos `L2vpnEmpresa` / `L2vpnTransporte` (migração `clientes/0122`), vínculo por `acesso + chave` do serviço
+
+| Documento | O que cobre |
+|---|---|
+| **[topologia_l2vpn.md](topologia_l2vpn.md)** | Seção "Empresas atendidas por transporte L2VPN": uso, chave do vínculo, endpoints e permissão |
+
 ### Sessão 62 — 09/10/2026: Diálogos no padrão da plataforma
 
 - ✅ Todos os `confirm()`/`alert()` nativos trocados por `uiConfirm`/`uiAlert`

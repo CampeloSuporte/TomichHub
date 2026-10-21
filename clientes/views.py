@@ -14,6 +14,7 @@ from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
 from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate, ComentarioAcesso, OpenVPNConfig
 from .models import AcaoL2vpn
+from .models import L2vpnEmpresa, L2vpnTransporte
 from .models import AcaoOltPon
 from .models import ProxyServer
 from .models import AcessoSessao, AcessoComando, TerminalLinkExterno, AcessoProtocolo
@@ -7839,6 +7840,12 @@ def _l2vpn_mapa_identidade(acessos):
     return mapa
 
 
+def _l2vpn_chave(servico):
+    """Identidade estável de um serviço dentro do switch — é por ela que o
+    `L2vpnTransporte` acha o serviço de novo no próximo backup."""
+    return f"{servico.get('tecnologia') or servico.get('tipo')}|{servico.get('id') or ''}|{servico.get('nome') or ''}"[:300]
+
+
 @login_required(login_url='login')
 @require_http_methods(['GET'])
 @modulo_habilitado_required('acessos')
@@ -7865,12 +7872,20 @@ def l2vpn_backup_acesso(request, acesso_id):
     irmaos = list(Acesso.objects.filter(cliente=acesso.cliente).exclude(id=acesso.id))
     mapa = _l2vpn_mapa_identidade(irmaos)
 
+    # Serviços já marcados como transporte de alguma empresa (sub-aba L2VPN).
+    transportes = {
+        t.chave: {'id': t.id, 'empresa_id': t.empresa_id, 'empresa_nome': t.empresa.nome}
+        for t in L2vpnTransporte.objects.filter(acesso=acesso).select_related('empresa')
+    }
+
     # Anota cada peer com o host do outro lado (quando identificado). Copia o
     # serviço para não gravar o resultado da resolução no valor cacheado.
     anotados = []
     for servico in servicos:
         servico = dict(servico)
         servico['peers'] = [dict(peer, destino=mapa.get(peer['ip'])) for peer in servico['peers']]
+        servico['chave'] = _l2vpn_chave(servico)
+        servico['transporte'] = transportes.get(servico['chave'])
         anotados.append(servico)
 
     identidade_local = _l2vpn_ips_identidade(acesso)
@@ -8081,6 +8096,10 @@ def l2vpn_switches_cliente(request, cliente_id):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     acessos = Acesso.objects.filter(cliente=cliente).select_related('funcao')
+    transportes_por_acesso = dict(
+        L2vpnTransporte.objects.filter(acesso__cliente=cliente)
+        .values_list('acesso_id').annotate(n=Count('id'))
+    )
     switches = []
     for acesso in acessos:
         if not _acesso_eh_switch(acesso):
@@ -8096,9 +8115,186 @@ def l2vpn_switches_cliente(request, cliente_id):
                 if log else None
             ),
             'resumo': resumo_por_tipo(servicos),
+            'transportes': transportes_por_acesso.get(acesso.id, 0),
         })
     switches.sort(key=lambda s: s['resumo']['total'], reverse=True)
     return JsonResponse({'switches': switches, 'total': len(switches)})
+
+
+# ─── Empresas atendidas por transporte L2VPN ─────────────────────────────────
+# O operador marca, na sub-aba L2VPN, quais serviços são transporte de uma
+# empresa (cliente final do provedor); a sub-aba "Empresas" junta tudo que
+# está marcado pra cada uma, com os peers resolvidos a partir do backup atual.
+
+def _l2vpn_empresa_dict(empresa, total=None):
+    return {
+        'id': empresa.id,
+        'nome': empresa.nome,
+        'documento': empresa.documento,
+        'contato': empresa.contato,
+        'observacao': empresa.observacao,
+        'transportes': total if total is not None else empresa.transportes.count(),
+    }
+
+
+def _l2vpn_body(request):
+    try:
+        return json.loads(request.body or b'{}')
+    except ValueError:
+        return {}
+
+
+@login_required(login_url='login')
+@require_http_methods(['GET'])
+@modulo_habilitado_required('acessos')
+def l2vpn_empresas_cliente(request, cliente_id):
+    """Empresas do cliente com a contagem de transportes L2VPN de cada uma."""
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    empresas = L2vpnEmpresa.objects.filter(cliente=cliente).annotate(n=Count('transportes'))
+    return JsonResponse({'empresas': [_l2vpn_empresa_dict(e, e.n) for e in empresas]})
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+@modulo_habilitado_required('acessos')
+def l2vpn_empresa_salvar(request, cliente_id):
+    """Cria (sem `id`) ou edita uma empresa. Só a equipe — o portal do
+    cliente final só consulta."""
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente) or not _perms.is_backoffice(request.user):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    body = _l2vpn_body(request)
+    nome = (body.get('nome') or '').strip()[:150]
+    if not nome:
+        return JsonResponse({'error': 'Informe o nome da empresa.'}, status=400)
+    if body.get('id'):
+        empresa = get_object_or_404(L2vpnEmpresa, id=body['id'], cliente=cliente)
+    else:
+        empresa = L2vpnEmpresa(cliente=cliente)
+    duplicada = L2vpnEmpresa.objects.filter(cliente=cliente, nome__iexact=nome).exclude(id=empresa.id).exists()
+    if duplicada:
+        return JsonResponse({'error': f'Já existe uma empresa "{nome}" neste cliente.'}, status=400)
+    empresa.nome = nome
+    empresa.documento = (body.get('documento') or '').strip()[:30]
+    empresa.contato = (body.get('contato') or '').strip()[:150]
+    empresa.observacao = (body.get('observacao') or '').strip()
+    empresa.save()
+    return JsonResponse({'ok': True, 'empresa': _l2vpn_empresa_dict(empresa)})
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+@modulo_habilitado_required('acessos')
+def l2vpn_empresa_deletar(request, empresa_id):
+    """Apaga a empresa e os vínculos dela — os serviços no equipamento não
+    são tocados (o vínculo é só documentação)."""
+    empresa = get_object_or_404(L2vpnEmpresa.objects.select_related('cliente'), id=empresa_id)
+    if not _perms.pode_acessar_cliente(request.user, empresa.cliente) or not _perms.is_backoffice(request.user):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    empresa.delete()
+    return JsonResponse({'ok': True})
+
+
+@login_required(login_url='login')
+@require_http_methods(['GET'])
+@modulo_habilitado_required('acessos')
+def l2vpn_empresa_detalhe(request, empresa_id):
+    """Todos os transportes L2VPN da empresa, cada um cruzado com o backup
+    atual do switch: peers (já resolvidos pro host do outro lado), VLAN, MTU
+    e interfaces. Serviço que sumiu do backup volta com `encontrado=False` e
+    os dados do retrato tirado na marcação."""
+    empresa = get_object_or_404(L2vpnEmpresa.objects.select_related('cliente'), id=empresa_id)
+    if not _perms.pode_acessar_cliente(request.user, empresa.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    transportes = list(empresa.transportes.select_related('acesso').order_by('acesso__tipo', 'tecnologia', 'servico_id'))
+    mapa = _l2vpn_mapa_identidade(list(Acesso.objects.filter(cliente=empresa.cliente))) if transportes else {}
+    servicos_por_acesso = {}
+    itens = []
+    for t in transportes:
+        if t.acesso_id not in servicos_por_acesso:
+            servicos, log = _l2vpn_servicos_do_acesso(t.acesso)
+            servicos_por_acesso[t.acesso_id] = ({_l2vpn_chave(s): s for s in servicos}, log)
+        por_chave, log = servicos_por_acesso[t.acesso_id]
+        servico = por_chave.get(t.chave)
+        item = {
+            'id': t.id,
+            'acesso': {'id': t.acesso_id, 'nome': t.acesso.tipo, 'host': t.acesso.host},
+            'tipo': t.tipo,
+            'tecnologia': t.tecnologia,
+            'servico_id': t.servico_id,
+            'nome': t.servico_nome,
+            'vlan': t.vlan,
+            'observacao': t.observacao,
+            'encontrado': servico is not None,
+            'data_backup': (
+                log.data_backup.astimezone(timezone.get_current_timezone()).strftime('%d/%m/%Y %H:%M')
+                if log else None
+            ),
+            'mtu': '', 'peers': [], 'interfaces': [],
+        }
+        if servico is not None:
+            item.update({
+                'vlan': servico.get('vlan') or t.vlan,
+                'mtu': servico.get('mtu') or '',
+                'peers': [dict(p, destino=mapa.get(p['ip'])) for p in servico.get('peers') or []],
+                'interfaces': servico.get('interfaces') or [],
+            })
+        itens.append(item)
+
+    return JsonResponse({'empresa': _l2vpn_empresa_dict(empresa, len(itens)), 'transportes': itens})
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+@modulo_habilitado_required('acessos')
+def l2vpn_transporte_marcar(request, acesso_id):
+    """Marca (ou desmarca, com `empresa_id` vazio) um serviço L2VPN do switch
+    como transporte de uma empresa. `empresa_nome` sem `empresa_id` cria a
+    empresa na hora — o operador não precisa sair da lista de serviços."""
+    acesso = get_object_or_404(Acesso.objects.select_related('cliente'), id=acesso_id)
+    if not _perms.pode_acessar_acesso(request.user, acesso) or not _perms.is_backoffice(request.user):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    body = _l2vpn_body(request)
+    chave = (body.get('chave') or '')[:300]
+    servicos, _log = _l2vpn_servicos_do_acesso(acesso)
+    servico = next((s for s in servicos if _l2vpn_chave(s) == chave), None)
+
+    empresa_id = body.get('empresa_id')
+    empresa_nome = (body.get('empresa_nome') or '').strip()[:150]
+    if not empresa_id and not empresa_nome:
+        L2vpnTransporte.objects.filter(acesso=acesso, chave=chave).delete()
+        return JsonResponse({'ok': True, 'transporte': None})
+
+    if servico is None:
+        return JsonResponse({'error': 'Serviço não encontrado no backup atual deste switch.'}, status=404)
+
+    if empresa_id:
+        empresa = get_object_or_404(L2vpnEmpresa, id=empresa_id, cliente=acesso.cliente)
+    else:
+        empresa = L2vpnEmpresa.objects.filter(cliente=acesso.cliente, nome__iexact=empresa_nome).first()
+        if empresa is None:
+            empresa = L2vpnEmpresa.objects.create(cliente=acesso.cliente, nome=empresa_nome)
+
+    transporte, _criado = L2vpnTransporte.objects.update_or_create(
+        acesso=acesso, chave=chave,
+        defaults={
+            'empresa': empresa,
+            'tipo': servico.get('tipo') or '',
+            'tecnologia': (servico.get('tecnologia') or '')[:30],
+            'servico_id': (servico.get('id') or '')[:64],
+            'servico_nome': (servico.get('nome') or '')[:200],
+            'vlan': (servico.get('vlan') or '')[:60],
+            'observacao': (body.get('observacao') or '').strip()[:255],
+            'criado_por': request.user,
+        },
+    )
+    return JsonResponse({'ok': True, 'transporte': {
+        'id': transporte.id, 'empresa_id': empresa.id, 'empresa_nome': empresa.nome,
+    }})
 
 
 _VLANS_CACHE_VERSAO = 1  # sobe junto com qualquer mudança em extrair_vlans
