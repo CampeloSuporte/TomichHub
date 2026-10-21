@@ -9572,8 +9572,8 @@ def trocar_senha_massa(request):
         except ClienteModel.DoesNotExist:
             pass
 
-    chars = string.ascii_letters + string.digits + '!@#$%&*'
-    senha_sugerida = ''.join(secrets.choice(chars) for _ in range(16))
+    from .tasks import _gerar_senha_aleatoria
+    senha_sugerida = _gerar_senha_aleatoria(16)
 
     return render(request, 'troca_senha_massa.html', {
         'clientes':           clientes,

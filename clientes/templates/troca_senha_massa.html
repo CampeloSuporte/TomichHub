@@ -901,11 +901,18 @@ function selecionarClienteDash(clienteId) {
 }
 
 // ─── Gerar/copiar senha ───────────────────────────────────────────────────────
+// Só letras e números (mesma regra do _gerarSenha de modal_acessos.html):
+// símbolo quebra digitação no CLI do equipamento. Sorteia de novo até ter
+// maiúscula, minúscula e número.
 function _gerarSenhaMassa() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*';
-    const arr = new Uint8Array(16);
-    crypto.getRandomValues(arr);
-    document.getElementById('nova_senha').value = Array.from(arr).map(b => chars[b % chars.length]).join('');
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let senha;
+    do {
+        const arr = new Uint32Array(16);
+        crypto.getRandomValues(arr);
+        senha = Array.from(arr, v => chars[v % chars.length]).join('');
+    } while (!(/[a-z]/.test(senha) && /[A-Z]/.test(senha) && /[0-9]/.test(senha)));
+    document.getElementById('nova_senha').value = senha;
 }
 
 function _copiarSenha() {

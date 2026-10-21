@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-21 (Gerador de senha sem símbolos)
+
+### Alterado
+
+- **O gerador de senha não usa mais símbolos.** O 🎲 dos modais de acesso, o gerador da Troca de
+  Senha em Massa e a senha sugerida pelo backend geram 16 caracteres só com letras e números,
+  sempre com maiúscula, minúscula e número. Senha com `$`, `&`, `*` dava problema para digitar no
+  CLI do equipamento. Detalhes em `docs/frontend_acessos.md`.
+
+---
+
 ## [Não publicado] — 2026-10-20 (Auditoria de terminal: senhas mascaradas)
 
 ### Segurança
