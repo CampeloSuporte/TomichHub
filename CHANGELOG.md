@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-21 (Sinal antes × depois em quedas longas)
+
+### Corrigido
+
+- **Agent NOC: comparação de sinal em rompimento de vários dias.** A `zabbix_comparar_sinal`
+  olhava só 3 dias para trás. Numa queda mais longa, a janela já começava sem luz, o ANTES saía
+  "sem leitura" e o relatório dizia "histórico expirado", mesmo com o Zabbix guardando o
+  histórico. Agora a janela recua sozinha (até 90 dias) até achar o sinal de antes da queda.
+  O trecho que o history não alcança é completado com as médias horárias (trends). No caso
+  COTRIGUAÇU ↔ JAPURANA, o horário da queda também saiu corrigido: era 14/10 19:21, e não
+  18/10 10:36, que era só o começo da janela.
+
+---
+
 ## [Não publicado] — 2026-10-21 (Aba Transportes)
 
 ### Adicionado

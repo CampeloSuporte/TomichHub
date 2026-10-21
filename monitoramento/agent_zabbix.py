@@ -459,13 +459,19 @@ def _serie_bruta(cfg, itemid, ts_from: int, ts_till: int) -> dict:
     }, auth, config=cfg)
     pontos = [(int(p['clock']), float(p['value'])) for p in reversed(bruto)]
     fonte  = 'history'
-    if not pontos:
+    # History não alcança o começo da janela (retenção menor que a janela, ou o
+    # limite cortou): o trecho anterior vem das médias horárias (trends).
+    ate = pontos[0][0] if pontos else int(ts_till)
+    if ate - int(ts_from) > 2 * 3600:
         bruto = services._rpc(cfg.url, 'trend.get', {
             'itemids': [str(itemid)],
-            'time_from': int(ts_from), 'time_till': int(ts_till), 'limit': 20000,
+            'time_from': int(ts_from), 'time_till': ate - 1, 'limit': 20000,
         }, auth, config=cfg)
-        pontos = sorted((int(p['clock']), float(p['value_avg'])) for p in bruto)
-        fonte  = 'trends'
+        medias = sorted((int(p['clock']), float(p['value_avg'])) for p in bruto
+                        if int(p['clock']) < ate - 3600)
+        if medias:
+            pontos = medias + pontos
+            fonte  = 'history+trends' if len(pontos) > len(medias) else 'trends'
 
     hosts = meta.get('hosts') or []
     return {
@@ -648,6 +654,29 @@ def itens_de_sinal(cfg, host: str, item: str = '') -> tuple:
     return [i['itemid'] for i in sorted(escolhidos, key=lambda i: i['name'])], portas
 
 
+_RECUO_MAX = 90 * 86400   # até onde a janela recua atrás do patamar de antes da queda
+
+
+def _serie_com_antes(cfg, itemid, ts_from: int, agora: int) -> dict:
+    """
+    Série do item com o patamar de antes da queda dentro da janela. Rompimento
+    longo (dias) faz a janela começar já sem luz e não sobra leitura "antes":
+    aí a janela recua (dobrando, até _RECUO_MAX) até a 1ª queda ter as 6h
+    anteriores cobertas — o Zabbix guarda history por dias e trends por meses.
+    """
+    while True:
+        s = _serie_bruta(cfg, itemid, ts_from, agora)
+        s['corte'] = _corte_sem_luz(s['pontos'])
+        s['quedas'] = _quedas(s['pontos'], s['corte'])
+        pts = s['pontos']
+        if not pts or ts_from <= agora - _RECUO_MAX:
+            return s
+        coberto = pts[0][0] + _JANELA_ANTES
+        if pts[0][1] > s['corte'] and (not s['quedas'] or s['quedas'][0]['ini'] >= coberto):
+            return s
+        ts_from = max(agora - _RECUO_MAX, ts_from - max(agora - ts_from, 86400))
+
+
 def comparar_sinal(cliente_id, itemids: list | None = None, buscas: list | None = None,
                    rompimento: str = '', periodo: str = '3d') -> str:
     """
@@ -699,15 +728,13 @@ def comparar_sinal(cliente_id, itemids: list | None = None, buscas: list | None 
     series = []
     for iid in ids:
         try:
-            s = _serie_bruta(cfg, iid, ts_from, agora)
+            s = _serie_com_antes(cfg, iid, ts_from, agora)
         except Exception as exc:
             avisos.append(f"❌ item {iid}: {exc}")
             continue
         if not s['pontos']:
             avisos.append(f"⚠️ {s['hostname']} — {s['name']}: sem coletas na janela")
             continue
-        s['corte'] = _corte_sem_luz(s['pontos'])
-        s['quedas'] = _quedas(s['pontos'], s['corte'])
         s['host'], s['iface'], s['ramo'] = _rotulos(s)
         series.append(s)
     if not series:
@@ -811,7 +838,7 @@ def comparar_sinal(cliente_id, itemids: list | None = None, buscas: list | None 
         if ainda_fora:
             resumo = "⛔ Ainda sem sinal — refaça a comparação depois da normalização."
         elif not deltas:
-            resumo = "Sem leituras antes do rompimento para comparar (histórico expirado?)."
+            resumo = "Sem leituras antes do rompimento para comparar (o Zabbix não tem coleta anterior à queda)."
         else:
             sub = sum(1 for d, _ in deltas if d >= 0.01)
             caiu = sum(1 for d, _ in deltas if d <= -0.01)
@@ -844,7 +871,8 @@ def comparar_sinal(cliente_id, itemids: list | None = None, buscas: list | None 
     fonte = {s['fonte'] for s in series}
     rodape = ("\n\n(ANTES = leitura mais frequente nas 6h anteriores à queda, sem os 30 min finais; "
               "DEPOIS = leitura mais frequente na última hora"
-              + ('; fonte: médias horárias (trends) — history expirado' if 'trends' in fonte else '')
+              + ('; parte das leituras são médias horárias (trends) — history expirado'
+                 if any('trends' in f for f in fonte) else '')
               + ')')
     instrucao = (
         "[INSTRUÇÃO DO CRM — não repasse esta linha] Responda ao operador com os blocos abaixo "

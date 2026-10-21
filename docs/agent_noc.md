@@ -491,7 +491,7 @@ Resumo: 2 diminuíram, 2 iguais. ✅ Variação até 0.51 dB, dentro da oscilaç
 - **Entrada**: `buscas=[{host, item}]`, uma por lado do enlace (`item` = descrição da porta);
   `itens_de_sinal()` pega os itens em **dBm** de RX da porta (TX só se `item` pedir `tx`),
   ignorando os "Limite Superior/Inferior". Ou `itemids` direto (máx 16).
-- **Rompimento detectado sozinho** (`periodo` padrão `3d`, até `30d`): leitura ≤ -38 dBm (o
+- **Rompimento detectado sozinho** (`periodo` padrão `3d`, até `30d`, recuando sozinho se preciso): leitura ≤ -38 dBm (o
   DDM sem luz reporta -40) ou 10 dB abaixo do p75 da janela conta como sem luz; trechos a menos
   de 30 min um do outro viram um evento (a emenda pisca). Vale a **última** queda, ou a que
   casa com `rompimento` quando o operador informa a hora. Os ramos da mesma porta são unidos;
@@ -506,8 +506,16 @@ Resumo: 2 diminuíram, 2 iguais. ✅ Variação até 0.51 dB, dentro da oscilaç
   quantizado (Huawei anda em degraus de ~0,51 dB), por isso moda e não média; empate → a pior.
 - **Resumo**: até 0,6 dB = oscilação normal; perda > 1 dB em algum ramo → aviso para verificar
   fusões; link ainda em -40 → "ainda sem sinal".
-- Usa `_serie_bruta()` (history cru, `DESC`+reverse para o limite não cortar o "agora"; cai em
-  trends se expirou) — `historico_janela()` reamostra e não serve para pegar a leitura exata.
+- Usa `_serie_bruta()` (history cru, `DESC`+reverse para o limite não cortar o "agora") —
+  `historico_janela()` reamostra e não serve para pegar a leitura exata. O trecho da janela que o
+  history não alcança (retenção menor, ou o limite cortou) vem de **trends** e é emendado antes
+  (`fonte='history+trends'`; o rodapé avisa).
+- **Queda longa recua a janela** (`_serie_com_antes()`): se a série começa já sem luz, ou a 1ª
+  queda não tem as 6h anteriores cobertas, a janela dobra para trás (até `_RECUO_MAX` = 90 dias)
+  e busca de novo. Caso real (Sartor, COTRIGUAÇU ↔ JAPURANA, 21/10/2026): com `periodo=3d` a
+  janela começava em 18/10 10:36 já em -40 dBm, o relatório saía "ANTES: sem leitura" e o modelo
+  concluía "histórico expirado" — mas o item tem history 10d / trends 365d. A queda real foi
+  14/10 19:21 → 21/10 10:26 (6d 15h) e o ANTES saiu do history.
 
 Validado ao vivo na Sartor (rompimento JURUENA ↔ REG.JUINA de 19/10/2026): ANTES de REG.JUINA
 idêntico ao relatório manual nos 4 ramos; DEPOIS de JURUENA idêntico; o restante difere só pelo

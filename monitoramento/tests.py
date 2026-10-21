@@ -771,6 +771,53 @@ class CompararSinalTest(TestCase):
         self.assertIn('Perda adicional de 1.42 dB no Ramo 2', txt)
         self.assertIn('(3h00 fora)', txt)
 
+    def test_queda_longa_recua_a_janela_ate_o_sinal_de_antes(self):
+        """Queda de 5 dias com período de 3d: a 1ª busca já começa sem luz."""
+        from monitoramento import agent_zabbix
+        ini_queda, fim_queda = self.AGORA - 5 * 86400, self.AGORA - 3600
+        pedidos = []
+
+        def bruta(cfg, iid, ts_from, ts_till):
+            pedidos.append(ts_from)
+            pts = [(t, -40.0 if ini_queda <= t < fim_queda else (-29.5 if t < ini_queda else -31.0))
+                   for t in range(ts_from - ts_from % 300, ts_till, 300)]
+            return {'itemid': iid, 'hostname': 'SW-A - 10.0.0.1', 'units': 'dBm', 'fonte': 'history',
+                    'name': 'Potência Recebida (RX) na Interface 100GE0/0/1 - SW-B - Ramo 1',
+                    'pontos': pts}
+
+        with mock.patch('monitoramento.agent_zabbix.resolver_config',
+                        return_value=SimpleNamespace(id='x', url='http://z')), \
+             mock.patch('monitoramento.agent_zabbix._serie_bruta', side_effect=bruta), \
+             mock.patch('monitoramento.agent_zabbix.time.time', return_value=self.AGORA):
+            txt = agent_zabbix.comparar_sinal(1, itemids=['1'])
+        self.assertGreater(len(pedidos), 1)
+        self.assertLessEqual(min(pedidos), ini_queda - agent_zabbix._JANELA_ANTES)
+        self.assertIn('SINAL DE RECEPÇÃO ANTES:\nRamo 1: -29.50', txt)
+        self.assertIn('Ramo 1: -1.50 dB ↓ diminuiu', txt)
+        self.assertIn('(4d 23h00 fora)', txt)
+
+    def test_serie_bruta_completa_com_trends_o_que_o_history_nao_alcanca(self):
+        from monitoramento import agent_zabbix
+        ini = self.AGORA - 20 * 86400
+        corte_hist = self.AGORA - 10 * 86400
+
+        def rpc(url, metodo, params, auth, config=None):
+            if metodo == 'item.get':
+                return [{'name': 'RX', 'units': 'dBm', 'value_type': '0', 'hosts': [{'name': 'SW'}]}]
+            if metodo == 'history.get':
+                return [{'clock': str(t), 'value': '-30'}
+                        for t in range(self.AGORA - 300, corte_hist, -300)]
+            self.assertLess(params['time_till'], corte_hist + 300)   # antes do 1º ponto do history
+            return [{'clock': str(t), 'value_avg': '-29'} for t in range(ini, corte_hist, 3600)]
+
+        with mock.patch('monitoramento.agent_zabbix.services._get_auth_token', return_value='t'), \
+             mock.patch('monitoramento.agent_zabbix.services._rpc', side_effect=rpc):
+            s = agent_zabbix._serie_bruta(SimpleNamespace(url='http://z'), '1', ini, self.AGORA)
+        self.assertEqual(s['fonte'], 'history+trends')
+        self.assertEqual(s['pontos'][0], (ini, -29.0))
+        self.assertEqual(s['pontos'][-1][1], -30.0)
+        self.assertEqual([p[0] for p in s['pontos']], sorted(p[0] for p in s['pontos']))
+
     def test_ainda_sem_sinal(self):
         s = self._serie('1', 1, lambda t: -30.0, lambda t: -40.0, 0, 3600)
         txt = self._rodar([s])
