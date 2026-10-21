@@ -1641,9 +1641,10 @@ class AcaoL2vpn(models.Model):
 
 
 class L2vpnEmpresa(models.Model):
-    """Empresa (cliente final do provedor) atendida por transporte L2VPN —
-    cadastro simples, por cliente do CRM, só para agrupar os serviços L2 que
-    levam o tráfego dela (sub-aba 'Empresas' em Documentação de Rede)."""
+    """Empresa ligada a transporte, cadastro simples por cliente do CRM: a
+    empresa atendida pelos serviços L2VPN marcados (`L2vpnTransporte`) e/ou a
+    operadora que faz um enlace de transporte da topologia (`TransporteEnlace`).
+    Sub-aba 'Empresas' em Documentação de Rede."""
 
     cliente    = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='l2vpn_empresas')
     nome       = models.CharField(max_length=150)
@@ -1655,8 +1656,8 @@ class L2vpnEmpresa(models.Model):
     class Meta:
         ordering = ['nome']
         unique_together = ('cliente', 'nome')
-        verbose_name = 'Empresa (transporte L2VPN)'
-        verbose_name_plural = 'Empresas (transporte L2VPN)'
+        verbose_name = 'Empresa (transporte)'
+        verbose_name_plural = 'Empresas (transporte)'
 
     def __str__(self):
         return f'{self.nome} — {self.cliente.nome_empresa}'
@@ -1690,6 +1691,32 @@ class L2vpnTransporte(models.Model):
 
     def __str__(self):
         return f'{self.tecnologia} {self.servico_id or self.servico_nome} @ {self.acesso} → {self.empresa.nome}'
+
+
+class TransporteEnlace(models.Model):
+    """Empresa que faz o transporte de um enlace marcado como transporte na
+    topologia (checkbox "Transporte" do painel do enlace). O enlace vive no
+    `dados_json` do diagrama, então o vínculo é pelo id do link — mesmo jeito
+    que o rack (`ConexaoFisica.topologia_link_id`). Desmarcar o transporte na
+    topologia só esconde o enlace da aba; o registro fica e volta se marcar
+    de novo."""
+
+    cliente           = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='transportes_enlace')
+    topologia_link_id = models.CharField(max_length=64)
+    empresa           = models.ForeignKey(L2vpnEmpresa, null=True, blank=True, on_delete=models.SET_NULL,
+                                          related_name='enlaces_transporte')
+    circuito          = models.CharField(max_length=100, blank=True, default='', verbose_name='Circuito/contrato')
+    observacao        = models.CharField(max_length=255, blank=True, default='')
+    atualizado_por    = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    atualizado_em     = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('cliente', 'topologia_link_id')
+        verbose_name = 'Enlace de transporte'
+        verbose_name_plural = 'Enlaces de transporte'
+
+    def __str__(self):
+        return f'{self.topologia_link_id} → {self.empresa.nome if self.empresa else "?"}'
 
 
 class AcaoOltPon(models.Model):

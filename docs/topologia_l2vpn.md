@@ -587,6 +587,39 @@ consulta, sem os botões. Testes em `clientes/tests_l2vpn_empresas.py`.
 
 ---
 
+## Transportes: enlaces marcados na topologia — 2026-10-21
+
+A sub-aba **Transportes** (Documentação de Rede) lista todo enlace marcado com o
+checkbox **Transporte** no painel do enlace do editor de topologia
+(`link.transporte = true` no `dados_json`). Entram os enlaces de todos os mapas do
+cliente, inclusive sub-mapas. Cada enlace aparece uma vez só (por id do link), e
+o mapa raiz vem primeiro, como no rack. A tabela mostra o rótulo e o mapa, as
+pontas A/B (host, porta `iface_a`/`iface_b`, IP `ip_local`/`ip_remote`), a
+velocidade e a VLAN.
+
+Na coluna **Empresa (transporte)** você seleciona a empresa que faz o transporte
+(a operadora), escolhendo uma já cadastrada ou criando uma nova na hora, mais
+circuito/contrato e observação. O cadastro de empresas é o mesmo da sub-aba
+**Empresas**, que passa a mostrar também "N enlaces de transporte", e o detalhe
+da empresa lista esses enlaces acima das L2VPN dela.
+
+**Onde fica.** O mapa continua sendo a fonte, e nada do link é copiado para o
+banco. `TransporteEnlace` (cliente + `topologia_link_id`) guarda só a empresa, o
+circuito e a observação. Desmarcar o transporte na topologia tira o enlace da
+aba, mas o registro fica, e a empresa volta se o enlace for marcado de novo.
+Excluir a empresa deixa o enlace "Sem empresa" (`SET_NULL`). A leitura dos mapas
+fica em `clientes/transportes.py` (`links_transporte`).
+
+| Endpoint | Método | O que faz |
+|---|---|---|
+| `/clientes/<cliente_id>/ipam/transportes/` | GET | Enlaces de transporte + empresa/circuito/obs |
+| `/clientes/<cliente_id>/ipam/transportes/salvar/` | POST | `{link_id, empresa_id \| empresa_nome, circuito, observacao}`. Vazio apaga o registro. Link que não está marcado como transporte → 404 |
+
+Permissão igual à das Empresas: a leitura segue o acesso ao cliente, e só a
+equipe edita. Testes em `TransportesTopologiaTest` (`clientes/tests_l2vpn_empresas.py`).
+
+---
+
 ## Limitações conhecidas
 
 - Serviços aparecem conforme o **último backup**: mudança feita no equipamento

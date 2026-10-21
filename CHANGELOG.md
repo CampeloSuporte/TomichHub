@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-21 (Aba Transportes)
+
+### Adicionado
+
+- **Sub-aba Transportes em Documentação de Rede.** Todo enlace marcado como **Transporte** no
+  painel do enlace da Topologia aparece ali, de todos os mapas e sem repetir os enlaces que se
+  repetem nos sub-mapas. A tabela mostra as pontas A/B com porta e IP, a velocidade e a VLAN.
+  Em cada enlace dá para selecionar a **empresa que faz o transporte** (já cadastrada ou nova),
+  mais circuito/contrato e observação. A empresa passa a mostrar também os enlaces que transporta,
+  na sub-aba Empresas. Modelo `TransporteEnlace` (migração `clientes/0123`). Detalhes em
+  `docs/topologia_l2vpn.md`.
+
+---
+
 ## [Não publicado] — 2026-10-21 (L2VPN como transporte de empresa)
 
 ### Adicionado

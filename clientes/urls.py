@@ -136,6 +136,8 @@ urlpatterns = [
     path('ipam/l2vpn/empresas/<int:empresa_id>/', views.l2vpn_empresa_detalhe, name='l2vpn_empresa_detalhe'),
     path('ipam/l2vpn/empresas/<int:empresa_id>/deletar/', views.l2vpn_empresa_deletar, name='l2vpn_empresa_deletar'),
     path('acessos/<int:acesso_id>/l2vpn-transporte/', views.l2vpn_transporte_marcar, name='l2vpn_transporte_marcar'),
+    path('<int:cliente_id>/ipam/transportes/', views.transportes_cliente, name='transportes_cliente'),
+    path('<int:cliente_id>/ipam/transportes/salvar/', views.transporte_enlace_salvar, name='transporte_enlace_salvar'),
     path('<int:cliente_id>/ipam/vlans-switch/switches/', views.vlans_switches_cliente, name='vlans_switches_cliente'),
     path('acessos/<int:acesso_id>/vlans-backup/', views.vlans_backup_acesso, name='vlans_backup_acesso'),
     # Portas PON de OLT Huawei (inventário do backup + display/laser ao vivo)
