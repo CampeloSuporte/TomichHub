@@ -14,7 +14,8 @@ from funcao_equipamento.models import Funcao_equipamento
 from django.http import JsonResponse
 from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Categoria, Chamado, ComentarioChamado, BackupLog,  BackupTemplate, ComentarioAcesso, OpenVPNConfig
 from .models import AcaoL2vpn
-from .models import L2vpnEmpresa, L2vpnTransporte
+from .models import L2vpnEmpresa, L2vpnTransporte, TransporteEnlace
+from .transportes import links_transporte
 from .models import AcaoOltPon
 from .models import ProxyServer
 from .models import AcessoSessao, AcessoComando, TerminalLinkExterno, AcessoProtocolo
@@ -8153,7 +8154,14 @@ def l2vpn_empresas_cliente(request, cliente_id):
     if not _perms.pode_acessar_cliente(request.user, cliente):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
     empresas = L2vpnEmpresa.objects.filter(cliente=cliente).annotate(n=Count('transportes'))
-    return JsonResponse({'empresas': [_l2vpn_empresa_dict(e, e.n) for e in empresas]})
+    # Enlaces só contam enquanto estão marcados como transporte na topologia.
+    enlaces = {}
+    for t in links_transporte(cliente):
+        if t['empresa_id']:
+            enlaces[t['empresa_id']] = enlaces.get(t['empresa_id'], 0) + 1
+    return JsonResponse({'empresas': [
+        dict(_l2vpn_empresa_dict(e, e.n), enlaces=enlaces.get(e.id, 0)) for e in empresas
+    ]})
 
 
 @login_required(login_url='login')
@@ -8244,7 +8252,12 @@ def l2vpn_empresa_detalhe(request, empresa_id):
             })
         itens.append(item)
 
-    return JsonResponse({'empresa': _l2vpn_empresa_dict(empresa, len(itens)), 'transportes': itens})
+    enlaces = [t for t in links_transporte(empresa.cliente) if t['empresa_id'] == empresa.id]
+    return JsonResponse({
+        'empresa': dict(_l2vpn_empresa_dict(empresa, len(itens)), enlaces=len(enlaces)),
+        'transportes': itens,
+        'enlaces': enlaces,
+    })
 
 
 @login_required(login_url='login')
@@ -8295,6 +8308,59 @@ def l2vpn_transporte_marcar(request, acesso_id):
     return JsonResponse({'ok': True, 'transporte': {
         'id': transporte.id, 'empresa_id': empresa.id, 'empresa_nome': empresa.nome,
     }})
+
+
+# ─── Enlaces de transporte (marcados na topologia) ───────────────────────────
+
+@login_required(login_url='login')
+@require_http_methods(['GET'])
+@modulo_habilitado_required('acessos')
+def transportes_cliente(request, cliente_id):
+    """Enlaces marcados como transporte na topologia, com a empresa que faz
+    cada um — base da sub-aba 'Transportes' em Documentação de Rede."""
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    return JsonResponse({'enlaces': links_transporte(cliente)})
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+@modulo_habilitado_required('acessos')
+def transporte_enlace_salvar(request, cliente_id):
+    """Define a empresa que faz o transporte de um enlace (`empresa_id`, ou
+    `empresa_nome` para criar na hora) mais circuito e observação. Sem
+    empresa, circuito e observação o registro é apagado."""
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+    if not _perms.pode_acessar_cliente(request.user, cliente) or not _perms.is_backoffice(request.user):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+    body = _l2vpn_body(request)
+    link_id = str(body.get('link_id') or '')[:64]
+    if not any(t['link_id'] == link_id for t in links_transporte(cliente)):
+        return JsonResponse({'error': 'Enlace não está marcado como transporte na topologia.'}, status=404)
+
+    empresa = None
+    empresa_nome = (body.get('empresa_nome') or '').strip()[:150]
+    if body.get('empresa_id'):
+        empresa = get_object_or_404(L2vpnEmpresa, id=body['empresa_id'], cliente=cliente)
+    elif empresa_nome:
+        empresa = L2vpnEmpresa.objects.filter(cliente=cliente, nome__iexact=empresa_nome).first()
+        if empresa is None:
+            empresa = L2vpnEmpresa.objects.create(cliente=cliente, nome=empresa_nome)
+    circuito = (body.get('circuito') or '').strip()[:100]
+    observacao = (body.get('observacao') or '').strip()[:255]
+
+    if not (empresa or circuito or observacao):
+        TransporteEnlace.objects.filter(cliente=cliente, topologia_link_id=link_id).delete()
+        return JsonResponse({'ok': True, 'empresa_id': None, 'empresa_nome': ''})
+
+    TransporteEnlace.objects.update_or_create(
+        cliente=cliente, topologia_link_id=link_id,
+        defaults={'empresa': empresa, 'circuito': circuito, 'observacao': observacao,
+                  'atualizado_por': request.user},
+    )
+    return JsonResponse({'ok': True, 'empresa_id': empresa.id if empresa else None,
+                         'empresa_nome': empresa.nome if empresa else ''})
 
 
 _VLANS_CACHE_VERSAO = 1  # sobe junto com qualquer mudança em extrair_vlans

@@ -166,3 +166,103 @@ class L2vpnEmpresasTest(TestCase):
         r = self._marcar(self.sw_a, 'VSI|300|EMPRESA-X', empresa_id=empresa.id)
         self.assertIn(r.status_code, (302, 403))
         self.assertFalse(L2vpnTransporte.objects.exists())
+
+
+class TransportesTopologiaTest(TestCase):
+    """Sub-aba Transportes: enlaces com `transporte: true` em qualquer mapa do
+    cliente + empresa que faz o transporte (`TransporteEnlace`)."""
+
+    def setUp(self):
+        from clientes.models import TopologiaDiagrama
+        self.cliente = Cliente.objects.create(
+            nome_empresa='Provedor T', cnpj='88.888.888/0001-88',
+            endereco='Rua T, 1', email='t@example.com',
+        )
+        nodes = [
+            {'id': 'crm_1', 'label': 'SW-A', 'ip': '10.0.0.1', 'acesso_id': 1},
+            {'id': 'crm_2', 'label': 'SW-B', 'ip': '10.0.0.2'},
+            {'id': 'x', 'label': 'OLT'},
+        ]
+        links = [
+            {'id': 'L1', 'src': 'crm_1', 'tgt': 'crm_2', 'label': 'TRANSPORTE VIA STARTNET',
+             'iface': '20g', 'iface_a': 'xe-0/0/1', 'iface_b': 'Vlanif2008',
+             'ip_local': '198.18.100.102/30', 'ip_remote': '198.18.100.101/30', 'transporte': True},
+            {'id': 'L2', 'src': 'crm_1', 'tgt': 'x', 'label': 'comum'},
+        ]
+        self.raiz = TopologiaDiagrama.objects.create(
+            cliente=self.cliente, nome='BACKBONE', dados_json=json.dumps({'nodes': nodes, 'links': links}))
+        # Sub-mapa repete o enlace L1 (cópia de borda) — não pode duplicar.
+        TopologiaDiagrama.objects.create(
+            cliente=self.cliente, pai=self.raiz, nome='POP',
+            dados_json=json.dumps({'nodes': nodes, 'links': links[:1]}))
+        self.admin = User.objects.create_user('admin_t', password='x', is_staff=True, is_superuser=True)
+        TOTPDevice.objects.create(usuario=self.admin, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+        self.client.force_login(self.admin)
+        self.url_lista = reverse('transportes_cliente', args=[self.cliente.id])
+        self.url_salvar = reverse('transporte_enlace_salvar', args=[self.cliente.id])
+
+    def _salvar(self, **corpo):
+        return self.client.post(self.url_salvar, data=json.dumps(corpo), content_type='application/json')
+
+    def test_lista_so_os_marcados_sem_duplicar(self):
+        enlaces = self.client.get(self.url_lista).json()['enlaces']
+        self.assertEqual([e['link_id'] for e in enlaces], ['L1'])
+        e = enlaces[0]
+        self.assertEqual(e['diagrama'], 'BACKBONE')
+        self.assertEqual((e['a']['label'], e['a']['porta'], e['a']['ip'], e['a']['acesso_id']),
+                         ('SW-A', 'xe-0/0/1', '198.18.100.102/30', 1))
+        self.assertEqual(e['b']['acesso_id'], 2)   # vem do id crm_2
+        self.assertIsNone(e['empresa_id'])
+
+    def test_selecionar_empresa_aparece_na_lista_e_na_empresa(self):
+        r = self._salvar(link_id='L1', empresa_nome='Startnet', circuito='CT-123')
+        self.assertEqual(r.status_code, 200)
+        empresa = L2vpnEmpresa.objects.get(cliente=self.cliente, nome='Startnet')
+        e = self.client.get(self.url_lista).json()['enlaces'][0]
+        self.assertEqual((e['empresa_nome'], e['circuito']), ('Startnet', 'CT-123'))
+
+        emp = self.client.get(reverse('l2vpn_empresas_cliente', args=[self.cliente.id])).json()['empresas'][0]
+        self.assertEqual(emp['enlaces'], 1)
+        det = self.client.get(reverse('l2vpn_empresa_detalhe', args=[empresa.id])).json()
+        self.assertEqual([x['link_id'] for x in det['enlaces']], ['L1'])
+
+    def test_desmarcar_na_topologia_some_da_aba_e_volta_com_a_empresa(self):
+        self._salvar(link_id='L1', empresa_nome='Startnet')
+        for d in self.cliente.diagramas_topologia.all():
+            dados = json.loads(d.dados_json)
+            for link in dados['links']:
+                link.pop('transporte', None)
+            d.dados_json = json.dumps(dados)
+            d.save()
+        self.assertEqual(self.client.get(self.url_lista).json()['enlaces'], [])
+        self.assertEqual(self._salvar(link_id='L1', empresa_nome='X').status_code, 404)
+
+        dados = json.loads(self.raiz.dados_json)
+        dados['links'][0]['transporte'] = True
+        self.raiz.dados_json = json.dumps(dados)
+        self.raiz.save()
+        self.assertEqual(self.client.get(self.url_lista).json()['enlaces'][0]['empresa_nome'], 'Startnet')
+
+    def test_link_nao_transporte_recusa_e_limpar_apaga(self):
+        self.assertEqual(self._salvar(link_id='L2', empresa_nome='X').status_code, 404)
+        self._salvar(link_id='L1', empresa_nome='Startnet')
+        self._salvar(link_id='L1')
+        from clientes.models import TransporteEnlace
+        self.assertFalse(TransporteEnlace.objects.exists())
+
+    def test_excluir_empresa_deixa_enlace_sem_empresa(self):
+        self._salvar(link_id='L1', empresa_nome='Startnet')
+        empresa = L2vpnEmpresa.objects.get()
+        self.client.post(reverse('l2vpn_empresa_deletar', args=[empresa.id]))
+        e = self.client.get(self.url_lista).json()['enlaces'][0]
+        self.assertEqual((e['empresa_id'], e['empresa_nome']), (None, ''))
+
+    def test_portal_so_consulta(self):
+        portal = User.objects.create_user('portal_t', password='x')
+        self.cliente.usuario = portal
+        self.cliente.save()
+        TOTPDevice.objects.create(usuario=portal, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+        self.client.force_login(portal)
+        r = self._salvar(link_id='L1', empresa_nome='X')
+        self.assertIn(r.status_code, (302, 403))
+        self.assertFalse(L2vpnEmpresa.objects.exists())

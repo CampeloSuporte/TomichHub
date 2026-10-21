@@ -2758,6 +2758,7 @@
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'vpns')"><i class="fas fa-shield-alt me-1"></i>VPNs</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'l2vpn')"><i class="fas fa-diagram-project me-1"></i>L2VPN</a></li>
             <li class="nav-item"><a class="nav-link" href="#" id="ipam-tab-l2vpn-empresas" onclick="ipamAba(event,'l2vpn-empresas')"><i class="fas fa-building me-1"></i>Empresas</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'transportes')"><i class="fas fa-route me-1"></i>Transportes</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'vlans-switch')"><i class="fas fa-folder-tree me-1"></i>VLANs por Switch</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'importar')"><i class="fas fa-file-import me-1"></i>Importar</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'historico')"><i class="fas fa-history me-1"></i>Histórico</a></li>
@@ -2909,6 +2910,21 @@
             </div>
         </div>
 
+        <!-- ─── TRANSPORTES (enlaces marcados na topologia) ─── -->
+        <div id="ipam-sub-transportes" class="ipam-sub" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <input type="search" id="transp-busca" class="form-control form-control-sm" style="max-width:280px;background:var(--card-bg);color:var(--text-light);border-color:var(--border);"
+                           placeholder="Buscar enlace, host ou empresa..." autocomplete="off" oninput="transpBuscar(this.value)">
+                    <span style="color:var(--text-muted);font-size:.8rem;">Enlaces marcados como <b>Transporte</b> no painel do enlace da Topologia.</span>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="transpCarregar()"><i class="fas fa-rotate me-1"></i>Atualizar</button>
+            </div>
+            <div id="transp-lista">
+                <div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
+        </div>
+
         <!-- ─── VLANs POR SWITCH ─── -->
         <div id="ipam-sub-vlans-switch" class="ipam-sub" style="display:none;">
             <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
@@ -3043,6 +3059,7 @@ const IPAM = {
 const L2VPN = { carregado: false, switches: [], aberto: null, cacheDetalhe: {}, busca: '', pagina: 1, porPagina: 20 };
 const L2VPN_PODE_EDITAR = {% if is_cliente %}false{% else %}true{% endif %};
 const L2EMP = { carregado: false, empresas: [], aberta: null, cacheDetalhe: {}, busca: '' };
+const TRANSP = { carregado: false, enlaces: [], busca: '' };
 const VLANSW = { carregado: false, switches: [], aberto: null, cacheDetalhe: {}, busca: '', pagina: 1, porPagina: 20 };
 
 /* ── Estilos inline IPAM ── */
@@ -3338,6 +3355,7 @@ window.ipamAba = function(e, nome) {
     if(nome === 'vpns')      ipamCarregarVpns();
     if(nome === 'l2vpn')     { if(!L2VPN.carregado) ipamCarregarL2vpn(); }
     if(nome === 'l2vpn-empresas') { if(!L2EMP.carregado) l2empCarregar(); }
+    if(nome === 'transportes') { if(!TRANSP.carregado) transpCarregar(); }
     if(nome === 'vlans-switch') { if(!VLANSW.carregado) ipamCarregarVlanSw(); }
     if(nome === 'historico') ipamCarregarHistorico();
 };
@@ -4962,7 +4980,7 @@ function l2empBuscar(valor){
 function _l2empRenderLista(){
     const lista = document.getElementById('l2emp-lista');
     if (!L2EMP.empresas.length) {
-        lista.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-building" style="font-size:32px;opacity:.3;"></i><p class="mt-2 mb-0">Nenhuma empresa cadastrada. Marque um serviço como transporte na sub-aba L2VPN ou use "Nova Empresa".</p></div>';
+        lista.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-building" style="font-size:32px;opacity:.3;"></i><p class="mt-2 mb-0">Nenhuma empresa cadastrada. Marque um serviço na sub-aba L2VPN, escolha a empresa de um enlace na sub-aba Transportes ou use "Nova Empresa".</p></div>';
         return;
     }
     const q = (L2EMP.busca || '').trim().toLowerCase();
@@ -4984,6 +5002,7 @@ function _l2empRenderLista(){
                 <span class="switch-folder-host">${_escapeHtmlKanban([e.documento, e.contato].filter(Boolean).join(' · '))}</span>
                 <div class="switch-folder-meta">
                     <span class="l2vpn-chip ${e.transportes ? 'l2vpn-chip-emp' : 'l2vpn-chip-vazio'}">${e.transportes} L2VPN</span>
+                    ${e.enlaces ? `<span class="l2vpn-chip l2vpn-chip-vpws"><i class="fas fa-route me-1"></i>${e.enlaces} enlace${e.enlaces !== 1 ? 's' : ''} de transporte</span>` : ''}
                     ${acoes}
                 </div>
             </div>
@@ -5026,8 +5045,16 @@ async function _l2empCarregarDetalhe(id){
 
 function _l2empRenderDetalhe(d){
     const obs = d.empresa.observacao ? `<div class="mb-2" style="color:var(--text-muted);font-size:.8rem;white-space:pre-wrap;">${_escapeHtmlKanban(d.empresa.observacao)}</div>` : '';
+    const enlaces = (d.enlaces && d.enlaces.length)
+        ? `<div class="mb-1 mt-1" style="color:var(--text-light);font-size:.82rem;font-weight:600;"><i class="fas fa-route me-1"></i>Enlaces de transporte que esta empresa faz</div>${_transpTabela(d.enlaces, false)}
+           <div class="mb-1 mt-3" style="color:var(--text-light);font-size:.82rem;font-weight:600;"><i class="fas fa-diagram-project me-1"></i>L2VPN</div>`
+        : '';
+    return obs + enlaces + _l2empRenderL2vpn(d);
+}
+
+function _l2empRenderL2vpn(d){
     if (!d.transportes.length) {
-        return obs + '<div class="text-muted text-center py-2">Nenhuma L2VPN associada ainda — use "Marcar transporte" na sub-aba L2VPN.</div>';
+        return '<div class="text-muted text-center py-2">Nenhuma L2VPN associada ainda — use "Marcar transporte" na sub-aba L2VPN.</div>';
     }
     const tipoClasse = {vpls: 'l2vpn-chip-vpls', vpws: 'l2vpn-chip-vpws', l2vc: 'l2vpn-chip-l2vc'};
     const linhas = d.transportes.map(t => {
@@ -5058,7 +5085,7 @@ function _l2empRenderDetalhe(d){
             <td style="font-size:.8rem;color:var(--text-muted);min-width:200px;">${interfacesHtml}</td>
         </tr>`;
     }).join('');
-    return obs + `
+    return `
     <div class="table-responsive">
         <table class="table table-dark table-hover table-sm mb-0" style="font-size:.82rem;">
             <thead><tr><th>Switch</th><th>Tipo</th><th>ID</th><th>Nome</th><th>VLAN</th><th>MTU</th><th>Fecha com (peer)</th><th>Interfaces</th></tr></thead>
@@ -5128,6 +5155,7 @@ window.l2empFecharModal = function(){
 function _l2empInvalidar(){
     L2EMP.carregado = false;
     L2EMP.cacheDetalhe = {};
+    TRANSP.carregado = false;   // nome/empresa aparece na sub-aba Transportes
 }
 
 window.l2empSalvarModal = async function(remover){
@@ -5153,6 +5181,17 @@ window.l2empSalvarModal = async function(remover){
             // Contagem de transportes no cabeçalho do switch
             const sw = L2VPN.switches.find(x => x.acesso_id === m.acessoId);
             if (sw) { sw.transportes = detalhe.servicos.filter(x => x.transporte).length; _l2vpnRenderLista(); }
+        } else if (m.tipo === 'enlace') {
+            const corpo = { link_id: m.linkId };
+            if (!remover) {
+                corpo.empresa_id = document.getElementById('l2emp-f-empresa').value || null;
+                corpo.empresa_nome = document.getElementById('l2emp-f-nova').value.trim();
+                corpo.circuito = document.getElementById('l2emp-f-circuito').value.trim();
+                corpo.observacao = document.getElementById('l2emp-f-obs').value.trim();
+            }
+            await _l2empPost(`/clientes/${CID}/ipam/transportes/salvar/`, corpo);
+            _l2empInvalidar();
+            await transpCarregar();
         } else if (m.tipo === 'empresa') {
             const corpo = {
                 id: m.id,
@@ -5177,7 +5216,8 @@ window.l2empSalvarModal = async function(remover){
 window.l2empExcluir = async function(id){
     const e = L2EMP.empresas.find(x => x.id === id);
     if (!e) return;
-    const aviso = e.transportes ? ` Os ${e.transportes} vínculo(s) de L2VPN dela serão removidos (nada muda nos equipamentos).` : '';
+    const aviso = (e.transportes ? ` Os ${e.transportes} vínculo(s) de L2VPN dela serão removidos (nada muda nos equipamentos).` : '')
+        + (e.enlaces ? ` ${e.enlaces} enlace(s) de transporte ficam sem empresa.` : '');
     if (!await uiConfirm({ titulo: 'Excluir empresa', msg: `Excluir a empresa "${e.nome}"?${aviso}`, icone: 'fas fa-trash', iconeCor: '#e06060', btnLabel: 'Excluir' })) return;
     try {
         await _l2empPost(`/clientes/ipam/l2vpn/empresas/${id}/deletar/`, {});
@@ -5189,6 +5229,118 @@ window.l2empExcluir = async function(id){
     } catch (err) {
         uiAlert(err.message);
     }
+};
+
+/* ═════════════════════════════════════════════════
+   TRANSPORTES — enlaces marcados como transporte na
+   topologia + empresa que faz cada um
+═════════════════════════════════════════════════ */
+window.transpCarregar = async function(){
+    const lista = document.getElementById('transp-lista');
+    lista.innerHTML = '<div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></div>';
+    try {
+        const r = await fetch(`/clientes/${CID}/ipam/transportes/`);
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        TRANSP.enlaces = d.enlaces || [];
+        TRANSP.carregado = true;
+        _transpRender();
+    } catch (e) {
+        lista.innerHTML = '<div class="text-center text-muted py-3">Erro ao carregar os enlaces de transporte.</div>';
+    }
+};
+
+function transpBuscar(valor){
+    TRANSP.busca = valor;
+    _transpRender();
+}
+
+function _transpRender(){
+    const lista = document.getElementById('transp-lista');
+    if (!TRANSP.enlaces.length) {
+        lista.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-route" style="font-size:32px;opacity:.3;"></i><p class="mt-2 mb-0">Nenhum enlace marcado como transporte. Na Topologia, selecione o enlace e marque <b>Transporte</b> no painel.</p></div>';
+        return;
+    }
+    const q = (TRANSP.busca || '').trim().toLowerCase();
+    const filtrados = q ? TRANSP.enlaces.filter(t => [t.label, t.diagrama, t.empresa_nome, t.circuito, t.a.label, t.b.label, t.a.porta, t.b.porta, t.a.ip, t.b.ip]
+        .some(v => (v || '').toLowerCase().includes(q))) : TRANSP.enlaces;
+    if (!filtrados.length) {
+        lista.innerHTML = '<div class="text-center text-muted py-4">Nenhum enlace encontrado para essa busca.</div>';
+        return;
+    }
+    const semEmpresa = TRANSP.enlaces.filter(t => !t.empresa_id).length;
+    lista.innerHTML = _transpTabela(filtrados, true)
+        + `<div class="mt-2" style="color:var(--text-muted);font-size:.8rem;">${TRANSP.enlaces.length} enlace${TRANSP.enlaces.length !== 1 ? 's' : ''} de transporte${semEmpresa ? ` · <span style="color:var(--warning-orange);">${semEmpresa} sem empresa definida</span>` : ''}</div>`;
+}
+
+function _transpPonta(p){
+    if (!p.label && !p.node_id) return '<span style="color:var(--text-muted);">—</span>';
+    return `<div style="color:var(--text-light);font-weight:600;">${_escapeHtmlKanban(p.label || p.node_id)}</div>`
+        + (p.porta ? `<div style="font-size:.78rem;">${_escapeHtmlKanban(p.porta)}</div>` : '')
+        + (p.ip ? `<div style="font-family:'Courier New',monospace;font-size:.76rem;color:var(--accent-cyan);">${_escapeHtmlKanban(p.ip)}</div>` : '');
+}
+
+/* Tabela compartilhada: aba Transportes (com coluna Empresa editável) e
+   detalhe da empresa (sem a coluna — a empresa já é o contexto). */
+function _transpTabela(enlaces, comEmpresa){
+    const linhas = enlaces.map(t => {
+        let empresa = '';
+        if (comEmpresa) {
+            const chip = t.empresa_id
+                ? `<span class="l2vpn-chip l2vpn-chip-emp l2vpn-emp-link" title="Ver tudo desta empresa" onclick="l2empIrPara(${t.empresa_id})"><i class="fas fa-building me-1"></i>${_escapeHtmlKanban(t.empresa_nome)}</span>`
+                : '<span class="l2vpn-chip l2vpn-chip-vazio">Sem empresa</span>';
+            const btn = L2VPN_PODE_EDITAR
+                ? ` <button class="btn btn-sm btn-link p-0 ms-1" style="color:var(--text-muted);" title="${t.empresa_id ? 'Alterar empresa' : 'Selecionar empresa'}" onclick="transpAbrir('${_l2empAttr(t.link_id)}')"><i class="fas fa-pen"></i></button>`
+                : '';
+            empresa = `<td style="white-space:nowrap;">${chip}${btn}</td>`;
+        }
+        const extra = [t.circuito ? `Circuito: ${_escapeHtmlKanban(t.circuito)}` : '', _escapeHtmlKanban(t.observacao || '')].filter(Boolean).join('<br>');
+        return `
+        <tr class="l2vpn-svc-row">
+            <td><div style="color:var(--text-light);font-weight:600;">${_escapeHtmlKanban(t.label || '(sem rótulo)')}</div>
+                <div style="color:var(--text-muted);font-size:.75rem;"><i class="fas fa-sitemap me-1"></i>${_escapeHtmlKanban(t.diagrama)}</div></td>
+            <td>${_transpPonta(t.a)}</td>
+            <td>${_transpPonta(t.b)}</td>
+            <td>${_escapeHtmlKanban(t.iface || '—')}${t.vlan ? `<div style="font-size:.76rem;opacity:.75;">vlan ${_escapeHtmlKanban(t.vlan)}</div>` : ''}</td>
+            ${empresa}
+            <td style="font-size:.8rem;color:var(--text-muted);">${extra || '—'}</td>
+        </tr>`;
+    }).join('');
+    return `
+    <div class="table-responsive">
+        <table class="table table-dark table-hover table-sm mb-0" style="font-size:.82rem;">
+            <thead><tr><th>Enlace</th><th>Ponta A</th><th>Ponta B</th><th>Velocidade</th>${comEmpresa ? '<th>Empresa (transporte)</th>' : ''}<th>Circuito / Obs.</th></tr></thead>
+            <tbody>${linhas}</tbody>
+        </table>
+    </div>`;
+}
+
+/* ── Modal: empresa que faz o transporte do enlace ── */
+window.transpAbrir = async function(linkId){
+    const t = TRANSP.enlaces.find(x => x.link_id === linkId);
+    if (!t) return;
+    try { await _l2empGarantirLista(); } catch (e) {}
+    const opcoes = L2EMP.empresas.map(e => `<option value="${e.id}" ${e.id === t.empresa_id ? 'selected' : ''}>${_escapeHtmlKanban(e.nome)}</option>`).join('');
+    const campo = 'background:var(--card-bg);color:var(--text-light);border-color:var(--border);';
+    L2EMP.modal = { tipo: 'enlace', linkId };
+    document.getElementById('modalL2empTitle').textContent = 'Empresa do transporte';
+    document.getElementById('modalL2empBody').innerHTML = `
+        <div class="mb-3" style="font-size:.85rem;color:var(--text-muted);">
+            <b style="color:var(--text-light);">${_escapeHtmlKanban(t.label || '(sem rótulo)')}</b><br>
+            ${_escapeHtmlKanban(t.a.label || '?')} ${t.a.porta ? `(${_escapeHtmlKanban(t.a.porta)})` : ''} ⇄ ${_escapeHtmlKanban(t.b.label || '?')} ${t.b.porta ? `(${_escapeHtmlKanban(t.b.porta)})` : ''}
+        </div>
+        <label class="form-label" style="font-size:.8rem;">Empresa que faz o transporte</label>
+        <select id="l2emp-f-empresa" class="form-select form-select-sm mb-2" style="${campo}" onchange="document.getElementById('l2emp-f-nova').disabled = !!this.value">
+            <option value="">— nova empresa —</option>${opcoes}
+        </select>
+        <input id="l2emp-f-nova" type="text" maxlength="150" class="form-control form-control-sm mb-3" style="${campo}" placeholder="Nome da nova empresa" ${t.empresa_id ? 'disabled' : ''}>
+        <label class="form-label" style="font-size:.8rem;">Circuito / contrato (opcional)</label>
+        <input id="l2emp-f-circuito" type="text" maxlength="100" class="form-control form-control-sm mb-2" style="${campo}" value="${_l2empAttr(t.circuito || '')}">
+        <label class="form-label" style="font-size:.8rem;">Observação (opcional)</label>
+        <input id="l2emp-f-obs" type="text" maxlength="255" class="form-control form-control-sm" style="${campo}" value="${_l2empAttr(t.observacao || '')}">
+        <div id="l2emp-f-erro" class="mt-2" style="color:var(--error-red);font-size:.82rem;"></div>`;
+    document.getElementById('modalL2empRemover').style.display = (t.empresa_id || t.circuito || t.observacao) ? '' : 'none';
+    document.getElementById('modalL2empOverlay').style.display = 'flex';
 };
 
 /* ═════════════════════════════════════════════════
