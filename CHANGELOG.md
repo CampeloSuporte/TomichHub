@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-21 (IPAM: livres nos blocos do backup)
+
+### Corrigido
+
+- **"Blocos livres" voltou a funcionar nos prefixos criados pelos backups.** O import cria uma
+  sub-rede `Bloco <cidr> (auto)` igual ao /24, e ela era contada como ocupando o bloco inteiro
+  ("0 endereços livres" no `198.18.104.0/24` da Sartor). Agora, quando há sub-redes mais
+  específicas dentro, ela é tratada como contêiner no seletor de livres, nos gaps e nas
+  subdivisões do prefixo. Detalhes em `docs/ipam.md`.
+
+---
+
 ## [Não publicado] — 2026-10-21 (Gerador de senha sem símbolos)
 
 ### Alterado
