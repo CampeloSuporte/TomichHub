@@ -543,6 +543,50 @@ status.
 
 ---
 
+## Empresas atendidas por transporte L2VPN — 2026-10-21
+
+Em **Documentação de Rede → L2VPN**, a tabela de serviços de cada switch tem a
+coluna **Empresa**. O botão **Marcar transporte** associa o serviço a uma
+empresa (cliente final do provedor): escolhe uma empresa já cadastrada ou digita
+o nome de uma nova, que é criada na hora. Também dá para preencher uma observação
+(ex.: "circuito 100M, ponta B na filial"). Depois de marcado, o serviço mostra um
+chip verde com o nome da empresa, e o cabeçalho do switch mostra "N transportes".
+
+A sub-aba **Empresas** lista as empresas do cliente com quantas L2VPN cada uma
+tem. Clicando na empresa (ou no chip dela na sub-aba L2VPN), abre a lista de todos
+os serviços marcados, com: switch, tipo, ID, nome, VLAN, MTU, **com quem fecha
+(peer)**, já resolvido para o host do outro lado pelo mesmo mapa de identidade
+do modal da topologia, e as interfaces de acesso. Para documentar as duas pontas,
+marque o serviço nos dois switches.
+
+**Como o vínculo é guardado.** Os serviços não ficam no banco, porque são lidos do
+backup a cada vez. Por isso `L2vpnTransporte` aponta para o `Acesso` mais uma
+`chave` = `tecnologia|id|nome` (`_l2vpn_chave` em `clientes/views.py`), a mesma
+identidade que o parser devolve a cada backup. No momento da marcação é tirado um
+retrato (`servico_id`, `servico_nome`, `vlan`). Se o serviço sumir do backup (ou
+for renomeado), ele continua na empresa marcado como *"não está mais no backup
+atual"*, com os dados do retrato. Um serviço transporta uma empresa só por
+switch (`unique_together = acesso, chave`). Marcar de novo troca a empresa.
+
+| Endpoint | Método | O que faz |
+|---|---|---|
+| `/clientes/<cliente_id>/ipam/l2vpn/empresas/` | GET | Empresas + contagem de transportes |
+| `/clientes/<cliente_id>/ipam/l2vpn/empresas/salvar/` | POST | Cria (sem `id`) ou edita. O nome é único por cliente, sem diferenciar maiúsculas |
+| `/clientes/ipam/l2vpn/empresas/<id>/` | GET | Transportes da empresa cruzados com o backup atual (peers, VLAN, MTU, interfaces) |
+| `/clientes/ipam/l2vpn/empresas/<id>/deletar/` | POST | Apaga a empresa e os vínculos, sem mexer nos equipamentos |
+| `/clientes/acessos/<acesso_id>/l2vpn-transporte/` | POST | `{chave, empresa_id \| empresa_nome, observacao}`. Sem empresa, desmarca |
+
+`l2vpn-backup/` passou a devolver `chave` e `transporte` (`{id, empresa_id,
+empresa_nome}` ou `null`) em cada serviço, e `l2vpn/switches/` devolve
+`transportes` por switch.
+
+**Permissão.** Para ler, vale a mesma regra das outras sub-abas
+(`pode_acessar_cliente`/`pode_acessar_acesso`, módulo `acessos`). Para marcar,
+editar ou excluir, só a equipe (`is_backoffice`). O portal do cliente final só
+consulta, sem os botões. Testes em `clientes/tests_l2vpn_empresas.py`.
+
+---
+
 ## Limitações conhecidas
 
 - Serviços aparecem conforme o **último backup**: mudança feita no equipamento

@@ -131,6 +131,11 @@ urlpatterns = [
     path('acessos/<int:acesso_id>/l2vpn-peers/', views.l2vpn_peers_acesso, name='l2vpn_peers_acesso'),
     path('acessos/<int:acesso_id>/l2vpn-clonar/', views.l2vpn_clonar_acesso, name='l2vpn_clonar_acesso'),
     path('<int:cliente_id>/ipam/l2vpn/switches/', views.l2vpn_switches_cliente, name='l2vpn_switches_cliente'),
+    path('<int:cliente_id>/ipam/l2vpn/empresas/', views.l2vpn_empresas_cliente, name='l2vpn_empresas_cliente'),
+    path('<int:cliente_id>/ipam/l2vpn/empresas/salvar/', views.l2vpn_empresa_salvar, name='l2vpn_empresa_salvar'),
+    path('ipam/l2vpn/empresas/<int:empresa_id>/', views.l2vpn_empresa_detalhe, name='l2vpn_empresa_detalhe'),
+    path('ipam/l2vpn/empresas/<int:empresa_id>/deletar/', views.l2vpn_empresa_deletar, name='l2vpn_empresa_deletar'),
+    path('acessos/<int:acesso_id>/l2vpn-transporte/', views.l2vpn_transporte_marcar, name='l2vpn_transporte_marcar'),
     path('<int:cliente_id>/ipam/vlans-switch/switches/', views.vlans_switches_cliente, name='vlans_switches_cliente'),
     path('acessos/<int:acesso_id>/vlans-backup/', views.vlans_backup_acesso, name='vlans_backup_acesso'),
     # Portas PON de OLT Huawei (inventário do backup + display/laser ao vivo)

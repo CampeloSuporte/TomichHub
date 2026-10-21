@@ -5,6 +5,7 @@ from .models import (
     IPAMVlan, IPAMPrefixo, IPAMSubRede, IPAMEndereco, IPAMVpnDoc,
     IPAMScanResultado, IPAMAuditLog,
 )
+from .models import L2vpnEmpresa, L2vpnTransporte
 
 
 from .models import BackupTemplate, BackupLog
@@ -134,6 +135,16 @@ class IPAMVpnDocAdmin(admin.ModelAdmin):
     list_display = ['nome', 'tipo', 'status', 'cliente']
     list_filter = ['tipo', 'status']
     search_fields = ['nome', 'cliente__nome_empresa']
+
+@admin.register(L2vpnEmpresa)
+class L2vpnEmpresaAdmin(admin.ModelAdmin):
+    list_display = ['nome', 'documento', 'cliente']
+    search_fields = ['nome', 'documento', 'cliente__nome_empresa']
+
+@admin.register(L2vpnTransporte)
+class L2vpnTransporteAdmin(admin.ModelAdmin):
+    list_display = ['empresa', 'acesso', 'tecnologia', 'servico_id', 'servico_nome', 'criado_em']
+    search_fields = ['empresa__nome', 'servico_nome', 'servico_id', 'acesso__tipo']
 
 @admin.register(IPAMScanResultado)
 class IPAMScanResultadoAdmin(admin.ModelAdmin):

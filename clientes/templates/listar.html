@@ -2757,6 +2757,7 @@
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'vlans')"><i class="fas fa-layer-group me-1"></i>VLANs</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'vpns')"><i class="fas fa-shield-alt me-1"></i>VPNs</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'l2vpn')"><i class="fas fa-diagram-project me-1"></i>L2VPN</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" id="ipam-tab-l2vpn-empresas" onclick="ipamAba(event,'l2vpn-empresas')"><i class="fas fa-building me-1"></i>Empresas</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'vlans-switch')"><i class="fas fa-folder-tree me-1"></i>VLANs por Switch</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'importar')"><i class="fas fa-file-import me-1"></i>Importar</a></li>
             <li class="nav-item"><a class="nav-link" href="#" onclick="ipamAba(event,'historico')"><i class="fas fa-history me-1"></i>Histórico</a></li>
@@ -2869,6 +2870,9 @@
                 .l2vpn-chip-vpws { background:rgba(255,170,0,.12);color:var(--warning-orange);border-color:rgba(255,170,0,.35); }
                 .l2vpn-chip-l2vc { background:rgba(88,166,255,.12);color:var(--accent-cyan);border-color:rgba(88,166,255,.35); }
                 .l2vpn-chip-vazio { background:rgba(125,133,144,.1);color:var(--text-muted);border-color:var(--border); }
+                .l2vpn-chip-emp { background:rgba(63,185,80,.12);color:var(--primary-green);border-color:rgba(63,185,80,.35); }
+                .l2vpn-emp-link { cursor:pointer; }
+                .l2vpn-emp-link:hover { filter:brightness(1.25); }
                 .l2vpn-svc-row td { vertical-align:top; }
                 .l2vpn-peer-ok { color:var(--primary-green); }
                 .l2vpn-peer-nao-identificado { color:var(--warning-orange); }
@@ -2883,6 +2887,26 @@
                 <div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></div>
             </div>
             <div id="l2vpn-paginacao" class="d-flex justify-content-between align-items-center mt-2"></div>
+        </div>
+
+        <!-- ─── EMPRESAS (transporte L2VPN) ─── -->
+        <div id="ipam-sub-l2vpn-empresas" class="ipam-sub" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <input type="search" id="l2emp-busca" class="form-control form-control-sm" style="max-width:280px;background:var(--card-bg);color:var(--text-light);border-color:var(--border);"
+                           placeholder="Buscar empresa..." autocomplete="off" oninput="l2empBuscar(this.value)">
+                    <span style="color:var(--text-muted);font-size:.8rem;">Marque os serviços na sub-aba L2VPN (coluna <b>Empresa</b>) para associá-los.</span>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="l2empCarregar()"><i class="fas fa-rotate me-1"></i>Atualizar</button>
+                    {% if not is_cliente %}
+                    <button class="btn btn-sm btn-primary" onclick="l2empAbrirEmpresa()"><i class="fas fa-plus me-1"></i>Nova Empresa</button>
+                    {% endif %}
+                </div>
+            </div>
+            <div id="l2emp-lista">
+                <div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></div>
+            </div>
         </div>
 
         <!-- ─── VLANs POR SWITCH ─── -->
@@ -3017,6 +3041,8 @@ const IPAM = {
 };
 
 const L2VPN = { carregado: false, switches: [], aberto: null, cacheDetalhe: {}, busca: '', pagina: 1, porPagina: 20 };
+const L2VPN_PODE_EDITAR = {% if is_cliente %}false{% else %}true{% endif %};
+const L2EMP = { carregado: false, empresas: [], aberta: null, cacheDetalhe: {}, busca: '' };
 const VLANSW = { carregado: false, switches: [], aberto: null, cacheDetalhe: {}, busca: '', pagina: 1, porPagina: 20 };
 
 /* ── Estilos inline IPAM ── */
@@ -3311,6 +3337,7 @@ window.ipamAba = function(e, nome) {
     if(nome === 'vlans')     ipamCarregarVlans();
     if(nome === 'vpns')      ipamCarregarVpns();
     if(nome === 'l2vpn')     { if(!L2VPN.carregado) ipamCarregarL2vpn(); }
+    if(nome === 'l2vpn-empresas') { if(!L2EMP.carregado) l2empCarregar(); }
     if(nome === 'vlans-switch') { if(!VLANSW.carregado) ipamCarregarVlanSw(); }
     if(nome === 'historico') ipamCarregarHistorico();
 };
@@ -4777,6 +4804,7 @@ function _l2vpnRenderLista(){
                ${r.vpws ? `<span class="l2vpn-chip l2vpn-chip-vpws">${r.vpws} VPWS</span>` : ''}
                ${r.l2vc ? `<span class="l2vpn-chip l2vpn-chip-l2vc">${r.l2vc} L2VC</span>` : ''}`
             : (sw.tem_backup ? '<span class="l2vpn-chip l2vpn-chip-vazio">Sem serviço L2VPN</span>' : '<span class="l2vpn-chip l2vpn-chip-vazio">Sem backup</span>');
+        const chipTransp = sw.transportes ? `<span class="l2vpn-chip l2vpn-chip-emp"><i class="fas fa-building me-1"></i>${sw.transportes} transporte${sw.transportes !== 1 ? 's' : ''}</span>` : '';
         const aberto = L2VPN.aberto === sw.acesso_id;
         return `
         <div>
@@ -4784,7 +4812,7 @@ function _l2vpnRenderLista(){
                 <i class="fas fa-folder${aberto ? '-open' : ''} switch-folder-icon"></i>
                 <span class="switch-folder-nome">${_escapeHtmlKanban(sw.nome)}</span>
                 <span class="switch-folder-host">${_escapeHtmlKanban(sw.host)}${sw.data_backup ? ' · backup ' + sw.data_backup : ''}</span>
-                <div class="switch-folder-meta">${chips}</div>
+                <div class="switch-folder-meta">${chipTransp}${chips}</div>
             </div>
             ${aberto ? `<div class="switch-folder-contents" id="l2vpn-detalhe-${sw.acesso_id}" onclick="event.stopPropagation()"><div class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin"></i></div></div>` : ''}
         </div>`;
@@ -4834,7 +4862,8 @@ function _l2vpnRenderServicos(d){
         return '<div class="text-muted text-center py-2">Backup coletado, mas nenhum serviço L2VPN (VSI/VPWS/VPLS/L2VC) encontrado.</div>';
     }
     const tipoClasse = {vpls: 'l2vpn-chip-vpls', vpws: 'l2vpn-chip-vpws', l2vc: 'l2vpn-chip-l2vc'};
-    const linhas = d.servicos.map(s => {
+    const acessoId = d.host ? d.host.id : null;
+    const linhas = d.servicos.map((s, idx) => {
         const peersHtml = (s.peers && s.peers.length)
             ? s.peers.map(p => {
                 if (p.destino) return `<div class="l2vpn-peer-ok"><i class="fas fa-check-circle"></i> ${_escapeHtmlKanban(p.destino.nome)} <span style="color:var(--text-muted);">(${p.ip})</span></div>`;
@@ -4861,16 +4890,306 @@ function _l2vpnRenderServicos(d){
             <td>${_escapeHtmlKanban(s.mtu || '—')}</td>
             <td>${peersHtml}</td>
             <td style="font-size:.8rem;color:var(--text-muted);min-width:220px;">${interfacesHtml}</td>
+            <td style="white-space:nowrap;">${_l2vpnEmpresaCelula(acessoId, idx, s)}</td>
         </tr>`;
     }).join('');
     return `
     <div class="table-responsive">
         <table class="table table-dark table-hover table-sm mb-0" style="font-size:.82rem;">
-            <thead><tr><th>Tipo</th><th>ID</th><th>Nome</th><th>VLAN</th><th>MTU</th><th>Peer</th><th>Interfaces</th></tr></thead>
+            <thead><tr><th>Tipo</th><th>ID</th><th>Nome</th><th>VLAN</th><th>MTU</th><th>Peer</th><th>Interfaces</th><th>Empresa</th></tr></thead>
             <tbody>${linhas}</tbody>
         </table>
     </div>`;
 }
+
+/* ═════════════════════════════════════════════════
+   EMPRESAS — transporte L2VPN
+   Marcação na coluna "Empresa" da sub-aba L2VPN; a sub-aba
+   Empresas junta os serviços de cada uma com os peers.
+═════════════════════════════════════════════════ */
+function _l2vpnEmpresaCelula(acessoId, idx, s){
+    if (s.transporte) {
+        const t = s.transporte;
+        return `<span class="l2vpn-chip l2vpn-chip-emp l2vpn-emp-link" title="Ver todas as L2VPN desta empresa" onclick="l2empIrPara(${t.empresa_id})"><i class="fas fa-building me-1"></i>${_escapeHtmlKanban(t.empresa_nome)}</span>`
+            + (L2VPN_PODE_EDITAR && acessoId ? ` <button class="btn btn-sm btn-link p-0 ms-1" style="color:var(--text-muted);" title="Alterar empresa" onclick="l2empAbrirMarcar(${acessoId}, ${idx})"><i class="fas fa-pen"></i></button>` : '');
+    }
+    if (!L2VPN_PODE_EDITAR || !acessoId) return '<span style="color:var(--text-muted);">—</span>';
+    return `<button class="btn btn-sm btn-outline-secondary py-0" style="font-size:.74rem;" onclick="l2empAbrirMarcar(${acessoId}, ${idx})"><i class="fas fa-building me-1"></i>Marcar transporte</button>`;
+}
+
+function _l2empAttr(v){
+    return _escapeHtmlKanban(v).replace(/"/g, '&quot;');
+}
+
+async function _l2empPost(url, corpo){
+    const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(corpo || {}),
+    });
+    let d = {};
+    try { d = await r.json(); } catch (e) { d = { error: 'Resposta inválida do servidor (sessão expirada?).' }; }
+    if (!r.ok || d.error) throw new Error(d.error || `Erro ${r.status}`);
+    return d;
+}
+
+async function _l2empGarantirLista(){
+    if (L2EMP.carregado) return;
+    const r = await fetch(`/clientes/${CID}/ipam/l2vpn/empresas/`);
+    const d = await r.json();
+    L2EMP.empresas = d.empresas || [];
+    L2EMP.carregado = true;
+}
+
+window.l2empCarregar = async function(){
+    const lista = document.getElementById('l2emp-lista');
+    lista.innerHTML = '<div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i></div>';
+    L2EMP.carregado = false;
+    L2EMP.cacheDetalhe = {};
+    try {
+        await _l2empGarantirLista();
+        _l2empRenderLista();
+    } catch (e) {
+        lista.innerHTML = '<div class="text-center text-muted py-3">Erro ao carregar empresas.</div>';
+    }
+};
+
+function l2empBuscar(valor){
+    L2EMP.busca = valor;
+    _l2empRenderLista();
+}
+
+function _l2empRenderLista(){
+    const lista = document.getElementById('l2emp-lista');
+    if (!L2EMP.empresas.length) {
+        lista.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-building" style="font-size:32px;opacity:.3;"></i><p class="mt-2 mb-0">Nenhuma empresa cadastrada. Marque um serviço como transporte na sub-aba L2VPN ou use "Nova Empresa".</p></div>';
+        return;
+    }
+    const q = (L2EMP.busca || '').trim().toLowerCase();
+    const filtradas = q ? L2EMP.empresas.filter(e => (e.nome || '').toLowerCase().includes(q) || (e.documento || '').toLowerCase().includes(q)) : L2EMP.empresas;
+    if (!filtradas.length) {
+        lista.innerHTML = '<div class="text-center text-muted py-4">Nenhuma empresa encontrada para essa busca.</div>';
+        return;
+    }
+    lista.innerHTML = filtradas.map(e => {
+        const aberta = L2EMP.aberta === e.id;
+        const acoes = L2VPN_PODE_EDITAR ? `
+            <button class="btn btn-sm btn-link p-0 ms-2" style="color:var(--text-muted);" title="Editar empresa" onclick="event.stopPropagation();l2empAbrirEmpresa(${e.id})"><i class="fas fa-pen"></i></button>
+            <button class="btn btn-sm btn-link p-0 ms-2" style="color:var(--error-red);" title="Excluir empresa" onclick="event.stopPropagation();l2empExcluir(${e.id})"><i class="fas fa-trash"></i></button>` : '';
+        return `
+        <div>
+            <div class="switch-folder-row ${aberta ? 'aberta' : ''}" onclick="l2empToggle(${e.id})">
+                <i class="fas fa-building switch-folder-icon" style="color:var(--primary-green);"></i>
+                <span class="switch-folder-nome">${_escapeHtmlKanban(e.nome)}</span>
+                <span class="switch-folder-host">${_escapeHtmlKanban([e.documento, e.contato].filter(Boolean).join(' · '))}</span>
+                <div class="switch-folder-meta">
+                    <span class="l2vpn-chip ${e.transportes ? 'l2vpn-chip-emp' : 'l2vpn-chip-vazio'}">${e.transportes} L2VPN</span>
+                    ${acoes}
+                </div>
+            </div>
+            ${aberta ? `<div class="switch-folder-contents" id="l2emp-detalhe-${e.id}" onclick="event.stopPropagation()"><div class="text-center text-muted py-2"><i class="fas fa-spinner fa-spin"></i></div></div>` : ''}
+        </div>`;
+    }).join('');
+    if (L2EMP.aberta !== null && filtradas.some(e => e.id === L2EMP.aberta)) _l2empCarregarDetalhe(L2EMP.aberta);
+}
+
+function l2empToggle(id){
+    L2EMP.aberta = (L2EMP.aberta === id) ? null : id;
+    _l2empRenderLista();
+}
+
+/* Clique no chip da empresa (sub-aba L2VPN) → abre a empresa na sub-aba Empresas */
+window.l2empIrPara = async function(id){
+    const tab = document.getElementById('ipam-tab-l2vpn-empresas');
+    L2EMP.aberta = id;
+    L2EMP.busca = '';
+    const busca = document.getElementById('l2emp-busca');
+    if (busca) busca.value = '';
+    if (tab) tab.click();
+    if (L2EMP.carregado) _l2empRenderLista();
+};
+
+async function _l2empCarregarDetalhe(id){
+    const alvo = document.getElementById(`l2emp-detalhe-${id}`);
+    if (!alvo) return;
+    if (L2EMP.cacheDetalhe[id]) { alvo.innerHTML = _l2empRenderDetalhe(L2EMP.cacheDetalhe[id]); return; }
+    try {
+        const r = await fetch(`/clientes/ipam/l2vpn/empresas/${id}/`);
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        L2EMP.cacheDetalhe[id] = d;
+        alvo.innerHTML = _l2empRenderDetalhe(d);
+    } catch (e) {
+        alvo.innerHTML = '<div class="text-muted text-center py-2">Erro ao carregar as L2VPN desta empresa.</div>';
+    }
+}
+
+function _l2empRenderDetalhe(d){
+    const obs = d.empresa.observacao ? `<div class="mb-2" style="color:var(--text-muted);font-size:.8rem;white-space:pre-wrap;">${_escapeHtmlKanban(d.empresa.observacao)}</div>` : '';
+    if (!d.transportes.length) {
+        return obs + '<div class="text-muted text-center py-2">Nenhuma L2VPN associada ainda — use "Marcar transporte" na sub-aba L2VPN.</div>';
+    }
+    const tipoClasse = {vpls: 'l2vpn-chip-vpls', vpws: 'l2vpn-chip-vpws', l2vc: 'l2vpn-chip-l2vc'};
+    const linhas = d.transportes.map(t => {
+        const peersHtml = !t.encontrado
+            ? '<div class="l2vpn-peer-nao-identificado"><i class="fas fa-triangle-exclamation"></i> serviço não está mais no backup atual</div>'
+            : ((t.peers && t.peers.length)
+                ? t.peers.map(p => p.destino
+                    ? `<div class="l2vpn-peer-ok"><i class="fas fa-check-circle"></i> ${_escapeHtmlKanban(p.destino.nome)} <span style="color:var(--text-muted);">(${_escapeHtmlKanban(p.ip)})</span></div>`
+                    : `<div class="l2vpn-peer-nao-identificado"><i class="fas fa-question-circle"></i> ${_escapeHtmlKanban(p.ip)} <span style="color:var(--text-muted);">(não identificado)</span></div>`).join('')
+                : '<div class="l2vpn-peer-vazio"><i class="fas fa-triangle-exclamation"></i> sem peer</div>');
+        const interfaces = (t.interfaces || []).map(i => {
+            const vlan = i.vlan ? ` <span style="opacity:.7;">(vlan ${_escapeHtmlKanban(i.vlan)})</span>` : '';
+            const desc = i.descricao ? ` <span style="color:var(--text-light);">— ${_escapeHtmlKanban(i.descricao)}</span>` : '';
+            return `${_escapeHtmlKanban(i.nome)}${vlan}${desc}`;
+        });
+        const interfacesHtml = interfaces.length
+            ? (interfaces.length > 4 ? `<div style="max-height:130px;overflow-y:auto;padding-right:4px;">${interfaces.join('<br>')}</div>` : interfaces.join('<br>'))
+            : '—';
+        return `
+        <tr class="l2vpn-svc-row">
+            <td><div style="color:var(--text-light);font-weight:600;">${_escapeHtmlKanban(t.acesso.nome)}</div><div style="color:var(--text-muted);font-size:.75rem;">${_escapeHtmlKanban(t.acesso.host)}</div></td>
+            <td><span class="l2vpn-chip ${tipoClasse[t.tipo] || ''}">${_escapeHtmlKanban(t.tecnologia || t.tipo)}</span></td>
+            <td style="font-family:'Courier New',monospace;font-size:.8rem;">${_escapeHtmlKanban(t.servico_id || '—')}</td>
+            <td style="color:var(--text-light);">${_escapeHtmlKanban(t.nome || '—')}${t.observacao ? `<div style="color:var(--text-muted);font-size:.75rem;">${_escapeHtmlKanban(t.observacao)}</div>` : ''}</td>
+            <td>${_escapeHtmlKanban(t.vlan || '—')}</td>
+            <td>${_escapeHtmlKanban(t.mtu || '—')}</td>
+            <td>${peersHtml}</td>
+            <td style="font-size:.8rem;color:var(--text-muted);min-width:200px;">${interfacesHtml}</td>
+        </tr>`;
+    }).join('');
+    return obs + `
+    <div class="table-responsive">
+        <table class="table table-dark table-hover table-sm mb-0" style="font-size:.82rem;">
+            <thead><tr><th>Switch</th><th>Tipo</th><th>ID</th><th>Nome</th><th>VLAN</th><th>MTU</th><th>Fecha com (peer)</th><th>Interfaces</th></tr></thead>
+            <tbody>${linhas}</tbody>
+        </table>
+    </div>`;
+}
+
+/* ── Modal: marcar serviço como transporte ── */
+window.l2empAbrirMarcar = async function(acessoId, idx){
+    const d = L2VPN.cacheDetalhe[acessoId];
+    const s = d && d.servicos ? d.servicos[idx] : null;
+    if (!s) return;
+    try { await _l2empGarantirLista(); } catch (e) {}
+    const atual = s.transporte ? s.transporte.empresa_id : '';
+    const opcoes = L2EMP.empresas.map(e => `<option value="${e.id}" ${e.id === atual ? 'selected' : ''}>${_escapeHtmlKanban(e.nome)}</option>`).join('');
+    const campo = 'background:var(--card-bg);color:var(--text-light);border-color:var(--border);';
+    L2EMP.modal = { tipo: 'marcar', acessoId, idx };
+    document.getElementById('modalL2empTitle').textContent = 'Transporte L2VPN para empresa';
+    document.getElementById('modalL2empBody').innerHTML = `
+        <div class="mb-3" style="font-size:.85rem;color:var(--text-muted);">
+            <b style="color:var(--text-light);">${_escapeHtmlKanban(d.host.nome)}</b> · ${_escapeHtmlKanban(s.tecnologia || s.tipo)}
+            ${s.id ? ` ${_escapeHtmlKanban(s.id)}` : ''} ${s.nome ? `— ${_escapeHtmlKanban(s.nome)}` : ''}
+            ${s.vlan ? ` · vlan ${_escapeHtmlKanban(s.vlan)}` : ''}
+        </div>
+        <label class="form-label" style="font-size:.8rem;">Empresa</label>
+        <select id="l2emp-f-empresa" class="form-select form-select-sm mb-2" style="${campo}" onchange="document.getElementById('l2emp-f-nova').disabled = !!this.value">
+            <option value="">— nova empresa —</option>${opcoes}
+        </select>
+        <input id="l2emp-f-nova" type="text" maxlength="150" class="form-control form-control-sm mb-3" style="${campo}" placeholder="Nome da nova empresa" ${atual ? 'disabled' : ''}>
+        <label class="form-label" style="font-size:.8rem;">Observação (opcional)</label>
+        <input id="l2emp-f-obs" type="text" maxlength="255" class="form-control form-control-sm" style="${campo}" placeholder="Ex.: circuito 100M, ponta B na filial">
+        <div id="l2emp-f-erro" class="mt-2" style="color:var(--error-red);font-size:.82rem;"></div>`;
+    document.getElementById('modalL2empRemover').style.display = s.transporte ? '' : 'none';
+    document.getElementById('modalL2empOverlay').style.display = 'flex';
+};
+
+/* ── Modal: criar/editar empresa ── */
+window.l2empAbrirEmpresa = async function(id){
+    try { await _l2empGarantirLista(); } catch (e) {}
+    const e = id ? (L2EMP.empresas.find(x => x.id === id) || {}) : {};
+    const campo = 'background:var(--card-bg);color:var(--text-light);border-color:var(--border);';
+    L2EMP.modal = { tipo: 'empresa', id: id || null };
+    document.getElementById('modalL2empTitle').textContent = id ? 'Editar Empresa' : 'Nova Empresa';
+    document.getElementById('modalL2empBody').innerHTML = `
+        <label class="form-label" style="font-size:.8rem;">Nome *</label>
+        <input id="l2emp-e-nome" type="text" maxlength="150" class="form-control form-control-sm mb-2" style="${campo}" value="${_l2empAttr(e.nome || '')}">
+        <div class="row g-2 mb-2">
+            <div class="col-md-6"><label class="form-label" style="font-size:.8rem;">CNPJ/CPF</label>
+                <input id="l2emp-e-doc" type="text" maxlength="30" class="form-control form-control-sm" style="${campo}" value="${_l2empAttr(e.documento || '')}"></div>
+            <div class="col-md-6"><label class="form-label" style="font-size:.8rem;">Contato</label>
+                <input id="l2emp-e-contato" type="text" maxlength="150" class="form-control form-control-sm" style="${campo}" value="${_l2empAttr(e.contato || '')}"></div>
+        </div>
+        <label class="form-label" style="font-size:.8rem;">Observação</label>
+        <textarea id="l2emp-e-obs" rows="3" class="form-control form-control-sm" style="${campo}">${_escapeHtmlKanban(e.observacao || '')}</textarea>
+        <div id="l2emp-f-erro" class="mt-2" style="color:var(--error-red);font-size:.82rem;"></div>`;
+    document.getElementById('modalL2empRemover').style.display = 'none';
+    document.getElementById('modalL2empOverlay').style.display = 'flex';
+};
+
+window.l2empFecharModal = function(){
+    document.getElementById('modalL2empOverlay').style.display = 'none';
+};
+
+/* Depois de qualquer mudança: lista de empresas e detalhes recarregam na
+   próxima abertura; o switch afetado relê os serviços já anotados. */
+function _l2empInvalidar(){
+    L2EMP.carregado = false;
+    L2EMP.cacheDetalhe = {};
+}
+
+window.l2empSalvarModal = async function(remover){
+    const m = L2EMP.modal || {};
+    const erro = document.getElementById('l2emp-f-erro');
+    erro.textContent = '';
+    try {
+        if (m.tipo === 'marcar') {
+            const s = L2VPN.cacheDetalhe[m.acessoId].servicos[m.idx];
+            const corpo = { chave: s.chave };
+            if (!remover) {
+                corpo.empresa_id = document.getElementById('l2emp-f-empresa').value || null;
+                corpo.empresa_nome = document.getElementById('l2emp-f-nova').value.trim();
+                corpo.observacao = document.getElementById('l2emp-f-obs').value.trim();
+                if (!corpo.empresa_id && !corpo.empresa_nome) { erro.textContent = 'Escolha uma empresa ou digite o nome de uma nova.'; return; }
+            }
+            const d = await _l2empPost(`/clientes/acessos/${m.acessoId}/l2vpn-transporte/`, corpo);
+            s.transporte = d.transporte;
+            const detalhe = L2VPN.cacheDetalhe[m.acessoId];
+            _l2empInvalidar();
+            const alvo = document.getElementById(`l2vpn-detalhe-${m.acessoId}`);
+            if (alvo) alvo.innerHTML = _l2vpnRenderServicos(detalhe);
+            // Contagem de transportes no cabeçalho do switch
+            const sw = L2VPN.switches.find(x => x.acesso_id === m.acessoId);
+            if (sw) { sw.transportes = detalhe.servicos.filter(x => x.transporte).length; _l2vpnRenderLista(); }
+        } else if (m.tipo === 'empresa') {
+            const corpo = {
+                id: m.id,
+                nome: document.getElementById('l2emp-e-nome').value.trim(),
+                documento: document.getElementById('l2emp-e-doc').value.trim(),
+                contato: document.getElementById('l2emp-e-contato').value.trim(),
+                observacao: document.getElementById('l2emp-e-obs').value.trim(),
+            };
+            if (!corpo.nome) { erro.textContent = 'Informe o nome da empresa.'; return; }
+            await _l2empPost(`/clientes/${CID}/ipam/l2vpn/empresas/salvar/`, corpo);
+            // Nome da empresa aparece nos chips da sub-aba L2VPN
+            L2VPN.cacheDetalhe = {};
+            _l2empInvalidar();
+            await l2empCarregar();
+        }
+        l2empFecharModal();
+    } catch (e) {
+        erro.textContent = e.message;
+    }
+};
+
+window.l2empExcluir = async function(id){
+    const e = L2EMP.empresas.find(x => x.id === id);
+    if (!e) return;
+    const aviso = e.transportes ? ` Os ${e.transportes} vínculo(s) de L2VPN dela serão removidos (nada muda nos equipamentos).` : '';
+    if (!await uiConfirm({ titulo: 'Excluir empresa', msg: `Excluir a empresa "${e.nome}"?${aviso}`, icone: 'fas fa-trash', iconeCor: '#e06060', btnLabel: 'Excluir' })) return;
+    try {
+        await _l2empPost(`/clientes/ipam/l2vpn/empresas/${id}/deletar/`, {});
+        if (L2EMP.aberta === id) L2EMP.aberta = null;
+        // Contagem de transportes por switch também muda: relê a sub-aba L2VPN.
+        L2VPN.carregado = false;
+        _l2empInvalidar();
+        await l2empCarregar();
+    } catch (err) {
+        uiAlert(err.message);
+    }
+};
 
 /* ═════════════════════════════════════════════════
    VLANs POR SWITCH — inventário completo (não só as
@@ -11697,6 +12016,21 @@ function getCsrfToken(){
         <div style="border-top:1px solid var(--border);padding:12px 20px;display:flex;justify-content:flex-end;gap:8px;">
           <button onclick="ipamFecharModal()" class="btn btn-secondary">Cancelar</button>
           <button onclick="ipamSalvar()" class="btn btn-primary"><i class="fas fa-save me-1"></i>Salvar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modalL2empOverlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;">
+      <div style="background:#0a0a0a;border:2px solid var(--primary-green);border-radius:8px;width:90%;max-width:560px;max-height:90vh;overflow-y:auto;box-shadow:0 0 30px var(--glow-green);position:relative;z-index:100000;">
+        <div style="border-bottom:1px solid var(--border);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
+          <h5 id="modalL2empTitle" style="color:var(--primary-green);font-family:'Inter', sans-serif;margin:0;"></h5>
+          <button onclick="l2empFecharModal()" style="background:transparent;border:none;color:rgba(255,255,255,.7);font-size:1.4rem;cursor:pointer;line-height:1;">&times;</button>
+        </div>
+        <div id="modalL2empBody" style="padding:20px;"></div>
+        <div style="border-top:1px solid var(--border);padding:12px 20px;display:flex;justify-content:flex-end;gap:8px;">
+          <button id="modalL2empRemover" onclick="l2empSalvarModal(true)" class="btn btn-outline-danger me-auto" style="display:none;"><i class="fas fa-link-slash me-1"></i>Remover vínculo</button>
+          <button onclick="l2empFecharModal()" class="btn btn-secondary">Cancelar</button>
+          <button onclick="l2empSalvarModal(false)" class="btn btn-primary"><i class="fas fa-save me-1"></i>Salvar</button>
         </div>
       </div>
     </div>

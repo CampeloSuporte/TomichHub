@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-21 (L2VPN como transporte de empresa)
+
+### Adicionado
+
+- **L2VPN marcada como transporte de uma empresa.** Em Documentação de Rede → L2VPN, cada
+  serviço ganhou a coluna **Empresa** com o botão "Marcar transporte". Ali você escolhe uma empresa
+  já cadastrada ou cria uma nova na hora. A nova sub-aba **Empresas** lista as empresas do cliente.
+  Ao clicar numa delas aparecem todas as L2VPN associadas, com switch, VLAN, MTU, com qual peer
+  cada uma fecha (já resolvido para o host do outro lado) e as interfaces. Serviço que sumiu do
+  backup continua listado, com aviso. Modelos `L2vpnEmpresa`/`L2vpnTransporte` (migração
+  `clientes/0122`). Detalhes em `docs/topologia_l2vpn.md`.
+
+---
+
 ## [Não publicado] — 2026-10-21 (IPAM: livres nos blocos do backup)
 
 ### Corrigido

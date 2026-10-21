@@ -1640,6 +1640,58 @@ class AcaoL2vpn(models.Model):
         return f'[l2vpn] {quem} → {self.acesso} :: {self.alvo} [{self.status}]'
 
 
+class L2vpnEmpresa(models.Model):
+    """Empresa (cliente final do provedor) atendida por transporte L2VPN —
+    cadastro simples, por cliente do CRM, só para agrupar os serviços L2 que
+    levam o tráfego dela (sub-aba 'Empresas' em Documentação de Rede)."""
+
+    cliente    = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='l2vpn_empresas')
+    nome       = models.CharField(max_length=150)
+    documento  = models.CharField(max_length=30, blank=True, default='', verbose_name='CNPJ/CPF')
+    contato    = models.CharField(max_length=150, blank=True, default='')
+    observacao = models.TextField(blank=True, default='')
+    criado_em  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['nome']
+        unique_together = ('cliente', 'nome')
+        verbose_name = 'Empresa (transporte L2VPN)'
+        verbose_name_plural = 'Empresas (transporte L2VPN)'
+
+    def __str__(self):
+        return f'{self.nome} — {self.cliente.nome_empresa}'
+
+
+class L2vpnTransporte(models.Model):
+    """Marca um serviço L2VPN (lido do backup, não gravado) como transporte
+    de uma empresa. Os serviços não existem no banco, então o vínculo é pela
+    identidade do serviço no switch: `chave` = tecnologia|id|nome (mesmo
+    trio que o parser devolve). Os campos `servico_*`/`vlan` são só retrato
+    do momento da marcação — mostram o serviço mesmo se ele sumir do backup."""
+
+    empresa       = models.ForeignKey(L2vpnEmpresa, on_delete=models.CASCADE, related_name='transportes')
+    acesso        = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='l2vpn_transportes')
+    chave         = models.CharField(max_length=300)
+    tipo          = models.CharField(max_length=10, blank=True, default='')       # vpls/vpws/l2vc
+    tecnologia    = models.CharField(max_length=30, blank=True, default='')
+    servico_id    = models.CharField(max_length=64, blank=True, default='')
+    servico_nome  = models.CharField(max_length=200, blank=True, default='')
+    vlan          = models.CharField(max_length=60, blank=True, default='')
+    observacao    = models.CharField(max_length=255, blank=True, default='')
+    criado_por    = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    criado_em     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['acesso__tipo', 'tecnologia', 'servico_id']
+        # Um serviço transporta uma empresa só (no mesmo switch).
+        unique_together = ('acesso', 'chave')
+        verbose_name = 'Transporte L2VPN'
+        verbose_name_plural = 'Transportes L2VPN'
+
+    def __str__(self):
+        return f'{self.tecnologia} {self.servico_id or self.servico_nome} @ {self.acesso} → {self.empresa.nome}'
+
+
 class AcaoOltPon(models.Model):
     """Auditoria de uma consulta ou operação numa porta PON de OLT Huawei
     disparada pela topologia.
