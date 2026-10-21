@@ -2476,12 +2476,22 @@ document.addEventListener('DOMContentLoaded', function() {
     _acessoAjaxSubmit('formDuplicarAcesso',  fecharModalDuplicarAcesso);
 });
 
+// Só letras e números: símbolo ($, &, *, !, %) quebra digitação no CLI do
+// equipamento (abreviação com Tab, shell, expect) e confunde quem copia.
+// Sorteia de novo até ter maiúscula, minúscula e número, que é o mínimo de
+// complexidade que VRP/Datacom/ZTE exigem.
+function _senhaAleatoriaSemSimbolo(tamanho = 16) {
+    const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    for (;;) {
+        const arr = new Uint32Array(tamanho);
+        crypto.getRandomValues(arr);
+        const senha = Array.from(arr, v => chars[v % chars.length]).join('');
+        if (/[a-z]/.test(senha) && /[A-Z]/.test(senha) && /[0-9]/.test(senha)) return senha;
+    }
+}
+
 function _gerarSenha(inputId) {
-    const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%&*';
-    let senha = '';
-    const arr = new Uint32Array(16);
-    crypto.getRandomValues(arr);
-    arr.forEach(v => { senha += chars[v % chars.length]; });
+    const senha = _senhaAleatoriaSemSimbolo();
     const el = document.getElementById(inputId);
     if (!el) return;
     el.value = senha;

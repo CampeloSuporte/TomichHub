@@ -377,8 +377,13 @@ dos campos **Senha** e **Senha Admin** (quando admin).
 ### Comportamento
 
 - Gera 16 caracteres usando `crypto.getRandomValues` (criptograficamente seguro)
-- Conjunto de caracteres: letras maiúsculas, minúsculas, dígitos e símbolos `!@#$%&*`
-  (sem caracteres ambíguos como `0`, `O`, `l`, `1`)
+- Conjunto de caracteres: só letras maiúsculas, minúsculas e dígitos, **sem símbolos**
+  (desde 21/10/2026), e sem caracteres ambíguos como `0`, `O`, `l`, `1`. A senha sempre tem
+  pelo menos uma maiúscula, uma minúscula e um número: se o sorteio não tiver os três, sorteia
+  de novo. Símbolo (`$`, `&`, `*`, `!`, `%`) atrapalhava a digitação no CLI do equipamento
+  (abreviação com Tab, shell, expect) e a cópia. A mesma regra vale para o gerador da
+  **Troca de Senha em Massa** (`_gerarSenhaMassa`) e para a senha sugerida pelo backend
+  (`clientes/tasks.py:_gerar_senha_aleatoria`).
 - Exibe a senha em texto plano no campo para visualização
 - Copia automaticamente para o clipboard
 - O botão vira ✓ verde por 1,5s confirmando a cópia

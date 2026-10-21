@@ -1335,11 +1335,16 @@ def enviar_pdf_credenciais(self):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _gerar_senha_aleatoria(tamanho=16):
-    """Gera senha aleatória segura."""
+    """Gera senha aleatória segura, só letras e números (símbolo quebra
+    digitação no CLI do equipamento), com maiúscula, minúscula e número."""
     import secrets
     import string
-    chars = string.ascii_letters + string.digits + '!@#$%&*'
-    return ''.join(secrets.choice(chars) for _ in range(tamanho))
+    chars = string.ascii_letters + string.digits
+    while True:
+        senha = ''.join(secrets.choice(chars) for _ in range(tamanho))
+        if (any(c.islower() for c in senha) and any(c.isupper() for c in senha)
+                and any(c.isdigit() for c in senha)):
+            return senha
 
 
 def _detectar_vendor(acesso):
