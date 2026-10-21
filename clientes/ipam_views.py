@@ -167,6 +167,37 @@ def _computar_pai_id(alvo_net, candidatos, excluir_id=None):
     return melhor_id
 
 
+def _ancorar_prefixo(cliente, obj):
+    """
+    Põe `obj` (já salvo) na árvore: calcula o pai dele e reancora os prefixos
+    que ficam mais bem posicionados sob ele (ex: criar um /16 depois de já
+    existir um /24 dentro dele). Todo caminho que cria IPAMPrefixo tem que
+    passar por aqui — a análise de backup criava containers /24 sem pai e eles
+    apareciam soltos na raiz, fora do /15 que os contém.
+    """
+    try:
+        alvo_net = ipaddress.ip_network(obj.prefixo, strict=False)
+    except ValueError:
+        return
+    todos = list(IPAMPrefixo.objects.filter(cliente=cliente).values_list('id', 'prefixo'))
+    novo_pai = _computar_pai_id(alvo_net, todos, excluir_id=obj.id)
+    if obj.pai_id != novo_pai:
+        obj.pai_id = novo_pai
+        IPAMPrefixo.objects.filter(id=obj.id).update(pai_id=novo_pai)
+
+    for outro_id, outro_cidr in todos:
+        if outro_id == obj.id:
+            continue
+        try:
+            outro_net = ipaddress.ip_network(outro_cidr, strict=False)
+        except ValueError:
+            continue
+        if outro_net.version == alvo_net.version and outro_net.prefixlen > alvo_net.prefixlen \
+                and outro_net.subnet_of(alvo_net):
+            novo = _computar_pai_id(outro_net, todos, excluir_id=outro_id)
+            IPAMPrefixo.objects.filter(id=outro_id).exclude(pai_id=novo).update(pai_id=novo)
+
+
 def _rede_contida_em(rede_str, alvo_net):
     """True se `rede_str` (CIDR de uma IPAMSubRede) está contida em `alvo_net`
     (inclui o caso de ser igual a `alvo_net`)."""
@@ -410,24 +441,8 @@ def ipam_prefixo_salvar(request, cliente_id):
         obj.descricao = body.get('descricao', '').strip()
         obj.local     = body.get('local', '').strip()
 
-        candidatos = IPAMPrefixo.objects.filter(cliente=c).exclude(id=obj.id).values_list('id', 'prefixo')
-        obj.pai_id = _computar_pai_id(alvo_net, candidatos)
         obj.save()
-
-        # Prefixos que antes tinham outro pai podem agora ficar mais bem
-        # posicionados sob o que acabou de ser salvo (ex: criar um /16 depois
-        # de já existir um /24 dentro dele) — reancorar os filhos diretos.
-        outros = IPAMPrefixo.objects.filter(cliente=c).exclude(id=obj.id).values_list('id', 'prefixo')
-        for outro_id, outro_cidr in outros:
-            try:
-                outro_net = ipaddress.ip_network(outro_cidr, strict=False)
-            except ValueError:
-                continue
-            if outro_net.version == alvo_net.version and outro_net.prefixlen > alvo_net.prefixlen \
-                    and outro_net.subnet_of(alvo_net):
-                novo_pai = _computar_pai_id(outro_net, IPAMPrefixo.objects.filter(cliente=c)
-                                             .exclude(id=outro_id).values_list('id', 'prefixo'))
-                IPAMPrefixo.objects.filter(id=outro_id).exclude(pai_id=novo_pai).update(pai_id=novo_pai)
+        _ancorar_prefixo(c, obj)
 
         _ipam_log(request, c, 'prefixo', obj, 'updated' if pid else 'created', antes)
         return JsonResponse({'ok': True, 'id': obj.id})
@@ -3108,6 +3123,8 @@ def ipam_analisar_backups(request, cliente_id):
                 defaults={'tipo': 'container', 'descricao': f'Bloco {cidr_pai} (auto)'}
             )
             prefixo_cache[cidr_pai] = obj
+            if created:
+                _ancorar_prefixo(c, obj)
             # Garante que o bloco /24 também apareça como IPAMSubRede
             sub_pai, sub_criada = IPAMSubRede.objects.get_or_create(
                 cliente=c, rede=cidr_pai,

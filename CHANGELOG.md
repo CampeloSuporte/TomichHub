@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-21 (Containers do IPAM dentro do bloco pai)
+
+### Corrigido
+
+- **Documentação de Rede › Endereço IP: containers soltos na raiz.** Os blocos /24 criados pela
+  análise de backup ficavam sem pai e apareciam como várias redes avulsas abaixo do
+  `198.18.0.0/15`, em vez de dentro dele. Agora todo prefixo criado entra na árvore do bloco que o
+  contém, e uma migração corrigiu os já cadastrados (228 prefixos, em todos os clientes). As
+  sub-redes ligadas ao bloco de cima, quando existe um container mais específico para elas,
+  passaram para dentro desse container.
+
+---
+
 ## [Não publicado] — 2026-10-21 (Sinal antes × depois em quedas longas)
 
 ### Corrigido
