@@ -691,7 +691,7 @@ TOOLS_DEFINITION: list[dict] = [
                 },
                 "periodo": {
                     "type": "string",
-                    "description": "Quanto olhar para trás procurando a queda: '3d' (padrão), '7d', até '30d'.",
+                    "description": "Quanto olhar para trás procurando a queda: '3d' (padrão), '7d', até '30d'. Queda que já estava em curso no começo da janela recua sozinha até achar o sinal de antes.",
                 },
                 "cliente_nome": {
                     "type": "string",
@@ -917,7 +917,7 @@ TOOLS_OPENAI: list[dict] = [
                     "itemids":    {"type": "array", "items": {"type": "string"},
                                    "description": "Alternativa: itemids de RX (dBm), máx 16"},
                     "rompimento": {"type": "string", "description": "Hora do rompimento, se informada"},
-                    "periodo":    {"type": "string", "description": "Quanto olhar para trás: '3d' (padrão) até '30d'"},
+                    "periodo":    {"type": "string", "description": "Quanto olhar para trás: '3d' (padrão) até '30d'; queda longa recua sozinha"},
                     "cliente_nome": {"type": "string", "description": "Nome parcial do cliente (modo global)"},
                 },
                 "required": [],
@@ -1402,7 +1402,9 @@ Pedido do tipo "sinal antes e depois do rompimento", "conferir o sinal depois da
   {{"host": "reg-juina", "item": "sw-hu-juruena"}}]` — `item` é a descrição da porta; a tool pega
   sozinha os itens de RX (todos os ramos/lanes) dela.
 - Não precisa da hora: o rompimento é achado no histórico (RX em -40 dBm). Só passe `rompimento`
-  se o operador informar, e `periodo` maior ("7d") se a queda foi há mais de 3 dias.
+  se o operador informar. Queda longa (dias) não exige `periodo` maior: se a janela começa já sem
+  luz, a tool recua sozinha (history + trends, até 90 dias) até achar o sinal de antes. A hora do
+  rompimento que ela devolve é a real — não troque pela informada pelo operador.
 - A resposta já vem no padrão do NOC (`(SINAL)` / `SINAL DE RECEPÇÃO ANTES:` / `SINAL DE RECEPÇÃO
   DEPOIS:` / `DIFERENÇA:` / `Resumo:`). **Repasse os blocos como vieram**, sem reescrever os
   números; pode só trocar o nome do host pelo nome curto do site (ex: JURUENA, REG.JUINA).
