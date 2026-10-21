@@ -131,7 +131,7 @@ pelo contexto.
 prompt de senha, um comando de uma palavra que nunca aparece no transcript foi digitado sem eco.
 Comandos com 6 caracteres ou mais e que não são só minúsculas contam como senha. Os segredos
 achados em qualquer sessão do cliente são trocados em todas as sessões dele. O comando é
-idempotente. Rodado em 20/10/2026: 510 comandos e 1526 transcripts mascarados.
+idempotente. Rodado em 20/10/2026: 510 comandos e 1529 transcripts mascarados.
 
 Limites: senha só de minúsculas digitada num prompt, em registros antigos, não é deduzida. Senha
 que contém outra já conhecida pode ficar com o final visível (`******v44Tb`).
