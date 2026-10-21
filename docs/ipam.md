@@ -100,6 +100,17 @@ def _get_or_create_prefixo_pai(net):
     return obj, created
 ```
 
+### Pai do container na árvore (`_ancorar_prefixo`) — 2026-10-21
+
+O container criado aqui passa por `_ancorar_prefixo(cliente, obj)`, o mesmo caminho do
+"Salvar prefixo": calcula o `pai` (prefixo mais específico que o contém) e reancora os
+prefixos que ficam melhor sob ele. Antes o `get_or_create` gravava o container sem `pai`, e os
+/24 da análise de backup apareciam soltos na raiz em vez de dentro do `198.18.0.0/15` (ou de
+qualquer bloco cadastrado que os contenha). **Todo caminho novo que cria `IPAMPrefixo` deve
+chamar `_ancorar_prefixo`.** A migração `0124_ipam_reancorar_prefixos` recalculou o `pai` de
+todos os clientes (228 prefixos) e desceu para o container o FK das sub-redes que apontavam para
+o bloco de cima (ex: `198.18.248.0/24 LOOPBACKS` ligada ao /15).
+
 ---
 
 ## Agrupamento por Prefixo

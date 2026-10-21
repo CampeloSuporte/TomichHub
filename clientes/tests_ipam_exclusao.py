@@ -135,3 +135,27 @@ class IPAMListagemTest(TestCase):
 
         prefixos = self._get(inspect.unwrap(ipam_views.ipam_prefixos_listar))['prefixos']
         self.assertEqual(next(x for x in prefixos if x['id'] == p.id)['subredes'], 30)
+
+
+class IPAMAncorarPrefixoTest(TestCase):
+    def setUp(self):
+        self.c = Cliente.objects.create(
+            nome_empresa='Cliente Árvore', cnpj='33.333.333/0001-33',
+            endereco='Rua 2', email='arvore@example.com',
+        )
+
+    def test_container_criado_depois_entra_no_bloco_pai(self):
+        bloco = IPAMPrefixo.objects.get(cliente=self.c, prefixo='198.18.0.0/15')
+        p = IPAMPrefixo.objects.create(cliente=self.c, prefixo='198.18.248.0/24', tipo='container')
+        ipam_views._ancorar_prefixo(self.c, p)
+        p.refresh_from_db()
+        self.assertEqual(p.pai_id, bloco.id)
+
+    def test_bloco_criado_depois_adota_os_containers(self):
+        p = IPAMPrefixo.objects.create(cliente=self.c, prefixo='45.161.248.0/24', tipo='container')
+        bloco = IPAMPrefixo.objects.create(cliente=self.c, prefixo='45.160.0.0/15')
+        ipam_views._ancorar_prefixo(self.c, bloco)
+        p.refresh_from_db()
+        bloco.refresh_from_db()
+        self.assertEqual(p.pai_id, bloco.id)
+        self.assertIsNone(bloco.pai_id)
