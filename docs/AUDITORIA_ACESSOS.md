@@ -98,6 +98,44 @@ de CSI.
 Ambas as funções são no-op se não houver `self._sessao_auditoria` (ex: antes do `connect` do
 protocolo terminar).
 
+### Senhas mascaradas (desde 20/10/2026)
+
+Senha digitada no terminal não vai crua para `AcessoComando` nem para o `transcript`: vira
+`******`. As regras ficam em `clientes/auditoria_mascara.py`:
+
+- **Resposta a prompt de senha.** Se a última linha da saída na hora do Enter é um pedido de
+  senha (`Password:`, `Please enter old password:`, `Enter password:` do `stelnet`, `Senha:`...),
+  o comando inteiro é gravado como `******`.
+- **Senha inline.** Valor depois de `password`, `secret`, `encrypted-password`,
+  `authentication-key`, `pre-shared-key`, `key-string` etc., pulando modificadores
+  (`cipher`, `irreversible-cipher`, `simple`, `5`, `7`...), e `password=`/`secret=` do RouterOS.
+  A community SNMP tem regra própria (`snmp-agent community read cipher X`,
+  `snmp-server community X ro`). O `community` solto ficou de fora, porque quase sempre é
+  community BGP. Mensagens como "password has been changed" e subcomandos como
+  `password security-length` não são mascarados.
+- **Tab abreviado.** O que o usuário digita vem como `loca\tsartor pa\ti i\tSENHA`, sem a
+  palavra-chave. Por isso, no Enter, a linha **ecoada** pelo equipamento (já expandida) é lida e
+  o valor achado vira segredo da sessão. Esse segredo é trocado em qualquer lugar do comando e,
+  no fechamento, do transcript.
+- **Senhas cadastradas.** A `senha`/`senha_adm` dos acessos do mesmo cliente também é trocada
+  onde aparecer, como no `stelnet` de um roteador para o vizinho.
+
+A troca "solta", fora do contexto onde a senha apareceu, só vale para valor com cara de senha:
+6 caracteres ou mais, pelo menos 2 tipos (minúscula, maiúscula, número, símbolo), e que não seja
+palavra comum, IP/IPv6 ou community BGP. Do contrário um segredo como `authentication` ou
+`65109:50101` apagaria configuração legítima da sessão inteira. Esses valores só são mascarados
+pelo contexto.
+
+**Registros antigos:** `python manage.py mascarar_senhas_auditoria [--dry-run] [--cliente N]
+[--mostrar]`. Sem a saída de cada Enter, a resposta a prompt é deduzida: numa sessão que teve
+prompt de senha, um comando de uma palavra que nunca aparece no transcript foi digitado sem eco.
+Comandos com 6 caracteres ou mais e que não são só minúsculas contam como senha. Os segredos
+achados em qualquer sessão do cliente são trocados em todas as sessões dele. O comando é
+idempotente. Rodado em 20/10/2026: 510 comandos e 1526 transcripts mascarados.
+
+Limites: senha só de minúsculas digitada num prompt, em registros antigos, não é deduzida. Senha
+que contém outra já conhecida pode ficar com o final visível (`******v44Tb`).
+
 ### WinBox / WebFig via VNC — Gravação de Tela
 
 Implementado em `BrowserVNCManager` (`clientes/browser_vnc.py`) e `WinboxVNCManager`

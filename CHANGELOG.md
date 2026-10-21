@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-20 (Auditoria de terminal: senhas mascaradas)
+
+### Segurança
+
+- **Senha não fica mais crua na auditoria de comandos nem no transcript.** A troca de senha dos
+  NE8000 da Sartor deixou as senhas nova e antiga legíveis no histórico. Agora vira `******`
+  a resposta a prompt de senha (`Password:`, `Please enter old password:`...), o valor depois de
+  `password`/`secret`/`authentication-key`/`password=` e da community SNMP, e a senha cadastrada
+  nos acessos do cliente. A digitação com Tab (`pa\ti i\tSENHA`) é coberta lendo o eco do
+  equipamento.
+- **Registros antigos limpos** com `python manage.py mascarar_senhas_auditoria`. Em 20/10/2026
+  foram 510 comandos e 1526 transcripts.
+
+Detalhes em `docs/AUDITORIA_ACESSOS.md`. Testes: `clientes/tests_auditoria_mascara.py`.
+
+---
+
 ## [Não publicado] — 2026-10-20 (Topologia: conexão traçada ponto a ponto e transportes)
 
 ### Adicionado

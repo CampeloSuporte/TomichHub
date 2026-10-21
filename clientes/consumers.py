@@ -22,6 +22,7 @@ from django.core.exceptions import ValidationError
 from django.db import close_old_connections
 from django.utils import timezone
 from .models import Acesso, Cliente, ProxyServer, AcessoSessao, AcessoComando, TerminalLinkExterno
+from . import auditoria_mascara as _mascara
 from usuario import perms as _perms
 
 logger = logging.getLogger(__name__)
@@ -335,12 +336,34 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             try:
                 sessao.encerrada_em = timezone.now()
                 sessao.status = 'encerrada'
-                sessao.transcript = getattr(self, '_transcript_buf', '')
+                buf = getattr(self, '_transcript_buf', '')
+                segredos = self._segredos_da_sessao() | _mascara.extrair_segredos(buf)
+                sessao.transcript = _mascara.mascarar(buf, segredos)
                 sessao.save(update_fields=['encerrada_em', 'status', 'transcript'])
             except Exception as e:
                 logger.error(f"❌ Erro ao encerrar sessão de auditoria: {e}")
         self._sessao_auditoria = None
         self._transcript_buf = ''
+        self._segredos_auditoria = None
+
+    def _segredos_da_sessao(self):
+        """Senhas que não podem ir para a auditoria desta sessão: as
+        cadastradas nos acessos do cliente (carregadas uma vez) mais as que
+        apareceram digitadas nela. Ver clientes/auditoria_mascara.py."""
+        segredos = getattr(self, '_segredos_auditoria', None)
+        if segredos is None:
+            segredos = set()
+            sessao = getattr(self, '_sessao_auditoria', None)
+            try:
+                if sessao:
+                    segredos = _mascara.segredos_de_acessos(
+                        Acesso.objects.filter(cliente_id=sessao.acesso.cliente_id)
+                        .values_list('senha', 'senha_adm')
+                    )
+            except Exception as e:
+                logger.error(f"❌ Erro ao carregar senhas para mascarar auditoria: {e}")
+            self._segredos_auditoria = segredos
+        return segredos
 
     # Teclas de seta/home/end saem como CSI (`ESC [ letra`) por padrão, mas
     # viram SS3 (`ESC O letra`) quando o equipamento coloca o terminal em
@@ -395,6 +418,15 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             buf, cur = [], 0
             if cmd:
                 try:
+                    # Fim da saída até o Enter: diz se era prompt de senha e
+                    # traz o eco já expandido (Tab) da linha digitada.
+                    saida = getattr(self, '_transcript_buf', '')[-4000:]
+                    segredos = self._segredos_da_sessao()
+                    linha = saida.replace('\r', '\n').split('\n')[-1]
+                    segredos |= _mascara.extrair_segredos(linha)
+                    if _mascara.eh_prompt_senha(saida):
+                        segredos.add(cmd)
+                    cmd = _mascara.mascarar_comando(cmd, saida, segredos)
                     AcessoComando.objects.create(sessao=sessao, comando=f'{cmd}{sufixo}')
                 except Exception as e:
                     logger.error(f"❌ Erro ao gravar comando de auditoria: {e}")
