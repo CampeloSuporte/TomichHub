@@ -609,7 +609,23 @@ def _alocadas_no_bloco(cliente, parent_net, excluir_pai=False):
         if excluir_pai and snet == parent_net:
             continue
         alocadas.append((snet, s))
-    return alocadas
+    return _sem_espelho_do_bloco(alocadas, parent_net, key=lambda a: a[0])
+
+
+def _sem_espelho_do_bloco(itens, parent_net, key=lambda n: n):
+    """
+    Tira a sub-rede do MESMO tamanho do bloco quando há coisa mais específica
+    dentro dele.
+
+    O import de backup cria, pra cada /24 (/48 em v6) que encontra, o prefixo
+    *e* uma sub-rede "Bloco X (auto)" igual a ele. Essa sub-rede é só o
+    contêiner das /30 reais: contada como alocação, ocupava o bloco inteiro e
+    o seletor de livres mostrava "0 endereços livres". Sem nada mais
+    específico dentro, ela é uso de verdade e continua contando.
+    """
+    if not any(key(i) != parent_net for i in itens):
+        return itens
+    return [i for i in itens if key(i) != parent_net]
 
 
 def _indices_amostra(parent_net, target_pl, alocadas, total):
@@ -986,7 +1002,7 @@ def _ocupadas_no_prefixo(pobj, prefixo_net):
         # zeraria o espaço livre do pai, então só entra quem é mais específico.
         if net.version == version and net != prefixo_net and net.subnet_of(prefixo_net):
             ocupadas.append(net)
-    return ocupadas
+    return _sem_espelho_do_bloco(ocupadas, prefixo_net)
 
 
 @login_required
@@ -1209,7 +1225,9 @@ def ipam_prefixo_breakdown(request, prefixo_id):
     alocadas.sort(key=lambda x: x['_net'].network_address)
 
     # Calcular espaço livre (gaps)
-    livres = _calcular_livres(prefixo_net, [a['_net'] for a in alocadas], version)
+    livres = _calcular_livres(prefixo_net,
+                              _sem_espelho_do_bloco([a['_net'] for a in alocadas], prefixo_net),
+                              version)
 
     # Remover campo interno antes de serializar
     for a in alocadas:

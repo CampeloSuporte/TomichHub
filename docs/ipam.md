@@ -285,6 +285,20 @@ visibilidade, não redesenhar:
 
 ---
 
+## Blocos do backup: a sub-rede "(auto)" não ocupa o bloco (2026-10-21)
+
+Num prefixo criado pelo import de backup (ex.: `198.18.104.0/24` da Sartor), o seletor de
+**Blocos livres** mostrava "0 endereços livres". A causa era a sub-rede espelho
+`Bloco <cidr> (auto)`, do mesmo tamanho do prefixo (ver "Comportamento atual" acima): ela entrava
+como alocação e cobria o bloco inteiro.
+
+`_sem_espelho_do_bloco()` tira a sub-rede igual ao bloco **quando há algo mais específico
+dentro dele**. Assim ela é tratada como contêiner das /30 reais. Sem nada dentro, ela continua
+contando como uso. A regra vale para os três lugares que calculam ocupação de um prefixo:
+`_ocupadas_no_prefixo` (seletor de livres), `ipam_prefixo_breakdown` (gaps) e
+`_alocadas_no_bloco` (subdivisões, que antes marcava todo bloco como "parcial"). As 261 sub-redes
+"(auto)" continuam no banco e seguem aparecendo na aba Sub-redes.
+
 ## Auto-documentação por backup — descrição de loopback (2026-08-31)
 
 Quem preenche o IPAM a partir dos backups é a dupla
