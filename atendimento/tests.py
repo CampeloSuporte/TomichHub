@@ -1674,6 +1674,31 @@ class GatilhoFechamentoIATest(TestCase):
         mock_fechar.assert_not_called()
 
     @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
+    def test_conversa_que_so_cita_fechamento_nao_dispara(self, mock_fechar):
+        # Chamado #1978 (22/10/2026) fechou sozinho com a 1ª frase: o atendente
+        # falava de outro atendimento. O teste antigo era por pedaço de palavra
+        # ('finaliza' in 'finalizando') e com alvo em qualquer ponto da frase.
+        for i, texto in enumerate([
+                'certo, estou finalizando uma janela de atendimento e já vejo isso com você',
+                'o fechamento do chamado anterior',
+                'já concluímos o atendimento?',
+                'estou encerrando outro atendimento aqui',
+                'vou fechar outro chamado e já te respondo',
+                'já concluí o atendimento do Wiler',
+                'o chamado tá aberto, vou fechar a porta do rack',
+                'abri o chamado. Pode fechar a janela do navegador'], start=1):
+            self._webhook(texto, f'CIT{i}')
+        mock_fechar.assert_not_called()
+
+    @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
+    def test_pedido_informal_ainda_dispara(self, mock_fechar):
+        for i, texto in enumerate(['fecha o chamado aí', 'chamado ok, pode fechar por favor',
+                                   'pode encerrar esse atendimento #1978'], start=1):
+            mock_fechar.reset_mock()
+            self._webhook(texto, f'INF{i}')
+            mock_fechar.assert_called_once_with(str(self.conversation.id), texto, False)
+
+    @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
     def test_chamado_nao_resolvido_nao_dispara(self, mock_fechar):
         self._webhook('o chamado ainda não está resolvido', 'FEC-N4')
         mock_fechar.assert_not_called()

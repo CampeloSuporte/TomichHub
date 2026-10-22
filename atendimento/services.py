@@ -323,35 +323,71 @@ def _pede_abertura_de_tarefa(texto: str) -> bool:
     return 'tarefa' in t and any(v in t for v in _TAREFA_VERBOS)
 
 
-_FECHAR_VERBOS = ('fechar', 'feche', 'fecha', 'encerrar', 'encerre', 'encerra',
-                  'finalizar', 'finalize', 'finaliza', 'concluir', 'conclua', 'conclui')
-_FECHAR_ALVOS = ('chamado', 'atendimento', 'ticket', 'protocolo')
-# "nao pode fechar o chamado ainda", "nao vamos encerrar o atendimento": a
-# negação até 3 palavras antes do verbo inverte o pedido — fechar aqui seria
-# o oposto do que foi dito.
-_FECHAR_NEGADO = _re.compile(
-    r'\bnao\b(?:\s+\S+){0,3}\s+(?:%s)' % '|'.join(_FECHAR_VERBOS))
+# Palavra inteira, só infinitivo/imperativo (o pedido). Gerúndio
+# ("finalizando"), substantivo ("fechamento") e passado ("concluímos") ficam
+# de fora: o chamado #1978 fechou sozinho com "estou finalizando uma janela de
+# atendimento", porque o teste antigo era por pedaço de palavra ('finaliza' in
+# 'finalizando'). "conclui" saiu porque sem acento é também "concluí".
+_FECHAR_VERBOS = frozenset({
+    'fechar', 'feche', 'fecha', 'encerrar', 'encerre', 'encerra',
+    'finalizar', 'finalize', 'finaliza', 'concluir', 'conclua',
+})
+_FECHAR_ALVOS = frozenset({'chamado', 'atendimento', 'ticket', 'protocolo'})
+# O que pode ficar entre o verbo e o alvo em "fechar o chamado", "encerrar
+# esse seu atendimento". "outro"/"uma janela de" não estão aqui de propósito:
+# "vou fechar outro chamado" fala de outro chamado.
+_FECHAR_LIGACAO = frozenset({
+    'o', 'a', 'os', 'as', 'esse', 'essa', 'este', 'esta', 'meu', 'seu', 'teu',
+    'nosso', 'nossa', 'do', 'da', 'no', 'na', 'desse', 'dessa', 'deste', 'desta',
+})
+# Alvo antes do verbo ("ticket resolvido, pode encerrar") só vale com o verbo
+# fechando a frase — "o chamado tá aberto, vou fechar a porta" não é pedido.
+_FECHAR_FIM = frozenset({
+    'ai', 'ja', 'agora', 'entao', 'por', 'favor', 'pf', 'pfv', 'pls',
+    'obrigado', 'obrigada', 'valeu', 'vlw',
+})
+_FECHAR_FRASES = _re.compile(r'[.!?;\n]+')
+_FECHAR_PALAVRAS = _re.compile(r'\w+')
 
 
 def _pede_fechamento_de_chamado(texto: str) -> bool:
     """Mesma ideia de `_pede_abertura_de_tarefa`, mas para o encerramento:
-    aceita qualquer mensagem com uma palavra que nomeie o chamado
-    (chamado/atendimento/ticket/protocolo) perto de um verbo de fechamento
-    (fechar/encerrar/finalizar/concluir).
+    um verbo de fechamento (fechar/encerrar/finalizar/concluir, só como
+    pedido) colado num alvo que nomeie o chamado
+    (chamado/atendimento/ticket/protocolo), dentro da mesma frase.
 
     É de propósito mais exigente que o gatilho de tarefa — fechar o chamado
-    errado é bem mais caro que abrir uma tarefa a mais. Por isso pede o alvo
-    explícito (um "pode fechar" solto, falando de outra coisa, não encerra
-    nada; "fechar a tarefa" também não), só aceita verbo de ação (não o
-    adjetivo em "o chamado ainda não está resolvido") e ignora o pedido
-    negado.
+    errado é bem mais caro que abrir uma tarefa a mais. Aceita:
+      - verbo + até 2 palavras de ligação + alvo ("pode fechar o chamado",
+        "Tomichinho fechar atendimento");
+      - alvo + até 3 palavras + verbo no fim da frase ("ticket resolvido,
+        pode encerrar").
+    Recusa o "pode fechar" solto (falando de outra coisa), "fechar a tarefa",
+    o adjetivo ("o chamado ainda não está resolvido"), o pedido negado ("não"
+    até 3 palavras antes do verbo) e qualquer forma que não seja pedido
+    ("estou finalizando…", "o fechamento do chamado", "já concluímos o
+    atendimento?").
     """
     if not texto:
         return False
     t = _normalizar_texto(texto.lower())
-    if not (any(a in t for a in _FECHAR_ALVOS) and any(v in t for v in _FECHAR_VERBOS)):
-        return False
-    return not _FECHAR_NEGADO.search(t)
+    for frase in _FECHAR_FRASES.split(t):
+        palavras = _FECHAR_PALAVRAS.findall(frase)
+        for i, p in enumerate(palavras):
+            if p not in _FECHAR_VERBOS:
+                continue
+            if 'nao' in palavras[max(0, i - 3):i]:
+                continue
+            depois = palavras[i + 1:]
+            j = 0
+            while j < len(depois) and j < 2 and depois[j] in _FECHAR_LIGACAO:
+                j += 1
+            if j < len(depois) and depois[j] in _FECHAR_ALVOS:
+                return True
+            if all(d in _FECHAR_FIM for d in depois) and any(
+                    a in _FECHAR_ALVOS for a in palavras[max(0, i - 4):i]):
+                return True
+    return False
 
 
 def _disparar_acoes_ia(conversation, content, is_internal=False) -> None:

@@ -1245,20 +1245,38 @@ mensagem do atendente viraria mais uma mensagem para o cliente.
 
 ### Gatilho
 
-`atendimento/services.py` → `_pede_fechamento_de_chamado()`: a mensagem precisa citar o alvo
-(`chamado`, `atendimento`, `ticket`, `protocolo`) **e** um verbo de fechamento (`fechar`, `encerrar`,
-`finalizar`, `concluir` e suas flexões). Acento errado não atrapalha (`_normalizar_texto`).
+`atendimento/services.py` → `_pede_fechamento_de_chamado()`: compara **palavras inteiras**, frase a
+frase (`.`, `!`, `?`, `;` e quebra de linha separam frases). Precisa de um verbo de fechamento **na
+forma de pedido** — infinitivo ou imperativo: `fechar/feche/fecha`, `encerrar/encerre/encerra`,
+`finalizar/finalize/finaliza`, `concluir/conclua` — colado num alvo (`chamado`, `atendimento`,
+`ticket`, `protocolo`) de um destes dois jeitos:
+
+- **verbo → alvo**, com no máximo 2 palavras de ligação no meio (`o`, `esse`, `seu`, `do`… —
+  `_FECHAR_LIGACAO`): "pode fechar o chamado", "Tomichinho fechar atendimento";
+- **alvo → verbo**, com até 3 palavras no meio e o verbo fechando a frase (depois dele só "aí",
+  "por favor", "valeu"… — `_FECHAR_FIM`): "ticket resolvido, pode encerrar".
+
+Acento errado não atrapalha (`_normalizar_texto`). Até 22/10/2026 o teste era por **pedaço de
+palavra** e com alvo em qualquer ponto da mensagem: o chamado #1978 fechou sozinho quando o atendente
+escreveu "estou finalizando uma janela de atendimento e já vejo isso com você" (`'finaliza'` está
+dentro de `'finalizando'`). "conclui" saiu da lista porque, sem acento, é também "concluí".
 
 Ele é de propósito mais exigente que o gatilho de tarefa — fechar o chamado errado custa mais caro
 que abrir uma tarefa a mais:
 
 | Mensagem | Fecha? | Por quê |
 |---|---|---|
-| "pode fechar o chamado" / "Tomichinho, encerrar o atendimento" | ✅ | alvo + verbo |
+| "pode fechar o chamado" / "Tomichinho, encerrar o atendimento" | ✅ | verbo + alvo |
+| "fecha o chamado aí" / "chamado ok, pode fechar por favor" | ✅ | pedido informal |
 | "pode fechar a porta do rack" | ❌ | sem alvo — "fechar" solto não encerra nada |
 | "fechar a tarefa da antena" | ❌ | fala de tarefa, não de chamado |
 | "o chamado ainda não está resolvido" | ❌ | "resolvido" é adjetivo, não é verbo de fechamento |
-| "não pode fechar o chamado ainda" | ❌ | pedido negado (`_FECHAR_NEGADO`) |
+| "não pode fechar o chamado ainda" | ❌ | pedido negado ("não" até 3 palavras antes do verbo) |
+| "estou finalizando uma janela de atendimento" | ❌ | gerúndio — conta o que está fazendo (caso #1978) |
+| "o fechamento do chamado anterior" | ❌ | substantivo, não pedido |
+| "já concluímos o atendimento?" / "já concluí o atendimento" | ❌ | passado |
+| "vou fechar outro chamado e já te respondo" | ❌ | "outro" não é ligação — fala de outro chamado |
+| "o chamado tá aberto, vou fechar a porta do rack" | ❌ | alvo antes, mas o verbo tem outro objeto |
 
 ### O que a IA faz (`atendimento/tasks.py` → `fechar_chamado_ia`)
 
