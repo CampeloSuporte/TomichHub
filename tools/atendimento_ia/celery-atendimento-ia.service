@@ -1,0 +1,24 @@
+# Worker Celery só da fila `atendimento_ia` (ações da IA pedidas no chat do
+# atendimento: fechar chamado, abrir tarefa, responder nota interna/Tomichinho).
+# Separado do celery.service porque aquele roda com concurrency 1 e o beat
+# embutido: uma varredura AmpScan/RotaLoop de vários minutos segurava o
+# "fechar atendimento" da nota interna na fila sem ninguém ver.
+# Instalar: cp tools/atendimento_ia/celery-atendimento-ia.service /etc/systemd/system/
+#           chmod 644 /etc/systemd/system/celery-atendimento-ia.service
+#           systemctl daemon-reload && systemctl enable --now celery-atendimento-ia
+[Unit]
+Description=Celery - acoes da IA no chat do atendimento
+After=network.target redis-server.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/crm
+Environment="PATH=/opt/crm/venv/bin:/usr/bin:/usr/sbin:/bin:/sbin"
+ExecStart=/opt/crm/venv/bin/celery -A crm worker -Q atendimento_ia -n atendimento_ia@%%h -l info --concurrency=2 --max-tasks-per-child=200
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

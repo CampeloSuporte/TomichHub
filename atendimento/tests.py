@@ -1614,6 +1614,25 @@ class AbrirTarefaIATaskTest(TestCase):
         self.assertEqual(tarefa.titulo, 'O link caiu de novo aqui, pode verificar?')
 
 
+class FilaAcoesIATest(TestCase):
+    """As ações da IA pedidas no chat vão para a fila `atendimento_ia`: na
+    fila padrão (worker com concurrency 1) o "fechar atendimento" da nota
+    interna ficou 10+ min parado atrás de uma varredura AmpScan."""
+
+    def test_acoes_do_chat_vao_para_fila_propria(self):
+        from crm.celery import app
+        from atendimento import tasks
+        for task in (tasks.fechar_chamado_ia, tasks.abrir_tarefa_ia,
+                     tasks.responder_nota_interna_ia, tasks.responder_tomichinho):
+            rota = app.amqp.router.route({}, task.name)
+            self.assertEqual(rota['queue'].name, 'atendimento_ia', task.name)
+
+    def test_demais_tasks_seguem_na_fila_padrao(self):
+        from crm.celery import app
+        rota = app.amqp.router.route({}, 'atendimento.tasks.enviar_mensagens_agendadas')
+        self.assertEqual(rota['queue'].name, 'celery')
+
+
 class GatilhoFechamentoIATest(TestCase):
     """Pedido de fechamento no texto da mensagem dispara `fechar_chamado_ia`."""
 
