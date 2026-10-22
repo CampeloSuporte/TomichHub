@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-22 (Documentos abrem num modal)
+
+### Adicionado
+
+- **Cliente › Documentos: pré-visualização no modal.** O olho (e o nome do arquivo) agora abre o
+  documento num modal em vez de outra aba. Imagem, PDF, vídeo e áudio usam o leitor do navegador;
+  texto/config/log/json/xml aparecem como texto; Excel (.xlsx, com uma aba por planilha), Word
+  (.docx), PowerPoint (.pptx, texto dos slides), LibreOffice (.odt/.ods/.odp), CSV, Markdown e
+  zip/tar são convertidos no servidor. Formatos antigos (.doc/.xls/.ppt) e binários mostram aviso
+  com botão de download. Ver `docs/documentos_preview.md`.
+
+---
+
 ## [Não publicado] — 2026-10-21 (Containers do IPAM dentro do bloco pai)
 
 ### Corrigido

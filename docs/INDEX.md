@@ -1988,3 +1988,4 @@ existente).
 **Versão:** 2.1  
 **Mantidor:** CampeloSuporte
 - [Notificações de Chamados em Aberto](notificacoes_chamados.md) — Toast e badge em tempo real para chamados sem atendente (dentro e fora do atendimento)
+- [Pré-visualização de Documentos](documentos_preview.md) — Aba Documentos abre txt, imagem, PDF, Word, Excel, PowerPoint, CSV, zip etc. num modal
