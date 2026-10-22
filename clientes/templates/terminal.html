@@ -1236,7 +1236,6 @@
     <script src="/static/js/xterm.min.js"></script>
     <script src="/static/js/xterm-addon-fit.min.js"></script>
     <script src="/static/js/xterm-addon-canvas.min.js"></script>
-    <script src="/static/js/xterm-addon-webgl.min.js"></script>
     <script src="/static/js/xterm-addon-search.min.js"></script>
     <script>
 
@@ -2355,36 +2354,27 @@
     window.terminalManager = terminalManager;
 
     // ============================================================
-    // RENDERIZADOR — WebGL (GPU) quando dá, Canvas como reserva
+    // RENDERIZADOR — Canvas
     // ============================================================
-    // O WebGL é o que segura saída grande (show running-config, display
-    // current-configuration) sem engasgar a aba. Mas o navegador limita os
-    // contextos WebGL por página (~16 no Chrome) e derruba o mais antigo quando
-    // passa, e o contexto também cai sozinho (GPU reiniciada, driver, aba muito
-    // tempo em segundo plano). Por isso: só as primeiras WEBGL_MAX abas usam
-    // WebGL e, se o contexto de uma cair, ela troca para Canvas na hora sem
-    // perder o que está na tela.
-    const WEBGL_MAX = 10;
+    // O WebGL foi usado de 20 a 22/10/2026 e deixou a tela preta em máquinas
+    // reais (GPU/driver): a saída chegava ao buffer, mas só aparecia quando
+    // algo forçava um redesenho completo (ex.: "↻ Reconectando..."). No
+    // SwiftShader não reproduz. O Canvas rodou meses sem queixa — fica ele.
     function carregarRenderer(tObj) {
-        const emWebgl = Array.from(terminalManager.terminals.values()).filter(t => t.renderer === 'webgl').length;
-        if (typeof WebglAddon !== 'undefined' && emWebgl < WEBGL_MAX) {
-            try {
-                const webgl = new WebglAddon.WebglAddon();
-                webgl.onContextLoss(() => {
-                    try { webgl.dispose(); } catch(_) {}
-                    carregarCanvas(tObj);
-                });
-                tObj.terminal.loadAddon(webgl);
-                tObj.renderer = 'webgl';
-                return;
-            } catch(_) { /* sem WebGL2 no navegador/GPU — cai no Canvas */ }
-        }
-        carregarCanvas(tObj);
-    }
-    function carregarCanvas(tObj) {
         try { tObj.terminal.loadAddon(new CanvasAddon.CanvasAddon()); tObj.renderer = 'canvas'; }
         catch(_) { tObj.renderer = 'dom'; }
     }
+
+    // Rede de segurança: ao voltar para a aba do navegador, redesenha o que
+    // está na tela (renderizador pode ter ficado com o quadro velho em segundo plano).
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible') return;
+        const mgr = window.terminalManager; if (!mgr) return;
+        (mgr.split ? mgr.splitPanes : [mgr.activeTerminal]).forEach(id => {
+            const t = id && mgr.terminals.get(id);
+            if (t && t.terminal) { try { t.terminal.refresh(0, t.terminal.rows - 1); } catch(_) {} }
+        });
+    });
 
     // ============================================================
     // COPIAR / COLAR
