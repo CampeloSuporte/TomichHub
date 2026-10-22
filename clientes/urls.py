@@ -27,6 +27,7 @@ urlpatterns = [
     path('acessos/protocolos/<int:protocolo_id>/remover/', views.remover_protocolo_acesso, name='remover_protocolo_acesso'),
     path('upload_documento/', views.upload_documento, name='upload_documento'),
     path('deletar_documento/<int:documento_id>/', views.deletar_documento, name='deletar_documento'),
+    path('documento/<int:documento_id>/preview/', views.preview_documento, name='preview_documento'),
 
     # URLs VPN
     path('vpn/upload/', views.upload_vpn, name='upload_vpn'),

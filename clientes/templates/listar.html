@@ -2669,12 +2669,13 @@
                                 <tbody>
                                     {% for doc in documentos %}
                                     <tr>
-                                        <td>{{ doc.nome }}</td>
+                                        <td><a href="{{ doc.arquivo.url }}" onclick="abrirPreviewDocumento(event, {{ doc.id }})" style="color:inherit; text-decoration:none; cursor:pointer;" title="Pré-visualizar">{{ doc.nome }}</a></td>
                                         <td>{{ doc.data_upload|date:"d/m/Y H:i" }}</td>
                                         <td>{{ doc.arquivo.size|filesizeformat }}</td>
                                         <td>
                                             <div class="action-buttons">
-                                                <a href="{{ doc.arquivo.url }}" target="_blank" class="btn-action btn-view" title="Visualizar">
+                                                <a href="{{ doc.arquivo.url }}" target="_blank" class="btn-action btn-view" title="Visualizar"
+                                                   onclick="abrirPreviewDocumento(event, {{ doc.id }})">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
                                                 <a href="{{ doc.arquivo.url }}" download class="btn-action btn-download" title="Download">
@@ -10557,6 +10558,125 @@ function getCsrfToken(){
     // ============================================
     // DOCUMENTOS
     // ============================================
+
+    // ============================================
+    // PRÉ-VISUALIZAÇÃO DE DOCUMENTO (modal)
+    // O servidor (clientes/documento_preview.py) decide o tipo: imagem/pdf/
+    // vídeo/áudio vêm só com a URL; planilha/Word/etc. vêm como HTML já
+    // escapado; texto vem cru e entra via textContent.
+    // ============================================
+    let _docPrevSeq = 0;
+    function abrirPreviewDocumento(ev, id) {
+        if (ev && (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button === 1)) return; // nova aba continua valendo
+        if (ev) ev.preventDefault();
+        const m = document.getElementById('modalPreviewDocumento');
+        const corpo = document.getElementById('docPrevCorpo');
+        const seq = ++_docPrevSeq;
+        document.getElementById('docPrevNome').textContent = 'Carregando…';
+        document.getElementById('docPrevTamanho').textContent = '';
+        document.getElementById('docPrevAviso').style.display = 'none';
+        document.getElementById('docPrevAbas').style.display = 'none';
+        corpo.className = 'doc-prev-corpo';
+        corpo.innerHTML = '<div class="doc-prev-msg"><i class="fas fa-spinner fa-spin"></i>Abrindo arquivo…</div>';
+        m.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        fetch(`/clientes/documento/${id}/preview/`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => {
+                if (r.redirected || !(r.headers.get('content-type') || '').includes('json')) throw new Error('Sessão expirada — recarregue a página.');
+                return r.json();
+            })
+            .then(d => { if (seq === _docPrevSeq) _renderizarPreviewDocumento(d); })
+            .catch(e => { if (seq === _docPrevSeq) _renderizarPreviewDocumento({ ok: false, erro: e.message || 'Erro ao carregar.' }); });
+    }
+
+    function _renderizarPreviewDocumento(d) {
+        const corpo = document.getElementById('docPrevCorpo');
+        const aviso = document.getElementById('docPrevAviso');
+        const abas = document.getElementById('docPrevAbas');
+        document.getElementById('docPrevNome').textContent = d.nome || 'Documento';
+        document.getElementById('docPrevTamanho').textContent = d.tamanho || '';
+        const novaAba = document.getElementById('docPrevNovaAba');
+        const download = document.getElementById('docPrevDownload');
+        novaAba.style.display = download.style.display = d.url ? '' : 'none';
+        if (d.url) { novaAba.href = d.url; download.href = d.url; download.setAttribute('download', d.nome || ''); }
+        if (d.aviso) { aviso.textContent = d.aviso; aviso.style.display = ''; }
+
+        corpo.innerHTML = '';
+        if (!d.ok || d.tipo === 'nao_suportado') {
+            const div = document.createElement('div');
+            div.className = 'doc-prev-msg';
+            div.innerHTML = '<i class="fas fa-file-circle-question"></i>';
+            div.append(d.erro || 'Não foi possível abrir o arquivo.');
+            if (d.url) {
+                const a = document.createElement('a');
+                a.href = d.url; a.download = d.nome || ''; a.className = 'btn btn-primary btn-sm d-inline-block mt-3';
+                a.innerHTML = '<i class="fas fa-download me-1"></i> Baixar arquivo';
+                div.append(document.createElement('br'), a);
+            }
+            corpo.append(div);
+            return;
+        }
+        if (d.tipo === 'imagem') {
+            corpo.innerHTML = '<div class="doc-prev-centro"><img alt=""></div>';
+            const img = corpo.querySelector('img');
+            img.src = d.url;
+            img.onclick = () => img.classList.toggle('doc-prev-zoom');
+        } else if (d.tipo === 'pdf') {
+            corpo.classList.add('doc-prev-cheio');
+            const f = document.createElement('iframe');
+            f.src = d.url;
+            corpo.append(f);
+        } else if (d.tipo === 'video' || d.tipo === 'audio') {
+            const el = document.createElement(d.tipo);
+            el.controls = true; el.src = d.url;
+            const wrap = document.createElement('div');
+            wrap.className = 'doc-prev-centro';
+            wrap.append(el);
+            corpo.append(wrap);
+        } else if (d.tipo === 'iframe_html') {
+            corpo.classList.add('doc-prev-cheio');
+            const f = document.createElement('iframe');
+            f.setAttribute('sandbox', '');          // sem script, sem formulário, origem isolada
+            f.srcdoc = d.texto || '';
+            corpo.append(f);
+        } else if (d.tipo === 'html') {
+            corpo.innerHTML = d.html || '';
+            const secoes = corpo.querySelectorAll(':scope > .doc-prev-aba');
+            if (secoes.length > 1) {
+                abas.innerHTML = '';
+                secoes.forEach((sec, i) => {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.textContent = sec.dataset.aba || `Aba ${i + 1}`;
+                    b.onclick = () => {
+                        secoes.forEach(s => s.style.display = 'none');
+                        abas.querySelectorAll('button').forEach(x => x.classList.remove('ativa'));
+                        sec.style.display = ''; b.classList.add('ativa');
+                    };
+                    abas.append(b);
+                    if (i) sec.style.display = 'none'; else b.classList.add('ativa');
+                });
+                abas.style.display = '';
+            }
+        } else {
+            const pre = document.createElement('pre');
+            pre.className = 'doc-prev-texto';
+            pre.textContent = d.texto || '';
+            corpo.append(pre);
+        }
+    }
+
+    function fecharPreviewDocumento() {
+        _docPrevSeq++;
+        const m = document.getElementById('modalPreviewDocumento');
+        m.style.display = 'none';
+        document.getElementById('docPrevCorpo').innerHTML = '';   // para vídeo/áudio e solta o PDF
+        document.body.style.overflow = 'auto';
+    }
+    document.addEventListener('keydown', (e) => {
+        const m = document.getElementById('modalPreviewDocumento');
+        if (e.key === 'Escape' && m && m.style.display !== 'none') fecharPreviewDocumento();
+    });
 
     function abrirModalUpload() {
         sessionStorage.setItem('abaAtiva', 'documentos');

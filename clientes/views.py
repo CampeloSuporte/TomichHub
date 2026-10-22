@@ -1217,6 +1217,17 @@ def deletar_documento(request, documento_id):
     return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
 
 
+@login_required(login_url='login')
+@modulo_habilitado_required('documentos')
+def preview_documento(request, documento_id):
+    """JSON para o modal de pré-visualização da aba Documentos."""
+    from .documento_preview import montar_preview
+    documento = get_object_or_404(Documento.objects.select_related('cliente'), id=documento_id)
+    if not _perms.pode_acessar_cliente(request.user, documento.cliente):
+        return JsonResponse({'ok': False, 'erro': 'Sem permissão para este documento.'}, status=403)
+    return JsonResponse(montar_preview(documento))
+
+
     # ========================================
 # VIEWS PARA VPN
 # ========================================
