@@ -1634,7 +1634,8 @@ class FilaAcoesIATest(TestCase):
 
 
 class GatilhoFechamentoIATest(TestCase):
-    """Pedido de fechamento no texto da mensagem dispara `fechar_chamado_ia`."""
+    """Pedido de fechamento em comentário interno dispara `fechar_chamado_ia`.
+    WhatsApp e caixa normal do chat nunca fecham — é conversa com o cliente."""
 
     def setUp(self):
         self.conversation = _criar_conversa()
@@ -1642,6 +1643,9 @@ class GatilhoFechamentoIATest(TestCase):
         self.group.jid = '551930903699-1620661700@g.us'
         self.group.save(update_fields=['jid'])
         self.agent = _criar_agente_staff('bia')
+        patcher = mock.patch('atendimento.services.EvolutionAPIClient')
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def _webhook(self, texto, msg_id):
         return ConversationService.process_webhook({
@@ -1655,22 +1659,42 @@ class GatilhoFechamentoIATest(TestCase):
             },
         })
 
+    def _nota(self, texto):
+        ConversationService.send_message(self.conversation, texto, self.agent, is_internal=True)
+
     @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
     def test_variacoes_do_pedido_de_fechamento_disparam(self, mock_fechar):
-        for i, texto in enumerate(['pode fechar o chamado', 'Tomichinho, encerrar o atendimento',
-                                   'finalizar chamado por favor', 'ticket resolvido, pode encerrar'],
-                                  start=1):
+        for texto in ['pode fechar o chamado', 'Tomichinho, encerrar o atendimento',
+                      'finalizar chamado por favor', 'ticket resolvido, pode encerrar',
+                      'fechar atendimento']:
             mock_fechar.reset_mock()
-            self._webhook(texto, f'FEC{i}')
-            mock_fechar.assert_called_once_with(str(self.conversation.id), texto, False)
+            self._nota(texto)
+            mock_fechar.assert_called_once_with(str(self.conversation.id), texto, True)
+
+    @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
+    def test_pedido_vindo_do_whatsapp_nao_fecha(self, mock_fechar):
+        # Chamado #1978: a frase saiu pro cliente e fechou o chamado. Do
+        # WhatsApp (cliente ou atendente pelo celular) nada encerra.
+        for i, texto in enumerate(['pode fechar o chamado', 'Tomichinho fechar atendimento'], start=1):
+            self._webhook(texto, f'WA{i}')
+        mock_fechar.assert_not_called()
+
+    @mock.patch('atendimento.tasks.responder_tomichinho.delay')
+    @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
+    def test_caixa_normal_do_chat_nao_fecha(self, mock_fechar, mock_tomichinho):
+        ConversationService.send_message(
+            self.conversation, 'Tomichinho fechar atendimento', self.agent)
+
+        mock_fechar.assert_not_called()
+        mock_tomichinho.assert_not_called()
 
     @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
     def test_pedido_negado_nao_dispara(self, mock_fechar):
         # "não pode fechar o chamado ainda" pede o oposto — fechar aqui
         # seria o pior erro possível do agente.
-        for i, texto in enumerate(['não pode fechar o chamado ainda',
-                                   'não vamos encerrar esse atendimento hoje'], start=1):
-            self._webhook(texto, f'NEG{i}')
+        for texto in ['não pode fechar o chamado ainda',
+                      'não vamos encerrar esse atendimento hoje']:
+            self._nota(texto)
         mock_fechar.assert_not_called()
 
     @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
@@ -1678,7 +1702,7 @@ class GatilhoFechamentoIATest(TestCase):
         # Chamado #1978 (22/10/2026) fechou sozinho com a 1ª frase: o atendente
         # falava de outro atendimento. O teste antigo era por pedaço de palavra
         # ('finaliza' in 'finalizando') e com alvo em qualquer ponto da frase.
-        for i, texto in enumerate([
+        for texto in [
                 'certo, estou finalizando uma janela de atendimento e já vejo isso com você',
                 'o fechamento do chamado anterior',
                 'já concluímos o atendimento?',
@@ -1686,65 +1710,40 @@ class GatilhoFechamentoIATest(TestCase):
                 'vou fechar outro chamado e já te respondo',
                 'já concluí o atendimento do Wiler',
                 'o chamado tá aberto, vou fechar a porta do rack',
-                'abri o chamado. Pode fechar a janela do navegador'], start=1):
-            self._webhook(texto, f'CIT{i}')
+                'abri o chamado. Pode fechar a janela do navegador']:
+            self._nota(texto)
         mock_fechar.assert_not_called()
 
     @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
     def test_pedido_informal_ainda_dispara(self, mock_fechar):
-        for i, texto in enumerate(['fecha o chamado aí', 'chamado ok, pode fechar por favor',
-                                   'pode encerrar esse atendimento #1978'], start=1):
+        for texto in ['fecha o chamado aí', 'chamado ok, pode fechar por favor',
+                      'pode encerrar esse atendimento #1978']:
             mock_fechar.reset_mock()
-            self._webhook(texto, f'INF{i}')
-            mock_fechar.assert_called_once_with(str(self.conversation.id), texto, False)
+            self._nota(texto)
+            mock_fechar.assert_called_once_with(str(self.conversation.id), texto, True)
 
     @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
     def test_chamado_nao_resolvido_nao_dispara(self, mock_fechar):
-        self._webhook('o chamado ainda não está resolvido', 'FEC-N4')
+        self._nota('o chamado ainda não está resolvido')
         mock_fechar.assert_not_called()
 
     @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
     def test_mensagem_normal_nao_fecha_chamado(self, mock_fechar):
-        self._webhook('bom dia, o link caiu de novo', 'FEC-N1')
+        self._nota('cliente disse que o link caiu de novo')
         mock_fechar.assert_not_called()
 
     @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
     def test_fechar_sem_dizer_chamado_nao_dispara(self, mock_fechar):
         # "pode fechar" solto (ex.: falando de uma porta, de um contrato) não
         # pode encerrar o atendimento de ninguém.
-        self._webhook('pode fechar a porta do rack quando terminar', 'FEC-N2')
+        self._nota('pode fechar a porta do rack quando terminar')
         mock_fechar.assert_not_called()
 
     @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
     @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
     def test_fechar_tarefa_nao_fecha_chamado(self, mock_fechar, mock_tarefa):
-        self._webhook('fechar a tarefa da antena', 'FEC-N3')
+        self._nota('fechar a tarefa da antena')
         mock_fechar.assert_not_called()
-
-    @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
-    @mock.patch('atendimento.services.EvolutionAPIClient')
-    def test_mensagem_normal_do_chat_tambem_dispara(self, mock_client_cls, mock_fechar):
-        # Escrito na caixa normal do chat (não em nota interna): antes
-        # `send_message` só olhava os gatilhos quando era comentário interno,
-        # então "Tomichinho fechar atendimento" digitado no chat não fazia nada.
-        ConversationService.send_message(
-            self.conversation, 'Tomichinho fechar atendimento', self.agent)
-
-        mock_fechar.assert_called_once_with(
-            str(self.conversation.id), 'Tomichinho fechar atendimento', False)
-
-    @mock.patch('atendimento.tasks.responder_tomichinho.delay')
-    @mock.patch('atendimento.tasks.fechar_chamado_ia.delay')
-    @mock.patch('atendimento.services.EvolutionAPIClient')
-    def test_mensagem_normal_do_chat_nao_gera_resposta_conversacional(
-            self, mock_client_cls, mock_fechar, mock_tomichinho):
-        # "tomichinho" no que o atendente manda pela plataforma não pode virar
-        # mais uma mensagem do bot pro cliente — só a ação pedida.
-        ConversationService.send_message(
-            self.conversation, 'Tomichinho fechar atendimento', self.agent)
-
-        mock_tomichinho.assert_not_called()
-        mock_fechar.assert_called_once()
 
     @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
     @mock.patch('atendimento.services.EvolutionAPIClient')
