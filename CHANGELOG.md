@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-22 (Terminal preto depois de reconectar)
+
+### Corrigido
+
+- **Terminal: tela preta com a saída "escondida".** O comando rodava no equipamento e a resposta
+  chegava, mas a tela continuava preta; ao clicar em "↻ Reconectar" a saída aparecia acima. A
+  causa foi o renderizador WebGL ligado em 20/10, que em algumas GPUs/drivers parava de pintar. O
+  terminal voltou a usar o Canvas, como antes, e redesenha a tela ao voltar para a aba do
+  navegador. Visto pelo Márcio no SW3-PE-JAPURANA-CEM-01 (Startnet). Ver `docs/terminal_ssh.md`.
+
+---
+
 ## [Não publicado] — 2026-10-22 (Documentos abrem num modal)
 
 ### Adicionado
@@ -151,7 +163,8 @@ Detalhes em `docs/topologia.md`. Teste de navegador: `clientes/tests_topologia_r
 ### Alterado
 
 - **Renderização por GPU (WebGL)** nas primeiras 10 abas, com troca automática para Canvas se o
-  contexto cair ou o navegador não tiver WebGL. Saída grande rola mais leve.
+  contexto cair ou o navegador não tiver WebGL. Saída grande rola mais leve. *(Removido em
+  22/10/2026: deixava a tela preta em GPUs reais.)*
 
 Detalhes em `docs/terminal_ssh.md`. Arquivo novo fora do git: `static/js/xterm-addon-search.min.js`.
 

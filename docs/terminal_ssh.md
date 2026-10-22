@@ -513,23 +513,27 @@ O evento já tratado sai marcado com `__atalhoTratado` e não roda duas vezes. N
 | `F1` | Janela de atalhos e preferências |
 | `Ctrl+R` | Reconectar (já existia) |
 
-### Renderizador: WebGL com Canvas de reserva
+### Renderizador: Canvas (WebGL removido em 22/10/2026)
 
-Antes, só se usava o Canvas, por medo de perder o contexto WebGL. Agora `carregarRenderer()` tenta
-o WebGL (`xterm-addon-webgl` 0.16, que já era carregado e não era usado). Isso é o que segura saída
-grande sem engasgar a aba. Há duas defesas:
+De 20 a 22/10/2026 o terminal usou WebGL (`xterm-addon-webgl` 0.16) nas primeiras 10 abas. Em
+máquina real (GPU/driver do usuário) a tela ficava **preta**: o equipamento respondia, a saída
+entrava no buffer do xterm, mas não era pintada. Só aparecia quando algo obrigava um redesenho
+completo — por exemplo o "↻ Reconectando...", por isso o sintoma "clico em reconectar e o comando
+aparece acima". Caso real: Startnet, `SW3-PE-JAPURANA-CEM-01` (172.24.3.0), usuário `mmarinho`;
+o log do Daphne mostrava toda a saída do `dis transceiver ... verbose` chegando normalmente.
 
-- só as primeiras `WEBGL_MAX = 10` abas usam WebGL, porque o Chrome derruba o contexto mais antigo
-  depois de ~16 por página;
-- `onContextLoss` descarta o addon e carrega o Canvas na mesma aba, sem perder o conteúdo.
+No Chrome headless (WebGL por software/SwiftShader) o defeito não reproduz, nem com perda e
+restauração de contexto forçadas (`WEBGL_lose_context`). Como o Canvas rodou meses sem queixa,
+`carregarRenderer()` voltou a carregar só o Canvas (`tObj.renderer` = `canvas` | `dom`) e a página
+não inclui mais o `xterm-addon-webgl.min.js`. Não reintroduzir o WebGL sem testar em GPU real.
 
-Sem WebGL2 (GPU desligada, VM sem aceleração), a aba nasce direto em Canvas. O renderizador de
-cada aba fica em `tObj.renderer` (`webgl` | `canvas` | `dom`).
+Rede de segurança: no `visibilitychange` (voltar para a aba do navegador) os terminais visíveis
+recebem `terminal.refresh()` de todas as linhas.
 
 ### Teste
 
 Foi testado num Chrome headless com um WebSocket falso injetado na página, que despeja 3.000 linhas.
-O teste rodou com WebGL (swiftshader) e sem GPU (Canvas) e cobriu: busca (contador, próximo, regex,
+O teste rodou com WebGL (swiftshader, antes da remoção) e sem GPU (Canvas) e cobriu: busca (contador, próximo, regex,
 sem resultado, Esc), Ctrl+C com e sem seleção, colagem de 1 linha direta, de 3 linhas com
 confirmação e pelo botão direito, Alt+1, Ctrl+Shift+→, divisor arrastado a 30% com `resize` no PTY,
 empilhar, F6, fonte e F1.
