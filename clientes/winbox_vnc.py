@@ -4,6 +4,7 @@ import socket
 import shutil
 import logging
 import subprocess
+import tempfile
 import threading
 
 logger = logging.getLogger(__name__)
@@ -11,12 +12,18 @@ logger = logging.getLogger(__name__)
 WINBOX4_PATH   = "/opt/crm/static/winbox4/WinBox"
 WINBOX3_PATH   = "/opt/crm/static/winbox3/winbox.exe"
 WINE_PREFIX    = "/opt/crm/wine-prefix"
+OPENBOX_RC     = "/opt/crm/clientes/openbox_rc.xml"
+
+# Teto do Xvfb (4K): o framebuffer nasce desse tamanho no máximo, e a área
+# visível só pode crescer até ele sem recriar a sessão.
+TELA_MAX_W, TELA_MAX_H = 3840, 2160
 
 
 class WinboxVNCManager:
     """Gerencia o ciclo de vida do Xvfb, Openbox, x11vnc e WinBox para uma sessão via Web."""
 
-    def __init__(self, host, port, user, password, version='4', width=1366, height=768, record_path=None):
+    def __init__(self, host, port, user, password, version='4', width=1366, height=768,
+                 screen_width=None, screen_height=None, record_path=None):
         self.host = host
         self.port = port
         self.user = user
@@ -30,8 +37,19 @@ class WinboxVNCManager:
         # navegador do cliente (largura/altura ímpar é comum) e, se ímpar, o
         # ffmpeg falha ao abrir o encoder e o .mp4 fica vazio (0 bytes, sem
         # moov atom, gravação não reproduz na auditoria de acessos).
-        self.width = max(800, int(width)) & ~1
-        self.height = max(600, int(height)) & ~1
+        # O Xvfb não muda de tamanho depois de criado (xrandr não cresce a
+        # tela nem aceita modos novos), então ele nasce do tamanho do monitor
+        # do usuário (tela_w/h) e o que o noVNC enxerga é só um recorte
+        # width×height no canto (-clip do x11vnc). Ao ampliar/reduzir a janela
+        # do navegador, resize() muda o recorte e as margens do Openbox — o
+        # WinBox maximizado acompanha e o framebuffer segue 1:1 com a tela,
+        # em vez de o noVNC esticar uma imagem pequena (borrada).
+        self.tela_w = min(TELA_MAX_W, max(1920, int(screen_width or 0), int(width))) & ~1
+        self.tela_h = min(TELA_MAX_H, max(1080, int(screen_height or 0), int(height))) & ~1
+        self.width, self.height = self._dimensoes(width, height)
+        self._openbox_rc = None
+        self._resize_alvo = None
+        self._resize_lock = threading.Lock()
         self.display_num = None
         self.vnc_port = None
         self.processes = []
@@ -39,6 +57,71 @@ class WinboxVNCManager:
         self.recording = False
         self._stop_lock = threading.Lock()
         self._stopped = False
+
+    def _dimensoes(self, width, height):
+        return (min(self.tela_w, max(800, int(width))) & ~1,
+                min(self.tela_h, max(600, int(height))) & ~1)
+
+    def _escrever_openbox_rc(self):
+        """Config do Openbox da sessão: a de clientes/openbox_rc.xml (sem borda,
+        tudo maximizado) mais margens que limitam a área útil ao recorte
+        visível — janela maximizada ocupa exatamente o que o noVNC mostra."""
+        with open(OPENBOX_RC) as f:
+            xml = f.read()
+        margens = (f"<margins><top>0</top><left>0</left>"
+                   f"<right>{self.tela_w - self.width}</right>"
+                   f"<bottom>{self.tela_h - self.height}</bottom></margins>")
+        xml = xml.replace("<applications>", margens + "\n  <applications>", 1)
+        if not self._openbox_rc:
+            fd, self._openbox_rc = tempfile.mkstemp(prefix="winbox_openbox_", suffix=".xml")
+            os.close(fd)
+        with open(self._openbox_rc, "w") as f:
+            f.write(xml)
+
+    def resize(self, width, height):
+        """Pedido do navegador ao redimensionar: guarda o tamanho mais recente
+        e aplica numa thread, sem segurar o tráfego VNC do consumer. Rajadas
+        (arrastar a borda da janela) aplicam só o último tamanho."""
+        alvo = self._dimensoes(width, height)
+        if self._stopped or alvo == (self.width, self.height):
+            return
+        self._resize_alvo = alvo
+        if self._resize_lock.acquire(blocking=False):
+            threading.Thread(target=self._aplicar_resize, daemon=True).start()
+
+    def _aplicar_resize(self):
+        try:
+            while not self._stopped and self._resize_alvo and self._resize_alvo != (self.width, self.height):
+                self.width, self.height = self._resize_alvo
+                env = dict(os.environ, DISPLAY=f":{self.display_num}")
+                try:
+                    # Openbox relê as margens e re-maximiza as janelas na área nova
+                    self._escrever_openbox_rc()
+                    subprocess.run(["openbox", "--reconfigure"], env=env, timeout=5,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    # x11vnc troca o recorte e manda DesktopSize pro noVNC.
+                    # -R sozinho é assíncrono e se perde (o comando vai numa
+                    # propriedade X que o próximo sobrescreve); -R seguido de
+                    # -Q na mesma chamada roda em sequência e devolve o
+                    # recorte de fato aplicado. Com -threads leva ~3s.
+                    clip = f"clip:{self.width}x{self.height}+0+0"
+                    for _ in range(2):
+                        out = subprocess.run(["x11vnc", "-display", f":{self.display_num}",
+                                              "-R", clip, "-Q", "clip"],
+                                             env=env, timeout=10, capture_output=True, text=True).stdout
+                        if f"ans={clip}" in out:
+                            break
+                    else:
+                        logger.warning(f"x11vnc :{self.display_num} não confirmou {clip}")
+                    logger.info(f"↔️ WinBox Web :{self.display_num} redimensionado para {self.width}x{self.height}")
+                except Exception as e:
+                    logger.warning(f"Falha ao redimensionar WinBox Web :{self.display_num}: {e}")
+        finally:
+            self._resize_lock.release()
+        # Pedido que chegou entre o fim do laço e a liberação da trava
+        if not self._stopped and self._resize_alvo and self._resize_alvo != (self.width, self.height):
+            if self._resize_lock.acquire(blocking=False):
+                self._aplicar_resize()
 
     @staticmethod
     def _wait_for_socket(path, timeout=3.0, interval=0.02):
@@ -69,14 +152,14 @@ class WinboxVNCManager:
         self.display_num = self._find_free_display()
         self.vnc_port = self._find_free_port()
         
-        logger.info(f"🚀 Iniciando ambiente WinBox {self.version} Web no Display :{self.display_num} / VNC Port {self.vnc_port} / Resolução {self.width}x{self.height}")
+        logger.info(f"🚀 Iniciando ambiente WinBox {self.version} Web no Display :{self.display_num} / VNC Port {self.vnc_port} / Resolução {self.width}x{self.height} (tela {self.tela_w}x{self.tela_h})")
         
         # 1. Start Xvfb com resolucao dinamica baseada no tamanho do painel do cliente
         # 24bpp: em 16bpp o alpha-blending dos ícones do WinBox 3.43 (GDI via Wine)
         # quebra e renderiza um quadrado preto atrás de cada ícone (reproduzido e
         # confirmado comparando os dois depths no mesmo equipamento — não tem relação
         # com disputa de CPU/gravação, como um comentário antigo aqui sugeria).
-        xvfb_cmd = ["Xvfb", f":{self.display_num}", "-screen", "0", f"{self.width}x{self.height}x24", "-nolisten", "tcp"]
+        xvfb_cmd = ["Xvfb", f":{self.display_num}", "-screen", "0", f"{self.tela_w}x{self.tela_h}x24", "-nolisten", "tcp"]
         try:
             p_xvfb = subprocess.Popen(xvfb_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.processes.append(p_xvfb)
@@ -93,8 +176,10 @@ class WinboxVNCManager:
         env["DISPLAY"] = f":{self.display_num}"
         
         try:
-            # openbox_rc.xml remove as bordas e maximiza as janelas
-            p_wm = subprocess.Popen(["openbox", "--config-file", "/opt/crm/clientes/openbox_rc.xml"], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # openbox_rc.xml remove as bordas e maximiza as janelas; as margens
+            # da cópia da sessão limitam a maximização ao recorte visível
+            self._escrever_openbox_rc()
+            p_wm = subprocess.Popen(["openbox", "--config-file", self._openbox_rc], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self.processes.append(p_wm)
         except FileNotFoundError:
             logger.warning("Openbox não encontrado. WinBox rodará sem bordas/movimentação.")
@@ -106,6 +191,8 @@ class WinboxVNCManager:
         # -threads: paraleliza a codificação de regiões da tela entre CPUs.
         # -wait 10: reduz o intervalo de polling de tela de 20ms (padrão) para 10ms —
         #   mais atualizações por segundo, ao custo de um pouco mais de CPU.
+        # -clip: só o recorte visível vai pro noVNC (o Xvfb é maior, ver
+        #   __init__); resize() troca o recorte em tempo real via -R.
         # NUNCA usar -ncache aqui — quebra o dimensionamento reportado ao noVNC
         # (ver docs/winbox_vnc.md e memória do projeto).
         vnc_cmd = [
@@ -113,7 +200,8 @@ class WinboxVNCManager:
             "-nopw", "-listen", "127.0.0.1",
             "-xkb", "-rfbport", str(self.vnc_port),
             "-shared", "-forever", "-quiet",
-            "-nonap", "-threads", "-wait", "10"
+            "-nonap", "-threads", "-wait", "10",
+            "-clip", f"{self.width}x{self.height}+0+0",
         ]
         try:
             p_vnc = subprocess.Popen(vnc_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -148,7 +236,6 @@ class WinboxVNCManager:
             raise Exception(f"Binário do WinBox não encontrado em {winbox_path}")
 
         # 5. Espera a janela do WinBox aparecer, maximiza e loga o resultado
-        disp = self.display_num
         w, h = self.width, self.height
         subprocess.Popen(
             ["bash", "-c",
@@ -189,7 +276,9 @@ class WinboxVNCManager:
             ffmpeg_cmd = [
                 "nice", "-n", "15", "ionice", "-c", "3",
                 "ffmpeg", "-y", "-loglevel", "error",
-                "-f", "x11grab", "-video_size", f"{self.width}x{self.height}",
+                # Grava a tela inteira do Xvfb: o recorte visível muda de
+                # tamanho no meio da sessão e o x11grab não acompanha.
+                "-f", "x11grab", "-video_size", f"{self.tela_w}x{self.tela_h}",
                 "-framerate", "8", "-i", f":{self.display_num}",
                 "-vcodec", "libx264", "-preset", "ultrafast", "-crf", "28",
                 "-pix_fmt", "yuv420p", self.record_path,
@@ -226,6 +315,11 @@ class WinboxVNCManager:
                     except:
                         pass
             self.processes.clear()
+            if self._openbox_rc:
+                try:
+                    os.unlink(self._openbox_rc)
+                except OSError:
+                    pass
 
     def _find_free_display(self, start=100, max_attempts=100):
         for i in range(start, start + max_attempts):

@@ -7888,7 +7888,7 @@ function getCsrfToken(){
         chips.forEach(c => opcao(c.dataset.protocolo, `porta ${c.dataset.porta}`,
             () => extra(c.dataset.protocolo, c.dataset.porta, c.dataset.pid)));
         if (portaWinbox) {
-            opcao('WINBOX', `porta ${portaWinbox} · Web 4.2`, () => winbox(), 'Winbox');
+            opcao('WINBOX', `porta ${portaWinbox} · Web 4.4`, () => winbox(), 'Winbox');
             opcao('WINBOX', `porta ${portaWinbox} · legado`, () => winbox('3'), 'Winbox 3.43');
         }
 

@@ -2459,8 +2459,17 @@ class WinboxVNCConsumer(SSHConsumer):
 
     def receive(self, text_data=None, bytes_data=None):
         if text_data:
-            # noVNC pode mandar alguns pacotes textuais mas primariamente binário
-            pass
+            # O RFB do noVNC é só binário; frame de texto é controle nosso
+            # (winbox.html): {"type": "resize", "w": ..., "h": ...} ao
+            # ampliar/reduzir a janela do navegador.
+            try:
+                msg = json.loads(text_data)
+                if msg.get('type') == 'resize':
+                    manager = getattr(self, 'vnc_manager', None)
+                    if manager and hasattr(manager, 'resize'):
+                        manager.resize(int(msg['w']), int(msg['h']))
+            except (ValueError, TypeError, KeyError, AttributeError):
+                pass
         if bytes_data:
             # Repassar WebSockets -> VNC (RFB protocol)
             if hasattr(self, 'tcp_socket') and self.tcp_socket:
@@ -2480,6 +2489,13 @@ class WinboxVNCConsumer(SSHConsumer):
             vnc_w = int(params.get('w', ['1366'])[0])
             vnc_h = int(params.get('h', ['768'])[0])
             winbox_version = params.get('v', ['4'])[0]
+            # Tamanho do monitor (sw/sh): teto até onde o WinBox pode crescer
+            # quando a janela do navegador for ampliada (ver winbox_vnc.py)
+            try:
+                tela_w = int(params.get('sw', ['0'])[0])
+                tela_h = int(params.get('sh', ['0'])[0])
+            except ValueError:
+                tela_w = tela_h = 0
             
             acesso = Acesso.objects.get(id=acesso_id)
             host = acesso.host
@@ -2595,6 +2611,8 @@ class WinboxVNCConsumer(SSHConsumer):
                     version=winbox_version,
                     width=vnc_w,
                     height=vnc_h,
+                    screen_width=tela_w,
+                    screen_height=tela_h,
                     record_path=record_path
                 )
 
