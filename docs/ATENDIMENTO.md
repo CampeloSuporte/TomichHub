@@ -1228,20 +1228,21 @@ Verificado que os mesmos testes falham no código anterior (2 chamadas de `send_
 ## 🤖 Agente IA fecha o chamado com a resolução (20/08/2026)
 
 O agente "Tomichinho" já lia as mensagens do chamado e abria tarefa; agora também **encerra o
-chamado escrevendo a resolução**. Vale nos três caminhos por onde uma mensagem entra no chamado:
+chamado escrevendo a resolução**. Desde 22/10/2026 o pedido de fechamento **só é analisado em
+comentário interno**:
 
 | Onde escrever | Exemplo | O que acontece |
 |---|---|---|
-| Grupo do WhatsApp | "Tomichinho fechar atendimento" | fecha + confirma no grupo |
-| Caixa normal do chat (plataforma) | "Tomichinho fechar atendimento" | fecha + confirma no grupo |
 | Comentário interno | "fechar atendimento" | fecha + confirma **só no CRM** |
+| Grupo do WhatsApp | "Tomichinho fechar atendimento" | **nada** — não fecha |
+| Caixa normal do chat (plataforma) | "Tomichinho fechar atendimento" | **nada** — não fecha |
 
-O caminho da caixa normal do chat era um buraco: `ConversationService.send_message` só olhava os
-gatilhos quando a mensagem era nota interna, então o pedido digitado na caixa de resposta não fazia
-nada (funcionava só se a mesma frase viesse do WhatsApp). Hoje os dois passam por
-`_disparar_acoes_ia()`, que dispara **as ações** (abrir tarefa / fechar chamado). A resposta
-conversacional a "tomichinho" continua exclusiva do grupo — senão toda menção ao agente numa
-mensagem do atendente viraria mais uma mensagem para o cliente.
+Antes os três caminhos fechavam. O chamado #1978 fechou sozinho quando o atendente escreveu para o
+cliente "estou finalizando uma janela de atendimento e já vejo isso com você": mensagem para o
+cliente é conversa, não comando. Agora `_disparar_acoes_ia()` só enfileira `fechar_chamado_ia`
+quando `is_internal=True`. O gatilho de **abrir tarefa** continua valendo nos três caminhos. A
+resposta conversacional a "tomichinho" continua exclusiva do grupo — senão toda menção ao agente
+numa mensagem do atendente viraria mais uma mensagem para o cliente.
 
 ### Gatilho
 

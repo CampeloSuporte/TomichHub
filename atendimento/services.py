@@ -404,6 +404,11 @@ def _disparar_acoes_ia(conversation, content, is_internal=False) -> None:
 
     `is_internal` segue pra task: o que começou como comentário privado da
     equipe não pode gerar resposta no WhatsApp do cliente.
+
+    O FECHAMENTO só é analisado em comentário interno. Mensagem do WhatsApp
+    e da caixa normal do chat é conversa com o cliente — o chamado #1978
+    fechou sozinho com o atendente escrevendo "estou finalizando uma janela
+    de atendimento" pro cliente. Pedido de fechamento é coisa da equipe.
     """
     texto = _normalizar_texto((content or '').lower())
     acionou = False
@@ -415,7 +420,8 @@ def _disparar_acoes_ia(conversation, content, is_internal=False) -> None:
     # "Mensagem de encerramento" das configurações ("Finalizamos seu
     # atendimento...") passa por aqui depois do fechamento, então sem esta
     # guarda ela enfileiraria uma task só pra ser descartada lá dentro.
-    if _pede_fechamento_de_chamado(texto) and conversation.status not in ('resolved', 'closed'):
+    if (is_internal and _pede_fechamento_de_chamado(texto)
+            and conversation.status not in ('resolved', 'closed')):
         from .tasks import fechar_chamado_ia
         fechar_chamado_ia.delay(str(conversation.id), content, is_internal)
         acionou = True
@@ -450,9 +456,8 @@ def _disparar_agente_ia(conversation, content) -> None:
     Qualquer remetente aciona (atendente ou cliente): "tomichinho" pede uma
     resposta da IA no próprio grupo; um pedido de tarefa (ver
     `_pede_abertura_de_tarefa`) pede a criação de uma Tarefa vinculada ao
-    cliente do grupo; um pedido de fechamento (ver
-    `_pede_fechamento_de_chamado`) encerra o chamado com a resolução
-    redigida pela IA. Podem disparar juntos na mesma mensagem.
+    cliente do grupo. Pedido de fechamento vindo do WhatsApp NÃO encerra
+    nada — fechamento só por comentário interno (ver `_disparar_acoes_ia`).
     """
     if 'tomichinho' in _normalizar_texto((content or '').lower()):
         from .tasks import responder_tomichinho

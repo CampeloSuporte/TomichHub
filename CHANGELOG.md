@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-22 (Fechar atendimento só por comentário interno)
+
+### Alterado
+
+- **Atendimento: pedido de fechamento só vale em comentário interno.** "Fechar atendimento" (e
+  variações) vindo do grupo do WhatsApp ou da caixa normal do chat não encerra mais o chamado — é
+  conversa com o cliente, e foi assim que o #1978 fechou sem ninguém pedir. O gatilho de abrir
+  tarefa continua nos três caminhos. Ver `docs/ATENDIMENTO.md`.
+
+---
+
 ## [Não publicado] — 2026-10-22 (Chamado fechava sozinho em conversa normal)
 
 ### Corrigido
