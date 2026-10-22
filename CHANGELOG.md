@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-22 (Chamado fechava sozinho em conversa normal)
+
+### Corrigido
+
+- **Atendimento: chamado #1978 fechou sem ninguém pedir.** O atendente escreveu "estou finalizando
+  uma janela de atendimento e já vejo isso com você" (falando de outro atendimento) e o gatilho de
+  fechamento da IA encerrou o chamado: `_pede_fechamento_de_chamado` comparava pedaços de palavra
+  (`'finaliza'` dentro de `'finalizando'`) e aceitava o alvo em qualquer ponto da mensagem. Agora
+  compara palavras inteiras, só aceita o verbo como pedido (infinitivo/imperativo; nada de
+  gerúndio, "fechamento" ou "concluímos") e exige o alvo colado ao verbo na mesma frase ("fechar o
+  chamado", "ticket resolvido, pode encerrar"). Ver `docs/ATENDIMENTO.md`.
+
+---
+
 ## [Não publicado] — 2026-10-22 (Nota interna "fechar atendimento" não fechava)
 
 ### Corrigido
