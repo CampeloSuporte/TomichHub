@@ -221,6 +221,17 @@ CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 CELERY_TIMEZONE = 'America/Sao_Paulo'
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 min
 
+# Ações da IA pedidas no chat do atendimento ("fechar atendimento" na nota
+# interna, "criar tarefa", "@hermes ..."): fila própria, com worker próprio
+# (celery-atendimento-ia.service). Na fila padrão elas esperavam atrás de
+# varredura AmpScan/RotaLoop de vários minutos — o celery.service roda com
+# concurrency 1 — e o atendente achava que o comando não tinha funcionado.
+CELERY_TASK_ROUTES = {
+    f'atendimento.tasks.{nome}': {'queue': 'atendimento_ia'}
+    for nome in ('fechar_chamado_ia', 'abrir_tarefa_ia',
+                 'responder_nota_interna_ia', 'responder_tomichinho')
+}
+
 # Transcrição dos áudios do chat (atendimento/transcricao.py): faster-whisper
 # local, em CPU, numa fila Celery própria (celery-transcricao.service).
 TRANSCRICAO_AUDIO_ATIVA = True

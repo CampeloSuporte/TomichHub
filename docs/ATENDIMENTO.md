@@ -1288,6 +1288,26 @@ abaixo): ele pegava a última fala do atendente, que era o **próprio pedido de 
 `views.api_update_conversation` e a view passou a chamar o mesmo serviço, então tela e IA encerram
 chamado exatamente do mesmo jeito.
 
+### Fila própria das ações da IA (22/10/2026)
+
+`fechar_chamado_ia`, `abrir_tarefa_ia`, `responder_nota_interna_ia` e `responder_tomichinho` vão
+para a fila Celery **`atendimento_ia`** (`CELERY_TASK_ROUTES` em `crm/settings.py`), atendida só
+pelo `celery-atendimento-ia.service` (concurrency 2). Antes iam para a fila padrão, e o
+`celery.service` roda com concurrency 1: em 22/10/2026 três "fechar atendimento" digitados na nota
+interna ficaram mais de 10 min parados no Redis atrás de uma varredura AmpScan — a nota aparecia,
+mas o chamado não fechava e o atendente repetia o pedido.
+
+Instalação (fora do git, como o worker da transcrição):
+
+```bash
+cp /opt/crm/tools/atendimento_ia/celery-atendimento-ia.service /etc/systemd/system/
+chmod 644 /etc/systemd/system/celery-atendimento-ia.service
+systemctl daemon-reload && systemctl enable --now celery-atendimento-ia
+```
+
+Sem esse worker no ar as ações da IA **não rodam** (ficam na fila `atendimento_ia`). Conferir com
+`redis-cli llen atendimento_ia` (deve ficar em 0) e `journalctl -u celery-atendimento-ia`.
+
 **Testes:** `GatilhoFechamentoIATest` (gatilhos e não-gatilhos, incluindo negação e nota interna) e
 `FecharChamadoIATaskTest` (resolução da IA gravada, prompt recebendo a resposta do atendente,
 pedido interno sem `send_text`, fallback sem IA, chamado já encerrado, marco com protocolo).

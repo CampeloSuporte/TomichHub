@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-22 (Nota interna "fechar atendimento" não fechava)
+
+### Corrigido
+
+- **Atendimento: "fechar atendimento" na nota interna não fechava o chamado.** O gatilho
+  disparava, mas a task da IA caía na fila padrão do Celery, cujo worker roda com concurrency 1, e
+  ficava parada atrás de uma varredura AmpScan de vários minutos. As ações da IA do chat (fechar
+  chamado, abrir tarefa, responder nota interna/Tomichinho) passaram para a fila `atendimento_ia`,
+  com worker próprio (`celery-atendimento-ia.service`). Ver `docs/ATENDIMENTO.md`.
+
+---
+
 ## [Não publicado] — 2026-10-22 (Terminal preto depois de reconectar)
 
 ### Corrigido
