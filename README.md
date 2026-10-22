@@ -121,7 +121,7 @@ Cadastro completo de clientes com todas as informações necessárias para um pr
 - **Protocolos extras por host** — aba **+** do card: outro protocolo e porta no mesmo IP (ex.:
   HTTP como padrão e SSH extra). O **Acessar** passa a perguntar por onde entrar. A rota é a do
   padrão: IP privado passa pelo proxy/OpenVPN do cliente e IP público vai direto. Com porta
-  Winbox, a escolha também traz Winbox Web 4.2 e 3.43 ([doc](docs/acessos_protocolos_extras.md))
+  Winbox, a escolha também traz Winbox Web 4.4 e 3.43 ([doc](docs/acessos_protocolos_extras.md))
 - **ProxyServer** — configuração do túnel SSH por cliente
 - Histórico de comentários por acesso
 - Upload de documentos

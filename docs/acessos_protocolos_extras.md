@@ -60,7 +60,7 @@ opções ficam no centro:
 
 - o padrão (`SSH · porta 22002 · padrão`);
 - cada protocolo extra;
-- **Winbox** (Web 4.2) e **Winbox 3.43** (legado, `/clientes/winbox/<id>/?v=3`), quando o host tem
+- **Winbox** (Web 4.4) e **Winbox 3.43** (legado, `/clientes/winbox/<id>/?v=3`), quando o host tem
   porta Winbox.
 
 Clique na parte escurecida, no **×** ou **Esc** fecham o painel. O foco vai para a primeira opção, e

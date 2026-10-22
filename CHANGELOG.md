@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-22 (WinBox Web acompanha o tamanho da janela + WinBox 4.4)
+
+### Corrigido
+
+- **WinBox Web: ampliar a janela deixava a imagem borrada.** A sessão nascia com o tamanho do painel
+  e, ao ampliar, o noVNC só esticava a imagem. Agora o Xvfb nasce do tamanho do monitor e a área
+  visível (recorte do x11vnc + margens do Openbox) acompanha a janela em tempo real, voltando a
+  1:1 em ~3 s. Zoom do navegador também conta. Ver `docs/winbox_vnc.md`.
+
+### Alterado
+
+- **WinBox 4 atualizado de 4.2 para 4.4** (build de 14/09/2026) e rótulo "Web 4.4" na escolha do
+  Acessar. Binário gitignored: baixar e extrair em `static/winbox4/` em outro servidor.
+
+---
+
 ## [Não publicado] — 2026-10-22 (Fechar atendimento só por comentário interno)
 
 ### Alterado

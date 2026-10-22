@@ -78,7 +78,7 @@ apenas na resolução CSS). Isso vale tanto para `mode=winbox` quanto para `mode
 
 ```javascript
 rfb.scaleViewport  = true;   // escala client-side
-rfb.resizeSession  = false;  // NÃO pede resize ao servidor (evita desmaximizar WinBox)
+rfb.resizeSession  = false;  // x11vnc não suporta SetDesktopSize; resize vai por frame de texto (ver abaixo)
 rfb.qualityLevel   = 8;      // JPEG quase sem perda (subiu de 6 → 8 em 22/07/2026)
 rfb.compressionLevel = 4;    // subiu de 2 → 4 para compensar o ganho de qualidade
 ```
@@ -124,7 +124,39 @@ Binário do WinBox 4: `/opt/crm/static/winbox4/WinBox` (ELF 64-bit)
 - Título e splash seguem o `vnc_mode`: `RDP · IP` e "Preparando acesso RDP", `WebFig · IP` e
   "Preparando WebFig", `WinBox · IP` e "Preparando WinBox". Antes o RDP também mostrava "Preparando
   WinBox", o que parecia um Winbox Web aberto no lugar do RDP.
-- No card, Winbox Web 4.2 e 3.43 saem pela escolha do **Acessar** ([acessos_protocolos_extras.md](acessos_protocolos_extras.md)).
+- No card, Winbox Web 4.4 e 3.43 saem pela escolha do **Acessar** ([acessos_protocolos_extras.md](acessos_protocolos_extras.md)).
+
+## Resize em tempo real e WinBox 4.4 — Adicionado em 22/10/2026
+
+Antes, ampliar a janela/painel só esticava no navegador o framebuffer criado na abertura (imagem
+borrada): o Xvfb não muda de tamanho depois de criado (`xrandr` não cresce a tela nem aceita
+`--newmode`) e o `rfb._sendDesktopSize` que o `winbox.html` chamava nem existe no noVNC.
+
+Agora (só no modo WinBox; RDP e WebFig seguem escalando):
+
+- O `winbox.html` manda também `sw`/`sh` (monitor × `devicePixelRatio`). O Xvfb nasce desse
+  tamanho (mínimo 1920×1080, teto 3840×2160) e o x11vnc mostra só o recorte `-clip WxH+0+0`.
+- O Openbox de cada sessão usa uma cópia de `openbox_rc.xml` com `<margins>` = tela − recorte, então
+  a janela maximizada ocupa exatamente o que o noVNC enxerga.
+- Ao redimensionar (debounce de 250 ms; o `devicePixelRatio` é recalculado, então zoom do navegador
+  também conta), o front manda um **frame de texto** no mesmo WebSocket:
+  `{"type":"resize","w":W,"h":H}`. O RFB do noVNC é todo binário, então o `WinboxVNCConsumer.receive`
+  intercepta e chama `WinboxVNCManager.resize()`.
+- `resize()` aplica numa thread (rajadas aplicam só o último tamanho): reescreve as margens,
+  `openbox --reconfigure` e `x11vnc -R clip:WxH+0+0 -Q clip`. O x11vnc manda `DesktopSize` e o
+  noVNC ajusta o canvas, ficando 1:1 de novo.
+- **`-R` sozinho não serve**: é assíncrono por propriedade X e um comando seguinte (ou um `-Q`
+  separado) sobrescreve o anterior antes de o x11vnc ler — o recorte ficava um passo atrás. `-R` e
+  `-Q` na mesma chamada rodam em sequência e devolvem o recorte aplicado (confere e reenvia 1×).
+  Com `-threads` cada troca leva ~3 s (sem ele, ~0,9 s); o `-threads` ficou pela fluidez do uso.
+- A gravação (ffmpeg) captura a tela inteira do Xvfb, já que o recorte muda no meio da sessão.
+- O WinBox 4 tem janela mínima de 1280×720: abaixo disso parte da janela fica fora do recorte (já
+  era assim antes).
+
+WinBox 4 atualizado de 4.2 para **4.4** (build de 14/09/2026, `upgrade.mikrotik.com/routeros/winbox/LATEST.4`).
+O binário é gitignored: depois do pull em outro servidor, baixar
+`https://download.mikrotik.com/routeros/winbox/4.4/WinBox_Linux.zip` e extrair em
+`/opt/crm/static/winbox4/`. Backup da 4.2 em `static/winbox4/WinBox.bak-pre-4.4`.
 
 ## Problemas Conhecidos e Soluções
 

@@ -143,9 +143,19 @@
         // real e o noVNC esticava via CSS, borrando texto/ícones. Multiplicamos pelo
         // devicePixelRatio (cap em 2x pra não estourar CPU/gravação em telas 3x) pra
         // renderizar em resolução física e o scaleViewport reduzir de volta com nitidez.
-        const _dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const _initW = parseInt(_up.get('w')) || Math.round(document.documentElement.clientWidth * _dpr);
-        const _initH = parseInt(_up.get('h')) || Math.round(document.documentElement.clientHeight * _dpr);
+        // Recalculado a cada uso: zoom do navegador (Ctrl +/-) muda o devicePixelRatio.
+        function _dpr() { return Math.min(window.devicePixelRatio || 1, 2); }
+        function _tamanhoFisico() {
+            return [Math.round(document.documentElement.clientWidth * _dpr()),
+                    Math.round(document.documentElement.clientHeight * _dpr())];
+        }
+        const [_physW, _physH] = _tamanhoFisico();
+        const _initW = parseInt(_up.get('w')) || _physW;
+        const _initH = parseInt(_up.get('h')) || _physH;
+        // Monitor inteiro: teto do Xvfb no servidor, até onde a sessão pode
+        // crescer quando a janela/painel for ampliado (ver winbox_vnc.py).
+        const _telaW = Math.round((screen.width || 0) * _dpr());
+        const _telaH = Math.round((screen.height || 0) * _dpr());
         const _winboxVersion = _up.get('v') === '3' ? '3' : '4';
         let rfb;
 
@@ -161,7 +171,7 @@
             const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
             // pid = protocolo extra do host (AcessoProtocolo), ex.: RDP em outra porta
             const _pid = _up.get('pid');
-            const wsUrl = proto + '//' + location.host + '/ws/vnc/' + acessoId + '/?mode=' + vncMode + '&v=' + _winboxVersion + '&w=' + _initW + '&h=' + _initH + (_pid ? '&pid=' + encodeURIComponent(_pid) : '');
+            const wsUrl = proto + '//' + location.host + '/ws/vnc/' + acessoId + '/?mode=' + vncMode + '&v=' + _winboxVersion + '&w=' + _initW + '&h=' + _initH + '&sw=' + _telaW + '&sh=' + _telaH + (_pid ? '&pid=' + encodeURIComponent(_pid) : '');
             const container = document.getElementById('vnc-container');
 
             rfb = new RFB(container, wsUrl, {
@@ -170,7 +180,7 @@
             });
 
             rfb.scaleViewport  = true;   // escala client-side
-            rfb.resizeSession  = false;  // Xvfb ja criado com dimensoes corretas; resize dinamico desmaximiza o WinBox
+            rfb.resizeSession  = false;  // x11vnc nao suporta SetDesktopSize; resize vai por enviarTamanho()
             rfb.background     = '#000';
             rfb.qualityLevel   = 8;      // JPEG quase sem perda (0-9) — texto/icones nitidos
             rfb.compressionLevel = 4;    // equilibrio CPU x banda com a qualidade maior acima
@@ -181,19 +191,10 @@
                 setTimeout(() => {
                     document.getElementById('wb-status').classList.add('hidden');
                 }, 2000);
-                // Envia tamanho real ao servidor VNC (com fallback se ainda 0)
-                function sendSize() {
-                    const w = Math.round(document.documentElement.clientWidth * _dpr);
-                    const h = Math.round(document.documentElement.clientHeight * _dpr);
-                    if (w > 0 && h > 0) {
-                        try { rfb._sendDesktopSize && rfb._sendDesktopSize(w, h); } catch(_) {}
-                    }
-                }
-                sendSize();
-                // Tenta novamente apos layout estabilizar (caso iframe ainda sem dimensoes)
-                setTimeout(sendSize, 300);
-                setTimeout(sendSize, 800);
-                setTimeout(sendSize, 1500);
+                // Painel pode ter mudado de tamanho enquanto a sessao subia
+                // (iframe ainda sem dimensoes no load) — reconfere ao conectar.
+                enviarTamanho();
+                setTimeout(enviarTamanho, 800);
             });
 
             // ── Clipboard local <-> sessao remota ──
@@ -223,18 +224,28 @@
                 sp.querySelector('.splash-sub').textContent    = 'A conexao foi perdida.';
             });
 
-            // Re-envia resolucao ao redimensionar a janela
+            // Ampliar/reduzir a janela redimensiona a sessao no servidor
+            // (Xvfb/WinBox), em vez de o noVNC so esticar o framebuffer antigo
+            // — era isso que deixava a imagem borrada ao maximizar.
             let resizeTimer;
             window.addEventListener('resize', () => {
                 clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(() => {
-                    const w = Math.round(document.documentElement.clientWidth * _dpr);
-                    const h = Math.round(document.documentElement.clientHeight * _dpr);
-                    if (rfb && w > 0 && h > 0) {
-                        try { rfb._sendDesktopSize && rfb._sendDesktopSize(w, h); } catch(_) {}
-                    }
-                }, 250);
+                resizeTimer = setTimeout(enviarTamanho, 250);
             });
+        }
+
+        // O x11vnc nao implementa SetDesktopSize do RFB, entao o pedido vai
+        // como frame de texto no mesmo WebSocket; o consumer intercepta (o
+        // RFB do noVNC e todo binario) e o servidor responde com DesktopSize.
+        // So o WinBox Web trata; RDP/WebFig ignoram e seguem escalando.
+        let _ultimoTamanho = _initW + 'x' + _initH;
+        function enviarTamanho() {
+            const [w, h] = _tamanhoFisico();
+            const ws = rfb && rfb._sock && rfb._sock._websocket;
+            if (!ws || ws.readyState !== WebSocket.OPEN || w <= 0 || h <= 0) return;
+            if (w + 'x' + h === _ultimoTamanho) return;
+            _ultimoTamanho = w + 'x' + h;
+            try { ws.send(JSON.stringify({ type: 'resize', w: w, h: h })); } catch (_) {}
         }
 
         // ── Colar do PC local dentro da sessao (Ctrl+V / Shift+Insert) ──
