@@ -281,5 +281,14 @@ responsável também vê.
   existir na página, ou seja, se o módulo estiver liberado). Tarefa sem cliente leva ao dashboard
   (`quadro_geral` / `quadro_instancia`); para o portal ela aparece sem link.
 
+- **Tela escura sem clique (corrigido no mesmo dia):** na página do cliente o `listar.html` tem div
+  sem fechar, então o modal (incluído no fim do `base.html`) caía dentro do `.main-content`, numa
+  camada abaixo do `.modal-backdrop`. O JS do modal agora o move para o `<body>` antes de abrir,
+  como os outros modais do `listar.html` já fazem. O "X" é um botão próprio (`.tal-fechar`): o
+  `.btn-close` do `static/css/style.css` global fica com fundo transparente, ou seja, invisível.
+  Conferido em Chrome headless (driver de `projeto_rede/tests_navegador.py`, com o Bootstrap do CDN
+  e o `style.css` real servidos localmente): sem a correção o centro do botão Fechar fica coberto
+  pelo backdrop; com ela o modal é filho do `<body>` e fechar remove o backdrop.
+
 Testes: `AvisoTarefasLoginTest` (lista só as abertas do responsável e com a atrasada primeiro,
 aparece em toda navegação, concluir tira do modal, sem tarefa não mostra nada).

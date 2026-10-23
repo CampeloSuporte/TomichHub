@@ -15,6 +15,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   cliente (`?aba=tarefas`). A 1ª versão abria só após o login e não aparecia (a sessão dura 7 dias
   e se renova sozinha). Ver `docs/TAREFAS.md`.
 
+### Corrigido
+
+- **Modal de tarefas deixava a tela escura e sem clique na página do cliente.** O modal caía dentro
+  de um container da página, abaixo do fundo escuro. Agora ele é movido para o `<body>` antes de
+  abrir, e o "X" de fechar, que o CSS global deixava invisível, foi trocado.
+
 ## [Não publicado] — 2026-10-23 (restart do daphne não derruba WebSockets por 90 s)
 
 ### Corrigido

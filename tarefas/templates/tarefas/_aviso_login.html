@@ -17,6 +17,9 @@
     #modalTarefasLogin .tal-badge.alta { color:#e06060; border-color:rgba(224,96,96,.5); }
     #modalTarefasLogin .tal-badge.media { color:#58a6ff; border-color:rgba(88,166,255,.5); }
     #modalTarefasLogin .tal-badge.baixa { color:#3fb950; border-color:rgba(63,185,80,.5); }
+    /* .btn-close do style.css global fica com background transparente = X invisível */
+    #modalTarefasLogin .tal-fechar { background:none; border:1px solid #30363d; color:#9da7b3; border-radius:6px; width:32px; height:32px; cursor:pointer; }
+    #modalTarefasLogin .tal-fechar:hover { color:#e6edf3; border-color:#58a6ff; }
     #modalTarefasLogin .tal-status { font-size:.7rem; color:#9da7b3; }
 </style>
 <div class="modal fade" id="modalTarefasLogin" tabindex="-1" aria-labelledby="modalTarefasLoginTitulo" aria-hidden="true">
@@ -24,7 +27,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalTarefasLoginTitulo"><i class="fas fa-list-check me-2" style="color:#58a6ff;"></i>Suas tarefas a concluir</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                <button type="button" class="tal-fechar" data-bs-dismiss="modal" aria-label="Fechar"><i class="fas fa-xmark"></i></button>
             </div>
             <div class="modal-body">
                 <div class="tal-resumo">
@@ -58,7 +61,11 @@
         // repete o aviso — só a janela principal.
         if (window.self !== window.top) return;
         var el = document.getElementById('modalTarefasLogin');
-        if (el && window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show();
+        if (!el || !window.bootstrap) return;
+        // Página com div sem fechar (ex: listar.html) deixa o modal dentro do
+        // .main-content, abaixo do backdrop: tela escura e nada clicável.
+        if (el.parentElement !== document.body) document.body.appendChild(el);
+        bootstrap.Modal.getOrCreateInstance(el).show();
     });
 </script>
 {% endif %}
