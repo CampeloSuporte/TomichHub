@@ -2498,6 +2498,15 @@ def realizar_backup(acesso, usuario=None):
         except Exception as e:
             print(f"⚠️ Snapshot BGP não atualizado: {e}")
 
+        # Cache do L2VPN chaveado pelo backup novo: aquece agora, senão o
+        # primeiro clique num switch do cliente depois da rotina diária
+        # reprocessaria o backup de cada acesso que mudou.
+        try:
+            _l2vpn_identidades([acesso])
+            _l2vpn_servicos_do_acesso(acesso)
+        except Exception as e:
+            print(f"⚠️ Cache L2VPN não aquecido: {e}")
+
         print(f"\n{'='*80}")
         print(f"✅ BACKUP CONCLUÍDO COM SUCESSO!")
         print(f"{'='*80}\n")
@@ -7742,9 +7751,12 @@ from .l2vpn_actions import (
 
 _L2VPN_LIMITE_ARQUIVO = 3 * 1024 * 1024   # running-config completa cabe folgado
 _L2VPN_CACHE_TTL = 6 * 60 * 60            # 6h — o backup em si roda 1x/dia
+# Valores chaveados pelo id do BackupLog (imutável): só um backup novo troca a
+# chave, então o TTL só serve pra devolver a memória de quem saiu de uso.
+_L2VPN_CACHE_TTL_BACKUP = 30 * 24 * 60 * 60
 # Entra na chave do cache: mudar o parser (campo novo, sintaxe nova) muda o
 # formato do que está guardado, e sem isso o painel continuaria servindo o
-# parse antigo por até 6h. Suba junto com qualquer mudança em l2vpn_parser.
+# parse antigo até o próximo backup. Suba junto com qualquer mudança em l2vpn_parser.
 _L2VPN_CACHE_VERSAO = 3
 # Quantos backups anteriores tentar quando o mais recente não revela nenhum IP
 # de identidade do equipamento. Loopback/LSR-ID praticamente não mudam, e é
@@ -7775,6 +7787,22 @@ def _ler_backup(caminho):
         return arquivo.read(_L2VPN_LIMITE_ARQUIVO)
 
 
+def _l2vpn_ultimos_logs(acessos):
+    """{acesso_id: BackupLog mais recente aproveitável} numa query só (DISTINCT
+    ON do Postgres). Não confere o arquivo no disco: serve de chave de cache —
+    quem precisar ler o backup cai em `_backups_recentes`, que confere."""
+    ids = [a.id for a in acessos]
+    if not ids:
+        return {}
+    logs = (BackupLog.objects
+            .filter(acesso_id__in=ids, status__in=['SUCESSO', 'PARCIAL'])
+            .exclude(arquivo_path='')
+            .order_by('acesso_id', '-data_backup')
+            .distinct('acesso_id')
+            .only('id', 'acesso_id', 'data_backup', 'arquivo_path'))
+    return {log.acesso_id: log for log in logs}
+
+
 def _l2vpn_servicos_do_acesso(acesso):
     """(serviços, BackupLog) do backup mais recente do acesso. Cacheado por id
     do BackupLog — o conteúdo de um backup nunca muda depois de gravado, então
@@ -7787,8 +7815,28 @@ def _l2vpn_servicos_do_acesso(acesso):
     servicos = cache.get(chave)
     if servicos is None:
         servicos = parse_l2vpn(_ler_backup(caminho))
-        cache.set(chave, servicos, _L2VPN_CACHE_TTL)
+        cache.set(chave, servicos, _L2VPN_CACHE_TTL_BACKUP)
     return servicos, log
+
+
+def _l2vpn_servicos_em_lote(acessos):
+    """{acesso_id: (serviços, BackupLog)} de vários acessos com 1 query + 1
+    `get_many` no Redis; só quem não está no cache cai no caminho unitário
+    (que lê o arquivo). Mesmas chaves de `_l2vpn_servicos_do_acesso`."""
+    ultimos = _l2vpn_ultimos_logs(acessos)
+    chaves = {a.id: f'l2vpn:svc:v{_L2VPN_CACHE_VERSAO}:{ultimos[a.id].id}'
+              for a in acessos if a.id in ultimos}
+    achados = cache.get_many(list(chaves.values()))
+    resultado = {}
+    for acesso in acessos:
+        chave = chaves.get(acesso.id)
+        if chave is None:
+            resultado[acesso.id] = ([], None)
+        elif chave in achados:
+            resultado[acesso.id] = (achados[chave], ultimos[acesso.id])
+        else:
+            resultado[acesso.id] = _l2vpn_servicos_do_acesso(acesso)
+    return resultado
 
 
 def _l2vpn_ldp_do_acesso(acesso):
@@ -7802,23 +7850,51 @@ def _l2vpn_ldp_do_acesso(acesso):
     ldp = cache.get(chave)
     if ldp is None:
         ldp = extrair_ldp(_ler_backup(caminho))
-        cache.set(chave, ldp, _L2VPN_CACHE_TTL)
+        cache.set(chave, ldp, _L2VPN_CACHE_TTL_BACKUP)
     return ldp
 
 
-def _l2vpn_ips_identidade(acesso):
-    """{IP: origem} do acesso, cacheado por acesso (e não por backup: aqui o
-    que interessa é o valor mais recente conhecido, não um backup específico)."""
-    chave = f'l2vpn:ident:v{_L2VPN_CACHE_VERSAO}:acesso:{acesso.id}'
-    ips = cache.get(chave)
-    if ips is None:
-        ips = {}
-        for log, caminho in _backups_recentes(acesso, limite=_L2VPN_FALLBACK_BACKUPS):
-            ips = extrair_ips_identidade(_ler_backup(caminho))
-            if ips:
-                break
-        cache.set(chave, ips, _L2VPN_CACHE_TTL)
+def _l2vpn_ips_identidade_calcular(acesso):
+    ips = {}
+    for log, caminho in _backups_recentes(acesso, limite=_L2VPN_FALLBACK_BACKUPS):
+        ips = extrair_ips_identidade(_ler_backup(caminho))
+        if ips:
+            break
     return ips
+
+
+def _l2vpn_identidades(acessos):
+    """{acesso_id: {IP: origem}} de vários acessos.
+
+    A chave do cache é o BackupLog mais recente de cada acesso: backup gravado
+    não muda, então o valor vale até chegar um backup novo (que troca a chave)
+    e o TTL pode ser longo. Antes a chave era o acesso com TTL de 6h — quando
+    expirava, abrir um switch relia e reprocessava o backup de TODOS os
+    acessos do cliente (11 s num cliente de 254 acessos). Agora é 1 query +
+    1 `get_many`, e só os acessos com backup novo são reprocessados."""
+    ultimos = _l2vpn_ultimos_logs(acessos)
+    chaves = {a.id: f'l2vpn:ident:v{_L2VPN_CACHE_VERSAO}:log:{ultimos[a.id].id}'
+              for a in acessos if a.id in ultimos}
+    achados = cache.get_many(list(chaves.values()))
+    novos = {}
+    resultado = {}
+    for acesso in acessos:
+        chave = chaves.get(acesso.id)
+        if chave is None:
+            resultado[acesso.id] = {}
+        elif chave in achados:
+            resultado[acesso.id] = achados[chave]
+        else:
+            resultado[acesso.id] = novos[chave] = _l2vpn_ips_identidade_calcular(acesso)
+    if novos:
+        cache.set_many(novos, _L2VPN_CACHE_TTL_BACKUP)
+    return resultado
+
+
+def _l2vpn_ips_identidade(acesso):
+    """{IP: origem} de um acesso (o mais recente conhecido, com fallback para
+    backups anteriores quando o último veio truncado)."""
+    return _l2vpn_identidades([acesso])[acesso.id]
 
 
 def _l2vpn_mapa_identidade(acessos):
@@ -7840,8 +7916,9 @@ def _l2vpn_mapa_identidade(acessos):
             'origem': origem,
         }
 
+    identidades = _l2vpn_identidades(acessos)
     for acesso in acessos:
-        for ip, origem in _l2vpn_ips_identidade(acesso).items():
+        for ip, origem in identidades[acesso.id].items():
             _registrar(ip, acesso, origem)
 
     # O IP de gerência entra por último: quando o equipamento usa o próprio IP
@@ -7963,10 +8040,12 @@ def l2vpn_peers_acesso(request, acesso_id):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
     candidatos = []
-    irmaos = Acesso.objects.filter(cliente=acesso.cliente).exclude(id=acesso.id)
+    irmaos = list(Acesso.objects.filter(cliente=acesso.cliente).exclude(id=acesso.id))
+    identidades = _l2vpn_identidades(irmaos)
+    servicos_lote = _l2vpn_servicos_em_lote(irmaos)
     for irmao in irmaos:
-        ips = _l2vpn_ips_identidade(irmao)
-        servicos, _ = _l2vpn_servicos_do_acesso(irmao)
+        ips = identidades[irmao.id]
+        servicos, _ = servicos_lote[irmao.id]
         if not ips and not servicos:
             continue
         itens = sorted(ips.items(), key=lambda par: _l2vpn_peso_origem(par[1]))
@@ -8112,11 +8191,11 @@ def l2vpn_switches_cliente(request, cliente_id):
         L2vpnTransporte.objects.filter(acesso__cliente=cliente)
         .values_list('acesso_id').annotate(n=Count('id'))
     )
+    acessos = [a for a in acessos if _acesso_eh_switch(a)]
+    servicos_lote = _l2vpn_servicos_em_lote(acessos)
     switches = []
     for acesso in acessos:
-        if not _acesso_eh_switch(acesso):
-            continue
-        servicos, log = _l2vpn_servicos_do_acesso(acesso)
+        servicos, log = servicos_lote[acesso.id]
         switches.append({
             'acesso_id': acesso.id,
             'nome': acesso.tipo,

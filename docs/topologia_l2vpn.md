@@ -274,18 +274,30 @@ o operador procura pelo nome que ele digitou no equipamento.
 
 | Chave | Conteúdo | TTL |
 |---|---|---|
-| `l2vpn:svc:v<N>:<backup_log_id>` | serviços parseados de um backup | 6 h |
-| `l2vpn:ident:v<N>:acesso:<acesso_id>` | `{ip: origem}` de identidade do host | 6 h |
+| `l2vpn:svc:v<N>:<backup_log_id>` | serviços parseados de um backup | 30 dias |
+| `l2vpn:ldp:v<N>:<backup_log_id>` | LDP targeted do backup | 30 dias |
+| `l2vpn:ident:v<N>:log:<backup_log_id>` | `{ip: origem}` de identidade do host (com fallback p/ backups anteriores) | 30 dias |
 
 O `v<N>` das chaves é `_L2VPN_CACHE_VERSAO` (`clientes/views.py`): **suba junto
-com qualquer mudança em `l2vpn_parser.py`**. Sem isso, um campo novo no parser
-demora até 6 h para aparecer — o painel continua servindo o parse antigo, no
-formato antigo.
+com qualquer mudança em `l2vpn_parser.py`**. Sem isso, o painel continua
+servindo o parse antigo, no formato antigo, até o backup seguinte.
 
-Os serviços são cacheados por **id do BackupLog**: o conteúdo de um backup nunca
-muda depois de gravado, então só um backup novo invalida (a chave muda junto).
-Sem cache, o primeiro clique num cliente de ~40 hosts custa ~0,3 s (leitura +
-parse de todos os backups para montar o mapa de identidade).
+Tudo é chaveado pelo **id do BackupLog mais recente** do acesso: o conteúdo de
+um backup nunca muda depois de gravado, então só um backup novo invalida (a
+chave muda junto) e o TTL longo só serve para liberar memória.
+
+- **Leitura em lote** — `_l2vpn_identidades(acessos)` e
+  `_l2vpn_servicos_em_lote(acessos)` descobrem o último backup de todos os
+  acessos numa query só (`DISTINCT ON acesso_id`) e buscam tudo com um
+  `cache.get_many`; só quem não está no cache lê o arquivo.
+- **Aquecimento na coleta** — `realizar_backup` já calcula identidade e
+  serviços do backup recém-gravado, então a rotina diária não deixa o cache
+  frio.
+
+Antes (até 23/10/2026) a identidade era chaveada pelo acesso com TTL de 6 h:
+quando expirava, abrir um switch relia o backup de **todos** os acessos do
+cliente — 11 s num cliente de 254 acessos. Hoje: ~0,03 s; frio (só logo após
+um deploy que suba a versão) ~8 s, uma vez.
 
 ---
 

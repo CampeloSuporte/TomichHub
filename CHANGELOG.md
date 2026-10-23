@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-23 (L2VPN por switch abre na hora)
+
+### Corrigido
+
+- **Documentação de Rede → L2VPN: abrir um switch demorava até ~11 s.** O detalhe monta o mapa de
+  identidade (loopback/LSR-ID) de todos os acessos do cliente, e esse cache expirava a cada 6 h e
+  era lido acesso por acesso. Agora é chaveado pelo backup (imutável), lido em lote (1 query +
+  1 `get_many`) e aquecido logo após cada coleta: o detalhe responde em ~0,03 s no cliente de
+  254 acessos. A lista de switches e os peers sugeridos do "Clonar" usam o mesmo lote. Ver
+  `docs/topologia_l2vpn.md`.
+
 ## [Não publicado] — 2026-10-22 (WinBox Web acompanha o tamanho da janela + WinBox 4.4)
 
 ### Corrigido
