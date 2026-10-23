@@ -70,6 +70,12 @@ table.audc-tabela tr:hover td { background: rgba(255,255,255,.02); }
 /* Painel de sessões — reutiliza classes globais .modal-overlay / .modal-acesso */
 .audc-paginacao { display: flex; justify-content: center; align-items: center; gap: 10px; padding: 12px; }
 .audc-paginacao span { font-size: .75rem; color: var(--text-muted); }
+
+.audc-secao-titulo {
+    font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted);
+    margin: 0 0 8px;
+}
+.audc-campo-alterado { color: #d29922; font-weight: 600; }
 </style>
 
 <a href="{% url 'listar_clientes' %}?id={{ cliente.id }}" class="audc-voltar">
@@ -81,7 +87,7 @@ table.audc-tabela tr:hover td { background: rgba(255,255,255,.02); }
     Auditoria de Acessos
 </h4>
 <div class="audc-subtitulo">
-    Sessões de acesso (SSH / Telnet / WinBox) registradas nos equipamentos de <strong>{{ cliente.nome_empresa }}</strong>
+    Sessões de acesso (SSH / Telnet / WinBox) e trocas de usuário/senha no cadastro dos equipamentos de <strong>{{ cliente.nome_empresa }}</strong>
 </div>
 
 <div class="audc-filtros">
@@ -117,7 +123,10 @@ table.audc-tabela tr:hover td { background: rgba(255,255,255,.02); }
 <div class="audc-stats" id="audc-stats" style="display:none;">
     <div class="audc-chip"><strong id="audc-stat-hosts">0</strong> host(s) com auditoria</div>
     <div class="audc-chip"><strong id="audc-stat-sessoes">0</strong> sessão(ões) no período</div>
+    <div class="audc-chip"><strong id="audc-stat-credenciais">0</strong> alteração(ões) de credencial</div>
 </div>
+
+<div id="audc-credenciais" style="display:none; margin-bottom:18px;"></div>
 
 <div id="audc-conteudo">
     <div class="audc-carregando">
@@ -190,6 +199,8 @@ function audcCarregarHosts() {
     conteudo.innerHTML = `<div class="audc-carregando"><i class="fas fa-spinner fa-spin"></i>Carregando auditoria...</div>`;
     document.getElementById('audc-stats').style.display = 'none';
 
+    audcCarregarCredenciais(params);
+
     fetch(`/clientes/${AUDC_CLIENTE_ID}/auditoria/hosts/?${params.toString()}`)
         .then(r => r.json())
         .then(data => {
@@ -205,6 +216,44 @@ function audcCarregarHosts() {
         .catch(() => {
             conteudo.innerHTML = `<div class="audc-estado-vazio"><i class="fas fa-exclamation-circle"></i>Erro na conexão.</div>`;
         });
+}
+
+// ─── Trocas de usuário/senha no cadastro dos hosts (nunca traz a senha) ───
+function audcCarregarCredenciais(params) {
+    const box = document.getElementById('audc-credenciais');
+    box.style.display = 'none';
+    fetch(`/clientes/${AUDC_CLIENTE_ID}/auditoria/credenciais/?${params.toString()}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) return;
+            document.getElementById('audc-stat-credenciais').textContent = data.total;
+            if (data.alteracoes.length === 0) return;
+            let html = `
+                <div class="audc-secao-titulo"><i class="fas fa-key me-1" style="color:#d29922;"></i> Alterações de credenciais no cadastro</div>
+                <div class="audc-tabela-wrap">
+                <table class="audc-tabela">
+                    <thead><tr><th>Quando</th><th>Host</th><th>Alterado</th><th>Por</th><th>Origem</th></tr></thead>
+                    <tbody>`;
+            data.alteracoes.forEach(a => {
+                const login = (a.login_antigo || a.login_novo)
+                    ? `<div class="audc-host-tipo">login ${audcEscapeHtml(a.login_antigo || '—')} → ${audcEscapeHtml(a.login_novo || '—')}</div>` : '';
+                html += `
+                    <tr>
+                        <td>${audcEscapeHtml(a.alterado_em)}</td>
+                        <td>
+                            <div class="audc-host-nome">${audcEscapeHtml(a.host)}</div>
+                            <div class="audc-host-tipo">${audcEscapeHtml(a.tipo)}</div>
+                        </td>
+                        <td><span class="audc-campo-alterado">${audcEscapeHtml(a.campos.join(', '))}</span>${login}</td>
+                        <td>${audcEscapeHtml(a.usuario)}${a.ip_origem ? `<div class="audc-host-tipo">${audcEscapeHtml(a.ip_origem)}</div>` : ''}</td>
+                        <td>${audcEscapeHtml(a.origem_display)}</td>
+                    </tr>`;
+            });
+            html += `</tbody></table></div>`;
+            box.innerHTML = html;
+            box.style.display = 'block';
+        })
+        .catch(() => {});
 }
 
 function audcRenderizarHosts(hosts) {

@@ -1798,10 +1798,13 @@ def executar_troca_senhas_massa(self, job_id, acesso_ids=None):
                 _criar_usuario_cisco(client, job.novo_usuario, job.nova_senha)
 
             # Atualiza credenciais no acesso
+            from .auditoria_credenciais import capturar, registrar
+            credenciais_antes = capturar(acesso.pk)
             Acesso.objects.filter(pk=acesso.pk).update(
                 usuario=job.novo_usuario,
                 senha=job.nova_senha,
             )
+            registrar(acesso, credenciais_antes, usuario=job.criado_por, origem='troca_massa')
 
             item.status = 'SUCESSO'
             item.mensagem = f'Vendor: {vendor}. Usuário "{job.novo_usuario}" criado com sucesso.'
