@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-23 (painel de tarefas mostra pendentes)
+
+### Corrigido
+
+- **Painel "Tarefas a concluir" mostra as pendentes.** O painel flutuante listava só tarefas em
+  que o usuário era responsável — e atribuir alguém já passa a tarefa para Em Andamento, então na
+  prática só apareciam as em andamento. Agora entram também as Pendentes sem responsável da
+  instância, marcadas "sem responsável"; o ✓ conclui e registra quem concluiu como responsável.
+  Ver `docs/TAREFAS.md`.
+
 ## [Não publicado] — 2026-10-23 (grade de IPs atualiza ao documentar)
 
 ### Corrigido

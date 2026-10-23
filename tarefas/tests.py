@@ -531,6 +531,42 @@ class AvisoTarefasLoginTest(TestCase):
         self.assertIsNotNone(self.minha.concluida_em)
         self.assertNotIn('Trocar ONU do cliente X', self._pagina())
 
+    def test_modal_lista_pendente_sem_responsavel_da_instancia(self):
+        """Atribuir alguém já passa para "Em Andamento"; sem listar as
+        pendentes sem responsável o painel quase nunca mostrava pendente."""
+        Tarefa.objects.create(titulo='Pendente livre', cliente=self.cliente, instancia=self.inst)
+        outra_inst = Instancia.objects.create(nome='Instância B')
+        Tarefa.objects.create(titulo='Pendente de outra instancia', instancia=outra_inst)
+        Tarefa.objects.create(
+            titulo='Andamento sem ninguem', cliente=self.cliente, instancia=self.inst,
+            status=Tarefa.STATUS_ANDAMENTO,
+        )
+        Tarefa.objects.filter(responsaveis=self.outro).update(status=Tarefa.STATUS_CONCLUIDA)
+        self.client.force_login(self.outro)
+        html = self._pagina()
+        self.assertIn('id="avisoTarefas"', html)
+        # O dashboard também lista as tarefas: confere só o painel.
+        html = html[html.index('id="avisoTarefas"'):html.index('data-tav-expandir')]
+        self.assertIn('Pendente livre', html)
+        self.assertIn('sem responsável', html)
+        self.assertNotIn('Pendente de outra instancia', html)
+        self.assertNotIn('Andamento sem ninguem', html)
+
+    def test_concluir_pendente_sem_responsavel_pelo_painel(self):
+        livre = Tarefa.objects.create(titulo='Pendente livre', cliente=self.cliente, instancia=self.inst)
+        self.client.force_login(self.outro)
+        r = self.client.post(reverse('tarefa_concluir_painel', args=[livre.id]))
+        self.assertTrue(r.json()['success'])
+        livre.refresh_from_db()
+        self.assertEqual(livre.status, Tarefa.STATUS_CONCLUIDA)
+        self.assertEqual(list(livre.responsaveis.all()), [self.outro])
+
+    def test_pendente_de_outra_instancia_nao_conclui_pelo_painel(self):
+        outra = Tarefa.objects.create(titulo='X', instancia=Instancia.objects.create(nome='Instância B'))
+        self.client.force_login(self.outro)
+        r = self.client.post(reverse('tarefa_concluir_painel', args=[outra.id]))
+        self.assertEqual(r.status_code, 404)
+
     def test_so_responsavel_conclui_pelo_painel(self):
         self.client.force_login(self.outro)
         r = self.client.post(reverse('tarefa_concluir_painel', args=[self.minha.id]))
