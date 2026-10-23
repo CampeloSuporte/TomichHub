@@ -1749,3 +1749,78 @@ Seções do PDF:
 
 Os textos "o que aplica" vivem em `_o_que_aplica`/`_o_que_aplica_global` — ao criar uma ação
 nova no catálogo, inclua a descrição lá.
+
+## Automação unificada de duas caixas ligadas por iBGP (Huawei, adicionado em 2026-10-23)
+
+Pedido de origem: GREEN TELECOM tem duas bordas, **BRAS CARMO** (acesso 667) e **BRAS PATOS**
+(acesso 673), AS 266296, mesmo catálogo de communities (`65296:<grupo><ação>`) e os slots
+divididos entre elas: `c-01` é a operadora de CARMO, `c-02`/`c-03` são as de PATOS. O operador
+queria aplicar a community de um lado e ter efeito no outro, "porque tem iBGP entre elas".
+
+### Por que carimbar só numa caixa não tinha efeito
+
+1. **As duas originam os mesmos prefixos** (`network … route-policy RT-BGP-LOCAL-*` nas duas).
+   No VRP a rota originada localmente vence a aprendida via iBGP, então a policy de saída do
+   `c-02` (em PATOS) só enxerga o que a policy local **de PATOS** carimbou. No backup de
+   23/10/2026, o 170.79.95.0/24 estava com `c-02 export-2p` em CARMO e `c-02 export` em PATOS:
+   o prepend pedido em CARMO nunca valeu.
+2. **Sem `peer X advertise-community` o VRP não envia community**, nem no iBGP. Nenhuma das
+   sessões iBGP entre as duas tinha o comando.
+
+### Como funciona (`clientes/bgp_caixas_unificadas.py`)
+
+- **Detecção** (`detectar_enlaces_ibgp` / `agrupar_caixas`): caixas Huawei do mesmo cliente,
+  mesmo AS local, com circuitos no padrão de community. O iBGP v4 casa pelo IP (o peer de A é um
+  IP de interface de B, de `dados['ips']`). O v6 casa pelo par na mesma /64 (A fala com `::12`,
+  B fala com `::11`), porque o parser só guarda os IPs v4 das interfaces. Caixa que o usuário
+  não pode ver (`pode_acessar_acesso`) fica de fora.
+- **Mapa unificado** (`montar_mapa_unificado`): mesmo formato do `montar_mapa`. Cada circuito
+  vem da caixa onde tem sessão (`caixa`, `caixa_nome`, sessões marcadas com a caixa). Os grupos
+  globais somam o alcance das duas caixas. Num slot que tem sessão na irmã não se pode subir
+  sessão: ele some dos vagos, senão a mesma community acenderia um circuito em cada caixa.
+- **Intenção que vale**: em cada circuito, a da rota que a caixa dona usa. Se ela origina o
+  prefixo, vale a policy local dela. Se não origina, vale a da caixa que origina, desde que o
+  iBGP entregue a community (sessão existe, a simulação diz que a policy de saída do iBGP deixa
+  o prefixo passar e há `advertise-community`). Quando não entrega, o circuito sai em
+  `sem_intencao` com o motivo, e o painel mostra "intenção não chega nesta caixa".
+- **Divergência** (`divergencias`): uma caixa que não é dona do circuito marca uma ação
+  diferente da que vale. É o "mudei aqui e não teve efeito lá". Caixa que só não marca nada
+  para o circuito alheio não é divergência, só ainda não foi sincronizada (`sincronizada:
+  false`).
+- **Geração** (`comandos_anuncio_unificado`): a mesma lista de communities do catálogo vai na
+  policy local do prefixo em **toda caixa que o origina** (`comandos_reescrever_communities`,
+  extraída de `_comandos_reescrever_intencao`). As communities fora do catálogo de cada caixa
+  continuam como estavam. Caixa que já está igual fica fora do plano. Se o circuito está numa
+  caixa que não origina o prefixo, entra no plano da caixa de origem o bloco `bgp <AS>` /
+  `ipv4-family unicast` / `peer <ip> advertise-community`. Se a policy de saída do iBGP não
+  deixa o prefixo passar, a ação é recusada. `destino` vazio = só sincronizar: grava em todas a
+  intenção que já vale.
+
+### Parser
+
+`parse_huawei` passou a guardar `advertise_community` (bool) em cada sessão, do peer ou do
+peer-group. Snapshot gerado antes disso não tem a chave, e ela é tratada como ausente: a
+automação acrescenta o comando, que é idempotente no VRP. "Atualizar agora" reprocessa o
+backup e preenche a chave.
+
+### Endpoints
+
+- `GET /clientes/bgp/<id>/community-mapa/` devolve o mapa unificado quando há caixa irmã
+  (chave `unificado`: caixas, enlaces iBGP com `advertise_*`, total de prefixos divergentes).
+  Com `?unificado=0`, devolve o mapa só desta caixa, como antes.
+- `POST /clientes/bgp/<id>/acao-unificada/` (`bgp_executar_acao_unificada`), só para
+  `tipo=anuncio_community`. O preview devolve `caixas: [{acesso_id, nome, comandos}]`. A
+  execução recebe `comandos_por_caixa` (o texto do modal, editável), roda caixa a caixa na
+  ordem do preview e **para na primeira que falhar**. Cada caixa ganha o próprio `AcaoBgp` e o
+  próprio patch otimista (`aplicar_efeito_unificado`). Modo trial vale para todas.
+
+### Painel
+
+Uma faixa "🔗 Automação unificada: CARMO + PATOS · iBGP …" mostra as caixas, os enlaces e
+quantos prefixos estão divergentes, com o botão **Ver só esta caixa**. Cada card de circuito
+diz em qual caixa está a sessão (📍). Cada prefixo diz onde é originado e, se as caixas não
+batem, ganha o botão **⇄ sincronizar** (ou **⚠ divergente · sincronizar**). O modal de
+confirmação é o mesmo de sempre: os comandos de cada caixa vêm separados por
+`### caixa <id> · <nome>`, e esse cabeçalho precisa ficar no texto. "Gerar config faltante" de
+um circuito da caixa irmã vai para a caixa dele. Originar prefixo novo e subir sessão
+continuam na caixa aberta.

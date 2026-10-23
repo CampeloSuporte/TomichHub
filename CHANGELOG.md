@@ -5,6 +5,24 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-23 (automação BGP unificada entre caixas com iBGP)
+
+### Adicionado
+
+- **Automação de community unificada para caixas de borda ligadas por iBGP.** Quando o cliente
+  tem duas (ou mais) caixas Huawei com o mesmo AS, iBGP entre elas e o mesmo padrão de
+  community, a tela de Automação BGP de qualquer uma delas passa a mostrar o conjunto: os
+  circuitos das duas (cada um com a caixa onde está a sessão) e os prefixos com a intenção que
+  vale de fato em cada circuito. Ao escolher "prefixo → circuito → ação" uma vez, a mesma lista
+  de communities é escrita na policy local do prefixo em todas as caixas que o originam. Assim
+  a community aplicada num lado tem efeito no circuito do outro. Quando o prefixo só sai por uma
+  caixa, o comando `peer … advertise-community` do iBGP é acrescentado se faltar. Prefixos em
+  que uma caixa carimba algo que a outra ignora saem como **divergentes**, com o botão
+  **sincronizar**. Há a opção "Ver só esta caixa". Caso de origem: GREEN TELECOM (BRAS CARMO +
+  BRAS PATOS), onde o "c-02 com 2 prepends" de CARMO não valia porque o c-02 está em PATOS. Ver
+  `docs/bgp_automacao.md`.
+- Parser Huawei passa a ler `peer X advertise-community`.
+
 ## [Não publicado] — 2026-10-23 (abrir tarefa pelo comentário interno, concluir pelo painel)
 
 ### Adicionado

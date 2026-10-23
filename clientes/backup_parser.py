@@ -542,6 +542,11 @@ def parse_huawei(conteudo, nome_equip=''):
     for m in re.finditer(r'peer ([\d.:a-fA-F]+) fake-as (\d+)', conteudo):
         fake_as_map[m.group(1)] = m.group(2)
 
+    # `peer X advertise-community`: sem isso o VRP NÃO envia community nenhuma
+    # pro peer — nem no iBGP. É o que decide se a intenção carimbada numa
+    # caixa chega na outra (automação unificada, `bgp_caixas_unificadas.py`).
+    advertise_community = set(re.findall(rf'peer ({_NOME_PEER}) advertise-community\b', conteudo))
+
     for m in re.finditer(r'peer ([\d.:a-fA-F]+) as-number (\d+)', conteudo):
         peer_ip = m.group(1)
         fake_as = fake_as_map.get(peer_ip, '')
@@ -557,6 +562,7 @@ def parse_huawei(conteudo, nome_equip=''):
             'policy_in': policy_in_map.get(peer_ip) or policy_in_map.get(grupo, ''),
             'policy_out': policy_out_map.get(peer_ip) or policy_out_map.get(grupo, ''),
             'fake_as': fake_as,
+            'advertise_community': bool({peer_ip, grupo} & advertise_community),
             # AS a repetir no prepend — fake-as tem prioridade sobre o AS
             # real quando configurado (é o que o peer efetivamente enxerga).
             'prepend_as': fake_as or as_local,

@@ -36,6 +36,12 @@ from .bgp_community_auto import (
     comandos_provisionar_circuito,
     montar_mapa,
 )
+from .bgp_caixas_unificadas import (
+    agrupar_caixas,
+    aplicar_efeito_unificado,
+    comandos_anuncio_unificado,
+    montar_mapa_unificado,
+)
 from .bgp_community_pdf import gerar_pdf_communities
 from .bgp_matcher import listar_prefix_lists
 from .models import Acesso, AcaoBgp, BgpCommunity, BgpSnapshot
@@ -339,6 +345,17 @@ def bgp_community_mapa(request, acesso_id):
     except AcaoBgpNaoSuportada as e:
         return JsonResponse({'error': str(e), 'suportado': False}, status=422)
 
+    # Caixas irmãs (mesmo cliente, mesmo AS, iBGP entre elas, catálogo de
+    # community no mesmo padrão): o painel vira uma automação só para o
+    # conjunto. `?unificado=0` volta a mostrar só esta caixa.
+    if mapa['circuitos'] and request.GET.get('unificado') != '0':
+        grupo = _caixas_do_grupo(request.user, acesso, snap, mapa)
+        if grupo:
+            uni = montar_mapa_unificado(grupo['caixas'], grupo['enlaces'])
+            uni['suportado'] = True
+            uni['as_local'] = _as_local_do(snap.dados)
+            return JsonResponse(uni)
+
     if not mapa['circuitos']:
         return JsonResponse({
             'suportado': True, 'circuitos': {}, 'globais': {}, 'anuncios': [],
@@ -351,6 +368,161 @@ def bgp_community_mapa(request, acesso_id):
     mapa['suportado'] = True
     mapa['as_local'] = (sessoes[0].get('as_local', '') if sessoes else '') or snap.dados.get('as_local', '')
     return JsonResponse(mapa)
+
+
+def _as_local_do(dados):
+    sessoes = dados.get('sessoes') or []
+    return (sessoes[0].get('as_local', '') if sessoes else '') or dados.get('as_local', '')
+
+
+def _caixas_do_grupo(user, acesso, snap, mapa=None):
+    """
+    As caixas Huawei do mesmo cliente ligadas a `acesso` por iBGP, cada uma
+    com o snapshot e o mapa de community montados — `{'caixas': [...],
+    'enlaces': [...]}` com a caixa aberta em primeiro, ou None quando ela
+    está sozinha. Caixa sem circuito no padrão de community, com snapshot em
+    erro ou que o usuário não pode ver fica de fora (unificar sem enxergar a
+    outra ponta geraria comando pra um equipamento que ele não administra).
+    """
+    if snap.vendor != 'huawei' or not acesso.cliente_id:
+        return None
+    if mapa is None:
+        mapa = montar_mapa(snap.dados, snap.vendor)
+    caixas = [{'id': acesso.id, 'nome': acesso.tipo, 'host': acesso.host,
+               'dados': snap.dados, 'mapa': mapa, 'acesso': acesso, 'snap': snap}]
+    outros = (BgpSnapshot.objects.select_related('acesso')
+              .filter(acesso__cliente_id=acesso.cliente_id, vendor='huawei')
+              .exclude(acesso_id=acesso.id).order_by('acesso_id'))
+    for s in outros:
+        if s.erro or not s.dados or not _perms.pode_acessar_acesso(user, s.acesso):
+            continue
+        try:
+            m = montar_mapa(s.dados, s.vendor)
+        except AcaoBgpNaoSuportada:
+            continue
+        if not m['circuitos']:
+            continue
+        caixas.append({'id': s.acesso_id, 'nome': s.acesso.tipo, 'host': s.acesso.host,
+                       'dados': s.dados, 'mapa': m, 'acesso': s.acesso, 'snap': s})
+    if len(caixas) < 2:
+        return None
+    for g in agrupar_caixas(caixas):
+        if any(c['id'] == acesso.id for c in g['caixas']):
+            # agrupar_caixas preserva a ordem de entrada → a aberta é a 1ª.
+            return g
+    return None
+
+
+@login_required(login_url='login')
+@require_http_methods(["POST"])
+def bgp_executar_acao_unificada(request, acesso_id):
+    """
+    POST /clientes/bgp/<acesso_id>/acao-unificada/
+    body: {"tipo": "anuncio_community", "alvo": <prefixo>, "params": {destino, acao},
+           "preview": bool, "comandos_por_caixa": {<acesso_id>: [...]},
+           "trial": bool, "trial_segundos": int}
+
+    Uma intenção de anúncio aplicada no conjunto de caixas ligadas por iBGP
+    (ver `bgp_caixas_unificadas.py`). O preview devolve os comandos de cada
+    caixa; a execução roda caixa a caixa, na ordem do preview, e PARA na
+    primeira que falhar — as que já rodaram ficam registradas (AcaoBgp de
+    cada uma) e a resposta diz exatamente quais foram e quais não.
+    """
+    erro = _checar_staff(request)
+    if erro:
+        return erro
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+    erro = _checar_acesso(request, acesso)
+    if erro:
+        return erro
+    try:
+        body = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    tipo = body.get('tipo', '')
+    alvo = (body.get('alvo') or '').strip()
+    params = body.get('params') or {}
+    preview = bool(body.get('preview', True))
+    trial = bool(body.get('trial', False))
+    try:
+        trial_segundos = int(body.get('trial_segundos') or 60)
+    except (TypeError, ValueError):
+        trial_segundos = 60
+    if tipo != 'anuncio_community':
+        return JsonResponse({'error': f'Ação "{tipo}" não tem modo unificado.'}, status=400)
+
+    try:
+        snap = BgpSnapshot.objects.get(acesso_id=acesso_id)
+    except BgpSnapshot.DoesNotExist:
+        return JsonResponse({'error': 'Sem snapshot BGP para este host.'}, status=404)
+    try:
+        grupo = _caixas_do_grupo(request.user, acesso, snap)
+        if not grupo:
+            return JsonResponse({'error': 'Este equipamento não tem caixa irmã ligada por iBGP — '
+                                          'use a ação normal.'}, status=422)
+        uni = montar_mapa_unificado(grupo['caixas'], grupo['enlaces'])
+        if trial:
+            validar_trial_suportado(snap.vendor)
+        plano = comandos_anuncio_unificado(
+            grupo['caixas'], grupo['enlaces'], uni, alvo,
+            str(params.get('destino') or ''), params.get('acao', ''),
+        )
+    except AcaoBgpNaoSuportada as e:
+        return JsonResponse({'error': str(e)}, status=422)
+
+    if preview:
+        return JsonResponse({'caixas': [
+            {'acesso_id': p['acesso_id'], 'nome': p['nome'], 'comandos': p['comandos']}
+            for p in plano
+        ]})
+
+    editados = body.get('comandos_por_caixa')
+    if editados is not None:
+        if not isinstance(editados, dict):
+            return JsonResponse({'error': 'comandos_por_caixa inválido.'}, status=400)
+        editados = {str(k): v for k, v in editados.items()}
+        ids_plano = {str(p['acesso_id']) for p in plano}
+        if set(editados) - ids_plano:
+            return JsonResponse({'error': 'O texto editado traz uma caixa que não faz parte '
+                                          'desta mudança — gere o preview de novo.'}, status=400)
+        for v in editados.values():
+            if (not isinstance(v, list) or not all(isinstance(c, str) for c in v)
+                    or len(v) > 30 or any(len(c) > 500 for c in v)):
+                return JsonResponse({'error': 'Comando editado inválido ou longo demais — '
+                                              'revise antes de enviar.'}, status=400)
+
+    por_id = {c['id']: c for c in grupo['caixas']}
+    resultados, status_geral = [], 'sucesso'
+    for p in plano:
+        cx = por_id[p['acesso_id']]
+        if editados is not None:
+            comandos = [c.strip() for c in editados.get(str(p['acesso_id']), []) if c.strip()]
+            if not comandos:
+                resultados.append({'acesso_id': p['acesso_id'], 'nome': p['nome'],
+                                   'status': 'pulado', 'output': 'removida do texto pelo operador'})
+                continue
+        else:
+            comandos = p['comandos']
+        output, status = executar_acao_bgp(cx['acesso'], cx['snap'].vendor, comandos,
+                                           trial=trial, trial_segundos=trial_segundos)
+        if status == 'sucesso' and not trial:
+            try:
+                aplicar_efeito_unificado(cx['snap'].dados, p)
+                cx['snap'].patch_local_pendente = True
+                cx['snap'].save(update_fields=['dados', 'patch_local_pendente'])
+            except Exception as e:
+                logger.warning(f'aplicar_efeito_unificado falhou pra acesso {p["acesso_id"]} (não crítico): {e}')
+        AcaoBgp.objects.create(
+            acesso=cx['acesso'], usuario=request.user, tipo=tipo, alvo=alvo,
+            comandos='\n'.join(comandos), output=output, status=status,
+        )
+        resultados.append({'acesso_id': p['acesso_id'], 'nome': p['nome'],
+                           'status': status, 'output': output})
+        if status != 'sucesso':
+            status_geral = status
+            break
+    return JsonResponse({'status': status_geral, 'caixas': resultados})
 
 
 @login_required(login_url='login')
