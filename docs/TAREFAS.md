@@ -329,6 +329,11 @@ Faltavam duas coisas, vistas nos dados reais (agosto a outubro/2026):
   "(Aberta pelo chamado #N)". Sem texto depois do gatilho ("Tomichinho, criar tarefa") segue o
   caminho antigo: IA lê o histórico, com fallback para a última mensagem do cliente.
 - Grupo sem cliente vinculado continua sendo ignorado (não há onde criar a tarefa).
+- **Deploy:** `abrir_tarefa_ia` roda na fila `atendimento_ia`, consumida pelo worker
+  **`celery-atendimento-ia`**, não pelo `celery`. Mudou `atendimento/tasks.py` → reiniciar os dois.
+  No dia da entrega só o `celery` foi reiniciado; o worker de IA, com o código antigo, recusou o
+  `autor_id` (`TypeError`) e o primeiro "criar tarefa - configurar rb filial diones" (chamado
+  #1970) não criou nada. Depois do restart a tarefa foi recriada a partir da mesma nota.
 
 Testes: `AbrirTarefaIAInternaTest` (título explícito + autor responsável sem chamar a IA, autor de
 outra instância não vira responsável), `TituloExplicitoTarefaTest`, os de disparo em
