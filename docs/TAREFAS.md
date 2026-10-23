@@ -259,10 +259,10 @@ adicionar/remover de outra instância 404, página do cliente com modal novo e c
 
 ## Modal "Suas tarefas a concluir" (2026-10-23)
 
-Quem é **responsável** por alguma tarefa em aberto (Pendente ou Em Andamento) vê um modal com todas
-essas tarefas **em toda página que navegar**, até concluí-las. Vale para os dois lados: atendente
-marcado numa tarefa do cliente X vê a tarefa, e o login do portal do cliente marcado como
-responsável também vê.
+Quem é da **equipe** (Administrador, Consultor ou Operador) e é **responsável** por alguma tarefa
+em aberto (Pendente ou Em Andamento) vê um modal com todas essas tarefas **em toda página que
+navegar**, até concluí-las. O login do portal do cliente pode ser marcado como responsável, mas
+**não** recebe o modal (`perms.is_backoffice` na template tag; pedido do usuário em 23/10/2026).
 
 - **Quando abre:** a template tag `{% tarefas_aviso_login %}`
   (`tarefas/templatetags/tarefas_aviso.py`, incluída no fim do `templates/base.html`) roda em toda
@@ -273,13 +273,13 @@ responsável também vê.
   (`SESSION_SAVE_EVERY_REQUEST`), então quase ninguém passa pela tela de login. Não voltar a
   prender o aviso ao login.
 - **O que lista:** `tarefas_abertas_do_responsavel(user)`: atrasadas primeiro, depois por prazo
-  (sem prazo no fim) e prioridade. Sem `visiveis_para`, porque o login do portal não enxerga nada
-  por esse manager e a elegibilidade já foi checada ao marcar o responsável. Sem tarefa em aberto,
+  (sem prazo no fim) e prioridade. Sem `visiveis_para`: a elegibilidade já foi checada ao marcar o
+  responsável. Sem tarefa em aberto,
   o modal não é renderizado. Custo: uma consulta por página para usuário autenticado.
 - **Links:** tarefa com cliente abre `listar_clientes?id=N&aba=tarefas`. O `listar.html` passou a
   aceitar `?aba=` (grava em `sessionStorage.abaAtiva` antes da restauração da aba, só se a aba
   existir na página, ou seja, se o módulo estiver liberado). Tarefa sem cliente leva ao dashboard
-  (`quadro_geral` / `quadro_instancia`); para o portal ela aparece sem link.
+  (`quadro_geral` / `quadro_instancia`).
 
 - **Tela escura sem clique (corrigido no mesmo dia):** na página do cliente o `listar.html` tem div
   sem fechar, então o modal (incluído no fim do `base.html`) caía dentro do `.main-content`, numa
@@ -291,4 +291,5 @@ responsável também vê.
   pelo backdrop; com ela o modal é filho do `<body>` e fechar remove o backdrop.
 
 Testes: `AvisoTarefasLoginTest` (lista só as abertas do responsável e com a atrasada primeiro,
-aparece em toda navegação, concluir tira do modal, sem tarefa não mostra nada).
+aparece em toda navegação, concluir tira do modal, sem tarefa não mostra nada, login do portal
+responsável não vê o modal).

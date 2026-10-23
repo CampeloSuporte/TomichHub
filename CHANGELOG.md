@@ -9,8 +9,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Adicionado
 
-- **Modal "Suas tarefas a concluir" em toda página.** Quem é responsável por tarefa em aberto
-  (atendente ou login do portal do cliente) vê a lista em toda página que abrir, até concluir,
+- **Modal "Suas tarefas a concluir" em toda página.** Atendente ou administrador responsável por
+  tarefa em aberto vê a lista em toda página que abrir, até concluir (o cliente não vê o modal),
   com atrasadas primeiro, cliente, prazo e prioridade. Cada item abre direto a aba Tarefas do
   cliente (`?aba=tarefas`). A 1ª versão abria só após o login e não aparecia (a sessão dura 7 dias
   e se renova sozinha). Ver `docs/TAREFAS.md`.
