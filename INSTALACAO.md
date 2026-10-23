@@ -296,9 +296,16 @@ ExecStart=/opt/crm/venv/bin/daphne \
     -b 127.0.0.1 -p 8001 \
     --ping-interval 20 \
     --ping-timeout 60 \
+    --application-close-timeout 30 \
     crm.asgi:application
 
-Restart=on-failure
+Restart=always
+RestartSec=2
+
+# Daphne ignora o SIGTERM com WebSockets abertos; sem isto o systemd espera 90s
+# (WebSockets fora do ar durante todo esse tempo a cada restart)
+TimeoutStopSec=10
+
 LimitNOFILE=65536
 
 [Install]
