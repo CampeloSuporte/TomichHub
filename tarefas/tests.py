@@ -480,7 +480,7 @@ class AvisoTarefasLoginTest(TestCase):
     def test_modal_lista_so_as_tarefas_abertas_do_responsavel(self):
         self.client.force_login(self.atendente)
         html = self._pagina()
-        self.assertIn('modalTarefasLogin', html)
+        self.assertIn('id="avisoTarefas"', html)
         self.assertIn('Trocar ONU do cliente X', html)
         self.assertIn('Revisar BGP atrasado', html)
         self.assertNotIn('Tarefa ja concluida', html)
@@ -492,9 +492,9 @@ class AvisoTarefasLoginTest(TestCase):
     def test_modal_aparece_em_toda_navegacao(self):
         """Não depende de login novo: a sessão dura dias e renova sozinha."""
         self.client.force_login(self.atendente)
-        self.assertIn('modalTarefasLogin', self._pagina())
-        self.assertIn('modalTarefasLogin', self._pagina())
-        self.assertIn('modalTarefasLogin', self.client.get(reverse('cadastrar_cliente')).content.decode())
+        self.assertIn('id="avisoTarefas"', self._pagina())
+        self.assertIn('id="avisoTarefas"', self._pagina())
+        self.assertIn('id="avisoTarefas"', self.client.get(reverse('cadastrar_cliente')).content.decode())
 
     def test_concluir_a_tarefa_tira_do_modal(self):
         self.client.force_login(self.atendente)
@@ -506,7 +506,7 @@ class AvisoTarefasLoginTest(TestCase):
     def test_sem_tarefa_em_aberto_nao_mostra_modal(self):
         Tarefa.objects.filter(responsaveis=self.outro).update(status=Tarefa.STATUS_CONCLUIDA)
         self.client.force_login(self.outro)
-        self.assertNotIn('modalTarefasLogin', self._pagina())
+        self.assertNotIn('id="avisoTarefas"', self._pagina())
 
     def test_login_do_portal_nao_ve_o_modal(self):
         """Cliente pode ser responsável por tarefa do próprio cliente, mas o
@@ -519,4 +519,4 @@ class AvisoTarefasLoginTest(TestCase):
         r = self.client.get(reverse('listar_clientes'), {'id': self.cliente.id})
         self.assertEqual(r.status_code, 200)
         self.assertIn('CLIENTE X', r.content.decode())
-        self.assertNotIn('modalTarefasLogin', r.content.decode())
+        self.assertNotIn('id="avisoTarefas"', r.content.decode())
