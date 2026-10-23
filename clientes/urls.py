@@ -125,6 +125,7 @@ urlpatterns = [
     # Auditoria de Acessos — visão consolidada por cliente (todos os hosts)
     path('<int:cliente_id>/auditoria/', views.auditoria_cliente_view, name='auditoria_cliente_view'),
     path('<int:cliente_id>/auditoria/hosts/', views.auditoria_cliente_hosts, name='auditoria_cliente_hosts'),
+    path('<int:cliente_id>/auditoria/credenciais/', views.auditoria_cliente_credenciais, name='auditoria_cliente_credenciais'),
 
     # Interfaces sugeridas a partir do backup (editor de Topologia)
     path('acessos/<int:acesso_id>/interfaces-backup/', views.interfaces_backup_acesso, name='interfaces_backup_acesso'),

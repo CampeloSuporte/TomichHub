@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-23 (auditoria de troca de senha no cadastro do host)
+
+### Adicionado
+
+- **Registro de troca de usuário/senha no cadastro do host.** Toda gravação que muda o usuário,
+  a senha ou a senha ADM de um acesso passa a ser registrada: pelo Editar Acesso, pela troca de
+  senhas em massa ou pelo Django admin. O registro guarda quem alterou, quando, o IP, a origem e
+  os campos que mudaram. As senhas em si nunca são gravadas, só o login antigo → novo. O
+  histórico aparece no modal de auditoria do host, acima das sessões, e na tela de auditoria do
+  cliente, na tabela "Alterações de credenciais no cadastro". Caso de origem: o backup do Cgnat
+  AFL (Startnet) passou a falhar por senha e o CRM não tinha como dizer se ela havia sido trocada
+  no cadastro. Ver `docs/AUDITORIA_ACESSOS.md`.
+
 ## [Não publicado] — 2026-10-23 (automação BGP unificada entre caixas com iBGP)
 
 ### Adicionado

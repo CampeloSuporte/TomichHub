@@ -19,6 +19,8 @@ from .transportes import links_transporte
 from .models import AcaoOltPon
 from .models import ProxyServer
 from .models import AcessoSessao, AcessoComando, TerminalLinkExterno, AcessoProtocolo
+from . import auditoria_credenciais as _aud_cred
+from seguranca.services import get_client_ip
 from .proxy_engine import ProxyEngine
 from .decorators import admin_required, cliente_login_required
 from usuario import perms as _perms
@@ -1036,6 +1038,8 @@ def editar_acesso(request, acesso_id):
                 messages.error(request, 'Sem permissão para editar este acesso.')
                 return redirect(f"{reverse('listar_clientes')}?id={acesso.cliente_id}")
 
+            credenciais_antes = _aud_cred.capturar(acesso.id)
+
             # Atualiza campos diretos
             acesso.tipo = request.POST.get('tipo')
             acesso.host = request.POST.get('hostname')
@@ -1088,6 +1092,8 @@ def editar_acesso(request, acesso_id):
                 acesso.modelo = None
 
             acesso.save()
+            _aud_cred.registrar(acesso, credenciais_antes, usuario=request.user,
+                                ip=get_client_ip(request), origem='edicao')
 
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({'success': True})
@@ -6154,6 +6160,18 @@ def listar_sessoes_auditoria(request, acesso_id):
         })
 
     resposta.update({'sessoes': dados, 'total': sessoes.count()})
+
+    # Trocas de usuário/senha no cadastro do host, no mesmo período. Vão
+    # inteiras só na 1ª página (são poucas e ficam no topo da lista).
+    if resposta.get('pagina', 1) == 1:
+        alteracoes = acesso.alteracoes_credenciais.select_related('usuario', 'acesso')
+        if data_inicio_str:
+            alteracoes = alteracoes.filter(alterado_em__date__gte=datetime.strptime(data_inicio_str, '%Y-%m-%d').date())
+        if data_fim_str:
+            alteracoes = alteracoes.filter(alterado_em__date__lte=datetime.strptime(data_fim_str, '%Y-%m-%d').date())
+        resposta['alteracoes_credenciais'] = [_aud_cred.serializar(a) for a in alteracoes]
+    else:
+        resposta['alteracoes_credenciais'] = []
     return JsonResponse(resposta)
 
 
@@ -6206,7 +6224,8 @@ def auditoria_cliente_view(request, cliente_id):
         return redirect('quadro_geral')
 
     usuarios_com_acesso = User.objects.filter(
-        sessoes_acesso__acesso__cliente=cliente
+        Q(sessoes_acesso__acesso__cliente=cliente)
+        | Q(alteracoes_credenciais_acesso__acesso__cliente=cliente)
     ).distinct().order_by('first_name', 'username')
 
     return render(request, 'auditoria_cliente.html', {
@@ -6290,6 +6309,46 @@ def auditoria_cliente_hosts(request, cliente_id):
         'total_hosts': len(hosts),
         'total_sessoes': sum(h['total_sessoes'] for h in hosts),
     })
+
+
+@login_required(login_url='login')
+@require_http_methods(["GET"])
+@modulo_habilitado_required('acessos')
+def auditoria_cliente_credenciais(request, cliente_id):
+    """Trocas de usuário/senha no cadastro dos hosts de um cliente (quem,
+    quando, IP, quais campos — nunca as senhas). Mesmos filtros da tela de
+    auditoria: ?data_inicio=&data_fim= (AAAA-MM-DD), ?busca= e ?usuario_id=."""
+    cliente = get_object_or_404(Cliente, id=cliente_id)
+
+    if not _perms.pode_acessar_cliente(request.user, cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    from .models import AcessoAlteracaoCredencial
+    alteracoes = AcessoAlteracaoCredencial.objects.filter(
+        acesso__cliente=cliente
+    ).select_related('usuario', 'acesso', 'acesso__funcao')
+
+    data_inicio_str = (request.GET.get('data_inicio') or '').strip()
+    data_fim_str = (request.GET.get('data_fim') or '').strip()
+    busca = (request.GET.get('busca') or '').strip()
+    usuario_id = (request.GET.get('usuario_id') or '').strip()
+    try:
+        if data_inicio_str:
+            alteracoes = alteracoes.filter(alterado_em__date__gte=datetime.strptime(data_inicio_str, '%Y-%m-%d').date())
+        if data_fim_str:
+            alteracoes = alteracoes.filter(alterado_em__date__lte=datetime.strptime(data_fim_str, '%Y-%m-%d').date())
+    except ValueError:
+        return JsonResponse({'error': 'Data inválida.'}, status=400)
+    if usuario_id:
+        alteracoes = alteracoes.filter(usuario_id=usuario_id)
+    if busca:
+        alteracoes = alteracoes.filter(
+            Q(acesso__host__icontains=busca) | Q(acesso__tipo__icontains=busca)
+            | Q(acesso__funcao__descricao__icontains=busca)
+        )
+
+    dados = [_aud_cred.serializar(a) for a in alteracoes[:500]]
+    return JsonResponse({'success': True, 'alteracoes': dados, 'total': len(dados)})
 
 
 @login_required(login_url="login")

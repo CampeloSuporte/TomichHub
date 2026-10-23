@@ -45,6 +45,13 @@ class AcessoAdmin(admin.ModelAdmin):
     search_fields = ('host', 'cliente__nome_empresa')
     inlines = [AcessoProtocoloInline]
 
+    def save_model(self, request, obj, form, change):
+        from seguranca.services import get_client_ip
+        from .auditoria_credenciais import capturar, registrar
+        antes = capturar(obj.pk) if change else {}
+        super().save_model(request, obj, form, change)
+        registrar(obj, antes, usuario=request.user, ip=get_client_ip(request), origem='admin')
+
 
 
 class AcessoComandoInline(admin.TabularInline):

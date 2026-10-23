@@ -312,6 +312,41 @@ class AcessoComando(models.Model):
         return self.comando[:80]
 
 
+class AcessoAlteracaoCredencial(models.Model):
+    """Registro de troca de usuário/senha no cadastro de um Acesso: quem,
+    quando, de onde e quais campos mudaram. Nunca guarda as senhas (nem a
+    antiga nem a nova) — só que foram alteradas. O login (campo `usuario`),
+    que não é segredo, fica com o valor anterior e o novo.
+    Ver clientes/auditoria_credenciais.py."""
+
+    ORIGENS = [
+        ('edicao',      'Editar Acesso'),
+        ('troca_massa', 'Troca de senhas em massa'),
+        ('admin',       'Django admin'),
+    ]
+
+    acesso        = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='alteracoes_credenciais')
+    usuario       = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL,
+                                      related_name='alteracoes_credenciais_acesso')
+    ip_origem     = models.CharField(max_length=45, blank=True, default='')
+    origem        = models.CharField(max_length=20, choices=ORIGENS, default='edicao')
+    campos        = models.CharField(max_length=60, help_text='Campos alterados, separados por vírgula (usuario, senha, senha_adm)')
+    login_antigo  = models.CharField(max_length=50, blank=True, default='')
+    login_novo    = models.CharField(max_length=50, blank=True, default='')
+    alterado_em   = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Alteração de Credencial (Auditoria)'
+        verbose_name_plural = 'Alterações de Credencial (Auditoria)'
+        ordering = ['-alterado_em']
+
+    def __str__(self):
+        return f'{self.acesso_id} {self.campos} em {self.alterado_em:%d/%m/%Y %H:%M}'
+
+    def campos_lista(self):
+        return [c for c in self.campos.split(',') if c]
+
+
 class TerminalLinkExterno(models.Model):
     """Link temporário para compartilhar um terminal (SSH/Telnet) com alguém
     de fora do CRM (sem login) — ex: suporte de fabricante durante uma

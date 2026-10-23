@@ -314,6 +314,43 @@ Até e paginação Anterior/Próxima, chamando `listar_sessoes_auditoria` com `p
 
 ---
 
+## Alterações de Credenciais no Cadastro (adicionado em 23/10/2026)
+
+Antes não havia como saber se alguém tinha trocado usuário/senha de um host no CRM: o `Acesso`
+não tinha histórico de edição e o nginx só guarda ~15 dias. Caso de origem: o backup do
+**Cgnat AFL** (Startnet, `172.24.67.122`) passou a falhar com "Authentication failed" em
+21/10/2026 sem rastro de quem mexeu.
+
+### `AcessoAlteracaoCredencial` (`clientes/models.py`)
+
+Um registro por gravação que muda `usuario`, `senha` ou `senha_adm`: `acesso`, `usuario` (quem
+fez), `ip_origem` (via `seguranca.services.get_client_ip`), `origem` (`edicao` / `troca_massa` /
+`admin`), `campos` (lista separada por vírgula) e `alterado_em`. **As senhas nunca são gravadas**,
+nem a antiga nem a nova. O login, que não é segredo, fica com `login_antigo` → `login_novo`.
+
+### Onde é gravado (`clientes/auditoria_credenciais.py`)
+
+`capturar(acesso_id)` lê as credenciais do banco antes de salvar e `registrar(...)` compara com o
+banco depois. Só cria o registro se algo mudou: editar só o nome/porta não gera nada.
+
+- `editar_acesso` (Editar Acesso, `clientes/views.py`)
+- `executar_troca_senhas_massa` (`clientes/tasks.py`): usuário = quem criou o job
+- `AcessoAdmin.save_model` (`clientes/admin.py`)
+
+Um caminho novo que grave a senha de um `Acesso` precisa chamar o par `capturar`/`registrar`.
+
+### Onde aparece
+
+- **Modal de auditoria do host**: `listar_sessoes_auditoria` devolve `alteracoes_credenciais`
+  (mesmo filtro de data, só na 1ª página). O modal mostra os registros em amarelo, acima das sessões.
+- **Tela de auditoria do cliente**: o endpoint `GET /clientes/<id>/auditoria/credenciais/`
+  (`auditoria_cliente_credenciais`, com os mesmos filtros de período/usuário/busca, até 500
+  registros) alimenta a tabela "Alterações de credenciais no cadastro" e o contador no topo.
+
+Testes: `clientes/tests_auditoria_credenciais.py`.
+
+---
+
 ## Admin (`clientes/admin.py`)
 
 `AcessoSessaoAdmin` — lista com filtro por `tipo`/`status`, busca por acesso/host/usuário, inline
@@ -381,5 +418,5 @@ depois de rolar; depois, a sobra é 0 e o botão fica em `top:59` em qualquer ro
 
 ---
 
-**Última atualização:** 04/08/2026
+**Última atualização:** 23/10/2026
 **Autor:** CampeloSuporte
