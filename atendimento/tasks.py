@@ -253,7 +253,7 @@ def responder_nota_interna_ia(conversation_id, pergunta, nome='Hermes'):
 
 
 @shared_task
-def abrir_tarefa_ia(conversation_id, texto_comando, is_internal=False):
+def abrir_tarefa_ia(conversation_id, texto_comando, is_internal=False, autor_id=None):
     """Gatilho "abrir tarefa" numa mensagem do chamado (recebida do WhatsApp
     ou digitada como nota interna): interpreta o pedido via IA e cria uma
     Tarefa vinculada ao cliente do grupo. Sem cliente vinculado ao grupo,
@@ -261,11 +261,16 @@ def abrir_tarefa_ia(conversation_id, texto_comando, is_internal=False):
 
     Quando `is_internal`, a confirmação fica só no CRM (nota interna) — não
     pode vazar pro WhatsApp do cliente algo que começou como comentário
-    privado da equipe."""
+    privado da equipe.
+
+    Texto depois do gatilho ("abrir tarefa: trocar a ONU") é o título, sem
+    passar pela IA — é o que o atendente pediu, e a IA pode estar sem
+    crédito. `autor_id` (comentário interno) vira autor e responsável."""
     import json as _json
     import re as _re
     from .models import Conversation
-    from .services import _ia_enviar
+    from django.contrib.auth.models import User
+    from .services import _ia_enviar, _titulo_explicito_tarefa
     from .ai import call_ai
     from tarefas.models import Tarefa
     from tarefas.services import instancia_da_tarefa
@@ -286,6 +291,18 @@ def abrir_tarefa_ia(conversation_id, texto_comando, is_internal=False):
     # ("Tomichinho, criar tarefa", sem detalhe nenhum) — o pedido de
     # verdade está nas mensagens do cliente antes dele. Manda o histórico
     # inteiro pra IA entender o problema relatado, não só o comando.
+    autor = User.objects.filter(pk=autor_id, is_active=True).first() if autor_id else None
+    titulo_explicito = _titulo_explicito_tarefa(texto_comando)
+    if titulo_explicito:
+        tarefa = Tarefa.objects.create(
+            titulo=titulo_explicito,
+            descricao=f"{texto_comando.strip()}\n\n(Aberta pelo chamado #{conv.conversation_id})",
+            cliente=cliente,
+            instancia=instancia_da_tarefa(None, cliente),
+            criado_por=autor,
+        )
+        return _confirmar_tarefa_ia(conv, tarefa, autor, is_internal)
+
     contexto, historico = _contexto_conversa(conv)
 
     resposta = call_ai(
@@ -328,19 +345,32 @@ def abrir_tarefa_ia(conversation_id, texto_comando, is_internal=False):
         descricao=descricao,
         cliente=cliente,
         instancia=instancia_da_tarefa(None, cliente),
+        criado_por=autor,
     )
+    return _confirmar_tarefa_ia(conv, tarefa, autor, is_internal)
+
+
+def _confirmar_tarefa_ia(conv, tarefa, autor, is_internal):
+    """Põe o autor do comentário como responsável (se for elegível para o
+    cliente, mesma regra do seletor de responsáveis) e confirma no chamado."""
+    from tarefas.models import Tarefa
+    from tarefas.services import usuarios_atribuiveis
+    from .services import _ia_enviar
+
+    texto = f"✅ Tarefa aberta: *{tarefa.titulo}*"
+    if autor is not None and usuarios_atribuiveis(tarefa.cliente).filter(pk=autor.pk).exists():
+        tarefa.responsaveis.add(autor)
+        tarefa.status = Tarefa.STATUS_ANDAMENTO
+        tarefa.save(update_fields=['status'])
+        texto += f"\nResponsável: {autor.get_full_name() or autor.username}"
 
     if is_internal:
         _ia_enviar(
-            conv, conv.group, conv.group.connection,
-            f"✅ Tarefa aberta: *{titulo}*",
+            conv, conv.group, conv.group.connection, texto,
             sender_type='internal', enviar_whatsapp=False,
         )
     else:
-        _ia_enviar(
-            conv, conv.group, conv.group.connection,
-            f"✅ Tarefa aberta: *{titulo}*",
-        )
+        _ia_enviar(conv, conv.group, conv.group.connection, texto)
     return {'ok': True, 'tarefa_id': tarefa.id}
 
 

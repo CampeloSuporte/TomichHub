@@ -7,6 +7,7 @@ urlpatterns = [
     path('<int:tarefa_id>/assumir/', views.tarefa_assumir, name='tarefa_assumir'),
     path('<int:tarefa_id>/status/', views.tarefa_status, name='tarefa_status'),
     path('<int:tarefa_id>/excluir/', views.tarefa_excluir, name='tarefa_excluir'),
+    path('<int:tarefa_id>/concluir-painel/', views.tarefa_concluir_painel, name='tarefa_concluir_painel'),
     path('<int:tarefa_id>/usuarios/', views.tarefa_usuarios_json, name='tarefa_usuarios_json'),
 
     # Checklist (dashboard e Kanban) — JSON

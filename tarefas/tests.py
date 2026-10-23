@@ -520,3 +520,20 @@ class AvisoTarefasLoginTest(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertIn('CLIENTE X', r.content.decode())
         self.assertNotIn('id="avisoTarefas"', r.content.decode())
+
+    def test_concluir_pelo_painel(self):
+        self.client.force_login(self.atendente)
+        r = self.client.post(reverse('tarefa_concluir_painel', args=[self.minha.id]))
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.json()['success'])
+        self.minha.refresh_from_db()
+        self.assertEqual(self.minha.status, Tarefa.STATUS_CONCLUIDA)
+        self.assertIsNotNone(self.minha.concluida_em)
+        self.assertNotIn('Trocar ONU do cliente X', self._pagina())
+
+    def test_so_responsavel_conclui_pelo_painel(self):
+        self.client.force_login(self.outro)
+        r = self.client.post(reverse('tarefa_concluir_painel', args=[self.minha.id]))
+        self.assertEqual(r.status_code, 404)
+        self.minha.refresh_from_db()
+        self.assertNotEqual(self.minha.status, Tarefa.STATUS_CONCLUIDA)

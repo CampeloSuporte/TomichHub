@@ -14,7 +14,11 @@
     #avisoTarefas .tav-btn:hover { color:#e6edf3; border-color:#58a6ff; }
     #avisoTarefas .tav-resumo { font-size:.78rem; color:#9da7b3; padding:10px 12px 6px; }
     #avisoTarefas .tav-lista { overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding:0 12px 12px; }
-    #avisoTarefas .tav-item { display:flex; align-items:center; gap:10px; padding:8px 10px; border:1px solid #30363d; border-radius:8px; background:#161b22; text-decoration:none; color:inherit; }
+    #avisoTarefas .tav-item { display:flex; align-items:center; gap:8px; padding:8px 8px 8px 10px; border:1px solid #30363d; border-radius:8px; background:#161b22; }
+    #avisoTarefas .tav-link { flex:1; min-width:0; display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; }
+    #avisoTarefas .tav-concluir { flex:none; background:none; border:1px solid rgba(63,185,80,.4); color:#3fb950; border-radius:6px; width:28px; height:28px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+    #avisoTarefas .tav-concluir:hover { background:rgba(63,185,80,.15); border-color:#3fb950; }
+    #avisoTarefas .tav-concluir:disabled { opacity:.5; cursor:wait; }
     #avisoTarefas .tav-item:hover { border-color:rgba(88,166,255,.5); }
     #avisoTarefas .tav-item.atrasada { border-left:3px solid #e06060; }
     #avisoTarefas .tav-corpo { flex:1; min-width:0; }
@@ -32,19 +36,20 @@
     #avisoTarefas.minimizado .tav-painel { display:none; }
     #avisoTarefas.minimizado .tav-pilula { display:inline-flex; }
 </style>
-<div id="avisoTarefas" data-assinatura="{% for t in tarefas %}{{ t.id }}{% if not forloop.last %},{% endif %}{% endfor %}" hidden>
+<div id="avisoTarefas" data-csrf="{{ csrf_token }}" data-assinatura="{% for t in tarefas %}{{ t.id }}{% if not forloop.last %},{% endif %}{% endfor %}" hidden>
     <div class="tav-painel" role="region" aria-label="Suas tarefas a concluir">
         <div class="tav-topo">
             <i class="fas fa-list-check" style="color:#58a6ff;"></i>
             <span class="tav-titulo" title="Arraste para mover · duplo clique volta ao canto">Suas tarefas a concluir</span>
             <button type="button" class="tav-btn" data-tav-minimizar title="Minimizar" aria-label="Minimizar"><i class="fas fa-minus"></i></button>
         </div>
-        <div class="tav-resumo">
+        <div class="tav-resumo" data-tav-resumo>
             Você é responsável por <strong>{{ tarefas|length }}</strong> tarefa{{ tarefas|length|pluralize }} em aberto{% if atrasadas %}, <span style="color:#e06060;font-weight:600;">{{ atrasadas }} atrasada{{ atrasadas|pluralize }}</span>{% endif %}.
         </div>
         <div class="tav-lista">
             {% for t in tarefas %}
-            <a href="{{ t.url_aviso }}" class="tav-item{% if t.atrasada %} atrasada{% endif %}">
+            <div class="tav-item{% if t.atrasada %} atrasada{% endif %}" data-tav-tarefa="{{ t.id }}">
+              <a href="{{ t.url_aviso }}" class="tav-link">
                 <div class="tav-corpo">
                     <div class="tav-nome" title="{{ t.titulo }}">{{ t.titulo }}</div>
                     <div class="tav-meta">
@@ -54,7 +59,9 @@
                     </div>
                 </div>
                 <span class="tav-badge {{ t.prioridade }}">{{ t.get_prioridade_display }}</span>
-            </a>
+              </a>
+              <button type="button" class="tav-concluir" data-tav-concluir="{% url 'tarefa_concluir_painel' t.id %}" data-titulo="{{ t.titulo }}" title="Concluir tarefa" aria-label="Concluir tarefa"><i class="fas fa-check"></i></button>
+            </div>
             {% endfor %}
         </div>
     </div>
@@ -140,6 +147,47 @@
                 pos = { left: Math.round(r.left), bottom: Math.round(window.innerHeight - r.bottom) };
                 gravar(JSON.stringify(pos), CHAVE_POS);
             }
+
+            // ✓ Concluir: tira a tarefa da lista sem recarregar; a última some
+            // com o painel inteiro.
+            function atualizarContagem() {
+                var itens = el.querySelectorAll('[data-tav-tarefa]');
+                var total = itens.length;
+                var atrasadas = el.querySelectorAll('[data-tav-tarefa].atrasada').length;
+                if (!total) { el.remove(); gravar(null); return; }
+                assinatura = Array.prototype.map.call(itens, function (i) { return i.dataset.tavTarefa; }).join(',');
+                el.dataset.assinatura = assinatura;
+                el.querySelector('[data-tav-resumo]').innerHTML =
+                    'Você é responsável por <strong>' + total + '</strong> tarefa' + (total > 1 ? 's' : '') + ' em aberto' +
+                    (atrasadas ? ', <span style="color:#e06060;font-weight:600;">' + atrasadas + ' atrasada' + (atrasadas > 1 ? 's' : '') + '</span>' : '') + '.';
+                var num = el.querySelector('.tav-num');
+                num.textContent = total;
+                num.classList.toggle('atraso', atrasadas > 0);
+                pos = aplicarPosicao(el, pos);
+            }
+            el.querySelectorAll('[data-tav-concluir]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    uiConfirm({titulo: 'Concluir tarefa', msg: 'Marcar como concluída: ' + btn.dataset.titulo + '?',
+                               icone: 'fas fa-check', iconeCor: '#3fb950', btnCor: '#3fb950', btnLabel: 'Concluir'}).then(function (ok) {
+                        if (!ok) return;
+                        btn.disabled = true;
+                        fetch(btn.dataset.tavConcluir, {
+                            method: 'POST', credentials: 'same-origin',
+                            headers: {'X-CSRFToken': el.dataset.csrf, 'X-Requested-With': 'XMLHttpRequest'},
+                        }).then(function (r) {
+                            return r.json().catch(function () { return {success: false, error: 'Sessão expirada? Recarregue a página.'}; });
+                        }).then(function (d) {
+                            if (!d.success) throw new Error(d.error || 'Erro ao concluir a tarefa.');
+                            btn.closest('[data-tav-tarefa]').remove();
+                            atualizarContagem();
+                            uiToast('Tarefa concluída.', 'ok');
+                        }).catch(function (e) {
+                            btn.disabled = false;
+                            uiToast(e.message || 'Erro ao concluir a tarefa.', 'erro');
+                        });
+                    });
+                });
+            });
 
             el.querySelector('[data-tav-minimizar]').addEventListener('click', function () {
                 el.classList.add('minimizado');
