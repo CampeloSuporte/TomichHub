@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-23 (console do Proxmox para de cair)
+
+### Corrigido
+
+- **Acessos → web: console do Proxmox caía a cada ~10 s** ("Disconnecting... (Detecting
+  migration...)" e tela preta). O socket da WebSocket com o equipamento mantinha o timeout de 10 s
+  da conexão, e qualquer pausa sem saída derrubava a sessão. Agora o timeout vale só para conectar
+  e fazer o upgrade. Ver `docs/proxy_web_acessos.md`.
+
 ## [Não publicado] — 2026-10-23 (L2VPN por switch abre na hora)
 
 ### Corrigido
