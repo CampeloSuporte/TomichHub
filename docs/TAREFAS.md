@@ -257,27 +257,29 @@ outra instância não cria, adicionar reabre, remover conclui, remover o último
 adicionar/remover de outra instância 404, página do cliente com modal novo e correção do CSS) e
 `test_tarefa_unica_do_painel_com_checklist`.
 
-## Modal "Suas tarefas a concluir" ao logar (2026-10-23)
+## Modal "Suas tarefas a concluir" (2026-10-23)
 
-Quem é **responsável** por alguma tarefa em aberto (Pendente ou Em Andamento) vê, logo depois de
-entrar no sistema, um modal com todas essas tarefas. Vale para os dois lados: atendente marcado
-numa tarefa do cliente X vê a tarefa no próprio login, e o login do portal do cliente marcado como
+Quem é **responsável** por alguma tarefa em aberto (Pendente ou Em Andamento) vê um modal com todas
+essas tarefas **em toda página que navegar**, até concluí-las. Vale para os dois lados: atendente
+marcado numa tarefa do cliente X vê a tarefa, e o login do portal do cliente marcado como
 responsável também vê.
 
-- **Quando abre:** o sinal `user_logged_in` (`tarefas/signals.py`) grava
-  `session['tarefas_aviso_login']`. A template tag `{% tarefas_aviso_login %}`
-  (`tarefas/templatetags/tarefas_aviso.py`, incluída no fim do `templates/base.html`) faz `pop`
-  dessa chave na primeira página que usa o `base.html` — por isso aparece **uma vez por login**, e
-  um F5 não abre de novo. O sinal só dispara quando o login acontece de fato: senha certa com 2FA
-  pendente ainda não marca nada; o aviso vem depois do código (ou do navegador confiável).
+- **Quando abre:** a template tag `{% tarefas_aviso_login %}`
+  (`tarefas/templatetags/tarefas_aviso.py`, incluída no fim do `templates/base.html`) roda em toda
+  página com `base.html`. Fechar vale só para a página atual: a próxima navegação mostra de novo.
+  Dentro de iframe o modal não abre (só a janela principal).
+- **Por que não depende do login:** a 1ª versão (mesmo dia) abria só depois do login, via sinal
+  `user_logged_in`. Não aparecia para ninguém: a sessão dura 7 dias e renova a cada acesso
+  (`SESSION_SAVE_EVERY_REQUEST`), então quase ninguém passa pela tela de login. Não voltar a
+  prender o aviso ao login.
 - **O que lista:** `tarefas_abertas_do_responsavel(user)`: atrasadas primeiro, depois por prazo
   (sem prazo no fim) e prioridade. Sem `visiveis_para`, porque o login do portal não enxerga nada
   por esse manager e a elegibilidade já foi checada ao marcar o responsável. Sem tarefa em aberto,
-  o modal não é renderizado.
+  o modal não é renderizado. Custo: uma consulta por página para usuário autenticado.
 - **Links:** tarefa com cliente abre `listar_clientes?id=N&aba=tarefas`. O `listar.html` passou a
   aceitar `?aba=` (grava em `sessionStorage.abaAtiva` antes da restauração da aba, só se a aba
   existir na página, ou seja, se o módulo estiver liberado). Tarefa sem cliente leva ao dashboard
   (`quadro_geral` / `quadro_instancia`); para o portal ela aparece sem link.
 
 Testes: `AvisoTarefasLoginTest` (lista só as abertas do responsável e com a atrasada primeiro,
-uma vez por login, sem tarefa não mostra nada, 2FA pendente não marca o aviso).
+aparece em toda navegação, concluir tira do modal, sem tarefa não mostra nada).
