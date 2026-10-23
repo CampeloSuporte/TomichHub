@@ -444,8 +444,8 @@ class KanbanChecklistTest(_BaseRotinas):
 
 
 class AvisoTarefasLoginTest(TestCase):
-    """Modal "Suas tarefas a concluir" que abre uma vez logo depois do login
-    para quem é responsável por tarefa em aberto (templatetags/tarefas_aviso)."""
+    """Modal "Suas tarefas a concluir" que abre em toda página para quem é
+    responsável por tarefa em aberto (templatetags/tarefas_aviso)."""
 
     def setUp(self):
         self.inst = Instancia.objects.create(nome='Instância A')
@@ -489,21 +489,21 @@ class AvisoTarefasLoginTest(TestCase):
         # Atrasada vem primeiro.
         self.assertLess(html.index('Revisar BGP atrasado'), html.index('Trocar ONU do cliente X'))
 
-    def test_modal_aparece_uma_vez_por_login(self):
+    def test_modal_aparece_em_toda_navegacao(self):
+        """Não depende de login novo: a sessão dura dias e renova sozinha."""
         self.client.force_login(self.atendente)
         self.assertIn('modalTarefasLogin', self._pagina())
-        self.assertNotIn('modalTarefasLogin', self._pagina())
-        self.client.logout()
-        self.client.force_login(self.atendente)
         self.assertIn('modalTarefasLogin', self._pagina())
+        self.assertIn('modalTarefasLogin', self.client.get(reverse('cadastrar_cliente')).content.decode())
+
+    def test_concluir_a_tarefa_tira_do_modal(self):
+        self.client.force_login(self.atendente)
+        Tarefa.objects.filter(pk=self.atrasada.pk).update(status=Tarefa.STATUS_CONCLUIDA)
+        html = self._pagina()
+        self.assertIn('Trocar ONU do cliente X', html)
+        self.assertNotIn('Revisar BGP atrasado', html)
 
     def test_sem_tarefa_em_aberto_nao_mostra_modal(self):
         Tarefa.objects.filter(responsaveis=self.outro).update(status=Tarefa.STATUS_CONCLUIDA)
         self.client.force_login(self.outro)
         self.assertNotIn('modalTarefasLogin', self._pagina())
-
-    def test_login_pendente_de_2fa_nao_marca_aviso(self):
-        """Senha certa com 2FA pendente ainda não é login: só depois do
-        código o sinal dispara."""
-        self.client.post(reverse('login'), {'username': 'atendente_a', 'password': 'x'})
-        self.assertNotIn('tarefas_aviso_login', self.client.session)

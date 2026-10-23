@@ -4,7 +4,6 @@ from django.urls import reverse
 from usuario import perms
 
 from ..models import Tarefa
-from ..signals import SESSAO_AVISO_TAREFAS
 
 register = template.Library()
 
@@ -45,12 +44,14 @@ def _url_da_tarefa(tarefa, user):
 
 @register.inclusion_tag('tarefas/_aviso_login.html', takes_context=True)
 def tarefas_aviso_login(context):
-    """Modal "Suas tarefas" — aparece uma vez por login, na primeira página
-    com base.html depois de autenticar (o `pop` garante que um F5 não abre
-    de novo). Sem tarefa em aberto não mostra nada."""
+    """Modal "Suas tarefas a concluir" — abre em toda página com base.html
+    enquanto o usuário for responsável por tarefa em aberto. Não depende do
+    login: a sessão dura 7 dias renovando a cada acesso, então quase ninguém
+    passa pela tela de login (a 1ª versão, presa ao login, nunca aparecia).
+    Fechar vale só para a página atual; a próxima navegação mostra de novo."""
     request = context.get('request')
     user = getattr(request, 'user', None)
-    if not user or not user.is_authenticated or not request.session.pop(SESSAO_AVISO_TAREFAS, False):
+    if not user or not user.is_authenticated:
         return {'tarefas': []}
     tarefas = tarefas_abertas_do_responsavel(user)
     for t in tarefas:

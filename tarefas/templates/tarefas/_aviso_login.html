@@ -54,6 +54,9 @@
 </div>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // Página de base.html aberta dentro de iframe (console, prévia) não
+        // repete o aviso — só a janela principal.
+        if (window.self !== window.top) return;
         var el = document.getElementById('modalTarefasLogin');
         if (el && window.bootstrap) bootstrap.Modal.getOrCreateInstance(el).show();
     });
