@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-23 (restart do daphne não derruba WebSockets por 90 s)
+
+### Corrigido
+
+- **Cada restart do daphne deixava chat, SSH, proxy e console fora do ar por ~90 s** (143 erros 502
+  em 22/10). O daphne ignora o SIGTERM com WebSockets abertos e o systemd esperava o limite padrão
+  antes de matá-lo. A unidade agora tem `TimeoutStopSec=10` (ver `INSTALACAO.md`).
+- **`gunicorn.service`: `ANSIBLE_REMOTE_TEMP` não era aplicado** — faltava fechar a aspa e o
+  systemd ignorava a linha. Corrigido em `/etc/systemd/system/gunicorn.service`.
+
 ## [Não publicado] — 2026-10-23 (console do Proxmox para de cair)
 
 ### Corrigido
