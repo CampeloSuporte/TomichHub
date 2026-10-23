@@ -261,6 +261,7 @@ urlpatterns = [
     path('bgp/<int:acesso_id>/',                    bgpv.bgp_page,               name='bgp_page'),
     path('bgp/<int:acesso_id>/dados/',               bgpv.bgp_dados,              name='bgp_dados'),
     path('bgp/<int:acesso_id>/acao/',                bgpv.bgp_executar_acao,      name='bgp_executar_acao'),
+    path('bgp/<int:acesso_id>/acao-unificada/',      bgpv.bgp_executar_acao_unificada, name='bgp_executar_acao_unificada'),
     path('bgp/<int:acesso_id>/atualizar/',           bgpv.bgp_atualizar_snapshot, name='bgp_atualizar_snapshot'),
     path('bgp/<int:acesso_id>/communities/',         bgpv.bgp_communities_listar, name='bgp_communities_listar'),
     path('bgp/<int:acesso_id>/communities/criar/',   bgpv.bgp_communities_criar,  name='bgp_communities_criar'),

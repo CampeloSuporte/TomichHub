@@ -1258,6 +1258,13 @@ def _comandos_reescrever_intencao(mapa, linha, destinos, globais_sel):
     """Reescreve a linha `apply community` do node local do prefixo com a
     intenção nova, preservando as communities que não são deste catálogo."""
     valores = _communities_da_intencao(mapa, destinos, globais_sel)
+    return comandos_reescrever_communities(linha, valores)
+
+
+def comandos_reescrever_communities(linha, valores):
+    """Mesma reescrita, a partir da lista de communities do catálogo já
+    resolvida — a automação unificada (`bgp_caixas_unificadas.py`) resolve a
+    intenção contra o mapa das caixas juntas, não o de uma só."""
     extras = [v for v in linha['communities_extras'] if _RE_COMMUNITY.match(v)]
     palavras = [v for v in linha['communities_extras'] if not _RE_COMMUNITY.match(v)]
 

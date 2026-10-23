@@ -290,6 +290,22 @@
     .ca-tabela td.ca-efeito { white-space: nowrap; }
     .ca-vazio { color: #7d8590; font-size: 11.5px; padding: 14px 2px; }
 
+    /* Automação unificada (duas+ caixas ligadas por iBGP — bgp_caixas_unificadas.py) */
+    .ca-unificado {
+        display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        margin: 10px 16px 0; padding: 8px 12px; border-radius: 6px; font-size: 11.5px;
+        color: #adbac7; background: rgba(88,166,255,.06); border: 1px solid rgba(88,166,255,.3);
+    }
+    .ca-unificado b { color: #e6edf3; font-weight: 600; }
+    .ca-unificado code { color: #58a6ff; font-family: 'Cascadia Code', monospace; }
+    .ca-unificado .btn { margin-left: auto; }
+    .ca-unificado.so-esta { background: transparent; border-style: dashed; border-color: #30363d; }
+    .ca-tabela td.ca-prefixo small .ca-origem { color: #7d8590; }
+    .ca-tabela td.ca-prefixo .ca-sync {
+        background: transparent; border: 1px solid rgba(210,153,34,.5); color: #d29922;
+        border-radius: 4px; padding: 1px 7px; font-size: 10.5px; cursor: pointer; margin-left: 4px;
+    }
+    .ca-tabela td.ca-prefixo .ca-sync:hover { border-color: #d29922; background: rgba(210,153,34,.08); }
     .ca-avisos { display: none; padding: 0 16px 12px; }
     .ca-avisos.aberto { display: block; }
     .ca-aviso {
@@ -411,6 +427,7 @@
             </div>
         </div>
         <div class="ca-avisos" id="caAvisos"></div>
+        <div class="ca-unificado" id="caUnificado" style="display:none;"></div>
         <div class="ca-corpo">
             <div id="caDestinosLista"></div>
             <div id="caDetalhe"></div>
@@ -1113,8 +1130,8 @@ async function validarAnuncios(idx, nomeSessao) {
 // risco desproporcional; Mikrotik só tem "safe mode" por disconnect).
 const TRIAL_SUPORTADO = ['huawei', 'juniper'];
 
-function pedirAcao(tipo, alvo, params, titulo) {
-    acaoPendente = { tipo, alvo, params };
+function pedirAcao(tipo, alvo, params, titulo, acessoAlvo, unificada) {
+    acaoPendente = { tipo, alvo, params, acesso: acessoAlvo || ACESSO_ID, unificada: !!unificada };
     const textarea = document.getElementById('modalComandos');
     document.getElementById('modalTitulo').textContent = titulo;
     textarea.value = 'Consultando comandos…';
@@ -1136,8 +1153,10 @@ function pedirAcao(tipo, alvo, params, titulo) {
         ? '' : `(sem suporte a trial em ${SNAPSHOT?.vendor || ''})`;
 
     document.getElementById('modalOverlay').classList.add('aberto');
+    // O preview das caixas unificadas é outro endpoint (pedirAcaoUnificada).
+    if (unificada) return;
 
-    fetch(`/clientes/bgp/${ACESSO_ID}/acao/`, {
+    fetch(`/clientes/bgp/${acaoPendente.acesso}/acao/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken') },
         body: JSON.stringify({ tipo, alvo, params, preview: true }),
@@ -1164,6 +1183,108 @@ function pedirAcao(tipo, alvo, params, titulo) {
         });
 }
 
+// Ação nas caixas unificadas: o mesmo modal, com os comandos de cada caixa
+// separados por um cabeçalho `### caixa <id> · <nome>` — o operador edita o
+// texto como sempre e o cabeçalho diz pra qual equipamento vai cada bloco.
+const CA_CABECALHO_CAIXA = /^###\s*caixa\s+(\d+)/i;
+
+function pedirAcaoUnificada(prefixo, destino, acao, titulo) {
+    pedirAcao('anuncio_community', prefixo, { destino, acao }, titulo, ACESSO_ID, true);
+    const textarea = document.getElementById('modalComandos');
+    const btnTrial = document.getElementById('btnExecutarTrial');
+    // O operador pode fechar o modal e abrir outro antes da resposta chegar.
+    const pendente = acaoPendente;
+    fetch(`/clientes/bgp/${ACESSO_ID}/acao-unificada/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken') },
+        body: JSON.stringify({ tipo: 'anuncio_community', alvo: prefixo, params: { destino, acao }, preview: true }),
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (acaoPendente !== pendente) return;
+            if (data.error) {
+                textarea.value = '';
+                textarea.readOnly = true;
+                document.getElementById('modalResultado').textContent = '⚠ ' + data.error;
+                document.getElementById('btnConfirmarAcao').disabled = true;
+                btnTrial.disabled = true;
+                return;
+            }
+            textarea.value = data.caixas.map(c =>
+                `### caixa ${c.acesso_id} · ${c.nome}\n` + c.comandos.join('\n')).join('\n\n');
+            textarea.readOnly = false;
+            document.getElementById('modalResultado').textContent =
+                `Vai rodar em ${data.caixas.length} caixa(s), na ordem acima; para na primeira que falhar.`;
+            document.getElementById('btnConfirmarAcao').disabled = false;
+            btnTrial.disabled = !TRIAL_SUPORTADO.includes(SNAPSHOT?.vendor);
+        })
+        .catch(e => {
+            if (acaoPendente !== pendente) return;
+            textarea.value = '';
+            document.getElementById('modalResultado').textContent = String(e);
+            document.getElementById('btnConfirmarAcao').disabled = true;
+            btnTrial.disabled = true;
+        });
+}
+
+function _comandosPorCaixa(texto) {
+    const blocos = {};
+    let atual = null;
+    for (const bruta of texto.split('\n')) {
+        const linha = bruta.trim();
+        if (!linha) continue;
+        const m = linha.match(CA_CABECALHO_CAIXA);
+        if (m) { atual = m[1]; blocos[atual] = blocos[atual] || []; continue; }
+        if (atual === null) return null;
+        blocos[atual].push(linha);
+    }
+    return blocos;
+}
+
+function confirmarAcaoUnificada(trial) {
+    const btnTrial = document.getElementById('btnExecutarTrial');
+    const btnDireto = document.getElementById('btnConfirmarAcao');
+    const btnAtivo = trial ? btnTrial : btnDireto;
+    const porCaixa = _comandosPorCaixa(document.getElementById('modalComandos').value);
+    if (!porCaixa || !Object.keys(porCaixa).length) {
+        document.getElementById('modalResultado').textContent =
+            '⚠ Mantenha o cabeçalho "### caixa <id> · <nome>" antes dos comandos de cada caixa.';
+        return;
+    }
+    btnTrial.disabled = true;
+    btnDireto.disabled = true;
+    btnAtivo.textContent = 'Executando…';
+    document.getElementById('modalComandos').readOnly = true;
+    const body = {
+        tipo: acaoPendente.tipo, alvo: acaoPendente.alvo, params: acaoPendente.params,
+        comandos_por_caixa: porCaixa, preview: false, trial: !!trial,
+    };
+    if (trial) body.trial_segundos = parseInt(document.getElementById('modalTrialSegundos').value, 10) || 60;
+    const fechar = () => { fecharModal(); carregar(); };
+    fetch(`/clientes/bgp/${ACESSO_ID}/acao-unificada/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken') },
+        body: JSON.stringify(body),
+    })
+        .then(r => r.json())
+        .then(data => {
+            const marca = { sucesso: '✓', pulado: '–' };
+            document.getElementById('modalResultado').textContent = data.error
+                ? '✕ ' + data.error
+                : (data.caixas || []).map(c => `${marca[c.status] || '✕'} ${c.nome}\n${c.output || ''}`).join('\n\n') +
+                  (data.status === 'sucesso' ? '' : '\n\n✕ Parou aqui — as caixas seguintes não foram alteradas.');
+            btnAtivo.textContent = 'Fechar';
+            btnAtivo.disabled = false;
+            btnAtivo.onclick = fechar;
+        })
+        .catch(e => {
+            document.getElementById('modalResultado').textContent = '✕ ' + e;
+            btnAtivo.textContent = 'Fechar';
+            btnAtivo.disabled = false;
+            btnAtivo.onclick = fechar;
+        });
+}
+
 function fecharModal() {
     document.getElementById('modalOverlay').classList.remove('aberto');
     acaoPendente = null;
@@ -1182,11 +1303,15 @@ function fecharModal() {
 let CA_MAPA = null;
 let CA_DESTINO = null;                                   // id do destino aberto
 let CA_FILTRO = { busca: '', familia: '', somente: false };
+// Com caixa irmã ligada por iBGP o backend devolve o mapa UNIFICADO (circuitos
+// das duas caixas, intenção sincronizada nas duas). "Ver só esta caixa" pede
+// o mapa antigo, de uma caixa só, com `?unificado=0`.
+let CA_SO_ESTA_CAIXA = false;
 
 async function carregarCommunityAuto() {
     const painel = document.getElementById('painelCommunity');
     try {
-        const r = await fetch(`/clientes/bgp/${ACESSO_ID}/community-mapa/`);
+        const r = await fetch(`/clientes/bgp/${ACESSO_ID}/community-mapa/${CA_SO_ESTA_CAIXA ? '?unificado=0' : ''}`);
         if (!r.ok) { painel.style.display = 'none'; CA_MAPA = null; return; }
         const mapa = await r.json();
         if (!mapa.circuitos || !Object.keys(mapa.circuitos).length) {
@@ -1327,6 +1452,8 @@ function caRenderizar() {
         document.getElementById('caAvisos').innerHTML = '';
     }
 
+    caRenderUnificado();
+
     // O destino aberto pode ter sumido depois de um refresh do snapshot.
     if (CA_DESTINO && !caDestino(CA_DESTINO)) CA_DESTINO = null;
 
@@ -1337,6 +1464,40 @@ function caRenderizar() {
         </div>`).join('');
 
     caRenderDetalhe();
+}
+
+/** Faixa da automação unificada: quais caixas, por quais sessões iBGP, e
+ *  quantos prefixos estão com intenção que não vale (divergente). */
+function caRenderUnificado() {
+    const alvo = document.getElementById('caUnificado');
+    const u = CA_MAPA.unificado;
+    if (!u) {
+        alvo.className = 'ca-unificado so-esta';
+        alvo.style.display = CA_SO_ESTA_CAIXA ? 'flex' : 'none';
+        alvo.innerHTML = `<span>Mostrando só esta caixa.</span>
+            <button class="btn" onclick="caAlternarUnificado(false)">🔗 Voltar à automação unificada</button>`;
+        return;
+    }
+    const caixas = u.caixas.map(c => `<b>${escapeHtml(c.nome)}</b>`).join(' + ');
+    const enlaces = u.enlaces.map(e =>
+        `<code title="${escapeHtml(e.a_nome)} fala com ${escapeHtml(e.peer_em_a)}, ${escapeHtml(e.b_nome)} fala com ${escapeHtml(e.peer_em_b || '—')}">${
+            e.familia.toUpperCase()} ${escapeHtml(e.peer_em_a)} ↔ ${escapeHtml(e.peer_em_b || '?')}</code>`).join(' ');
+    const div = u.divergentes
+        ? `<span class="ca-pill alerta" title="Prefixos em que uma caixa carimba uma intenção que a caixa dona do circuito não aplica">${u.divergentes} prefixo(s) com intenção divergente</span>`
+        : '<span class="ca-pill ok">intenções coerentes</span>';
+    alvo.className = 'ca-unificado';
+    alvo.style.display = 'flex';
+    alvo.innerHTML = `
+        <span>🔗 Automação unificada: ${caixas} · iBGP ${enlaces}</span>
+        ${div}
+        <span title="Cada mudança é escrita igual na policy local do prefixo em todas as caixas que o originam — assim vale qualquer que seja a rota que cada caixa usa">a intenção é aplicada nas caixas juntas</span>
+        <button class="btn" onclick="caAlternarUnificado(true)">Ver só esta caixa</button>`;
+}
+
+function caAlternarUnificado(soEsta) {
+    CA_SO_ESTA_CAIXA = soEsta;
+    CA_DESTINO = null;
+    carregarCommunityAuto();
 }
 
 function caCardDestino(d) {
@@ -1384,6 +1545,10 @@ function caCardDestino(d) {
     }
     if (d.faltando.length) {
         pills.push(`<span class="ca-pill alerta" title="ações sem community-filter: ${escapeHtml(d.faltando.join(', '))}">falta config</span>`);
+    }
+    if (CA_MAPA.unificado && d.sessoes.length) {
+        const nomes = [...new Set(d.sessoes.map(s => s.caixa_nome).filter(Boolean))];
+        if (nomes.length) pills.push(`<span class="ca-pill info" title="caixa onde está a sessão deste circuito">📍 ${escapeHtml(nomes.join(' + '))}</span>`);
     }
     return `
     <button type="button" class="ca-destino-card${selecionado}${inativo}" ${clique}
@@ -1516,7 +1681,8 @@ function caBlocoContexto(d) {
     const sessoes = d.sessoes.map(s => `
         <span class="ca-sessao ${s.habilitada ? '' : 'off'}" title="${escapeHtml(s.descricao || '')}">
             ${escapeHtml(s.peer_ip)} <span>AS${escapeHtml(s.peer_as || '?')} · ${s.familia.toUpperCase()}${
-                s.fake_as ? ' · fake-as ' + escapeHtml(s.fake_as) : ''}${s.habilitada ? '' : ' · desabilitada'}</span>
+                s.fake_as ? ' · fake-as ' + escapeHtml(s.fake_as) : ''}${s.habilitada ? '' : ' · desabilitada'}${
+                s.caixa_nome ? ' · ' + escapeHtml(s.caixa_nome) : ''}</span>
         </span>`).join('');
     const wiring = ['v4', 'v6'].map(fam => {
         const linhas = (d.nodes_out[fam] || []);
@@ -1621,6 +1787,31 @@ function caExtras(l) {
     return html;
 }
 
+/** Automação unificada: em quais caixas o prefixo é originado. */
+function caOrigem(l) {
+    if (!CA_MAPA.unificado || !l.caixas_origem) return '';
+    return ` · <span class="ca-origem">originado em ${escapeHtml(l.caixas_origem.map(o => o.nome).join(' + '))}</span>`;
+}
+
+/** Automação unificada: prefixo com intenção divergente ou não sincronizada
+ *  entre as caixas ganha o botão que regrava a intenção que vale em todas. */
+function caSincronia(l, idx) {
+    if (!CA_MAPA.unificado || l.sincronizada !== false || !l.editavel) return '';
+    const div = (l.divergencias || []);
+    const dica = div.length
+        ? div.map(x => `${x.destino}: ` + Object.entries(x.por_caixa)
+            .map(([cx, v]) => `${cx} = ${v ? caRotuloAcao(v) : '—'}`).join(', ') +
+            (x.vale_em ? ` → vale ${x.vale ? caRotuloAcao(x.vale) : 'não anunciar'} (${x.vale_em})` : '')).join('\n')
+        : 'As caixas carimbam listas diferentes neste prefixo (sem efeito no anúncio hoje) — sincronizar deixa as duas iguais.';
+    const rotulo = div.length ? '⚠ divergente · sincronizar' : '⇄ sincronizar';
+    return ` <button type="button" class="ca-sync" title="${escapeHtml(dica)}" onclick="caSincronizar(${idx})">${rotulo}</button>`;
+}
+
+function caSincronizar(idx) {
+    const linha = CA_MAPA.anuncios[idx];
+    pedirAcaoUnificada(linha.prefixo, '', '', `${linha.prefixo}: sincronizar a intenção nas caixas`);
+}
+
 function caLinhaPrefixo(d, l, idx) {
     const atual = (caEhGlobal(d) ? l.globais : l.destinos)[d.id] || '';
     const familiaOk = caAtendeFamilia(d, l.familia);
@@ -1641,8 +1832,8 @@ function caLinhaPrefixo(d, l, idx) {
 
     return `
     <tr class="${l.editavel ? '' : 'nao-editavel'}">
-        <td class="ca-prefixo">${escapeHtml(l.prefixo)}
-            <small>${escapeHtml(l.route_policy || 'sem route-policy local')}${caExtras(l)}</small>
+        <td class="ca-prefixo">${escapeHtml(l.prefixo)}${caSincronia(l, idx)}
+            <small>${escapeHtml(l.route_policy || 'sem route-policy local')}${caExtras(l)}${caOrigem(l)}</small>
         </td>
         <td class="ca-efeito">${caEfeito(d, l)}</td>
         <td>
@@ -1663,6 +1854,8 @@ function caEfeito(d, l) {
         return `<span class="ca-pill ok">${escapeHtml(caRotuloAcao(chave))}</span>` +
                `<span class="ca-pill info" title="circuitos alcançados">${(d.acoes[chave] || {}).circuitos?.length || 0} circuito(s)</span>`;
     }
+    const motivo = (l.sem_intencao || {})[d.id];
+    if (motivo) return `<span class="ca-pill alerta" title="${escapeHtml(motivo)}">intenção não chega nesta caixa</span>`;
     const ef = l.efetivo[d.id];
     if (!ef) return '<span class="ca-pill">não anunciado</span>';
     const partes = [];
@@ -1704,6 +1897,10 @@ function caDefinirAcao(linhaIdx, destinoId, selectEl) {
     // equipamento.
     selectEl.value = (caEhGlobal(d) ? linha.globais : linha.destinos)[destinoId] || '';
     const nome = caEhGlobal(d) ? d.rotulo : destinoId + (d.nome ? ' (' + d.nome + ')' : '');
+    if (CA_MAPA.unificado) {
+        pedirAcaoUnificada(linha.prefixo, destinoId, acao, `${linha.prefixo} → ${nome}: ${rotulo} (caixas unificadas)`);
+        return;
+    }
     pedirAcao('anuncio_community', linha.prefixo,
         { destino: destinoId, acao, route_policy: linha.route_policy },
         `${linha.prefixo} → ${nome}: ${rotulo}`);
@@ -1806,9 +2003,12 @@ function caConfirmarCircuito() {
     }
     const c = CA_MAPA.circuitos[cid];
     caFecharCircuito();
+    // Automação unificada: a config do circuito vai pra caixa onde ele está.
+    const acessoAlvo = (CA_MAPA.unificado && c.caixa) ? c.caixa : ACESSO_ID;
     pedirAcao('provisionar_circuito', cid,
         { destino: cid, opcoes, grupo: c.grupo, asn_community: c.asn_community },
-        `Gerar config faltante do circuito ${cid}`);
+        `Gerar config faltante do circuito ${cid}` + (acessoAlvo !== ACESSO_ID ? ` (${c.caixa_nome})` : ''),
+        acessoAlvo);
 }
 
 
@@ -2440,6 +2640,7 @@ function confirmarNovoAnuncioNovaLista() {
 
 function confirmarAcao(trial) {
     if (!acaoPendente) return;
+    if (acaoPendente.unificada) return confirmarAcaoUnificada(trial);
     const btnTrial = document.getElementById('btnExecutarTrial');
     const btnDireto = document.getElementById('btnConfirmarAcao');
     const btnAtivo = trial ? btnTrial : btnDireto;
@@ -2451,12 +2652,13 @@ function confirmarAcao(trial) {
     btnAtivo.textContent = 'Executando…';
     document.getElementById('modalComandos').readOnly = true;
 
-    const body = { ...acaoPendente, comandos, preview: false, trial: !!trial };
+    const { acesso, ...pendente } = acaoPendente;
+    const body = { ...pendente, comandos, preview: false, trial: !!trial };
     if (trial) {
         body.trial_segundos = parseInt(document.getElementById('modalTrialSegundos').value, 10) || 60;
     }
 
-    fetch(`/clientes/bgp/${ACESSO_ID}/acao/`, {
+    fetch(`/clientes/bgp/${acesso || ACESSO_ID}/acao/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken') },
         body: JSON.stringify(body),
