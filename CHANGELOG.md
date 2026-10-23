@@ -18,6 +18,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   criada no cliente do grupo, mas sem responsável, então não aparecia no painel de ninguém. Agora
   quem escreveu o comentário vira autor e responsável, e o texto depois do comando vira o título
   ("abrir tarefa: trocar a ONU do poste 12"), sem depender da IA. Ver `docs/TAREFAS.md`.
+- **O primeiro "criar tarefa" depois da entrega não criou nada:** o worker `celery-atendimento-ia`,
+  que executa essas ações, não tinha sido reiniciado e rodava o código antigo. Reiniciado; a
+  tarefa do chamado #1970 foi recriada.
 
 ## [Não publicado] — 2026-10-23 (painel de tarefas do responsável)
 
