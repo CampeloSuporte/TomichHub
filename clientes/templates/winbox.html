@@ -137,6 +137,17 @@
 
         const acessoId = "{{ acesso.id }}";
         const vncMode  = "{{ vnc_mode|default:'winbox' }}";
+        // WinBox: Tight sem JPEG. A tela é de cores chapadas e o x11vnc, quando
+        // recebe o pseudo-encoding de qualidade (o noVNC sempre manda), passa a
+        // usar JPEG — quadro inteiro 92 KB (WinBox 3) / 109 KB (WinBox 4) em q8
+        // contra 33 KB / 70 KB sem perdas, e sem borrão no texto. O x11vnc não
+        // tem opção pra desligar JPEG, então tiramos o pedido de qualidade
+        // (-32..-23) da lista de encodings. Navegador/RDP têm foto: seguem JPEG.
+        if (vncMode === 'winbox') {
+            const _clientEncodings = RFB.messages.clientEncodings;
+            RFB.messages.clientEncodings = (sock, encs) =>
+                _clientEncodings(sock, encs.filter(e => e < -32 || e > -23));
+        }
         const _up = new URLSearchParams(location.search);
         // Xvfb é criado em pixels CSS, não físicos — em telas HiDPI (Retina, Windows
         // com escala >100%) isso deixava o framebuffer com metade (ou 1/3) da resolução
@@ -182,8 +193,8 @@
             rfb.scaleViewport  = true;   // escala client-side
             rfb.resizeSession  = false;  // x11vnc nao suporta SetDesktopSize; resize vai por enviarTamanho()
             rfb.background     = '#000';
-            rfb.qualityLevel   = 8;      // JPEG quase sem perda (0-9) — texto/icones nitidos
-            rfb.compressionLevel = 4;    // equilibrio CPU x banda com a qualidade maior acima
+            rfb.qualityLevel   = 8;      // JPEG quase sem perda (0-9) — vale p/ navegador/RDP
+            rfb.compressionLevel = 4;    // zlib do Tight; 2 a 9 deram o mesmo tamanho
 
             rfb.addEventListener('connect', () => {
                 setStatus('status-connected', 'Conectado');

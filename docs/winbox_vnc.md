@@ -79,9 +79,12 @@ apenas na resolução CSS). Isso vale tanto para `mode=winbox` quanto para `mode
 ```javascript
 rfb.scaleViewport  = true;   // escala client-side
 rfb.resizeSession  = false;  // x11vnc não suporta SetDesktopSize; resize vai por frame de texto (ver abaixo)
-rfb.qualityLevel   = 8;      // JPEG quase sem perda (subiu de 6 → 8 em 22/07/2026)
-rfb.compressionLevel = 4;    // subiu de 2 → 4 para compensar o ganho de qualidade
+rfb.qualityLevel   = 8;      // JPEG quase sem perda (subiu de 6 → 8 em 22/07/2026) — só navegador/RDP
+rfb.compressionLevel = 4;    // zlib do Tight (2 a 9 deram o mesmo tamanho na tela do WinBox)
 ```
+
+No modo WinBox o `winbox.html` tira o pseudo-encoding de qualidade (-32..-23) da lista que o noVNC
+manda, e o x11vnc responde com **Tight sem perdas** (sem JPEG). Ver "Fluidez" abaixo.
 
 **Importante:** `resizeSession` deve ficar `false`. Se `true`, o noVNC envia `SetDesktopSize` ao x11vnc após conectar, o que pode desmaximizar o WinBox.
 
@@ -157,6 +160,47 @@ WinBox 4 atualizado de 4.2 para **4.4** (build de 14/09/2026, `upgrade.mikrotik.
 O binário é gitignored: depois do pull em outro servidor, baixar
 `https://download.mikrotik.com/routeros/winbox/4.4/WinBox_Linux.zip` e extrair em
 `/opt/crm/static/winbox4/`. Backup da 4.2 em `static/winbox4/WinBox.bak-pre-4.4`.
+
+## Fluidez / lentidão — Ajustado em 23/10/2026
+
+Queixa: "o WinBox Web está lento" (Cgnat AFL, acesso 1413, Startnet, via proxy). Medido no servidor:
+
+| Trecho | Medida | Gargalo? |
+|---|---|---|
+| CPU do container (10 núcleos) | ~60% ocioso, `/proc/pressure/cpu` some avg10 ≈ 2%. O load 40+ é do host (LXC) | não |
+| Sessões simultâneas | 1 a 2 no pico (hoje); muitas sessões de 0,1 min = abrir/fechar | não |
+| Xvfb / x11vnc / WinBox | ~3% / ~3% / <3% de um núcleo cada | não |
+| ffmpeg (auditoria) | 26–33% de um núcleo em 1920×1080, 8 fps, `nice 15`; 4K (HiDPI) custa ~4× | não, com folga hoje |
+| x11vnc: codificar quadro inteiro | ~20–30 ms | não |
+| Navegador do usuário → servidor | ~41 ms RTT | fixo |
+| Servidor → proxy `tunnel_zabbix-startnet` (24.152.31.3:666) | ~45 ms RTT; abrir canal até o equipamento ~100 ms | fixo |
+| Proxy → equipamento (172.24.67.122) | ~7 ms, sem perda, MTU 1428 passa | não |
+
+Cada ação do WinBox que fala com o equipamento paga ~93 ms de ida e volta antes de qualquer
+ajuste. O que dava para tirar:
+
+1. **Nagle no túnel até o proxy.** O `_ProxyPool` compartilha uma conexão SSH por proxy, e só o
+   caminho do terminal ligava `TCP_NODELAY`; o túnel do WinBox (`_criar_tunel_paramiko`), o IPAM e
+   outros, não. Com Nagle, a 2ª mensagem pequena de uma rajada espera o ACK do proxy. Medido (eco
+   pelo canal SSH até o proxy): 1 mensagem 42 ms nos dois casos; **3 mensagens seguidas 84 → 50 ms**.
+   Agora `_ProxyPool.put()` desliga o Nagle em toda conexão que entra no pool.
+2. **JPEG numa tela de cores chapadas.** O noVNC sempre manda o pseudo-encoding de qualidade e o
+   x11vnc então usa JPEG. Quadro inteiro com a lista real do noVNC: **WinBox 3 80 → 25 KB**,
+   WinBox 4 109 → 70 KB, mesmo tempo de codificação, e sem borrão no texto. O x11vnc 0.9.16 não tem
+   opção para desligar JPEG, então o `winbox.html` filtra o pedido de qualidade (só no modo WinBox;
+   navegador/RDP têm foto e seguem em JPEG q8). Conferido no fluxo: o libvncserver 0.9.14 só usa
+   fill/copy/palette no Tight sem perdas — nunca o filtro *gradient*, que o decoder do noVNC não
+   implementa.
+3. **Polling do x11vnc.** `-wait 10` → `-wait 5 -defer 5` (padrão do `-defer` é 20 ms). Tecla →
+   atualização no WinBox 4 (40 amostras × 2): **mediana 37 → 29 ms, p90 52 → 38 ms**, CPU do x11vnc
+   igual. Sem `-threads` piora (mediana ~64 ms), por isso ele fica.
+
+Sem efeito medido e por isso não mexido: `TCP_NODELAY` no socket daphne → x11vnc (loopback, as
+medições com e sem deram igual) e o `compressionLevel` (2, 4 e 9 deram o mesmo tamanho).
+
+Para repetir as medições: cliente RFB mínimo em Python contra a porta do x11vnc da sessão
+(`ss -tlnp | grep x11vnc`), pedindo quadro inteiro com cada lista de encodings e mandando
+keydown/keyup com espera da próxima `FramebufferUpdate`.
 
 ## Problemas Conhecidos e Soluções
 
