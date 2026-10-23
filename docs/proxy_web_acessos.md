@@ -389,6 +389,28 @@ agora diz qual IP e qual cliente.
 
 ---
 
+### Console do Proxmox cai a cada ~10 s e fica preta — Corrigido em 23/10/2026
+
+**Sintoma:** a console (xterm.js de LXC ou noVNC de VM) abre, mostra o login e, poucos segundos
+depois, aparece a tarja amarela `Disconnecting... (Detecting migration...)` e a tela fica preta;
+o xterm.js reconecta sozinho e o ciclo se repete (ex.: TOMICH, acesso 1773, LXC 101). No log do
+Daphne, um par por ciclo, sempre ~10 s depois do `OK`:
+
+```
+[WS_PROXY] OK acesso=1773 https://198.18.96.18:8006/api2/json/nodes/pve/lxc/101/vncwebsocket
+[WS_PROXY] Erro ao ler do device: The read operation timed out
+```
+
+**Causa:** o `WebSocketProxyConsumer` abria o socket com `socket.create_connection(..., timeout=10)`
+e nunca removia o timeout. A thread que lê do Proxmox (`_forward_from_device`) estourava no
+primeiro intervalo de 10 s sem saída — exatamente o que acontece com uma console parada no prompt.
+
+**Correção:** depois do handshake o socket passa a `settimeout(None)` com `SO_KEEPALIVE`; o timeout
+de 10 s fica só para conectar e para o upgrade. Como o `recv` agora bloqueia indefinidamente, o
+`disconnect()` faz `shutdown(SHUT_RDWR)` antes do `close()` para acordar a thread.
+
+---
+
 ### Acesso web demorando para abrir — Melhorado em 14/09/2026
 
 **Medição** (PBS da Conecta ISP, `172.18.234.5:8007`, caminho direto pelo OpenVPN; Proxmox da

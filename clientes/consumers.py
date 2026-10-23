@@ -2758,6 +2758,15 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                 subprotocols=subprotocols or ['binary'],
                 cookie=forward_cookie,
             )
+            # O timeout=10 do create_connection vale só para conectar e para o
+            # handshake. Mantido na sessão, 10s sem saída do equipamento (console
+            # parado no login do Proxmox) estourava o recv, a WS caía e o xterm.js
+            # entrava em loop "Disconnecting... (Detecting migration...)".
+            raw_sock.settimeout(None)
+            try:
+                raw_sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+            except Exception:
+                pass
             self.ws_sock = raw_sock
 
             if leftover:
@@ -2777,6 +2786,11 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
     def disconnect(self, close_code):
         self.is_running = False
         if self.ws_sock:
+            # Sem timeout o recv da thread fica bloqueado; shutdown o acorda
+            try:
+                self.ws_sock.shutdown(socket.SHUT_RDWR)
+            except Exception:
+                pass
             try:
                 self.ws_sock.close()
             except Exception:
