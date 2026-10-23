@@ -271,6 +271,12 @@ ser marcado como responsável, mas **não** vê o painel (`perms.is_backoffice` 
   nela abre de novo. O estado fica em `localStorage['tarefasAvisoMinimizado']` com a assinatura
   (ids das tarefas em aberto): continua minimizado ao trocar de página, mas **chegou tarefa nova,
   abre sozinho**. Sem `localStorage` (aba anônima, bloqueado) abre sempre.
+- **Arrastar e fixar:** o topo do painel e a pílula são alças de arrasto (pointer events, vale
+  para toque). Soltar grava `localStorage['tarefasAvisoPosicao']` como `{left, bottom}` (ancorado
+  pela base, então o painel cresce para cima ao sair do minimizado). A posição é sempre presa
+  dentro da janela (`aplicarPosicao`: ao carregar, ao minimizar/expandir e no resize). Arrastar a
+  pílula não a expande (o `click` após o arrasto é engolido); clique simples expande. **Duplo
+  clique no título** volta ao canto padrão (16px/16px).
 - **Onde é renderizado:** template tag `{% tarefas_aviso_login %}`
   (`tarefas/templatetags/tarefas_aviso.py`, template `tarefas/_aviso_login.html`), incluída no
   fim do `templates/base.html`. O JS move o painel para o `<body>` (o `listar.html` tem div sem
@@ -291,6 +297,8 @@ ser marcado como responsável, mas **não** vê o painel (`perms.is_backoffice` 
 - **Conferido em Chrome headless** (driver de `projeto_rede/tests_navegador.py`, com Bootstrap do
   CDN e o `style.css` real servidos localmente): painel em left 16px / rodapé, filho do `<body>`,
   sem backdrop, meio da tela clicável, minimizado mantido ao recarregar e reaberto com tarefa nova.
+  Arrasto (com `Input.dispatchMouseEvent`): posição mantida ao recarregar, presa na tela ao arrastar
+  para fora, pílula arrastada continua minimizada, duplo clique volta ao canto.
 
 Testes: `AvisoTarefasLoginTest` (lista só as abertas do responsável e com a atrasada primeiro,
 aparece em toda navegação, concluir tira da lista, sem tarefa não mostra nada, login do portal

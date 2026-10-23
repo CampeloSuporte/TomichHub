@@ -6,7 +6,9 @@
     #avisoTarefas { position:fixed; left:16px; bottom:16px; z-index:1035; font-family:'Inter',system-ui,sans-serif; color:#c9d1d9; }
     #avisoTarefas[hidden] { display:none; }
     #avisoTarefas .tav-painel { width:380px; max-width:calc(100vw - 32px); background:#1c2128; border:1px solid #30363d; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.5); display:flex; flex-direction:column; max-height:60vh; }
-    #avisoTarefas .tav-topo { display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid rgba(88,166,255,.15); }
+    #avisoTarefas .tav-topo { display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid rgba(88,166,255,.15); cursor:move; user-select:none; touch-action:none; }
+    #avisoTarefas .tav-pilula { touch-action:none; }
+    #avisoTarefas.arrastando, #avisoTarefas.arrastando * { cursor:grabbing !important; user-select:none; }
     #avisoTarefas .tav-titulo { flex:1; font-size:.85rem; font-weight:600; color:#e6edf3; }
     #avisoTarefas .tav-btn { background:none; border:1px solid #30363d; color:#9da7b3; border-radius:6px; width:28px; height:28px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
     #avisoTarefas .tav-btn:hover { color:#e6edf3; border-color:#58a6ff; }
@@ -34,7 +36,7 @@
     <div class="tav-painel" role="region" aria-label="Suas tarefas a concluir">
         <div class="tav-topo">
             <i class="fas fa-list-check" style="color:#58a6ff;"></i>
-            <span class="tav-titulo">Suas tarefas a concluir</span>
+            <span class="tav-titulo" title="Arraste para mover · duplo clique volta ao canto">Suas tarefas a concluir</span>
             <button type="button" class="tav-btn" data-tav-minimizar title="Minimizar" aria-label="Minimizar"><i class="fas fa-minus"></i></button>
         </div>
         <div class="tav-resumo">
@@ -56,7 +58,7 @@
             {% endfor %}
         </div>
     </div>
-    <button type="button" class="tav-pilula" data-tav-expandir title="Mostrar suas tarefas">
+    <button type="button" class="tav-pilula" data-tav-expandir title="Mostrar suas tarefas (arraste para mover)">
         <i class="fas fa-list-check" style="color:#58a6ff;"></i> Tarefas
         <span class="tav-num{% if atrasadas %} atraso{% endif %}">{{ tarefas|length }}</span>
     </button>
@@ -64,8 +66,58 @@
 <script>
     (function () {
         var CHAVE = 'tarefasAvisoMinimizado';
-        function ler() { try { return localStorage.getItem(CHAVE); } catch (e) { return null; } }
-        function gravar(v) { try { v === null ? localStorage.removeItem(CHAVE) : localStorage.setItem(CHAVE, v); } catch (e) {} }
+        var CHAVE_POS = 'tarefasAvisoPosicao';
+        var MARGEM = 16;
+        function ler(k) { try { return localStorage.getItem(k || CHAVE); } catch (e) { return null; } }
+        function gravar(v, k) { try { v === null ? localStorage.removeItem(k || CHAVE) : localStorage.setItem(k || CHAVE, v); } catch (e) {} }
+
+        // Posição ancorada por left/bottom: o painel cresce para cima ao sair
+        // do minimizado, igual ao canto padrão. Sempre presa dentro da tela
+        // (janela menor que a da última vez, ou painel maior que a pílula).
+        function aplicarPosicao(el, pos) {
+            var r = el.getBoundingClientRect();
+            var left = Math.min(Math.max(0, pos.left), Math.max(0, window.innerWidth - r.width));
+            var bottom = Math.min(Math.max(0, pos.bottom), Math.max(0, window.innerHeight - r.height));
+            el.style.left = left + 'px';
+            el.style.bottom = bottom + 'px';
+            return { left: left, bottom: bottom };
+        }
+        function posicaoSalva() {
+            try { var p = JSON.parse(ler(CHAVE_POS)); if (p && isFinite(p.left) && isFinite(p.bottom)) return p; } catch (e) {}
+            return { left: MARGEM, bottom: MARGEM };
+        }
+
+        // Arrasta pelo `alca`; devolve true no click seguinte se houve arrasto
+        // (a pílula é botão: soltar depois de arrastar não pode expandir).
+        function arrastavel(el, alca, onFim) {
+            var inicio = null, moveu = false;
+            alca.addEventListener('pointerdown', function (e) {
+                if (e.button !== 0 || (e.target.closest('button') && e.target.closest('button') !== alca)) return;
+                var r = el.getBoundingClientRect();
+                inicio = { x: e.clientX, y: e.clientY, left: r.left, bottom: window.innerHeight - r.bottom };
+                moveu = false;
+                alca.setPointerCapture(e.pointerId);
+            });
+            alca.addEventListener('pointermove', function (e) {
+                if (!inicio) return;
+                var dx = e.clientX - inicio.x, dy = e.clientY - inicio.y;
+                if (!moveu && Math.abs(dx) + Math.abs(dy) < 5) return;
+                moveu = true;
+                el.classList.add('arrastando');
+                aplicarPosicao(el, { left: inicio.left + dx, bottom: inicio.bottom - dy });
+            });
+            function soltar() {
+                if (!inicio) return;
+                inicio = null;
+                el.classList.remove('arrastando');
+                if (moveu) onFim();
+            }
+            alca.addEventListener('pointerup', soltar);
+            alca.addEventListener('pointercancel', soltar);
+            alca.addEventListener('click', function (e) {
+                if (moveu) { e.stopImmediatePropagation(); e.preventDefault(); moveu = false; }
+            }, true);
+        }
 
         document.addEventListener('DOMContentLoaded', function () {
             // Página de base.html aberta dentro de iframe (console, prévia) não
@@ -82,15 +134,31 @@
             var assinatura = el.dataset.assinatura;
             el.classList.toggle('minimizado', ler() === assinatura);
             el.hidden = false;
+            var pos = aplicarPosicao(el, posicaoSalva());
+            function salvarPosicao() {
+                var r = el.getBoundingClientRect();
+                pos = { left: Math.round(r.left), bottom: Math.round(window.innerHeight - r.bottom) };
+                gravar(JSON.stringify(pos), CHAVE_POS);
+            }
 
             el.querySelector('[data-tav-minimizar]').addEventListener('click', function () {
                 el.classList.add('minimizado');
                 gravar(assinatura);
+                pos = aplicarPosicao(el, pos);
             });
             el.querySelector('[data-tav-expandir]').addEventListener('click', function () {
                 el.classList.remove('minimizado');
                 gravar(null);
+                pos = aplicarPosicao(el, pos);
             });
+
+            arrastavel(el, el.querySelector('.tav-topo'), salvarPosicao);
+            arrastavel(el, el.querySelector('[data-tav-expandir]'), salvarPosicao);
+            el.querySelector('.tav-titulo').addEventListener('dblclick', function () {
+                gravar(null, CHAVE_POS);
+                pos = aplicarPosicao(el, { left: MARGEM, bottom: MARGEM });
+            });
+            window.addEventListener('resize', function () { aplicarPosicao(el, pos); });
         });
     })();
 </script>

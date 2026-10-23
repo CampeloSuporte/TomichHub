@@ -14,7 +14,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   prazo e prioridade, até concluir (o cliente não vê). Não escurece a tela e pode ser
   **minimizado** numa pílula "Tarefas N", que continua minimizada ao trocar de página e reabre
   sozinha quando chega tarefa nova. Cada item abre direto a aba Tarefas do cliente
-  (`?aba=tarefas`). Ver `docs/TAREFAS.md`.
+  (`?aba=tarefas`). Dá para **arrastar** o painel (pelo topo) ou a pílula para onde quiser: a
+  posição fica guardada no navegador e vale em todas as páginas; duplo clique no título volta ao
+  canto. Ver `docs/TAREFAS.md`.
 
 ## [Não publicado] — 2026-10-23 (restart do daphne não derruba WebSockets por 90 s)
 
