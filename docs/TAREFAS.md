@@ -257,39 +257,41 @@ outra instância não cria, adicionar reabre, remover conclui, remover o último
 adicionar/remover de outra instância 404, página do cliente com modal novo e correção do CSS) e
 `test_tarefa_unica_do_painel_com_checklist`.
 
-## Modal "Suas tarefas a concluir" (2026-10-23)
+## Painel "Suas tarefas a concluir" (2026-10-23)
 
 Quem é da **equipe** (Administrador, Consultor ou Operador) e é **responsável** por alguma tarefa
-em aberto (Pendente ou Em Andamento) vê um modal com todas essas tarefas **em toda página que
-navegar**, até concluí-las. O login do portal do cliente pode ser marcado como responsável, mas
-**não** recebe o modal (`perms.is_backoffice` na template tag; pedido do usuário em 23/10/2026).
+em aberto (Pendente ou Em Andamento) vê um **painel flutuante no canto inferior esquerdo** com todas
+essas tarefas, **em toda página que navegar**, até concluí-las. O login do portal do cliente pode
+ser marcado como responsável, mas **não** vê o painel (`perms.is_backoffice` na template tag).
 
-- **Quando abre:** a template tag `{% tarefas_aviso_login %}`
-  (`tarefas/templatetags/tarefas_aviso.py`, incluída no fim do `templates/base.html`) roda em toda
-  página com `base.html`. Fechar vale só para a página atual: a próxima navegação mostra de novo.
-  Dentro de iframe o modal não abre (só a janela principal).
+- **Sem fundo escuro:** não é modal do Bootstrap. É um `position:fixed` (z-index 1035, abaixo dos
+  modais do Bootstrap) sem backdrop, então a página continua utilizável. Também não usa a classe
+  `.modal`, que o `static/css/style.css` global reestiliza com `!important`.
+- **Minimizar:** o botão "–" vira uma pílula "Tarefas N" (vermelha se houver atrasada); clicar
+  nela abre de novo. O estado fica em `localStorage['tarefasAvisoMinimizado']` com a assinatura
+  (ids das tarefas em aberto): continua minimizado ao trocar de página, mas **chegou tarefa nova,
+  abre sozinho**. Sem `localStorage` (aba anônima, bloqueado) abre sempre.
+- **Onde é renderizado:** template tag `{% tarefas_aviso_login %}`
+  (`tarefas/templatetags/tarefas_aviso.py`, template `tarefas/_aviso_login.html`), incluída no
+  fim do `templates/base.html`. O JS move o painel para o `<body>` (o `listar.html` tem div sem
+  fechar e o deixaria dentro do `.main-content`). Dentro de iframe não aparece.
 - **Por que não depende do login:** a 1ª versão (mesmo dia) abria só depois do login, via sinal
-  `user_logged_in`. Não aparecia para ninguém: a sessão dura 7 dias e renova a cada acesso
-  (`SESSION_SAVE_EVERY_REQUEST`), então quase ninguém passa pela tela de login. Não voltar a
-  prender o aviso ao login.
+  `user_logged_in`, e não aparecia para ninguém: a sessão dura 7 dias e renova a cada acesso
+  (`SESSION_SAVE_EVERY_REQUEST`). Não voltar a prender o aviso ao login.
 - **O que lista:** `tarefas_abertas_do_responsavel(user)`: atrasadas primeiro, depois por prazo
   (sem prazo no fim) e prioridade. Sem `visiveis_para`: a elegibilidade já foi checada ao marcar o
-  responsável. Sem tarefa em aberto,
-  o modal não é renderizado. Custo: uma consulta por página para usuário autenticado.
-- **Links:** tarefa com cliente abre `listar_clientes?id=N&aba=tarefas`. O `listar.html` passou a
-  aceitar `?aba=` (grava em `sessionStorage.abaAtiva` antes da restauração da aba, só se a aba
-  existir na página, ou seja, se o módulo estiver liberado). Tarefa sem cliente leva ao dashboard
+  responsável. Sem tarefa em aberto, nada é renderizado. Custo: uma consulta por página.
+- **Links:** tarefa com cliente abre `listar_clientes?id=N&aba=tarefas`. O `listar.html` aceita
+  `?aba=` (grava em `sessionStorage.abaAtiva` antes da restauração da aba, só se a aba existir na
+  página, ou seja, se o módulo estiver liberado). Tarefa sem cliente leva ao dashboard
   (`quadro_geral` / `quadro_instancia`).
-
-- **Tela escura sem clique (corrigido no mesmo dia):** na página do cliente o `listar.html` tem div
-  sem fechar, então o modal (incluído no fim do `base.html`) caía dentro do `.main-content`, numa
-  camada abaixo do `.modal-backdrop`. O JS do modal agora o move para o `<body>` antes de abrir,
-  como os outros modais do `listar.html` já fazem. O "X" é um botão próprio (`.tal-fechar`): o
-  `.btn-close` do `static/css/style.css` global fica com fundo transparente, ou seja, invisível.
-  Conferido em Chrome headless (driver de `projeto_rede/tests_navegador.py`, com o Bootstrap do CDN
-  e o `style.css` real servidos localmente): sem a correção o centro do botão Fechar fica coberto
-  pelo backdrop; com ela o modal é filho do `<body>` e fechar remove o backdrop.
+- **Histórico do mesmo dia:** a versão em modal do Bootstrap deixava a tela escura e sem clique
+  na página do cliente (caía dentro do `.main-content`, abaixo do backdrop). O usuário pediu então
+  o painel no canto, sem fundo escuro e com minimizar.
+- **Conferido em Chrome headless** (driver de `projeto_rede/tests_navegador.py`, com Bootstrap do
+  CDN e o `style.css` real servidos localmente): painel em left 16px / rodapé, filho do `<body>`,
+  sem backdrop, meio da tela clicável, minimizado mantido ao recarregar e reaberto com tarefa nova.
 
 Testes: `AvisoTarefasLoginTest` (lista só as abertas do responsável e com a atrasada primeiro,
-aparece em toda navegação, concluir tira do modal, sem tarefa não mostra nada, login do portal
-responsável não vê o modal).
+aparece em toda navegação, concluir tira da lista, sem tarefa não mostra nada, login do portal
+responsável não vê o painel).

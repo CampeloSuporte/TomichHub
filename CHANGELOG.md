@@ -5,21 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
-## [Não publicado] — 2026-10-23 (modal de tarefas do responsável)
+## [Não publicado] — 2026-10-23 (painel de tarefas do responsável)
 
 ### Adicionado
 
-- **Modal "Suas tarefas a concluir" em toda página.** Atendente ou administrador responsável por
-  tarefa em aberto vê a lista em toda página que abrir, até concluir (o cliente não vê o modal),
-  com atrasadas primeiro, cliente, prazo e prioridade. Cada item abre direto a aba Tarefas do
-  cliente (`?aba=tarefas`). A 1ª versão abria só após o login e não aparecia (a sessão dura 7 dias
-  e se renova sozinha). Ver `docs/TAREFAS.md`.
-
-### Corrigido
-
-- **Modal de tarefas deixava a tela escura e sem clique na página do cliente.** O modal caía dentro
-  de um container da página, abaixo do fundo escuro. Agora ele é movido para o `<body>` antes de
-  abrir, e o "X" de fechar, que o CSS global deixava invisível, foi trocado.
+- **Painel "Suas tarefas a concluir" no canto inferior esquerdo, em toda página.** Atendente ou
+  administrador responsável por tarefa em aberto vê a lista, com atrasadas primeiro, cliente,
+  prazo e prioridade, até concluir (o cliente não vê). Não escurece a tela e pode ser
+  **minimizado** numa pílula "Tarefas N", que continua minimizada ao trocar de página e reabre
+  sozinha quando chega tarefa nova. Cada item abre direto a aba Tarefas do cliente
+  (`?aba=tarefas`). Ver `docs/TAREFAS.md`.
 
 ## [Não publicado] — 2026-10-23 (restart do daphne não derruba WebSockets por 90 s)
 
