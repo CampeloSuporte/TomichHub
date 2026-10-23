@@ -492,6 +492,15 @@ pasta pra abrir) e a linha da grade dela acompanha a **linha do prefixo**, não 
 Medido nos 8 clientes com mais blocos: as únicas linhas que sumiram são espelhos — nenhuma
 sub-rede comum deixou de aparecer (cliente 90: 1017 → 822 linhas, exatamente as 195 espelhos).
 
+## Grade de IPs se atualiza ao salvar/excluir um IP (2026-10-23)
+
+Clicar numa célula da grade abre o modal de IP, mas `ipamSalvar` só recarregava a lista da aba
+IPs: a célula seguia "livre" até dar F5. Caso real (cliente 96, `198.19.48.0/24`): o
+`198.19.48.2` documentado como CAMERA-01 não aparecia, e o `198.19.48.1` acabou cadastrado 3
+vezes porque continuava parecendo livre. Agora salvar e excluir um IP chamam
+`ipamRecarregarGradesAbertas()`, que rebusca toda grade aberta (`IPAM._srGradeOpen` com a
+`<tr id="sr-grade-*">` ainda no DOM) — todas, porque a edição pode trocar o IP de sub-rede.
+
 ---
 
 ## Excluir um bloco leva as sub-redes de dentro dele (2026-09-16)

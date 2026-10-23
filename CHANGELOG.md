@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-23 (grade de IPs atualiza ao documentar)
+
+### Corrigido
+
+- **IP documentado aparece na grade na hora.** Na documentação de rede, documentar um IP clicando
+  na grade da sub-rede salvava, mas a célula continuava "livre" até recarregar a página — e por
+  isso o mesmo IP chegava a ser cadastrado mais de uma vez. Salvar ou excluir um IP agora
+  recarrega as grades abertas. Ver `docs/ipam.md`.
+
 ## [Não publicado] — 2026-10-23 (fluidez do WinBox Web)
 
 ### Alterado

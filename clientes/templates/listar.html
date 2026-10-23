@@ -4624,6 +4624,18 @@ window.ipamScanAgora = async function(sid){
     }
 };
 
+// Salvar/excluir um IP pelo modal não passava pela grade: a célula seguia
+// "livre" até recarregar a página (e o mesmo IP acabava cadastrado de novo).
+// Rebusca toda grade aberta — o IP pode ter trocado de sub-rede na edição.
+async function ipamRecarregarGradesAbertas(){
+    const abertas = Object.keys(IPAM._srGradeOpen).filter(sid =>
+        IPAM._srGradeOpen[sid] && document.getElementById(`sr-grade-${sid}`));
+    for(const sid of abertas){
+        IPAM._srGradeOpen[sid] = false;
+        await ipamToggleGradeSubrede(sid);
+    }
+}
+
 window.ipamToggleScanAutomatico = async function(sid, checked){
     try {
         await fetch(`/clientes/ipam/subredes/${sid}/scan-toggle/`, {
@@ -6007,7 +6019,7 @@ window.ipamSalvar = async function(){
         // pool_cheia do prefixo pai pode ter sido recalculado no backend
         ipamCarregarPrefixos();
     }
-    if(tipo==='ip')   ipamCarregarIPs();
+    if(tipo==='ip')   { ipamCarregarIPs(); ipamRecarregarGradesAbertas(); }
     if(tipo==='vlan') { ipamCarregarVlans(); IPAM.vlans = []; }
     if(tipo==='vpn')  ipamCarregarVpns();
 };
@@ -6087,7 +6099,7 @@ window.ipamDeletarSubRede = async function(id){
         await ipamCarregarPrefixos();
     } else uiAlert('Erro: ' + d.erro);
 };
-window.ipamDeletarIP      = id => ipamDeletar(`/clientes/ipam/ips/${id}/deletar/`,      ipamCarregarIPs);
+window.ipamDeletarIP      = id => ipamDeletar(`/clientes/ipam/ips/${id}/deletar/`,      () => { ipamCarregarIPs(); ipamRecarregarGradesAbertas(); });
 window.ipamDeletarVlan    = id => ipamDeletar(`/clientes/ipam/vlans/${id}/deletar/`,    ipamCarregarVlans);
 window.ipamDeletarVpn     = id => ipamDeletar(`/clientes/ipam/vpns/${id}/deletar/`,     ipamCarregarVpns);
 
