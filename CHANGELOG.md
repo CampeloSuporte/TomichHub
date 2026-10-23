@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-23 (modal de tarefas ao logar)
+
+### Adicionado
+
+- **Modal "Suas tarefas a concluir" logo depois do login.** Quem é responsável por tarefa em
+  aberto (atendente ou login do portal do cliente) vê a lista ao entrar, com atrasadas primeiro,
+  cliente, prazo e prioridade. Aparece uma vez por login, e cada item abre direto a aba Tarefas do
+  cliente (`?aba=tarefas`). Ver `docs/TAREFAS.md`.
+
 ## [Não publicado] — 2026-10-23 (restart do daphne não derruba WebSockets por 90 s)
 
 ### Corrigido

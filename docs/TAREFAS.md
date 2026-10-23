@@ -256,3 +256,28 @@ Testes: `KanbanChecklistTest` (criar com checklist, rotina pelo Kanban, rotina s
 outra instância não cria, adicionar reabre, remover conclui, remover o último não reabre,
 adicionar/remover de outra instância 404, página do cliente com modal novo e correção do CSS) e
 `test_tarefa_unica_do_painel_com_checklist`.
+
+## Modal "Suas tarefas a concluir" ao logar (2026-10-23)
+
+Quem é **responsável** por alguma tarefa em aberto (Pendente ou Em Andamento) vê, logo depois de
+entrar no sistema, um modal com todas essas tarefas. Vale para os dois lados: atendente marcado
+numa tarefa do cliente X vê a tarefa no próprio login, e o login do portal do cliente marcado como
+responsável também vê.
+
+- **Quando abre:** o sinal `user_logged_in` (`tarefas/signals.py`) grava
+  `session['tarefas_aviso_login']`. A template tag `{% tarefas_aviso_login %}`
+  (`tarefas/templatetags/tarefas_aviso.py`, incluída no fim do `templates/base.html`) faz `pop`
+  dessa chave na primeira página que usa o `base.html` — por isso aparece **uma vez por login**, e
+  um F5 não abre de novo. O sinal só dispara quando o login acontece de fato: senha certa com 2FA
+  pendente ainda não marca nada; o aviso vem depois do código (ou do navegador confiável).
+- **O que lista:** `tarefas_abertas_do_responsavel(user)`: atrasadas primeiro, depois por prazo
+  (sem prazo no fim) e prioridade. Sem `visiveis_para`, porque o login do portal não enxerga nada
+  por esse manager e a elegibilidade já foi checada ao marcar o responsável. Sem tarefa em aberto,
+  o modal não é renderizado.
+- **Links:** tarefa com cliente abre `listar_clientes?id=N&aba=tarefas`. O `listar.html` passou a
+  aceitar `?aba=` (grava em `sessionStorage.abaAtiva` antes da restauração da aba, só se a aba
+  existir na página, ou seja, se o módulo estiver liberado). Tarefa sem cliente leva ao dashboard
+  (`quadro_geral` / `quadro_instancia`); para o portal ela aparece sem link.
+
+Testes: `AvisoTarefasLoginTest` (lista só as abertas do responsável e com a atrasada primeiro,
+uma vez por login, sem tarefa não mostra nada, 2FA pendente não marca o aviso).

@@ -1,4 +1,4 @@
-{% load static %}
+{% load static %}{% load tarefas_aviso %}
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -276,6 +276,8 @@
         {% endblock %}
 
         {% block modals %}{% endblock %}
+
+        {% tarefas_aviso_login %}
 
     <!-- Bootstrap JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js" defer></script>

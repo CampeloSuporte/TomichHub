@@ -10711,6 +10711,11 @@ function getCsrfToken(){
     // ============================================
     document.addEventListener('DOMContentLoaded', function() {
 
+        // ?aba=tarefas na URL (link do modal "Suas tarefas" pós-login) abre
+        // direto a aba pedida — passa pelo mesmo caminho da restauração.
+        const abaDaUrl = new URLSearchParams(window.location.search).get('aba');
+        if (abaDaUrl && document.getElementById('tab-' + abaDaUrl)) sessionStorage.setItem('abaAtiva', abaDaUrl);
+
         // ✅ RESTAURAR ABA PRINCIPAL após reload (sessionStorage)
         let abaAtiva = sessionStorage.getItem('abaAtiva');
         if (abaAtiva && moduloBloqueado(abaAtiva)) {
