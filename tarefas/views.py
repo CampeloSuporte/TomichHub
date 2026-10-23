@@ -183,12 +183,20 @@ def tarefa_status(request, tarefa_id):
 @backoffice_required
 @require_POST
 def tarefa_concluir_painel(request, tarefa_id):
-    """Botão ✓ do painel "Suas tarefas a concluir" (base.html). O painel só
-    lista tarefas em que o usuário é responsável, e a permissão é essa mesma:
-    responsável conclui; outra tarefa dá 404."""
-    tarefa = get_object_or_404(Tarefa.objects.filter(responsaveis=request.user).distinct(), pk=tarefa_id)
+    """Botão ✓ do painel "Suas tarefas a concluir" (base.html). A permissão
+    é a mesma regra da lista do painel: responsável conclui, e tarefa sem
+    ninguém designado pode ser concluída por quem a enxerga (vira
+    responsável, para ficar registrado quem fez); outra tarefa dá 404."""
+    tarefa = (
+        Tarefa.objects.filter(responsaveis=request.user).distinct().filter(pk=tarefa_id).first()
+        or get_object_or_404(
+            Tarefa.objects.visiveis_para(request.user).filter(responsaveis__isnull=True), pk=tarefa_id,
+        )
+    )
     if tarefa.status in (Tarefa.STATUS_CONCLUIDA, Tarefa.STATUS_CANCELADA):
         return JsonResponse({'success': False, 'error': 'A tarefa já está encerrada.'}, status=400)
+    if not tarefa.responsaveis.exists():
+        tarefa.responsaveis.add(request.user)
     tarefa.status = Tarefa.STATUS_CONCLUIDA
     tarefa.concluida_em = timezone.now()
     tarefa.save(update_fields=['status', 'concluida_em', 'atualizado_em'])

@@ -37,25 +37,25 @@
     #avisoTarefas.minimizado .tav-pilula { display:inline-flex; }
 </style>
 <div id="avisoTarefas" data-csrf="{{ csrf_token }}" data-assinatura="{% for t in tarefas %}{{ t.id }}{% if not forloop.last %},{% endif %}{% endfor %}" hidden>
-    <div class="tav-painel" role="region" aria-label="Suas tarefas a concluir">
+    <div class="tav-painel" role="region" aria-label="Tarefas a concluir">
         <div class="tav-topo">
             <i class="fas fa-list-check" style="color:#58a6ff;"></i>
-            <span class="tav-titulo" title="Arraste para mover · duplo clique volta ao canto">Suas tarefas a concluir</span>
+            <span class="tav-titulo" title="Arraste para mover · duplo clique volta ao canto">Tarefas a concluir</span>
             <button type="button" class="tav-btn" data-tav-minimizar title="Minimizar" aria-label="Minimizar"><i class="fas fa-minus"></i></button>
         </div>
         <div class="tav-resumo" data-tav-resumo>
-            Você é responsável por <strong>{{ tarefas|length }}</strong> tarefa{{ tarefas|length|pluralize }} em aberto{% if atrasadas %}, <span style="color:#e06060;font-weight:600;">{{ atrasadas }} atrasada{{ atrasadas|pluralize }}</span>{% endif %}.
+            <strong>{{ tarefas|length }}</strong> tarefa{{ tarefas|length|pluralize }} em aberto{% if sem_responsavel %} ({{ sem_responsavel }} pendente{{ sem_responsavel|pluralize }} sem responsável){% endif %}{% if atrasadas %}, <span style="color:#e06060;font-weight:600;">{{ atrasadas }} atrasada{{ atrasadas|pluralize }}</span>{% endif %}.
         </div>
         <div class="tav-lista">
             {% for t in tarefas %}
-            <div class="tav-item{% if t.atrasada %} atrasada{% endif %}" data-tav-tarefa="{{ t.id }}">
+            <div class="tav-item{% if t.atrasada %} atrasada{% endif %}" data-tav-tarefa="{{ t.id }}"{% if t.sem_responsavel %} data-tav-sem-resp{% endif %}>
               <a href="{{ t.url_aviso }}" class="tav-link">
                 <div class="tav-corpo">
                     <div class="tav-nome" title="{{ t.titulo }}">{{ t.titulo }}</div>
                     <div class="tav-meta">
                         <span><i class="fas fa-building me-1"></i>{{ t.cliente.nome_empresa|default:"Sem cliente" }}</span>
                         {% if t.prazo %}<span class="{% if t.atrasada %}atraso{% endif %}"><i class="far fa-clock me-1"></i>{% if t.atrasada %}Atrasada · {% endif %}{{ t.prazo|date:"d/m/Y H:i" }}</span>{% endif %}
-                        <span>{{ t.get_status_display }}</span>
+                        <span>{{ t.get_status_display }}{% if t.sem_responsavel %} · sem responsável{% endif %}</span>
                     </div>
                 </div>
                 <span class="tav-badge {{ t.prioridade }}">{{ t.get_prioridade_display }}</span>
@@ -154,11 +154,13 @@
                 var itens = el.querySelectorAll('[data-tav-tarefa]');
                 var total = itens.length;
                 var atrasadas = el.querySelectorAll('[data-tav-tarefa].atrasada').length;
+                var semResp = el.querySelectorAll('[data-tav-tarefa][data-tav-sem-resp]').length;
                 if (!total) { el.remove(); gravar(null); return; }
                 assinatura = Array.prototype.map.call(itens, function (i) { return i.dataset.tavTarefa; }).join(',');
                 el.dataset.assinatura = assinatura;
                 el.querySelector('[data-tav-resumo]').innerHTML =
-                    'Você é responsável por <strong>' + total + '</strong> tarefa' + (total > 1 ? 's' : '') + ' em aberto' +
+                    '<strong>' + total + '</strong> tarefa' + (total > 1 ? 's' : '') + ' em aberto' +
+                    (semResp ? ' (' + semResp + ' pendente' + (semResp > 1 ? 's' : '') + ' sem responsável)' : '') +
                     (atrasadas ? ', <span style="color:#e06060;font-weight:600;">' + atrasadas + ' atrasada' + (atrasadas > 1 ? 's' : '') + '</span>' : '') + '.';
                 var num = el.querySelector('.tav-num');
                 num.textContent = total;
