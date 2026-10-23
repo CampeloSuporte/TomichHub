@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-23 (fluidez do WinBox Web)
+
+### Alterado
+
+- **WinBox Web mais leve e mais rápido de responder.** Medido no Cgnat AFL (Startnet, via proxy):
+  CPU e número de sessões não eram o problema (container ~60% ocioso, 1–2 sessões no pico). O que
+  pesava era a rede e o formato da imagem. Três ajustes: (1) o túnel SSH até o proxy agora desliga o
+  Nagle em toda conexão do pool, e uma rajada de 3 mensagens pequenas caiu de 84 para 50 ms; (2) o
+  WinBox passa a usar imagem sem perdas no lugar de JPEG, e o quadro inteiro caiu de 80 para 25 KB
+  (WinBox 3) e de 109 para 70 KB (WinBox 4), com texto mais nítido; (3) o x11vnc confere a tela a
+  cada 5 ms, e a resposta à tecla caiu de 37 para 29 ms (mediana). Navegador e RDP continuam em
+  JPEG. Ver `docs/winbox_vnc.md`.
+
 ## [Não publicado] — 2026-10-23 (auditoria de troca de senha no cadastro do host)
 
 ### Adicionado

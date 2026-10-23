@@ -189,8 +189,10 @@ class WinboxVNCManager:
         #   a primeira interação após um período parado sofre um atraso perceptível
         #   até o x11vnc "acordar" e voltar a pollar a tela na taxa normal.
         # -threads: paraleliza a codificação de regiões da tela entre CPUs.
-        # -wait 10: reduz o intervalo de polling de tela de 20ms (padrão) para 10ms —
-        #   mais atualizações por segundo, ao custo de um pouco mais de CPU.
+        # -wait 5 -defer 5: polling de tela a cada 5ms (padrão 20) e envio da
+        #   atualização após 5ms (padrão 20). Medido tecla→tela no WinBox 4:
+        #   mediana 37→29ms, p90 52→38ms; CPU do x11vnc segue ~3%.
+        #   Tirar o -threads piora (mediana ~64ms).
         # -clip: só o recorte visível vai pro noVNC (o Xvfb é maior, ver
         #   __init__); resize() troca o recorte em tempo real via -R.
         # NUNCA usar -ncache aqui — quebra o dimensionamento reportado ao noVNC
@@ -200,7 +202,7 @@ class WinboxVNCManager:
             "-nopw", "-listen", "127.0.0.1",
             "-xkb", "-rfbport", str(self.vnc_port),
             "-shared", "-forever", "-quiet",
-            "-nonap", "-threads", "-wait", "10",
+            "-nonap", "-threads", "-wait", "5", "-defer", "5",
             "-clip", f"{self.width}x{self.height}+0+0",
         ]
         try:

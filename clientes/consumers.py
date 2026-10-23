@@ -141,6 +141,11 @@ class _ProxyPool:
             t = client.get_transport()
             if t:
                 t.set_keepalive(30)
+                # Sem Nagle: o WinBox (e o terminal) manda rajadas de mensagens
+                # pequenas; com Nagle a 2ª espera o ACK do proxy (~45 ms de
+                # RTT). Medido no Cgnat AFL: 3 msgs seguidas 84 ms → 50 ms.
+                # Vale pra todo túnel do pool, qualquer que seja quem o abriu.
+                t.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         except Exception:
             pass
         with self._lock:
