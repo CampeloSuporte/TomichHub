@@ -52,4 +52,9 @@ def tarefas_aviso_login(context):
     tarefas = tarefas_abertas_do_responsavel(user)
     for t in tarefas:
         t.url_aviso = _url_da_tarefa(t, user)
-    return {'tarefas': tarefas, 'atrasadas': sum(1 for t in tarefas if t.atrasada)}
+    return {
+        'tarefas': tarefas,
+        'atrasadas': sum(1 for t in tarefas if t.atrasada),
+        # Botão ✓ concluir faz POST via fetch; inclusion_tag não herda o contexto.
+        'csrf_token': context.get('csrf_token'),
+    }

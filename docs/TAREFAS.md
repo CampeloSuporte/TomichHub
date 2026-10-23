@@ -277,6 +277,11 @@ ser marcado como responsável, mas **não** vê o painel (`perms.is_backoffice` 
   dentro da janela (`aplicarPosicao`: ao carregar, ao minimizar/expandir e no resize). Arrastar a
   pílula não a expande (o `click` após o arrasto é engolido); clique simples expande. **Duplo
   clique no título** volta ao canto padrão (16px/16px).
+- **Concluir pelo painel:** botão ✓ em cada item → `uiConfirm` → `POST
+  /tarefas/<id>/concluir-painel/` (`tarefa_concluir_painel`, JSON). Só equipe e só quem é
+  responsável (404 para os outros), igual ao que o painel lista. A tarefa sai da lista, a contagem
+  e a pílula se atualizam e, se era a última, o painel some. As listas do dashboard na mesma página
+  só refletem ao recarregar.
 - **Onde é renderizado:** template tag `{% tarefas_aviso_login %}`
   (`tarefas/templatetags/tarefas_aviso.py`, template `tarefas/_aviso_login.html`), incluída no
   fim do `templates/base.html`. O JS move o painel para o `<body>` (o `listar.html` tem div sem
@@ -303,3 +308,30 @@ ser marcado como responsável, mas **não** vê o painel (`perms.is_backoffice` 
 Testes: `AvisoTarefasLoginTest` (lista só as abertas do responsável e com a atrasada primeiro,
 aparece em toda navegação, concluir tira da lista, sem tarefa não mostra nada, login do portal
 responsável não vê o painel).
+
+## "abrir tarefa" no comentário interno do atendimento (2026-10-23)
+
+O gatilho já existia (`atendimento.services._pede_abertura_de_tarefa` → Celery
+`atendimento.tasks.abrir_tarefa_ia`, cria a `Tarefa` no **cliente vinculado ao grupo** do chamado).
+Faltavam duas coisas, vistas nos dados reais (agosto a outubro/2026):
+
+- **A tarefa nascia sem dono** (`criado_por` e `responsaveis` vazios), então não aparecia no painel
+  "Suas tarefas a concluir" de ninguém. Agora, quando o gatilho vem de **comentário interno**,
+  `send_message` repassa o atendente (`_disparar_acoes_ia(..., autor=agent)` →
+  `abrir_tarefa_ia(..., autor_id=)`): ele vira `criado_por` e **responsável** (status Em
+  Andamento), se for elegível para o cliente (`usuarios_atribuiveis`, mesma regra do seletor). A
+  confirmação na nota interna mostra "Responsável: Fulano". Mensagem do WhatsApp e da caixa normal
+  do chat continuam sem autor (quem escreve pode ser o cliente).
+- **Título:** com a chave global da IA inválida, o título virava a última mensagem do cliente.
+  Agora o que vem depois do gatilho é o título, sem passar pela IA
+  (`_titulo_explicito_tarefa`): "abrir tarefa: trocar a ONU do poste 12" → "Trocar a ONU do poste
+  12" (só a 1ª linha; tira "para/pra/de/sobre" do começo). A descrição guarda a nota inteira e
+  "(Aberta pelo chamado #N)". Sem texto depois do gatilho ("Tomichinho, criar tarefa") segue o
+  caminho antigo: IA lê o histórico, com fallback para a última mensagem do cliente.
+- Grupo sem cliente vinculado continua sendo ignorado (não há onde criar a tarefa).
+
+Testes: `AbrirTarefaIAInternaTest` (título explícito + autor responsável sem chamar a IA, autor de
+outra instância não vira responsável), `TituloExplicitoTarefaTest`, os de disparo em
+`send_message` (agora com `autor_id`) e `AvisoTarefasLoginTest.test_concluir_pelo_painel` /
+`test_so_responsavel_conclui_pelo_painel`. O ✓ do painel foi conferido em Chrome headless
+(confirmação, item removido, contagem "1 tarefa", painel some na última).

@@ -649,7 +649,8 @@ class NotaInternaTest(TestCase):
             self.conversation, 'abrir tarefa: verificar contrato do cliente', self.agent, is_internal=True)
 
         mock_delay.assert_called_once_with(
-            str(self.conversation.id), 'abrir tarefa: verificar contrato do cliente', True)
+            str(self.conversation.id), 'abrir tarefa: verificar contrato do cliente', True,
+            autor_id=self.agent.id)
 
     @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
     @mock.patch('atendimento.services.EvolutionAPIClient')
@@ -659,7 +660,7 @@ class NotaInternaTest(TestCase):
         texto = 'Tomichinho, criar tarefá de configuração do radius do erp hubsoft.'
         ConversationService.send_message(self.conversation, texto, self.agent, is_internal=True)
 
-        mock_delay.assert_called_once_with(str(self.conversation.id), texto, True)
+        mock_delay.assert_called_once_with(str(self.conversation.id), texto, True, autor_id=self.agent.id)
 
     @mock.patch('atendimento.tasks.abrir_tarefa_ia.delay')
     @mock.patch('atendimento.services.EvolutionAPIClient')
@@ -768,6 +769,68 @@ class AbrirTarefaIAInternaTest(TestCase):
         confirmacao = Message.objects.get(content__startswith='✅ Tarefa aberta')
         self.assertEqual(confirmacao.sender_type, 'internal')
         self.assertTrue(confirmacao.is_internal)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    @mock.patch('atendimento.ai.call_ai')
+    def test_titulo_explicito_e_autor_como_responsavel(self, mock_call_ai, mock_client_cls):
+        """'abrir tarefa: <título>' no comentário interno: o texto vira o
+        título sem passar pela IA, e quem escreveu vira autor e responsável
+        (é o que faz a tarefa aparecer no painel fixo dele)."""
+        from tarefas.models import Tarefa
+        from atendimento.tasks import abrir_tarefa_ia
+        from usuario.models import PerfilUsuario
+
+        autor = User.objects.create_user(username='atendente_x', email='ax@example.com', password='x', is_staff=True)
+        PerfilUsuario.objects.create(usuario=autor, role=PerfilUsuario.ROLE_ADMIN)
+        self.group.cliente = _criar_cliente_teste()
+        self.group.save(update_fields=['cliente'])
+
+        resultado = abrir_tarefa_ia(
+            str(self.conversation.id), 'abrir tarefa: trocar a ONU do poste 12\ncliente liberou amanhã',
+            True, autor_id=autor.id)
+
+        tarefa = Tarefa.objects.get(id=resultado['tarefa_id'])
+        self.assertEqual(tarefa.titulo, 'Trocar a ONU do poste 12')
+        self.assertIn('cliente liberou amanhã', tarefa.descricao)
+        self.assertIn(f'#{self.conversation.conversation_id}', tarefa.descricao)
+        self.assertEqual(tarefa.cliente, self.group.cliente)
+        self.assertEqual(tarefa.criado_por, autor)
+        self.assertEqual(list(tarefa.responsaveis.all()), [autor])
+        self.assertEqual(tarefa.status, Tarefa.STATUS_ANDAMENTO)
+        mock_call_ai.assert_not_called()
+        mock_client_cls.return_value.send_text.assert_not_called()
+        confirmacao = Message.objects.get(content__startswith='✅ Tarefa aberta')
+        self.assertIn('Responsável:', confirmacao.content)
+        self.assertTrue(confirmacao.is_internal)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_autor_sem_acesso_ao_cliente_nao_vira_responsavel(self, mock_client_cls):
+        from tarefas.models import Tarefa
+        from atendimento.tasks import abrir_tarefa_ia
+        from usuario.models import Instancia, PerfilUsuario
+
+        autor = User.objects.create_user(username='operador_outra', email='oo@example.com', password='x', is_staff=True)
+        PerfilUsuario.objects.create(usuario=autor, role=PerfilUsuario.ROLE_OPERADOR,
+                                     instancia=Instancia.objects.create(nome='Outra'))
+        self.group.cliente = _criar_cliente_teste()
+        self.group.save(update_fields=['cliente'])
+
+        resultado = abrir_tarefa_ia(str(self.conversation.id), 'abrir tarefa: algo', True, autor_id=autor.id)
+
+        tarefa = Tarefa.objects.get(id=resultado['tarefa_id'])
+        self.assertEqual(tarefa.responsaveis.count(), 0)
+        self.assertEqual(tarefa.status, Tarefa.STATUS_PENDENTE)
+
+
+class TituloExplicitoTarefaTest(TestCase):
+    def test_extrai_o_texto_depois_do_gatilho(self):
+        from atendimento.services import _titulo_explicito_tarefa as f
+        self.assertEqual(f('abrir tarefa: trocar a ONU do poste 12'), 'Trocar a ONU do poste 12')
+        self.assertEqual(f('Abrir tarefa para verificar MTU\nmais detalhes'), 'Verificar MTU')
+        self.assertEqual(f('nova tarefa sobre backup do BRAS'), 'Backup do BRAS')
+        self.assertEqual(f('Tomichinho, criar tarefa'), '')
+        self.assertEqual(f('abrir tarefa'), '')
+        self.assertEqual(f('vou deixar anotado, uma tarefa.. estou com Matheus'), '')
 
 
 class ChatRenderTest(TestCase):
@@ -1532,7 +1595,7 @@ class AbrirTarefaIATaskTest(TestCase):
         self.group.cliente = cliente
         self.group.save(update_fields=['cliente'])
 
-        resultado = abrir_tarefa_ia(str(self.conversation.id), 'abrir tarefa: antena fraca, trocar amanhã')
+        resultado = abrir_tarefa_ia(str(self.conversation.id), 'Tomichinho, criar tarefa')
 
         self.assertTrue(resultado['ok'])
         tarefa = Tarefa.objects.get(id=resultado['tarefa_id'])
@@ -1561,10 +1624,10 @@ class AbrirTarefaIATaskTest(TestCase):
         self.group.cliente = cliente
         self.group.save(update_fields=['cliente'])
 
-        resultado = abrir_tarefa_ia(str(self.conversation.id), 'abrir tarefa: sem IA configurada')
+        resultado = abrir_tarefa_ia(str(self.conversation.id), 'Tomichinho, gerar tarefa')
 
         tarefa = Tarefa.objects.get(id=resultado['tarefa_id'])
-        self.assertEqual(tarefa.titulo, 'abrir tarefa: sem IA configurada')
+        self.assertEqual(tarefa.titulo, 'Tomichinho, gerar tarefa')
 
     @mock.patch('atendimento.services.EvolutionAPIClient')
     @mock.patch('atendimento.ai.call_ai', return_value='{"titulo": "Verificar MTU", "descricao": "Cliente relata que pacotes acima de 1442 bytes não passam"}')

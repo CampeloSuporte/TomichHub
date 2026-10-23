@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-23 (abrir tarefa pelo comentário interno, concluir pelo painel)
+
+### Adicionado
+
+- **Concluir tarefa pelo painel fixo.** Cada item do painel "Suas tarefas a concluir" tem um botão
+  ✓ (com confirmação) que marca a tarefa como concluída e a tira da lista na hora.
+
+### Corrigido
+
+- **"abrir tarefa" no comentário interno do atendimento criava tarefa sem dono.** A tarefa era
+  criada no cliente do grupo, mas sem responsável, então não aparecia no painel de ninguém. Agora
+  quem escreveu o comentário vira autor e responsável, e o texto depois do comando vira o título
+  ("abrir tarefa: trocar a ONU do poste 12"), sem depender da IA. Ver `docs/TAREFAS.md`.
+
 ## [Não publicado] — 2026-10-23 (painel de tarefas do responsável)
 
 ### Adicionado

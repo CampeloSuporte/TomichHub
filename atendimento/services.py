@@ -323,6 +323,26 @@ def _pede_abertura_de_tarefa(texto: str) -> bool:
     return 'tarefa' in t and any(v in t for v in _TAREFA_VERBOS)
 
 
+_TITULO_EXPLICITO = _re.compile(
+    r'\b(?:%s)\s+(?:uma\s+|a\s+)?tarefa\b[\s:,\-–—]*(?:(?:para|pra|de|sobre)\s+)?(.*)' % '|'.join(_TAREFA_VERBOS),
+    _re.I,
+)
+
+
+def _titulo_explicito_tarefa(texto: str) -> str:
+    """O que o atendente escreveu depois do gatilho — "abrir tarefa: trocar
+    a ONU do poste 12" → "Trocar a ONU do poste 12". Só a 1ª linha; vazio se
+    não houver texto útil depois ("Tomichinho, criar tarefa"), e aí quem
+    monta o título é a IA a partir do histórico."""
+    m = _TITULO_EXPLICITO.search(texto or '')
+    if not m:
+        return ''
+    titulo = m.group(1).split('\n', 1)[0].strip(' .:-–—')
+    if len(_re.sub(r'\W', '', titulo)) < 3:
+        return ''
+    return (titulo[0].upper() + titulo[1:])[:200]
+
+
 # Palavra inteira, só infinitivo/imperativo (o pedido). Gerúndio
 # ("finalizando"), substantivo ("fechamento") e passado ("concluímos") ficam
 # de fora: o chamado #1978 fechou sozinho com "estou finalizando uma janela de
@@ -390,7 +410,7 @@ def _pede_fechamento_de_chamado(texto: str) -> bool:
     return False
 
 
-def _disparar_acoes_ia(conversation, content, is_internal=False) -> None:
+def _disparar_acoes_ia(conversation, content, is_internal=False, autor=None) -> None:
     """Gatilhos de AÇÃO do agente IA: abrir tarefa e fechar o chamado com a
     resolução. Rodam em background (Celery) — nunca bloqueiam o envio nem
     dependem da IA responder a tempo.
@@ -405,6 +425,10 @@ def _disparar_acoes_ia(conversation, content, is_internal=False) -> None:
     `is_internal` segue pra task: o que começou como comentário privado da
     equipe não pode gerar resposta no WhatsApp do cliente.
 
+    `autor` (quem escreveu o comentário interno) vira autor e responsável da
+    tarefa aberta — sem isso ela nascia sem dono e não aparecia no painel
+    "Suas tarefas a concluir" de ninguém.
+
     O FECHAMENTO só é analisado em comentário interno. Mensagem do WhatsApp
     e da caixa normal do chat é conversa com o cliente — o chamado #1978
     fechou sozinho com o atendente escrevendo "estou finalizando uma janela
@@ -414,7 +438,10 @@ def _disparar_acoes_ia(conversation, content, is_internal=False) -> None:
     acionou = False
     if _pede_abertura_de_tarefa(texto):
         from .tasks import abrir_tarefa_ia
-        abrir_tarefa_ia.delay(str(conversation.id), content, is_internal)
+        if is_internal and autor is not None:
+            abrir_tarefa_ia.delay(str(conversation.id), content, is_internal, autor_id=autor.id)
+        else:
+            abrir_tarefa_ia.delay(str(conversation.id), content, is_internal)
         acionou = True
     # Chamado já encerrado não reabre nem refaz resolução — e a própria
     # "Mensagem de encerramento" das configurações ("Finalizamos seu
@@ -2343,7 +2370,7 @@ class ConversationService:
             # Só as AÇÕES: a resposta conversacional a "tomichinho" continua
             # sendo coisa do grupo do WhatsApp, senão toda menção ao agente
             # numa mensagem do atendente viraria mais uma mensagem pro cliente.
-            _disparar_acoes_ia(conversation, text, is_internal)
+            _disparar_acoes_ia(conversation, text, is_internal, autor=agent)
 
             if is_internal:
                 return True, str(msg.id)

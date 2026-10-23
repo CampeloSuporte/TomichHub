@@ -182,6 +182,22 @@ def tarefa_status(request, tarefa_id):
 @login_required(login_url='login')
 @backoffice_required
 @require_POST
+def tarefa_concluir_painel(request, tarefa_id):
+    """Botão ✓ do painel "Suas tarefas a concluir" (base.html). O painel só
+    lista tarefas em que o usuário é responsável, e a permissão é essa mesma:
+    responsável conclui; outra tarefa dá 404."""
+    tarefa = get_object_or_404(Tarefa.objects.filter(responsaveis=request.user).distinct(), pk=tarefa_id)
+    if tarefa.status in (Tarefa.STATUS_CONCLUIDA, Tarefa.STATUS_CANCELADA):
+        return JsonResponse({'success': False, 'error': 'A tarefa já está encerrada.'}, status=400)
+    tarefa.status = Tarefa.STATUS_CONCLUIDA
+    tarefa.concluida_em = timezone.now()
+    tarefa.save(update_fields=['status', 'concluida_em', 'atualizado_em'])
+    return JsonResponse({'success': True})
+
+
+@login_required(login_url='login')
+@backoffice_required
+@require_POST
 def tarefa_excluir(request, tarefa_id):
     """Exclui uma tarefa a partir do painel do dashboard.
 
