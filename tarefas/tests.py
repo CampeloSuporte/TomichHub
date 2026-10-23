@@ -441,3 +441,69 @@ class KanbanChecklistTest(_BaseRotinas):
         self.assertIn('id="ktChecklist"', html)
         self.assertIn('data-modo="rotina"', html)
         self.assertIn('#tab-tarefas .modal-overlay > .modal-acesso { align-self:flex-start; }', html)
+
+
+class AvisoTarefasLoginTest(TestCase):
+    """Modal "Suas tarefas a concluir" que abre uma vez logo depois do login
+    para quem é responsável por tarefa em aberto (templatetags/tarefas_aviso)."""
+
+    def setUp(self):
+        self.inst = Instancia.objects.create(nome='Instância A')
+        self.atendente = _dar_2fa(User.objects.create_user(
+            username='atendente_a', email='aa@example.com', password='x', is_staff=True,
+        ))
+        PerfilUsuario.objects.create(usuario=self.atendente, role=PerfilUsuario.ROLE_OPERADOR, instancia=self.inst)
+        self.outro = _dar_2fa(User.objects.create_user(
+            username='outro_a', email='oa@example.com', password='x', is_staff=True,
+        ))
+        PerfilUsuario.objects.create(usuario=self.outro, role=PerfilUsuario.ROLE_OPERADOR, instancia=self.inst)
+
+        self.cliente = _cliente('CLIENTE X', self.inst)
+        self.minha = Tarefa.objects.create(titulo='Trocar ONU do cliente X', cliente=self.cliente, instancia=self.inst)
+        self.minha.responsaveis.add(self.atendente)
+        self.atrasada = Tarefa.objects.create(
+            titulo='Revisar BGP atrasado', cliente=self.cliente, instancia=self.inst,
+            prazo=timezone.now() - timezone.timedelta(days=1),
+        )
+        self.atrasada.responsaveis.add(self.atendente)
+        concluida = Tarefa.objects.create(
+            titulo='Tarefa ja concluida', cliente=self.cliente, instancia=self.inst,
+            status=Tarefa.STATUS_CONCLUIDA,
+        )
+        concluida.responsaveis.add(self.atendente)
+        alheia = Tarefa.objects.create(titulo='Tarefa de outra pessoa', cliente=self.cliente, instancia=self.inst)
+        alheia.responsaveis.add(self.outro)
+
+    def _pagina(self):
+        return self.client.get(reverse('quadro_instancia')).content.decode()
+
+    def test_modal_lista_so_as_tarefas_abertas_do_responsavel(self):
+        self.client.force_login(self.atendente)
+        html = self._pagina()
+        self.assertIn('modalTarefasLogin', html)
+        self.assertIn('Trocar ONU do cliente X', html)
+        self.assertIn('Revisar BGP atrasado', html)
+        self.assertNotIn('Tarefa ja concluida', html)
+        self.assertNotIn('Tarefa de outra pessoa', html)
+        self.assertIn(f'?id={self.cliente.id}&amp;aba=tarefas', html)
+        # Atrasada vem primeiro.
+        self.assertLess(html.index('Revisar BGP atrasado'), html.index('Trocar ONU do cliente X'))
+
+    def test_modal_aparece_uma_vez_por_login(self):
+        self.client.force_login(self.atendente)
+        self.assertIn('modalTarefasLogin', self._pagina())
+        self.assertNotIn('modalTarefasLogin', self._pagina())
+        self.client.logout()
+        self.client.force_login(self.atendente)
+        self.assertIn('modalTarefasLogin', self._pagina())
+
+    def test_sem_tarefa_em_aberto_nao_mostra_modal(self):
+        Tarefa.objects.filter(responsaveis=self.outro).update(status=Tarefa.STATUS_CONCLUIDA)
+        self.client.force_login(self.outro)
+        self.assertNotIn('modalTarefasLogin', self._pagina())
+
+    def test_login_pendente_de_2fa_nao_marca_aviso(self):
+        """Senha certa com 2FA pendente ainda não é login: só depois do
+        código o sinal dispara."""
+        self.client.post(reverse('login'), {'username': 'atendente_a', 'password': 'x'})
+        self.assertNotIn('tarefas_aviso_login', self.client.session)
