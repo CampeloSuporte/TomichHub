@@ -507,3 +507,16 @@ class AvisoTarefasLoginTest(TestCase):
         Tarefa.objects.filter(responsaveis=self.outro).update(status=Tarefa.STATUS_CONCLUIDA)
         self.client.force_login(self.outro)
         self.assertNotIn('modalTarefasLogin', self._pagina())
+
+    def test_login_do_portal_nao_ve_o_modal(self):
+        """Cliente pode ser responsável por tarefa do próprio cliente, mas o
+        aviso é só para a equipe."""
+        portal = _dar_2fa(User.objects.create_user(username='portal_x', email='px@example.com', password='x'))
+        self.cliente.usuario = portal
+        self.cliente.save()
+        self.minha.responsaveis.add(portal)
+        self.client.force_login(portal)
+        r = self.client.get(reverse('listar_clientes'), {'id': self.cliente.id})
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('CLIENTE X', r.content.decode())
+        self.assertNotIn('modalTarefasLogin', r.content.decode())

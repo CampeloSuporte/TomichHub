@@ -13,9 +13,7 @@ _ORDEM_PRIORIDADE = {Tarefa.PRIORIDADE_ALTA: 0, Tarefa.PRIORIDADE_MEDIA: 1, Tare
 def tarefas_abertas_do_responsavel(user):
     """Tarefas em aberto em que `user` é responsável, atrasadas primeiro,
     depois por prazo (sem prazo por último) e prioridade. Sem
-    `visiveis_para`: a elegibilidade já foi checada ao marcar o responsável,
-    e o login do portal (que `visiveis_para` não enxerga) também pode ser
-    responsável por tarefa do próprio cliente."""
+    `visiveis_para`: a elegibilidade já foi checada ao marcar o responsável."""
     tarefas = list(
         Tarefa.objects.filter(responsaveis=user)
         .exclude(status__in=[Tarefa.STATUS_CONCLUIDA, Tarefa.STATUS_CANCELADA])
@@ -32,14 +30,10 @@ def tarefas_abertas_do_responsavel(user):
 
 def _url_da_tarefa(tarefa, user):
     """Com cliente: aba Tarefas da página do cliente. Sem cliente (tarefa de
-    plataforma): painel do dashboard, que só a equipe tem."""
+    plataforma): painel do dashboard."""
     if tarefa.cliente_id:
         return f"{reverse('listar_clientes')}?id={tarefa.cliente_id}&aba=tarefas"
-    if perms.is_admin(user):
-        return reverse('quadro_geral')
-    if perms.is_backoffice(user):
-        return reverse('quadro_instancia')
-    return ''
+    return reverse('quadro_geral' if perms.is_admin(user) else 'quadro_instancia')
 
 
 @register.inclusion_tag('tarefas/_aviso_login.html', takes_context=True)
@@ -48,10 +42,12 @@ def tarefas_aviso_login(context):
     enquanto o usuário for responsável por tarefa em aberto. Não depende do
     login: a sessão dura 7 dias renovando a cada acesso, então quase ninguém
     passa pela tela de login (a 1ª versão, presa ao login, nunca aparecia).
-    Fechar vale só para a página atual; a próxima navegação mostra de novo."""
+    Fechar vale só para a página atual; a próxima navegação mostra de novo.
+    Só equipe (Administrador/Consultor/Operador): o login do portal do
+    cliente pode ser responsável por tarefa, mas não recebe o aviso."""
     request = context.get('request')
     user = getattr(request, 'user', None)
-    if not user or not user.is_authenticated:
+    if not user or not user.is_authenticated or not perms.is_backoffice(user):
         return {'tarefas': []}
     tarefas = tarefas_abertas_do_responsavel(user)
     for t in tarefas:

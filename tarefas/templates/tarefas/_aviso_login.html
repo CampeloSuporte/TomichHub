@@ -7,7 +7,7 @@
     #modalTarefasLogin .tal-resumo { font-size:.82rem; color:#9da7b3; margin-bottom:12px; }
     #modalTarefasLogin .tal-lista { max-height:55vh; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
     #modalTarefasLogin .tal-item { display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px solid #30363d; border-radius:8px; background:#161b22; text-decoration:none; color:inherit; }
-    #modalTarefasLogin a.tal-item:hover { border-color:rgba(88,166,255,.5); }
+    #modalTarefasLogin .tal-item:hover { border-color:rgba(88,166,255,.5); }
     #modalTarefasLogin .tal-item.atrasada { border-left:3px solid #e06060; }
     #modalTarefasLogin .tal-corpo { flex:1; min-width:0; }
     #modalTarefasLogin .tal-titulo { font-weight:500; color:#e6edf3; font-size:.9rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -35,7 +35,7 @@
                 </div>
                 <div class="tal-lista">
                     {% for t in tarefas %}
-                    {% if t.url_aviso %}<a href="{{ t.url_aviso }}" class="tal-item{% if t.atrasada %} atrasada{% endif %}">{% else %}<div class="tal-item{% if t.atrasada %} atrasada{% endif %}">{% endif %}
+                    <a href="{{ t.url_aviso }}" class="tal-item{% if t.atrasada %} atrasada{% endif %}">
                         <div class="tal-corpo">
                             <div class="tal-titulo" title="{{ t.titulo }}">{{ t.titulo }}</div>
                             <div class="tal-meta">
@@ -45,7 +45,7 @@
                             </div>
                         </div>
                         <span class="tal-badge {{ t.prioridade }}">{{ t.get_prioridade_display }}</span>
-                    {% if t.url_aviso %}</a>{% else %}</div>{% endif %}
+                    </a>
                     {% endfor %}
                 </div>
             </div>
