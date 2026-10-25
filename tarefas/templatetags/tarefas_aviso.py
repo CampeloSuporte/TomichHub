@@ -11,21 +11,21 @@ _ORDEM_PRIORIDADE = {Tarefa.PRIORIDADE_ALTA: 0, Tarefa.PRIORIDADE_MEDIA: 1, Tare
 
 
 def tarefas_abertas_do_responsavel(user):
-    """Tarefas em aberto em que `user` é responsável, mais as pendentes sem
-    ninguém designado que ele enxerga (qualquer um da instância pode
-    assumir — e atribuir alguém já passa a tarefa para "Em Andamento", então
-    sem isso o painel quase nunca mostrava pendente). Atrasadas primeiro,
-    depois por prazo (sem prazo por último) e prioridade. As do responsável
-    não passam por `visiveis_para`: a elegibilidade já foi checada ao
-    marcar o responsável."""
+    """Tarefas em aberto em que `user` é responsável, mais as pendentes que
+    ele criou e ainda não têm ninguém designado (atribuir alguém já passa a
+    tarefa para "Em Andamento", então sem isso o painel quase nunca mostrava
+    pendente). Só as do próprio usuário: pendente sem dono de outra pessoa
+    não entra. Atrasadas primeiro, depois por prazo (sem prazo por último) e
+    prioridade. Sem `visiveis_para`: a elegibilidade já foi checada ao
+    marcar o responsável, e quem criou já estava no escopo."""
     minhas = list(
         Tarefa.objects.filter(responsaveis=user)
         .exclude(status__in=[Tarefa.STATUS_CONCLUIDA, Tarefa.STATUS_CANCELADA])
         .select_related('cliente').distinct()
     )
     sem_responsavel = list(
-        Tarefa.objects.visiveis_para(user)
-        .filter(status=Tarefa.STATUS_PENDENTE, responsaveis__isnull=True)
+        Tarefa.objects
+        .filter(criado_por=user, status=Tarefa.STATUS_PENDENTE, responsaveis__isnull=True)
         .select_related('cliente')
     )
     for t in sem_responsavel:
@@ -51,8 +51,8 @@ def _url_da_tarefa(tarefa, user):
 @register.inclusion_tag('tarefas/_aviso_login.html', takes_context=True)
 def tarefas_aviso_login(context):
     """Modal "Suas tarefas a concluir" — abre em toda página com base.html
-    enquanto o usuário for responsável por tarefa em aberto ou houver
-    tarefa pendente sem responsável na instância dele. Não depende do
+    enquanto o usuário for responsável por tarefa em aberto ou tiver criado
+    tarefa pendente que ainda está sem responsável. Não depende do
     login: a sessão dura 7 dias renovando a cada acesso, então quase ninguém
     passa pela tela de login (a 1ª versão, presa ao login, nunca aparecia).
     Fechar vale só para a página atual; a próxima navegação mostra de novo.

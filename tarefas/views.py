@@ -185,12 +185,12 @@ def tarefa_status(request, tarefa_id):
 def tarefa_concluir_painel(request, tarefa_id):
     """Botão ✓ do painel "Suas tarefas a concluir" (base.html). A permissão
     é a mesma regra da lista do painel: responsável conclui, e tarefa sem
-    ninguém designado pode ser concluída por quem a enxerga (vira
-    responsável, para ficar registrado quem fez); outra tarefa dá 404."""
+    ninguém designado pode ser concluída por quem a criou (vira responsável,
+    para ficar registrado quem fez); outra tarefa dá 404."""
     tarefa = (
         Tarefa.objects.filter(responsaveis=request.user).distinct().filter(pk=tarefa_id).first()
         or get_object_or_404(
-            Tarefa.objects.visiveis_para(request.user).filter(responsaveis__isnull=True), pk=tarefa_id,
+            Tarefa.objects.filter(criado_por=request.user, responsaveis__isnull=True), pk=tarefa_id,
         )
     )
     if tarefa.status in (Tarefa.STATUS_CONCLUIDA, Tarefa.STATUS_CANCELADA):

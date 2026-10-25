@@ -262,8 +262,10 @@ adicionar/remover de outra instância 404, página do cliente com modal novo e c
 Quem é da **equipe** (Administrador, Consultor ou Operador) e é **responsável** por alguma tarefa
 em aberto (Pendente ou Em Andamento) vê um **painel flutuante no canto inferior esquerdo** com todas
 essas tarefas, **em toda página que navegar**, até concluí-las. Também entram as tarefas
-**Pendentes sem nenhum responsável** que ele enxerga (`visiveis_para`: a própria instância; o
-Administrador vê todas), marcadas "Pendente · sem responsável". Motivo: atribuir alguém já passa a
+**Pendentes que ele criou e ainda estão sem responsável**, marcadas "Pendente · sem
+responsável". Pendente sem dono criada por outra pessoa (ou sem autor) **não** entra: a 1ª versão
+(23/10) listava todas as pendentes sem responsável da instância e o painel passou a mostrar
+tarefas de outros atendentes. Motivo: atribuir alguém já passa a
 tarefa para Em Andamento, então pendente com responsável quase não existe e o painel só mostrava
 Em Andamento. O login do portal do cliente pode
 ser marcado como responsável, mas **não** vê o painel (`perms.is_backoffice` na template tag).
@@ -283,7 +285,7 @@ ser marcado como responsável, mas **não** vê o painel (`perms.is_backoffice` 
   clique no título** volta ao canto padrão (16px/16px).
 - **Concluir pelo painel:** botão ✓ em cada item → `uiConfirm` → `POST
   /tarefas/<id>/concluir-painel/` (`tarefa_concluir_painel`, JSON). Só equipe; conclui quem é
-  responsável ou, se a tarefa não tem ninguém, quem a enxerga (`visiveis_para`) — e esse vira
+  responsável ou, se a tarefa não tem ninguém, quem a criou — e esse vira
   responsável, para ficar registrado quem fez. 404 para os outros, igual ao que o painel lista. A tarefa sai da lista, a contagem
   e a pílula se atualizam e, se era a última, o painel some. As listas do dashboard na mesma página
   só refletem ao recarregar.
@@ -295,7 +297,7 @@ ser marcado como responsável, mas **não** vê o painel (`perms.is_backoffice` 
   `user_logged_in`, e não aparecia para ninguém: a sessão dura 7 dias e renova a cada acesso
   (`SESSION_SAVE_EVERY_REQUEST`). Não voltar a prender o aviso ao login.
 - **O que lista:** `tarefas_abertas_do_responsavel(user)`: as do responsável (sem `visiveis_para`: a
-  elegibilidade já foi checada ao marcar) + as Pendentes sem responsável de `visiveis_para`;
+  elegibilidade já foi checada ao marcar) + as Pendentes sem responsável com `criado_por=user`;
   atrasadas primeiro, depois por prazo (sem prazo no fim) e prioridade. Sem tarefa em aberto, nada é renderizado. Custo: duas consultas por página.
 - **Links:** tarefa com cliente abre `listar_clientes?id=N&aba=tarefas`. O `listar.html` aceita
   `?aba=` (grava em `sessionStorage.abaAtiva` antes da restauração da aba, só se a aba existir na
