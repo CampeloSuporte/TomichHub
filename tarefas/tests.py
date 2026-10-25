@@ -531,15 +531,16 @@ class AvisoTarefasLoginTest(TestCase):
         self.assertIsNotNone(self.minha.concluida_em)
         self.assertNotIn('Trocar ONU do cliente X', self._pagina())
 
-    def test_modal_lista_pendente_sem_responsavel_da_instancia(self):
+    def test_modal_lista_pendente_sem_responsavel_criada_pelo_usuario(self):
         """Atribuir alguém já passa para "Em Andamento"; sem listar as
-        pendentes sem responsável o painel quase nunca mostrava pendente."""
-        Tarefa.objects.create(titulo='Pendente livre', cliente=self.cliente, instancia=self.inst)
-        outra_inst = Instancia.objects.create(nome='Instância B')
-        Tarefa.objects.create(titulo='Pendente de outra instancia', instancia=outra_inst)
+        pendentes que o usuário criou o painel quase nunca mostrava pendente.
+        Pendente sem dono criada por outra pessoa não é dele: não entra."""
+        Tarefa.objects.create(titulo='Pendente minha', cliente=self.cliente, instancia=self.inst, criado_por=self.outro)
+        Tarefa.objects.create(titulo='Pendente do colega', cliente=self.cliente, instancia=self.inst, criado_por=self.atendente)
+        Tarefa.objects.create(titulo='Pendente sem autor', cliente=self.cliente, instancia=self.inst)
         Tarefa.objects.create(
             titulo='Andamento sem ninguem', cliente=self.cliente, instancia=self.inst,
-            status=Tarefa.STATUS_ANDAMENTO,
+            status=Tarefa.STATUS_ANDAMENTO, criado_por=self.outro,
         )
         Tarefa.objects.filter(responsaveis=self.outro).update(status=Tarefa.STATUS_CONCLUIDA)
         self.client.force_login(self.outro)
@@ -547,13 +548,15 @@ class AvisoTarefasLoginTest(TestCase):
         self.assertIn('id="avisoTarefas"', html)
         # O dashboard também lista as tarefas: confere só o painel.
         html = html[html.index('id="avisoTarefas"'):html.index('data-tav-expandir')]
-        self.assertIn('Pendente livre', html)
+        self.assertIn('Pendente minha', html)
         self.assertIn('sem responsável', html)
-        self.assertNotIn('Pendente de outra instancia', html)
+        self.assertNotIn('Pendente do colega', html)
+        self.assertNotIn('Pendente sem autor', html)
         self.assertNotIn('Andamento sem ninguem', html)
+        self.assertNotIn('Trocar ONU do cliente X', html)
 
     def test_concluir_pendente_sem_responsavel_pelo_painel(self):
-        livre = Tarefa.objects.create(titulo='Pendente livre', cliente=self.cliente, instancia=self.inst)
+        livre = Tarefa.objects.create(titulo='Pendente minha', cliente=self.cliente, instancia=self.inst, criado_por=self.outro)
         self.client.force_login(self.outro)
         r = self.client.post(reverse('tarefa_concluir_painel', args=[livre.id]))
         self.assertTrue(r.json()['success'])
@@ -561,10 +564,10 @@ class AvisoTarefasLoginTest(TestCase):
         self.assertEqual(livre.status, Tarefa.STATUS_CONCLUIDA)
         self.assertEqual(list(livre.responsaveis.all()), [self.outro])
 
-    def test_pendente_de_outra_instancia_nao_conclui_pelo_painel(self):
-        outra = Tarefa.objects.create(titulo='X', instancia=Instancia.objects.create(nome='Instância B'))
+    def test_pendente_de_outra_pessoa_nao_conclui_pelo_painel(self):
+        alheia = Tarefa.objects.create(titulo='X', cliente=self.cliente, instancia=self.inst, criado_por=self.atendente)
         self.client.force_login(self.outro)
-        r = self.client.post(reverse('tarefa_concluir_painel', args=[outra.id]))
+        r = self.client.post(reverse('tarefa_concluir_painel', args=[alheia.id]))
         self.assertEqual(r.status_code, 404)
 
     def test_so_responsavel_conclui_pelo_painel(self):

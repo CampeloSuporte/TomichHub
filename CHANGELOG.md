@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-25 (painel de tarefas só com as do usuário)
+
+### Corrigido
+
+- **Painel "Tarefas a concluir" voltou a mostrar só as suas tarefas.** A mudança de 23/10 listava
+  todas as pendentes sem responsável da instância, então apareciam tarefas de outros atendentes.
+  Agora entram só as tarefas em que você é responsável e as pendentes que você criou e ainda estão
+  sem responsável. Ver `docs/TAREFAS.md`.
+
 ## [Não publicado] — 2026-10-23 (painel de tarefas mostra pendentes)
 
 ### Corrigido
