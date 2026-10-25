@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-25 (console de VM do Proxmox renderiza)
+
+### Corrigido
+
+- **Acessos → web: console de VM do Proxmox (noVNC) abria em branco.** O noVNC do Proxmox 1.7
+  carrega o app por `import UI from "/novnc/app.js"` num `<script type="module">` inline, que o
+  proxy não reescrevia — o navegador pedia o arquivo na raiz do CRM (404). Agora imports absolutos
+  em scripts inline ganham o prefixo do proxy. O proxy da WebSocket também passou a responder os
+  pings do equipamento (o pong era montado e não era enviado). Ver `docs/proxy_web_acessos.md`.
+
 ## [Não publicado] — 2026-10-23 (painel de tarefas mostra pendentes)
 
 ### Corrigido

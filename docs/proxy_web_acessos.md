@@ -411,6 +411,41 @@ de 10 s fica só para conectar e para o upgrade. Como o `recv` agora bloqueia in
 
 ---
 
+### Console de VM do Proxmox (noVNC) não renderiza — Corrigido em 25/10/2026
+
+**Sintoma:** no Proxmox VE com `novnc-pve` 1.7 (ex.: NET PLAY, acesso 1773, VM 102), abrir o
+console da VM mostra só a página do noVNC sem tela — nem o painel "Connect". A console de LXC
+(xterm.js) e o resto da interface funcionam. No log do nginx/gunicorn aparece o pedido **fora do
+prefixo do proxy**, e nenhuma linha `[WS_PROXY]` de `qemu/<vmid>/vncwebsocket` no Daphne:
+
+```
+"GET /novnc/app.js?ver=1.7.0-2 HTTP/1.0" 404  (referer .../acessos/1773/web/8006/https/?console=kvm&novnc=1...)
+```
+
+**Causa:** a página não tem `<script src>` para o app; ela carrega tudo por um módulo inline:
+
+```html
+<script type="module">
+    import UI from "/novnc/app.js?ver=1.7.0-2";
+    UI.start({ settings: { defaults: {}, mandatory: {} } });
+</script>
+```
+
+A reescrita de `src`/`href` não alcança o especificador do `import`, então o navegador pedia
+`/novnc/app.js` na raiz do CRM (404), o módulo não carregava e a WebSocket nunca chegava a ser
+aberta. O resto do caminho (`vncproxy`, upgrade da `vncwebsocket` com `PVEAuthCookie`, túnel SSH)
+já estava correto — testado direto pelo túnel, o Proxmox responde `RFB 003.008`.
+
+**Correção:** `ProxyEngine._rewrite_imports_inline` reescreve `from "/x"`, `import "/x"` e
+`import("/x")` dentro do corpo de `<script>` inline (sem `src`), prefixando o `proxy_base`.
+Caminho relativo (`./x`), protocolo-relativo (`//cdn/x`) e já prefixado ficam como estão; texto
+fora de `<script>` não é tocado. Teste: `clientes.tests_proxy_web.RewriteImportInlineTest`.
+
+De quebra, `WebSocketProxyConsumer._ws_send_pong` montava o pong mas nunca o enviava (faltava o
+`sendall`): um ping do equipamento ficava sem resposta.
+
+---
+
 ### Acesso web demorando para abrir — Melhorado em 14/09/2026
 
 **Medição** (PBS da Conecta ISP, `172.18.234.5:8007`, caminho direto pelo OpenVPN; Proxmox da
