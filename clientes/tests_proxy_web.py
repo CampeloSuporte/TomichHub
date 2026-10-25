@@ -170,6 +170,41 @@ class VersionarAssetsTest(SimpleTestCase):
         self.assertNotIn('crmv=', out)
 
 
+class RewriteImportInlineTest(SimpleTestCase):
+    """noVNC do Proxmox carrega o app por `import UI from "/novnc/app.js"` num
+    módulo inline; sem reescrita o navegador pedia /novnc/app.js na raiz do
+    CRM (404) e o console da VM não renderizava."""
+
+    def _html(self, html: str) -> str:
+        return ProxyEngine(None).rewrite_content(html.encode(), 'text/html', BASE, '10.0.0.1').decode()
+
+    def test_import_do_novnc_do_proxmox_vai_pro_proxy(self):
+        out = self._html(
+            '<head><script type="module">\n'
+            '    import UI from "/novnc/app.js?ver=1.7.0-2";\n'
+            '    UI.start({ settings: { defaults: {}, mandatory: {} } });\n'
+            '</script></head>'
+        )
+        self.assertIn(f'import UI from "{BASE}/novnc/app.js?ver=1.7.0-2"', out)
+
+    def test_import_lateral_e_dinamico(self):
+        out = self._html("<script type=\"module\">import '/a.js'; import('/b.js');"
+                         "import {x} from './c.js';</script>")
+        self.assertIn(f"import '{BASE}/a.js'", out)
+        self.assertIn(f"import('{BASE}/b.js')", out)
+        self.assertIn("from './c.js'", out)
+
+    def test_ja_prefixado_url_de_protocolo_e_script_externo_ficam(self):
+        out = self._html(
+            f'<script type="module">import a from "{BASE}/a.js";'
+            'import b from "//cdn.x/b.js";</script>'
+            '<p>import from "/texto"</p>'
+        )
+        self.assertIn(f'from "{BASE}/a.js"', out)
+        self.assertIn('from "//cdn.x/b.js"', out)
+        self.assertIn('<p>import from "/texto"</p>', out)
+
+
 class ProxyWebCacheJsTest(TestCase):
 
     def setUp(self):

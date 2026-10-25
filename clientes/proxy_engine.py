@@ -1286,6 +1286,35 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
             html = html[:inicio] + importmap + html[inicio:]
         return html
 
+    # ── Import absoluto dentro de <script type="module"> inline ───────────────
+    #
+    # O noVNC do Proxmox (novnc-pve 1.7) não tem <script src> para o app: a
+    # página carrega com `import UI from "/novnc/app.js?ver=..."` num módulo
+    # inline. A troca de src/href não alcança o especificador, o navegador pedia
+    # /novnc/app.js na raiz do CRM (404) e o console ficava em branco — sem
+    # nem chegar a abrir a WebSocket. Reescreve `from "/x"`, `import "/x"` e
+    # `import("/x")` só no corpo de <script> inline.
+    _RX_SCRIPT_INLINE = re.compile(
+        r'(<script\b(?![^>]*\bsrc\s*=)[^>]*>)(.*?)(</script>)',
+        re.IGNORECASE | re.DOTALL,
+    )
+    _RX_IMPORT_ABSOLUTO = re.compile(
+        r'((?:\bfrom|\bimport)\s*\(?\s*)(["\'])/(?!/|clientes/acessos)'
+    )
+
+    @classmethod
+    def _rewrite_imports_inline(cls, html: str, proxy_base: str) -> str:
+        if 'import' not in html:
+            return html
+
+        def _script(m):
+            corpo = cls._RX_IMPORT_ABSOLUTO.sub(
+                lambda mi: f'{mi.group(1)}{mi.group(2)}{proxy_base}/', m.group(2)
+            )
+            return m.group(1) + corpo + m.group(3)
+
+        return cls._RX_SCRIPT_INLINE.sub(_script, html)
+
     def _rewrite_html(self, content: bytes, proxy_base: str, target_host: str,
                       cookie_prefix: str = '', target_port: int = None) -> bytes:
         try:
@@ -1315,6 +1344,8 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
             '<!-- meta-refresh removido pelo proxy -->',
             html, flags=re.IGNORECASE
         )
+
+        html = self._rewrite_imports_inline(html, proxy_base)
 
         html = self._versionar_assets(html)
 

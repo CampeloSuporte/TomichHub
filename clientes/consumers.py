@@ -2944,6 +2944,7 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         frame.append(0x80 | min(len(data), 125))
         frame.extend(b'\x00\x00\x00\x00')
         frame.extend(data[:125])
+        sock.sendall(bytes(frame))
 
 
 # ── Firmware Download Progress ─────────────────────────────────────────────
