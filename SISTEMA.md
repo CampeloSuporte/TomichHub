@@ -1545,6 +1545,24 @@ para o fim da linha anterior quando ela é continuação (`isWrapped`); fora dis
 cursor-left. Aplicado em `terminal.html` (`writeToTerminal`), `terminal_externo.html` e
 `modal_ssh_terminal.html` (`escreverComChunks`).
 
+#### Redimensionar com comando em digitação / prompt no rodapé
+
+`ajustarTerminal(t)` substitui o `fitAddon.fit()` puro em `refitTerminaisVisiveis` e no abrir/fechar
+do painel do Agent:
+
+- **Linha em edição:** o xterm faz reflow da linha quebrada na largura nova, mas o VRP ignora o
+  window-change (conferido ao vivo: nenhum byte) e segue apagando pela conta dele, então o
+  backspace seguinte caía no lugar errado. Se a largura muda e a linha do cursor é a última coisa da
+  tela, `linhaEmEdicao()` lê o texto lógico (linhas `isWrapped` juntas) e o deslocamento do cursor;
+  a linha é apagada (`ESC[n;1H ESC[J`), o fit roda, e o texto é reescrito com o cursor recolocado por
+  `\b` + DECSET 45. Chamadas durante a escrita assíncrona viram `_ajustePendente`.
+- **Prompt no rodapé:** ao crescer, o xterm puxa linhas do histórico; quando acaba (sessão curta,
+  depois do LIMPAR), completa com linhas vazias embaixo. Se o cursor estava na última linha, as
+  que faltam entram no topo (`ESC 7`, `ESC[H`, `ESC[nL`, `ESC 8`, `ESC[nB`).
+- Buffer alternativo (vim/top) fica de fora dos dois.
+
+`cursorEsquerdaQueVolta()` converte também `ESC[nD` (Ctrl+U do VRP manda `ESC[38D` + espaços + `ESC[38D`).
+
 ---
 
 #### Timeout do select() reduzido: 5ms → 1ms

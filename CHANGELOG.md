@@ -15,6 +15,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   apaga com "cursor para a esquerda", que não sobe de linha no terminal; agora o CRM converte para
   um backspace que volta para a linha de cima. Vale para o terminal, o link externo e o modal SSH.
   Ver `SISTEMA.md` (Apagar comando longo que quebrou de linha).
+- **Terminal: redimensionar a janela no meio de um comando não bagunça mais a linha.** Maximizar ou
+  diminuir a janela com um comando digitado fazia o xterm redistribuir a linha na largura nova,
+  mas o equipamento (o VRP ignora o resize) continuava apagando pela conta dele: sobrava pedaço
+  do comando na linha de cima ou de baixo. Agora a linha do prompt é reescrita na largura nova,
+  com o cursor no mesmo ponto. O "voltar várias colunas" do VRP (`ESC[nD`, usado no Ctrl+U e na
+  edição no meio da linha) também passou a subir de linha.
+- **Terminal: maximizar a janela deixa o prompt no rodapé.** Com a janela menor e pouco histórico
+  (sessão recém-aberta ou depois do LIMPAR), ao maximizar o xterm completava a tela com linhas
+  vazias embaixo e o prompt ficava no meio. Agora, se o cursor estava na última linha, as linhas que
+  faltam entram no topo e o prompt continua colado embaixo (vale também ao abrir/fechar o painel do
+  Agent). Programas de tela cheia (vim, top) não são afetados.
 
 ## [Não publicado] — 2026-10-26 (backup MikroTik com export travado)
 

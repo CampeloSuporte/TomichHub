@@ -233,14 +233,15 @@ function colorirOutput(texto) {
     return texto;
 }
 
-// Huawei VRP (e outras CLIs simples) apagam com ESC[1D + espaço + ESC[1D.
+// Huawei VRP (e outras CLIs simples) apagam com ESC[1D + espaço + ESC[1D e voltam
+// várias colunas com ESC[nD (Ctrl+U, edição no meio da linha).
 // Cursor-left não sobe de linha: num comando que quebrou na tela o cursor
 // trava na coluna 0 e o começo do comando fica sobrando na linha de cima.
-// Vira \b com o reverse-wraparound (DECSET 45) ligado só neste trecho —
+// Viram \b com o reverse-wraparound (DECSET 45) ligado só neste trecho —
 // aí o xterm.js volta para o fim da linha anterior quando ela é continuação.
 function cursorEsquerdaQueVolta(text) {
-    if (!/\x1b\[1?D/.test(text)) return text;
-    return '\x1b[?45h' + text.replace(/\x1b\[1?D/g, '\b') + '\x1b[?45l';
+    if (!/\x1b\[\d*D/.test(text)) return text;
+    return '\x1b[?45h' + text.replace(/\x1b\[(\d*)D/g, (_, n) => '\b'.repeat(Math.min(+n || 1, 1000))) + '\x1b[?45l';
 }
 
 function escreverComChunks(dados, terminal) {
