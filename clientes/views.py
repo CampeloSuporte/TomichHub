@@ -598,11 +598,11 @@ def template_excel_acessos(request, cliente_id):
     # ── Validação: Protocolo (coluna C = 3) ───────────────────────
     dv_proto = DataValidation(
         type='list',
-        formula1='"SSH,TELNET,HTTP,HTTPS,WINBOX,FTP,FTPS"',
+        formula1='"SSH,TELNET,HTTP,HTTPS,WINBOX,FTP,FTPS,RDP"',
         allow_blank=False,
         showDropDown=False,
     )
-    dv_proto.error       = 'Use: SSH, TELNET, HTTP, HTTPS, WINBOX, FTP, FTPS'
+    dv_proto.error       = 'Use: SSH, TELNET, HTTP, HTTPS, WINBOX, FTP, FTPS, RDP'
     dv_proto.errorTitle  = 'Protocolo inválido'
     dv_proto.showErrorMessage = True
     ws.add_data_validation(dv_proto)
@@ -674,6 +674,12 @@ def template_excel_acessos(request, cliente_id):
     return response
 
 
+def _chave_acesso_import(tipo, host, porta, protocolo, usuario, senha):
+    # Sem espaços nas pontas: há acessos salvos com espaço sobrando no nome/host
+    limpa = lambda v: str(v or '').strip()
+    return (limpa(tipo), limpa(host), porta, limpa(protocolo).upper(), limpa(usuario), limpa(senha))
+
+
 @login_required(login_url='login')
 @require_http_methods(['POST'])
 @modulo_habilitado_required('acessos')
@@ -687,10 +693,15 @@ def importar_acessos_excel(request, cliente_id):
 
     cliente = get_object_or_404(Cliente, id=cliente_id)
 
-    PROTO_VALIDOS = {'SSH', 'TELNET', 'HTTP', 'HTTPS', 'WINBOX', 'FTP', 'FTPS'}
+    # Grafia que o formulário grava (o modal manda "Telnet"); a planilha do
+    # e-mail de credenciais traz o valor do banco e é mantido como está.
+    PROTO_CANON = {
+        'SSH': 'SSH', 'TELNET': 'Telnet', 'HTTP': 'HTTP', 'HTTPS': 'HTTPS',
+        'WINBOX': 'WINBOX', 'FTP': 'FTP', 'FTPS': 'FTPS', 'RDP': 'RDP',
+    }
     DEFAULT_PORTS = {
         'SSH': 22, 'TELNET': 23, 'HTTP': 80, 'HTTPS': 443,
-        'FTP': 21, 'FTPS': 990, 'WINBOX': 8291,
+        'FTP': 21, 'FTPS': 990, 'WINBOX': 8291, 'RDP': 3389,
     }
 
     arquivo = request.FILES.get('arquivo')
@@ -708,6 +719,26 @@ def importar_acessos_excel(request, cliente_id):
 
     ws = wb.active
 
+    # Planilha do e-mail de credenciais (uma aba por cliente): o índice oculto
+    # _Clientes diz qual aba é deste cliente — por id, depois CNPJ, depois nome
+    # (id/CNPJ podem mudar se o banco for recriado).
+    if '_Clientes' in wb.sheetnames:
+        indice = list(wb['_Clientes'].iter_rows(min_row=2, values_only=True))
+        cnpj = (cliente.cnpj or '').strip()
+        nome = (cliente.nome_empresa or '').strip().upper()
+        aba = (
+            next((r[0] for r in indice if str(r[1]) == str(cliente.id)
+                  and str(r[3] or '').strip().upper() == nome), None)
+            or (next((r[0] for r in indice if cnpj and str(r[2] or '').strip() == cnpj), None))
+            or next((r[0] for r in indice if str(r[3] or '').strip().upper() == nome), None)
+        )
+        if not aba or aba not in wb.sheetnames:
+            return JsonResponse({
+                'success': False,
+                'error': f'A planilha não tem uma aba para "{cliente.nome_empresa}".',
+            })
+        ws = wb[aba]
+
     # Cache de funções e modelos
     funcao_cache = {f.descricao.upper(): f for f in Funcao_equipamento.objects.all()}
     modelo_cache = {}
@@ -716,6 +747,10 @@ def importar_acessos_excel(request, cliente_id):
         modelo_cache[m.nome.upper()] = m
 
     created, skipped, errors = [], [], []
+    existentes = {
+        _chave_acesso_import(a.tipo, a.host, a.porta, a.protocolo, a.usuario, a.senha)
+        for a in Acesso.objects.filter(cliente_id=cliente_id)
+    }
 
     # Dados começam na linha 4 (1=legenda, 2=cabeçalho, 3=exemplo)
     for row in ws.iter_rows(min_row=4, values_only=True):
@@ -728,17 +763,23 @@ def importar_acessos_excel(request, cliente_id):
         if tipo == 'SW-CLIENTE-01' and host == '192.168.0.1':
             continue
 
-        proto_raw = str(row[2] or 'SSH').strip().upper()
-        protocolo = proto_raw if proto_raw in PROTO_VALIDOS else 'SSH'
+        proto_raw = str(row[2] or 'SSH').strip()
+        proto_up = proto_raw.upper()
+        if proto_up in PROTO_CANON and proto_raw in (proto_up, PROTO_CANON[proto_up]):
+            protocolo = proto_raw
+        else:
+            protocolo = PROTO_CANON.get(proto_up, 'SSH')
 
         try:
-            porta = int(row[3]) if row[3] is not None else DEFAULT_PORTS.get(protocolo, 22)
+            porta = int(row[3]) if row[3] is not None else DEFAULT_PORTS.get(protocolo.upper(), 22)
         except (ValueError, TypeError):
-            porta = DEFAULT_PORTS.get(protocolo, 22)
+            porta = DEFAULT_PORTS.get(protocolo.upper(), 22)
 
         usuario  = str(row[4] or '').strip()
-        senha    = str(row[5] or '').strip() or senha_padrao
-        senha_adm = str(row[6] or '').strip()
+        # Senha vai como está: espaço no começo/fim pode ser parte dela
+        senha    = str(row[5] or '')
+        senha    = senha if senha.strip() else senha_padrao
+        senha_adm = str(row[6] or '') if row[6] is not None else ''
         vlan_raw = row[7]
         try:
             vlan = int(vlan_raw) if vlan_raw not in (None, '') else None
@@ -748,13 +789,22 @@ def importar_acessos_excel(request, cliente_id):
         funcao_str = str(row[8] or '').strip()
         modelo_str = str(row[9] or '').strip()
         notas      = str(row[10] or '').strip()
+        # L/M só existem na planilha do e-mail de credenciais
+        host_ipv6  = str(row[11] or '').strip() if len(row) > 11 and row[11] is not None else ''
+        try:
+            winbox = int(row[12]) if len(row) > 12 and row[12] not in (None, '') else None
+        except (ValueError, TypeError):
+            winbox = None
 
         funcao = funcao_cache.get(funcao_str.upper())
         funcao_id = funcao.id if funcao else 13
 
         modelo = modelo_cache.get(modelo_str.upper())
 
-        if Acesso.objects.filter(tipo=tipo, cliente_id=cliente_id).exists():
+        # Só pula o que já existe igual: o banco tem acessos com o mesmo nome e
+        # host/porta/credencial diferentes, e a restauração precisa trazer todos
+        chave = _chave_acesso_import(tipo, host, porta, protocolo, usuario, senha)
+        if chave in existentes:
             skipped.append(tipo)
             continue
 
@@ -772,8 +822,11 @@ def importar_acessos_excel(request, cliente_id):
                 senha_adm=senha_adm,
                 vlan=vlan,
                 notas=notas,
+                host_ipv6=host_ipv6 or None,
+                winbox=winbox,
             )
             created.append(tipo)
+            existentes.add(chave)
         except Exception as e:
             errors.append(f'{tipo}: {e}')
 

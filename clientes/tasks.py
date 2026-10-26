@@ -1250,11 +1250,149 @@ def _gerar_pdf_todos_acessos():
     return buf.read()
 
 
+# Colunas A–K seguem o template de importar_acessos_excel (clientes/views.py);
+# L–M são extras que o importador também lê quando presentes.
+EXCEL_CREDENCIAIS_COLUNAS = [
+    ('Nome do Host (tipo)', 30),
+    ('IP / Hostname',       22),
+    ('Protocolo',           12),
+    ('Porta',                8),
+    ('Usuário',             16),
+    ('Senha',               16),
+    ('Senha ADM',           16),
+    ('VLAN',                 8),
+    ('Função',              22),
+    ('Modelo',              28),
+    ('Notas Agent NOC',     34),
+    ('IPv6',                24),
+    ('Porta WinBox',        12),
+]
+
+# Aba oculta que mapeia cada aba de cliente → id/CNPJ/nome do cliente.
+# importar_acessos_excel usa para achar a aba certa sozinho.
+EXCEL_CREDENCIAIS_ABA_INDICE = '_Clientes'
+
+
+def _linha_excel_acesso(ac):
+    modelo = f'{ac.modelo.fabricante} — {ac.modelo.nome}' if ac.modelo else ''
+    return [
+        ac.tipo or '',
+        ac.host or '',
+        ac.protocolo or '',
+        ac.porta,
+        ac.usuario or '',
+        ac.senha or '',
+        ac.senha_adm or '',
+        ac.vlan,
+        ac.funcao.descricao if ac.funcao else '',
+        modelo,
+        ac.notas or '',
+        ac.host_ipv6 or '',
+        ac.winbox,
+    ]
+
+
+def _gerar_excel_todos_acessos():
+    """
+    Gera um .xlsx com os acessos de todos os clientes, para restaurar pelo
+    "Importar Excel" da tela de acessos.
+
+    - Uma aba por cliente no mesmo layout do template de importação
+      (linha 1 legenda, 2 cabeçalho, 3 vazia, dados a partir da 4).
+    - Aba "Todos" com tudo numa tabela só (Cliente/CNPJ + colunas), para consulta.
+    - Aba oculta _Clientes com o índice aba → cliente.
+    Retorna bytes do arquivo.
+    """
+    import re
+    from io import BytesIO
+    import openpyxl
+    from openpyxl.styles import PatternFill, Font, Alignment
+    from openpyxl.utils import get_column_letter
+    from django.utils import timezone as tz
+    from clientes.models import Cliente
+
+    header_fill = PatternFill('solid', fgColor='1e3a5f')
+    header_font = Font(bold=True, color='FFFFFF', size=10)
+
+    gerado_em = tz.localtime(tz.now()).strftime('%d/%m/%Y %H:%M')
+
+    wb = openpyxl.Workbook()
+    ws_todos = wb.active
+    ws_todos.title = 'Todos'
+    cab_todos = ['Cliente', 'CNPJ'] + [c[0] for c in EXCEL_CREDENCIAIS_COLUNAS]
+    ws_todos.append(cab_todos)
+    for idx, cell in enumerate(ws_todos[1], start=1):
+        cell.fill, cell.font = header_fill, header_font
+        largura = 30 if idx == 1 else 20 if idx == 2 else EXCEL_CREDENCIAIS_COLUNAS[idx - 3][1]
+        ws_todos.column_dimensions[get_column_letter(idx)].width = largura
+    ws_todos.freeze_panes = 'A2'
+
+    ws_idx = wb.create_sheet(EXCEL_CREDENCIAIS_ABA_INDICE)
+    ws_idx.sheet_state = 'hidden'
+    ws_idx.append(['Aba', 'Cliente ID', 'CNPJ', 'Cliente'])
+
+    nomes_usados = {'TODOS', EXCEL_CREDENCIAIS_ABA_INDICE.upper()}
+    clientes = Cliente.objects.order_by('nome_empresa')
+
+    for cliente in clientes:
+        acessos = list(
+            cliente.acessos.select_related('funcao', 'modelo').order_by('tipo')
+        )
+        if not acessos:
+            continue
+
+        # Nome de aba: até 31 caracteres, sem []:*?/\ e único
+        base = re.sub(r'[\[\]:*?/\\]', ' ', cliente.nome_empresa or f'Cliente {cliente.id}').strip()[:31] \
+            or f'Cliente {cliente.id}'
+        nome_aba, n = base, 2
+        while nome_aba.upper() in nomes_usados:
+            sufixo = f' ({n})'
+            nome_aba = base[:31 - len(sufixo)] + sufixo
+            n += 1
+        nomes_usados.add(nome_aba.upper())
+
+        ws = wb.create_sheet(nome_aba)
+        ultima_col = get_column_letter(len(EXCEL_CREDENCIAIS_COLUNAS))
+        ws.merge_cells(f'A1:{ultima_col}1')
+        ws['A1'] = (
+            f'Backup de credenciais — {cliente.nome_empresa}  |  CNPJ: {cliente.cnpj or "—"}  '
+            f'|  Gerado em {gerado_em}  |  Importe em Acessos → Importar Excel'
+        )
+        ws['A1'].font = Font(italic=True, size=9)
+        for col_idx, (label, largura) in enumerate(EXCEL_CREDENCIAIS_COLUNAS, start=1):
+            cell = ws.cell(row=2, column=col_idx, value=label)
+            cell.fill, cell.font = header_fill, header_font
+            cell.alignment = Alignment(horizontal='center')
+            ws.column_dimensions[get_column_letter(col_idx)].width = largura
+        ws.freeze_panes = 'A4'
+
+        for row_idx, ac in enumerate(acessos, start=4):
+            linha = _linha_excel_acesso(ac)
+            for col_idx, val in enumerate(linha, start=1):
+                cell = ws.cell(row=row_idx, column=col_idx, value=val)
+                # Senha "=abc" viraria fórmula (e sumiria na importação) e "0123"
+                # viraria número no Excel: força texto
+                if isinstance(val, str):
+                    cell.data_type = 's'
+                    cell.number_format = '@'
+            ws_todos.append([cliente.nome_empresa, cliente.cnpj or ''] + linha)
+            for cell in ws_todos[ws_todos.max_row]:
+                if isinstance(cell.value, str):
+                    cell.data_type = 's'
+                    cell.number_format = '@'
+
+        ws_idx.append([nome_aba, cliente.id, cliente.cnpj or '', cliente.nome_empresa])
+
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 @shared_task(bind=True)
 def enviar_pdf_credenciais(self):
     """
-    Gera PDF com todos os acessos e envia para os destinatários configurados.
-    Agendado a cada 2 dias.
+    Gera PDF + Excel (importável) com todos os acessos e envia para os
+    destinatários configurados. Agendado a cada 2 dias.
     """
     import smtplib
     from email.mime.multipart import MIMEMultipart
@@ -1270,6 +1408,14 @@ def enviar_pdf_credenciais(self):
     except Exception as e:
         logger.error(f'enviar_pdf_credenciais: erro ao gerar PDF — {e}')
         raise
+
+    # Excel vai junto para poder restaurar pelo "Importar Excel" dos acessos.
+    # Se falhar, o PDF segue sozinho.
+    try:
+        xlsx_bytes = _gerar_excel_todos_acessos()
+    except Exception as e:
+        xlsx_bytes = None
+        logger.error(f'enviar_pdf_credenciais: erro ao gerar Excel — {e}')
 
     # Configuração SMTP
     from clientes.models import ConfiguracaoSistema
@@ -1289,9 +1435,15 @@ def enviar_pdf_credenciais(self):
 
     data_str   = tz.localtime(tz.now()).strftime('%d/%m/%Y')
     nome_arq   = f'credenciais_{tz.localtime(tz.now()).strftime("%Y%m%d")}.pdf'
+    nome_xlsx  = nome_arq[:-4] + '.xlsx'
     assunto    = f'[CRM] Relatório de Credenciais — {data_str}'
     corpo      = (
         f'Segue em anexo o relatório de credenciais de acesso gerado em {data_str}.\n\n'
+        + (
+            'A planilha Excel anexa tem uma aba por cliente e pode ser importada em\n'
+            'Acessos → Importar Excel para restaurar os acessos do cliente.\n\n'
+            if xlsx_bytes else ''
+        ) +
         'Este e-mail é gerado automaticamente a cada 2 dias pelo sistema CRM.\n'
         'Documento confidencial — não repasse este arquivo.'
     )
@@ -1311,6 +1463,16 @@ def enviar_pdf_credenciais(self):
             encoders.encode_base64(part)
             part.add_header('Content-Disposition', f'attachment; filename="{nome_arq}"')
             msg.attach(part)
+
+            if xlsx_bytes:
+                part = MIMEBase(
+                    'application',
+                    'vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                )
+                part.set_payload(xlsx_bytes)
+                encoders.encode_base64(part)
+                part.add_header('Content-Disposition', f'attachment; filename="{nome_xlsx}"')
+                msg.attach(part)
 
             with smtplib.SMTP(smtp_host, smtp_port, timeout=30) as server:
                 server.ehlo()
