@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-26 (backup MikroTik com export travado)
+
+### Corrigido
+
+- **Backup MikroTik não se perde mais quando o `/export` trava no meio.** O "BGP - CENTRAL" e o
+  "BORDA - CGNAT" (CCR1036, RouterOS 6.49.18) passaram de ~2 s para **182 s** por backup e
+  gravavam "Backup vazio": o `/tool graphing` travou no equipamento, o export emudecia ali e o CRM
+  esperava 120 s e jogava fora os 26 KB que já tinham chegado. Agora o que chegou é mantido, o
+  resto vem seção a seção e só a parte travada fica de fora, com `# AVISO CRM` no arquivo e
+  "Backup realizado com aviso" no log. Os dois voltaram a ter backup completo, em **44–48 s**.
+  Vale para todo MikroTik. O travamento em si é do RouterOS (reboot ou mexer no graphing do
+  equipamento). Ver `docs/backup_automatico.md`.
+
 ## [Não publicado] — 2026-10-26 (💡 comandos úteis no terminal)
 
 ### Adicionado
