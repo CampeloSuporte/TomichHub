@@ -72,6 +72,11 @@ SAFE_COMMANDS: dict[str, list[str]] = {
         r'^show\s+ip\s+', r'^show\s+bgp\s+', r'^show\s+version\s*$',
         r'^show\s+running-config', r'^show\s+cdp\s+', r'^show\s+lldp\s+',
     ],
+    # Raisecom ROS (RAX700/ISCOM) — sintaxe conferida ao vivo num RAX711 (ROS 6.5.2)
+    'raisecom': [
+        r'^show\s+', r'^ping\s+', r'^traceroute\s+',
+        r'^terminal\s+page-break\s+disable\s*$',
+    ],
     'generico': [
         r'^show\s+', r'^display\s+', r'^get\s+',
         r'^ping\s+', r'^traceroute\s+', r'^tracert\s+',
@@ -432,6 +437,112 @@ def _is_operational_command(cmd: str, fabricante: str = 'generico') -> bool:
 
 
 # ─────────────────────────────────────────────────────────────────
+# Raisecom ROS — nomes de interface e DDM
+# ─────────────────────────────────────────────────────────────────
+# A listagem (`show interface description|brief`) mostra nomes abreviados
+# (`TGE1/1/1`, `GE1/2/2`, `FE1/0/1`), mas o DDM só aceita o nome completo com
+# espaço antes do número: `show transceiver ddm tengigabitethernet 1/1/1`.
+# `TGE1/1/1`, intervalo (`1/1/1-4`) e o comando sem porta dão erro.
+
+_RAISECOM_PREFIXOS = {
+    'tge': 'tengigabitethernet', 'tengigabitethernet': 'tengigabitethernet',
+    'ge': 'gigaethernet', 'gigaethernet': 'gigaethernet',
+    'fe': 'fastethernet', 'fastethernet': 'fastethernet',
+}
+_RAISECOM_IFACE_RE = re.compile(
+    r'\b(tengigabitethernet|gigaethernet|fastethernet|tge|ge|fe)\s*(\d+/\d+/\d+)(\.\d+)?\b',
+    re.IGNORECASE,
+)
+_RAISECOM_LOGICAS = ('vlan', 'lo', 'null', 'tunnel', 'port-channel', 'trunk')
+
+
+def _eh_raisecom(acesso, fabricante: str = '') -> bool:
+    modelo = getattr(acesso, 'modelo', None)
+    textos = (
+        fabricante or '',
+        getattr(modelo, 'fabricante', '') or '',
+        getattr(modelo, 'nome', '') or '',
+        getattr(acesso, 'tipo', '') or '',
+    )
+    return any('raisecom' in t.lower() for t in textos)
+
+
+def _raisecom_nome_completo(prefixo: str, numero: str, sub: str = '') -> str:
+    return f"{_RAISECOM_PREFIXOS[prefixo.lower()]} {numero}{sub or ''}"
+
+
+def _raisecom_normalizar_ddm(comando: str) -> str | None:
+    """Corrige as variantes erradas de consulta de transceiver para a forma
+    que o ROS aceita. Devolve None quando não é consulta de transceiver ou
+    quando não há porta física no comando."""
+    cmd = comando.strip()
+    if not re.match(r'^show\s+', cmd, re.IGNORECASE) or 'transceiver' not in cmd.lower():
+        return None
+    m = _RAISECOM_IFACE_RE.search(cmd)
+    if not m or m.group(3):          # sem porta, ou sub-interface (não tem SFP)
+        return None
+    nome = _raisecom_nome_completo(m.group(1), m.group(2))
+    if re.search(r'\binformation\b', cmd, re.IGNORECASE):
+        return f'show transceiver information {nome}'
+    return f'show transceiver ddm {nome}'
+
+
+def _raisecom_ddm_explicado(comando: str, saida: str) -> str:
+    """O ROS devolve só a legenda, sem nenhum valor, em dois casos que parecem
+    erro de comando: DDM desligado no switch inteiro (falta `transceiver ddm
+    enable` na configuração — visto num RAX700 da DS TECH) ou módulo sem
+    diagnóstico digital (cabo DAC). Diz o motivo e como confirmar; não sugere
+    ligar nada, que é configuração."""
+    cmd = comando.strip()
+    m = re.match(r'^show\s+transceiver\s+(ddm|information)\s+(.+)$', cmd, re.IGNORECASE)
+    if not m:
+        return saida
+    tipo, porta = m.group(1).lower(), m.group(2)
+    if tipo == 'information':
+        if saida.strip():
+            return saida
+        return (f'[O switch não devolveu dados do módulo de {porta}: porta sem módulo '
+                f'ou módulo sem identificação legível.]')
+    if re.search(r'Optical\s+Rx\s+Power', saida, re.IGNORECASE):
+        return saida
+    return saida + (
+        f'\n[Sem valores de DDM para {porta}. Causas: (1) DDM desligado no switch — '
+        f'confira se a configuração tem `transceiver ddm enable` '
+        f'(`show running-config | include transceiver`); (2) módulo sem diagnóstico digital '
+        f'(cabo DAC/SFP simples) — confira em `show transceiver information {porta}` → '
+        f'"Digital diagnostic function".]'
+    )
+
+
+def _raisecom_anotar_interfaces(texto: str) -> tuple[str, list[str]]:
+    """Expande os nomes abreviados no início de cada linha e marca cada
+    interface como [FÍSICA] (tem SFP), [SUB-INTERFACE] ou [LÓGICA]. Devolve o
+    texto anotado e os nomes completos das físicas, na ordem em que aparecem.
+
+    Os espaços de alinhamento das colunas viram um só: a saída passa pelo
+    corte de _MAX_TOOL_OUTPUT, e um RAX700 tem ~30 linhas largas — com o
+    nome expandido as VLANs do fim seriam cortadas."""
+    linhas, fisicas = [], []
+    for linha in texto.splitlines():
+        partes = linha.split()
+        primeiro = partes[0] if partes else ''
+        resto = ' '.join(partes[1:])
+        m = re.fullmatch(r'(TGE|GE|FE)(\d+/\d+/\d+)(\.\d+)?', primeiro, re.IGNORECASE)
+        if m:
+            nome = _raisecom_nome_completo(m.group(1), m.group(2), m.group(3))
+            if m.group(3):
+                linhas.append(f'{nome} | {resto} [SUB-INTERFACE]')
+            else:
+                linhas.append(f'{nome} | {resto} [FÍSICA]')
+                fisicas.append(nome)
+        elif primeiro and primeiro.lower().startswith(_RAISECOM_LOGICAS) and re.search(r'\d', primeiro):
+            linhas.append(f'{primeiro} | {resto} [LÓGICA]')
+        else:
+            linhas.append(linha)
+    return '\n'.join(linhas), fisicas
+
+
+# ─────────────────────────────────────────────────────────────────
 # SSH helper (síncrono — rodado em thread pool via asyncio)
 # ─────────────────────────────────────────────────────────────────
 
@@ -514,7 +625,7 @@ TOOLS_DEFINITION: list[dict] = [
                 "query":      {"type": "string", "description": "Texto de busca"},
                 "fabricante": {
                     "type": "string",
-                    "description": "Filtrar por fabricante: zte, huawei, cisco, mikrotik, datacom, generico",
+                    "description": "Filtrar por fabricante: zte, huawei, cisco, mikrotik, datacom, raisecom, generico",
                 },
                 "categoria": {
                     "type": "string",
@@ -793,7 +904,7 @@ TOOLS_OPENAI: list[dict] = [
                 "type": "object",
                 "properties": {
                     "query":      {"type": "string", "description": "Texto de busca"},
-                    "fabricante": {"type": "string", "description": "Filtrar por fabricante: zte, huawei, cisco, mikrotik, datacom, generico"},
+                    "fabricante": {"type": "string", "description": "Filtrar por fabricante: zte, huawei, cisco, mikrotik, datacom, raisecom, generico"},
                     "categoria":  {"type": "string", "description": "Filtrar por categoria: comando, procedure, troubleshooting, topologia, equipamento, alarme, geral"},
                 },
                 "required": ["query"],
@@ -1435,6 +1546,7 @@ Antes de executar qualquer comando em um host, identifique:
    - `zte` → comandos ZTE OLT: `show pon onu state`, `show gpon onu detail-info`
    - `cisco` → comandos IOS: `show ip interface brief`, `show version`, `show running-config`
    - `datacom` → comandos DmOS: `show interface description` (listar interfaces), `show interface transceivers` (sinal óptico de TODOS os SFPs — depois filtre pela interface), `show bgp summary`, `show ip route`
+   - `raisecom` → comandos ROS: `show interface description` (listar interfaces + estado), `show interface brief` (velocidade, utilização, erros), `show transceiver ddm tengigabitethernet 1/1/1` (sinal óptico de UMA porta), `show transceiver information tengigabitethernet 1/1/1` (tipo/λ do SFP), `show version`
    - `generico` / Linux → comandos bash: `ip addr`, `df -h`, `free -m`, `systemctl status`
 2. **Função** — define o que o equipamento faz (OLT, roteador, switch, servidor, firewall, etc.) e quais comandos fazem sentido
 3. **Modelo** — detalhes adicionais de hardware que influenciam os comandos
@@ -1535,6 +1647,10 @@ Se existir tanto uma interface física quanto uma virtual com relação ao mesmo
 **Datacom DmOS:**
 - Buscar por descrição: `show interface description` (singular — NÃO "show interfaces") — leia TODAS as linhas
 
+**Raisecom ROS:**
+- Buscar por descrição: `show interface description` (singular) — colunas Interface / Admin / Operate / Description; leia TODAS as linhas
+- Velocidade, utilização e erros: `show interface brief`
+
 **Cisco IOS/IOS-XE:**
 - Buscar por descrição: `show interfaces description` (plural) — leia TODAS as linhas
 - **NUNCA use `| include`** para busca por descrição, pois `SW-HU-NDD-P2` não casa com busca por "NDD P2"
@@ -1581,6 +1697,7 @@ Com o nome da interface em mãos, execute o comando de transceiver:
 |-----------|---------|
 | Huawei VRP (switch/roteador) | `display transceiver diagnosis interface <NOME>` |
 | Datacom DmOS | `show interface transceivers` → lista TODOS os SFPs com Tx/Rx Power; filtre pela interface desejada |
+| Raisecom ROS | `show transceiver ddm <NOME COMPLETO>` (ex: `show transceiver ddm tengigabitethernet 1/1/1`) — uma porta por vez |
 | Cisco IOS/IOS-XE | `show interfaces <NOME> transceiver` |
 | Cisco NX-OS | `show interface <NOME> transceiver details` |
 | MikroTik (SFP com DDM) | `/interface ethernet monitor <NOME> once` |
@@ -1631,6 +1748,32 @@ Passo 2 (executado automaticamente pelo sistema): show interface transceivers
 ❌ ERRADO: `show interfaces description` → Datacom usa singular "interface"
 ❌ ERRADO: `display interface description` → comando Huawei, não funciona no DmOS
 ❌ ERRADO: `show interface 1/1/4` → falta o prefixo; o nome correto é "ten-gigabit-ethernet 1/1/4"
+```
+
+**Exemplo completo — switch Raisecom ROS (RAX700/ISCOM):**
+```
+Passo 1: execute_command(acesso_id=X, comando="show interface description")
+  → Output: "tengigabitethernet 1/1/3 | UP UP CNX.OLT-17 [FÍSICA]"
+  → O equipamento mostra "TGE1/1/3"; o sistema já expande para o nome completo
+
+Passo 2: execute_command(acesso_id=X, comando="show transceiver ddm tengigabitethernet 1/1/3")
+  → Retorna Temperature, Tx bias Current, Optical Tx Power (dBm), Optical Rx Power (dBm), Supply Voltage
+  → Coluna Status: "*" normal, "+"/"-" warning alto/baixo, "++"/"--" alarme alto/baixo
+  (Se usar `| include` no Passo 1, o sistema já roda o Passo 2 na primeira porta física encontrada)
+
+Tipo do SFP (λ, distância, fabricante): `show transceiver information tengigabitethernet 1/1/3`
+
+⚠️ Se o DDM vier só com a legenda (sem as linhas "Optical Tx/Rx Power"), NÃO diga que a fibra está
+rompida nem que o sinal é zero: o switch não está medindo. Repasse a nota do sistema que vem no output
+(DDM desligado no switch — falta `transceiver ddm enable` — ou módulo sem diagnóstico, como cabo DAC).
+Não ligue o DDM por conta própria: é alteração de configuração.
+
+Prefixos: TGE → `tengigabitethernet`, GE → `gigaethernet` (NÃO "gigabitethernet"), FE → `fastethernet`
+❌ ERRADO: `show transceiver ddm TGE1/1/3` → erro (nome abreviado não é aceito)
+❌ ERRADO: `show transceiver ddm` (sem porta) → "Incomplete command"
+❌ ERRADO: `show transceiver ddm tengigabitethernet 1/1/1-4` → intervalo não existe; consulte porta por porta
+❌ ERRADO: `show interfaces <X> transceiver` → sintaxe Cisco
+❌ Sub-interface (`tengigabitethernet 1/1/1.1804`) e VLAN não têm SFP — use a porta física
 ```
 
 ⚠️ **INTERCEPTAÇÃO AUTOMÁTICA**: Se você usar `| include <termo>`, o sistema executa automaticamente `display interface description` (sem filtro) e faz busca case-insensitive em Python. O resultado já vem filtrado com nomes de interface já expandidos (ex: `XGE0/0/2` → `XGigabitEthernet0/0/2`). Use o nome expandido retornado para o passo 2.
@@ -1778,6 +1921,13 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
         if _xcvr_normalize:
             comando = f'display transceiver diagnosis interface {_xcvr_normalize}'
 
+        # Raisecom: o DDM só aceita o nome completo da porta, com espaço
+        # (`show transceiver ddm tengigabitethernet 1/1/1`). Corrige nome
+        # abreviado (TGE1/1/1), "ddm" faltando e a sintaxe Cisco.
+        _is_raisecom = _eh_raisecom(acesso, fabricante)
+        if _is_raisecom:
+            comando = _raisecom_normalizar_ddm(comando) or comando
+
         # Interceptar "display/show interface(s) description | include <termo>"
         # O modelo frequentemente usa | include mesmo com instrução contrária.
         # O | include do Huawei/Cisco é CASE-SENSITIVE, causando falsos negativos.
@@ -1856,7 +2006,17 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
                         return line + '  [FÍSICA — tem SFP/transceiver]'
                     return line
 
-                if matches:
+                _rc_fisicas: list[str] = []
+                if matches and _is_raisecom:
+                    # Raisecom tem prefixos próprios (GE = gigaethernet, não
+                    # GigabitEthernet como no Huawei) — anotação dedicada.
+                    _rc_texto, _rc_fisicas = _raisecom_anotar_interfaces("\n".join(matches))
+                    output = (
+                        f"[Busca case-insensitive por '{search_raw}' em `{cmd_base}`]\n"
+                        f"[Nomes expandidos; interfaces físicas marcadas com [FÍSICA]]\n"
+                        + _rc_texto
+                    )
+                elif matches:
                     expanded_lines = [_iface_type_tag(l) for l in _expand_iface_names("\n".join(matches)).splitlines()]
                     output = (
                         f"[Busca case-insensitive por '{search_raw}' em `{cmd_base}`]\n"
@@ -1882,6 +2042,17 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
                     'ten-gigabit-ethernet', 'gigabit-ethernet',
                     'hundred-gigabit-ethernet', 'fast-ethernet', 'ethernet',
                 )
+                if _rc_fisicas:
+                    _rc_cmd = f'show transceiver ddm {_rc_fisicas[0]}'
+                    try:
+                        _rc_out = await asyncio.get_event_loop().run_in_executor(
+                            None, _ssh_exec_sync, acesso, _rc_cmd,
+                        )
+                        output += (f'\n\n--- [Sinal Óptico — `{_rc_cmd}`] ---\n'
+                                   + _raisecom_ddm_explicado(_rc_cmd, _rc_out))
+                    except Exception:
+                        pass
+
                 if _is_datacom_xcvr and matches:
                     for _m in matches:
                         _tok = _m.strip().split()[0].lower() if _m.strip() else ''
@@ -1948,6 +2119,24 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
                             )
                     except Exception:
                         pass
+
+                if _is_raisecom:
+                    output = _raisecom_ddm_explicado(comando, output)
+
+                # Raisecom: a listagem vem com nomes abreviados (TGE1/1/1) que o
+                # DDM não aceita — expande, marca física/lógica e diz o próximo passo.
+                if _is_raisecom and re.match(
+                    r'^show\s+interface\s+(description|brief)\s*$', comando.strip(), re.IGNORECASE,
+                ):
+                    output, _rc_fis = _raisecom_anotar_interfaces(output)
+                    if _rc_fis:
+                        # No topo: o corte de tamanho da saída é pelo fim.
+                        output = (
+                            '[Raisecom: nomes expandidos. [FÍSICA] = porta com SFP; '
+                            '[SUB-INTERFACE]/[LÓGICA] = sem sinal óptico. Sinal óptico: '
+                            f'`show transceiver ddm {_rc_fis[0]}` — nome completo, uma porta por vez]\n'
+                            + output
+                        )
 
                 # Auto-annotate + força próximo passo para Datacom.
                 # Quando o agent roda "show interface description", o output mostra os

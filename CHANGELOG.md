@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-26 (Agent NOC: interfaces e sinal óptico Raisecom)
+
+### Adicionado
+
+- **Agent NOC entende switches Raisecom (ROS).** Listagem de interfaces (`show interface
+  description` / `brief`) e sinal óptico por porta (`show transceiver ddm tengigabitethernet 1/1/1`),
+  conferidos ao vivo em dois RAX711. O agente corrige sozinho o nome abreviado da porta (`TGE1/1/1`),
+  que o ROS não aceita no DDM, e marca cada interface como física, sub-interface ou lógica. Quando a
+  porta não devolve valores, explica o motivo (DDM desligado no switch ou módulo sem diagnóstico) em
+  vez de parecer fibra rompida. Ver `docs/agent_noc.md`.
+
+### Corrigido
+
+- **SSH da plataforma desliga a paginação na Raisecom** (`terminal page-break disable`), como já
+  fazia no Huawei. A saída longa parava no `--More--` e voltava cortada.
+
 ## [Não publicado] — 2026-10-26 (lista de conversas se ressincroniza sozinha)
 
 ### Corrigido

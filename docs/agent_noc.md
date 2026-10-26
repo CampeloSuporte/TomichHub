@@ -520,3 +520,46 @@ Resumo: 2 diminuíram, 2 iguais. ✅ Variação até 0.51 dB, dentro da oscilaç
 Validado ao vivo na Sartor (rompimento JURUENA ↔ REG.JUINA de 19/10/2026): ANTES de REG.JUINA
 idêntico ao relatório manual nos 4 ramos; DEPOIS de JURUENA idêntico; o restante difere só pelo
 degrau de quantização do DDM.
+
+## Interfaces e sinal óptico Raisecom (ROS) — Adicionado em 2026-10-26
+
+**Arquivos:** `home/agent_engine.py`, `clientes/consumers.py` (`_comando_paginacao`)
+
+Antes a Raisecom não tinha nada mapeado: caía no fabricante `generico` e o agente adivinhava a
+sintaxe. Comandos conferidos ao vivo em RAX711-C-R-AC/S (ROS 6.5.2): SAO DIOGO (Villaggionet,
+direto) e BA-CAR-A01-SW-01 (DS TECH, via proxy).
+
+| Para quê | Comando |
+|---|---|
+| Listar interfaces + estado + descrição | `show interface description` |
+| Velocidade, utilização, erros | `show interface brief` |
+| Sinal óptico de **uma** porta | `show transceiver ddm tengigabitethernet 1/1/1` |
+| Tipo do SFP (λ, distância, fabricante, se tem DDM) | `show transceiver information tengigabitethernet 1/1/1` |
+
+O que **não** funciona no ROS: nome abreviado no DDM (`show transceiver ddm TGE1/1/1`), comando
+sem porta (`Incomplete command`), intervalo (`1/1/1-4`) e a sintaxe Cisco
+(`show interfaces X transceiver`).
+
+**Nomes de porta:** a listagem mostra `TGE1/1/1`, `GE1/2/2`, `FE1/0/1`; o DDM exige
+`tengigabitethernet 1/1/1`, `gigaethernet 1/2/2` (não "gigabitethernet"), `fastethernet 1/0/1`,
+com espaço antes do número.
+
+**O que o código faz:**
+- `SAFE_COMMANDS['raisecom']`: `show`, `ping`, `traceroute` liberados no nível leitura.
+- `_raisecom_normalizar_ddm`: corrige o comando antes de enviar (nome abreviado, "ddm" faltando,
+  sintaxe Cisco) para a forma aceita.
+- `_raisecom_anotar_interfaces`: na saída de `show interface description|brief` (e no
+  `| include` interceptado), expande os nomes e marca `[FÍSICA]` / `[SUB-INTERFACE]` /
+  `[LÓGICA]`. A dica com o comando de DDM vai no **topo**, porque o corte de tamanho da saída
+  (`_MAX_TOOL_OUTPUT`) é pelo fim. Os espaços de alinhamento viram um só pelo mesmo motivo.
+- No `| include`, o DDM da primeira porta física encontrada roda automaticamente (como no Datacom).
+- `_raisecom_ddm_explicado`: quando o DDM volta só com a legenda, sem valores, acrescenta uma nota
+  com as duas causas vistas em campo: **DDM desligado no switch** (a configuração não tem
+  `transceiver ddm enable`; é o caso do switch da DS TECH, onde nenhuma porta devolve valores) ou
+  **módulo sem diagnóstico** (a TGE1/1/3 do SAO DIOGO é um cabo DAC Finisar de 3 m). O prompt
+  proíbe o agente de ler isso como fibra rompida e de ligar o DDM por conta própria.
+- `_comando_paginacao` (consumers): o SSH da plataforma passou a mandar
+  `terminal page-break disable` na Raisecom antes do comando, como já fazia
+  `screen-length 0 temporary` no Huawei. Sem isso a saída longa parava no `--More--`.
+
+Testes: `home/tests_agent_raisecom.py`, `clientes/tests_platform_ssh_exec.py` (`PaginacaoTest`).

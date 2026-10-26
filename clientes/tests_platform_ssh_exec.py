@@ -46,6 +46,23 @@ class SondaRouterOSTest(SimpleTestCase):
         self.assertIsNone(c._ROUTEROS_PROBE_RE.search(b'\r\nInfo: last login...\r\n<NE8K>'))
 
 
+class PaginacaoTest(SimpleTestCase):
+    def test_huawei_e_raisecom_desligam_a_paginacao(self):
+        self.assertEqual(c._comando_paginacao(_acesso('Huawei')), b'screen-length 0 temporary')
+        self.assertEqual(c._comando_paginacao(_acesso('RAISECOM')), b'terminal page-break disable')
+        self.assertEqual(c._comando_paginacao(_acesso(tipo='SW RAISECOM SAO DIOGO')),
+                         b'terminal page-break disable')
+
+    def test_outros_nao_mandam_nada(self):
+        self.assertIsNone(c._comando_paginacao(_acesso('Datacom')))
+        self.assertIsNone(c._comando_paginacao(_acesso()))
+
+    def test_shell_recebe_o_comando_de_paginacao(self):
+        with mock.patch.object(c, '_pexpect_exec', return_value='ok') as shell:
+            c.platform_ssh_exec(_acesso('RAISECOM'), 'show version')
+        self.assertEqual(shell.call_args.args[3], b'terminal page-break disable')
+
+
 class RoteamentoTest(SimpleTestCase):
     def setUp(self):
         self.routeros = self.enterContext(
