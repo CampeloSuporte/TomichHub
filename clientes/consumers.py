@@ -3003,7 +3003,7 @@ _PROMPT_RE = rb'[>#\$\]] *$'
 
 
 def _pexpect_exec(cmd_line: str, senha: str, comando: str,
-                  is_huawei: bool, timeout: int = 25) -> str:
+                  paginacao: bytes | None, timeout: int = 25) -> str:
     """Abre conexão SSH via pexpect, executa um comando e retorna o output."""
     import re as _re
     proc = pexpect.spawn(cmd_line, timeout=timeout, encoding=None, maxread=131072)
@@ -3030,8 +3030,8 @@ def _pexpect_exec(cmd_line: str, senha: str, comando: str,
         if proc.expect([_ROUTEROS_PROBE_RE, _PROMPT_RE], timeout=15) == 0:
             raise _RouterOSDetectado()
 
-        if is_huawei:
-            proc.sendline(b'screen-length 0 temporary')
+        if paginacao:
+            proc.sendline(paginacao)
             proc.expect(_PROMPT_RE, timeout=8)
 
         # Padrões de prompt esperados — inclui [Y/N] e [Y(yes)/N(no)/C(cancel)] para Huawei NE/VS
@@ -3175,7 +3175,7 @@ def _routeros_exec(acesso, comando: str, timeout: int = 25, proxy=None, origem=N
 
 
 def _paramiko_proxy_exec(proxy, acesso, comando: str,
-                          is_huawei: bool, timeout: int = 25) -> str:
+                          paginacao: bytes | None, timeout: int = 25) -> str:
     """Executa comando via paramiko através de um proxy SSH (direct-tcpip)."""
     import re as _re
 
@@ -3220,8 +3220,8 @@ def _paramiko_proxy_exec(proxy, acesso, comando: str,
 
         _read_until_prompt(shell, 6)  # consumir banner inicial
 
-        if is_huawei:
-            shell.send(b'screen-length 0 temporary\r')
+        if paginacao:
+            shell.send(paginacao + b'\r')
             _read_until_prompt(shell, 5)
 
         # Suporte multi-linha: envia cada linha separadamente
@@ -3254,6 +3254,23 @@ def _paramiko_proxy_exec(proxy, acesso, comando: str,
         # Não fechar proxy_client — está no pool para reutilização
 
 
+def _comando_paginacao(acesso) -> bytes | None:
+    """Comando que desliga a paginação da sessão, enviado antes do comando
+    pedido. Sem ele a saída longa para no "--More--" e volta cortada — no
+    Raisecom isso pegava justamente a lista de portas e o DDM."""
+    fabricante = ''
+    modelo_nome = ''
+    if acesso.modelo:
+        fabricante = (getattr(acesso.modelo, 'fabricante', '') or '').lower()
+        modelo_nome = (getattr(acesso.modelo, 'nome', '') or '').lower()
+    tipo = (acesso.tipo or '').lower()
+    if fabricante == 'huawei' or 'huawei' in tipo:
+        return b'screen-length 0 temporary'
+    if any('raisecom' in t for t in (fabricante, modelo_nome, tipo)):
+        return b'terminal page-break disable'
+    return None
+
+
 def platform_ssh_exec(acesso, comando: str, timeout: int = 25) -> str:
     """
     Executa um único comando SSH em um Acesso usando a mesma infraestrutura
@@ -3265,11 +3282,8 @@ def platform_ssh_exec(acesso, comando: str, timeout: int = 25) -> str:
     from .models import ProxyServer
     import ipaddress as _ip
 
-    fabricante = ''
-    if acesso.modelo:
-        fabricante = (getattr(acesso.modelo, 'fabricante', '') or '').lower()
-    is_huawei = fabricante in ('huawei',) or 'huawei' in (acesso.tipo or '').lower()
     is_routeros = _eh_routeros(acesso)
+    paginacao = _comando_paginacao(acesso)
 
     def _is_private(host: str) -> bool:
         try:
@@ -3284,10 +3298,10 @@ def platform_ssh_exec(acesso, comando: str, timeout: int = 25) -> str:
             return _routeros_exec(acesso, comando, timeout, proxy=proxy, origem=origem)
         try:
             if proxy:
-                return _paramiko_proxy_exec(proxy, acesso, comando, is_huawei, timeout)
+                return _paramiko_proxy_exec(proxy, acesso, comando, paginacao, timeout)
             bind = f"-b {origem} " if origem else ""
             cmd_line = f"ssh {bind}{_SSH_FLAGS} -p {acesso.porta} {acesso.usuario}@{acesso.host}"
-            return _pexpect_exec(cmd_line, acesso.senha, comando, is_huawei, timeout)
+            return _pexpect_exec(cmd_line, acesso.senha, comando, paginacao, timeout)
         except _RouterOSDetectado:
             # Cadastro sem fabricante MikroTik: a sonda de terminal entregou.
             # Ela chega antes de qualquer envio, então repetir por exec não
