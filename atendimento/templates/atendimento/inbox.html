@@ -115,6 +115,14 @@ document.getElementById('convSearch').addEventListener('input', function() {
     var proto = location.protocol === 'https:' ? 'wss' : 'ws';
     var ws, delay = 2000;
 
+    /* Conexão anterior ainda viva → fica com ela. Os handlers dela não
+       dependem do HTML da lista (tudo é buscado no document na hora), então
+       servem igual para a lista nova. Derrubar e reabrir a cada refresh
+       deixava uma janela sem socket em que eventos (chamado novo,
+       transferência) se perdiam — e a lista é refeita a cada evento e na
+       ressincronização periódica, ou seja, o tempo todo. */
+    if (window.__inboxListWS && window.__inboxListWS.readyState <= 1) return;
+
     if (window.__inboxListWS) {
         try {
             window.__inboxListWS.onclose = null;

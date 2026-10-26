@@ -1861,11 +1861,23 @@ document.addEventListener('click', function() {
         });
     };
 
+    /* Lista visível do painel — no Inbox as quatro abas são .conv-list e só
+       uma está à mostra; pegar a primeira (#tab-mine, quase sempre oculta)
+       fazia o scroll da aba que se está olhando voltar ao topo a cada refresh. */
+    function _visibleConvList(root) {
+        var lists = root.querySelectorAll('.conv-list');
+        for (var i = 0; i < lists.length; i++) {
+            if (lists[i].style.display !== 'none') return lists[i];
+        }
+        return lists[0] || null;
+    }
+
     function _applyConvPanelHtml(convPanel, newCP) {
         /* Preserva o que é estado local da tela e se perde no replace:
            texto da busca, scroll e destaque do chamado aberto. */
         var oldSearch = (convPanel.querySelector('#convSearch') || {}).value || '';
-        var oldList   = convPanel.querySelector('.conv-list');
+        var oldList   = _visibleConvList(convPanel);
+        var oldListId = oldList ? oldList.id : '';
         var oldScroll = oldList ? oldList.scrollTop : 0;
 
         convPanel.innerHTML = newCP.innerHTML;
@@ -1883,14 +1895,19 @@ document.addEventListener('click', function() {
             input.value = oldSearch;
             input.dispatchEvent(new Event('input'));
         }
-        var newList = convPanel.querySelector('.conv-list');
-        if (newList && oldScroll) newList.scrollTop = oldScroll;
+        var newList = _visibleConvList(convPanel);
+        if (newList && oldScroll && newList.id === oldListId) newList.scrollTop = oldScroll;
 
         /* Marca de novo o chamado que está aberto no momento */
         window.__markActiveConvItem();
 
         window.__syncOpenBadges();
+        _convPanelSyncedAt = Date.now();
     }
+
+    /* Quando a lista veio do servidor pela última vez — base da
+       ressincronização automática lá embaixo. */
+    var _convPanelSyncedAt = Date.now();
 
     /* A lista SEMPRE vem do Inbox: ele é a única view que renderiza o bloco
        conv_panel. O detalhe da conversa deliberadamente não renderiza (herda a
@@ -2003,6 +2020,28 @@ document.addEventListener('click', function() {
             window.__refreshConvPanel();
         }, espera);
     };
+
+    /* Ressincronização automática. A lista só mudava quando chegava evento
+       pelo WebSocket — e uma conexão que morre em silêncio (PC suspenso,
+       troca de rede/Wi-Fi, NAT derrubando a sessão ociosa) continua "aberta"
+       no navegador por muitos minutos sem entregar nada. Nesse meio tempo a
+       lista ficava parada/errada e só voltava com F5. Agora ela se refaz:
+       ao voltar para a aba, quando a rede volta e, com a aba à vista, a cada
+       minuto sem nenhum refresh. Fora do Inbox/chamado __refreshConvPanel
+       não faz nada, então isso não pesa nas outras telas. */
+    var RESYNC_OCIOSO   = 60000;   /* aba à vista, nenhum refresh há 1 min */
+    var RESYNC_AO_VOLTAR = 15000;  /* voltou para a aba depois de 15 s fora */
+
+    function _resyncSeVelha(idade) {
+        if (document.visibilityState === 'hidden') return;
+        if (Date.now() - _convPanelSyncedAt < idade) return;
+        _convPanelSyncedAt = Date.now();   /* evita empilhar pedidos enquanto o fetch corre */
+        window.__scheduleConvPanelRefresh(0);
+    }
+    setInterval(function() { _resyncSeVelha(RESYNC_OCIOSO); }, 15000);
+    document.addEventListener('visibilitychange', function() { _resyncSeVelha(RESYNC_AO_VOLTAR); });
+    window.addEventListener('focus', function() { _resyncSeVelha(RESYNC_AO_VOLTAR); });
+    window.addEventListener('online', function() { _resyncSeVelha(0); });
 
     function pulseConvItem(convId) {
         /* Encontra o item da conversa no sidebar pelo href */
