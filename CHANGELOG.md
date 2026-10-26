@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-26 (💡 comandos úteis no terminal)
+
+### Adicionado
+
+- **Terminal: lâmpada 💡 com os comandos úteis do equipamento.** O botão **💡 Comandos** (ou
+  `Ctrl+Shift+L`) identifica o equipamento da aba ativa pelo cadastro (fabricante e modelo) e
+  lista os comandos de verificação daquela família: sistema, interfaces, sinal óptico, L2,
+  roteamento e ONU. Cobre Huawei (VRP e OLT), Datacom (switch e OLT), Cisco IOS/NX-OS, Juniper,
+  MikroTik, ZTE (C300 e TITAN), Raisecom, Linux e Proxmox. A porta é preenchida uma vez e sugere as
+  interfaces do último backup. **Inserir** digita sem Enter e **▶** executa. Só comandos de
+  leitura. Cada comando mostra se já foi conferido ao vivo (✓) ou se é só a sintaxe do fabricante
+  (○). Equipamento sem catálogo mostra um seletor de tipo. Ver `docs/terminal_ssh.md`.
+
 ## [Não publicado] — 2026-10-26 (Agent NOC: interfaces e sinal óptico Raisecom)
 
 ### Adicionado
