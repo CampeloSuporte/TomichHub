@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-26 (credenciais também em Excel)
+
+### Adicionado
+
+- **E-mail de credenciais agora leva também uma planilha Excel, pronta para restaurar.** Além do PDF,
+  o envio a cada 2 dias anexa `credenciais_AAAAMMDD.xlsx`: uma aba por cliente no formato do
+  "Importar Excel" dos acessos, uma aba "Todos" para consulta e um índice oculto. Para restaurar,
+  basta enviar o arquivo inteiro no "Importar Excel" do cliente: a aba certa é escolhida sozinha.
+  Testado contra o banco: os 1530 acessos dos 42 clientes voltam iguais. Ver
+  `docs/envio_credenciais_email.md`.
+
+### Corrigido
+
+- **Importar Excel de acessos:** RDP virava SSH e "Telnet" virava "TELNET"; acessos com o mesmo nome
+  e host/credencial diferentes eram pulados; e a planilha agora também traz IPv6 e porta WinBox.
+
 ## [Não publicado] — 2026-10-26 (terminal: apagar comando longo)
 
 ### Corrigido
