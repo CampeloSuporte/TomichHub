@@ -1961,14 +1961,15 @@
     const _enc = new TextEncoder();
     const _dec = new TextDecoder();
 
-    // Huawei VRP (e outras CLIs simples) apagam com ESC[1D + espaço + ESC[1D.
+    // Huawei VRP (e outras CLIs simples) apagam com ESC[1D + espaço + ESC[1D e voltam
+    // várias colunas com ESC[nD (Ctrl+U, edição no meio da linha).
     // Cursor-left não sobe de linha: num comando que quebrou na tela o cursor
     // trava na coluna 0 e o começo do comando fica sobrando na linha de cima.
-    // Vira \b com o reverse-wraparound (DECSET 45) ligado só neste trecho —
+    // Viram \b com o reverse-wraparound (DECSET 45) ligado só neste trecho —
     // aí o xterm.js volta para o fim da linha anterior quando ela é continuação.
     function cursorEsquerdaQueVolta(text) {
-        if (!/\x1b\[1?D/.test(text)) return text;
-        return '\x1b[?45h' + text.replace(/\x1b\[1?D/g, '\b') + '\x1b[?45l';
+        if (!/\x1b\[\d*D/.test(text)) return text;
+        return '\x1b[?45h' + text.replace(/\x1b\[(\d*)D/g, (_, n) => '\b'.repeat(Math.min(+n || 1, 1000))) + '\x1b[?45l';
     }
 
     function writeToTerminal(terminal, text) {
@@ -2905,8 +2906,72 @@
         const ids = mgr.split ? mgr.splitPanes : [mgr.activeTerminal];
         ids.forEach(id => {
             const t = id && mgr.terminals.get(id);
-            if (t && t.fitAddon) { try { t.fitAddon.fit(); } catch(e) {} }
+            if (t && t.fitAddon) ajustarTerminal(t);
         });
+    }
+
+    // fit() do terminal, com dois cuidados:
+    //
+    // 1. Comando sendo digitado. O xterm redistribui as linhas na largura nova,
+    //    mas o equipamento ignora o resize (o VRP não redesenha nada) e continua
+    //    apagando/editando pela conta dele — o backspace seguinte caía no lugar
+    //    errado e sobrava pedaço do comando na tela. Aqui a linha do prompt é
+    //    apagada antes do ajuste e reescrita depois, já na largura nova, com o
+    //    cursor no mesmo ponto do comando.
+    // 2. Prompt colado no rodapé. Ao crescer, o xterm puxa linhas do histórico
+    //    para cima do cursor; se o histórico acaba (sessão curta, depois do
+    //    LIMPAR), completa com linhas vazias EMBAIXO e o prompt fica no meio.
+    //    Se o cursor estava na última linha, as que faltam entram no topo.
+    function ajustarTerminal(t) {
+        const term = t.terminal, b = term.buffer.active;
+        if (t._ajustando) { t._ajustePendente = true; return; }
+        let dim;
+        try { dim = t.fitAddon.proposeDimensions(); } catch(e) { return; }
+        if (!dim || isNaN(dim.cols) || isNaN(dim.rows)) return;
+        if (dim.cols === term.cols && dim.rows === term.rows) return;
+        // tela cheia (vim, top…) usa o buffer alternativo e se redesenha sozinha
+        const noFim = b.type === 'normal' && b.cursorY === term.rows - 1 && b.viewportY === b.baseY;
+        const linha = dim.cols !== term.cols ? linhaEmEdicao(term) : null;
+        const colarNoFim = () => {
+            const falta = term.rows - 1 - b.cursorY;
+            // salva cursor, insere `falta` linhas no topo, restaura e desce junto
+            if (noFim && falta > 0) term.write(`\x1b7\x1b[H\x1b[${falta}L\x1b8\x1b[${falta}B`);
+            t._ajustando = false;
+            if (t._ajustePendente) { t._ajustePendente = false; ajustarTerminal(t); }
+        };
+        if (!linha) {
+            try { t.fitAddon.fit(); } catch(e) {}
+            colarNoFim();
+            return;
+        }
+        t._ajustando = true;
+        term.write(`\x1b[${linha.linhaTela + 1};1H\x1b[J`, () => {
+            try { t.fitAddon.fit(); } catch(e) {}
+            const volta = linha.texto.length - linha.offset;
+            term.write(linha.texto + (volta > 0 ? '\x1b[?45h' + '\b'.repeat(volta) + '\x1b[?45l' : ''), colarNoFim);
+        });
+    }
+
+    // Linha lógica (prompt + comando, mesmo quebrada em várias linhas da tela)
+    // onde está o cursor — só se for a última coisa na tela, para não apagar saída.
+    function linhaEmEdicao(term) {
+        const b = term.buffer.active;
+        if (b.type !== 'normal' || b.viewportY !== b.baseY) return null;
+        const yCursor = b.baseY + b.cursorY;
+        let ini = yCursor, fim = yCursor;
+        while (ini > 0 && b.getLine(ini)?.isWrapped) ini--;
+        while (b.getLine(fim + 1)?.isWrapped) fim++;
+        if (ini < b.baseY) return null;
+        for (let y = fim + 1; y < b.length; y++) {
+            if (b.getLine(y).translateToString(true).trim()) return null;
+        }
+        let texto = '';
+        for (let y = ini; y <= fim; y++) texto += b.getLine(y).translateToString(y < fim ? false : true);
+        const offset = (yCursor - ini) * term.cols + Math.min(b.cursorX, term.cols);
+        texto = texto.replace(/\s+$/, '');
+        if (!texto) return null;
+        if (texto.length < offset) texto = texto.padEnd(offset);
+        return { linhaTela: ini - b.baseY, texto, offset };
     }
 
     window.addEventListener('resize', refitTerminalAtivo);
@@ -3512,7 +3577,7 @@
             setTimeout(() => {
                 const mgr = window.terminalManager;
                 if (mgr && mgr.terminals) {
-                    mgr.terminals.forEach(t => { if (t.fitAddon) try { t.fitAddon.fit(); } catch(_){} });
+                    mgr.terminals.forEach(t => { if (t.fitAddon) ajustarTerminal(t); });
                 }
             }, 300);
         };
