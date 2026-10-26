@@ -1531,6 +1531,22 @@ A opção `rendererType: 'canvas'` foi removida do construtor `new Terminal({...
 
 ---
 
+#### Apagar comando longo que quebrou de linha (Huawei VRP)
+
+**Problema:** o VRP apaga cada caractere com `ESC[1D` + espaço + `ESC[1D` (cursor para a esquerda),
+não com `\b`. Cursor-left nunca sobe de linha: quando prompt + comando passam da largura do xterm e
+quebram, o cursor trava na coluna 0 da linha de baixo e o começo do comando fica sobrando na de cima
+(o VRP acha que apagou, a tela não). Capturado ao vivo no NE8000 da GREEN (acesso 673); a largura do
+PTY não muda nada — o VRP manda a mesma sequência com 80 ou 110 colunas.
+
+**Solução:** `cursorEsquerdaQueVolta()` troca `ESC[D`/`ESC[1D` por `\b` e liga o reverse-wraparound
+(DECSET 45) só naquele trecho (`ESC[?45h … ESC[?45l`). Com o modo 45 o `\b` do xterm.js 5.3 volta
+para o fim da linha anterior quando ela é continuação (`isWrapped`); fora disso se comporta igual ao
+cursor-left. Aplicado em `terminal.html` (`writeToTerminal`), `terminal_externo.html` e
+`modal_ssh_terminal.html` (`escreverComChunks`).
+
+---
+
 #### Timeout do select() reduzido: 5ms → 1ms
 
 **Problema:** O loop de leitura do pty SSH e do socket Telnet usava `select.select([fd], [], [], 0.005)` — no pior caso, dados que chegassem logo após o select iniciar uma nova espera aguardavam até 5ms antes de serem detectados.

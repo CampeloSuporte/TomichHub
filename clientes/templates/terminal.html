@@ -1961,7 +1961,18 @@
     const _enc = new TextEncoder();
     const _dec = new TextDecoder();
 
+    // Huawei VRP (e outras CLIs simples) apagam com ESC[1D + espaço + ESC[1D.
+    // Cursor-left não sobe de linha: num comando que quebrou na tela o cursor
+    // trava na coluna 0 e o começo do comando fica sobrando na linha de cima.
+    // Vira \b com o reverse-wraparound (DECSET 45) ligado só neste trecho —
+    // aí o xterm.js volta para o fim da linha anterior quando ela é continuação.
+    function cursorEsquerdaQueVolta(text) {
+        if (!/\x1b\[1?D/.test(text)) return text;
+        return '\x1b[?45h' + text.replace(/\x1b\[1?D/g, '\b') + '\x1b[?45l';
+    }
+
     function writeToTerminal(terminal, text) {
+        text = cursorEsquerdaQueVolta(text);
         if (colorizeEnabled && text.length >= 30) {
             terminal.write(colorizeOutput(text));
         } else {

@@ -99,9 +99,18 @@
                 cols: terminal.cols, rows: terminal.rows,
             }));
         };
+        // Huawei VRP (e outras CLIs simples) apagam com ESC[1D + espaço + ESC[1D.
+        // Cursor-left não sobe de linha: num comando que quebrou na tela o cursor
+        // trava na coluna 0 e o começo do comando fica sobrando na linha de cima.
+        // Vira \b com o reverse-wraparound (DECSET 45) ligado só neste trecho —
+        // aí o xterm.js volta para o fim da linha anterior quando ela é continuação.
+        const cursorEsquerdaQueVolta = (text) => {
+            if (!/\x1b\[1?D/.test(text)) return text;
+            return '\x1b[?45h' + text.replace(/\x1b\[1?D/g, '\b') + '\x1b[?45l';
+        };
         socket.onmessage = (e) => {
             if (e.data instanceof ArrayBuffer) {
-                terminal.write(_dec.decode(e.data));
+                terminal.write(cursorEsquerdaQueVolta(_dec.decode(e.data)));
                 return;
             }
             const data = JSON.parse(e.data);
@@ -109,7 +118,7 @@
                 document.getElementById('statusDot').classList.add('ok');
                 socket.send(JSON.stringify({ action: 'resize', cols: terminal.cols, rows: terminal.rows }));
             } else if (data.type === 'output' && data.data) {
-                terminal.write(data.data);
+                terminal.write(cursorEsquerdaQueVolta(data.data));
             } else if (data.type === 'share_info') {
                 terminal.writeln('\x1b[33mℹ ' + data.message + '\x1b[0m\n');
             } else if (data.type === 'share_ended') {

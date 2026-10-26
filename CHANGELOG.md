@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-26 (terminal: apagar comando longo)
+
+### Corrigido
+
+- **Terminal: apagar um comando grande não deixa mais o pedaço sobrando na tela.** No Huawei (VRP),
+  quando o comando quebrava de linha e era apagado com Backspace, o equipamento apagava de verdade,
+  mas a tela travava no começo da linha de baixo e o resto do comando continuava aparecendo. O VRP
+  apaga com "cursor para a esquerda", que não sobe de linha no terminal; agora o CRM converte para
+  um backspace que volta para a linha de cima. Vale para o terminal, o link externo e o modal SSH.
+  Ver `SISTEMA.md` (Apagar comando longo que quebrou de linha).
+
 ## [Não publicado] — 2026-10-26 (backup MikroTik com export travado)
 
 ### Corrigido
