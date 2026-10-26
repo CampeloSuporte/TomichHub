@@ -478,3 +478,52 @@ sudo -u www-data /opt/crm/venv/bin/python /opt/crm/manage.py shell
 
 Não aplicar o `chown` em `media/firmware`: o dono root ali é do TFTP/FTP.
 
+
+---
+
+## MikroTik: `/export` que para de responder no meio — 2026-10-26
+
+Sintoma: backup de MikroTik que levava ~2 s passa a levar **~182 s** e grava
+`ERRO — Backup vazio: nenhum comando do template retornou configuração`. Visto em
+24–26/10/2026 no "BGP - CENTRAL" (INFORTECLINE, 191.243.96.1:22002) e no "BORDA - CGNAT"
+(179.191.35.128:22002), os dois CCR1036-8G-2S+ com RouterOS 6.49.18.
+
+Causa (conferida ao vivo, só com comandos de leitura): o subsistema `/tool graphing` travou
+no equipamento. Até `/tool graphing print` fica mudo para sempre. O `/export terse` manda
+26 KB em 1 s (tudo até `/tool e-mail`) e emudece ali. Todas as outras seções exportam em
+menos de 1 s. É bug do RouterOS, não do CRM: a correção definitiva é no equipamento
+(reboot, ou desligar/reconfigurar o graphing na janela do cliente).
+
+O CRM piorava o quadro: `_executar_comandos_mikrotik` usava `stdout.read()` com timeout de
+120 s por `recv` e, no estouro, **descartava tudo que já tinha chegado**. Somava o
+`show-sensitive` recusado pelo 6.x (só existe no 7.x), mais a repetição sem ele, mais o
+timeout. Resultado: cerca de 3 min por equipamento e nenhum arquivo.
+
+Correção (vale para todo MikroTik, 6.x e 7.x):
+
+- `_exec_routeros_ate_silencio` lê o canal com **timeout de silêncio** (20 s sem nenhum byte
+  = travado) e devolve o que chegou, informando se houve EOF.
+- Quando um `/export` não termina, `_completar_export_travado` exporta cada seção de novo,
+  sozinha (`/ip export terse`, `/user export terse`…, com 15 s de silêncio e teto de 120 s
+  no total), e acrescenta só os blocos de **menus que ainda não vieram**. A comparação é
+  pelo caminho completo (`/ip firewall filter`, `/user aaa`), porque o export intercala
+  seções: `/user group` sai no começo e `/user aaa` só no fim. A seção onde o export parou,
+  se tiver subseções conhecidas (`_ROUTEROS_SUBSECOES`, hoje `/tool`), é aberta direto
+  pelas subseções. Assim `/tool romon` não se perde junto com o `/tool graphing`.
+- `/user add` (que só o `/user export` traz) fica de fora, para o `.rsc` continuar
+  importável.
+- O que não respondeu vai para uma linha `# AVISO CRM: sem resposta do RouterOS em /tool
+  graphing — essa parte ficou fora do backup` no arquivo. O `BackupLog` fica **SUCESSO**
+  com a mensagem `Backup realizado com aviso: …`, porque cerca de 30 consumidores (BGP,
+  IPAM, projeto de rede, Zabbix) leem só `status='SUCESSO'` e o resto da configuração
+  está íntegro.
+
+Tempos medidos (mesmo equipamento, mesmo dia):
+
+| Equipamento | Antes | Depois | Fora do backup |
+|---|---|---|---|
+| BGP - CENTRAL | 182 s, ERRO (0 bytes) | 48 s, 26.9 KB | `/tool graphing interface add` |
+| BORDA - CGNAT | 182 s, ERRO (0 bytes) | 44 s, 33.4 KB | `/tool graphing interface add` ×2 |
+
+MikroTik com export saudável não muda nada: o EOF chega e nenhuma seção extra é pedida.
+Testes: `clientes/tests_backup_mikrotik_travado.py`.

@@ -2477,6 +2477,10 @@ def realizar_backup(acesso, usuario=None):
         print(f"⏱️ Duração: {duracao:.2f}s")
 
         # ── Registrar log ────────────────────────────────────────────────
+        # Seção que o equipamento não respondeu (hoje só MikroTik) não derruba
+        # o backup — o resto da configuração está no arquivo — mas fica dita
+        # na mensagem para não passar despercebida.
+        _avisos = re.findall(r'(?m)^# AVISO CRM: (.+)$', output)
         BackupLog.objects.create(
             acesso=acesso,
             cliente=acesso.cliente,
@@ -2485,7 +2489,8 @@ def realizar_backup(acesso, usuario=None):
             tamanho_bytes=tamanho,
             hash_conteudo=hash_novo,
             status='SUCESSO',
-            mensagem='Backup realizado com sucesso',
+            mensagem=('Backup realizado com aviso: ' + '; '.join(_avisos)) if _avisos
+                     else 'Backup realizado com sucesso',
             executado_por=usuario,
             duracao_segundos=duracao,
         )
@@ -2711,6 +2716,162 @@ def _erro_sintaxe_routeros(saida):
     ))
 
 
+# Seções de 1º nível do /export (união RouterOS 6 e 7, na ordem em que o
+# export as escreve). Usadas só quando o /export inteiro para de responder:
+# aí cada seção que ainda não veio é exportada sozinha. As que não existem
+# na versão do equipamento respondem "bad command name" e são puladas.
+_ROUTEROS_SECOES = (
+    'interface', 'caps-man', 'disk', 'container', 'ip', 'ipv6', 'mpls',
+    'port', 'ppp', 'queue', 'radius', 'routing', 'snmp', 'special-login',
+    'system', 'tool', 'user', 'user-manager', 'lcd', 'iot', 'zerotier',
+)
+# Subseções conhecidas, para salvar o resto de uma seção que trava no meio.
+# Caso real (10/2026, RouterOS 6.49.18, CCR1036): /tool graphing parou de
+# responder até a "print" e levou junto /tool romon e /user aaa.
+_ROUTEROS_SUBSECOES = {
+    'tool': (
+        'bandwidth-server', 'e-mail', 'fetch', 'graphing', 'mac-server',
+        'netwatch', 'romon', 'sms', 'sniffer', 'traffic-generator',
+        'traffic-monitor', 'wol',
+    ),
+}
+_ROUTEROS_SILENCIO_EXPORT = 20   # s sem nenhum byte = comando travado
+_ROUTEROS_SILENCIO_SECAO = 15
+_ROUTEROS_ORCAMENTO_SECOES = 120  # teto da recuperação seção a seção
+
+
+def _exec_routeros_ate_silencio(client, comando, silencio, max_total=300):
+    """
+    exec_command que devolve o que chegou se o equipamento parar de mandar
+    dados. Retorna (texto, completo): completo=False quando o canal ficou
+    `silencio` segundos mudo antes do EOF.
+
+    O stdout.read() antigo esperava o EOF com timeout de 120 s por recv e,
+    no estouro, descartava tudo — um /export que parou numa seção travada
+    do RouterOS virava "Backup vazio" depois de ~3 min, mesmo com 98% da
+    configuração já recebida em 1 s.
+    """
+    channel = client.get_transport().open_session()
+    channel.settimeout(1.0)
+    channel.exec_command(comando)
+    dados = b''
+    inicio = ultimo = time.time()
+    completo = False
+    try:
+        while True:
+            try:
+                bloco = channel.recv(65536)
+            except socket.timeout:
+                bloco = None
+            if bloco == b'':
+                completo = True
+                break
+            agora = time.time()
+            if bloco:
+                dados += bloco
+                ultimo = agora
+                continue
+            if agora - ultimo >= silencio or agora - inicio >= max_total:
+                break
+    finally:
+        channel.close()
+    return dados.decode('utf-8', errors='replace'), completo
+
+
+_ROUTEROS_VERBOS = {'add', 'set', 'remove', 'move', 'enable', 'disable', 'unset', 'comment'}
+# "/user export" sozinho lista as contas ("/user add name=..."), que o /export
+# completo nunca traz — entrariam no .rsc e o /import pararia em "already
+# exists" logo nelas.
+_ROUTEROS_FORA_DO_EXPORT = {('user',)}
+
+
+def _routeros_caminho(linha):
+    """Menu de uma linha do export: "/ip firewall filter add ..." → ('ip', 'firewall', 'filter')."""
+    caminho = []
+    for token in linha[1:].split():
+        if token in _ROUTEROS_VERBOS or '=' in token or token.startswith('['):
+            break
+        caminho.append(token)
+    return tuple(caminho)
+
+
+def _routeros_blocos(texto):
+    """
+    Quebra a saída do export em blocos (caminho, linhas). No terse cada linha
+    de comando é um bloco; no export normal o bloco é o cabeçalho "/ip
+    address" mais os "add ..." seguintes. Comentários "#" ficam de fora.
+    """
+    blocos = []
+    for linha in (texto or '').splitlines():
+        if linha.startswith('#'):
+            continue
+        if linha.startswith('/') and _routeros_caminho(linha):
+            blocos.append((_routeros_caminho(linha), [linha]))
+        elif blocos and linha.strip():
+            blocos[-1][1].append(linha)
+    return blocos
+
+
+def _routeros_ultima_secao(texto):
+    for caminho, _ in reversed(_routeros_blocos(texto)):
+        return caminho[0]
+    return None
+
+
+def _completar_export_travado(client, comando, parcial):
+    """
+    Completa um /export que parou de responder no meio. Cada seção é
+    exportada de novo sozinha ("/user export terse"...), com timeout curto,
+    e entra só o que é de um menu que ainda não apareceu — o export intercala
+    as seções (o /user group sai no começo e o /user aaa só no fim), então
+    não basta pular a seção que já apareceu. Seção que trava de novo é
+    aberta pelas subseções conhecidas.
+    Devolve (texto_extra, avisos) — avisos lista o que não respondeu.
+    """
+    args = comando.strip()[len('/export'):].strip()
+    vistos = {caminho for caminho, _ in _routeros_blocos(parcial)}
+    travada = _routeros_ultima_secao(parcial)
+    extra, avisos = [], []
+    limite = time.time() + _ROUTEROS_ORCAMENTO_SECOES
+
+    def _exportar(caminho):
+        """(texto, completo); texto vazio quando o menu não existe nessa versão."""
+        if time.time() > limite:
+            return '', False
+        texto, completo = _exec_routeros_ate_silencio(
+            client, f'/{caminho} export {args}'.strip(), _ROUTEROS_SILENCIO_SECAO)
+        if _erro_sintaxe_routeros(texto):
+            return '', True
+        return texto, completo
+
+    def _aproveitar(texto):
+        for caminho, linhas in _routeros_blocos(texto):
+            if caminho not in vistos and caminho not in _ROUTEROS_FORA_DO_EXPORT:
+                extra.extend(linhas)
+        vistos.update(caminho for caminho, _ in _routeros_blocos(texto))
+
+    for secao in _ROUTEROS_SECOES:
+        subsecoes = _ROUTEROS_SUBSECOES.get(secao)
+        # A seção onde o export parou travaria de novo: com subseções
+        # conhecidas, vai direto a elas (poupa um timeout inteiro).
+        if secao == travada and subsecoes:
+            completo = False
+        else:
+            texto, completo = _exportar(secao)
+            _aproveitar(texto)
+        if completo:
+            continue
+        if not subsecoes:
+            avisos.append(f'/{secao}')
+            continue
+        for sub in subsecoes:
+            texto, completo = _exportar(f'{secao} {sub}')
+            _aproveitar(texto)
+            if not completo:
+                avisos.append(f'/{secao} {sub}')
+    return '\n'.join(extra), avisos
+
+
 def _executar_comandos_mikrotik(client, comandos):
     """
     MikroTik via exec_command sem PTY. Saída vira um script RouterOS válido
@@ -2719,24 +2880,43 @@ def _executar_comandos_mikrotik(client, comandos):
 
     Comandos "/export ... show-sensitive ..." caem automaticamente para a
     mesma linha sem "show-sensitive" quando o RouterOS é antigo demais e não
-    reconhece o parâmetro (introduzido no 6.43) — sem esse fallback o backup
-    fica vazio/com erro de sintaxe nesses equipamentos mais antigos.
+    reconhece o parâmetro (só existe no 7.x; o 6.x já exporta as senhas) —
+    sem esse fallback o backup fica vazio/com erro de sintaxe no 6.x.
+
+    Se o /export parar de responder no meio (seção travada no RouterOS), o
+    que já chegou é mantido e o resto é exportado seção a seção; as seções
+    que não responderam ficam numa linha "# AVISO CRM:" no arquivo.
     """
     output = ""
     for i, comando in enumerate(comandos, 1):
         print(f"  [{i}/{len(comandos)}] {comando}")
         cmd_efetivo = comando
         try:
-            stdin, stdout, stderr = client.exec_command(comando, timeout=120, get_pty=False)
-            resultado = stdout.read().decode('utf-8', errors='replace')
+            resultado, completo = _exec_routeros_ate_silencio(
+                client, comando, _ROUTEROS_SILENCIO_EXPORT)
 
             if 'show-sensitive' in comando and _erro_sintaxe_routeros(resultado):
                 cmd_efetivo = re.sub(r'\s*show-sensitive\s*', ' ', comando).strip()
                 print(f"    ⚠️ 'show-sensitive' não suportado neste RouterOS — repetindo como: {cmd_efetivo}")
-                stdin, stdout, stderr = client.exec_command(cmd_efetivo, timeout=120, get_pty=False)
-                resultado = stdout.read().decode('utf-8', errors='replace')
+                resultado, completo = _exec_routeros_ate_silencio(
+                    client, cmd_efetivo, _ROUTEROS_SILENCIO_EXPORT)
+
+            avisos = []
+            if not completo:
+                print(f"    ⚠️ sem resposta por {_ROUTEROS_SILENCIO_EXPORT}s após {len(resultado)} bytes")
+                if re.match(r'/export\b', cmd_efetivo.strip()) and resultado.strip():
+                    resultado = resultado.rstrip('\r\n')
+                    extra, avisos = _completar_export_travado(client, cmd_efetivo, resultado)
+                    if extra:
+                        resultado += '\n' + extra
+                else:
+                    avisos = [cmd_efetivo]
 
             output += f"\n# {'='*60}\n# Comando: {cmd_efetivo}\n# {'='*60}\n"
+            if avisos:
+                output += (f"# AVISO CRM: sem resposta do RouterOS em "
+                           f"{', '.join(avisos)} — essa parte ficou fora do backup\n")
+                print(f"    ⚠️ fora do backup: {', '.join(avisos)}")
             if resultado:
                 resultado = limpar_ansi(resultado)
                 output += resultado + "\n"
