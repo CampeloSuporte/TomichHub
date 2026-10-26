@@ -7773,6 +7773,37 @@ def interfaces_backup_acesso(request, acesso_id):
     })
 
 
+@login_required(login_url='login')
+@require_http_methods(['GET'])
+@modulo_habilitado_required('acessos')
+def comandos_uteis_acesso(request, acesso_id):
+    """Comandos de verificação para a 💡 do terminal, escolhidos pela família
+    do equipamento (ver clientes/comandos_uteis.py). `?familia=` troca a
+    família quando o cadastro não identifica o equipamento ou erra."""
+    from . import comandos_uteis
+
+    acesso = get_object_or_404(Acesso.objects.select_related('modelo'), id=acesso_id)
+    if not _perms.pode_acessar_acesso(request.user, acesso):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    detectada = comandos_uteis.identificar_familia(acesso)
+    pedida = request.GET.get('familia') or ''
+    familia = pedida if pedida in comandos_uteis.FAMILIAS else detectada
+
+    modelo = acesso.modelo
+    return JsonResponse({
+        'detectada': detectada,
+        'equipamento': {
+            'fabricante': getattr(modelo, 'fabricante', '') or '',
+            'modelo': getattr(modelo, 'nome', '') or '',
+            'tipo': acesso.tipo or '',
+        },
+        'familias': comandos_uteis.lista_familias(),
+        'campos': comandos_uteis.CAMPOS,
+        'catalogo': comandos_uteis.catalogo(familia) if familia else None,
+    })
+
+
 # Interfaces que nunca são a porta física onde uma VLAN de cliente entra:
 # interface de VLAN (Vlanif/vlan-interface), loopback, túnel, gerência e o
 # `interface l3 <nome>` do DmOS. O painel de clonagem lista só as físicas —

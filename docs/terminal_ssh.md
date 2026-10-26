@@ -537,3 +537,44 @@ O teste rodou com WebGL (swiftshader, antes da remoção) e sem GPU (Canvas) e c
 sem resultado, Esc), Ctrl+C com e sem seleção, colagem de 1 linha direta, de 3 linhas com
 confirmação e pelo botão direito, Alt+1, Ctrl+Shift+→, divisor arrastado a 30% com `resize` no PTY,
 empilhar, F6, fonte e F1.
+
+## 💡 Comandos úteis do equipamento — Adicionado em 2026-10-26
+
+Só no terminal web (`clientes/templates/terminal.html`). O link externo e o modal do terminal não
+têm a lâmpada. Abre pelo botão **💡 Comandos** no rodapé, pelo menu mobile ou com `Ctrl+Shift+L`.
+
+**Como identifica o equipamento:** `GET /clientes/acessos/<id>/comandos-uteis/`
+(`comandos_uteis_acesso`, mesma permissão do `interfaces-backup`) chama
+`clientes/comandos_uteis.py::identificar_familia`. Ela olha o Modelo do acesso (fabricante + nome)
+e, sem modelo, o `tipo`. Famílias: `huawei_vrp` (S67xx, S5735, NE8000, ATN), `huawei_olt`
+(MA5800/MA5600), `datacom` / `datacom_olt` (DM46xx), `cisco_ios` / `cisco_nxos` (Nexus), `juniper`,
+`mikrotik`, `zte_c300` / `zte_titan` (C6xx), `raisecom`, `linux`, `proxmox`. Fiberhome, Parks,
+Intelbras, VSOL e os outros sem catálogo, assim como acesso sem modelo nem tipo reconhecível, mostram
+um seletor "Tipo". A escolha fica no `localStorage` do navegador (`cu-familia-<id>`) e vai como
+`?familia=`.
+
+**Painel:**
+- Campos variáveis (`{porta}`, `{ip}`, `{mac}`, `{vlan}`, `{sn}`, `{slot}`, `{pon}`, `{onu}`,
+  `{texto}`) ficam no topo e valem para todos os comandos da família. A porta sugere as interfaces do
+  último backup (`interfaces-backup`), físicas com descrição primeiro.
+- **⌨ Inserir** digita o comando no terminal ativo **sem Enter** (`terminal.paste`). **▶** digita e
+  manda o Enter. Comando de várias linhas (sinal óptico da ONU no MA5800) só tem ▶ e pede
+  confirmação. Campo vazio fica vermelho e nada é enviado.
+- Trocar de aba com o painel aberto recarrega para o equipamento da nova aba.
+
+**Catálogo** (`FAMILIAS` em `comandos_uteis.py`): só leitura (show/display/print e diagnóstico
+Linux), mais os comandos que só mudam de modo ou desligam a paginação. O teste
+`CatalogoTest.test_todo_comando_e_de_leitura` barra qualquer outra coisa. Cada comando tem
+`conferido`:
+- ✓ **conferido**: rodado num equipamento da família. Raisecom em 26/10/2026 (RAX711), e os
+  comandos que o Agent NOC e a automação BGP já usam validados (transceiver Huawei/Datacom, rotas
+  BGP recebidas/anunciadas, sessões BGP do MikroTik).
+- ○ **não conferido**: sintaxe documentada do fabricante, ainda não rodada aqui.
+
+A validação em lote dos ○ (um equipamento por família, só `show`/`display`) foi barrada pela
+política de segurança do assistente em 26/10/2026 e ficou pendente. Ao conferir um comando num
+equipamento real, troque `conferido` para `True`. Comando que falhar sai do catálogo.
+
+Testes: `clientes/tests_comandos_uteis.py` (identificação, catálogo, endpoint). O painel foi
+testado num Chrome headless com WebSocket falso: abrir sem terminal, identificar o RAX700, campo
+vazio, Inserir, ▶, filtro, troca de tipo e `Ctrl+Shift+L`.

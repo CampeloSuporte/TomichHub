@@ -264,6 +264,61 @@
         .btn-terminal.btn-wiki:hover, .btn-terminal.btn-wiki:active { background: rgba(88,166,255,0.1); }
         .btn-terminal.btn-scripts { border-color: #ffa500; color: #ffa500; }
         .btn-terminal.btn-scripts:hover, .btn-terminal.btn-scripts:active { background: rgba(255,165,0,0.1); }
+        .btn-terminal.btn-comandos { border-color: rgba(250,204,21,.55); color: #facc15; }
+        .btn-terminal.btn-comandos:hover, .btn-terminal.btn-comandos.aberto { background: rgba(250,204,21,.1); border-color: #facc15; }
+
+        /* ── 💡 Comandos úteis ── */
+        #cuPainel {
+            position: fixed; top: 0; right: -480px; width: 460px; max-width: 100vw; height: 100vh;
+            background: #161b22; border-left: 2px solid #facc15; z-index: 9997;
+            display: flex; flex-direction: column; box-shadow: -4px 0 16px rgba(0,0,0,.4);
+            transition: right .25s ease; font-family: 'Inter', sans-serif; color: #c9d1d9;
+        }
+        #cuPainel.aberto { right: 0; }
+        .cu-head { background: #0d1117; padding: 10px 14px; border-bottom: 1px solid rgba(250,204,21,.35); flex-shrink: 0; }
+        .cu-head-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .cu-head-top h3 { color: #facc15; font-size: 13px; font-weight: 600; letter-spacing: .3px; }
+        .cu-fechar { background: transparent; border: 1px solid rgba(255,255,255,.12); color: #7d8590; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+        .cu-fechar:hover { color: #e6edf3; border-color: rgba(255,255,255,.3); }
+        .cu-equip { font-size: 11px; color: #7d8590; margin-top: 6px; line-height: 1.5; word-break: break-word; }
+        .cu-equip b { color: #e6edf3; font-weight: 600; }
+        .cu-familia { margin-top: 8px; display: flex; gap: 6px; align-items: center; font-size: 11px; color: #7d8590; }
+        .cu-familia select, .cu-busca, .cu-campo input {
+            background: #0d1117; border: 1px solid rgba(255,255,255,.12); color: #e6edf3; border-radius: 4px;
+            padding: 5px 8px; font-size: 12px; font-family: inherit; min-width: 0;
+        }
+        .cu-familia select { flex: 1; }
+        .cu-familia select:focus, .cu-busca:focus, .cu-campo input:focus { outline: none; border-color: #facc15; }
+        .cu-aviso { margin-top: 8px; font-size: 11px; color: #e3b341; background: rgba(227,179,65,.08); border: 1px solid rgba(227,179,65,.25); border-radius: 4px; padding: 6px 8px; }
+        .cu-aviso code { font-family: 'Cascadia Code','JetBrains Mono','Menlo','Consolas',monospace; color: #facc15; }
+        .cu-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; margin-top: 8px; }
+        .cu-campo { display: flex; flex-direction: column; gap: 3px; font-size: 10px; color: #7d8590; text-transform: uppercase; letter-spacing: .4px; }
+        .cu-campo.largo { grid-column: 1 / -1; }
+        .cu-campo input { font-family: 'Cascadia Code','JetBrains Mono','Menlo','Consolas',monospace; text-transform: none; letter-spacing: 0; }
+        .cu-campo input.falta { border-color: #f85149; box-shadow: 0 0 0 2px rgba(248,81,73,.25); }
+        .cu-busca { width: 100%; margin-top: 8px; }
+        .cu-corpo { flex: 1; overflow-y: auto; padding: 4px 0 12px; }
+        .cu-grupo h4 { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: #7d8590; padding: 12px 14px 4px; font-weight: 600; }
+        .cu-item { padding: 7px 14px; border-left: 2px solid transparent; display: flex; gap: 8px; align-items: flex-start; }
+        .cu-item:hover { background: rgba(255,255,255,.03); border-left-color: rgba(250,204,21,.6); }
+        .cu-item-txt { flex: 1; min-width: 0; }
+        .cu-item code { display: block; font-family: 'Cascadia Code','JetBrains Mono','Menlo','Consolas',monospace; font-size: 12px; color: #e6edf3; white-space: pre-wrap; word-break: break-all; }
+        .cu-item code .cu-var { color: #facc15; }
+        .cu-item-desc { font-size: 11px; color: #7d8590; margin-top: 2px; }
+        .cu-item-desc .cu-ok { color: #3fb950; }
+        .cu-item-desc .cu-nao { color: #6e7681; }
+        .cu-acoes { display: flex; gap: 4px; flex-shrink: 0; opacity: .55; transition: opacity .12s; }
+        .cu-item:hover .cu-acoes, .cu-item:focus-within .cu-acoes { opacity: 1; }
+        .cu-acoes button { background: transparent; border: 1px solid rgba(255,255,255,.14); color: #c9d1d9; border-radius: 4px; padding: 3px 7px; cursor: pointer; font-size: 11px; font-family: inherit; white-space: nowrap; }
+        .cu-acoes button:hover { border-color: #facc15; color: #facc15; }
+        .cu-acoes button.cu-exec:hover { border-color: #3fb950; color: #3fb950; }
+        .cu-acoes button:disabled { opacity: .35; cursor: not-allowed; }
+        .cu-vazio { padding: 28px 18px; text-align: center; font-size: 12px; color: #7d8590; line-height: 1.6; }
+        .cu-rodape { flex-shrink: 0; border-top: 1px solid rgba(255,255,255,.06); padding: 8px 14px; font-size: 10px; color: #6e7681; line-height: 1.5; }
+        @media (max-width: 640px) {
+            #cuPainel { width: 100vw; right: -100vw; }
+            .cu-acoes { opacity: 1; }
+        }
         .btn-terminal.btn-cores-off { border-color: rgba(88,166,255,.18); color: rgba(88,166,255,.18); }
         .btn-terminal.btn-share { border-color: rgba(255,165,0,.4); color: #ffa500; }
         .btn-terminal.btn-share:hover { border-color: #ffa500; }
@@ -974,6 +1029,7 @@
                     <button class="btn-terminal btn-agent" id="btnAgent" onclick="toggleAgentPanel()" title="Agent NOC — assistente de IA">🤖 Agent</button>
                     {% endif %}
                     <button class="btn-terminal" onclick="abrirBusca()" title="Buscar no histórico do terminal (Ctrl+Shift+F)">🔍 Buscar</button>
+                    <button class="btn-terminal btn-comandos" id="btnComandos" onclick="toggleComandosUteis()" title="Comandos úteis para o equipamento do terminal ativo (Ctrl+Shift+L)">💡 Comandos</button>
                     <button class="btn-terminal" onclick="limparTela()" title="Limpar a tela (Ctrl+Shift+K)">✕ Limpar</button>
                     <button class="btn-terminal" id="btnColorize" onclick="toggleColorize()">🎨 Cores: ON</button>
                     <button class="btn-terminal" onclick="reconectarTerminalAtivo()">↻ Reconectar</button>
@@ -1004,6 +1060,9 @@
         </div>
         <div class="mobile-menu-item" onclick="fecharMenuMobile();abrirBusca()">
             <span>🔍</span><span>Buscar no Terminal</span>
+        </div>
+        <div class="mobile-menu-item" onclick="fecharMenuMobile();abrirComandosUteis()" style="color:#facc15">
+            <span>💡</span><span>Comandos úteis</span>
         </div>
         <div class="mobile-menu-item" onclick="limparTela();fecharMenuMobile()">
             <span>✕</span><span>Limpar Tela</span>
@@ -1091,6 +1150,7 @@
             <table class="atalhos-tabela">
                 <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></td><td>Buscar no histórico (<kbd>Enter</kbd> próximo, <kbd>Shift</kbd>+<kbd>Enter</kbd> anterior)</td></tr>
                 <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd></td><td>Limpar a tela</td></tr>
+                <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd></td><td>💡 Comandos úteis do equipamento</td></tr>
                 <tr><td><kbd>Ctrl</kbd>+<kbd>+</kbd> · <kbd>Ctrl</kbd>+<kbd>-</kbd> · <kbd>Ctrl</kbd>+<kbd>0</kbd></td><td>Aumentar · diminuir · fonte padrão</td></tr>
                 <tr><td><kbd>Ctrl</kbd>+<kbd>R</kbd></td><td>Reconectar o terminal ativo</td></tr>
             </table>
@@ -1116,6 +1176,31 @@
     <div class="debug-panel" id="debugPanel" style="display:none;"></div>
 
     <!-- ── Scripts Panel ── -->
+    <!-- ── 💡 Comandos úteis do equipamento (só no terminal) ── -->
+    <div id="cuPainel" aria-hidden="true">
+        <div class="cu-head">
+            <div class="cu-head-top">
+                <h3>💡 Comandos úteis</h3>
+                <button class="cu-fechar" onclick="fecharComandosUteis()" title="Fechar (Esc)">✕</button>
+            </div>
+            <div class="cu-equip" id="cuEquip"></div>
+            <label class="cu-familia" id="cuFamiliaBox" style="display:none">
+                <span>Tipo</span>
+                <select id="cuFamilia" onchange="cuTrocarFamilia(this.value)"></select>
+            </label>
+            <div class="cu-aviso" id="cuAviso" style="display:none"></div>
+            <div class="cu-campos" id="cuCampos"></div>
+            <input type="text" class="cu-busca" id="cuBusca" placeholder="Filtrar comandos..." autocomplete="off" spellcheck="false" oninput="cuFiltrar()">
+        </div>
+        <div class="cu-corpo" id="cuCorpo"></div>
+        <div class="cu-rodape">
+            <b>⌨ Inserir</b> digita o comando sem Enter. <b>▶</b> executa.<br>
+            <span style="color:#3fb950">✓</span> conferido ao vivo neste tipo de equipamento ·
+            <span>○</span> sintaxe do fabricante, ainda não conferida aqui.
+        </div>
+        <datalist id="cuPortas"></datalist>
+    </div>
+
     <div id="scriptsPainel" style="
         position:fixed; top:0; right:-560px; width:540px; height:100vh;
         background:#161b22; border-left:2px solid #ffa500;
@@ -2118,6 +2203,7 @@
             if (tObj.acesso) window._spActiveAcesso = tObj.acesso;
             this.aplicarLayout();
             if (anterior !== terminalId) buscaTrocouTerminal(anterior);
+            if (anterior !== terminalId && typeof cuTrocouTerminal === 'function') cuTrocouTerminal();
             if (tObj.tipo !== 'winbox' && !isMobile()) setTimeout(() => tObj.terminal?.focus(), 60);
             atualizarBotaoCompartilhar();
         }
@@ -2647,6 +2733,7 @@
         else if (ctrl && e.shiftKey && !e.altKey && e.code === 'KeyD') acao = () => terminalManager.toggleSplit();
         else if (ctrl && e.shiftKey && !e.altKey && e.code === 'KeyO') acao = () => terminalManager.alternarOrientacao();
         else if (ctrl && e.shiftKey && !e.altKey && e.code === 'KeyK') acao = limparTela;
+        else if (ctrl && e.shiftKey && !e.altKey && e.code === 'KeyL') acao = toggleComandosUteis;
         else if (ctrl && e.shiftKey && !e.altKey && e.code === 'ArrowLeft') acao = () => terminalManager.irParaAba(-1, true);
         else if (ctrl && e.shiftKey && !e.altKey && e.code === 'ArrowRight') acao = () => terminalManager.irParaAba(1, true);
         else if (e.key === 'F6' && !ctrl && !e.altKey && !e.shiftKey) acao = () => terminalManager.alternarMetade();
@@ -3698,6 +3785,227 @@
                     }
                 });
             }
+        });
+    })();
+    </script>
+    <script>
+    /* ── 💡 Comandos úteis ─────────────────────────────────────────────
+       Identifica o equipamento do terminal ativo pelo cadastro e lista os
+       comandos de verificação daquela família (clientes/comandos_uteis.py).
+       Inserir digita sem Enter; ▶ executa. Os campos variáveis ({porta},
+       {ip}...) são preenchidos uma vez no topo e valem para todos os comandos;
+       a porta sugere as interfaces do último backup. */
+    (function() {
+        const painel = document.getElementById('cuPainel');
+        const cache = {};          // acessoId|familia -> resposta do servidor
+        const portasCache = {};    // acessoId -> [{valor, rotulo}]
+        const valores = {};        // acessoId -> {campo: valor}
+        let atual = null;          // {acessoId, dados}
+
+        function esc(t) {
+            return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        function lerFamilia(id) { try { return localStorage.getItem('cu-familia-' + id) || ''; } catch (_) { return ''; } }
+        function gravarFamilia(id, f) {
+            try { f ? localStorage.setItem('cu-familia-' + id, f) : localStorage.removeItem('cu-familia-' + id); } catch (_) {}
+        }
+
+        function terminalAtivo() {
+            const tm = window.terminalManager;
+            const t = tm && tm.terminals.get(tm.activeTerminal);
+            return t && t.tipo !== 'winbox' && t.acesso && t.acesso.id ? t : null;
+        }
+
+        function mensagem(html) {
+            document.getElementById('cuEquip').innerHTML = '';
+            document.getElementById('cuFamiliaBox').style.display = 'none';
+            document.getElementById('cuAviso').style.display = 'none';
+            document.getElementById('cuCampos').innerHTML = '';
+            document.getElementById('cuCorpo').innerHTML = `<div class="cu-vazio">${html}</div>`;
+        }
+
+        async function carregar() {
+            const t = terminalAtivo();
+            if (!t) { atual = null; mensagem('Abra um terminal SSH ou Telnet para ver os comandos do equipamento.'); return; }
+            const id = t.acesso.id;
+            const familia = lerFamilia(id);
+            const chave = id + '|' + familia;
+            if (!cache[chave]) {
+                mensagem('Identificando o equipamento…');
+                try {
+                    const r = await fetch(`/clientes/acessos/${id}/comandos-uteis/` + (familia ? `?familia=${encodeURIComponent(familia)}` : ''),
+                        { credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (!r.ok) throw new Error(r.status);
+                    cache[chave] = await r.json();
+                } catch (e) {
+                    mensagem('Não foi possível carregar os comandos deste equipamento.'); return;
+                }
+            }
+            // O operador pode ter trocado de aba enquanto o fetch corria
+            const agora = terminalAtivo();
+            if (!agora || agora.acesso.id !== id) return carregar();
+            atual = { acessoId: id, dados: cache[chave] };
+            valores[id] = valores[id] || {};
+            render();
+            carregarPortas(id);
+        }
+
+        async function carregarPortas(id) {
+            if (portasCache[id] || !atual || !precisaDe('porta')) { preencherPortas(); return; }
+            try {
+                const r = await fetch(`/clientes/acessos/${id}/interfaces-backup/`, { credentials: 'same-origin' });
+                const d = r.ok ? await r.json() : {};
+                const ifs = d.interfaces || [];
+                // Físicas primeiro (é nelas que se mede sinal), com descrição antes
+                const peso = i => (i.logica ? 2 : 0) + (i.subinterface ? 1 : 0) + (i.descricao ? 0 : 0.5);
+                portasCache[id] = ifs.slice().sort((a, b) => peso(a) - peso(b))
+                    .map(i => ({ valor: i.nome, rotulo: i.descricao || '' }));
+            } catch (_) { portasCache[id] = []; }
+            preencherPortas();
+        }
+
+        function preencherPortas() {
+            const dl = document.getElementById('cuPortas');
+            const lista = (atual && portasCache[atual.acessoId]) || [];
+            dl.innerHTML = lista.map(p => `<option value="${esc(p.valor)}">${esc(p.rotulo)}</option>`).join('');
+            const input = document.querySelector('#cuCampos input[data-campo="porta"]');
+            if (input) input.placeholder = lista.length ? `${lista.length} portas do backup — digite ou escolha`
+                                                         : (input.dataset.exemplo || '');
+        }
+
+        function precisaDe(campo) {
+            const cat = atual && atual.dados.catalogo;
+            return !!cat && cat.grupos.some(g => g.comandos.some(c => c.campos.includes(campo)));
+        }
+
+        function render() {
+            const d = atual.dados, cat = d.catalogo, eq = d.equipamento;
+            const partes = [eq.fabricante, eq.modelo].filter(Boolean);
+            document.getElementById('cuEquip').innerHTML =
+                (partes.length ? `<b>${esc(partes.join(' · '))}</b>` : '<b>Modelo não cadastrado</b>') +
+                (eq.tipo ? ` — ${esc(eq.tipo)}` : '');
+
+            const sel = document.getElementById('cuFamilia');
+            sel.innerHTML = (d.detectada ? '' : '<option value="">— escolha o tipo de equipamento —</option>') +
+                d.familias.map(f => `<option value="${f.familia}">${esc(f.nome)}${f.familia === d.detectada ? ' (identificado)' : ''}</option>`).join('');
+            sel.value = cat ? cat.familia : '';
+            document.getElementById('cuFamiliaBox').style.display = '';
+
+            if (!cat) {
+                document.getElementById('cuAviso').style.display = 'none';
+                document.getElementById('cuCampos').innerHTML = '';
+                document.getElementById('cuCorpo').innerHTML =
+                    '<div class="cu-vazio">Não reconheci este equipamento pelo cadastro.<br>Escolha o tipo acima — a escolha fica salva para este host.</div>';
+                return;
+            }
+            const aviso = document.getElementById('cuAviso');
+            aviso.style.display = cat.aviso ? '' : 'none';
+            aviso.innerHTML = esc(cat.aviso || '').replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // Campos usados pela família, na ordem do catálogo de rótulos
+            const usados = Object.keys(d.campos).filter(precisaDe);
+            const vals = valores[atual.acessoId];
+            document.getElementById('cuCampos').innerHTML = usados.map(c => `
+                <label class="cu-campo${c === 'porta' || c === 'texto' ? ' largo' : ''}">${esc(d.campos[c])}
+                    <input type="text" data-campo="${c}" value="${esc(vals[c] || '')}" spellcheck="false" autocomplete="off"
+                           data-exemplo="${esc((cat.exemplos || {})[c] || '')}" placeholder="${esc((cat.exemplos || {})[c] || '')}"
+                           ${c === 'porta' ? 'list="cuPortas"' : ''}>
+                </label>`).join('');
+            document.querySelectorAll('#cuCampos input').forEach(inp => {
+                inp.addEventListener('input', () => { vals[inp.dataset.campo] = inp.value.trim(); inp.classList.remove('falta'); });
+            });
+            preencherPortas();
+
+            document.getElementById('cuCorpo').innerHTML = cat.grupos.map((g, gi) => `
+                <div class="cu-grupo"><h4>${esc(g.titulo)}</h4>${g.comandos.map((c, ci) => {
+                    const multi = c.cmd.includes('\n');
+                    const cmdHtml = esc(c.cmd).replace(/\{(\w+)\}/g, '<span class="cu-var">{$1}</span>');
+                    return `<div class="cu-item" data-busca="${esc((c.cmd + ' ' + c.desc).toLowerCase())}">
+                        <div class="cu-item-txt">
+                            <code>${cmdHtml}</code>
+                            <div class="cu-item-desc">${c.conferido ? '<span class="cu-ok" title="Conferido ao vivo neste tipo de equipamento">✓</span>'
+                                                                     : '<span class="cu-nao" title="Sintaxe do fabricante, ainda não conferida aqui">○</span>'} ${esc(c.desc)}</div>
+                        </div>
+                        <div class="cu-acoes">
+                            <button onclick="cuUsar(${gi},${ci},false)" ${multi ? 'disabled title="Várias linhas: use ▶"' : 'title="Digitar no terminal sem Enter"'}>⌨ Inserir</button>
+                            <button class="cu-exec" onclick="cuUsar(${gi},${ci},true)" title="Executar no terminal">▶</button>
+                        </div>
+                    </div>`;
+                }).join('')}</div>`).join('');
+            cuFiltrar();
+        }
+
+        window.cuFiltrar = function() {
+            const q = (document.getElementById('cuBusca').value || '').trim().toLowerCase();
+            document.querySelectorAll('#cuCorpo .cu-grupo').forEach(g => {
+                let visiveis = 0;
+                g.querySelectorAll('.cu-item').forEach(it => {
+                    const ok = !q || it.dataset.busca.includes(q);
+                    it.style.display = ok ? '' : 'none';
+                    if (ok) visiveis++;
+                });
+                g.style.display = visiveis ? '' : 'none';
+            });
+        };
+
+        window.cuTrocarFamilia = function(f) {
+            if (!atual) return;
+            gravarFamilia(atual.acessoId, f && f !== atual.dados.detectada ? f : '');
+            carregar();
+        };
+
+        window.cuUsar = async function(gi, ci, executar) {
+            const t = terminalAtivo();
+            if (!t || !atual || t.acesso.id !== atual.acessoId) return;
+            const c = atual.dados.catalogo.grupos[gi].comandos[ci];
+            const vals = valores[atual.acessoId];
+            const faltando = c.campos.filter(k => !vals[k]);
+            if (faltando.length) {
+                faltando.forEach(k => document.querySelector(`#cuCampos input[data-campo="${k}"]`)?.classList.add('falta'));
+                document.querySelector(`#cuCampos input[data-campo="${faltando[0]}"]`)?.focus();
+                mostrarToast(`Preencha: ${faltando.map(k => atual.dados.campos[k]).join(', ')}`, 'erro');
+                return;
+            }
+            if (!t.socket || t.socket.readyState !== WebSocket.OPEN) {
+                mostrarToast('⚠ Terminal desconectado', 'erro'); return;
+            }
+            const texto = c.cmd.replace(/\{(\w+)\}/g, (_, k) => vals[k]);
+            if (texto.includes('\n')) {
+                const ok = await uiConfirm({
+                    tipo: 'aviso', titulo: 'Executar várias linhas?', btnLabel: 'Executar',
+                    msgHtml: `<div style="margin-bottom:8px">Em <b>${esc((t.acesso.tipo || '') + ' ' + (t.acesso.host || ''))}</b>:</div>` +
+                        `<pre style="background:#0d1117;border:1px solid #30363d;border-radius:4px;padding:8px;font-size:11px;white-space:pre;text-align:left;margin:0">${esc(texto)}</pre>`,
+                });
+                if (!ok) return;
+            }
+            t.terminal.paste(texto);
+            if (executar) t.socket.send(new TextEncoder().encode('\r'));
+            if (window.innerWidth <= 640) fecharComandosUteis();
+            t.terminal.focus();
+        };
+
+        window.abrirComandosUteis = function() {
+            painel.classList.add('aberto');
+            painel.setAttribute('aria-hidden', 'false');
+            document.getElementById('btnComandos')?.classList.add('aberto');
+            carregar();
+        };
+        window.fecharComandosUteis = function() {
+            painel.classList.remove('aberto');
+            painel.setAttribute('aria-hidden', 'true');
+            document.getElementById('btnComandos')?.classList.remove('aberto');
+            terminalAtivo()?.terminal.focus();
+        };
+        window.toggleComandosUteis = function() {
+            painel.classList.contains('aberto') ? fecharComandosUteis() : abrirComandosUteis();
+        };
+        // Troca de aba com o painel aberto → mostra os comandos do novo equipamento
+        window.cuTrocouTerminal = function() {
+            if (painel.classList.contains('aberto')) carregar();
+        };
+        painel.addEventListener('keydown', e => {
+            if (e.key === 'Escape') { e.preventDefault(); fecharComandosUteis(); }
         });
     })();
     </script>

@@ -129,6 +129,7 @@ urlpatterns = [
 
     # Interfaces sugeridas a partir do backup (editor de Topologia)
     path('acessos/<int:acesso_id>/interfaces-backup/', views.interfaces_backup_acesso, name='interfaces_backup_acesso'),
+    path('acessos/<int:acesso_id>/comandos-uteis/', views.comandos_uteis_acesso, name='comandos_uteis_acesso'),
     path('acessos/<int:acesso_id>/l2vpn-backup/', views.l2vpn_backup_acesso, name='l2vpn_backup_acesso'),
     path('acessos/<int:acesso_id>/l2vpn-peers/', views.l2vpn_peers_acesso, name='l2vpn_peers_acesso'),
     path('acessos/<int:acesso_id>/l2vpn-clonar/', views.l2vpn_clonar_acesso, name='l2vpn_clonar_acesso'),
