@@ -115,3 +115,11 @@ class EndpointTest(SimpleTestCase):
     def test_sem_permissao(self):
         self.pode.return_value = False
         self.assertEqual(self._get().status_code, 403)
+
+
+class DatacomInterfaceLinkTest(SimpleTestCase):
+    def test_show_interface_link_primeiro_nas_interfaces_e_conferido(self):
+        for familia in ('datacom', 'datacom_olt'):
+            grupo = next(g for g in cu.catalogo(familia)['grupos'] if g['titulo'] == 'Interfaces')
+            self.assertEqual(grupo['comandos'][0]['cmd'], 'show interface link', familia)
+            self.assertTrue(grupo['comandos'][0]['conferido'], familia)

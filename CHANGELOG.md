@@ -17,6 +17,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   interfaces do último backup. **Inserir** digita sem Enter e **▶** executa. Só comandos de
   leitura. Cada comando mostra se já foi conferido ao vivo (✓) ou se é só a sintaxe do fabricante
   (○). Equipamento sem catálogo mostra um seletor de tipo. Ver `docs/terminal_ssh.md`.
+- **Datacom: `show interface link` no topo de Interfaces** (switch e OLT), marcado como conferido
+  com a confirmação da equipe.
 
 ## [Não publicado] — 2026-10-26 (Agent NOC: interfaces e sinal óptico Raisecom)
 

@@ -11,7 +11,8 @@ do operador; executar é um segundo botão.
 `conferido=True` só para o que foi rodado de verdade num equipamento da
 família (Raisecom em 26/10/2026 num RAX711; o resto vem das funções já
 validadas do Agent NOC e da automação BGP — ver docs/agent_noc.md e
-docs/bgp_automacao.md). O resto é sintaxe documentada do fabricante, ainda
+docs/bgp_automacao.md; `show interface link` do Datacom confirmado pela equipe
+em 26/10/2026). O resto é sintaxe documentada do fabricante, ainda
 não rodada aqui: o painel marca a diferença. Quem conferir um comando ao vivo
 troca a marca.
 
@@ -119,8 +120,8 @@ FAMILIAS = {
                 _c('show alarm', 'Alarmes ativos'),
             ]),
             ('Interfaces', [
+                _c('show interface link', 'Estado, velocidade e duplex de cada porta', True),
                 _c('show interface description', 'Portas com estado e descrição', True),
-                _c('show interface link', 'Estado e velocidade de cada porta'),
                 _c('show interface {porta}', 'Detalhe da porta e contadores'),
             ]),
             ('Sinal óptico', [
@@ -153,6 +154,7 @@ FAMILIAS = {
                 _c('show interface gpon {pon} onu {onu}', 'Detalhe da ONU, incluindo potência'),
             ]),
             ('Interfaces', [
+                _c('show interface link', 'Estado, velocidade e duplex de cada porta', True),
                 _c('show interface description', 'Portas com estado e descrição', True),
                 _c('show interface transceivers', 'TX/RX de todos os SFPs de uplink', True),
             ]),
