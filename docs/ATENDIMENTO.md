@@ -2412,3 +2412,30 @@ fila, webhook duplicado, texto ou áudio sem arquivo fora da fila, broker fora,
 lib ausente, setting desligado, guarda de caminho, gravação e WebSocket, `vazia`,
 `erro`, arquivo sumido, mensagem apagada antes e durante a transcrição, contexto
 da IA e citação.
+
+## Correção — lista de conversas parava/sumia até dar F5 (2026-10-26)
+
+**Arquivos:** `atendimento/templates/atendimento/base.html`, `atendimento/templates/atendimento/inbox.html`
+
+**Sintoma:** dentro de um chamado, as abas Assumidos / Abertos / Em Andamento ficavam vazias ou
+desatualizadas e só voltavam clicando em Atualizar (F5).
+
+**O que os logs mostraram:** o servidor nunca devolveu a lista vazia (todas as respostas de
+`/atendimento/inbox/` têm tamanho de lista cheia), e no intervalo do problema a aba não pediu a
+lista nenhuma vez. A lista só era refeita quando chegava evento pelo WebSocket. Uma conexão que
+morre em silêncio (PC suspenso, troca de rede/Wi-Fi, NAT derrubando a sessão ociosa) continua
+"aberta" no navegador por muitos minutos sem entregar nada, e a lista ficava parada até o F5.
+
+**Correção:**
+- **Ressincronização automática** (`_resyncSeVelha` em `base.html`): a lista é buscada de novo
+  ao voltar para a aba (`visibilitychange`/`focus`, se o último refresh tem mais de 15 s), quando
+  a rede volta (`online`) e, com a aba à vista, depois de 1 min sem nenhum refresh. Só tem efeito
+  no Inbox ou dentro de um chamado (as regras de `__refreshConvPanel` não mudaram).
+- **WebSocket da lista não é mais recriado a cada refresh** (`inbox.html`): o script do Inbox
+  roda de novo a cada vez que a lista é refeita, e fechava e reabria a conexão toda vez. Nesse
+  intervalo sem socket, eventos como chamado novo ou transferência se perdiam. Agora, se a
+  conexão anterior ainda está aberta ou conectando, ela é mantida (os handlers dela buscam tudo
+  no `document`, então servem para a lista nova).
+- **Scroll preservado na aba certa:** o refresh guardava o scroll da primeira `.conv-list`
+  (`#tab-mine`, quase sempre oculta), então a aba que se estava olhando voltava ao topo. Agora
+  usa a lista visível (`_visibleConvList`).

@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-26 (lista de conversas se ressincroniza sozinha)
+
+### Corrigido
+
+- **Atendimento: lista de conversas parava ou ficava vazia até dar F5.** A lista só era refeita
+  quando chegava evento pelo WebSocket. Quando a conexão morria em silêncio (PC suspenso, troca de
+  rede), as abas Assumidos/Abertos/Em Andamento ficavam paradas. Agora a lista é buscada de novo
+  ao voltar para a aba, quando a rede volta e a cada minuto sem atualização com a aba à vista. O
+  WebSocket da lista deixou de ser derrubado e reaberto a cada refresh (eventos se perdiam nesse
+  intervalo), e o scroll da aba visível é mantido. Ver `docs/ATENDIMENTO.md`.
+
 ## [Não publicado] — 2026-10-25 (painel de tarefas só com as do usuário)
 
 ### Corrigido
