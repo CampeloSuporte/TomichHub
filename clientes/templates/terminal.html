@@ -1222,6 +1222,7 @@
             <div id="sp-tab-exec" class="sp-tab sp-tab-ativo" onclick="spTab('exec')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:#ffa500;border-bottom:2px solid #ffa500;">Executar</div>
             <div id="sp-tab-hist" class="sp-tab" onclick="spTab('hist')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.06);border-bottom:2px solid transparent;">Histórico</div>
             <div id="sp-tab-output" class="sp-tab" onclick="spTab('output')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.06);border-bottom:2px solid transparent;">Output</div>
+            <div id="sp-tab-cgnat" class="sp-tab" onclick="spTab('cgnat')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.06);border-bottom:2px solid transparent;" title="Gerador de CGNAT MikroTik v6/v7">CGNAT</div>
         </div>
 
         <!-- Tab: Executar -->
@@ -1265,6 +1266,39 @@
         <div id="sp-pane-hist" style="flex:1;overflow-y:auto;padding:14px;display:none;">
             <div id="spHistContent" style="font-size:11px;color:rgba(88,166,255,.18);text-align:center;padding:30px 0;">
                 Selecione um equipamento para ver o histórico.
+            </div>
+        </div>
+
+        <!-- Tab: CGNAT (gerador MikroTik v6/v7 — clientes/cgnat.py) -->
+        <div id="sp-pane-cgnat" style="flex:1;overflow-y:auto;padding:14px;display:none;flex-direction:column;gap:10px;">
+            <div style="font-size:10px;color:#7d8590;">Gera o CGNAT do MikroTik (netmap + faixa de portas por cliente). O equipamento é o selecionado na aba Executar; o mapeamento vai para os Documentos do cliente dele.</div>
+            <div style="display:flex;gap:8px;">
+                <div style="flex:1"><label style="font-size:10px;color:#7d8590;display:block;margin-bottom:4px;">BLOCO PÚBLICO</label><input id="cgPublico" placeholder="131.100.240.192/29" style="width:100%;background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:4px;color:#e6edf3;font-family:inherit;font-size:12px;padding:6px 8px;outline:none;"></div>
+                <div style="flex:1"><label style="font-size:10px;color:#7d8590;display:block;margin-bottom:4px;">BLOCO PRIVADO</label><input id="cgPrivado" placeholder="100.64.0.0/23" style="width:100%;background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:4px;color:#e6edf3;font-family:inherit;font-size:12px;padding:6px 8px;outline:none;"></div>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <div style="flex:1"><label style="font-size:10px;color:#7d8590;display:block;margin-bottom:4px;">ROUTEROS</label><select id="cgVersao" style="width:100%;background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:4px;color:#e6edf3;font-family:inherit;font-size:12px;padding:6px 8px;outline:none;"><option value="v6">v6</option><option value="v7">v7</option></select></div>
+                <div style="flex:1"><label style="font-size:10px;color:#7d8590;display:block;margin-bottom:4px;">PORTA INICIAL</label><input id="cgPortaIni" type="number" value="1024" style="width:100%;background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:4px;color:#e6edf3;font-family:inherit;font-size:12px;padding:6px 8px;outline:none;"></div>
+                <div style="flex:1"><label style="font-size:10px;color:#7d8590;display:block;margin-bottom:4px;">PORTA FINAL</label><input id="cgPortaFim" type="number" value="65535" style="width:100%;background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:4px;color:#e6edf3;font-family:inherit;font-size:12px;padding:6px 8px;outline:none;"></div>
+                <div style="flex:1"><label style="font-size:10px;color:#7d8590;display:block;margin-bottom:4px;">PORTAS/CLIENTE</label><input id="cgPpc" type="number" placeholder="auto" style="width:100%;background:#0d1117;border:1px solid rgba(255,255,255,.08);border-radius:4px;color:#e6edf3;font-family:inherit;font-size:12px;padding:6px 8px;outline:none;"></div>
+            </div>
+            <div style="display:flex;gap:14px;font-size:11px;color:#c9d1d9;flex-wrap:wrap;">
+                <label><input type="checkbox" id="cgIcmp" checked> ICMP</label>
+                <label><input type="checkbox" id="cgFallback" checked> Fallback sem porta</label>
+                <label><input type="checkbox" id="cgSalvar" checked> Salvar nos Documentos do cliente</label>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button onclick="cgGerarTerminal()" style="flex:1;padding:8px;background:rgba(255,165,0,.15);border:1px solid #ffa500;color:#ffa500;border-radius:4px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">⚙ Gerar</button>
+                <a href="/clientes/cgnat/" id="cgLinkCompleto" target="_blank" title="Abrir o gerador completo (tabela de mapeamento e busca)" style="padding:8px 12px;border:1px solid #30363d;color:#8b949e;border-radius:4px;font-size:12px;text-decoration:none;display:flex;align-items:center;">↗</a>
+            </div>
+            <div id="cgMsgTerm" style="font-size:11px;"></div>
+            <div id="cgResTerm" style="display:none;flex-direction:column;gap:8px;">
+                <div id="cgResumoTerm" style="font-size:11px;color:#c9d1d9;"></div>
+                <pre id="cgScriptTerm" style="background:#0d1117;border:1px solid #30363d;border-radius:4px;padding:8px;font-size:10px;color:#c9d1d9;max-height:300px;overflow:auto;white-space:pre;margin:0;"></pre>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="cgColarTerminal()" style="flex:1;padding:8px;background:rgba(63,185,80,.12);border:1px solid #3fb950;color:#3fb950;border-radius:4px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">▶ Colar no terminal</button>
+                    <button onclick="cgCopiarTerminal()" style="padding:8px 12px;background:transparent;border:1px solid #30363d;color:#c9d1d9;border-radius:4px;font-family:inherit;font-size:12px;cursor:pointer;">Copiar</button>
+                </div>
             </div>
         </div>
 
@@ -3293,13 +3327,13 @@
 
         // ── Tab ──
         window.spTab = function(tab) {
-            ['exec','hist','output'].forEach(t => {
+            ['exec','hist','output','cgnat'].forEach(t => {
                 const pane = document.getElementById(`sp-pane-${t}`);
                 const tabEl = document.getElementById(`sp-tab-${t}`);
                 if (!pane || !tabEl) return;
                 const ativo = t === tab;
                 pane.style.display = ativo ? 'flex' : 'none';
-                if (t === 'exec') pane.style.flexDirection = ativo ? 'column' : '';
+                if (t === 'exec' || t === 'cgnat') pane.style.flexDirection = ativo ? 'column' : '';
                 tabEl.style.color = ativo ? '#ffa500' : '#555';
                 tabEl.style.borderBottom = ativo ? '2px solid #ffa500' : '2px solid transparent';
             });
@@ -3512,6 +3546,80 @@
                 append(`\n<span style="color:${color};font-weight:700">━━ Concluído: ${_escHtml(ev.status)} ━━</span>\n`);
             }
         }
+
+        // ── CGNAT (clientes/cgnat_views.py) ──
+        let cgScript = '';
+
+        window.cgGerarTerminal = async function() {
+            const sel = document.getElementById('spAcesoSelect');
+            if (sel && sel.value) spAcesoId = parseInt(sel.value);
+            const msg = document.getElementById('cgMsgTerm');
+            const salvar = document.getElementById('cgSalvar').checked;
+            if (salvar && !spAcesoId) {
+                msg.innerHTML = '<span style="color:#ff5555">Selecione o equipamento na aba Executar (o mapeamento vai para os Documentos do cliente dele) ou desmarque "Salvar".</span>';
+                return;
+            }
+            msg.innerHTML = '<span style="color:#7d8590">Gerando...</span>';
+            const body = {
+                publico: document.getElementById('cgPublico').value.trim(),
+                privado: document.getElementById('cgPrivado').value.trim(),
+                versao: document.getElementById('cgVersao').value,
+                porta_inicial: document.getElementById('cgPortaIni').value,
+                porta_final: document.getElementById('cgPortaFim').value,
+                portas_por_cliente: document.getElementById('cgPpc').value,
+                icmp: document.getElementById('cgIcmp').checked,
+                fallback: document.getElementById('cgFallback').checked,
+                salvar: salvar, acesso_id: spAcesoId,
+            };
+            let j;
+            try {
+                const r = await fetch('/clientes/cgnat/gerar/', {method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
+                    body: JSON.stringify(body)});
+                j = await r.json();
+            } catch (e) {
+                msg.innerHTML = '<span style="color:#ff5555">Falha ao gerar (sessão expirada?).</span>'; return;
+            }
+            if (!j.ok) { msg.innerHTML = `<span style="color:#ff5555">✗ ${_escHtml(j.erro)}</span>`; return; }
+            cgScript = j.script;
+            let html = (j.avisos || []).map(a => `<div style="color:#d29922">⚠ ${_escHtml(a)}</div>`).join('');
+            if (j.documentos && j.documentos.length)
+                html += `<div style="color:#3fb950">✓ Salvo nos Documentos de ${_escHtml(j.cliente.nome)}: ${j.documentos.map(d => _escHtml(d.nome)).join(', ')}</div>`;
+            msg.innerHTML = html;
+            const s = j.resumo;
+            document.getElementById('cgResumoTerm').textContent =
+                `${s.ips_privados} privados → ${s.ips_publicos} públicos · ${s.clientes_por_ip} clientes/IP · ${s.portas_por_cliente} portas/cliente · RouterOS ${j.versao}`;
+            document.getElementById('cgScriptTerm').textContent = j.script;
+            document.getElementById('cgResTerm').style.display = 'flex';
+        };
+
+        window.cgCopiarTerminal = async function() {
+            if (!cgScript) return;
+            try { await navigator.clipboard.writeText(cgScript); mostrarToast('Script copiado'); }
+            catch (e) { mostrarToast('Não foi possível copiar', 'erro'); }
+        };
+
+        // Linha a linha com uma pausa: colar 200 linhas de uma vez no console do
+        // RouterOS perde caracteres.
+        window.cgColarTerminal = async function() {
+            const tm = window.terminalManager;
+            const t = tm && tm.terminals.get(tm.activeTerminal);
+            if (!cgScript || !t || !t.socket || t.socket.readyState !== WebSocket.OPEN) {
+                mostrarToast('⚠ Abra/conecte o terminal do MikroTik primeiro', 'erro'); return;
+            }
+            const linhas = cgScript.split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
+            const ok = await uiConfirm({tipo: 'aviso', titulo: 'Aplicar CGNAT?', btnLabel: 'Colar e executar',
+                msgHtml: `Enviar <b>${linhas.length}</b> comandos para <b>${_escHtml((t.acesso?.tipo || '') + ' ' + (t.acesso?.host || ''))}</b>?`});
+            if (!ok) return;
+            fecharPainelScripts();
+            const enc = new TextEncoder();
+            for (const l of linhas) {
+                if (t.socket.readyState !== WebSocket.OPEN) { mostrarToast('Terminal desconectou no meio do envio', 'erro'); return; }
+                t.socket.send(enc.encode(l + '\r'));
+                await new Promise(r => setTimeout(r, 60));
+            }
+            t.terminal.focus();
+        };
 
         // ── Histórico ──
         async function spCarregarHistorico(acessoId) {

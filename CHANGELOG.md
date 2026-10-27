@@ -5,6 +5,20 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-27 (Gerador de CGNAT MikroTik v6/v7)
+
+### Adicionado
+
+- **Gerador de CGNAT para MikroTik dentro do CRM**, no lugar do site da Redes Brasil. Informa o bloco
+  público e o privado (ex.: `131.100.240.192/29` + `100.64.0.0/23`), escolhe RouterOS v6 ou v7 e
+  sai o script (netmap TCP/UDP com faixa de portas por cliente, ICMP e fallback sem porta) e a
+  tabela IP privado → IP público + portas, com busca por `IP público:porta`. A saída v6 é idêntica
+  à da Redes Brasil para o exemplo (64 clientes por IP, 1008 portas). Tela em Ferramentas →
+  **Gerador CGNAT MikroTik** e aba **CGNAT** no ⚡ Scripts do terminal web, que cola o script no
+  equipamento. Ao gerar para um cliente, o `.rsc` e o `.csv` de mapeamento entram nos Documentos
+  dele. Valida CIDR, blocos trocados/sobrepostos e portas insuficientes. Ver
+  `docs/cgnat_mikrotik.md`.
+
 ## [Não publicado] — 2026-10-27 (Topologia: enlace reto ao arrastar)
 
 ### Corrigido
