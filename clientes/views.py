@@ -8567,13 +8567,26 @@ def l2vpn_empresas_cliente(request, cliente_id):
     if not _perms.pode_acessar_cliente(request.user, cliente):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
     empresas = L2vpnEmpresa.objects.filter(cliente=cliente).annotate(n=Count('transportes'))
+    # `termos`: textos dos transportes de cada empresa (nome/ID/observação do
+    # serviço L2VPN, rótulo/circuito/observação do enlace) para a busca da
+    # sub-aba achar a empresa pelo transporte, não só pelo nome dela.
+    termos = {}
+    for t in L2vpnTransporte.objects.filter(empresa__cliente=cliente).select_related('acesso'):
+        termos.setdefault(t.empresa_id, []).append(' · '.join(filter(None, [
+            t.servico_nome, t.servico_id, t.observacao, t.tecnologia,
+            f'vlan {t.vlan}' if t.vlan else '', t.acesso.tipo,
+        ])))
     # Enlaces só contam enquanto estão marcados como transporte na topologia.
     enlaces = {}
     for t in links_transporte(cliente):
         if t['empresa_id']:
             enlaces[t['empresa_id']] = enlaces.get(t['empresa_id'], 0) + 1
+            termos.setdefault(t['empresa_id'], []).append(' · '.join(filter(None, [
+                t['label'], t['circuito'], t['observacao'], t['a']['label'], t['b']['label'],
+            ])))
     return JsonResponse({'empresas': [
-        dict(_l2vpn_empresa_dict(e, e.n), enlaces=enlaces.get(e.id, 0)) for e in empresas
+        dict(_l2vpn_empresa_dict(e, e.n), enlaces=enlaces.get(e.id, 0), termos=termos.get(e.id, []))
+        for e in empresas
     ]})
 
 

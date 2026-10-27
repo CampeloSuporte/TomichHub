@@ -571,6 +571,15 @@ os serviços marcados, com: switch, tipo, ID, nome, VLAN, MTU, **com quem fecha
 do modal da topologia, e as interfaces de acesso. Para documentar as duas pontas,
 marque o serviço nos dois switches.
 
+**Busca (2026-10-27).** O campo de busca acha a empresa pelo nome, CNPJ/CPF,
+contato e observação dela **e também pelos transportes**: nome, ID, tecnologia,
+VLAN e observação do serviço L2VPN marcado (e o switch), e rótulo,
+circuito/contrato, observação e hosts das pontas dos enlaces de transporte da
+topologia. A lista (`l2vpn/empresas/`) devolve esses textos em `termos` por
+empresa; o filtro roda no navegador. Quando a empresa aparece só por causa de um
+transporte, a linha mostra qual (ícone de rota). Ex.: `P2PJNAXSNP`, que está na
+observação da VPLS 3625, acha a CLARO NORTAO.
+
 **Como o vínculo é guardado.** Os serviços não ficam no banco, porque são lidos do
 backup a cada vez. Por isso `L2vpnTransporte` aponta para o `Acesso` mais uma
 `chave` = `tecnologia|id|nome` (`_l2vpn_chave` em `clientes/views.py`), a mesma
@@ -582,7 +591,7 @@ switch (`unique_together = acesso, chave`). Marcar de novo troca a empresa.
 
 | Endpoint | Método | O que faz |
 |---|---|---|
-| `/clientes/<cliente_id>/ipam/l2vpn/empresas/` | GET | Empresas + contagem de transportes |
+| `/clientes/<cliente_id>/ipam/l2vpn/empresas/` | GET | Empresas + contagem de transportes + `termos` (textos dos transportes, para a busca) |
 | `/clientes/<cliente_id>/ipam/l2vpn/empresas/salvar/` | POST | Cria (sem `id`) ou edita. O nome é único por cliente, sem diferenciar maiúsculas |
 | `/clientes/ipam/l2vpn/empresas/<id>/` | GET | Transportes da empresa cruzados com o backup atual (peers, VLAN, MTU, interfaces) |
 | `/clientes/ipam/l2vpn/empresas/<id>/deletar/` | POST | Apaga a empresa e os vínculos, sem mexer nos equipamentos |
