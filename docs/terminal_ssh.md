@@ -594,5 +594,9 @@ terminal ou o botão ⌨ foca o campo; `input`/`keydown` viram bytes no WebSocke
   parado (≤ 10 px); arrastar fica com a rolagem de histórico do próprio xterm.
 - **Toque depois do "voltar" do Android.** O teclado some mas o campo segue focado e `focus()`
   não faz nada — parecia travado. Se o campo já está focado, `blur()` + `focus()`.
+- **Digitação parava depois de um tempo.** O `blur` do campo recoloca `readonly` 200 ms depois;
+  se nesse meio-tempo o campo voltava a ter foco (o próprio blur+focus acima, o toque no botão
+  ⌨), ele ficava focado *e* readonly — teclado aberto, nada chegava ao terminal, e tocar de novo
+  repetia a corrida. Agora o `readonly` só volta se o campo continuar sem foco, e o `focus` o tira.
 - O campo escondido fica dentro da tela (canto inferior, `opacity: 0`) e foca com
   `preventScroll`; digitar volta o terminal para o fim (`scrollToBottom`).
