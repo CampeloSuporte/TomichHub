@@ -577,8 +577,11 @@ VLAN e observação do serviço L2VPN marcado (e o switch), e rótulo,
 circuito/contrato, observação e hosts das pontas dos enlaces de transporte da
 topologia. A lista (`l2vpn/empresas/`) devolve esses textos em `termos` por
 empresa; o filtro roda no navegador. Quando a empresa aparece só por causa de um
-transporte, a linha mostra qual (ícone de rota). Ex.: `P2PJNAXSNP`, que está na
-observação da VPLS 3625, acha a CLARO NORTAO.
+transporte, a linha mostra quais (até 3, ícone de rota) e, ao abrir a empresa,
+o detalhe vem **filtrado** só com os transportes que bateram ("N de M
+transportes", com link *mostrar todos*). Se a busca bateu nos dados da própria
+empresa, o detalhe mostra tudo. Ex.: `P2PJNAXSNP`, que está na observação da
+VPLS 3625, acha a CLARO NORTAO e abre só essa VPLS.
 
 **Como o vínculo é guardado.** Os serviços não ficam no banco, porque são lidos do
 backup a cada vez. Por isso `L2vpnTransporte` aponta para o `Acesso` mais uma

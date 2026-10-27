@@ -3059,7 +3059,7 @@ const IPAM = {
 
 const L2VPN = { carregado: false, switches: [], aberto: null, cacheDetalhe: {}, busca: '', pagina: 1, porPagina: 20 };
 const L2VPN_PODE_EDITAR = {% if is_cliente %}false{% else %}true{% endif %};
-const L2EMP = { carregado: false, empresas: [], aberta: null, cacheDetalhe: {}, busca: '' };
+const L2EMP = { carregado: false, empresas: [], aberta: null, cacheDetalhe: {}, busca: '', mostrarTodos: {} };
 const TRANSP = { carregado: false, enlaces: [], busca: '' };
 const VLANSW = { carregado: false, switches: [], aberto: null, cacheDetalhe: {}, busca: '', pagina: 1, porPagina: 20 };
 
@@ -4987,7 +4987,16 @@ window.l2empCarregar = async function(){
 
 function l2empBuscar(valor){
     L2EMP.busca = valor;
+    L2EMP.mostrarTodos = {};
     _l2empRenderLista();
+}
+
+function _l2empCasa(txt, q){ return String(txt || '').toLowerCase().includes(q); }
+
+/* A busca bateu nos dados da própria empresa? Então o detalhe mostra tudo;
+   senão mostra só os transportes que bateram. */
+function _l2empCasaEmpresa(e, q){
+    return [e.nome, e.documento, e.contato, e.observacao].some(x => _l2empCasa(x, q));
 }
 
 function _l2empRenderLista(){
@@ -4999,13 +5008,12 @@ function _l2empRenderLista(){
     const q = (L2EMP.busca || '').trim().toLowerCase();
     // Busca também nos transportes da empresa (nome/descrição da L2VPN, enlace):
     // quando o acerto vem só de um transporte, ele aparece na linha.
-    const casa = txt => (txt || '').toLowerCase().includes(q);
     const viaTransporte = {};
     const filtradas = q ? L2EMP.empresas.filter(e => {
-        if (casa(e.nome) || casa(e.documento) || casa(e.contato) || casa(e.observacao)) return true;
-        const termo = (e.termos || []).find(casa);
-        if (termo) viaTransporte[e.id] = termo;
-        return !!termo;
+        if (_l2empCasaEmpresa(e, q)) return true;
+        const termos = (e.termos || []).filter(t => _l2empCasa(t, q));
+        if (termos.length) viaTransporte[e.id] = termos;
+        return termos.length > 0;
     }) : L2EMP.empresas;
     if (!filtradas.length) {
         lista.innerHTML = '<div class="text-center text-muted py-4">Nenhuma empresa encontrada para essa busca.</div>';
@@ -5022,7 +5030,7 @@ function _l2empRenderLista(){
                 <i class="fas fa-building switch-folder-icon" style="color:var(--primary-green);"></i>
                 <span class="switch-folder-nome">${_escapeHtmlKanban(e.nome)}</span>
                 <span class="switch-folder-host">${_escapeHtmlKanban([e.documento, e.contato].filter(Boolean).join(' · '))}</span>
-                ${viaTransporte[e.id] ? `<span class="switch-folder-host" title="Encontrada pelo transporte"><i class="fas fa-route me-1"></i>${_escapeHtmlKanban(viaTransporte[e.id])}</span>` : ''}
+                ${viaTransporte[e.id] ? `<span class="switch-folder-host" title="Encontrada pelo transporte"><i class="fas fa-route me-1"></i>${viaTransporte[e.id].slice(0, 3).map(_escapeHtmlKanban).join('<br>')}${viaTransporte[e.id].length > 3 ? ` <b>+${viaTransporte[e.id].length - 3}</b>` : ''}</span>` : ''}
                 <div class="switch-folder-meta">
                     <span class="l2vpn-chip ${e.transportes ? 'l2vpn-chip-emp' : 'l2vpn-chip-vazio'}">${e.transportes} L2VPN</span>
                     ${e.enlaces ? `<span class="l2vpn-chip l2vpn-chip-vpws"><i class="fas fa-route me-1"></i>${e.enlaces} enlace${e.enlaces !== 1 ? 's' : ''} de transporte</span>` : ''}
@@ -5066,13 +5074,39 @@ async function _l2empCarregarDetalhe(id){
     }
 }
 
-function _l2empRenderDetalhe(d){
+/* Com busca que só bateu nos transportes, o detalhe abre filtrado nos
+   transportes que casam (mesmos campos de `termos` no servidor). */
+function _l2empFiltrarDetalhe(d){
+    const q = (L2EMP.busca || '').trim().toLowerCase();
+    if (!q || L2EMP.mostrarTodos[d.empresa.id] || _l2empCasaEmpresa(d.empresa, q)) return { d, aviso: '' };
+    const l2 = (d.transportes || []).filter(t =>
+        [t.nome, t.servico_id, t.observacao, t.tecnologia, t.vlan, t.acesso && t.acesso.nome].some(x => _l2empCasa(x, q)));
+    const en = (d.enlaces || []).filter(t =>
+        [t.label, t.circuito, t.observacao, t.a && t.a.label, t.b && t.b.label].some(x => _l2empCasa(x, q)));
+    const total = (d.transportes || []).length + (d.enlaces || []).length;
+    if (!l2.length && !en.length) return { d, aviso: '' };
+    const aviso = `<div class="mb-2" style="color:var(--text-muted);font-size:.8rem;">
+        <i class="fas fa-filter me-1"></i>${l2.length + en.length} de ${total} transporte${total !== 1 ? 's' : ''} para "${_escapeHtmlKanban(L2EMP.busca.trim())}"
+        · <a href="#" onclick="event.preventDefault();l2empMostrarTodos(${d.empresa.id})">mostrar todos</a></div>`;
+    return { d: Object.assign({}, d, { transportes: l2, enlaces: en }), aviso };
+}
+
+window.l2empMostrarTodos = function(id){
+    L2EMP.mostrarTodos[id] = true;
+    const alvo = document.getElementById(`l2emp-detalhe-${id}`);
+    if (alvo && L2EMP.cacheDetalhe[id]) alvo.innerHTML = _l2empRenderDetalhe(L2EMP.cacheDetalhe[id]);
+};
+
+function _l2empRenderDetalhe(dOriginal){
+    const { d, aviso } = _l2empFiltrarDetalhe(dOriginal);
     const obs = d.empresa.observacao ? `<div class="mb-2" style="color:var(--text-muted);font-size:.8rem;white-space:pre-wrap;">${_escapeHtmlKanban(d.empresa.observacao)}</div>` : '';
+    // Filtrado só em enlaces: a seção L2VPN some em vez de dizer "nenhuma associada".
+    const comL2vpn = !aviso || d.transportes.length > 0;
     const enlaces = (d.enlaces && d.enlaces.length)
         ? `<div class="mb-1 mt-1" style="color:var(--text-light);font-size:.82rem;font-weight:600;"><i class="fas fa-route me-1"></i>Enlaces de transporte que esta empresa faz</div>${_transpTabela(d.enlaces, false)}
-           <div class="mb-1 mt-3" style="color:var(--text-light);font-size:.82rem;font-weight:600;"><i class="fas fa-diagram-project me-1"></i>L2VPN</div>`
+           ${comL2vpn ? '<div class="mb-1 mt-3" style="color:var(--text-light);font-size:.82rem;font-weight:600;"><i class="fas fa-diagram-project me-1"></i>L2VPN</div>' : ''}`
         : '';
-    return obs + enlaces + _l2empRenderL2vpn(d);
+    return aviso + obs + enlaces + (comL2vpn ? _l2empRenderL2vpn(d) : '');
 }
 
 function _l2empRenderL2vpn(d){
