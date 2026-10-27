@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-27 (Terminal SSH no celular)
+
+### Corrigido
+
+- **Terminal SSH no celular: teclado cobria o prompt e a tela travava.** Depois do primeiro
+  comando o teclado virtual ficava na frente da saída, a página não subia mais e tocar no
+  terminal não reabria o teclado. A página agora ocupa só a área visível (`visualViewport` →
+  `--app-h`/`--app-top`, `interactive-widget=resizes-content`) e o prompt fica acima do teclado;
+  arrastar rola o histórico em vez de reabrir o teclado; tocar com o campo já focado (teclado
+  fechado pelo "voltar" do Android) reabre o teclado; digitar volta o terminal para o fim.
+  `docs/terminal_ssh.md`.
+
 ## [Não publicado] — 2026-10-27 (Envio de imagem no atendimento travando)
 
 ### Corrigido

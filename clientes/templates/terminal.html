@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>Terminal</title>
     <link rel="stylesheet" href="/static/css/xterm.min.css" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -13,14 +13,17 @@
             background: #0d1117; color: #e6edf3;
             font-family: 'Inter', 'JetBrains Mono', 'Courier New', monospace;
             font-weight: 400; font-size: 13px; line-height: 1.2;
-            overflow: hidden; height: 100vh; width: 100vw;
+            overflow: hidden; height: var(--app-h, 100vh); width: 100vw;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             text-rendering: optimizeLegibility;
             /* Previne bounce/scroll indesejado no iOS */
             position: fixed; overscroll-behavior: none;
+            /* --app-h/--app-top: área visível de verdade (sem o teclado virtual),
+               mantidos por ajustarAreaVisivel() a partir do visualViewport */
+            top: var(--app-top, 0px); left: 0;
         }
-        .terminal-container { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
+        .terminal-container { display: flex; flex-direction: column; height: var(--app-h, 100vh); width: 100vw; }
 
         /* ─── HOST SIDEBAR ─── */
         .host-sidebar {
@@ -269,7 +272,7 @@
 
         /* ── 💡 Comandos úteis ── */
         #cuPainel {
-            position: fixed; top: 0; right: -480px; width: 460px; max-width: 100vw; height: 100vh;
+            position: fixed; top: 0; right: -480px; width: 460px; max-width: 100vw; height: var(--app-h, 100vh);
             background: #161b22; border-left: 2px solid #facc15; z-index: 9997;
             display: flex; flex-direction: column; box-shadow: -4px 0 16px rgba(0,0,0,.4);
             transition: right .25s ease; font-family: 'Inter', sans-serif; color: #c9d1d9;
@@ -382,8 +385,10 @@
 
         /* Input escondido que captura teclado virtual no iOS/Android */
         #mobileKeyboardInput {
-            position: fixed; top: -9999px; left: -9999px;
-            width: 1px; height: 1px; opacity: 0;
+            /* Dentro da área visível (canto inferior): em -9999px o navegador
+               rolava a página atrás do campo ao focar e ela ficava presa */
+            position: fixed; left: 0; bottom: 0;
+            width: 1px; height: 1px; opacity: 0; pointer-events: none;
             background: transparent; border: none; outline: none;
             color: transparent; font-size: 16px; /* iOS: evita zoom em input */
             -webkit-user-select: text; user-select: text;
@@ -436,7 +441,7 @@
 
         /* ─── WIKI SIDEBAR ─── */
         .wiki-sidebar {
-            position: fixed; top: 0; right: -9999px; width: 480px; height: 100vh;
+            position: fixed; top: 0; right: -9999px; width: 480px; height: var(--app-h, 100vh);
             background: #161b22; border-left: 1px solid #30363d;
             display: flex; flex-direction: column; z-index: 9999;
             box-shadow: -4px 0 16px rgba(0,0,0,.4);
@@ -1202,7 +1207,7 @@
     </div>
 
     <div id="scriptsPainel" style="
-        position:fixed; top:0; right:-560px; width:540px; height:100vh;
+        position:fixed; top:0; right:-560px; width:540px; height:var(--app-h, 100vh);
         background:#161b22; border-left:2px solid #ffa500;
         display:flex; flex-direction:column; z-index:9998;
         box-shadow: -4px 0 16px rgba(0,0,0,.4);
@@ -1405,11 +1410,22 @@
         if (!terminalManager.activeTerminal) {
             mostrarToast('⚠ Nenhum terminal ativo', 'erro'); return;
         }
+        const jaFocado = document.activeElement === mobileInput;
         mobileInput.removeAttribute('readonly');
         mobileInput.value = '';
-        mobileInput.focus();
-        setTimeout(() => mobileInput.focus(), 100);
-        mostrarToast('⌨ Teclado ativado — digite normalmente');
+        // Android: o "voltar" esconde o teclado mas o campo segue focado, e
+        // focus() de novo não faz nada — o toque parecia travado. Tira o foco
+        // e devolve para o teclado reabrir.
+        if (jaFocado) mobileInput.blur();
+        mobileInput.focus({ preventScroll: true });
+        setTimeout(() => mobileInput.focus({ preventScroll: true }), 100);
+        if (!jaFocado) mostrarToast('⌨ Teclado ativado — digite normalmente');
+    }
+
+    // Digitou: volta o terminal para o fim, onde está o prompt
+    function rolarTerminalAtivoParaFim() {
+        const t = terminalManager.activeTerminal && terminalManager.terminals.get(terminalManager.activeTerminal);
+        if (t) t.terminal.scrollToBottom();
     }
 
     // Captura entrada do teclado virtual
@@ -1423,6 +1439,7 @@
         if (val.length > 0) {
             const cmd = val.replace(/\x7f/g, '\x08');
             tObj.socket.send(JSON.stringify({ action: 'command', command: cmd }));
+            rolarTerminalAtivoParaFim();
         }
         this.value = '';
     });
@@ -1449,6 +1466,7 @@
         if (special) {
             e.preventDefault();
             tObj.socket.send(JSON.stringify({ action: 'command', command: special }));
+            rolarTerminalAtivoParaFim();
         }
     });
 
@@ -2125,8 +2143,18 @@
                 pane.style.flex = '1'; pane.style.overflow = 'hidden';
                 pane.style.display = 'none'; pane.style.minHeight = '0'; pane.style.minWidth = '0';
 
-                // No mobile: tap no terminal = ativar input escondido
+                // No mobile: toque no terminal = ativar input escondido.
+                // Só toque parado: arrastar é rolar o histórico (o xterm cuida),
+                // e reabrir o teclado no fim de cada rolagem jogava a tela de volta.
+                let toqueIni = null;
+                pane.addEventListener('touchstart', (e) => {
+                    const p = e.touches[0];
+                    toqueIni = e.touches.length === 1 ? { x: p.clientX, y: p.clientY } : null;
+                }, { passive: true });
                 pane.addEventListener('touchend', (e) => {
+                    const p = e.changedTouches[0], ini = toqueIni;
+                    toqueIni = null;
+                    if (!ini || Math.abs(p.clientX - ini.x) > 10 || Math.abs(p.clientY - ini.y) > 10) return;
                     if (isMobile() && terminalManager.activeTerminal === terminalId) {
                         e.preventDefault();
                         ativarTecladoMobile();
@@ -3010,12 +3038,25 @@
 
     window.addEventListener('resize', refitTerminalAtivo);
 
-    // Refit quando o teclado virtual do celular abre/fecha (muda o visualViewport)
+    // Teclado virtual do celular. O Chrome Android (e o Safari) só encolhem o
+    // visualViewport: 100vh continuava a tela inteira, o fim do terminal (o
+    // prompt) ficava atrás do teclado e o navegador deslocava a página, que
+    // com o body fixo não voltava mais. A página passa a ocupar só a área
+    // visível e acompanha o deslocamento; o fit() então põe o prompt acima do teclado.
+    function ajustarAreaVisivel() {
+        const vv = window.visualViewport; if (!vv) return;
+        const raiz = document.documentElement.style;
+        raiz.setProperty('--app-h', `${Math.round(vv.height)}px`);
+        raiz.setProperty('--app-top', `${Math.round(vv.offsetTop)}px`);
+    }
     if (window.visualViewport) {
+        ajustarAreaVisivel();
         window.visualViewport.addEventListener('resize', () => {
+            ajustarAreaVisivel();
             // Dá um tick para o layout estabilizar antes de refazer o fit
             requestAnimationFrame(refitTerminalAtivo);
         });
+        window.visualViewport.addEventListener('scroll', ajustarAreaVisivel);
     }
 
     // ============================================================
