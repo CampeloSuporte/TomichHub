@@ -144,6 +144,38 @@ class TopoEditor {
 
   _snap(v) { return this.snap ? Math.round(v/20)*20 : v; }
 
+  /** Ímã de alinhamento: o enlace vai de centro a centro, então só sai reto
+   *  quando os dois nodes têm o MESMO x (vertical) ou o mesmo y (horizontal).
+   *  A grade de 20 px não garante isso — node importado do draw.io, criado
+   *  com a grade desligada ou de tamanho diferente fica fora dela, e o enlace
+   *  ficava torto por 2–5 px. Para os nodes em `ids` (posição já com a grade
+   *  aplicada), devolve a correção {dx, dy} que encosta no eixo do vizinho
+   *  mais próximo dentro de 12 px de tela. O vizinho é a outra ponta do
+   *  enlace, ou o waypoint colado no node quando o enlace tem dobra.
+   *  Alt segurado desliga o ímã. */
+  _alinharVizinhos(ids, e) {
+    if (e && e.altKey) return {dx: 0, dy: 0};
+    const alvo = ids instanceof Set ? ids : new Set(ids);
+    const lim = 12 / this.zoom;
+    let bx = null, by = null;
+    const testa = (n, p) => {
+      const ax = p.x - n.x, ay = p.y - n.y;
+      if (Math.abs(ax) <= lim && (bx === null || Math.abs(ax) < Math.abs(bx))) bx = ax;
+      if (Math.abs(ay) <= lim && (by === null || Math.abs(ay) < Math.abs(by))) by = ay;
+    };
+    this.links.forEach(l => {
+      const sIn = alvo.has(l.src), tIn = alvo.has(l.tgt);
+      if (sIn === tIn && !(sIn && (l.waypoints || []).length)) return;
+      const wps = l.waypoints || [];
+      const src = this.nodes.find(n => n.id === l.src);
+      const tgt = this.nodes.find(n => n.id === l.tgt);
+      if (!src || !tgt) return;
+      if (sIn) testa(src, wps.length ? wps[0] : tgt);
+      if (tIn) testa(tgt, wps.length ? wps[wps.length - 1] : src);
+    });
+    return {dx: bx || 0, dy: by || 0};
+  }
+
   /** Modificador de seleção múltipla: **Ctrl** (o que a equipe usa), com Shift
    *  e Cmd valendo como alias — Shift porque era o único jeito até 2026-08-25
    *  e virou dedo de quem já usava, Cmd (metaKey) pro mesmo gesto no Mac. */
@@ -663,7 +695,24 @@ class TopoEditor {
       const pt = this._svgPoint(e);
       const link = this.links.find(l => l.id === this.wpDrag.linkId);
       if (link && link.waypoints) {
-        link.waypoints[this.wpDrag.wpIdx] = {x:pt.x, y:pt.y};
+        // Ímã também na dobra: encosta no eixo do ponto de antes/depois
+        // (node ou outra dobra) para os trechos do L saírem retos.
+        const i = this.wpDrag.wpIdx, wps = link.waypoints;
+        const src = this.nodes.find(n => n.id === link.src);
+        const tgt = this.nodes.find(n => n.id === link.tgt);
+        const viz = [i > 0 ? wps[i - 1] : src, i < wps.length - 1 ? wps[i + 1] : tgt].filter(Boolean);
+        let x = pt.x, y = pt.y;
+        if (!e.altKey) {
+          const lim = 12 / this.zoom;
+          let bx = null, by = null;
+          viz.forEach(p => {
+            if (Math.abs(p.x - pt.x) <= lim && (bx === null || Math.abs(p.x - pt.x) < Math.abs(bx - pt.x))) bx = p.x;
+            if (Math.abs(p.y - pt.y) <= lim && (by === null || Math.abs(p.y - pt.y) < Math.abs(by - pt.y))) by = p.y;
+          });
+          if (bx !== null) x = bx;
+          if (by !== null) y = by;
+        }
+        link.waypoints[i] = {x, y};
         this._renderLink(link);
         this._renderLinkHandles(link);
         this._setDirty();
@@ -709,14 +758,18 @@ class TopoEditor {
       let dx = pt.x - this.groupDragging.startX;
       let dy = pt.y - this.groupDragging.startY;
       if (this.snap) { dx = Math.round(dx/20)*20; dy = Math.round(dy/20)*20; }
-      this.selectedNodes.forEach(id => {
+      const posGrupo = () => this.selectedNodes.forEach(id => {
         const node = this.nodes.find(n => n.id === id);
         const start = this.groupDragging.positions[id];
-        if (node && start) {
-          node.x = start.x + dx;
-          node.y = start.y + dy;
-          this._moverNode(node);
-        }
+        if (node && start) { node.x = start.x + dx; node.y = start.y + dy; }
+      });
+      posGrupo();
+      // Ímã com os enlaces que saem do grupo: o grupo inteiro anda junto.
+      const aj = this._alinharVizinhos(this.selectedNodes, e);
+      if (aj.dx || aj.dy) { dx += aj.dx; dy += aj.dy; posGrupo(); }
+      this.selectedNodes.forEach(id => {
+        const node = this.nodes.find(n => n.id === id);
+        if (node) this._moverNode(node);
       });
       this._renderLinksDe(this.selectedNodes);
       this._setDirty();
@@ -729,6 +782,10 @@ class TopoEditor {
       if (node) {
         node.x = this._snap(pt.x - this.dragging.offX);
         node.y = this._snap(pt.y - this.dragging.offY);
+        if (node.type !== 'area') {
+          const aj = this._alinharVizinhos([node.id], e);
+          node.x += aj.dx; node.y += aj.dy;
+        }
         this._moverNode(node);
         this._renderLinksDe([node.id]);
         // Atualiza handles se um link do nó arrastado estiver selecionado
