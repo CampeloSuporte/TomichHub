@@ -1360,17 +1360,53 @@
             if (items[i].type.startsWith('image/')) {
                 e.preventDefault();
                 var file = items[i].getAsFile();
-                var fr = new FileReader();
-                fr.onload = function(ev) {
-                    mediaBase64 = ev.target.result.split(',')[1];
-                    mediaType = 'image'; mediaFileName = 'imagem_colada.png';
-                    showMediaPreview('Imagem colada', 'image', ev.target.result);
-                };
-                fr.readAsDataURL(file);
+                otimizarImagem(file, 'imagem_colada.png', function(dataUrl, nome) {
+                    mediaBase64 = dataUrl.split(',')[1];
+                    mediaType = 'image'; mediaFileName = nome;
+                    showMediaPreview('Imagem colada', 'image', dataUrl);
+                });
                 return;
             }
         }
     });
+
+    /* ── Imagem mais leve antes de enviar ──
+       Print colado vem como PNG sem compressão: um print de tela cheia passa
+       de 900 KB e vira 1,2 MB em base64 dentro do JSON. Em link de upload
+       ruim isso deixava o botão girando por mais de um minuto antes de a
+       requisição sequer chegar ao servidor (o Django gravava a mensagem no
+       mesmo segundo em que o nginx terminava de receber o corpo). O WhatsApp
+       recomprime toda imagem para JPEG de qualquer forma, então mandar um
+       JPEG 0.85 de até 2048 px não muda o que o cliente vê — só o tempo de
+       envio. Imagem pequena, GIF e qualquer falha seguem com o original. */
+    var IMG_LADO_MAX = 2048, IMG_QUALIDADE = 0.85, IMG_MIN_BYTES = 200 * 1024;
+    function otimizarImagem(file, nomeOriginal, pronto) {
+        var fr = new FileReader();
+        fr.onload = function(ev) {
+            var original = ev.target.result;
+            if (file.size < IMG_MIN_BYTES || file.type === 'image/gif') { pronto(original, nomeOriginal); return; }
+            var img = new Image();
+            img.onload = function() {
+                try {
+                    var escala = Math.min(1, IMG_LADO_MAX / Math.max(img.width, img.height));
+                    var c = document.createElement('canvas');
+                    c.width = Math.round(img.width * escala);
+                    c.height = Math.round(img.height * escala);
+                    var ctx = c.getContext('2d');
+                    /* Fundo branco: transparência de PNG viraria preto no JPEG */
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(0, 0, c.width, c.height);
+                    ctx.drawImage(img, 0, 0, c.width, c.height);
+                    var jpeg = c.toDataURL('image/jpeg', IMG_QUALIDADE);
+                    if (jpeg.length >= original.length) { pronto(original, nomeOriginal); return; }
+                    pronto(jpeg, nomeOriginal.replace(/\.[^.]+$/, '') + '.jpg');
+                } catch (_) { pronto(original, nomeOriginal); }
+            };
+            img.onerror = function() { pronto(original, nomeOriginal); };
+            img.src = original;
+        };
+        fr.readAsDataURL(file);
+    }
 
     /* ── Modo WhatsApp / Interno ── */
     function setMode(mode) {
@@ -1408,6 +1444,14 @@
     /* Usado pelo "+" e pelo arrastar-e-soltar: lê o arquivo e abre o preview. */
     function carregarArquivo(file) {
         if (file.size > 15 * 1024 * 1024) { uiAlert('Arquivo muito grande. Máximo 15MB.'); return; }
+        if (/^image\/(png|jpeg|webp|bmp)$/.test(file.type)) {
+            otimizarImagem(file, file.name, function(dataUrl, nome) {
+                mediaBase64 = dataUrl.split(',')[1];
+                mediaType = 'image'; mediaFileName = nome;
+                showMediaPreview(nome, 'image', dataUrl);
+            });
+            return;
+        }
         var reader = new FileReader();
         reader.onload = function(ev) {
             mediaBase64 = ev.target.result.split(',')[1];
@@ -1554,11 +1598,26 @@
         if (mediaSendBtn) { mediaSendBtn.disabled = true; mediaSendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
         var caption = document.getElementById('mediaCaption').value.trim();
         var citandoMidia = _respondendoA;
-        fetch(API_MEDIA, {
-            method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':CSRF},
-            body:JSON.stringify({mediaBase64:mediaBase64,mediaType:mediaType,fileName:mediaFileName,caption:caption,
-                                 reply_to: citandoMidia ? citandoMidia.id : null})
-        }).then(function(r){return r.json();}).then(function(d){
+        /* XHR em vez de fetch só pelo progresso do upload: num link lento o
+           corpo leva segundos para subir e o spinner parado parecia travado.
+           O servidor responde em milissegundos depois de receber tudo. */
+        new Promise(function(resolve, reject) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', API_MEDIA);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('X-CSRFToken', CSRF);
+            xhr.upload.onprogress = function(ev) {
+                if (!ev.lengthComputable || !mediaSendBtn) return;
+                var pct = Math.min(99, Math.round(ev.loaded * 100 / ev.total));
+                mediaSendBtn.innerHTML = '<span style="font-size:11px;font-weight:600;">' + pct + '%</span>';
+            };
+            xhr.onload = function() {
+                try { resolve(JSON.parse(xhr.responseText)); } catch (e) { reject(e); }
+            };
+            xhr.onerror = function() { reject(new Error('rede')); };
+            xhr.send(JSON.stringify({mediaBase64:mediaBase64,mediaType:mediaType,fileName:mediaFileName,caption:caption,
+                                     reply_to: citandoMidia ? citandoMidia.id : null}));
+        }).then(function(d){
             if (d.success) {
                 clearMedia();
                 cancelarResposta();
