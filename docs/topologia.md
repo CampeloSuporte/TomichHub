@@ -18,6 +18,10 @@ Editor visual de topologia de rede baseado em SVG, com suporte a:
 - Exportação PNG (via canvas 2×), Undo/Redo, Grid, Snap
 - Acesso direto aos hosts via terminal/browser
 - Waypoints: dobrar conexões arrastando pontos intermediários
+- Ímã de alinhamento ao arrastar: o enlace vai de centro a centro, então ao chegar a 12 px
+  de tela do eixo do vizinho (outra ponta do enlace, ou a dobra colada no node) o node encosta
+  no mesmo x/y e a linha fica reta. Vale para node único, grupo (pelos enlaces que saem do
+  grupo) e para a dobra do waypoint. **Alt** segurado desliga (`_alinharVizinhos`)
 - Seleção múltipla por laço de área (ou Shift+clique) e movimentação de vários dispositivos
   em grupo, preservando a posição relativa entre eles
 - Agrupar vários hosts num ícone só, que abre um sub-mapa com esses hosts + o vizinho de

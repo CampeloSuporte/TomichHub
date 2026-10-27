@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-27 (Topologia: enlace reto ao arrastar)
+
+### Corrigido
+
+- **Arrastar um node deixava o enlace torto.** A grade de 20 px não alinhava com vizinhos fora
+  dela (vindos do draw.io, criados sem grade), e a linha centro-a-centro ficava inclinada por
+  poucos pixels. Agora há um ímã: perto (12 px de tela) do x/y do vizinho do enlace, o node
+  encosta no eixo e a linha sai reta — vale para node único, grupo e dobra de waypoint. Alt
+  segurado desliga. `static/js/topo_main.js` (`_alinharVizinhos`), `docs/topologia.md`.
+
 ## [Não publicado] — 2026-10-27 (WinBox Web não renderizava)
 
 ### Corrigido
