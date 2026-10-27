@@ -2439,3 +2439,33 @@ morre em silêncio (PC suspenso, troca de rede/Wi-Fi, NAT derrubando a sessão o
 - **Scroll preservado na aba certa:** o refresh guardava o scroll da primeira `.conv-list`
   (`#tab-mine`, quase sempre oculta), então a aba que se estava olhando voltava ao topo. Agora
   usa a lista visível (`_visibleConvList`).
+
+---
+
+## Correção — Envio de imagem "carregando" por mais de um minuto (2026-10-27)
+
+**Sintoma:** depois de clicar em enviar (principalmente print colado), o botão ficava girando
+muito tempo e só depois a mensagem aparecia.
+
+**O que os logs mostraram:** a imagem das 14:25 foi gravada no banco (`Message.created_at`
+14:25:37.713) no mesmo segundo em que o nginx terminou a requisição. O Django processa o envio
+em milissegundos — o WhatsApp sai em thread de fundo — e o polling do mesmo navegador seguia
+respondendo normal enquanto o botão girava. O tempo todo era o **upload do corpo** até o nginx:
+print colado vira PNG sem compressão (894 KB), que em base64 dentro do JSON passa de 1,2 MB, e
+o link do atendente tinha perda na subida (`ss -ti` na conexão: `rcv_rtt` ≈ 2 s contra RTT de
+70 ms e 634 pacotes fora de ordem).
+
+**Correção (front, `_chat_content.html`):**
+
+- `otimizarImagem()` — antes do preview, imagem PNG/JPEG/WebP/BMP acima de 200 KB é redesenhada
+  num canvas (lado maior até 2048 px, fundo branco) e vira JPEG 0.85, com o nome trocado para
+  `.jpg`. Vale para colar, "+" e arrastar. Se o JPEG não ficar menor, ou algo falhar, segue o
+  original; GIF nunca é mexido. O mesmo print de 894 KB vira ~190 KB. O WhatsApp já recomprime
+  toda imagem para JPEG, então o cliente vê o mesmo resultado.
+- `sendMedia()` usa `XMLHttpRequest` só para mostrar o **% de upload** no botão: num link ruim o
+  envio continua levando o tempo da rede, mas deixa de parecer travado.
+
+**Diagnóstico daqui em diante:** `/var/log/nginx/crm_timing.log` (formato `crm_timing` em
+`/etc/nginx/conf.d/crm_timing.conf`) registra toda `/atendimento/api/` com `req_len`, `rt`
+(tempo total no nginx) e `urt` (tempo no gunicorn). `rt` alto com `urt` baixo = upload lento
+do lado do atendente; os dois altos = servidor.

@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-27 (Envio de imagem no atendimento travando)
+
+### Corrigido
+
+- **Atendimento: envio de imagem ficava girando por mais de um minuto.** O servidor gravava a
+  mensagem em milissegundos; a demora era subir o print colado (PNG sem compressão, 894 KB →
+  1,2 MB em base64) por um link com perda. Agora a imagem acima de 200 KB vira JPEG 0.85 de até
+  2048 px no navegador antes de enviar (o mesmo print cai para ~190 KB) e o botão mostra o % de
+  upload. Novo `/var/log/nginx/crm_timing.log` com tempo total × tempo no gunicorn das APIs do
+  atendimento. `docs/ATENDIMENTO.md`.
+
 ## [Não publicado] — 2026-10-27 (Busca de empresas pelo transporte)
 
 ### Adicionado
