@@ -1470,10 +1470,16 @@
         }
     });
 
-    // Ao perder foco no mobile, reativa readonly para não mostrar teclado indesejado
+    // Ao perder foco no mobile, reativa readonly para não mostrar teclado indesejado.
+    // Só se continuar sem foco: o blur+focus de ativarTecladoMobile (e o toque no
+    // botão ⌨) refocavam antes dos 200 ms e o campo ficava focado E readonly —
+    // o teclado aparecia mas nada que se digitava chegava ao terminal.
     mobileInput.addEventListener('blur', function() {
-        setTimeout(() => { this.setAttribute('readonly', ''); }, 200);
+        setTimeout(() => {
+            if (document.activeElement !== this) this.setAttribute('readonly', '');
+        }, 200);
     });
+    mobileInput.addEventListener('focus', function() { this.removeAttribute('readonly'); });
 
     // ============================================================
     // TOAST

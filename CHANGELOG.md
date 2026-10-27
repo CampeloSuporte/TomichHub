@@ -15,6 +15,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   `--app-h`/`--app-top`, `interactive-widget=resizes-content`) e o prompt fica acima do teclado;
   arrastar rola o histórico em vez de reabrir o teclado; tocar com o campo já focado (teclado
   fechado pelo "voltar" do Android) reabre o teclado; digitar volta o terminal para o fim.
+- **Terminal SSH no celular: depois de um tempo parava de digitar e o botão ⌨ não fazia nada.**
+  O campo escondido do teclado voltava a ficar `readonly` 200 ms após perder o foco mesmo quando
+  já tinha recebido o foco de novo — teclado aberto, nenhuma tecla chegava ao terminal.
   `docs/terminal_ssh.md`.
 
 ## [Não publicado] — 2026-10-27 (Envio de imagem no atendimento travando)
