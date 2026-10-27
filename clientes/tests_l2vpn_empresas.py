@@ -92,6 +92,13 @@ class L2vpnEmpresasTest(TestCase):
         # Acessos de teste não têm "switch" no nome → listagem vazia, mas sem erro.
         self.assertIn('switches', sw)
 
+    def test_lista_traz_termos_do_transporte_para_a_busca(self):
+        self._marcar(self.sw_a, 'VSI|300|EMPRESA-X', empresa_nome='Claro', observacao='P2PJNAXSNP')
+        emp = self.client.get(reverse('l2vpn_empresas_cliente', args=[self.cliente.id])).json()['empresas'][0]
+        self.assertEqual(len(emp['termos']), 1)
+        self.assertIn('EMPRESA-X', emp['termos'][0])
+        self.assertIn('P2PJNAXSNP', emp['termos'][0])
+
     def test_nome_existente_reaproveita_empresa(self):
         L2vpnEmpresa.objects.create(cliente=self.cliente, nome='Empresa X')
         self._marcar(self.sw_a, 'VSI|300|EMPRESA-X', empresa_nome='empresa x')
@@ -223,6 +230,8 @@ class TransportesTopologiaTest(TestCase):
 
         emp = self.client.get(reverse('l2vpn_empresas_cliente', args=[self.cliente.id])).json()['empresas'][0]
         self.assertEqual(emp['enlaces'], 1)
+        self.assertIn('CT-123', emp['termos'][0])
+        self.assertIn('TRANSPORTE VIA STARTNET', emp['termos'][0])
         det = self.client.get(reverse('l2vpn_empresa_detalhe', args=[empresa.id])).json()
         self.assertEqual([x['link_id'] for x in det['enlaces']], ['L1'])
 

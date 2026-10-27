@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-27 (Busca de empresas pelo transporte)
+
+### Adicionado
+
+- **Documentação de Rede → Empresas: busca pelo transporte.** O campo de busca só olhava nome e
+  CNPJ da empresa; agora acha também pelo nome/ID/VLAN/observação da L2VPN marcada e pelo
+  rótulo/circuito/observação dos enlaces de transporte (ex.: `P2PJNAXSNP`, observação da VPLS
+  3625, lista a CLARO NORTAO). A linha mostra o transporte que bateu. `l2vpn_empresas_cliente`
+  devolve `termos`; `docs/topologia_l2vpn.md`.
+
 ## [Não publicado] — 2026-10-27 (Gerador de CGNAT MikroTik v6/v7)
 
 ### Adicionado
