@@ -578,3 +578,21 @@ equipamento real, troque `conferido` para `True`. Comando que falhar sai do cat�
 Testes: `clientes/tests_comandos_uteis.py` (identificação, catálogo, endpoint). O painel foi
 testado num Chrome headless com WebSocket falso: abrir sem terminal, identificar o RAX700, campo
 vazio, Inserir, ▶, filtro, troca de tipo e `Ctrl+Shift+L`.
+
+## Celular: teclado virtual — Corrigido em 2026-10-27
+
+O teclado do celular vai por um `<input id="mobileKeyboardInput">` escondido (o toque no
+terminal ou o botão ⌨ foca o campo; `input`/`keydown` viram bytes no WebSocket).
+
+- **Altura da página = área visível.** Chrome Android e Safari só encolhem o `visualViewport`
+  quando o teclado abre; com `100vh` o prompt ficava atrás do teclado e o navegador deslocava a
+  página, que (body `position: fixed`) não voltava. `ajustarAreaVisivel()` grava
+  `--app-h`/`--app-top` a partir do `visualViewport` (resize e scroll) e o body, o
+  `.terminal-container` e os painéis laterais usam essas variáveis; o `fit()` em seguida põe o
+  prompt logo acima do teclado. O meta viewport também pede `interactive-widget=resizes-content`.
+- **Arrastar rola, tocar abre o teclado.** O `touchend` do painel só ativa o teclado em toque
+  parado (≤ 10 px); arrastar fica com a rolagem de histórico do próprio xterm.
+- **Toque depois do "voltar" do Android.** O teclado some mas o campo segue focado e `focus()`
+  não faz nada — parecia travado. Se o campo já está focado, `blur()` + `focus()`.
+- O campo escondido fica dentro da tela (canto inferior, `opacity: 0`) e foca com
+  `preventScroll`; digitar volta o terminal para o fim (`scrollToBottom`).
