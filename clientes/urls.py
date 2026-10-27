@@ -4,6 +4,7 @@ from .views import proxy_ativo_cliente
 from . import ipam_views as ipam
 from . import firmware_views as fw
 from . import script_views as sv
+from . import cgnat_views as cgv
 from . import hotspot_views as hv
 from . import bgp_views as bgpv
 
@@ -258,6 +259,11 @@ urlpatterns = [
     path('scripts/executar/',                       sv.executar_script,     name='executar_script'),
     path('scripts/historico/<int:acesso_id>/',      sv.historico_execucoes, name='historico_scripts'),
     path('scripts/<int:script_id>/',                sv.detalhe_script,      name='detalhe_script'),
+
+    # ── Gerador de CGNAT MikroTik (v6/v7) ─────────────────────────────────────
+    path('cgnat/',                                  cgv.gerador_cgnat,      name='gerador_cgnat'),
+    path('cgnat/gerar/',                            cgv.gerar_cgnat,        name='gerar_cgnat'),
+    path('cgnat/baixar/',                           cgv.baixar_cgnat,       name='baixar_cgnat'),
 
     # ── Automação BGP ─────────────────────────────────────────────────────────
     path('bgp/<int:acesso_id>/',                    bgpv.bgp_page,               name='bgp_page'),

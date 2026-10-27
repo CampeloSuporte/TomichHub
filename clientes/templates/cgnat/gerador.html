@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .cg-card { background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; }
+  .cg-label { font-size:.72rem; color:#8b949e; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; display:block; }
+  .cg-input { width:100%; background:#0d1117; border:1px solid #30363d; border-radius:6px; color:#e6edf3; padding:7px 10px; font-family:'JetBrains Mono',monospace; font-size:.85rem; }
+  .cg-input:focus { outline:none; border-color:#ffa500; }
+  .cg-ver { display:flex; gap:0; }
+  .cg-ver label { flex:1; text-align:center; padding:7px; border:1px solid #30363d; cursor:pointer; color:#8b949e; font-size:.85rem; }
+  .cg-ver label:first-child { border-radius:6px 0 0 6px; }
+  .cg-ver label:last-child { border-radius:0 6px 6px 0; border-left:0; }
+  .cg-ver input { display:none; }
+  .cg-ver input:checked + span { color:#ffa500; font-weight:700; }
+  .cg-ver label:has(input:checked) { background:rgba(255,165,0,.12); border-color:#ffa500; }
+  .cg-btn { background:rgba(255,165,0,.15); border:1px solid #ffa500; color:#ffa500; border-radius:6px; padding:8px 14px; font-weight:600; font-size:.85rem; }
+  .cg-btn:hover { background:rgba(255,165,0,.25); }
+  .cg-btn-sec { background:transparent; border:1px solid #30363d; color:#c9d1d9; border-radius:6px; padding:6px 12px; font-size:.8rem; text-decoration:none; }
+  .cg-btn-sec:hover { border-color:#8b949e; color:#fff; }
+  .cg-pre { background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:10px; color:#c9d1d9; font-size:.75rem; max-height:460px; overflow:auto; white-space:pre; margin:0; }
+  .cg-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; }
+  .cg-stat { background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:8px 10px; }
+  .cg-stat b { display:block; color:#ffa500; font-size:1.15rem; font-family:'JetBrains Mono',monospace; }
+  .cg-stat small { color:#8b949e; font-size:.72rem; }
+  .cg-tab { max-height:460px; overflow:auto; border:1px solid #30363d; border-radius:6px; }
+  .cg-tab table { width:100%; font-size:.78rem; font-family:'JetBrains Mono',monospace; color:#c9d1d9; margin:0; }
+  .cg-tab th { position:sticky; top:0; background:#0d1117; color:#8b949e; font-weight:500; padding:6px 10px; border-bottom:1px solid #30363d; }
+  .cg-tab td { padding:4px 10px; border-bottom:1px solid #21262d; }
+  .cg-tab tr.hit td { background:rgba(255,165,0,.15); color:#ffa500; }
+  .cg-erro { background:rgba(248,81,73,.1); border:1px solid rgba(248,81,73,.5); color:#ff7b72; border-radius:6px; padding:8px 12px; font-size:.85rem; }
+  .cg-aviso { background:rgba(210,153,34,.1); border:1px solid rgba(210,153,34,.5); color:#d29922; border-radius:6px; padding:6px 12px; font-size:.8rem; margin-top:6px; }
+  .cg-ok { background:rgba(63,185,80,.1); border:1px solid rgba(63,185,80,.5); color:#3fb950; border-radius:6px; padding:6px 12px; font-size:.8rem; margin-top:6px; }
+</style>
+
+<div class="main-content">
+<div class="container-fluid" style="max-width:1300px">
+  <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+    <div>
+      <h4 class="mb-0"><i class="fas fa-random me-2" style="color:#ffa500"></i>Gerador de CGNAT — MikroTik</h4>
+      <small style="color:#8b949e">Netmap determinístico com faixa de portas por cliente, RouterOS v6 e v7. Também no ⚡ Scripts do terminal (aba CGNAT).</small>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-4">
+      <form class="cg-card d-flex flex-column gap-3" id="cgForm" onsubmit="cgGerar(event)">
+        <div>
+          <span class="cg-label">Bloco público</span>
+          <input class="cg-input" name="publico" placeholder="131.100.240.192/29" required>
+        </div>
+        <div>
+          <span class="cg-label">Bloco privado (CGNAT)</span>
+          <input class="cg-input" name="privado" placeholder="100.64.0.0/23" required>
+        </div>
+        <div>
+          <span class="cg-label">RouterOS</span>
+          <div class="cg-ver">
+            <label><input type="radio" name="versao" value="v6" checked><span>v6</span></label>
+            <label><input type="radio" name="versao" value="v7"><span>v7</span></label>
+          </div>
+        </div>
+        <div class="row g-2">
+          <div class="col-4"><span class="cg-label">Porta inicial</span><input class="cg-input" name="porta_inicial" type="number" value="1024" min="1" max="65535"></div>
+          <div class="col-4"><span class="cg-label">Porta final</span><input class="cg-input" name="porta_final" type="number" value="65535" min="1" max="65535"></div>
+          <div class="col-4"><span class="cg-label">Portas/cliente</span><input class="cg-input" name="portas_por_cliente" type="number" min="1" placeholder="auto"></div>
+        </div>
+        <div class="d-flex gap-3" style="font-size:.82rem;color:#c9d1d9">
+          <label><input type="checkbox" name="icmp" checked> Regra ICMP</label>
+          <label><input type="checkbox" name="fallback" checked> Fallback sem porta</label>
+        </div>
+        <div>
+          <span class="cg-label">Salvar nos Documentos do cliente</span>
+          <select class="cg-input" name="cliente_id">
+            <option value="">— não salvar —</option>
+            {% for c in clientes %}<option value="{{ c.id }}" {% if cliente_sel == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nome_empresa }}</option>{% endfor %}
+          </select>
+        </div>
+        <button class="cg-btn" type="submit"><i class="fas fa-cogs me-1"></i> Gerar</button>
+        <div id="cgMsg"></div>
+      </form>
+    </div>
+
+    <div class="col-lg-8 d-flex flex-column gap-3" id="cgResultado" style="display:none !important">
+      <div class="cg-card">
+        <div class="cg-stats" id="cgStats"></div>
+      </div>
+      <div class="cg-card">
+        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+          <strong style="color:#e6edf3" id="cgScriptTitulo">Script</strong>
+          <div class="ms-auto d-flex gap-2">
+            <button class="cg-btn-sec" type="button" onclick="cgCopiar()"><i class="far fa-copy me-1"></i>Copiar</button>
+            <a class="cg-btn-sec" id="cgBaixarRsc" href="#"><i class="fas fa-download me-1"></i>.rsc</a>
+            <a class="cg-btn-sec" id="cgBaixarCsv" href="#"><i class="fas fa-file-csv me-1"></i>Mapeamento .csv</a>
+          </div>
+        </div>
+        <pre class="cg-pre" id="cgScript"></pre>
+      </div>
+      <div class="cg-card">
+        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+          <strong style="color:#e6edf3">Mapeamento privado → público:portas</strong>
+          <small style="color:#8b949e" id="cgMapInfo"></small>
+          <div class="ms-auto" style="min-width:260px">
+            <input class="cg-input" id="cgBusca" placeholder="IP privado, ou IP público:porta" oninput="cgBuscar(this.value)">
+          </div>
+        </div>
+        <div id="cgBuscaRes" style="font-size:.82rem;margin-bottom:6px"></div>
+        <div class="cg-tab"><table><thead><tr><th>IP privado</th><th>IP público</th><th>Portas</th></tr></thead><tbody id="cgMapa"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+(function() {
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const csrf = () => (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+  const ip2n = ip => ip.split('.').reduce((a, o) => a * 256 + (+o), 0);
+  const n2ip = n => [24, 16, 8, 0].map(s => Math.floor(n / 2 ** s) % 256).join('.');
+  let ultimo = null;
+
+  function dadosForm() {
+    const f = document.getElementById('cgForm');
+    const d = Object.fromEntries(new FormData(f).entries());
+    d.icmp = f.icmp.checked; d.fallback = f.fallback.checked;
+    d.salvar = !!d.cliente_id;
+    return d;
+  }
+
+  window.cgGerar = async function(ev) {
+    ev.preventDefault();
+    const d = dadosForm();
+    const msg = document.getElementById('cgMsg');
+    msg.innerHTML = '';
+    let r, j;
+    try {
+      r = await fetch('{% url "gerar_cgnat" %}', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf()}, body: JSON.stringify(d)});
+      j = await r.json();
+    } catch (e) {
+      msg.innerHTML = '<div class="cg-erro">Falha ao gerar (sessão expirada?). Recarregue a página.</div>'; return;
+    }
+    if (!j.ok) { msg.innerHTML = `<div class="cg-erro">${esc(j.erro)}</div>`; return; }
+    ultimo = j;
+    let html = (j.avisos || []).map(a => `<div class="cg-aviso">⚠ ${esc(a)}</div>`).join('');
+    if (j.documentos && j.documentos.length)
+      html += `<div class="cg-ok">✓ Salvo nos Documentos de <b>${esc(j.cliente.nome)}</b>: ` +
+        j.documentos.map(x => `<a href="${esc(x.url)}" target="_blank" style="color:#3fb950">${esc(x.nome)}</a>`).join(', ') + '</div>';
+    msg.innerHTML = html;
+    render(j, d);
+  };
+
+  function render(j, d) {
+    const s = j.resumo;
+    document.getElementById('cgResultado').style.cssText = '';
+    document.getElementById('cgStats').innerHTML = [
+      [s.ips_privados, 'IPs privados'], [s.ips_publicos, 'IPs públicos'],
+      [s.clientes_por_ip, 'clientes por IP público'], [s.portas_por_cliente, 'portas por cliente'],
+      [`${s.porta_inicial}-${s.porta_final}`, 'faixa de portas'],
+    ].map(([v, l]) => `<div class="cg-stat"><b>${esc(v)}</b><small>${esc(l)}</small></div>`).join('');
+    document.getElementById('cgScriptTitulo').textContent = `Script RouterOS ${j.versao} — ${j.script.split('\n').filter(l => l.startsWith('/')).length} regras`;
+    document.getElementById('cgScript').textContent = j.script;
+    const q = new URLSearchParams({publico: d.publico, privado: d.privado, versao: d.versao,
+      porta_inicial: d.porta_inicial, porta_final: d.porta_final, portas_por_cliente: d.portas_por_cliente || '',
+      icmp: d.icmp ? 1 : 0, fallback: d.fallback ? 1 : 0});
+    document.getElementById('cgBaixarRsc').href = '{% url "baixar_cgnat" %}?formato=rsc&' + q;
+    document.getElementById('cgBaixarCsv').href = '{% url "baixar_cgnat" %}?formato=csv&' + q;
+    const parcial = j.mapeamento.length < j.mapeamento_total;
+    document.getElementById('cgMapInfo').textContent = parcial
+      ? `(primeiras ${j.mapeamento.length} de ${j.mapeamento_total} linhas — a tabela completa está no .csv)`
+      : `(${j.mapeamento_total} linhas)`;
+    document.getElementById('cgMapa').innerHTML = j.mapeamento.map(([pv, pb, a, b]) =>
+      `<tr data-priv="${pv}"><td>${pv}</td><td>${pb}</td><td>${a}-${b}</td></tr>`).join('');
+    document.getElementById('cgBusca').value = '';
+    document.getElementById('cgBuscaRes').innerHTML = '';
+  }
+
+  // Localiza na tabela inteira (calculado das fatias, não só da prévia).
+  function localizar(txt) {
+    const s = ultimo.resumo;
+    const [pubNet, pubLen] = s.publico.split('/');
+    const [privNet, privLen] = s.privado.split('/');
+    const pub0 = ip2n(pubNet), npub = 2 ** (32 - pubLen);
+    const priv0 = ip2n(privNet), npriv = 2 ** (32 - privLen);
+    const m = txt.match(/^(\d+\.\d+\.\d+\.\d+)(?:[:\s]+(\d+))?$/);
+    if (!m) return null;
+    const n = ip2n(m[1]);
+    if (n >= priv0 && n < priv0 + npriv) {
+      const fi = Math.floor((n - priv0) / npub), f = ultimo.fatias[fi];
+      return {priv: m[1], pub: n2ip(pub0 + (n - priv0) % npub), portas: f.portas};
+    }
+    if (n >= pub0 && n < pub0 + npub && m[2]) {
+      const p = +m[2], f = ultimo.fatias.find(x => p >= x.porta_ini && p <= x.porta_fim);
+      if (!f) return {erro: `Porta ${p} fora da faixa do CGNAT.`};
+      return {priv: n2ip(ip2n(f.privado.split('/')[0]) + (n - pub0)), pub: m[1], portas: f.portas};
+    }
+    if (n >= pub0 && n < pub0 + npub) return {erro: 'Informe também a porta: IP público:porta.'};
+    return {erro: 'IP fora dos blocos deste CGNAT.'};
+  }
+
+  window.cgBuscar = function(v) {
+    const out = document.getElementById('cgBuscaRes');
+    document.querySelectorAll('#cgMapa tr.hit').forEach(t => t.classList.remove('hit'));
+    v = v.trim();
+    if (!v || !ultimo) { out.innerHTML = ''; return; }
+    const r = localizar(v);
+    if (!r) { out.innerHTML = ''; return; }
+    if (r.erro) { out.innerHTML = `<span style="color:#d29922">${esc(r.erro)}</span>`; return; }
+    out.innerHTML = `<span style="color:#3fb950">${esc(r.priv)} → ${esc(r.pub)} portas ${esc(r.portas)}</span>`;
+    const tr = document.querySelector(`#cgMapa tr[data-priv="${r.priv}"]`);
+    if (tr) { tr.classList.add('hit'); tr.scrollIntoView({block: 'center'}); }
+  };
+
+  window.cgCopiar = async function() {
+    try { await navigator.clipboard.writeText(ultimo.script); }
+    catch (e) {
+      const t = document.createElement('textarea'); t.value = ultimo.script;
+      document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove();
+    }
+    if (window.uiToast) uiToast('Script copiado');
+  };
+})();
+</script>
+{% endblock %}

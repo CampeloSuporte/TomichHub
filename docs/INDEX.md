@@ -2,6 +2,16 @@
 
 ## 🔥 Implementações Recentes
 
+### Sessão 64 — 27/10/2026: Gerador de CGNAT MikroTik (v6/v7)
+
+- ✅ Tela `/clientes/cgnat/` e aba **CGNAT** no ⚡ Scripts do terminal web
+- ✅ Script idêntico ao da Redes Brasil (v6) e sintaxe v7; tabela privado → público:portas
+- ✅ `.rsc` + `.csv` de mapeamento salvos nos Documentos do cliente
+
+| Documento | O que cobre |
+|---|---|
+| **[cgnat_mikrotik.md](cgnat_mikrotik.md)** | Modelo, v6 x v7, validação, Documentos, API |
+
 ### Sessão 63 — 21/10/2026: L2VPN e enlaces de transporte por empresa
 
 - ✅ Coluna **Empresa** na sub-aba L2VPN: "Marcar transporte" associa o serviço a uma empresa (existente ou nova)
