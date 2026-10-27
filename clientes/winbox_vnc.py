@@ -103,7 +103,7 @@ class WinboxVNCManager:
                     # -R sozinho é assíncrono e se perde (o comando vai numa
                     # propriedade X que o próximo sobrescreve); -R seguido de
                     # -Q na mesma chamada roda em sequência e devolve o
-                    # recorte de fato aplicado. Com -threads leva ~3s.
+                    # recorte de fato aplicado (~0,7 s).
                     clip = f"clip:{self.width}x{self.height}+0+0"
                     for _ in range(2):
                         out = subprocess.run(["x11vnc", "-display", f":{self.display_num}",
@@ -188,11 +188,16 @@ class WinboxVNCManager:
         # -nonap: desliga o backoff de polling do x11vnc quando ocioso — sem isso,
         #   a primeira interação após um período parado sofre um atraso perceptível
         #   até o x11vnc "acordar" e voltar a pollar a tela na taxa normal.
-        # -threads: paraleliza a codificação de regiões da tela entre CPUs.
+        # SEM -threads: no x11vnc 0.9.16 (libvncserver) trocar o -clip com um
+        #   cliente recebendo quadros trava o x11vnc para sempre (deadlock no
+        #   framebuffer novo; para de mandar quadros e nem responde mais ao -Q).
+        #   O noVNC pede resize logo ao conectar, então TODA sessão congelava
+        #   na tela de "Conectando"/preta (acesso 1226, 27/10/2026). Ligar ou
+        #   desligar threads em tempo de execução (-R nothreads) trava igual.
         # -wait 5 -defer 5: polling de tela a cada 5ms (padrão 20) e envio da
         #   atualização após 5ms (padrão 20). Medido tecla→tela no WinBox 4:
         #   mediana 37→29ms, p90 52→38ms; CPU do x11vnc segue ~3%.
-        #   Tirar o -threads piora (mediana ~64ms).
+        #   Sem -threads, mudança na tela → quadro: mediana 24→29ms, p90 27→38ms.
         # -clip: só o recorte visível vai pro noVNC (o Xvfb é maior, ver
         #   __init__); resize() troca o recorte em tempo real via -R.
         # NUNCA usar -ncache aqui — quebra o dimensionamento reportado ao noVNC
@@ -202,7 +207,7 @@ class WinboxVNCManager:
             "-nopw", "-listen", "127.0.0.1",
             "-xkb", "-rfbport", str(self.vnc_port),
             "-shared", "-forever", "-quiet",
-            "-nonap", "-threads", "-wait", "5", "-defer", "5",
+            "-nonap", "-wait", "5", "-defer", "5",
             "-clip", f"{self.width}x{self.height}+0+0",
         ]
         try:
