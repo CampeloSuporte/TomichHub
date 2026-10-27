@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-27 (WinBox Web não renderizava)
+
+### Corrigido
+
+- **WinBox Web voltou a mostrar a tela.** A página abria e ficava em "Conectando"/tela preta (visto
+  no acesso 1226), mesmo com o WinBox já conectado ao equipamento no servidor. O ajuste automático de
+  tamanho feito logo ao conectar travava o x11vnc quando ele rodava com `-threads`, e nenhum quadro
+  chegava mais ao navegador. O `-threads` saiu. O resize ao vivo funciona, e a latência passa de
+  ~24 para ~29 ms. Ver `docs/winbox_vnc.md`.
+
 ## [Não publicado] — 2026-10-26 (credenciais também em Excel)
 
 ### Adicionado

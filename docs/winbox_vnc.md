@@ -151,10 +151,34 @@ Agora (só no modo WinBox; RDP e WebFig seguem escalando):
 - **`-R` sozinho não serve**: é assíncrono por propriedade X e um comando seguinte (ou um `-Q`
   separado) sobrescreve o anterior antes de o x11vnc ler — o recorte ficava um passo atrás. `-R` e
   `-Q` na mesma chamada rodam em sequência e devolvem o recorte aplicado (confere e reenvia 1×).
-  Com `-threads` cada troca leva ~3 s (sem ele, ~0,9 s); o `-threads` ficou pela fluidez do uso.
+  Cada troca leva ~0,7 s. **O x11vnc roda sem `-threads`**: ver a seção de 27/10/2026 abaixo.
 - A gravação (ffmpeg) captura a tela inteira do Xvfb, já que o recorte muda no meio da sessão.
 - O WinBox 4 tem janela mínima de 1280×720: abaixo disso parte da janela fica fora do recorte (já
   era assim antes).
+
+## x11vnc sem `-threads`: tela não aparecia — Corrigido em 27/10/2026
+
+**Sintoma:** WinBox Web (ex.: acesso 1226, WinBox 3) abria a página e ficava em "Conectando"/tela
+preta; recarregar não resolvia. No log do daphne, logo depois do "Iniciando ambiente", aparecia
+`x11vnc :100 não confirmou clip:...`.
+
+**Causa:** no x11vnc 0.9.16 (libvncserver), trocar o `-clip` por `-R` enquanto um cliente recebe
+quadros **com `-threads` ligado** trava o x11vnc para sempre: ele para de mandar quadros e nem
+responde mais ao `-Q` (o `x11vnc -Q` desiste em ~3,5 s com "could not connect"). O `winbox.html`
+manda `enviarTamanho()` no `connect`, e o painel quase sempre mede uns pixels diferente do tamanho
+inicial (1400 → 1398), então **toda** sessão fazia a troca nos primeiros segundos e congelava.
+
+Evidência na sessão do 1226: o WinBox estava conectado e desenhado no Xvfb (título
+`CCR-TRV-GTW-4 - WinBox v6.49.13`), o WebSocket do noVNC continuava aberto, mas o socket do x11vnc
+tinha mandado só 1501 bytes e parou exatamente no resize; as threads ficavam paradas em futex.
+Reproduzido isolado (Xvfb + x11vnc + cliente RFB mínimo, troca de clip 0,5 s, 3 s ou 6 s depois de
+conectar): **com `-threads` trava sempre; sem ele, o `DesktopSize` chega em ~0,65 s e os quadros
+continuam.** `-R nothreads` em tempo de execução trava igual, então não dá para desligar só na hora
+do resize. O "~3 s por troca" anotado em 22/10 era esse timeout, não o tempo da troca.
+
+**Correção:** `-threads` saiu da linha do x11vnc (`winbox_vnc.py`; o teste de latência agora exige a
+ausência). Custo medido (mudança na tela → quadro no cliente, 30 amostras): mediana 24 → 29 ms,
+p90 27 → 38 ms.
 
 WinBox 4 atualizado de 4.2 para **4.4** (build de 14/09/2026, `upgrade.mikrotik.com/routeros/winbox/LATEST.4`).
 O binário é gitignored: depois do pull em outro servidor, baixar
@@ -193,7 +217,7 @@ ajuste. O que dava para tirar:
    implementa.
 3. **Polling do x11vnc.** `-wait 10` → `-wait 5 -defer 5` (padrão do `-defer` é 20 ms). Tecla →
    atualização no WinBox 4 (40 amostras × 2): **mediana 37 → 29 ms, p90 52 → 38 ms**, CPU do x11vnc
-   igual. Sem `-threads` piora (mediana ~64 ms), por isso ele fica.
+   igual. (O `-threads` que estava junto saiu em 27/10/2026 porque travava o resize; ver abaixo.)
 
 Sem efeito medido e por isso não mexido: `TCP_NODELAY` no socket daphne → x11vnc (loopback, as
 medições com e sem deram igual) e o `compressionLevel` (2, 4 e 9 deram o mesmo tamanho).
@@ -469,7 +493,7 @@ sudo -u www-data env -i HOME=/var/www PATH=/usr/local/sbin:/usr/local/bin:/usr/s
   sleep 0.5
   DISPLAY=:199 openbox --config-file /opt/crm/clientes/openbox_rc.xml &
   sleep 0.5
-  DISPLAY=:199 x11vnc -display :199 -nopw -listen 127.0.0.1 -rfbport 5999 -shared -forever -quiet -nonap -threads -wait 10 &
+  DISPLAY=:199 x11vnc -display :199 -nopw -listen 127.0.0.1 -rfbport 5999 -shared -forever -quiet -nonap -wait 10 &
   sleep 0.5
   DISPLAY=:199 /opt/crm/static/winbox4/WinBox &
   sleep 5
