@@ -2943,6 +2943,13 @@ window.fadeOutRemove = function(el, cb) {
       <button onclick="salaPanelClose()" style="background:none;border:none;color:#7d8590;cursor:pointer;padding:2px 6px;font-size:.85rem" title="Minimizar">&minus;</button>
     </div>
 
+    <!-- Conversa privada em andamento -->
+    <div id="sala-private-bar">
+      <i class="fas fa-user-lock"></i>
+      <span id="sala-private-text"></span>
+      <button onclick="salaEncerrarPrivado()" title="Voltar a ouvir a sala">Voltar à sala</button>
+    </div>
+
     <!-- Participantes -->
     <div id="sala-peers-strip"></div>
 
@@ -3127,6 +3134,30 @@ window.fadeOutRemove = function(el, cb) {
   line-height: 1.2;
 }
 .sala-peer.me .sala-peer-name { color: #58a6ff; }
+.sala-peer.clicavel { cursor: pointer; }
+.sala-peer.clicavel:hover .sala-peer-avatar { border-color: #58a6ff; }
+.sala-peer.privado .sala-peer-avatar { border-color: #bc8cff; box-shadow: 0 0 0 2px rgba(188,140,255,.3); }
+.sala-peer.fora { opacity: .4; }
+.sala-peer-lock { position: absolute; top: -3px; left: -3px; width: 16px; height: 16px; border-radius: 50%;
+  background: #161b22; border: 1.5px solid #bc8cff; color: #bc8cff; font-size: .48rem;
+  display: none; align-items: center; justify-content: center; }
+.sala-peer.privado .sala-peer-lock { display: flex; }
+#sala-private-bar { display: none; align-items: center; gap: 8px; padding: 6px 12px; flex-shrink: 0;
+  background: rgba(188,140,255,.12); border-bottom: 1px solid rgba(188,140,255,.35); color: #bc8cff; font-size: .72rem; }
+#sala-private-bar.show { display: flex; }
+#sala-private-bar span { flex: 1; min-width: 0; }
+#sala-private-bar button { background: rgba(248,81,73,.1); border: 1px solid #f85149; color: #f85149;
+  border-radius: 6px; padding: 2px 8px; font-size: .68rem; cursor: pointer; white-space: nowrap; }
+#sala-peer-menu { position: fixed; min-width: 210px; background: #161b22; border: 1px solid #30363d; border-radius: 10px;
+  padding: 6px; display: none; z-index: 1001; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+#sala-peer-menu.open { display: block; }
+#sala-peer-menu .spm-title { font-size: .7rem; color: #7d8590; padding: 5px 8px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#sala-peer-menu button { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: none;
+  color: #e6edf3; font-size: .78rem; text-align: left; padding: 7px 8px; border-radius: 6px; cursor: pointer; }
+#sala-peer-menu button:hover { background: rgba(255,255,255,.06); }
+#sala-peer-menu button i { width: 14px; }
+#sala-peer-menu .spm-private i { color: #bc8cff; }
+#sala-peer-menu .spm-kick { color: #f85149; }
 
 #sala-screen-bar {
   padding: 6px 12px;
@@ -3295,7 +3326,9 @@ let screenStream = null;
 let micOn = false, screenOn = false;
 let panelOpen = false, connected = false;
 const peers = {};       // channelName → {pc, audioEl}
-const peerInfo = {};    // channelName → {display_name, audio, screen}
+const peerInfo = {};    // channelName → {display_name, audio, screen, private_with}
+let salaCanKick = false;     // Admin/Consultor (o servidor confere de novo)
+let salaPrivateWith = null;  // channel do parceiro na conversa privada
 
 // ── Nav button ────────────────────────────────────────────────────
 window.salaTogglePanel = function() {
@@ -3373,12 +3406,36 @@ function salaOpenWs() {
 async function salaHandleMsg(msg) {
   switch(msg.type) {
     case 'kicked':
-      // Outra aba/conexão do mesmo usuário assumiu a sala — não reconecta aqui.
+      // Não reconecta: outra aba assumiu a sala ou um colega removeu daqui.
       salaKicked = true;
-      salaNotify && salaNotify('Sala aberta em outra aba/janela — esta desconectou.', true);
+      if (msg.reason === 'removed') {
+        // Não volta sozinho no próximo F5 — entrar de novo é escolha da pessoa.
+        sessionStorage.removeItem('sala_active');
+        const min = Math.max(1, Math.ceil((msg.seconds || 0) / 60));
+        salaNotify(`${msg.by || 'Um administrador'} removeu você da Sala Virtual. Você poderá entrar de novo em cerca de ${min} min.`, true);
+        salaLeave();
+      } else {
+        salaNotify('Sala aberta em outra aba/janela — esta desconectou.', true);
+      }
       break;
+    case 'room_error':
+      salaNotify(msg.text, true);
+      break;
+    case 'private_state': {
+      salaAtualizarPar(msg.a, msg.active ? msg.b : null);
+      salaAtualizarPar(msg.b, msg.active ? msg.a : null);
+      salaAplicarPrivacidade();
+      if (msg.a === myId || msg.b === myId) {
+        const outro = msg.a === myId ? msg.b : msg.a;
+        const nome = peerInfo[outro] ? peerInfo[outro].display_name : 'atendente';
+        salaNotify(msg.active ? `Conversa privada com ${nome} — só vocês dois se ouvem.` : 'Você voltou para a sala.');
+      }
+      break;
+    }
     case 'room_joined':
       myId = msg.my_id;
+      salaCanKick = !!msg.can_kick;
+      salaPrivateWith = null;
       // Reconstrói a lista do ZERO (fonte da verdade = servidor). Evita tiles
       // acumuladas de reconexões anteriores e deduplica por usuário.
       Object.keys(peers).forEach(ch => { try { peers[ch].pc && peers[ch].pc.close(); } catch(e){} });
@@ -3400,6 +3457,7 @@ async function salaHandleMsg(msg) {
       }
       salaSendState();
       salaRenderBar();
+      salaAplicarPrivacidade();
       break;
     case 'peer_joined': {
       if (msg.peer.channel_name === myId) break;
@@ -3410,13 +3468,21 @@ async function salaHandleMsg(msg) {
       peerInfo[msg.peer.channel_name] = msg.peer;
       addPeerTile(msg.peer);
       salaRenderBar();
+      salaAtualizarTilesPrivado();
       break;
     }
-    case 'peer_left':
+    case 'peer_left': {
+      const info = peerInfo[msg.channel_name];
       removePeerTile(msg.channel_name);
       delete peerInfo[msg.channel_name];
+      // Quem estava em privado com quem saiu volta a ouvir a sala.
+      Object.values(peerInfo).forEach(p => { if (p.private_with === msg.channel_name) p.private_with = null; });
+      if (salaPrivateWith === msg.channel_name) salaPrivateWith = null;
       salaRenderBar();
+      salaAplicarPrivacidade();
+      if (info && msg.kicked_by) salaNotify(`${info.display_name} foi removido da sala por ${msg.kicked_by}.`);
       break;
+    }
     case 'offer':
       await salaHandleOffer(msg.from, msg.payload); break;
     case 'answer':
@@ -3459,6 +3525,7 @@ function mkPc(peerId) {
     if (track.kind === 'audio') {
       let el = (peers[peerId]||{}).audioEl;
       if (!el) { el = new Audio(); el.autoplay = true; if (!peers[peerId]) peers[peerId]={}; peers[peerId].audioEl = el; }
+      el.muted = !salaAudivel(peerId);
       el.srcObject = streams[0];
     } else if (track.kind === 'video') {
       const vid = document.getElementById('sala-screen-video');
@@ -3476,7 +3543,7 @@ function mkPc(peerId) {
 
 async function salaCreateOffer(peerId) {
   const pc = mkPc(peerId);
-  localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  salaAddMic(peerId, pc);
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
   wsSend({type:'offer', target:peerId, payload:offer});
@@ -3488,7 +3555,7 @@ async function salaHandleOffer(peerId, offer) {
     pc = peers[peerId].pc;                    // renegociação: reutiliza pc existente
   } else {
     pc = mkPc(peerId);
-    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    salaAddMic(peerId, pc);
   }
   await pc.setRemoteDescription(offer);
   const answer = await pc.createAnswer();
@@ -3544,7 +3611,8 @@ window.salaToggleMic = async function() {
   if (!localStream.getAudioTracks().length) {
     const s = await salaRequestMic();
     if (!s) return;
-    s.getAudioTracks().forEach(t => { localStream.addTrack(t); Object.values(peers).forEach(p => p.pc && p.pc.addTrack(t, localStream)); });
+    s.getAudioTracks().forEach(t => { localStream.addTrack(t); });
+    Object.entries(peers).forEach(([id, p]) => { if (p.pc) salaAddMic(id, p.pc); });
     micOn = true; updateMicBtn(); salaSendState(); updateMyTile();
     salaNotify('Microfone ativado.');
     return;
@@ -3623,10 +3691,11 @@ async function salaTrocarMic(deviceId, nome) {
   const novo = s.getAudioTracks()[0];
   novo.enabled = micOn;
   // replaceTrack troca o áudio sem renegociar: quem está ouvindo nem percebe.
-  for (const p of Object.values(peers)) {
+  for (const [id, p] of Object.entries(peers)) {
     if (!p.pc) continue;
-    const sender = p.pc.getSenders().find(x => x.track === antigo);
-    if (sender) { try { await sender.replaceTrack(novo); } catch(e) {} }
+    const sender = p.micSender || p.pc.getSenders().find(x => x.track === antigo);
+    // Quem está fora da minha conversa privada continua sem receber nada.
+    if (sender) { try { await sender.replaceTrack(salaAudivel(id) ? novo : null); } catch(e) {} }
   }
   localStream.removeTrack(antigo);
   antigo.stop();
@@ -3755,7 +3824,7 @@ function addMyPeer() {
   const d = document.createElement('div');
   d.className = 'sala-peer me';
   d.id = 'sala-peer-me';
-  d.innerHTML = `<div class="sala-peer-avatar" id="sala-av-me"><span>${initials(SALA_ME)}</span><span class="sala-peer-mic off" id="sala-mic-me"><i class="fas fa-microphone-slash"></i></span></div><div class="sala-peer-name">${salaEsc(SALA_ME)}</div>`;
+  d.innerHTML = `<div class="sala-peer-avatar" id="sala-av-me"><span>${initials(SALA_ME)}</span><span class="sala-peer-lock"><i class="fas fa-lock"></i></span><span class="sala-peer-mic off" id="sala-mic-me"><i class="fas fa-microphone-slash"></i></span></div><div class="sala-peer-name">${salaEsc(SALA_ME)}</div>`;
   strip.appendChild(d);
 }
 
@@ -3764,7 +3833,10 @@ function addPeerTile(p) {
   const d = document.createElement('div');
   d.className = 'sala-peer';
   d.id = 'sala-peer-' + p.channel_name;
-  d.innerHTML = `<div class="sala-peer-avatar"><span>${initials(p.display_name)}</span><span class="sala-peer-mic off"><i class="fas fa-microphone-slash"></i></span></div><div class="sala-peer-name">${salaEsc(p.display_name)}</div>`;
+  d.innerHTML = `<div class="sala-peer-avatar"><span>${initials(p.display_name)}</span><span class="sala-peer-lock"><i class="fas fa-lock"></i></span><span class="sala-peer-mic off"><i class="fas fa-microphone-slash"></i></span></div><div class="sala-peer-name">${salaEsc(p.display_name)}</div>`;
+  d.classList.add('clicavel');
+  d.title = p.display_name + ' — clique para conversa privada' + (salaCanKick ? ' ou remover da sala' : '');
+  d.onclick = e => { e.stopPropagation(); salaAbrirMenuPeer(p.channel_name, d); };
   strip.appendChild(d);
 }
 
@@ -3790,6 +3862,114 @@ function removePeerTile(ch) {
   const p = peers[ch];
   if (p) { if (p.pc) p.pc.close(); if (p.audioEl) p.audioEl.srcObject = null; delete peers[ch]; }
 }
+
+// ── Conversa privada ──────────────────────────────────────────────
+// Dois atendentes saem do áudio da sala e passam a se ouvir só entre si.
+// Tela compartilhada e chat continuam valendo para todos.
+function salaAddMic(peerId, pc) {
+  localStream.getAudioTracks().forEach(t => {
+    const sender = pc.addTrack(t, localStream);
+    peers[peerId].micSender = sender;
+    // Entrou alguém enquanto estou em privado: ele não pode me ouvir.
+    if (!salaAudivel(peerId)) sender.replaceTrack(null).catch(() => {});
+  });
+}
+
+window.salaEncerrarPrivado = function() { wsSend({type: 'private_end'}); };
+
+function salaAtualizarPar(ch, partner) {
+  if (ch === myId) salaPrivateWith = partner;
+  else if (peerInfo[ch]) peerInfo[ch].private_with = partner;
+}
+
+function salaParDe(ch) {
+  if (ch === myId) return salaPrivateWith;
+  return peerInfo[ch] ? (peerInfo[ch].private_with || null) : null;
+}
+
+// Eu e o peer nos ouvimos? Só se formos o par um do outro, ou se nenhum
+// dos dois estiver em conversa privada.
+function salaAudivel(peerId) {
+  if (salaPrivateWith) return salaPrivateWith === peerId;
+  return !salaParDe(peerId);
+}
+
+function salaAplicarPrivacidade() {
+  const mic = localStream.getAudioTracks()[0] || null;
+  Object.entries(peers).forEach(([id, p]) => {
+    // Corte no ENVIO: quem está fora do par não recebe meu microfone, nem
+    // mexendo no próprio navegador. O mudo na entrada é complemento.
+    if (p.micSender) p.micSender.replaceTrack(salaAudivel(id) ? mic : null).catch(() => {});
+    if (p.audioEl) p.audioEl.muted = !salaAudivel(id);
+  });
+  salaAtualizarTilesPrivado();
+}
+
+function salaAtualizarTilesPrivado() {
+  const me = document.getElementById('sala-peer-me');
+  if (me) me.classList.toggle('privado', !!salaPrivateWith);
+  Object.keys(peerInfo).forEach(ch => {
+    const t = document.getElementById('sala-peer-' + ch);
+    if (!t) return;
+    t.classList.toggle('privado', !!salaParDe(ch));
+    t.classList.toggle('fora', !salaAudivel(ch));
+  });
+  const bar = document.getElementById('sala-private-bar');
+  if (salaPrivateWith) {
+    const nome = peerInfo[salaPrivateWith] ? peerInfo[salaPrivateWith].display_name : 'atendente';
+    document.getElementById('sala-private-text').textContent = `Privado com ${nome} — a sala não ouve vocês`;
+    bar.classList.add('show');
+  } else {
+    bar.classList.remove('show');
+  }
+}
+
+function salaAbrirMenuPeer(peerId, tile) {
+  let menu = document.getElementById('sala-peer-menu');
+  if (!menu) {
+    menu = document.createElement('div');
+    menu.id = 'sala-peer-menu';
+    document.body.appendChild(menu);
+  }
+  const info = peerInfo[peerId];
+  if (!info) return;
+  let html = `<div class="spm-title">${salaEsc(info.display_name)}</div>`;
+  if (salaPrivateWith === peerId) {
+    html += '<button class="spm-private" data-acao="end"><i class="fas fa-right-from-bracket"></i>Encerrar conversa privada</button>';
+  } else if (info.private_with) {
+    html += '<div class="spm-title" style="color:#bc8cff"><i class="fas fa-user-lock"></i> Já está em conversa privada</div>';
+  } else {
+    html += '<button class="spm-private" data-acao="private"><i class="fas fa-user-lock"></i>Conversa privada (só nós dois)</button>';
+  }
+  if (salaCanKick) {
+    html += '<button class="spm-kick" data-acao="kick"><i class="fas fa-user-xmark"></i>Remover da sala</button>';
+  }
+  menu.innerHTML = html;
+  menu.querySelectorAll('button').forEach(b => {
+    b.onclick = e => {
+      e.stopPropagation();
+      menu.classList.remove('open');
+      const acao = b.dataset.acao;
+      if (acao === 'private') wsSend({type: 'private_start', target: peerId});
+      else if (acao === 'end') wsSend({type: 'private_end'});
+      else if (acao === 'kick' && confirm(`Remover ${info.display_name} da sala? Ele só poderá voltar em 2 minutos.`)) {
+        wsSend({type: 'kick', target: peerId});
+      }
+    };
+  });
+  menu.classList.add('open');
+  // Posiciona colado à tile sem sair da tela.
+  const r = tile.getBoundingClientRect();
+  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  menu.style.left = Math.min(Math.max(8, r.left + r.width / 2 - mw / 2), window.innerWidth - mw - 8) + 'px';
+  let top = r.bottom + 6;
+  if (top + mh > window.innerHeight - 8) top = Math.max(8, r.top - mh - 6);
+  menu.style.top = top + 'px';
+}
+document.addEventListener('click', e => {
+  const menu = document.getElementById('sala-peer-menu');
+  if (menu && menu.classList.contains('open') && !menu.contains(e.target)) menu.classList.remove('open');
+});
 
 // ── Chat ──────────────────────────────────────────────────────────
 window.salaSendChat = function() {
@@ -3827,6 +4007,9 @@ window.salaLeave = function() {
   if (localStream) localStream.getTracks().forEach(t => t.stop()); localStream = new MediaStream();
   if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
   micOn = false; screenOn = false; connected = false; panelOpen = false; myId = null;
+  salaPrivateWith = null;
+  document.getElementById('sala-private-bar').classList.remove('show');
+  document.getElementById('sala-peer-menu')?.classList.remove('open');
   document.getElementById('sala-toggle-bar').classList.remove('visible');
   document.getElementById('sala-panel-body').classList.remove('open');
   document.getElementById('sala-peers-strip').innerHTML = '';

@@ -458,6 +458,12 @@ Clicar no card de um colega abre um menu com:
   período entra e recebe o mesmo aviso. A conexão antiga de quem abre a sala em outra aba agora
   também mostra o motivo (`reason: duplicate`) em vez de só "Desconectado".
 
+Vale nas **duas** telas da sala, que têm JS próprio cada uma: o painel embutido no
+`atendimento/templates/atendimento/base.html` (item "Sala Virtual" do menu lateral — é o que a
+equipe usa no dia a dia) e a página cheia `sala_virtual.html` (`/atendimento/sala/`). No painel,
+quem é removido também perde o `sala_active` do `sessionStorage`, senão voltaria sozinho no
+próximo F5.
+
 Estado em memória da classe (`_members`/`_bloqueados`) — vale enquanto houver um único processo
 Daphne; reiniciar o Daphne zera bloqueios e pares.
 
