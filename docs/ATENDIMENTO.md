@@ -427,6 +427,7 @@ systemctl restart gunicorn daphne celery
 | 11/09/2026 | **Reagir com emoji** — carinha ao lado do balão, as seis reações do WhatsApp + "+"; a reação chega ao celular do cliente e vira pílula no CRM (uma por conta, clicar tira); em grupo a key com `participant` vem do `findMessages` da Evolution |
 | 29/09/2026 | **Sala Virtual** — escolher qual microfone usar (seta ao lado do botão do mic); troca na hora, sem renegociar |
 | 09/10/2026 | **Arrastar arquivo para o chat** — soltar um arquivo em qualquer ponto da conversa abre o mesmo preview do "+" (legenda + enviar), como no WhatsApp Web; um arquivo por vez, limite de 15 MB; arquivo solto fora do chat não faz o navegador sair do CRM |
+| 28/10/2026 | **Sala Virtual** — clicar no card de um atendente abre menu: **conversa privada** (só os dois se ouvem, a sala não escuta) e **remover da sala** (Admin/Consultor; bloqueio de 2 min para voltar) |
 
 ---
 
@@ -437,6 +438,28 @@ systemctl restart gunicorn daphne celery
 
 Chamada de voz/tela em malha completa (full mesh) entre atendentes conectados na sala —
 cada participante mantém uma `RTCPeerConnection` direta com todos os demais.
+
+### Remover atendente e conversa privada (28/10/2026)
+
+Clicar no card de um colega abre um menu com:
+
+- **Conversa privada (só nós dois)** — mensagem `private_start {target}`. O servidor grava
+  `private_with` nos dois membros e anuncia `private_state {a, b, active}` para a sala toda.
+  Cada navegador calcula `audivel(peer)`: dentro de um par, só o parceiro; fora de par, só quem
+  também está fora. Quem não é audível **deixa de receber meu microfone**
+  (`micSender.replaceTrack(null)` — corte no envio, sem renegociar; um terceiro não ouve nem
+  mexendo no próprio navegador) e fica mudo na entrada. Tela compartilhada e chat seguem para
+  todos. Encerrar (`private_end`, faixa roxa no topo ou o menu), sair, cair ou ser removido
+  desfaz o par. Não dá para puxar quem já está em outro par.
+- **Remover da sala** — só Administrador/Consultor (`pode_gerenciar_usuarios`, conferido no
+  consumer; `can_kick` vem no `room_joined` só para esconder o botão). O servidor tira o membro,
+  avisa a sala (`peer_left` com `kicked_by`) e manda `kicked {reason: removed}` para a conexão
+  removida, que mostra quem removeu. Bloqueio de 2 min em memória (`_bloqueados`): um F5 nesse
+  período entra e recebe o mesmo aviso. A conexão antiga de quem abre a sala em outra aba agora
+  também mostra o motivo (`reason: duplicate`) em vez de só "Desconectado".
+
+Estado em memória da classe (`_members`/`_bloqueados`) — vale enquanto houver um único processo
+Daphne; reiniciar o Daphne zera bloqueios e pares.
 
 ### Bug 1 — candidatos ICE descartados (várias pessoas, um par não se ouve)
 

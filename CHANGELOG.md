@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-28 (Sala Virtual: remover atendente e conversa privada)
+
+### Adicionado
+
+- **Sala Virtual: clicar no card de um atendente abre um menu.** "Conversa privada" isola os
+  dois — só eles se ouvem, a sala não escuta e eles não escutam a sala (o microfone deixa de ser
+  enviado a quem está fora do par); faixa roxa no topo para voltar. "Remover da sala" (só
+  Administrador/Consultor) derruba o atendente, avisa a sala e o impede de voltar por 2 minutos.
+  `docs/ATENDIMENTO.md`.
+
 ## [Não publicado] — 2026-10-27 (Terminal SSH no celular)
 
 ### Corrigido
