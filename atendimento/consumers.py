@@ -1,4 +1,5 @@
 import json
+import time
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 
@@ -106,6 +107,14 @@ class InboxConsumer(AsyncWebsocketConsumer):
             return
         await self.send(text_data=json.dumps(data))
 
+@database_sync_to_async
+def _pode_remover_da_sala(user):
+    """Quem pode tirar um colega da sala virtual: Administrador e Consultor
+    (os mesmos que gerenciam usuários). Operador só participa."""
+    from usuario.perms import pode_gerenciar_usuarios
+    return pode_gerenciar_usuarios(user)
+
+
 class VirtualRoomConsumer(AsyncWebsocketConsumer):
     """
     Sinalização WebRTC para a sala virtual de atendentes.
@@ -113,7 +122,10 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
     Grupo: atendimento_sala_virtual
     """
 
-    _members = {}  # {channel_name: {user_id, display_name, channel_name}}
+    _members = {}  # {channel_name: {user_id, display_name, channel_name, private_with}}
+    # Quem foi removido não volta na hora com um F5: {user_id: (expira_em, por_quem)}
+    _bloqueados = {}
+    BLOQUEIO_SEGUNDOS = 120
     GROUP = "atendimento_sala_virtual"
 
     async def connect(self):
@@ -124,6 +136,22 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
 
         self.display_name = user.get_full_name() or user.username
         self.user_id = str(user.id)
+        self.pode_remover = await _pode_remover_da_sala(user)
+
+        bloqueio = VirtualRoomConsumer._bloqueados.get(self.user_id)
+        if bloqueio and bloqueio[0] > time.time():
+            # accept antes do send: sem isso o navegador só vê a conexão
+            # recusada e não sabe dizer à pessoa por que não entrou.
+            await self.accept()
+            await self.send(text_data=json.dumps({
+                "type": "kicked",
+                "reason": "removed",
+                "by": bloqueio[1],
+                "seconds": int(bloqueio[0] - time.time()),
+            }))
+            await self.close()
+            return
+        VirtualRoomConsumer._bloqueados.pop(self.user_id, None)
 
         await self.channel_layer.group_add(self.GROUP, self.channel_name)
 
@@ -132,6 +160,7 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
         stale = [ch for ch, m in VirtualRoomConsumer._members.items()
                  if m.get("user_id") == self.user_id]
         for ch in stale:
+            await self._encerrar_privado(ch)
             VirtualRoomConsumer._members.pop(ch, None)
             # Avisa os demais para removerem a tile antiga
             await self.channel_layer.group_send(self.GROUP, {
@@ -151,6 +180,7 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
             "channel_name": self.channel_name,
             "audio": False,
             "screen": False,
+            "private_with": None,
         }
 
         await self.accept()
@@ -171,6 +201,7 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
             "type": "room_joined",
             "my_id": self.channel_name,
             "peers": existing,
+            "can_kick": self.pode_remover,
         }))
 
         # Notifica os outros sobre o novo participante
@@ -181,6 +212,11 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
         })
 
     async def disconnect(self, close_code):
+        if self.channel_name not in VirtualRoomConsumer._members:
+            # Bloqueado na entrada (nunca entrou no grupo) ou já removido.
+            await self.channel_layer.group_discard(self.GROUP, self.channel_name)
+            return
+        await self._encerrar_privado(self.channel_name)
         VirtualRoomConsumer._members.pop(self.channel_name, None)
 
         await self.channel_layer.group_send(self.GROUP, {
@@ -238,13 +274,111 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
                 },
             })
 
+        elif msg_type == "private_start":
+            await self._iniciar_privado(msg.get("target"))
+
+        elif msg_type == "private_end":
+            await self._encerrar_privado(self.channel_name)
+
+        elif msg_type == "kick":
+            await self._remover(msg.get("target"))
+
+    # ── Conversa privada ──────────────────────────────────────────
+    # A sala só guarda e anuncia o par; quem corta o áudio é o navegador
+    # de cada um (para de ENVIAR o microfone a quem está fora do par e
+    # emudece quem está fora). Cortar no envio é o que garante que um
+    # terceiro não ouve, mesmo mexendo no próprio navegador.
+    async def _iniciar_privado(self, target):
+        membros = VirtualRoomConsumer._members
+        eu = membros.get(self.channel_name)
+        alvo = membros.get(target) if target else None
+        if not eu or not alvo or target == self.channel_name:
+            await self._erro("Atendente não está mais na sala.")
+            return
+        if eu.get("private_with") == target:
+            return
+        if alvo.get("private_with"):
+            await self._erro(f"{alvo['display_name']} já está em uma conversa privada.")
+            return
+        await self._encerrar_privado(self.channel_name)
+        eu["private_with"] = target
+        alvo["private_with"] = self.channel_name
+        await self.channel_layer.group_send(self.GROUP, {
+            "type": "room_private_state",
+            "state": {
+                "type": "private_state",
+                "a": self.channel_name,
+                "b": target,
+                "active": True,
+                "by": self.display_name,
+            },
+        })
+
+    async def _encerrar_privado(self, ch):
+        membros = VirtualRoomConsumer._members
+        m = membros.get(ch)
+        if not m or not m.get("private_with"):
+            return
+        outro = m["private_with"]
+        m["private_with"] = None
+        if outro in membros and membros[outro].get("private_with") == ch:
+            membros[outro]["private_with"] = None
+        await self.channel_layer.group_send(self.GROUP, {
+            "type": "room_private_state",
+            "state": {
+                "type": "private_state",
+                "a": ch,
+                "b": outro,
+                "active": False,
+                "by": self.display_name,
+            },
+        })
+
+    # ── Remover da sala ───────────────────────────────────────────
+    async def _remover(self, target):
+        if not self.pode_remover:
+            await self._erro("Sem permissão para remover atendentes da sala.")
+            return
+        alvo = VirtualRoomConsumer._members.get(target) if target else None
+        if not alvo or target == self.channel_name:
+            await self._erro("Atendente não está mais na sala.")
+            return
+        VirtualRoomConsumer._bloqueados[alvo["user_id"]] = (
+            time.time() + self.BLOQUEIO_SEGUNDOS, self.display_name)
+        await self._encerrar_privado(target)
+        VirtualRoomConsumer._members.pop(target, None)
+        # Tira a tile de todo mundo já — não depende da conexão do removido
+        # estar viva para fechar e disparar o disconnect.
+        await self.channel_layer.group_send(self.GROUP, {
+            "type": "room_peer_left",
+            "sender": target,
+            "channel_name": target,
+            "kicked_by": self.display_name,
+        })
+        try:
+            await self.channel_layer.send(target, {
+                "type": "room_kick",
+                "reason": "removed",
+                "by": self.display_name,
+                "seconds": self.BLOQUEIO_SEGUNDOS,
+            })
+        except Exception:
+            pass
+
+    async def _erro(self, texto):
+        await self.send(text_data=json.dumps({"type": "room_error", "text": texto}))
+
     async def room_peer_joined(self, event):
         if event["sender"] != self.channel_name:
             await self.send(text_data=json.dumps({"type": "peer_joined", "peer": event["peer"]}))
 
     async def room_peer_left(self, event):
         if event["sender"] != self.channel_name:
-            await self.send(text_data=json.dumps({"type": "peer_left", "channel_name": event["channel_name"]}))
+            await self.send(text_data=json.dumps({
+                "type": "peer_left",
+                "channel_name": event["channel_name"],
+                "kicked_by": event.get("kicked_by"),
+            }))
 
     async def room_signal(self, event):
         await self.send(text_data=json.dumps(event["signal"]))
@@ -255,10 +389,19 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
     async def room_media_state(self, event):
         await self.send(text_data=json.dumps(event["state"]))
 
+    async def room_private_state(self, event):
+        await self.send(text_data=json.dumps(event["state"]))
+
     async def room_kick(self, event):
-        """Conexão antiga do mesmo usuário — fecha para não duplicar na sala."""
+        """Fecha esta conexão: removida por um colega (reason=removed) ou
+        substituída por outra aba/reload do mesmo usuário (reason=duplicate)."""
         try:
-            await self.send(text_data=json.dumps({"type": "kicked"}))
+            await self.send(text_data=json.dumps({
+                "type": "kicked",
+                "reason": event.get("reason", "duplicate"),
+                "by": event.get("by"),
+                "seconds": event.get("seconds"),
+            }))
         except Exception:
             pass
         await self.close()

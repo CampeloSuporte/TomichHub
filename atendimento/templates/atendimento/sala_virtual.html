@@ -64,6 +64,28 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;he
 .peer-status{font-size:.65rem;color:var(--muted)}
 .peer-screen-badge{font-size:.65rem;background:rgba(88,166,255,.15);color:var(--blue);border:1px solid rgba(88,166,255,.3);padding:2px 7px;border-radius:8px;white-space:nowrap}
 
+.peer-card.clicavel{cursor:pointer}
+.peer-card.clicavel:hover{border-color:var(--blue)}
+.peer-card.privado{border-color:var(--purple);box-shadow:0 0 0 2px rgba(188,140,255,.25)}
+.peer-card.fora{opacity:.45}
+.peer-private-badge{font-size:.65rem;background:rgba(188,140,255,.15);color:var(--purple);border:1px solid rgba(188,140,255,.35);padding:2px 7px;border-radius:8px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+
+/* ── Menu do participante (clique no card) ── */
+#peer-menu{position:fixed;min-width:220px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:6px;display:none;z-index:40;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+#peer-menu.open{display:block}
+#peer-menu .pm-title{font-size:.72rem;color:var(--muted);padding:6px 8px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#peer-menu button{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;color:var(--text);font-size:.8rem;text-align:left;padding:8px;border-radius:6px;cursor:pointer}
+#peer-menu button:hover{background:rgba(255,255,255,.06)}
+#peer-menu button i{width:14px}
+#peer-menu button.pm-private i{color:var(--purple)}
+#peer-menu button.pm-kick{color:var(--red)}
+
+/* ── Faixa da conversa privada ── */
+#private-bar{display:none;align-items:center;justify-content:center;gap:12px;padding:8px 16px;background:rgba(188,140,255,.12);border-bottom:1px solid rgba(188,140,255,.35);color:var(--purple);font-size:.8rem;flex-shrink:0}
+#private-bar.show{display:flex}
+#private-bar button{background:rgba(248,81,73,.1);border:1px solid var(--red);color:var(--red);padding:4px 12px;border-radius:6px;cursor:pointer;font-size:.75rem}
+#private-bar button:hover{background:rgba(248,81,73,.2)}
+
 /* ── Controls bar ── */
 #controls{height:68px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:12px;flex-shrink:0}
 .ctrl-btn{width:48px;height:48px;border-radius:50%;border:2px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .15s;position:relative}
@@ -157,6 +179,13 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;he
   </div>
 </div>
 
+<!-- Conversa privada em andamento -->
+<div id="private-bar">
+  <i class="fas fa-user-lock"></i>
+  <span id="private-bar-text"></span>
+  <button id="private-bar-end"><i class="fas fa-right-from-bracket" style="margin-right:4px"></i>Voltar para a sala</button>
+</div>
+
 <!-- Main -->
 <div id="main">
   <div id="room-area">
@@ -205,6 +234,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;he
 </div>
 
 <div id="status-toast"></div>
+<div id="peer-menu"></div>
 
 <script>
 const MY_DISPLAY = {{ display_name|escapejs|default:"'Eu'" }};
@@ -223,6 +253,10 @@ let screenOn = false;
 let deafened = (localStorage.getItem('sala_deafen') === '1');
 let chatOpen = false;
 let unreadChat = 0;
+// Administrador/Consultor podem remover colegas da sala (o servidor confere de novo).
+let canKick = false;
+// Encerrado pelo servidor (removido / outra aba): não mostra "Desconectado".
+let kickedOut = false;
 
 // peerId → {pc: RTCPeerConnection, audioEl: HTMLAudioElement, screenVideoEl?, ...}
 const peers = {};
@@ -273,7 +307,7 @@ document.getElementById('btn-skip-mic').onclick = () => {
 function initWs() {
   ws = new WebSocket(WS_URL);
   ws.onmessage = e => handleSignal(JSON.parse(e.data));
-  ws.onclose = () => toast('Desconectado da sala');
+  ws.onclose = () => { if (!kickedOut) toast('Desconectado da sala'); };
   ws.onerror = () => toast('Erro de conexão', true);
 }
 
@@ -286,6 +320,7 @@ async function handleSignal(msg) {
   switch(msg.type) {
     case 'room_joined':
       myId = msg.my_id;
+      canKick = !!msg.can_kick;
       addMyCard();
       for (const peer of msg.peers) {
         peerInfo[peer.channel_name] = peer;
@@ -293,6 +328,7 @@ async function handleSignal(msg) {
         createPeerConnection(peer.channel_name);
       }
       updateCount();
+      aplicarPrivacidade();
       sendMediaState();
       break;
 
@@ -300,15 +336,41 @@ async function handleSignal(msg) {
       peerInfo[msg.peer.channel_name] = msg.peer;
       addPeerCard(msg.peer);
       updateCount();
+      atualizarCardsPrivado();
       toast(`${msg.peer.display_name} entrou na sala`);
       break;
 
-    case 'peer_left':
+    case 'peer_left': {
       removePeer(msg.channel_name);
-      updateCount();
       const info = peerInfo[msg.channel_name];
-      if (info) toast(`${info.display_name} saiu da sala`);
       delete peerInfo[msg.channel_name];
+      // Quem estava em privado com o removido volta a ouvir a sala.
+      Object.values(peerInfo).forEach(p => { if (p.private_with === msg.channel_name) p.private_with = null; });
+      if (myPrivateWith === msg.channel_name) myPrivateWith = null;
+      updateCount();
+      aplicarPrivacidade();
+      if (info) toast(msg.kicked_by ? `${info.display_name} foi removido da sala por ${msg.kicked_by}` : `${info.display_name} saiu da sala`);
+      break;
+    }
+
+    case 'private_state':
+      atualizarPar(msg.a, msg.active ? msg.b : null);
+      atualizarPar(msg.b, msg.active ? msg.a : null);
+      aplicarPrivacidade();
+      if (msg.a === myId || msg.b === myId) {
+        const outro = msg.a === myId ? msg.b : msg.a;
+        const nome = peerInfo[outro] ? peerInfo[outro].display_name : 'atendente';
+        toast(msg.active ? `Conversa privada com ${nome} — só vocês dois se ouvem` : 'Você voltou para a sala');
+      }
+      break;
+
+    case 'room_error':
+      toast(msg.text, true);
+      break;
+
+    case 'kicked':
+      kickedOut = true;
+      mostrarRemovido(msg);
       break;
 
     case 'offer':
@@ -391,7 +453,7 @@ function createPeerConnection(peerId) {
         peers[peerId].audioEl = audioEl;
       }
       // Quem chega depois do botão ligado também tem que entrar mudo.
-      audioEl.muted = deafened;
+      audioEl.muted = deafened || !audivel(peerId);
       audioEl.srcObject = streams[0];
     } else if (track.kind === 'video') {
       // Remote screen share
@@ -430,7 +492,9 @@ function createPeerConnection(peerId) {
   // Garante que sempre exista pelo menos um transceiver de áudio — mesmo
   // quem entra como ouvinte (sem mic) precisa negociar para RECEBER áudio.
   if (localStream && localStream.getAudioTracks().length) {
-    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    localStream.getTracks().forEach(t => { peers[peerId].micSender = pc.addTrack(t, localStream); });
+    // Entrou alguém enquanto estou em privado: ele não pode me ouvir.
+    if (!audivel(peerId)) peers[peerId].micSender.replaceTrack(null).catch(() => {});
   } else {
     pc.addTransceiver('audio', {direction: 'recvonly'});
   }
@@ -482,9 +546,12 @@ document.getElementById('ctrl-mic').onclick = async () => {
       const s = await obterMicrofone();
       s.getAudioTracks().forEach(t => localStream.addTrack(t));
       // Add tracks to existing peer connections
-      Object.values(peers).forEach(p => {
+      Object.entries(peers).forEach(([id, p]) => {
         if (!p.pc) return;
-        s.getAudioTracks().forEach(t => p.pc.addTrack(t, localStream));
+        s.getAudioTracks().forEach(t => {
+          p.micSender = p.pc.addTrack(t, localStream);
+          if (!audivel(id)) p.micSender.replaceTrack(null).catch(() => {});
+        });
       });
     } catch(e) { toast('Microfone não disponível'); return; }
   }
@@ -573,10 +640,11 @@ async function trocarMicrofone(deviceId, nome) {
   const novo = s.getAudioTracks()[0];
   novo.enabled = micOn;
   // replaceTrack troca o áudio sem renegociar: quem está ouvindo nem percebe.
-  for (const p of Object.values(peers)) {
+  for (const [id, p] of Object.entries(peers)) {
     if (!p.pc) continue;
-    const sender = p.pc.getSenders().find(x => x.track === antigo);
-    if (sender) { try { await sender.replaceTrack(novo); } catch(e) {} }
+    const sender = p.micSender || p.pc.getSenders().find(x => x.track === antigo);
+    // Quem está fora da minha conversa privada continua sem receber nada.
+    if (sender) { try { await sender.replaceTrack(audivel(id) ? novo : null); } catch(e) {} }
   }
   localStream.removeTrack(antigo);
   antigo.stop();
@@ -699,7 +767,7 @@ function aplicarSurdez() {
   // Mudo no elemento de saída, não na track: assim o áudio continua
   // chegando e volta na hora em que a pessoa desliga o botão, sem
   // renegociar nada com os outros participantes.
-  Object.values(peers).forEach(p => { if (p.audioEl) p.audioEl.muted = deafened; });
+  Object.entries(peers).forEach(([id, p]) => { if (p.audioEl) p.audioEl.muted = deafened || !audivel(id); });
   const vid = document.getElementById('screen-video');
   // A tela que EU compartilho sempre fica muda aqui (senão eu ouviria meu
   // próprio som de volta); a dos outros segue o botão.
@@ -887,7 +955,8 @@ function addMyCard() {
       <span class="mic-indicator off" id="my-mic-ind"><i class="fas fa-microphone-slash"></i></span>
     </div>
     <div class="peer-name">${esc(MY_DISPLAY)} <span style="color:var(--muted);font-size:.65rem">(você)</span></div>
-    <div class="peer-status" id="my-status">Ouvinte</div>`;
+    <div class="peer-status" id="my-status">Ouvinte</div>
+    <div class="peer-private-badge" style="display:none"></div>`;
   strip.appendChild(div);
 }
 
@@ -916,7 +985,11 @@ function addPeerCard(peer) {
       <span class="mic-indicator off"><i class="fas fa-microphone-slash"></i></span>
     </div>
     <div class="peer-name">${esc(peer.display_name)}</div>
-    <div class="peer-status">Conectando…</div>`;
+    <div class="peer-status">Conectando…</div>
+    <div class="peer-private-badge" style="display:none"></div>`;
+  div.classList.add('clicavel');
+  div.title = 'Clique para conversa privada' + (canKick ? ' ou remover da sala' : '');
+  div.onclick = e => { e.stopPropagation(); abrirMenuPeer(peer.channel_name, div); };
   strip.appendChild(div);
 }
 
@@ -936,6 +1009,140 @@ function updatePeerCard(channelName, audio, screen) {
 function updateCount() {
   const total = Object.keys(peerInfo).length + 1;
   document.getElementById('peers-count').textContent = total + (total === 1 ? ' online' : ' online');
+}
+
+// ── Conversa privada ──────────────────────────────────────────────
+// Dois atendentes saem do áudio da sala e passam a se ouvir só entre si.
+// A tela compartilhada e o chat continuam valendo para todos.
+let myPrivateWith = null;
+
+function atualizarPar(ch, partner) {
+  if (ch === myId) myPrivateWith = partner;
+  else if (peerInfo[ch]) peerInfo[ch].private_with = partner;
+}
+
+function parDe(ch) {
+  if (ch === myId) return myPrivateWith;
+  return peerInfo[ch] ? (peerInfo[ch].private_with || null) : null;
+}
+
+// Eu e o peer nos ouvimos? Só se formos o par um do outro, ou se
+// nenhum dos dois estiver em privado.
+function audivel(peerId) {
+  if (myPrivateWith) return myPrivateWith === peerId;
+  return !parDe(peerId);
+}
+
+function aplicarPrivacidade() {
+  const mic = micTrackAtual();
+  Object.entries(peers).forEach(([id, p]) => {
+    // Corte no ENVIO: quem está fora do par não recebe meu microfone,
+    // nem que mexa no próprio navegador. O mudo de entrada é complemento.
+    if (p.micSender) p.micSender.replaceTrack(audivel(id) ? mic : null).catch(() => {});
+  });
+  aplicarSurdez();
+  atualizarCardsPrivado();
+}
+
+function atualizarCardsPrivado() {
+  const cards = [['me', myId], ...Object.keys(peerInfo).map(id => [id, id])];
+  for (const [domId, ch] of cards) {
+    const card = document.getElementById('peer-' + domId);
+    if (!card) continue;
+    const par = parDe(ch);
+    const badge = card.querySelector('.peer-private-badge');
+    card.classList.toggle('privado', !!par);
+    card.classList.toggle('fora', ch !== myId && !audivel(ch));
+    if (badge) {
+      if (par) {
+        const nome = par === myId ? 'você' : (peerInfo[par] ? peerInfo[par].display_name : '…');
+        badge.innerHTML = `<i class="fas fa-user-lock"></i> Privado com ${esc(nome)}`;
+        badge.style.display = '';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+  }
+  const bar = document.getElementById('private-bar');
+  if (myPrivateWith) {
+    const nome = peerInfo[myPrivateWith] ? peerInfo[myPrivateWith].display_name : 'atendente';
+    document.getElementById('private-bar-text').textContent =
+      `Conversa privada com ${nome} — só vocês dois se ouvem; a sala não escuta vocês.`;
+    bar.classList.add('show');
+  } else {
+    bar.classList.remove('show');
+  }
+}
+
+document.getElementById('private-bar-end').onclick = () => wsSend({type: 'private_end'});
+
+// ── Menu do participante ──────────────────────────────────────────
+function abrirMenuPeer(peerId, card) {
+  const menu = document.getElementById('peer-menu');
+  const info = peerInfo[peerId];
+  if (!info) return;
+  const nome = esc(info.display_name);
+  let html = `<div class="pm-title">${nome}</div>`;
+  if (myPrivateWith === peerId) {
+    html += `<button class="pm-private" data-acao="end"><i class="fas fa-right-from-bracket"></i>Encerrar conversa privada</button>`;
+  } else if (info.private_with) {
+    html += `<div class="pm-title" style="color:var(--purple)"><i class="fas fa-user-lock"></i> Já está em conversa privada</div>`;
+  } else {
+    html += `<button class="pm-private" data-acao="private"><i class="fas fa-user-lock"></i>Conversa privada (só nós dois)</button>`;
+  }
+  if (canKick) {
+    html += `<button class="pm-kick" data-acao="kick"><i class="fas fa-user-xmark"></i>Remover da sala</button>`;
+  }
+  menu.innerHTML = html;
+  menu.querySelectorAll('button').forEach(b => {
+    b.onclick = e => {
+      e.stopPropagation();
+      menu.classList.remove('open');
+      const acao = b.dataset.acao;
+      if (acao === 'private') wsSend({type: 'private_start', target: peerId});
+      else if (acao === 'end') wsSend({type: 'private_end'});
+      else if (acao === 'kick') {
+        if (confirm(`Remover ${info.display_name} da sala? Ele só poderá voltar em 2 minutos.`)) {
+          wsSend({type: 'kick', target: peerId});
+        }
+      }
+    };
+  });
+  menu.classList.add('open');
+  // Posiciona colado ao card sem sair da tela (celular incluso).
+  const r = card.getBoundingClientRect();
+  const mw = menu.offsetWidth, mh = menu.offsetHeight;
+  let left = Math.min(Math.max(8, r.left + r.width / 2 - mw / 2), window.innerWidth - mw - 8);
+  let top = r.bottom + 6;
+  if (top + mh > window.innerHeight - 8) top = Math.max(8, r.top - mh - 6);
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+}
+document.addEventListener('click', e => {
+  const menu = document.getElementById('peer-menu');
+  if (menu.classList.contains('open') && !menu.contains(e.target)) menu.classList.remove('open');
+});
+
+// ── Removido da sala ──────────────────────────────────────────────
+function mostrarRemovido(msg) {
+  cleanup();
+  const ov = document.getElementById('perm-overlay');
+  const box = ov.querySelector('.perm-box');
+  let titulo, desc;
+  if (msg.reason === 'removed') {
+    const min = Math.max(1, Math.ceil((msg.seconds || 0) / 60));
+    titulo = 'Você foi removido da sala';
+    desc = `${esc(msg.by || 'Um administrador')} removeu você da Sala Virtual.<br>Você poderá entrar novamente em cerca de ${min} minuto${min > 1 ? 's' : ''}.`;
+  } else {
+    titulo = 'Sala aberta em outra aba';
+    desc = 'Você entrou na Sala Virtual em outra aba ou janela, então esta conexão foi encerrada.';
+  }
+  box.innerHTML = `
+    <div class="perm-icon" style="color:var(--red)"><i class="fas fa-user-xmark"></i></div>
+    <div class="perm-title">${titulo}</div>
+    <div class="perm-desc">${desc}</div>
+    <button class="perm-btn" onclick="location.href='/atendimento/'">Voltar ao atendimento</button>`;
+  ov.classList.remove('hidden');
 }
 
 // ── Chat ──────────────────────────────────────────────────────────

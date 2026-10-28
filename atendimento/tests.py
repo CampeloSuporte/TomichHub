@@ -4337,3 +4337,106 @@ class ResponderMensagemTest(TestCase):
         blocos = [m['reply'] for m in r.json()['messages'] if m['reply']]
         self.assertEqual(len(blocos), 1)
         self.assertEqual(blocos[0]['id'], str(self.msg.id))
+
+
+class SalaVirtualRemoverEPrivadoTests(TestCase):
+    """Sala virtual: remover atendente (Admin/Consultor) e conversa privada 1:1.
+
+    As checagens de permissão vão por mock — o consumer as roda em outra
+    thread, que não enxerga a transação do TestCase.
+    """
+
+    def setUp(self):
+        from atendimento.consumers import VirtualRoomConsumer
+        VirtualRoomConsumer._members.clear()
+        VirtualRoomConsumer._bloqueados.clear()
+
+    def _rodar(self, coro):
+        import asyncio
+        from django.test import override_settings
+        with override_settings(CHANNEL_LAYERS={'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}}):
+            from channels.layers import channel_layers
+            channel_layers.backends.clear()
+            return asyncio.run(coro)
+
+    async def _entrar(self, uid, nome, pode_remover):
+        from types import SimpleNamespace
+        from channels.testing import WebsocketCommunicator
+        from atendimento.consumers import VirtualRoomConsumer
+        user = SimpleNamespace(id=uid, username=nome, get_full_name=lambda: nome)
+        com = WebsocketCommunicator(VirtualRoomConsumer.as_asgi(), '/ws/atendimento/sala/')
+        com.scope['user'] = user
+        with mock.patch('atendimento.consumers._pode_atendimento', mock.AsyncMock(return_value=True)), \
+             mock.patch('atendimento.consumers._pode_remover_da_sala', mock.AsyncMock(return_value=pode_remover)):
+            ok, _ = await com.connect()
+            self.assertTrue(ok)
+            primeira = await com.receive_json_from()
+        return com, primeira
+
+    async def _ate(self, com, tipo):
+        while True:
+            m = await com.receive_json_from(timeout=2)
+            if m['type'] == tipo:
+                return m
+
+    def test_admin_remove_e_bloqueia_reentrada(self):
+        async def cenario():
+            admin, j1 = await self._entrar(1, 'Admin', True)
+            self.assertTrue(j1['can_kick'])
+            op, j2 = await self._entrar(2, 'Operador', False)
+            self.assertFalse(j2['can_kick'])
+            await self._ate(admin, 'peer_joined')
+
+            await admin.send_json_to({'type': 'kick', 'target': j2['my_id']})
+            kicked = await self._ate(op, 'kicked')
+            self.assertEqual(kicked['reason'], 'removed')
+            self.assertEqual(kicked['by'], 'Admin')
+            saiu = await self._ate(admin, 'peer_left')
+            self.assertEqual(saiu['kicked_by'], 'Admin')
+
+            # F5 logo em seguida: entra, recebe o aviso e é fechado.
+            op2, j3 = await self._entrar(2, 'Operador', False)
+            self.assertEqual(j3['type'], 'kicked')
+            await op2.disconnect()
+            await admin.disconnect()
+        self._rodar(cenario())
+
+    def test_operador_nao_remove(self):
+        async def cenario():
+            a, ja = await self._entrar(1, 'A', True)
+            op, jo = await self._entrar(2, 'Op', False)
+            await op.send_json_to({'type': 'kick', 'target': ja['my_id']})
+            erro = await self._ate(op, 'room_error')
+            self.assertIn('permissão', erro['text'])
+            from atendimento.consumers import VirtualRoomConsumer
+            self.assertIn(ja['my_id'], VirtualRoomConsumer._members)
+            await op.disconnect()
+            await a.disconnect()
+        self._rodar(cenario())
+
+    def test_conversa_privada_anuncia_par_e_encerra_ao_sair(self):
+        async def cenario():
+            from atendimento.consumers import VirtualRoomConsumer
+            a, ja = await self._entrar(1, 'A', False)
+            b, jb = await self._entrar(2, 'B', False)
+            c, jc = await self._entrar(3, 'C', False)
+
+            await a.send_json_to({'type': 'private_start', 'target': jb['my_id']})
+            st = await self._ate(c, 'private_state')
+            self.assertTrue(st['active'])
+            self.assertEqual({st['a'], st['b']}, {ja['my_id'], jb['my_id']})
+            self.assertEqual(VirtualRoomConsumer._members[jb['my_id']]['private_with'], ja['my_id'])
+            self.assertTrue((await self._ate(a, 'private_state'))['active'])
+
+            # Terceiro não entra num par já formado.
+            await c.send_json_to({'type': 'private_start', 'target': ja['my_id']})
+            self.assertIn('já está', (await self._ate(c, 'room_error'))['text'])
+
+            # B cai: o par se desfaz para A.
+            await b.disconnect()
+            fim = await self._ate(a, 'private_state')
+            self.assertFalse(fim['active'])
+            self.assertIsNone(VirtualRoomConsumer._members[ja['my_id']]['private_with'])
+            await a.disconnect()
+            await c.disconnect()
+        self._rodar(cenario())
