@@ -817,6 +817,53 @@ def parse_macs(saida, index):
     return macs
 
 
+# ─── Remover a ONU recém-provisionada ────────────────────────────────────────
+
+_INFO_FSP_RE = re.compile(r'F/S/P\s*:\s*(\d+/\d+/\d+)')
+
+
+def confere_ont(saida, sn, fsp, ont_id):
+    """'' se o `display ont info by-sn` confirma que o SN está em `fsp` com
+    esse ONT-ID; senão, o motivo. Remover pelo ID guardado sem conferir
+    poderia apagar OUTRA ONT, se essa já tivesse saído e o ID fosse reusado."""
+    if re.search(r'does not exist|not exist', saida or '', re.IGNORECASE):
+        return f'{sn} não está mais cadastrada na OLT.'
+    m_fsp, m_id = _INFO_FSP_RE.search(saida or ''), _ONT_ID_INFO_RE.search(saida or '')
+    if not (m_fsp and m_id):
+        return f'Não consegui confirmar onde está a {sn} (resposta inesperada da OLT).'
+    if m_fsp.group(1) != fsp or int(m_id.group(1)) != int(ont_id):
+        return (f'{sn} está em {m_fsp.group(1)} ONT {m_id.group(1)}, não em {fsp} ONT {ont_id} — '
+                'nada foi removido.')
+    return ''
+
+
+def comandos_remover(slot, porta, ont_id, service_ports):
+    """Mesma ordem usada ao vivo na SENTO SE (ONT 76): service-port antes,
+    porque o `ont delete` recusa ONT com service-port ligado."""
+    cmds = [f'undo service-port {int(sp["index"])}' for sp in service_ports]
+    return cmds + [f'interface gpon {slot}', f'ont delete {int(porta)} {int(ont_id)}', 'quit']
+
+
+def remover_onu(shell, sn, slot, porta, ont_id, service_ports):
+    """Numa sessão em (config)#. Devolve (status, log, msg)."""
+    log = []
+    cmd = f'display ont info by-sn {sn}'
+    saida = shell.enviar(cmd)
+    log.append(f'{cmd}\n{saida}')
+    motivo = confere_ont(saida, sn, f'{slot}/{porta}', ont_id)
+    if motivo:
+        return 'erro', '\n'.join(log), motivo
+    for cmd in comandos_remover(slot, porta, ont_id, service_ports):
+        saida = shell.enviar(cmd)
+        log.append(f'{cmd}\n{saida}')
+        recusa = detectar_erro_cli(saida)
+        if recusa:
+            if cmd.startswith('ont delete'):
+                shell.enviar('quit')
+            return 'erro', '\n'.join(log), f'{cmd}: {recusa}'
+    return 'sucesso', '\n'.join(log), f'ONT {ont_id} removida de {slot}/{porta}'
+
+
 # ─── Execução ────────────────────────────────────────────────────────────────
 
 _PROMPT_FIM_RE = re.compile(r'(?:^|\n)[^\n]*?[A-Za-z0-9_.\-]+(?:\([^)\n]*\))?[#>]\s*$')

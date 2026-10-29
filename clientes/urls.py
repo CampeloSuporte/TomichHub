@@ -156,6 +156,7 @@ urlpatterns = [
     path('acessos/<int:acesso_id>/onu-prov/perfis/', onuv.onu_prov_perfis, name='onu_prov_perfis'),
     path('acessos/<int:acesso_id>/onu-prov/backup/', onuv.onu_prov_backup, name='onu_prov_backup'),
     path('acessos/<int:acesso_id>/onu-prov/mac/', onuv.onu_prov_mac, name='onu_prov_mac'),
+    path('acessos/<int:acesso_id>/onu-prov/remover/', onuv.onu_prov_remover, name='onu_prov_remover'),
 
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/(?P<porta>[0-9]+)/(?P<scheme>https?)(?P<path>/.*)?$', views.proxy_web_acesso, name='proxy_web_acesso'),
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/?$', views.proxy_web_acesso, name='proxy_web_acesso_legacy'),

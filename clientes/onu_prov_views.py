@@ -9,6 +9,7 @@ Provisionamento de ONU/ONT em OLT Huawei — endpoints da aba "ONU" do painel
     POST acessos/<id>/onu-prov/perfis/     criar srv/line profile de VLAN translate
     POST acessos/<id>/onu-prov/backup/     backup logo depois de criar perfis
     POST acessos/<id>/onu-prov/mac/        MAC aprendido nos service-ports da ONU provisionada
+    POST acessos/<id>/onu-prov/remover/    remove a ONU recém-provisionada
 
 Duas formas de falar com a OLT. Com o terminal do operador ABERTO nela, tudo
 vai por aquela sessão (o JS do painel envia e lê pelo WebSocket): a OLT da WTD
@@ -545,3 +546,78 @@ def onu_prov_mac(request, acesso_id):
         saida = str(saidas.get(str(sp['index'])) or '')[:100_000]
         resultados.append({**sp, 'macs': op.parse_macs(saida, sp['index']), 'saida': saida})
     return JsonResponse({'resultados': resultados})
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+@ferramenta_instancia_required('scripts')
+def onu_prov_remover(request, acesso_id):
+    """Remove a ONU que acabou de ser provisionada: `undo service-port` dos
+    service-ports criados e `ont delete`. Antes confere pela SN que a ONT
+    ainda é aquela (mesma PON, mesmo ID).
+
+    body: {sn, slot, porta, ont_id, service_ports: [{index, vlan}],
+           acao: "preview" | "executar" | "registrar", status?, saida?, msg?}
+    """
+    acesso, inventario, backup, log, erro = _carregar(request, acesso_id)
+    if erro:
+        return erro
+    try:
+        body = json.loads(request.body)
+        sn = str(body.get('sn') or '').strip().upper()
+        if not op._SN_RE.match(sn):
+            raise op.ProvisionamentoInvalido(f'SN inválido: "{sn}".')
+        slot = str(body.get('slot') or '').strip()
+        if not any(p['slot'] == slot for p in inventario['placas']):
+            raise op.ProvisionamentoInvalido(f'Placa inválida: "{slot}".')
+        porta = op._inteiro(body.get('porta'), 'PON', 0, 63)
+        ont_id = op._inteiro(body.get('ont_id'), 'ONT-ID', 0, 1023)
+        sps = _service_ports_do_pedido(body) if body.get('service_ports') else []
+    except op.ProvisionamentoInvalido as e:
+        return JsonResponse({'error': str(e)}, status=422)
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    comandos = op.comandos_remover(slot, porta, ont_id, sps)
+    acao = body.get('acao') or 'preview'
+    if acao == 'preview':
+        return JsonResponse({'checagem': f'display ont info by-sn {sn}', 'comandos': comandos})
+
+    def _auditar(status, saida, msg):
+        AcaoOltPon.objects.create(
+            acesso=acesso, usuario=request.user, acao='remover', slot=slot, portas=str(porta),
+            onts_afetadas=1, escrita=True, comandos='\n'.join(comandos),
+            output=str(saida or '')[:200_000], status=status)
+        logger.warning(f'Remover ONU {sn} ({slot}/{porta} ONT {ont_id}) em {acesso} por {request.user} '
+                       f'— {status}: {str(msg)[:200]}')
+
+    if acao == 'registrar':
+        status = body.get('status')
+        if status not in ('sucesso', 'erro'):
+            return JsonResponse({'error': 'status inválido'}, status=400)
+        _auditar(status, body.get('saida'), body.get('msg') or '')
+        return JsonResponse({'ok': True})
+    if acao != 'executar':
+        return JsonResponse({'error': 'ação inválida'}, status=400)
+
+    lock = f'onuprov:lock:{acesso.id}'
+    if not cache.add(lock, request.user.username, _LOCK_TTL):
+        return JsonResponse({'error': f'{cache.get(lock) or "Outro usuário"} está mexendo nesta OLT — aguarde.'},
+                            status=409)
+    client = tunel = shell = None
+    try:
+        client, tunel = conectar(acesso)
+        shell = op.ShellOlt(client)
+        for cmd in PREAMBULO:
+            shell.enviar(cmd)
+        status, saida, msg = op.remover_onu(shell, sn, slot, porta, ont_id, sps)
+    except Exception as e:
+        cache.delete(lock)
+        return JsonResponse({'error': f'Falha ao falar com a OLT: {op.mensagem_de_falha(e)}'}, status=502)
+    finally:
+        if shell:
+            shell.fechar()
+        desconectar(client, tunel)
+    cache.delete(lock)
+    _auditar(status, saida, msg)
+    return JsonResponse({'status': status, 'saida': saida, 'msg': msg})
