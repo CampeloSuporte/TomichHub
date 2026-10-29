@@ -108,6 +108,23 @@ class GrupoQueAlteraTest(SimpleTestCase):
         self.assertNotIn('infocloud', texto)
 
 
+class VersoesTest(SimpleTestCase):
+    def test_fiberhome_tem_sub_menu_5500_e_6k(self):
+        for familia in ('fiberhome_5k', 'fiberhome_6k'):
+            v = cu.catalogo(familia)['versoes']
+            self.assertEqual([x['familia'] for x in v], ['fiberhome_5k', 'fiberhome_6k'])
+        self.assertEqual(cu.catalogo('raisecom')['versoes'], [])
+
+    def test_seletor_tipo_mostra_a_linha_uma_vez(self):
+        opcoes = cu.lista_familias()
+        fh = [o for o in opcoes if 'fiberhome_5k' in o['membros']]
+        self.assertEqual(len(fh), 1)
+        self.assertEqual(fh[0]['membros'], ['fiberhome_5k', 'fiberhome_6k'])
+        self.assertFalse(any(o['familia'] == 'fiberhome_6k' for o in opcoes))
+        # Toda família continua alcançável pelo seletor ou pelo sub-menu
+        self.assertEqual({m for o in opcoes for m in o['membros']}, set(cu.FAMILIAS))
+
+
 class EndpointTest(SimpleTestCase):
     def setUp(self):
         self.view = inspect.unwrap(views.comandos_uteis_acesso)

@@ -361,6 +361,8 @@ FAMILIAS = {
     },
     'fiberhome_5k': {
         'nome': 'FiberHome OLT AN5516 (RP1000 / RP1200 / RP1800)',
+        'linha': 'FiberHome',
+        'versao': 'AN5516 · 5500',
         'aviso': 'A CLI é por diretórios: `cd onu`, `cd gpononu`, `cd service`… entram e `cd ..` volta. '
                  'Cada grupo começa com o `cd` do diretório certo. `lll` entra no modo DEBUG. '
                  'Grupos marcados ⚠ alteram o equipamento — o ▶ pede confirmação.',
@@ -491,6 +493,8 @@ FAMILIAS = {
     },
     'fiberhome_6k': {
         'nome': 'FiberHome OLT AN6000',
+        'linha': 'FiberHome',
+        'versao': 'AN6000 · 6k',
         'aviso': 'Frame é sempre 1 (`1/slot/porta`). Configuração em `config`. '
                  'Grupos marcados ⚠ alteram o equipamento — o ▶ pede confirmação.',
         'exemplos': {'slot': '7', 'pon': '1', 'porta': '1/9/4', 'ip': '192.168.1.252', 'vlan': '4002', 'placa': 'GPOA'},
@@ -623,8 +627,30 @@ def catalogo(familia):
         'aviso': fam.get('aviso', ''),
         'exemplos': fam.get('exemplos', {}),
         'grupos': grupos,
+        'versoes': versoes(familia),
     }
 
 
+def versoes(familia):
+    """Famílias da mesma linha (ex.: FiberHome 5500 e 6k) para o sub-menu de
+    versão do painel. Vazio quando a família não tem irmãs."""
+    linha = FAMILIAS[familia].get('linha')
+    if not linha:
+        return []
+    return [{'familia': k, 'versao': v['versao']} for k, v in FAMILIAS.items() if v.get('linha') == linha]
+
+
 def lista_familias():
-    return [{'familia': k, 'nome': v['nome']} for k, v in FAMILIAS.items()]
+    """Opções do seletor "Tipo". Uma linha com várias versões vira uma opção
+    só (a primeira versão); a versão se troca no sub-menu do painel."""
+    opcoes, linhas = [], {}
+    for k, v in FAMILIAS.items():
+        linha = v.get('linha')
+        if not linha:
+            opcoes.append({'familia': k, 'nome': v['nome'], 'membros': [k]})
+        elif linha in linhas:
+            linhas[linha]['membros'].append(k)
+        else:
+            linhas[linha] = {'familia': k, 'nome': f'{linha} OLT (escolha a versão)', 'membros': [k]}
+            opcoes.append(linhas[linha])
+    return opcoes

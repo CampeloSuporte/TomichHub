@@ -562,6 +562,11 @@ um seletor "Tipo". A escolha fica no `localStorage` do navegador (`cu-familia-<i
   manda o Enter. Comando de várias linhas (sinal óptico da ONU no MA5800) só tem ▶ e pede
   confirmação. Campo vazio fica vermelho e nada é enviado.
 - Trocar de aba com o painel aberto recarrega para o equipamento da nova aba.
+- **Sub-menu de versão** (2026-10-28): família com `linha`/`versao` no catálogo (hoje FiberHome:
+  `AN5516 · 5500` e `AN6000 · 6k`) mostra botões "Versão" abaixo do Tipo, e cada um lista os
+  comandos daquela versão. O seletor "Tipo" mostra a linha uma vez só ("FiberHome OLT (escolha a
+  versão)", `membros` em `lista_familias`). A versão escolhida fica salva por host como qualquer
+  troca de tipo (`cu-familia-<id>`).
 
 **Catálogo** (`FAMILIAS` em `comandos_uteis.py`): só leitura (show/display/print e diagnóstico
 Linux), mais os comandos que só mudam de modo/diretório ou desligam a paginação. O teste
