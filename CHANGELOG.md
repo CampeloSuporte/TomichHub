@@ -18,6 +18,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   outras ONUs, há um lote por OLT de cada vez e cada ONU é auditada em `AcaoOltPon`
   (`provisionar`, status novo `parcial`; migração 0126). `docs/olt_provisionamento_onu.md`.
 
+- **Aba ONU em massa: line e srv profile únicos para o lote.** Os seletores "Line profile" e
+  "Srv profile para as marcadas" aplicam o mesmo perfil a todas as ONUs marcadas, no lugar da
+  sugestão do backup.
+
 ### Corrigido
 
 - **Aba ONU usa o terminal já aberto na OLT.** A OLT recusa um segundo login do mesmo usuário,

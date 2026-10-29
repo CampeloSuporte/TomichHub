@@ -1357,6 +1357,13 @@
                     <div style="flex:1;min-width:160px;"><span class="op-lbl">MODO PARA AS MARCADAS</span>
                         <select class="op-in" id="opModoTodas" onchange="opAplicarModo(this.value)"><option value="">— manter o de cada uma —</option></select></div>
                 </div>
+                <!-- Lote: um line/srv profile único para todas as marcadas -->
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:160px;"><span class="op-lbl">LINE PROFILE PARA AS MARCADAS</span>
+                        <select class="op-in" id="opLineTodas" onchange="opAplicarPerfil('line', this.value)"></select></div>
+                    <div style="flex:1;min-width:160px;"><span class="op-lbl">SRV PROFILE PARA AS MARCADAS</span>
+                        <select class="op-in" id="opSrvTodas" onchange="opAplicarPerfil('srv', this.value)"></select></div>
+                </div>
                 <div id="opLista" style="display:flex;flex-direction:column;gap:8px;"></div>
                 <div style="display:flex;gap:8px;">
                     <button class="op-btn sec" onclick="opPreview()" style="flex:1;">👁 Pré-visualizar comandos</button>
@@ -3813,6 +3820,9 @@
                 opInvAcesso = id;
                 info.innerHTML = `<b>${_escHtml(opInv.host.nome)}</b> ${_escHtml(opInv.host.ip)} · ${_escHtml(opInv.modelo)} · `
                     + `${opInv.lines.length} line / ${opInv.srvs.length} srv profiles · backup ${_escHtml(opInv.data_backup)}`;
+                const manter = '<option value="">— manter o sugerido de cada uma —</option>';
+                document.getElementById('opLineTodas').innerHTML = manter + opOpcoesPerfil(opInv.lines, null).replace('<option value="">—</option>', '');
+                document.getElementById('opSrvTodas').innerHTML = manter + opOpcoesPerfil(opInv.srvs, null).replace('<option value="">—</option>', '');
                 const sel = document.getElementById('opModoTodas');
                 sel.innerHTML = '<option value="">— manter o de cada uma —</option>'
                     + opInv.modos.map(m => `<option value="${m.chave}">${_escHtml(m.label)}</option>`).join('');
@@ -3962,7 +3972,7 @@
                 }
                 msg.innerHTML = `<span style="color:#c9d1d9">${opOnus.length} ONU(s) pendente(s) — ${opModoLabel(term)}. Confira os valores e marque as que vai provisionar.</span>`;
                 document.getElementById('opTodas').checked = opSelecao !== 'unico';
-                document.getElementById('opModoTodas').value = '';
+                ['opModoTodas', 'opLineTodas', 'opSrvTodas'].forEach(x => { document.getElementById(x).value = ''; });
                 opRenderLista();
                 if (opSelecao === 'unico') opOnus.forEach((o, i) => { if (i > 0) {
                     document.getElementById(`op-chk-${i}`).checked = false;
@@ -3980,6 +3990,15 @@
             opOnus.forEach((o, i) => {
                 const c = document.getElementById(`op-chk-${i}`);
                 if (c) { c.checked = v; document.getElementById(`op-card-${i}`).classList.toggle('off', !v); }
+            });
+        };
+
+        // Line/srv único no lote: grava em todas as marcadas; desmarcar e
+        // remarcar uma ONU não desfaz (cada cartão continua editável).
+        window.opAplicarPerfil = function(campo, v) {
+            if (!v) return;
+            opOnus.forEach((o, i) => {
+                if (document.getElementById(`op-chk-${i}`)?.checked) document.getElementById(`op-${campo}-${i}`).value = v;
             });
         };
 
