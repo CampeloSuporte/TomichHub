@@ -5,6 +5,12 @@ Provisionamento de ONU/ONT em OLT Huawei — endpoints da aba "ONU" do painel
     GET  acessos/<id>/onu-prov/            perfis/placas do backup (sem conectar)
     POST acessos/<id>/onu-prov/autofind/   `display ont autofind all` ao vivo
     POST acessos/<id>/onu-prov/executar/   preview (JSON) ou execução (SSE)
+    POST acessos/<id>/onu-prov/registrar/  auditoria de ONU provisionada pelo terminal
+
+Duas formas de falar com a OLT. Com o terminal do operador ABERTO nela, tudo
+vai por aquela sessão (o JS do painel envia e lê pelo WebSocket): a OLT da WTD
+não aceita o mesmo login duas vezes ao mesmo tempo, então a conexão própria do
+servidor seria recusada. Sem terminal aberto, o servidor conecta sozinho.
 """
 import json
 import logging
@@ -103,10 +109,21 @@ def onu_prov_inventario(request, acesso_id):
 @require_http_methods(['POST'])
 @ferramenta_instancia_required('scripts')
 def onu_prov_autofind(request, acesso_id):
-    """Leitura pura: lista as ONUs pendentes, já com a sugestão do backup."""
+    """Leitura pura: lista as ONUs pendentes, já com a sugestão do backup.
+
+    body opcional `{"saida": "..."}`: a saída do `display ont autofind all`
+    já rodado no terminal aberto — aí só interpreta, sem conectar.
+    """
     acesso, inventario, backup, log, erro = _carregar(request, acesso_id)
     if erro:
         return erro
+    try:
+        body = json.loads(request.body or b'{}')
+    except Exception:
+        body = {}
+    saida = body.get('saida') if isinstance(body, dict) else None
+    if isinstance(saida, str):
+        return _resposta_autofind(saida[:500_000], backup, log)
 
     client = tunel = shell = None
     try:
@@ -122,7 +139,10 @@ def onu_prov_autofind(request, acesso_id):
         if shell:
             shell.fechar()
         desconectar(client, tunel)
+    return _resposta_autofind(saida, backup, log)
 
+
+def _resposta_autofind(saida, backup, log):
     onus = []
     for o in op.parse_autofind(saida):
         o['sugestao'] = op.sugerir(backup, o['slot'], o['porta'], o['sn'])
@@ -221,3 +241,36 @@ def onu_prov_executar(request, acesso_id):
     response['Cache-Control'] = 'no-cache'
     response['X-Accel-Buffering'] = 'no'
     return response
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+@ferramenta_instancia_required('scripts')
+def onu_prov_registrar(request, acesso_id):
+    """Auditoria de uma ONU provisionada pelo terminal aberto (o JS executa e
+    só reporta). body: {item: {...}, ont_id, status, saida, msg}."""
+    acesso, inventario, backup, log, erro = _carregar(request, acesso_id)
+    if erro:
+        return erro
+    try:
+        body = json.loads(request.body)
+        it, _ = op.validar_item(body.get('item') or {}, inventario, backup)
+    except op.ProvisionamentoInvalido as e:
+        return JsonResponse({'error': str(e)}, status=422)
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+    status = body.get('status')
+    if status not in ('sucesso', 'parcial', 'erro'):
+        return JsonResponse({'error': 'status inválido'}, status=400)
+    ont_id = body.get('ont_id')
+    ont_id = int(ont_id) if str(ont_id).isdigit() else op.ONT_ID
+    placa = next(p for p in inventario['placas'] if p['slot'] == it['slot'])
+    onts = next((q['onts'] for q in placa['portas'] if q['porta'] == it['porta']), 0)
+    AcaoOltPon.objects.create(
+        acesso=acesso, usuario=request.user, acao='provisionar',
+        slot=it['slot'], portas=str(it['porta']), onts_afetadas=onts, escrita=True,
+        comandos='\n'.join(op.comandos_onu(it, ont_id)),
+        output=str(body.get('saida') or '')[:200_000], status=status)
+    logger.warning(f'ONU {it["sn"]} em {acesso} {it["slot"]}/{it["porta"]} pelo terminal '
+                   f'de {request.user} — {status}: {str(body.get("msg") or "")[:200]}')
+    return JsonResponse({'ok': True})

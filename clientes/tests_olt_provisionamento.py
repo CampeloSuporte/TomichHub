@@ -337,3 +337,50 @@ class FabricanteScriptTest(SimpleTestCase):
         self.assertEqual(_fabricante_script(zte)['fabricante'], 'zte')
         sem = SimpleNamespace(tipo='BRAS', modelo=None)
         self.assertEqual(_fabricante_script(sem), {'familia': '', 'fabricante': ''})
+
+
+class ModoTerminalViewsTest(SimpleTestCase):
+    """Com o terminal aberto, o servidor só interpreta e audita."""
+
+    def _req(self, body):
+        import json
+        from django.test import RequestFactory
+        r = RequestFactory().post('/', data=json.dumps(body), content_type='application/json')
+        r.user = SimpleNamespace(is_authenticated=True, username='op')
+        return r
+
+    def _carregar(self):
+        bk = op.parse_backup(BACKUP)
+        log = SimpleNamespace(data_backup=__import__('django.utils.timezone', fromlist=['now']).now())
+        inv = {'placas': [{'slot': '0/1', 'tipo': 'H902GPSF', 'portas_total': 16,
+                           'portas': [{'porta': 0, 'onts': 3}]}]}
+        return mock.patch('clientes.onu_prov_views._carregar',
+                          return_value=(SimpleNamespace(id=9486), inv, bk, log, None))
+
+    def test_autofind_com_saida_nao_conecta(self):
+        import json
+        from clientes import onu_prov_views as v
+        with self._carregar(), mock.patch('clientes.onu_prov_views.conectar') as conectar, \
+                mock.patch('clientes.decorators.ferramenta_instancia_required', lambda k: (lambda f: f)):
+            resp = v.onu_prov_autofind.__wrapped__.__wrapped__.__wrapped__(self._req({'saida': AUTOFIND}), 9486)
+        conectar.assert_not_called()
+        onus = json.loads(resp.content)['onus']
+        self.assertEqual([o['sn'] for o in onus], ['485754433B65169B', '485754433B654F8B'])
+        self.assertEqual(onus[0]['sugestao']['srv'], 1001)
+
+    def test_registrar_grava_comandos_com_id(self):
+        from clientes import onu_prov_views as v
+        with self._carregar(), mock.patch('clientes.onu_prov_views.AcaoOltPon') as acao:
+            resp = v.onu_prov_registrar.__wrapped__.__wrapped__.__wrapped__(
+                self._req({'item': _item(), 'ont_id': 76, 'status': 'sucesso', 'saida': 'ok'}), 9486)
+        self.assertEqual(resp.status_code, 200)
+        kw = acao.objects.create.call_args.kwargs
+        self.assertIn('ont 76 gemport 1', kw['comandos'])
+        self.assertEqual((kw['acao'], kw['status'], kw['onts_afetadas']), ('provisionar', 'sucesso', 3))
+
+    def test_registrar_recusa_status_invalido(self):
+        from clientes import onu_prov_views as v
+        with self._carregar():
+            resp = v.onu_prov_registrar.__wrapped__.__wrapped__.__wrapped__(
+                self._req({'item': _item(), 'status': 'talvez'}), 9486)
+        self.assertEqual(resp.status_code, 400)

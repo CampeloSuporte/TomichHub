@@ -2469,7 +2469,11 @@
                 tObj.socket.onmessage = e => {
                     // Hot path: binary frame = terminal output puro
                     if (e.data instanceof ArrayBuffer) {
-                        writeToTerminal(tObj.terminal, _dec.decode(e.data));
+                        const texto = _dec.decode(e.data);
+                        writeToTerminal(tObj.terminal, texto);
+                        // Leitores da saída (aba ONU do ⚡ Scripts roda comandos
+                        // nesta mesma sessão e precisa ler a resposta).
+                        if (tObj._taps) tObj._taps.forEach(f => f(texto));
                         return;
                     }
                     // Texto = mensagem de controle (JSON)
@@ -2492,6 +2496,7 @@
                         atualizarBotaoCompartilhar();
                     } else if (data.type === 'output' && data.data) {
                         writeToTerminal(tObj.terminal, data.data);
+                        if (tObj._taps) tObj._taps.forEach(f => f(data.data));
                     } else if (data.type === 'error') {
                         tObj.connected = false;
                         tObj.hadSshError = true;   // não reconectar automaticamente após erro SSH
@@ -3851,26 +3856,111 @@
             }).join('');
         }
 
+        // ── Sessão: o terminal JÁ ABERTO na OLT ──
+        // A OLT da WTD não deixa o mesmo login entrar duas vezes (reenter
+        // limit): com o terminal aberto, a conexão própria do servidor é
+        // recusada. Então, havendo uma aba conectada nesta OLT, os comandos vão
+        // por ela e a resposta é lida do próprio fluxo do terminal (_taps).
+        const OP_PROMPT = /[A-Za-z0-9_.\-]+(?:\([^)\n]*\))?[#>]\s*$/;
+        const OP_CONTINUA = /\{\s*<cr>[^}]*\}\s*:\s*$/;
+        const OP_MORE = /-+\s*More\s*\(?[^\n]*$/i;
+        const OP_ERRO = /%\s*(?:parameter error|unknown command|wrong parameter|incomplete command|too many parameters|invalid input|invalid parameter|command not found|error:)|^\s*Failure:.*|\bcommand is not supported\b/im;
+        const OP_ONTID = /ONTID\s*:\s*(\d+)/i;
+        const OP_ONTID_INFO = /ONT-ID\s*:\s*(\d+)/i;
+
+        function opSemAnsi(t) {
+            return t.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '').replace(/[\x08]/g, '').replace(/\r/g, '');
+        }
+
+        function opTerminalDaOlt(id) {
+            const tm = window.terminalManager;
+            if (!tm) return null;
+            for (const t of tm.terminals.values())
+                if (t.acesso && t.acesso.id === id && t.connected && t.socket && t.socket.readyState === WebSocket.OPEN) return t;
+            return null;
+        }
+
+        function opCmdTerminal(t, cmd, maxMs = 60000) {
+            return new Promise((resolve, reject) => {
+                const enc = new TextEncoder();
+                let buf = '', fim = null, limite = null;
+                const tap = chunk => {
+                    buf += chunk;
+                    const cauda = opSemAnsi(buf.slice(-400));
+                    clearTimeout(fim);
+                    if (OP_CONTINUA.test(cauda)) { t.socket.send(enc.encode('\r')); return; }
+                    if (OP_MORE.test(cauda)) { t.socket.send(enc.encode(' ')); return; }
+                    if (OP_PROMPT.test(cauda)) fim = setTimeout(() => terminar(), 300);
+                };
+                const terminar = erro => {
+                    clearTimeout(limite); clearTimeout(fim);
+                    t._taps = (t._taps || []).filter(f => f !== tap);
+                    if (erro) return reject(erro);
+                    const linhas = opSemAnsi(buf).split('\n');
+                    if (linhas.length && cmd && linhas[0].includes(cmd)) linhas.shift();
+                    resolve(linhas.join('\n'));
+                };
+                t._taps = [...(t._taps || []), tap];
+                limite = setTimeout(() => terminar(new Error(`a OLT não respondeu a "${cmd || 'Enter'}"`)), maxMs);
+                t.socket.send(enc.encode(cmd + '\r'));
+            });
+        }
+
+        function opPrompt(saida) {
+            const l = saida.trim().split('\n');
+            return (l[l.length - 1] || '').trim();
+        }
+
+        // Leva a sessão para (config)#, de onde quer que o operador tenha
+        // parado. Devolve o prompt inicial para restaurar no fim.
+        async function opPrepararTerminal(t) {
+            let p = opPrompt(await opCmdTerminal(t, ''));
+            const inicial = p;
+            if (/>$/.test(p)) p = opPrompt(await opCmdTerminal(t, 'enable'));
+            for (let i = 0; i < 4 && /\(config-[^)]*\)#$/.test(p); i++) p = opPrompt(await opCmdTerminal(t, 'quit'));
+            if (/^[^(]*#$/.test(p)) p = opPrompt(await opCmdTerminal(t, 'config'));
+            if (!/\(config\)#$/.test(p)) throw new Error(`não consegui entrar no modo config (prompt: ${p})`);
+            return inicial;
+        }
+
+        async function opRestaurarTerminal(t, inicial) {
+            // Volta ao nível em que o operador estava (# ou >); se já estava
+            // em config, fica em config.
+            if (!/\(config/.test(inicial)) await opCmdTerminal(t, 'quit').catch(() => {});
+        }
+
+        function opModoLabel(t) {
+            return t ? `pelo terminal aberto (${_escHtml(t.acesso.tipo || '')})` : 'por conexão própria do servidor';
+        }
+
         window.opBuscar = async function() {
             const id = opAcessoId();
             if (!id || !opInv) return;
             const btn = document.getElementById('opBtnBuscar');
             const msg = document.getElementById('opMsg');
+            const term = opTerminalDaOlt(id);
             btn.disabled = true; btn.textContent = '⏳ Consultando a OLT...';
-            msg.innerHTML = '<span style="color:#7d8590">display ont autofind all</span>';
+            msg.innerHTML = `<span style="color:#7d8590">display ont autofind all — ${opModoLabel(term)}</span>`;
             document.getElementById('opPreviewBox').style.display = 'none';
             document.getElementById('opLog').style.display = 'none';
             document.getElementById('opAvisos').innerHTML = '';
             try {
+                let corpo = {};
+                if (term) {
+                    const inicial = await opPrepararTerminal(term);
+                    corpo.saida = await opCmdTerminal(term, 'display ont autofind all', 90000);
+                    await opRestaurarTerminal(term, inicial);
+                }
                 const j = await opFetchJson(`/clientes/acessos/${id}/onu-prov/autofind/`, {method: 'POST',
-                    headers: {'X-CSRFToken': _getCookie('csrftoken')}});
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
+                    body: JSON.stringify(corpo)});
                 opOnus = j.onus || [];
                 if (!opOnus.length) {
                     msg.innerHTML = '<span style="color:#3fb950">✓ Nenhuma ONU pendente de provisionamento nesta OLT.</span>';
                     document.getElementById('opLote').style.display = 'none';
                     return;
                 }
-                msg.innerHTML = `<span style="color:#c9d1d9">${opOnus.length} ONU(s) pendente(s). Confira os valores e marque as que vai provisionar.</span>`;
+                msg.innerHTML = `<span style="color:#c9d1d9">${opOnus.length} ONU(s) pendente(s) — ${opModoLabel(term)}. Confira os valores e marque as que vai provisionar.</span>`;
                 document.getElementById('opTodas').checked = opSelecao !== 'unico';
                 document.getElementById('opModoTodas').value = '';
                 opRenderLista();
@@ -3938,6 +4028,90 @@
             }
         };
 
+        // Mesmo roteiro de `olt_provisionamento.provisionar`, pelo terminal.
+        // Os comandos vêm prontos do preview do servidor (com {ONT_ID}).
+        async function* opProvisionarTerminal(t, itens, prev) {
+            const total = itens.length;
+            yield {tipo: 'info', msg: `${total} ONU(s) pelo terminal aberto em ${t.acesso.tipo || ''} (${t.acesso.host || ''}) — não digite nele até terminar.`};
+            const inicial = await opPrepararTerminal(t);
+            try {
+                yield {tipo: 'info', msg: 'Relendo as ONUs pendentes (display ont autofind all)...'};
+                const af = await opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-prov/autofind/`, {method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
+                    body: JSON.stringify({saida: await opCmdTerminal(t, 'display ont autofind all', 90000)})});
+                const pendentes = {};
+                (af.onus || []).forEach(o => { pendentes[o.sn] = o; });
+
+                for (let idx = 1; idx <= total; idx++) {
+                    const it = itens[idx - 1];
+                    const cmds = prev.onus.find(o => o.sn === it.sn).comandos;
+                    const base = {idx, total, sn: it.sn};
+                    const achada = pendentes[it.sn];
+                    if (!achada) { yield {...base, tipo: 'onu', status: 'ignorada', msg: 'não está mais pendente no autofind (já provisionada?)'}; continue; }
+                    if (achada.slot !== it.slot || achada.porta !== Number(it.porta)) {
+                        yield {...base, tipo: 'onu', status: 'ignorada', msg: `está na PON ${achada.fsp}, não em ${it.slot}/${it.porta}`}; continue;
+                    }
+                    yield {...base, tipo: 'progresso', msg: `${it.sn} → ${it.slot}/${it.porta} VLAN ${it.vlan}`};
+                    const log = [];
+                    const env = async c => { const r = await opCmdTerminal(t, c); log.push(`${c}\n${r}`); return r; };
+
+                    await env(cmds[0]);                       // interface gpon F/S
+                    const resp = await env(cmds[1]);          // ont add (sem ID)
+                    let recusa = (resp.match(OP_ERRO) || [''])[0].trim();
+                    let ontId = null;
+                    if (!recusa) {
+                        const m = resp.match(OP_ONTID) || (await env(`display ont info by-sn ${it.sn}`)).match(OP_ONTID_INFO);
+                        ontId = m ? parseInt(m[1]) : null;
+                    }
+                    let ev;
+                    if (recusa || ontId == null) {
+                        await env('quit');
+                        ev = {...base, tipo: 'onu', status: 'erro', msg: recusa || 'a OLT não devolveu o ONT-ID do ont add'};
+                    } else {
+                        const falhas = [];
+                        for (const c of cmds.slice(2)) {
+                            const r = await env(c.replace(/\{ONT_ID\}/g, ontId));
+                            const f = (r.match(OP_ERRO) || [''])[0].trim();
+                            if (f) falhas.push(f);
+                        }
+                        ev = {...base, tipo: 'onu', ont_id: ontId, status: falhas.length ? 'parcial' : 'sucesso',
+                              msg: falhas.length ? `${falhas.join('; ')} — ONT ${ontId} ficou cadastrada, confira o serviço` : `ONT ${ontId} provisionada`};
+                    }
+                    ev.comandos = log.join('\n');
+                    // Auditoria no servidor (AcaoOltPon), igual ao modo servidor.
+                    await opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-prov/registrar/`, {method: 'POST',
+                        headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
+                        body: JSON.stringify({item: it, ont_id: ev.ont_id ?? null, status: ev.status, saida: ev.comandos, msg: ev.msg})})
+                        .catch(e => console.warn('[ONU] auditoria:', e));
+                    yield ev;
+                }
+            } finally {
+                await opRestaurarTerminal(t, inicial);
+            }
+        }
+
+        async function* opProvisionarServidor(itens) {
+            const resp = await fetch(`/clientes/acessos/${opAcessoId()}/onu-prov/executar/`, {method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
+                body: JSON.stringify({preview: false, itens})});
+            if (!resp.ok || !(resp.headers.get('content-type') || '').includes('event-stream')) {
+                const j = await resp.json().catch(() => ({error: 'Sessão expirada? Recarregue a página.'}));
+                yield {tipo: 'erro', erro: j.error || resp.statusText}; return;
+            }
+            const reader = resp.body.getReader(), dec = new TextDecoder();
+            let buf = '';
+            while (true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                buf += dec.decode(value, {stream: true});
+                const partes = buf.split('\n\n'); buf = partes.pop();
+                for (const p of partes) {
+                    if (!p.startsWith('data:')) continue;
+                    try { yield JSON.parse(p.slice(5).trim()); } catch (e) {}
+                }
+            }
+        }
+
         window.opExecutar = async function() {
             if (opRodando) return;
             const itens = opItens();
@@ -3946,11 +4120,12 @@
             try { prev = await opPedirPreview(itens); }
             catch (e) { document.getElementById('opAvisos').innerHTML = `<div style="color:#ff5555">✗ ${_escHtml(e.message)}</div>`; return; }
             opMostrarAvisos(prev.avisos);
+            const term = opTerminalDaOlt(opAcessoId());
             const avisosHtml = (prev.avisos || []).length
                 ? `<br><br><span style="color:#d29922">${prev.avisos.length} aviso(s) do backup — confira abaixo do botão.</span>` : '';
             const ok = await uiConfirm({tipo: 'aviso', titulo: 'Provisionar ONU(s)?', btnLabel: `Provisionar ${itens.length}`,
                 msgHtml: `Enviar <b>ont add</b> + <b>service-port</b> de <b>${itens.length}</b> ONU(s) para `
-                    + `<b>${_escHtml(opInv.host.nome)}</b> (${_escHtml(opInv.host.ip)})?${avisosHtml}`});
+                    + `<b>${_escHtml(opInv.host.nome)}</b> (${_escHtml(opInv.host.ip)}) ${opModoLabel(term)}?${avisosHtml}`});
             if (!ok) return;
 
             opRodando = true;
@@ -3962,39 +4137,25 @@
             itens.forEach(it => { porSn[it.sn] = it._i; const st = document.getElementById(`op-st-${it._i}`); st.className = 'op-st'; st.textContent = 'na fila'; });
             const linha = t => { log.textContent += t + '\n'; log.scrollTop = log.scrollHeight; };
             const marcar = (sn, cls, txt) => { const st = document.getElementById(`op-st-${porSn[sn]}`); if (st) { st.className = 'op-st ' + cls; st.textContent = txt; } };
+            const contagem = {sucesso: 0, parcial: 0, erro: 0, ignorada: 0};
 
             try {
-                const resp = await fetch(`/clientes/acessos/${opAcessoId()}/onu-prov/executar/`, {method: 'POST',
-                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
-                    body: JSON.stringify({preview: false, itens})});
-                if (!resp.ok || !(resp.headers.get('content-type') || '').includes('event-stream')) {
-                    const j = await resp.json().catch(() => ({error: 'Sessão expirada? Recarregue a página.'}));
-                    linha(`✗ ${j.error || resp.statusText}`); return;
-                }
-                const reader = resp.body.getReader(), dec = new TextDecoder();
-                let buf = '';
-                while (true) {
-                    const {done, value} = await reader.read();
-                    if (done) break;
-                    buf += dec.decode(value, {stream: true});
-                    const partes = buf.split('\n\n'); buf = partes.pop();
-                    for (const p of partes) {
-                        if (!p.startsWith('data:')) continue;
-                        let ev; try { ev = JSON.parse(p.slice(5).trim()); } catch (e) { continue; }
-                        if (ev.tipo === 'info') linha(`ℹ ${ev.msg}`);
-                        else if (ev.tipo === 'progresso') { linha(`\n▶ [${ev.idx}/${ev.total}] ${ev.msg}`); marcar(ev.sn, 'andamento', 'enviando...'); }
-                        else if (ev.tipo === 'onu') {
-                            const icone = {sucesso: '✓', parcial: '⚠', ignorada: '↷', erro: '✗'}[ev.status] || '•';
-                            if (ev.comandos) linha(ev.comandos);
-                            linha(`${icone} ${ev.sn}: ${ev.msg}`);
-                            marcar(ev.sn, ev.status, ev.status === 'sucesso' ? `ONT ${ev.ont_id}` : ev.status);
-                        }
-                        else if (ev.tipo === 'erro') linha(`\n✗ ERRO: ${ev.erro}`);
-                        else if (ev.tipo === 'fim') linha(`\n━━ ${ev.sucesso} provisionada(s), ${ev.parcial} parcial(is), ${ev.erro} erro(s), ${ev.ignorada} ignorada(s) ━━`);
+                const fonte = term ? opProvisionarTerminal(term, itens, prev) : opProvisionarServidor(itens);
+                for await (const ev of fonte) {
+                    if (ev.tipo === 'info') linha(`ℹ ${ev.msg}`);
+                    else if (ev.tipo === 'progresso') { linha(`\n▶ [${ev.idx}/${ev.total}] ${ev.msg}`); marcar(ev.sn, 'andamento', 'enviando...'); }
+                    else if (ev.tipo === 'onu') {
+                        contagem[ev.status] = (contagem[ev.status] || 0) + 1;
+                        const icone = {sucesso: '✓', parcial: '⚠', ignorada: '↷', erro: '✗'}[ev.status] || '•';
+                        if (ev.comandos) linha(ev.comandos);
+                        linha(`${icone} ${ev.sn}: ${ev.msg}`);
+                        marcar(ev.sn, ev.status, ev.status === 'sucesso' ? `ONT ${ev.ont_id}` : ev.status);
                     }
+                    else if (ev.tipo === 'erro') linha(`\n✗ ERRO: ${ev.erro}`);
                 }
+                linha(`\n━━ ${contagem.sucesso} provisionada(s), ${contagem.parcial} parcial(is), ${contagem.erro} erro(s), ${contagem.ignorada} ignorada(s) ━━`);
             } catch (e) {
-                linha(`✗ ${e}`);
+                linha(`✗ ${e.message || e}`);
             } finally {
                 opRodando = false;
                 btn.disabled = false; btn.textContent = '▶ Provisionar';

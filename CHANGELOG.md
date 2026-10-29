@@ -20,6 +20,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Corrigido
 
+- **Aba ONU usa o terminal já aberto na OLT.** A OLT recusa um segundo login do mesmo usuário,
+  então, com o terminal aberto, a busca e o provisionamento falhavam. Agora, havendo uma aba
+  conectada na OLT, os comandos vão por ela (enviados e lidos pelo WebSocket da aba) e o operador
+  vê tudo no terminal. Sem terminal aberto, o servidor conecta sozinho. Endpoint novo
+  `onu-prov/registrar/` para a auditoria.
 - **Aba ONU: "Resource shortage" ao buscar as ONUs.** A sessão de provisionamento saía com um
   `quit` só, o que não fazia logout no modo config, e as VTYs da OLT ficavam presas. Agora ela
   manda `quit` até a OLT encerrar a sessão, e a recusa aparece como "VTYs ocupadas".

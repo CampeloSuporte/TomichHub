@@ -92,6 +92,33 @@ para o operador como "VTYs ocupadas" (`mensagem_de_falha`). Para liberar na hora
 terminal já aberto na OLT: `display client` mostra quem está conectado, e
 `kill client <id>` derruba uma sessão esquecida.
 
+## Pelo terminal já aberto — Adicionado em 2026-10-29
+
+A OLT da WTD **não aceita o mesmo login duas vezes ao mesmo tempo** (o terminal mostra
+o aviso de reenter). Com o terminal do operador aberto na OLT, a conexão própria do
+servidor era recusada (`Resource shortage`). Por isso:
+
+- **Com uma aba do terminal conectada nesta OLT**, a aba ONU usa **a mesma sessão**. O
+  JS envia os comandos pelo WebSocket da aba e lê a resposta pelo próprio fluxo de saída
+  (`tObj._taps`, alimentado no `onmessage`) até o prompt voltar. Responde sozinho
+  `{ <cr>||<K> }:` e `---- More`. O operador vê tudo acontecendo no terminal.
+- **Sem terminal aberto**, o servidor conecta sozinho, como antes (SSE).
+
+Roteiro no modo terminal (`opProvisionarTerminal`, igual ao `provisionar` do servidor):
+
+1. Leva a sessão até `(config)#` de onde ela estiver (`>` → `enable`; `#` → `config`;
+   `(config-if-…)#` → `quit`).
+2. Relê `display ont autofind all`. A saída vai para o servidor interpretar
+   (`autofind/` com `{"saida": ...}`, sem conectar).
+3. Para cada ONU, usa os comandos montados pelo preview do servidor. O `ont add` sai
+   primeiro, o ONTID é lido da resposta (ou do `display ont info by-sn`), e o resto vai
+   com `{ONT_ID}` trocado pelo número.
+4. Cada ONU é auditada em `onu-prov/registrar/` (`AcaoOltPon`, igual ao modo servidor).
+5. No fim, volta um nível se o operador não estava em config.
+
+Não digite no terminal enquanto o lote roda, porque o que você digitar entra no meio dos
+comandos.
+
 ## Menu de scripts e fabricante
 
 - O `terminal/acessos/` devolve `fabricante`, `familia` e `modelo`, tirados do
@@ -106,8 +133,9 @@ terminal já aberto na OLT: `display client` mostra quem está conectado, e
 | Método | URL | |
 |---|---|---|
 | GET | `/clientes/acessos/<id>/onu-prov/` | placas, perfis e modos (backup) |
-| POST | `/clientes/acessos/<id>/onu-prov/autofind/` | autofind ao vivo + sugestão |
-| POST | `/clientes/acessos/<id>/onu-prov/executar/` | `preview: true` → JSON; `false` → SSE |
+| POST | `/clientes/acessos/<id>/onu-prov/autofind/` | autofind ao vivo + sugestão; com `{"saida"}` só interpreta |
+| POST | `/clientes/acessos/<id>/onu-prov/executar/` | `preview: true` → JSON; `false` → SSE (modo servidor) |
+| POST | `/clientes/acessos/<id>/onu-prov/registrar/` | auditoria de ONU provisionada pelo terminal |
 
 Permissão: back-office com a ferramenta `scripts` e acesso ao host
 (`pode_acessar_acesso`).
