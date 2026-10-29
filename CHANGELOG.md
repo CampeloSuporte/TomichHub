@@ -40,6 +40,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   normal em segundo plano), e a tela recarrega os perfis, já disponíveis no provisionamento.
   O cartão sempre mostra "➕ Passar mais de uma VLAN nesta ONU" (antes, a lista só aparecia depois de
   trocar o modo), e um line profile com 2+ VLANs muda o modo para Passagem VLANs sozinho.
+  **Validar MAC:** depois de provisionar, o cartão mostra "🔍 Validar MAC". O CRM pega o índice dos
+  service-ports criados (`display service-port port F/S/P ont N`) e roda
+  `display mac-address vlan V | include <índice>`, mostrando o MAC aprendido em cada um.
   O DBA do line profile vem da lista do backup ou é criado na hora ("➕ Criar novo DBA...", padrão
   quando o backup não tem nenhum), com type1–4 e banda, antes do line profile.
 - **Aba ONU em massa: line e srv profile únicos para o lote.** Os seletores "Line profile" e
