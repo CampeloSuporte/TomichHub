@@ -37,6 +37,56 @@ provisionado depois do último backup. Por isso a execução é por etapas: o
 não ecoar o ID, o CRM pergunta `display ont info by-sn <SN>`. No preview o ID
 aparece como `{ONT_ID}`.
 
+## VLAN translate: criar srv/line profile e provisionar — Adicionado em 2026-10-29
+
+Seção **➕ Criar srv/line profile para VLAN translate** na aba ONU, no formato do
+modelo passado pelo operador:
+
+```
+ont-srvprofile gpon profile-id 8 profile-name "translate"
+ ont-port eth adaptive 8
+ native-vlan unconcern
+ commit
+ quit
+ont-lineprofile gpon profile-id 20 profile-name "LINE-MIGRACAO"
+ tcont 1 dba-profile-id 10
+ gem add 101 eth tcont 1          ← um por VLAN
+ gem mapping 101 1 vlan 101       ← um por VLAN
+ commit
+ quit
+```
+
+- **VLANs:** você adiciona uma por vez (`101`), em faixa (`101-105`) ou em lista
+  (`101,110,3304`). Cada VLAN vira um GEM. O contador mostra `N/32 GEMs`, e o campo
+  trava no limite (`MAX_GEMS_PERFIL = 32`, o limite prático de GEM ports das ONTs
+  Huawei). No máximo 5 GEMs num mesmo perfil foi o que se viu nos 34 backups Huawei
+  do ambiente; se a OLT aceitar menos, ela recusa e a recusa aparece. Funciona com uma
+  VLAN só ou com várias.
+- **Índice do GEM:** é igual ao da VLAN quando cabe (até 1023), como no modelo (gem
+  101 ↔ vlan 101). Acima disso, ou com a opção desmarcada, usa o próximo índice livre.
+- **Srv e line:** cada um pode ser criado separadamente (checkbox). Os IDs vêm
+  sugeridos (primeiro livre no backup), e a lista de DBA profiles também vem do backup.
+- **Segurança:** um ID que já existe no backup é recusado. Entrar em
+  `ont-lineprofile gpon profile-id 300` **edita** o perfil, e um `gem add` ali mudaria as
+  96 ONTs ligadas a ele. Antes de criar, o CRM ainda confere ao vivo
+  (`display ont-srvprofile/lineprofile gpon profile-id N`). Só cria com
+  `Failure: The ... profile does not exist`; qualquer outra resposta aborta sem criar
+  nada.
+- **Execução e auditoria:** pelo terminal aberto (ou pelo servidor, sem terminal). A
+  auditoria fica em `AcaoOltPon` (`acao='perfil'`, migração 0127). Os perfis criados
+  entram na hora nos selects dos cartões, sem esperar o próximo backup.
+
+**Provisionar em modo Translate** (modo novo nos cartões): o cartão lista os GEMs do
+line profile escolhido (`gem mapping` do backup, ou do perfil recém-criado). Cada linha
+marcada vira um service-port, traduzindo a user-vlan do GEM para a VLAN da OLT:
+
+```
+service-port vlan 3304 gpon 0/4/0 ont 0 gemport 101 multi-service user-vlan 101 tag-transform translate
+```
+
+Sem `native-vlan`. A primeira linha já vem marcada com a VLAN do cartão; as outras você
+marca e preenche se quiser mais de um serviço na mesma ONU.
+
 ## De onde vem a sugestão (`sugerir`)
 
 Vem da maioria das ONTs que **já estão naquela PON** no backup, juntando as três
@@ -140,6 +190,7 @@ comandos.
 | POST | `/clientes/acessos/<id>/onu-prov/autofind/` | autofind ao vivo + sugestão; com `{"saida"}` só interpreta |
 | POST | `/clientes/acessos/<id>/onu-prov/executar/` | `preview: true` → JSON; `false` → SSE (modo servidor) |
 | POST | `/clientes/acessos/<id>/onu-prov/registrar/` | auditoria de ONU provisionada pelo terminal |
+| POST | `/clientes/acessos/<id>/onu-prov/perfis/` | srv/line profile translate: `acao` preview, executar ou registrar |
 
 Permissão: back-office com a ferramenta `scripts` e acesso ao host
 (`pode_acessar_acesso`).

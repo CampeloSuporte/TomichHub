@@ -6,6 +6,7 @@ Provisionamento de ONU/ONT em OLT Huawei — endpoints da aba "ONU" do painel
     POST acessos/<id>/onu-prov/autofind/   `display ont autofind all` ao vivo
     POST acessos/<id>/onu-prov/executar/   preview (JSON) ou execução (SSE)
     POST acessos/<id>/onu-prov/registrar/  auditoria de ONU provisionada pelo terminal
+    POST acessos/<id>/onu-prov/perfis/     criar srv/line profile de VLAN translate
 
 Duas formas de falar com a OLT. Com o terminal do operador ABERTO nela, tudo
 vai por aquela sessão (o JS do painel envia e lê pelo WebSocket): a OLT da WTD
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 # Sobe junto com qualquer mudança em `op.parse_backup` (mesma regra do
 # `_PON_CACHE_VERSAO`).
-_CACHE_VERSAO = 1
+_CACHE_VERSAO = 2
 _CACHE_TTL = 6 * 60 * 60
 # Um lote por OLT de cada vez: duas abas provisionando a mesma ONU dariam um
 # `ont add` duplicado (o segundo falha) no meio do lote do outro.
@@ -96,8 +97,13 @@ def onu_prov_inventario(request, acesso_id):
         'host': {'id': acesso.id, 'nome': acesso.tipo, 'ip': acesso.host},
         'placas': [{'slot': p['slot'], 'tipo': p['tipo'], 'portas_total': p['portas_total']}
                    for p in inventario['placas']],
-        'lines': [{'id': p['id'], 'nome': p['nome'], 'gems': p['gems'], 'vlans': p['vlans']}
+        'lines': [{'id': p['id'], 'nome': p['nome'], 'gems': p['gems'], 'vlans': p['vlans'],
+                   'mapas': p.get('mapas', [])}
                   for p in sorted(backup['lines'].values(), key=lambda p: p['id'])],
+        'dbas': [{'id': k, 'nome': v} for k, v in sorted(backup.get('dbas', {}).items())],
+        'proximo_line': op.proximo_id_livre(set(backup['lines'])),
+        'proximo_srv': op.proximo_id_livre(set(backup['srvs'])),
+        'max_gems': op.MAX_GEMS_PERFIL,
         'srvs': [{'id': p['id'], 'nome': p['nome'], 'vlans': p['vlans']}
                  for p in sorted(backup['srvs'].values(), key=lambda p: p['id'])],
         'modos': [{'chave': k, 'label': v['label']} for k, v in op.MODOS.items()],
@@ -274,3 +280,77 @@ def onu_prov_registrar(request, acesso_id):
     logger.warning(f'ONU {it["sn"]} em {acesso} {it["slot"]}/{it["porta"]} pelo terminal '
                    f'de {request.user} — {status}: {str(body.get("msg") or "")[:200]}')
     return JsonResponse({'ok': True})
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+@ferramenta_instancia_required('scripts')
+def onu_prov_perfis(request, acesso_id):
+    """Cria srv e/ou line profile para VLAN translate.
+
+    body: {"spec": {srv: {criar, id, nome, eth}, line: {criar, id, nome, tcont, dba},
+                    vlans: [101, 102, ...], gem_igual_vlan: bool},
+           "acao": "preview" | "executar" | "registrar", ...}
+
+    - preview: comandos, checagens e avisos (sem conectar);
+    - executar: o servidor conecta, confere que os IDs não existem e cria
+      (só usado sem terminal aberto: a OLT recusa um segundo login);
+    - registrar: o terminal aberto já executou; só grava a auditoria.
+    """
+    acesso, inventario, backup, log, erro = _carregar(request, acesso_id)
+    if erro:
+        return erro
+    try:
+        body = json.loads(request.body)
+        norm, avisos = op.validar_perfis(body.get('spec'), backup)
+    except op.ProvisionamentoInvalido as e:
+        return JsonResponse({'error': str(e)}, status=422)
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    comandos = op.comandos_perfis(norm)
+    acao = body.get('acao') or 'preview'
+    if acao == 'preview':
+        return JsonResponse({
+            'comandos': comandos, 'checagens': op.checagens_perfis(norm), 'avisos': avisos,
+            'gems': (norm['line'] or {}).get('gems', []),
+        })
+
+    def _auditar(status, saida, msg):
+        alvo = ' + '.join(f'{k} {norm[k]["id"]}' for k in ('srv', 'line') if norm[k])
+        AcaoOltPon.objects.create(
+            acesso=acesso, usuario=request.user, acao='perfil', slot='-', portas='',
+            onts_afetadas=0, escrita=True, comandos='\n'.join(comandos),
+            output=str(saida or '')[:200_000], status=status)
+        logger.warning(f'Perfis {alvo} em {acesso} por {request.user} — {status}: {str(msg)[:200]}')
+
+    if acao == 'registrar':
+        status = body.get('status')
+        if status not in ('sucesso', 'erro'):
+            return JsonResponse({'error': 'status inválido'}, status=400)
+        _auditar(status, body.get('saida'), body.get('msg') or '')
+        return JsonResponse({'ok': True})
+    if acao != 'executar':
+        return JsonResponse({'error': 'ação inválida'}, status=400)
+
+    lock = f'onuprov:lock:{acesso.id}'
+    if not cache.add(lock, request.user.username, _LOCK_TTL):
+        return JsonResponse({'error': f'{cache.get(lock) or "Outro usuário"} está mexendo nesta OLT — aguarde.'},
+                            status=409)
+    client = tunel = shell = None
+    try:
+        client, tunel = conectar(acesso)
+        shell = op.ShellOlt(client)
+        for cmd in PREAMBULO:
+            shell.enviar(cmd)
+        status, saida, msg = op.criar_perfis(shell, norm)
+    except Exception as e:
+        logger.warning(f'Perfis em {acesso}: {e}')
+        return JsonResponse({'error': f'Falha ao falar com a OLT: {op.mensagem_de_falha(e)}'}, status=502)
+    finally:
+        if shell:
+            shell.fechar()
+        desconectar(client, tunel)
+        cache.delete(lock)
+    _auditar(status, saida, msg)
+    return JsonResponse({'status': status, 'saida': saida, 'msg': msg, 'comandos': comandos})

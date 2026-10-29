@@ -1778,6 +1778,7 @@ class AcaoOltPon(models.Model):
         ('laser_off', 'Desligar laser'),
         ('laser_on',  'Ligar laser'),
         ('provisionar', 'Provisionar ONU'),
+        ('perfil',      'Criar srv/line profile'),
     ]
 
     acesso         = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='acoes_olt_pon')
