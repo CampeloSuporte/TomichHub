@@ -570,20 +570,26 @@ um seletor "Tipo". A escolha fica no `localStorage` do navegador (`cu-familia-<i
 
 **Catálogo** (`FAMILIAS` em `comandos_uteis.py`): só leitura (show/display/print e diagnóstico
 Linux), mais os comandos que só mudam de modo/diretório ou desligam a paginação. O teste
-`CatalogoTest.test_todo_comando_e_de_leitura` barra qualquer outra coisa — **exceto** em grupo cujo
-título começa com **⚠** (`altera: true` no JSON, 2026-10-28). Esses grupos levam comandos de
-configuração: título laranja no painel e o **▶** pede confirmação ("Alterar a configuração do
-equipamento?"); **⌨ Inserir** continua só digitando. Hoje só a FiberHome tem grupos ⚠
-(provisionar ONU, PPPoE/bridge, uplink/LAG, gerência/SNMP/syslog, usuários, backup FTP, placas,
-distância da PON). Senha/usuário entram pelos campos `{usuario}`/`{senha}`, nunca fixos no
-catálogo.
+`CatalogoTest.test_todo_comando_e_de_leitura` barra qualquer outra coisa — **exceto** comando
+criado com `_cfg()` (`altera: true` no JSON, 2026-10-28): ⚠ laranja ao lado da descrição, borda
+laranja, e o **▶** pede confirmação ("Alterar a configuração do equipamento?"); **⌨ Inserir**
+continua só digitando. Hoje só a FiberHome tem comandos ⚠. Senha/usuário entram pelos campos
+`{usuario}`/`{senha}`, nunca fixos no catálogo.
+
+**Grupos são assuntos.** Cada grupo é um assunto (Sistema, Placas, ONU — consulta, ONU — sinal
+óptico, ONU — autorizar / remover, ONU — PPPoE / bridge, ONU — Wi-Fi / acesso remoto / TR-069,
+PON, MAC / L2, Uplink / LAG, Gerência / SNMP / Syslog, Usuários da CLI, Backup / firmware na
+5500), com leitura primeiro e configuração depois. O painel mostra um chip por assunto
+("Todos" + um por grupo) para ver só aquele; vale para todas as famílias com mais de um grupo,
+fica guardado por família enquanto a página está aberta, e a busca por texto filtra dentro do
+assunto escolhido.
 
 FiberHome AN5516: a CLI é por diretórios (`cd onu`, `cd gpononu`, `cd service`, `cd ..`), então
 cada grupo começa com o `cd` do diretório. Há dois dialetos de ONU conforme o firmware —
 `slot X pon Y onu Z` (diretório `onu`, RP1000) e `slot X link Y onu Z` (`gpononu`) — os dois
 estão no catálogo. Distância da PON segue a lista da equipe: 6k usa `cd card` +
-`set pon_distance slot … pon …`, 5500 usa `config` / `interface pon` / `distance …` (grupo
-"⚠ Distância da PON" nas duas). O filtro do painel ignora acento e também procura no título do
+`set pon_distance slot … pon …`, 5500 usa `config` / `interface pon` / `distance …` (assunto
+"PON" nas duas). O filtro do painel ignora acento e também procura no título do
 grupo ("distancia" acha). Comandos de
 telnet na própria ONU (`Config\wan#`) e o ONCONFIG do ANM2000 ficaram fora.
 
