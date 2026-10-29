@@ -101,6 +101,7 @@ def onu_prov_inventario(request, acesso_id):
                    'mapas': p.get('mapas', [])}
                   for p in sorted(backup['lines'].values(), key=lambda p: p['id'])],
         'dbas': [{'id': k, 'nome': v} for k, v in sorted(backup.get('dbas', {}).items())],
+        'proximo_dba': op.proximo_id_livre(set(backup.get('dbas', {})), op.DBA_PRIMEIRO_LIVRE, 1024),
         'proximo_line': op.proximo_id_livre(set(backup['lines'])),
         'proximo_srv': op.proximo_id_livre(set(backup['srvs'])),
         'max_gems': op.MAX_GEMS_PERFIL,
@@ -314,10 +315,11 @@ def onu_prov_perfis(request, acesso_id):
         return JsonResponse({
             'comandos': comandos, 'checagens': op.checagens_perfis(norm), 'avisos': avisos,
             'gems': (norm['line'] or {}).get('gems', []),
+            'dba': norm['dba'],
         })
 
     def _auditar(status, saida, msg):
-        alvo = ' + '.join(f'{k} {norm[k]["id"]}' for k in ('srv', 'line') if norm[k])
+        alvo = ' + '.join(f'{k} {norm[k]["id"]}' for k in ('dba', 'srv', 'line') if norm.get(k))
         AcaoOltPon.objects.create(
             acesso=acesso, usuario=request.user, acao='perfil', slot='-', portas='',
             onts_afetadas=0, escrita=True, comandos='\n'.join(comandos),

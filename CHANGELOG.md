@@ -24,6 +24,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   (no backup e conferido ao vivo antes de criar). O modo Translate cria um service-port por GEM
   (`user-vlan` → VLAN da OLT, `tag-transform translate`). Auditoria `acao='perfil'` (migração 0127).
   No menu SCRIPT aparece como "[Huawei] Criar srv/line profile (VLAN translate)".
+  O DBA do line profile vem da lista do backup ou é criado na hora ("➕ Criar novo DBA...", padrão
+  quando o backup não tem nenhum), com type1–4 e banda, antes do line profile.
 - **Aba ONU em massa: line e srv profile únicos para o lote.** Os seletores "Line profile" e
   "Srv profile para as marcadas" aplicam o mesmo perfil a todas as ONUs marcadas, no lugar da
   sugestão do backup.
