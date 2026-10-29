@@ -7,14 +7,19 @@ Provisionamento de ONU/ONT em OLT Huawei — endpoints da aba "ONU" do painel
     POST acessos/<id>/onu-prov/executar/   preview (JSON) ou execução (SSE)
     POST acessos/<id>/onu-prov/registrar/  auditoria de ONU provisionada pelo terminal
     POST acessos/<id>/onu-prov/perfis/     criar srv/line profile de VLAN translate
+    POST acessos/<id>/onu-prov/backup/     backup logo depois de criar perfis
 
 Duas formas de falar com a OLT. Com o terminal do operador ABERTO nela, tudo
 vai por aquela sessão (o JS do painel envia e lê pelo WebSocket): a OLT da WTD
 não aceita o mesmo login duas vezes ao mesmo tempo, então a conexão própria do
 servidor seria recusada. Sem terminal aberto, o servidor conecta sozinho.
 """
+import hashlib
 import json
 import logging
+import os
+import threading
+from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
@@ -361,12 +366,117 @@ def onu_prov_perfis(request, acesso_id):
             shell.enviar(cmd)
         status, saida, msg = op.criar_perfis(shell, norm, backup)
     except Exception as e:
+        cache.delete(lock)
         logger.warning(f'Perfis em {acesso}: {e}')
         return JsonResponse({'error': f'Falha ao falar com a OLT: {op.mensagem_de_falha(e)}'}, status=502)
     finally:
         if shell:
             shell.fechar()
         desconectar(client, tunel)
-        cache.delete(lock)
+    cache.delete(lock)
     _auditar(status, saida, msg)
-    return JsonResponse({'status': status, 'saida': saida, 'msg': msg, 'comandos': comandos})
+    # Perfil novo só aparece no provisionamento depois de um backup novo (o
+    # inventário é lido do backup). A sessão acima já foi fechada, então o
+    # backup pode logar de novo.
+    backup_agendado = status == 'sucesso' and _agendar_backup(acesso, request.user)
+    return JsonResponse({'status': status, 'saida': saida, 'msg': msg, 'comandos': comandos,
+                         'backup': 'agendado' if backup_agendado else ''})
+
+
+# ─── Backup depois de criar perfis ────────────────────────────────────────────
+
+def _agendar_backup(acesso, usuario):
+    """Roda o backup normal (`views.realizar_backup`) numa thread, sem segurar
+    a resposta: um MA5800 com 3 mil ONTs leva perto de 1 min. Thread, e não
+    Celery, porque o worker tem concurrency=1 e o backup ficaria na fila atrás
+    da rotina que estiver rodando. Devolve False se não há como fazer backup."""
+    if not (acesso.ativo and acesso.backup_habilitado and acesso.backup_template_id):
+        return False
+    chave = f'onuprov:backup:{acesso.id}'
+    if not cache.add(chave, 1, 10 * 60):
+        return True     # já tem um rodando; o inventário pega o dele
+
+    def _rodar():
+        from django.db import connection
+        from .views import realizar_backup
+        try:
+            resultado = realizar_backup(acesso, usuario)
+            logger.warning(f'Backup após perfis em {acesso}: {resultado.get("sucesso")} '
+                           f'{resultado.get("erro") or ""}')
+        except Exception as e:
+            logger.warning(f'Backup após perfis em {acesso} falhou: {e}')
+        finally:
+            cache.delete(chave)
+            connection.close()
+
+    threading.Thread(target=_rodar, daemon=True, name=f'onuprov-backup-{acesso.id}').start()
+    return True
+
+
+def _gravar_backup_capturado(acesso, usuario, saida):
+    """Grava como backup a configuração lida pelo terminal aberto, no mesmo
+    lugar e com o mesmo cabeçalho do `realizar_backup` (é o que
+    `_backups_recentes` e o inventário leem). Devolve o BackupLog."""
+    from .models import BackupLog
+    from .views import preparar_diretorio_backup
+    import re as _re
+
+    corpo = ('\n' + '=' * 60 + '\nComando: display current-configuration\n' + '=' * 60 + '\n' + saida)
+    norm = _re.sub(r'\x1b\[[0-9;]*[mGKHF]', '', corpo).strip()
+    hash_novo = hashlib.sha256(norm.encode('utf-8', errors='replace')).hexdigest()
+    pasta = preparar_diretorio_backup(acesso.cliente_id, acesso.id)
+    tipo_seguro = _re.sub(r'[^A-Za-z0-9_-]+', '_', acesso.tipo).strip('_') or 'backup'
+    caminho = os.path.join(pasta, f'{tipo_seguro}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.txt')
+    with open(caminho, 'w', encoding='utf-8') as f:
+        f.write('=' * 80 + '\nBACKUP DE CONFIGURAÇÃO\n' + '=' * 80 + '\n')
+        f.write(f'Cliente: {acesso.cliente.nome_empresa}\nEquipamento: {acesso.tipo}\n'
+                f'Host: {acesso.host}:{acesso.porta}\nAcesso: TERMINAL DO OPERADOR\n'
+                f'Modelo: {acesso.modelo}\n'
+                f'Template: {acesso.backup_template.nome if acesso.backup_template else "-"}\n'
+                f'Data: {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}\n'
+                f'Executado por: {usuario.username}\n' + '=' * 80 + '\n\n')
+        f.write(corpo)
+    from django.conf import settings
+    return BackupLog.objects.create(
+        acesso=acesso, cliente=acesso.cliente, template=acesso.backup_template,
+        arquivo_path=os.path.relpath(caminho, settings.MEDIA_ROOT),
+        tamanho_bytes=os.path.getsize(caminho), hash_conteudo=hash_novo, status='SUCESSO',
+        mensagem='Backup capturado pelo terminal aberto, depois de criar srv/line profile',
+        executado_por=usuario, duracao_segundos=0)
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+@ferramenta_instancia_required('scripts')
+def onu_prov_backup(request, acesso_id):
+    """Backup depois de criar perfis.
+
+    - body `{"saida": "..."}`: o `display current-configuration` rodado no
+      terminal aberto (a OLT não aceita segundo login com ele aberto) —
+      grava como backup e responde já com o inventário novo valendo;
+    - body vazio: dispara o backup normal em segundo plano; a tela acompanha
+      pelo `data_backup` do inventário.
+    """
+    acesso, inventario, backup, log, erro = _carregar(request, acesso_id)
+    if erro:
+        return erro
+    try:
+        body = json.loads(request.body or b'{}')
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+    saida = body.get('saida') if isinstance(body, dict) else None
+    if isinstance(saida, str):
+        from .olt_pon import parse_pon
+        # Só grava o que é configuração de OLT Huawei de verdade: um backup
+        # truncado (sessão caiu no meio) viraria o "mais recente" e esconderia
+        # placas e perfis do inventário.
+        # O `display current-configuration` do VRP termina em `return`.
+        completa = 'return' in saida[-3000:]
+        if 'ont-lineprofile gpon' not in saida or not completa or not parse_pon(saida).get('suportado'):
+            return JsonResponse({'error': 'A saída capturada não parece uma configuração completa '
+                                          'da OLT — backup não gravado.'}, status=422)
+        novo = _gravar_backup_capturado(acesso, request.user, saida)
+        return JsonResponse({'ok': True, 'backup_id': novo.id, 'data_backup': _data(novo)})
+    if not _agendar_backup(acesso, request.user):
+        return JsonResponse({'error': 'Backup não habilitado neste host (ou sem template).'}, status=422)
+    return JsonResponse({'ok': True, 'agendado': True})
