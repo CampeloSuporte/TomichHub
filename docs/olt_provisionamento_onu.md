@@ -151,6 +151,27 @@ ont-lineprofile gpon profile-id 3998 profile-name "FULLCAM"
 
 No máximo 8 VLANs (`MAX_VLANS_GEM`): o índice do `gem mapping` vai de 0 a 7.
 
+## Backup automático depois de criar perfis — Adicionado em 2026-10-29
+
+O provisionamento lê os perfis do **backup** (o inventário é cacheado pelo id do
+BackupLog). Por isso, todo script que cria srv/line profile (ou DBA) dispara um backup
+logo depois de criar, e a tela recarrega os perfis quando ele termina:
+
+- **Com o terminal aberto na OLT**, a OLT não aceita um segundo login. A configuração
+  é lida pela própria sessão (`scroll` + `display current-configuration`, que corre
+  na tela do terminal) e gravada como backup em `onu-prov/backup/` (`{"saida"}`), no
+  mesmo diretório e com o mesmo cabeçalho do `realizar_backup` ("Acesso: TERMINAL DO
+  OPERADOR"). Captura incompleta (sem `return` no fim, sem line profile ou sem placa
+  PON) é recusada: um backup truncado viraria o "mais recente" e esconderia placas e
+  perfis.
+- **Sem terminal**, o servidor roda o `realizar_backup` normal numa thread (não no
+  Celery, que tem concurrency=1 e deixaria o backup na fila), logo depois de fechar a
+  sessão da criação. A tela consulta o inventário a cada 5 s até o `data_backup`
+  mudar (no máximo 5 min).
+- Os perfis criados já entram na hora nos selects. O backup só confirma e traz o resto
+  (DBAs, uplink, IDs livres). Se ele falhar, a tela avisa para rodar um backup antes de
+  provisionar com os perfis novos.
+
 ## VLANs na OLT e na uplink — Adicionado em 2026-10-29
 
 Os scripts que criam srv/line profile criam a VLAN (`vlan V smart`) e a passam na uplink
@@ -313,6 +334,7 @@ comandos.
 | POST | `/clientes/acessos/<id>/onu-prov/executar/` | `preview: true` → JSON; `false` → SSE (modo servidor) |
 | POST | `/clientes/acessos/<id>/onu-prov/registrar/` | auditoria de ONU provisionada pelo terminal |
 | POST | `/clientes/acessos/<id>/onu-prov/perfis/` | srv/line profile translate: `acao` preview, executar ou registrar |
+| POST | `/clientes/acessos/<id>/onu-prov/backup/` | backup após criar perfis: `{"saida"}` grava a captura do terminal; vazio dispara o backup normal |
 
 Permissão: back-office com a ferramenta `scripts` e acesso ao host
 (`pode_acessar_acesso`).

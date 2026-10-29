@@ -4258,6 +4258,10 @@
             if (spec.line.criar) opInv.lines.push({id: parseInt(spec.line.id), nome: spec.line.nome,
                 gems: gems.map(g => g[0]), vlans: gems.map(g => g[1]), mapas: gems});
             opInv.srvs.sort((a, b) => a.id - b.id); opInv.lines.sort((a, b) => a.id - b.id);
+            opAtualizarSelectsPerfis();
+        }
+
+        function opAtualizarSelectsPerfis() {
             const manter = '<option value="">— manter o sugerido de cada uma —</option>';
             document.getElementById('opLineTodas').innerHTML = manter + opOpcoesPerfil(opInv.lines, null).replace('<option value="">—</option>', '');
             document.getElementById('opSrvTodas').innerHTML = manter + opOpcoesPerfil(opInv.srvs, null).replace('<option value="">—</option>', '');
@@ -4270,6 +4274,62 @@
                 });
                 opRenderServicos(i);
             });
+        }
+
+        // Depois do backup novo: o inventário (perfis, DBAs, uplink) passa a
+        // vir dele. Os cartões das ONUs ficam como estão, só os selects mudam.
+        async function opRecarregarInventario() {
+            const dba = document.getElementById('opPfDba').value;
+            const novo = await opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-prov/`);
+            opInv = novo; opInvAcesso = opAcessoId();
+            opAtualizarSelectsPerfis();
+            opPfRenderDbas(opInv.dbas.some(d => String(d.id) === dba) ? dba : (opInv.dbas.length ? opInv.dbas[0].id : 'novo'));
+            document.getElementById('opPfSrvId').value = opInv.proximo_srv ?? '';
+            document.getElementById('opPfLineId').value = opInv.proximo_line ?? '';
+            document.getElementById('opPfDbaId').value = opInv.proximo_dba ?? '';
+            document.getElementById('opInfo').innerHTML = `<b>${_escHtml(opInv.host.nome)}</b> ${_escHtml(opInv.host.ip)} · ${_escHtml(opInv.modelo)} · `
+                + `${opInv.lines.length} line / ${opInv.srvs.length} srv profiles · backup ${_escHtml(opInv.data_backup)}`;
+        }
+
+        // Backup logo depois de criar perfis, para o provisionamento enxergar
+        // os perfis novos. Com terminal aberto, a configuração é lida por ele
+        // (a OLT não aceita segundo login); sem terminal, o servidor faz o
+        // backup normal e a tela espera o `data_backup` mudar.
+        async function opBackupAposPerfis(term, msg, jaAgendado) {
+            const antes = opInv.data_backup;
+            const linha = t => { msg.innerHTML += `<div style="color:#7d8590">${t}</div>`; };
+            if (term) {
+                linha('⏳ Lendo a configuração pelo terminal para gravar o backup (display current-configuration)...');
+                const inicial = await opPrepararTerminal(term);
+                let saida;
+                try {
+                    await opCmdTerminal(term, 'scroll');
+                    saida = await opCmdTerminal(term, 'display current-configuration', 300000, 2000);
+                } finally {
+                    await opRestaurarTerminal(term, inicial);
+                }
+                const j = await opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-prov/backup/`, {method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
+                    body: JSON.stringify({saida})});
+                await opRecarregarInventario();
+                linha(`<span style="color:#3fb950">✓ Backup gravado (${_escHtml(j.data_backup)}) — perfis novos já vêm do backup no provisionamento.</span>`);
+                return;
+            }
+            if (!jaAgendado) {
+                await opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-prov/backup/`, {method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')}, body: '{}'});
+            }
+            linha('⏳ Backup do equipamento em andamento (pode levar ~1 min)...');
+            for (let n = 0; n < 60; n++) {
+                await new Promise(r => setTimeout(r, 5000));
+                const inv = await opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-prov/`).catch(() => null);
+                if (inv && inv.data_backup !== antes) {
+                    await opRecarregarInventario();
+                    linha(`<span style="color:#3fb950">✓ Backup concluído (${_escHtml(inv.data_backup)}) — perfis novos já vêm do backup no provisionamento.</span>`);
+                    return;
+                }
+            }
+            linha('<span style="color:#d29922">⚠ O backup não terminou em 5 min. Os perfis já estão na tela; o backup aparece no próximo carregamento.</span>');
         }
 
         window.opPfCriar = async function() {
@@ -4288,7 +4348,7 @@
             const btn = document.getElementById('opPfBtnCriar');
             opRodando = true; btn.disabled = true; btn.textContent = '⏳ Criando...';
             try {
-                let status, saida, texto;
+                let status, saida, texto, backupAgendado = false;
                 if (term) {
                     const log = [];
                     const inicial = await opPrepararTerminal(term);
@@ -4315,7 +4375,7 @@
                     await opPfPost({spec, acao: 'registrar', status, saida, msg: texto}).catch(e => console.warn('[ONU] auditoria:', e));
                 } else {
                     const j = await opPfPost({spec, acao: 'executar'});
-                    status = j.status; saida = j.saida; texto = j.msg;
+                    status = j.status; saida = j.saida; texto = j.msg; backupAgendado = j.backup === 'agendado';
                 }
                 box.textContent = saida; box.style.display = '';
                 if (status === 'sucesso') {
@@ -4323,6 +4383,9 @@
                     opPfIncorporar(spec, prev.gems);
                     if (spec.srv.criar) document.getElementById('opPfSrvId').value = '';
                     if (spec.line.criar) document.getElementById('opPfLineId').value = '';
+                    btn.textContent = '⏳ Backup...';
+                    try { await opBackupAposPerfis(term, msg, backupAgendado); }
+                    catch (e) { msg.innerHTML += `<div style="color:#d29922">⚠ Backup não gravado: ${_escHtml(e.message || e)}. Rode um backup do host antes de provisionar com os perfis novos.</div>`; }
                 } else {
                     msg.innerHTML = `<span style="color:#ff5555">✗ ${_escHtml(texto)}</span>`;
                 }
@@ -4357,7 +4420,10 @@
             return null;
         }
 
-        function opCmdTerminal(t, cmd, maxMs = 60000) {
+        // `quietMs`: quanto esperar depois de o prompt aparecer no fim. Na saída
+        // longa (display current-configuration) uma pausa da OLT entre
+        // pedaços não pode ser tomada por fim.
+        function opCmdTerminal(t, cmd, maxMs = 60000, quietMs = 300) {
             return new Promise((resolve, reject) => {
                 const enc = new TextEncoder();
                 let buf = '', fim = null, limite = null;
@@ -4367,7 +4433,7 @@
                     clearTimeout(fim);
                     if (OP_CONTINUA.test(cauda)) { t.socket.send(enc.encode('\r')); return; }
                     if (OP_MORE.test(cauda)) { t.socket.send(enc.encode(' ')); return; }
-                    if (OP_PROMPT.test(cauda)) fim = setTimeout(() => terminar(), 300);
+                    if (OP_PROMPT.test(cauda)) fim = setTimeout(() => terminar(), quietMs);
                 };
                 const terminar = erro => {
                     clearTimeout(limite); clearTimeout(fim);

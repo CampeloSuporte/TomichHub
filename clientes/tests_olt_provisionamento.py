@@ -1,5 +1,6 @@
 """Provisionamento de ONU/ONT em OLT Huawei: autofind, sugestão pelo backup,
 comandos dos dois modos e a execução por etapas (ID devolvido pela OLT)."""
+import os
 from types import SimpleNamespace
 from unittest import mock
 
@@ -750,3 +751,57 @@ def _rodar_com_preparo(itens, shell, preparo):
             mock.patch('clientes.olt_pon.desconectar'), \
             mock.patch.object(op, 'ShellOlt', return_value=shell):
         return list(op.provisionar(SimpleNamespace(host='x'), itens, preparo))
+
+
+class BackupAposPerfisTest(SimpleTestCase):
+    """Perfil novo só chega ao provisionamento por um backup novo."""
+
+    def _acesso(self, **kw):
+        base = dict(id=9486, cliente_id=96, tipo='OLT HU SENTO SE', host='10.69.14.2', porta=22,
+                    modelo='OLT HUAWEI MA5800X7', ativo=True, backup_habilitado=True, backup_template_id=1,
+                    backup_template=SimpleNamespace(nome='backup olt huawei'),
+                    cliente=SimpleNamespace(nome_empresa='WTD'))
+        base.update(kw)
+        return SimpleNamespace(**base)
+
+    def test_grava_captura_no_formato_do_backup(self):
+        import tempfile
+        from django.test import override_settings
+        from clientes import onu_prov_views as v
+        with tempfile.TemporaryDirectory() as tmp, override_settings(MEDIA_ROOT=tmp), \
+                mock.patch('clientes.models.BackupLog.objects.create') as criar:
+            v._gravar_backup_capturado(self._acesso(), SimpleNamespace(username='op'), BACKUP + '\nreturn\n')
+            kw = criar.call_args.kwargs
+            self.assertTrue(kw['arquivo_path'].startswith('backups/cliente_96/acesso_9486/OLT_HU_SENTO_SE_'))
+            self.assertEqual(kw['status'], 'SUCESSO')
+            texto = open(os.path.join(tmp, kw['arquivo_path'])).read()
+        self.assertIn('Comando: display current-configuration', texto)
+        self.assertIn('Acesso: TERMINAL DO OPERADOR', texto)
+        # O inventário lido do arquivo gravado enxerga os perfis.
+        self.assertIn(300, op.parse_backup(texto)['lines'])
+
+    def test_recusa_captura_incompleta(self):
+        from clientes import onu_prov_views as v
+        carregar = mock.patch('clientes.onu_prov_views._carregar', return_value=(
+            self._acesso(), {'placas': []}, op.parse_backup(BACKUP), SimpleNamespace(), None))
+        for saida in ('% Unknown command', BACKUP, 'interface gpon 0/1\nreturn'):   # BACKUP sem "return"
+            with self.subTest(saida=saida[:20]), carregar, \
+                    mock.patch('clientes.onu_prov_views._gravar_backup_capturado') as gravar:
+                import json
+                from django.test import RequestFactory
+                r = RequestFactory().post('/', data=json.dumps({'saida': saida}), content_type='application/json')
+                r.user = SimpleNamespace(is_authenticated=True)
+                resp = v.onu_prov_backup.__wrapped__.__wrapped__.__wrapped__(r, 9486)
+                self.assertEqual(resp.status_code, 422)
+                gravar.assert_not_called()
+
+    def test_agendar_so_com_backup_habilitado_e_sem_duplicar(self):
+        from clientes import onu_prov_views as v
+        from django.core.cache import cache
+        cache.delete('onuprov:backup:9486')
+        with mock.patch('clientes.onu_prov_views.threading.Thread') as thread:
+            self.assertFalse(v._agendar_backup(self._acesso(backup_habilitado=False), None))
+            self.assertTrue(v._agendar_backup(self._acesso(), None))
+            self.assertTrue(v._agendar_backup(self._acesso(), None))   # já rodando: não dispara outro
+        self.assertEqual(thread.call_count, 1)
+        cache.delete('onuprov:backup:9486')
