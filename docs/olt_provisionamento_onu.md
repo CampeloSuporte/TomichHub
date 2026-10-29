@@ -125,6 +125,9 @@ comandos.
 - O `terminal/acessos/` devolve `fabricante`, `familia` e `modelo`, tirados do
   **Modelo** cadastrado (`comandos_uteis.identificar_familia`). Antes, o painel
   adivinhava pelo nome do acesso, e "OLT HU SENTO SE" ficava sem fabricante.
+- A lista de scripts mostra só os do fabricante selecionado. A carga é numerada
+  (`spListaSeq`): a resposta sem filtro, disparada ao abrir o painel, não sobrescreve a
+  filtrada que chega antes dela.
 - Com uma OLT Huawei selecionada, o menu SCRIPT mostra **[Huawei] Provisionar ONU
   (único)** e **[Huawei] Provisionar ONUs em massa**. As duas abrem a aba ONU e já
   buscam o autofind; no "único", só a primeira ONU fica marcada.
