@@ -151,6 +151,61 @@ ont-lineprofile gpon profile-id 3998 profile-name "FULLCAM"
 
 No máximo 8 VLANs (`MAX_VLANS_GEM`): o índice do `gem mapping` vai de 0 a 7.
 
+### Portas da ONU, GEM e extras do line (VLAN fixa e roteada) — Adicionado em 2026-10-29
+
+Nos modelos de uma VLAN, as portas da ONU são declaradas por tipo (**POTS**, **ETH**,
+**CATV**). Cada campo aceita vazio (o tipo não entra), `adaptive`, `adaptive 8` ou um
+número fixo, e o CRM monta o `ont-port` na ordem da CLI (pots, eth, catv). Também dá
+para escolher o **GEM**, o **índice do mapping** (`gem mapping G <idx> vlan V`) e marcar
+`ring check enable` (srv) e `fec-upstream enable`, `tr069-management enable`,
+`qos-mode gem-car` e `mapping-mode` (line). Pedidos antigos, só com `eth`/`pots`
+numéricos, continuam virando `pots adaptive N eth adaptive N`.
+
+O MODELO traz três exemplos reais (também no menu SCRIPT), que preenchem os campos:
+
+| Exemplo | srv | line |
+|---|---|---|
+| **ONU bridge 1 GE + CATV (ARCH)** | `ont-port eth 1 catv adaptive 8`, `ring check enable`, `port vlan eth 1 translation 3087 user-vlan 3087` | `fec-upstream enable`, `omcc encrypt on`, `tr069-management enable`, `qos-mode gem-car`, `mapping-mode priority`, `tcont 1`, `gem add 1 … encrypt on`, `gem mapping 1 1 vlan 3087` |
+| **ID do perfil = VLAN (110)** | `srv-profile_110`: `ont-port pots adaptive 2 eth adaptive 4`, `port vlan eth 1..4 translation 110 user-vlan 110` | `line-profile_110`: `omcc encrypt on`, `tcont 5`, `gem add 5 … encrypt on`, `gem mapping 5 0 vlan 110` (DBA novo, ex.: `dba-profile_300` type4 max 1024000) |
+| **ONT roteada / PPPoE** | `THINK`: `ont-port eth 4 catv 1` (sem VLAN nas portas) | `PPPOE`: `omcc encrypt on`, `tcont 1`, `gem add 1 … encrypt on`, `gem mapping 1 0 vlan 128` |
+
+No exemplo "ID = VLAN", o srv e o line recebem o ID igual à VLAN quando ele está livre
+no backup (senão, o próximo livre). Os nomes acompanham a VLAN digitada.
+
+O modelo **roteada** (`modelo='roteada'`) não tem `port vlan` no srv: a WAN/PPPoE é
+configurada na ONT (ou por TR-069) e a VLAN fica só no `gem mapping`. Essa VLAN é a
+VLAN da OLT, então vai para a uplink sem precisar digitar. Para provisionar, use
+**Só ONT** (ou ONU+ONT) com a VLAN do line.
+
+O tcont 0 e o tcont 2 do backup ARCH (sem GEM) não são recriados: só o T-CONT usado
+pelo GEM entra.
+
+## 🔍 Inspecionar o perfil e VLAN do perfil no cartão — Adicionado em 2026-10-29
+
+Ao lado dos seletores **LINE PROFILE** e **SRV PROFILE** (no cartão e no lote), a 🔍
+mostra:
+
+- as VLANs do perfil (line: `GEM g → VLAN v` de cada `gem mapping`; srv: as VLANs de
+  `port vlan eth N translation V` ou `port vlan eth N V`);
+- quantas ONTs do backup usam o perfil;
+- o bloco do perfil como está no backup (`texto`, guardado pelo `parse_backup`).
+
+Antes, trocar o line/srv não mexia na VLAN do cartão. Agora, nos modos **ONU+ONT** e
+**Só ONT**, o `service-port` usa `user-vlan` = VLAN, então a VLAN tem de ser a do perfil:
+
+- ao trocar o line profile, se ele mapeia uma VLAN só, a VLAN e o GEMPORT do cartão
+  passam a ser os dele;
+- line sem `gem mapping` no backup e srv com uma VLAN só: vem a VLAN do srv;
+- a linha 🔎 abaixo dos campos mostra a VLAN de cada perfil e avisa quando a VLAN (ou o
+  GEM) do cartão não casa com o line profile, ou quando o srv seta outra VLAN nas
+  portas. A sugestão inicial do backup não é sobrescrita, só conferida.
+
+Em **Translate** e **Passagem VLANs**, a VLAN do cartão é a da OLT, e a lista de
+service-ports continua vindo do line profile, como antes.
+
+O `parse_backup` mudou (bloco `texto` e `port vlan eth N V` sem `translation`), então
+`_CACHE_VERSAO` subiu para 5.
+
 ## Validar MAC depois de provisionar — Adicionado em 2026-10-29
 
 Depois que a ONU é provisionada (status `sucesso` ou `parcial`), o CRM roda
@@ -382,7 +437,7 @@ comandos.
 
 | Método | URL | |
 |---|---|---|
-| GET | `/clientes/acessos/<id>/onu-prov/` | placas, perfis e modos (backup) |
+| GET | `/clientes/acessos/<id>/onu-prov/` | placas, perfis (com `texto` e `onts`) e modos (backup) |
 | POST | `/clientes/acessos/<id>/onu-prov/autofind/` | autofind ao vivo + sugestão; com `{"saida"}` só interpreta |
 | POST | `/clientes/acessos/<id>/onu-prov/executar/` | `preview: true` → JSON; `false` → SSE (modo servidor) |
 | POST | `/clientes/acessos/<id>/onu-prov/registrar/` | auditoria de ONU provisionada pelo terminal |

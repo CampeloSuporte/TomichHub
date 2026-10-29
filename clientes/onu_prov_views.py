@@ -21,6 +21,7 @@ import json
 import logging
 import os
 import threading
+from collections import Counter
 from datetime import datetime
 
 from django.contrib.auth.decorators import login_required
@@ -40,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 # Sobe junto com qualquer mudança em `op.parse_backup` (mesma regra do
 # `_PON_CACHE_VERSAO`).
-_CACHE_VERSAO = 4
+_CACHE_VERSAO = 5
 _CACHE_TTL = 6 * 60 * 60
 # Um lote por OLT de cada vez: duas abas provisionando a mesma ONU dariam um
 # `ont add` duplicado (o segundo falha) no meio do lote do outro.
@@ -98,6 +99,12 @@ def onu_prov_inventario(request, acesso_id):
     acesso, inventario, backup, log, erro = _carregar(request, acesso_id)
     if erro:
         return erro
+    # Quantas ONTs do backup usam cada perfil (a 🔍 do cartão mostra).
+    uso_line, uso_srv = Counter(), Counter()
+    for pon in backup['onts'].values():
+        for o in pon.values():
+            uso_line[o['line']] += 1
+            uso_srv[o['srv']] += 1
     return JsonResponse({
         'modelo': inventario['modelo'],
         'data_backup': _data(log),
@@ -105,7 +112,7 @@ def onu_prov_inventario(request, acesso_id):
         'placas': [{'slot': p['slot'], 'tipo': p['tipo'], 'portas_total': p['portas_total']}
                    for p in inventario['placas']],
         'lines': [{'id': p['id'], 'nome': p['nome'], 'gems': p['gems'], 'vlans': p['vlans'],
-                   'mapas': p.get('mapas', [])}
+                   'mapas': p.get('mapas', []), 'texto': p.get('texto', []), 'onts': uso_line[p['id']]}
                   for p in sorted(backup['lines'].values(), key=lambda p: p['id'])],
         'dbas': [{'id': k, 'nome': v} for k, v in sorted(backup.get('dbas', {}).items())],
         'proximo_dba': op.proximo_id_livre(set(backup.get('dbas', {})), op.DBA_PRIMEIRO_LIVRE, 1024),
@@ -115,7 +122,8 @@ def onu_prov_inventario(request, acesso_id):
         'max_vlans_gem': op.MAX_VLANS_GEM,
         'uplinks': op.uplinks_do_backup(backup),
         'vlans_olt': sorted(backup['vlans']),
-        'srvs': [{'id': p['id'], 'nome': p['nome'], 'vlans': p['vlans']}
+        'srvs': [{'id': p['id'], 'nome': p['nome'], 'vlans': p['vlans'], 'texto': p.get('texto', []),
+                  'onts': uso_srv[p['id']]}
                  for p in sorted(backup['srvs'].values(), key=lambda p: p['id'])],
         'modos': [{'chave': k, 'label': v['label']} for k, v in op.MODOS.items()],
         'max_lote': op.MAX_ONUS_LOTE,
