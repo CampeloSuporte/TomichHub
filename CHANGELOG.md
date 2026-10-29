@@ -29,9 +29,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   OLT). Também no menu SCRIPT. A sugestão vem em Translate quando a PON já usa `user-vlan` ≠ `vlan`.
   Modelo "Passagem de 2+ VLANs" (perfil FULLCAM: todas no GEM 1, até 8 VLANs) e modo de
   provisionamento "Passagem VLANs" (`tag-transform transparent`, um service-port por VLAN). O
-  Translate também aceita várias VLANs. **VLAN na OLT + uplink:** todo script que pede VLAN cria
+  Translate também aceita várias VLANs. **VLAN na OLT + uplink:** os scripts de perfil criam
   `vlan V smart` e `port vlan V F/S P` na uplink lida do backup (0/8 0 na SENTO SE), só o que falta,
-  nos perfis (depois de criar) e no lote (antes do primeiro `ont add`).
+  só nos scripts que criam srv/line profile (depois de criar). O provisionamento de ONU não
+  mostra esse bloco.
   No cartão da ONU, "+ VLAN" adiciona VLANs à mão (ex.: `1553,3869` no GEM 1) nos modos Passagem
   VLANs e Translate, independentemente dos gem mappings do backup.
   O DBA do line profile vem da lista do backup ou é criado na hora ("➕ Criar novo DBA...", padrão

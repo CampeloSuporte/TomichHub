@@ -153,7 +153,7 @@ No máximo 8 VLANs (`MAX_VLANS_GEM`): o índice do `gem mapping` vai de 0 a 7.
 
 ## VLANs na OLT e na uplink — Adicionado em 2026-10-29
 
-Todo script que pede VLAN cria a VLAN (`vlan V smart`) e a passa na uplink
+Os scripts que criam srv/line profile criam a VLAN (`vlan V smart`) e a passam na uplink
 (`port vlan V F/S P`). Sem isso, o service-port entra, mas o tráfego não sai da OLT.
 
 - **Onde está a uplink:** vem do backup. São as portas que recebem `port vlan` no
@@ -169,9 +169,11 @@ Todo script que pede VLAN cria a VLAN (`vlan V smart`) e a passa na uplink
   - No multi-VLAN, as VLANs da OLT são as do próprio perfil.
   - No translate e na VLAN fixa, a VLAN da OLT é outra (ex.: 3304, 101) e é
     informada no campo "VLAN(S) DA OLT".
-- **No provisionamento** (bloco acima da lista de ONUs): as VLANs são as dos
-  service-ports do lote. Elas são criadas e passadas na uplink **antes** do primeiro
-  `ont add`; se a OLT recusar, o lote nem começa.
+- **No provisionamento, não.** Por pedido do operador (29/10/2026), o bloco de
+  VLAN/uplink aparece só nos scripts que criam srv/line profile. O provisionamento de
+  ONU assume que as VLANs já existem e já passam na uplink; VLAN fora do backup só
+  gera aviso no preview. O backend ainda aceita `uplink` no `executar/`, mas a tela não
+  envia.
 
 ## Provisionar com passagem de 1 ou mais VLANs (modo "Passagem VLANs")
 
