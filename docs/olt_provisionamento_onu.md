@@ -90,6 +90,44 @@ ont-lineprofile gpon profile-id 20 profile-name "LINE-MIGRACAO"
   auditoria fica em `AcaoOltPon` (`acao='perfil'`, migração 0127). Os perfis criados
   entram na hora nos selects dos cartões, sem esperar o próximo backup.
 
+### Modelo "ONU com VLAN fixa" (ex.: VLAN 1)
+
+Seletor **MODELO** na mesma seção, ou menu SCRIPT → **[Huawei] Criar perfis ONU com
+VLAN fixa (VLAN 1)**. Saiu da config real passada pelo operador (perfis
+`SRV_DKY_100`/`VLAN_1`). A ONU sai com uma VLAN setada nas portas, e o service-port
+traduz essa VLAN para a VLAN da OLT:
+
+```
+ont-srvprofile gpon profile-id 100 profile-name "SRV_DKY_100"
+ ont-port pots adaptive 32 eth adaptive 8
+ port vlan eth 1 translation 1 user-vlan 1      ← eth 1..N ("portas ETH com a VLAN", padrão 4)
+ commit
+ quit
+ont-lineprofile gpon profile-id 100 profile-name "VLAN_1"
+ omcc encrypt on
+ tcont 4 dba-profile-id 100
+ gem add 1 eth tcont 4 encrypt on
+ gem mapping 1 0 vlan 1
+ commit
+ quit
+```
+
+Os campos são VLAN setada (padrão 1), portas ETH com a VLAN (4) e POTS adaptive (32;
+0 tira o `pots`). O T-CONT padrão vira 4, e os nomes sugeridos são `SRV_VLAN_<v>` e
+`VLAN_<v>`. O DBA segue a mesma regra (backup ou criar novo).
+
+Para provisionar, escolha o line e o srv profile, o modo **Translate** e a VLAN da OLT
+(ex.: 101) na linha "GEM 1 · user-vlan 1":
+
+```
+ont add 0 sn-auth 4D4F4E55004C22F1 omci ont-lineprofile-id 100 ont-srvprofile-id 100 desc "TESTE_001"
+service-port vlan 101 gpon 0/7/0 ont {ONT_ID} gemport 1 multi-service user-vlan 1 tag-transform translate
+```
+
+Quando a maioria das ONTs da PON no backup tem service-port com `user-vlan` ≠ `vlan`
+(o caso desse modelo), a sugestão já vem no modo **Translate**. Na SENTO SE, onde
+`user-vlan` é igual à `vlan`, as 49 PONs continuam sugerindo ONU+ONT.
+
 **Provisionar em modo Translate** (modo novo nos cartões): o cartão lista os GEMs do
 line profile escolhido (`gem mapping` do backup, ou do perfil recém-criado). Cada linha
 marcada vira um service-port, traduzindo a user-vlan do GEM para a VLAN da OLT:

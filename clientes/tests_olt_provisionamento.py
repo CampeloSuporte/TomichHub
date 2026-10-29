@@ -540,3 +540,76 @@ class DbaNovoTest(SimpleTestCase):
     def test_dba_inexistente_na_olt(self):
         self.assertFalse(op.perfil_existe('  Failure: The DBA profile does not exist'))
         self.assertTrue(op.perfil_existe('  Profile-name :  DBA_PROFILE\n  Profile-ID:               10'))
+
+
+# Config real da OLT da DKY: ONU com VLAN 1 setada, traduzida para 101 no service-port.
+BACKUP_VLAN_FIXA = """
+ board add 0/7 H901GPHF 
+ ont-srvprofile gpon profile-id 100 profile-name "SRV_DKY_100"
+  ont-port pots adaptive 32 eth adaptive 8 
+  port vlan eth 1 translation 1 user-vlan 1
+  commit
+ ont-lineprofile gpon profile-id 100 profile-name "VLAN_1"
+  omcc encrypt on
+  tcont 4 dba-profile-id 100
+  gem add 1 eth tcont 4 encrypt on
+  gem mapping 1 0 vlan 1
+  commit
+  quit
+#
+ interface gpon 0/7
+ ont add 0 0 sn-auth "4D4F4E55004C22F1" omci ont-lineprofile-id 100 ont-srvprofile-id 100 desc "TESTE_001" 
+#
+ service-port 1119 vlan 101 gpon 0/7/0 ont 0 gemport 1 multi-service user-vlan 1 tag-transform translate
+"""
+
+
+class VlanFixaTest(SimpleTestCase):
+    def setUp(self):
+        self.bk = op.parse_backup(BACKUP_TRANSLATE)
+
+    def test_comandos_iguais_ao_modelo_dky(self):
+        norm, avisos = op.validar_perfis({
+            'modelo': 'vlan_fixa', 'vlan_fixa': 1,
+            'srv': {'criar': True, 'id': 100, 'nome': 'SRV_DKY_100', 'eth': 8, 'pots': 32, 'eth_vlan': 4},
+            'line': {'criar': True, 'id': 100, 'nome': 'VLAN_1', 'dba': 'novo'},
+            'dba': {'criar': True, 'id': 100, 'nome': 'DBA_100', 'tipo': 'type4', 'max': 1024000}}, self.bk)
+        self.assertEqual(avisos, [])
+        self.assertEqual(op.comandos_perfis(norm), [
+            'dba-profile add profile-id 100 profile-name "DBA_100" type4 max 1024000',
+            'ont-srvprofile gpon profile-id 100 profile-name "SRV_DKY_100"',
+            'ont-port pots adaptive 32 eth adaptive 8',
+            'port vlan eth 1 translation 1 user-vlan 1', 'port vlan eth 2 translation 1 user-vlan 1',
+            'port vlan eth 3 translation 1 user-vlan 1', 'port vlan eth 4 translation 1 user-vlan 1',
+            'commit', 'quit',
+            'ont-lineprofile gpon profile-id 100 profile-name "VLAN_1"',
+            'omcc encrypt on', 'tcont 4 dba-profile-id 100',
+            'gem add 1 eth tcont 4 encrypt on', 'gem mapping 1 0 vlan 1',
+            'commit', 'quit'])
+        self.assertEqual(norm['line']['gems'], [(1, 1)])
+
+    def test_sem_pots_e_outra_vlan(self):
+        norm, _ = op.validar_perfis({'modelo': 'vlan_fixa', 'vlan_fixa': 20,
+                                     'srv': {'criar': True, 'id': 101, 'nome': 'S', 'pots': 0, 'eth_vlan': 1},
+                                     'line': {'criar': False}}, self.bk)
+        self.assertEqual(op.comandos_perfis(norm)[1:3],
+                         ['ont-port eth adaptive 8', 'port vlan eth 1 translation 20 user-vlan 20'])
+
+    def test_backup_dky_sugere_translate_e_provisiona_igual(self):
+        bk = op.parse_backup(BACKUP_VLAN_FIXA)
+        self.assertEqual(bk['lines'][100]['mapas'], [[1, 1]])
+        sug = op.sugerir(bk, '0/7', 0, '4D4F4E55004C9999')
+        self.assertEqual((sug['vlan'], sug['line'], sug['srv'], sug['modo']), (101, 100, 100, 'translate'))
+        inv = {'placas': [{'slot': '0/7', 'tipo': 'H901GPHF', 'portas_total': 16, 'portas': []}]}
+        it, _ = op.validar_item({'sn': '4D4F4E55004C22F1', 'slot': '0/7', 'porta': 0, 'line': 100, 'srv': 100,
+                                 'modo': 'translate', 'desc': 'TESTE_001',
+                                 'servicos': [{'gem': 1, 'user_vlan': 1, 'vlan': 101}]}, inv, bk)
+        self.assertEqual(op.comandos_onu(it, 0), [
+            'interface gpon 0/7',
+            'ont add 0 sn-auth 4D4F4E55004C22F1 omci ont-lineprofile-id 100 ont-srvprofile-id 100 desc "TESTE_001"',
+            'quit',
+            'service-port vlan 101 gpon 0/7/0 ont 0 gemport 1 multi-service user-vlan 1 tag-transform translate'])
+
+    def test_sento_se_continua_onu(self):
+        bk = op.parse_backup(BACKUP)
+        self.assertEqual(op.sugerir(bk, '0/1', 0, '485754433B654F8B')['modo'], 'onu')
