@@ -176,6 +176,29 @@ mac-address` ainda não foi visto ao vivo nesta OLT (o terminal do operador ocup
 login): se as colunas vierem diferentes, o parse só deixa de achar o MAC e não grava
 nada.
 
+## Remover a ONU recém-provisionada — Adicionado em 2026-10-29
+
+Junto do "Validar MAC", o cartão mostra **🗑 Remover ONU** (também em `parcial`). Ele
+desfaz o que acabou de ser feito, na mesma ordem usada ao vivo na SENTO SE ao remover a
+ONT 76:
+
+```
+undo service-port 3378          ← um por service-port criado (índices lidos após provisionar)
+interface gpon 0/1
+ont delete 0 76
+quit
+```
+
+- **Conferência antes de apagar:** `display ont info by-sn <SN>` precisa mostrar a mesma
+  F/S/P e o mesmo ONT-ID. Se a ONU já saiu, ou se o ID agora é de outra ONT, nada é
+  removido (`confere_ont`).
+- **Pelo terminal aberto:** a sessão do operador pode estar com `interactive` ligado, então
+  os comandos de remoção respondem `y` a um `(y/n)` (só eles; o resto do painel nunca
+  confirma nada sozinho).
+- Diálogo de confirmação em vermelho, com os comandos à vista. Auditoria em `AcaoOltPon`
+  (`acao='remover'`, migração 0128). Depois de removida, a ONU volta ao autofind, e "Buscar
+  ONUs pendentes" a traz de novo.
+
 ## Backup automático depois de criar perfis — Adicionado em 2026-10-29
 
 O provisionamento lê os perfis do **backup** (o inventário é cacheado pelo id do
@@ -364,6 +387,7 @@ comandos.
 | POST | `/clientes/acessos/<id>/onu-prov/executar/` | `preview: true` → JSON; `false` → SSE (modo servidor) |
 | POST | `/clientes/acessos/<id>/onu-prov/registrar/` | auditoria de ONU provisionada pelo terminal |
 | POST | `/clientes/acessos/<id>/onu-prov/perfis/` | srv/line profile translate: `acao` preview, executar ou registrar |
+| POST | `/clientes/acessos/<id>/onu-prov/remover/` | remove a ONU recém-provisionada: `acao` preview, executar ou registrar |
 | POST | `/clientes/acessos/<id>/onu-prov/mac/` | MAC dos service-ports da ONU provisionada (`saidas` = pelo terminal) |
 | POST | `/clientes/acessos/<id>/onu-prov/backup/` | backup após criar perfis: `{"saida"}` grava a captura do terminal; vazio dispara o backup normal |
 

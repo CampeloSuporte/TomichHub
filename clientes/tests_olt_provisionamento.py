@@ -874,3 +874,62 @@ class ValidarMacTest(SimpleTestCase):
         r2.user = r.user
         with mock.patch('clientes.onu_prov_views._carregar', return_value=(SimpleNamespace(), {}, {}, None, None)):
             self.assertEqual(v.onu_prov_mac.__wrapped__.__wrapped__.__wrapped__(r2, 9486).status_code, 422)
+
+
+INFO_76 = """  F/S/P                   : 0/1/0
+  ONT-ID                  : 76
+  Control flag            : active
+  Run state               : online
+  SN                      : 485754433B654F8B (HWTC-3B654F8B)
+"""
+
+
+class RemoverOnuTest(SimpleTestCase):
+    SPS = [{'index': 3378, 'vlan': 300}]
+
+    def test_comandos_na_ordem_usada_ao_vivo(self):
+        self.assertEqual(op.comandos_remover('0/1', 0, 76, self.SPS),
+                         ['undo service-port 3378', 'interface gpon 0/1', 'ont delete 0 76', 'quit'])
+
+    def test_confere_pela_sn(self):
+        self.assertEqual(op.confere_ont(INFO_76, '485754433B654F8B', '0/1/0', 76), '')
+        self.assertIn('não em 0/1/0 ONT 77', op.confere_ont(INFO_76, '485754433B654F8B', '0/1/0', 77))
+        self.assertIn('não está mais', op.confere_ont('  Failure: The ONT does not exist', 'X', '0/1/0', 76))
+        self.assertIn('inesperada', op.confere_ont('% Unknown command', 'X', '0/1/0', 76))
+
+    def test_remover_ok_e_recusa_sem_conferir(self):
+        shell = mock.Mock()
+        shell.enviar.side_effect = lambda c, **k: INFO_76 if c.startswith('display') else 'MA5800-X7(config)#'
+        status, _, msg = op.remover_onu(shell, '485754433B654F8B', '0/1', 0, 76, self.SPS)
+        self.assertEqual(status, 'sucesso')
+        self.assertEqual([c.args[0] for c in shell.enviar.call_args_list][1:],
+                         ['undo service-port 3378', 'interface gpon 0/1', 'ont delete 0 76', 'quit'])
+        shell = mock.Mock()
+        shell.enviar.side_effect = lambda c, **k: INFO_76
+        status, _, _ = op.remover_onu(shell, '485754433B654F8B', '0/1', 0, 99, self.SPS)
+        self.assertEqual(status, 'erro')
+        self.assertEqual(shell.enviar.call_count, 1)   # só a conferência
+
+    def test_recusa_do_ont_delete_sai_da_interface(self):
+        shell = mock.Mock()
+        shell.enviar.side_effect = lambda c, **k: (INFO_76 if c.startswith('display') else
+                                                   '  Failure: The ONT has service virtual port' if 'ont delete' in c
+                                                   else 'MA5800-X7(config)#')
+        status, _, msg = op.remover_onu(shell, '485754433B654F8B', '0/1', 0, 76, [])
+        self.assertEqual(status, 'erro')
+        self.assertIn('ont delete', msg)
+        self.assertEqual(shell.enviar.call_args_list[-1].args[0], 'quit')
+
+    def test_endpoint_preview(self):
+        import json
+        from django.test import RequestFactory
+        from clientes import onu_prov_views as v
+        r = RequestFactory().post('/', data=json.dumps({'sn': '485754433B654F8B', 'slot': '0/1', 'porta': 0, 'ont_id': 76,
+                                                        'service_ports': self.SPS, 'acao': 'preview'}),
+                                  content_type='application/json')
+        r.user = SimpleNamespace(is_authenticated=True)
+        with mock.patch('clientes.onu_prov_views._carregar',
+                        return_value=(SimpleNamespace(), INVENTARIO, {}, None, None)):
+            j = json.loads(v.onu_prov_remover.__wrapped__.__wrapped__.__wrapped__(r, 9486).content)
+        self.assertEqual(j['checagem'], 'display ont info by-sn 485754433B654F8B')
+        self.assertEqual(j['comandos'][0], 'undo service-port 3378')

@@ -3969,7 +3969,7 @@
                     <div id="op-mac-${i}" style="display:none;flex-direction:column;gap:4px;"></div>
                 </div>`;
             }).join('');
-            opExtras = {}; opSps = {};
+            opExtras = {}; opSps = {}; opProv = {};
             opOnus.forEach((o, i) => opRenderServicos(i));
         }
 
@@ -4038,17 +4038,96 @@
         // `display mac-address vlan V | include <índice do service-port>`.
         let opSps = {};
 
-        function opMostrarValidarMac(i, sps) {
+        // Depois de provisionar: Validar MAC (se a OLT devolveu os service-ports)
+        // e Remover ONU (desfaz o que acabou de ser feito nesta ONU).
+        let opProv = {};
+
+        function opMostrarValidarMac(i, sps, prov) {
             opSps[i] = sps;
+            opProv[i] = {...prov, service_ports: sps};
             const box = document.getElementById(`op-mac-${i}`);
             if (!box) return;
             box.style.display = 'flex';
+            const mac = sps.length
+                ? `<button class="op-btn sec" id="op-macbtn-${i}" onclick="opValidarMac(${i})" style="padding:4px 10px;font-size:11px;">🔍 Validar MAC</button>`
+                : '';
             box.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                    <button class="op-btn sec" id="op-macbtn-${i}" onclick="opValidarMac(${i})" style="padding:4px 10px;font-size:11px;">🔍 Validar MAC</button>
-                    <span class="op-orig">service-port ${sps.map(sp => `${sp.index} (VLAN ${sp.vlan})`).join(', ')}</span>
+                    ${mac}
+                    <button class="op-btn sec" id="op-rembtn-${i}" onclick="opRemoverOnu(${i})" style="padding:4px 10px;font-size:11px;border-color:#ff5555;color:#ff5555;">🗑 Remover ONU</button>
+                    <span class="op-orig">ONT ${prov.ont_id}${sps.length ? ' · service-port ' + sps.map(sp => `${sp.index} (VLAN ${sp.vlan})`).join(', ') : ''}</span>
                 </div>
                 <div id="op-macres-${i}" style="font-size:11px;"></div>`;
         }
+
+        window.opRemoverOnu = async function(i) {
+            const prov = opProv[i];
+            if (!prov || opRodando) return;
+            const res = document.getElementById(`op-macres-${i}`);
+            const corpo = {sn: prov.sn, slot: prov.slot, porta: prov.porta, ont_id: prov.ont_id,
+                           service_ports: prov.service_ports.map(sp => ({index: sp.index, vlan: sp.vlan}))};
+            const post = extra => opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-prov/remover/`, {method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
+                body: JSON.stringify({...corpo, ...extra})});
+            let prev;
+            try { prev = await post({acao: 'preview'}); }
+            catch (e) { res.innerHTML = `<div style="color:#ff5555">✗ ${_escHtml(e.message)}</div>`; return; }
+            const term = opTerminalDaOlt(opAcessoId());
+            const ok = await uiConfirm({tipo: 'perigo', titulo: 'Remover esta ONU?', btnLabel: 'Remover',
+                msgHtml: `Apagar <b>${_escHtml(prov.sn)}</b> (${_escHtml(prov.slot)}/${prov.porta} ONT ${prov.ont_id}) ${opModoLabel(term)}?`
+                    + `<pre style="background:#0d1117;border:1px solid #30363d;border-radius:4px;padding:8px;font-size:11px;white-space:pre;text-align:left;margin:8px 0 0">${_escHtml(prev.comandos.join('\n'))}</pre>`
+                    + `<div style="font-size:11px;color:#7d8590;margin-top:6px">Antes, o CRM confere pela SN que a ONT ainda é esta.</div>`});
+            if (!ok) return;
+            const btn = document.getElementById(`op-rembtn-${i}`);
+            opRodando = true; btn.disabled = true; btn.textContent = '⏳ Removendo...';
+            try {
+                let status, texto, saida;
+                if (term) {
+                    const log = [];
+                    const inicial = await opPrepararTerminal(term);
+                    try {
+                        const info = await opCmdTerminal(term, prev.checagem); log.push(`${prev.checagem}\n${info}`);
+                        const fsp = (info.match(/F\/S\/P\s*:\s*(\d+\/\d+\/\d+)/) || [])[1];
+                        const id = (info.match(OP_ONTID_INFO) || [])[1];
+                        if (/not exist/i.test(info)) { status = 'erro'; texto = `${prov.sn} não está mais cadastrada na OLT.`; }
+                        else if (fsp !== `${prov.slot}/${prov.porta}` || parseInt(id) !== prov.ont_id) {
+                            status = 'erro'; texto = `${prov.sn} está em ${fsp || '?'} ONT ${id ?? '?'}, não em ${prov.slot}/${prov.porta} ONT ${prov.ont_id} — nada foi removido.`;
+                        } else {
+                            status = 'sucesso'; texto = `ONT ${prov.ont_id} removida de ${prov.slot}/${prov.porta}`;
+                            for (const c of prev.comandos) {
+                                const r = await opCmdTerminal(term, c, 60000, 300, true); log.push(`${c}\n${r}`);
+                                const f = (r.match(OP_ERRO) || [''])[0].trim();
+                                if (f) {
+                                    status = 'erro'; texto = `${c}: ${f}`;
+                                    if (c.startsWith('ont delete')) await opCmdTerminal(term, 'quit').catch(() => {});
+                                    break;
+                                }
+                            }
+                        }
+                    } finally {
+                        await opRestaurarTerminal(term, inicial);
+                    }
+                    saida = log.join('\n');
+                    await post({acao: 'registrar', status, saida, msg: texto}).catch(e => console.warn('[ONU] auditoria:', e));
+                } else {
+                    const j = await post({acao: 'executar'});
+                    status = j.status; texto = j.msg; saida = j.saida;
+                }
+                if (status === 'sucesso') {
+                    const st = document.getElementById(`op-st-${i}`);
+                    if (st) { st.className = 'op-st ignorada'; st.textContent = 'removida'; }
+                    document.getElementById(`op-mac-${i}`).innerHTML =
+                        `<div style="color:#3fb950;font-size:11px;">✓ ${_escHtml(texto)}. Ela volta ao autofind em instantes — "Buscar ONUs pendentes" para provisionar de novo.</div>`;
+                    delete opProv[i]; delete opSps[i];
+                } else {
+                    res.innerHTML = `<div style="color:#ff5555">✗ ${_escHtml(texto)}</div>`;
+                }
+            } catch (e) {
+                res.innerHTML = `<div style="color:#ff5555">✗ ${_escHtml(e.message || e)}</div>`;
+            } finally {
+                opRodando = false;
+                if (document.getElementById(`op-rembtn-${i}`)) { btn.disabled = false; btn.textContent = '🗑 Remover ONU'; }
+            }
+        };
 
         window.opValidarMac = async function(i) {
             const sps = opSps[i] || [];
@@ -4499,7 +4578,9 @@
         // `quietMs`: quanto esperar depois de o prompt aparecer no fim. Na saída
         // longa (display current-configuration) uma pausa da OLT entre
         // pedaços não pode ser tomada por fim.
-        function opCmdTerminal(t, cmd, maxMs = 60000, quietMs = 300) {
+        // `confirmar`: responde "y" a "(y/n)" — só para os comandos de remoção,
+        // que na sessão do operador (interactive ligado) pedem confirmação.
+        function opCmdTerminal(t, cmd, maxMs = 60000, quietMs = 300, confirmar = false) {
             return new Promise((resolve, reject) => {
                 const enc = new TextEncoder();
                 let buf = '', fim = null, limite = null;
@@ -4509,6 +4590,7 @@
                     clearTimeout(fim);
                     if (OP_CONTINUA.test(cauda)) { t.socket.send(enc.encode('\r')); return; }
                     if (OP_MORE.test(cauda)) { t.socket.send(enc.encode(' ')); return; }
+                    if (confirmar && /\(y\/n\)[^\n]*:\s*$/i.test(cauda)) { t.socket.send(enc.encode('y\r')); return; }
                     if (OP_PROMPT.test(cauda)) fim = setTimeout(() => terminar(), quietMs);
                 };
                 const terminar = erro => {
@@ -4798,7 +4880,11 @@
                         if (ev.comandos) linha(ev.comandos);
                         linha(`${icone} ${ev.sn}: ${ev.msg}`);
                         marcar(ev.sn, ev.status, ev.status === 'sucesso' ? `ONT ${ev.ont_id}` : ev.status);
-                        if (ev.service_ports && ev.service_ports.length) opMostrarValidarMac(porSn[ev.sn], ev.service_ports);
+                        if ((ev.status === 'sucesso' || ev.status === 'parcial') && ev.ont_id != null) {
+                            const it = itens.find(x => x.sn === ev.sn);
+                            opMostrarValidarMac(porSn[ev.sn], ev.service_ports || [],
+                                                {sn: ev.sn, slot: it.slot, porta: it.porta, ont_id: ev.ont_id});
+                        }
                     }
                     else if (ev.tipo === 'erro') linha(`\n✗ ERRO: ${ev.erro}`);
                 }

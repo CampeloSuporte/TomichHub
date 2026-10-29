@@ -43,6 +43,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   **Validar MAC:** depois de provisionar, o cartão mostra "🔍 Validar MAC". O CRM pega o índice dos
   service-ports criados (`display service-port port F/S/P ont N`) e roda
   `display mac-address vlan V | include <índice>`, mostrando o MAC aprendido em cada um.
+  **Remover ONU:** depois de provisionar, "🗑 Remover ONU" roda `undo service-port <índice>` +
+  `ont delete`, depois de conferir pela SN que a ONT ainda é aquela. Auditoria `acao='remover'`
+  (migração 0128).
   O DBA do line profile vem da lista do backup ou é criado na hora ("➕ Criar novo DBA...", padrão
   quando o backup não tem nenhum), com type1–4 e banda, antes do line profile.
 - **Aba ONU em massa: line e srv profile únicos para o lote.** Os seletores "Line profile" e
