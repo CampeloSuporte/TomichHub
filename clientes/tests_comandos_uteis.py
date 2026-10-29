@@ -37,6 +37,8 @@ class IdentificarFamiliaTest(SimpleTestCase):
             ('debian', 'debian 12'): 'linux',
             ('UBUNTU', 'UBUNTU 24.04'): 'linux',
             ('PROXMOX', 'PROXMOX'): 'proxmox',
+            ('Fiberhome', 'Fiberhome AN5516-06'): 'fiberhome_5k',
+            ('FIBERHOME', 'OLT FIBERHOME AN6000-17'): 'fiberhome_6k',
         }
         for (fab, nome), esperado in casos.items():
             self.assertEqual(cu.identificar_familia(_acesso(fab, nome)), esperado, nome)
@@ -46,23 +48,26 @@ class IdentificarFamiliaTest(SimpleTestCase):
         self.assertEqual(cu.identificar_familia(_acesso(tipo='OLT HUAWEI CENTRO')), 'huawei_olt')
 
     def test_fabricante_sem_catalogo(self):
-        for fab, nome in (('PARKS', 'Fiberlink 40016'), ('Fiberhome', 'Fiberhome AN5516-06'),
+        for fab, nome in (('PARKS', 'Fiberlink 40016'),
                           ('Intelbras', 'OLT INTELBRAS 8820i'), ('', '')):
             self.assertIsNone(cu.identificar_familia(_acesso(fab, nome)), nome)
 
 
 class CatalogoTest(SimpleTestCase):
     # Só leitura: show/display/print/diagnóstico Linux, mais os comandos que
-    # apenas mudam de modo ou desligam a paginação.
+    # apenas mudam de modo/diretório ou desligam a paginação. Configuração só
+    # em grupo ⚠ (altera).
     LEITURA = re.compile(
-        r'^(show |display |/.+ (print|monitor|monitor-traffic)\b|'
+        r'^(show |sh |display |list |cd |telnet slot |/.+ (print|monitor|monitor-traffic)\b|'
         r'(uptime|free -m|df -h|ip -br a|ip r|ip r get |ss -tulpn|ping -c 4 |pveversion|qm list|pct list|pvesm status)|'
         r'top -bn1|systemctl (--failed|status )|journalctl -p err)')
-    MODO = {'enable', 'config', 'quit', 'terminal length 0', 'terminal page-break disable'}
+    MODO = {'enable', 'config', 'quit', 'lll', 'terminal length 0', 'terminal page-break disable'}
 
     def test_todo_comando_e_de_leitura(self):
         for familia in cu.FAMILIAS:
             for grupo in cu.catalogo(familia)['grupos']:
+                if grupo['altera']:
+                    continue
                 for c in grupo['comandos']:
                     for linha in c['cmd'].split('\n'):
                         self.assertTrue(
@@ -81,6 +86,26 @@ class CatalogoTest(SimpleTestCase):
         cmds = [c['cmd'] for g in cu.catalogo('raisecom')['grupos'] for c in g['comandos']]
         self.assertIn('show transceiver ddm {porta}', cmds)
         self.assertTrue(all(c['conferido'] for g in cu.catalogo('raisecom')['grupos'] for c in g['comandos']))
+
+
+class GrupoQueAlteraTest(SimpleTestCase):
+    def test_altera_so_pelo_titulo_com_aviso(self):
+        for familia in cu.FAMILIAS:
+            for g in cu.catalogo(familia)['grupos']:
+                self.assertEqual(g['altera'], g['titulo'].startswith('⚠'), f'{familia}: {g["titulo"]}')
+
+    def test_fiberhome_separa_leitura_de_configuracao(self):
+        for familia in ('fiberhome_5k', 'fiberhome_6k'):
+            grupos = cu.catalogo(familia)['grupos']
+            self.assertTrue(any(g['altera'] for g in grupos), familia)
+            self.assertFalse(grupos[0]['altera'], familia)
+            for g in grupos:
+                if not g['altera']:
+                    self.assertFalse(any(c['cmd'].startswith('set ') for c in g['comandos']), g['titulo'])
+
+    def test_fiberhome_sem_senha_fixa(self):
+        texto = repr(cu.FAMILIAS['fiberhome_5k']) + repr(cu.FAMILIAS['fiberhome_6k'])
+        self.assertNotIn('infocloud', texto)
 
 
 class EndpointTest(SimpleTestCase):

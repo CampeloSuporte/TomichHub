@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-28 (💡 Comandos úteis: FiberHome)
+
+### Adicionado
+
+- **💡 Comandos úteis do terminal: OLTs FiberHome.** Duas famílias novas, `fiberhome_5k`
+  (AN5516, RP1000/1200/1800 — identificada pelo cadastro) e `fiberhome_6k` (AN6000). Leitura:
+  ONUs online, uptime, última queda, sinal óptico por ONU e por PON, MAC por VLAN/placa/ONU,
+  CPU, alarmes, IP privado dos cards. Grupos **⚠** com configuração (autorizar/remover ONU,
+  PPPoE e bridge, uplink/LAG, gerência/SNMP/syslog, usuários da CLI, backup/restore FTP,
+  placas, distância da PON): título laranja e o ▶ pede confirmação. Campos novos `{usuario}`,
+  `{senha}`, `{tipo_onu}`, `{placa}`, `{arquivo}`. `docs/terminal_ssh.md`.
+
 ## [Não publicado] — 2026-10-28 (Sala Virtual: remover atendente e conversa privada)
 
 ### Adicionado

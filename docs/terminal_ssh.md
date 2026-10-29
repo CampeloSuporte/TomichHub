@@ -548,14 +548,15 @@ têm a lâmpada. Abre pelo botão **💡 Comandos** no rodapé, pelo menu mobile
 `clientes/comandos_uteis.py::identificar_familia`. Ela olha o Modelo do acesso (fabricante + nome)
 e, sem modelo, o `tipo`. Famílias: `huawei_vrp` (S67xx, S5735, NE8000, ATN), `huawei_olt`
 (MA5800/MA5600), `datacom` / `datacom_olt` (DM46xx), `cisco_ios` / `cisco_nxos` (Nexus), `juniper`,
-`mikrotik`, `zte_c300` / `zte_titan` (C6xx), `raisecom`, `linux`, `proxmox`. Fiberhome, Parks,
+`mikrotik`, `zte_c300` / `zte_titan` (C6xx), `raisecom`, `fiberhome_5k` (AN5516 — padrão para
+qualquer FiberHome) / `fiberhome_6k` (AN6000), `linux`, `proxmox`. Parks,
 Intelbras, VSOL e os outros sem catálogo, assim como acesso sem modelo nem tipo reconhecível, mostram
 um seletor "Tipo". A escolha fica no `localStorage` do navegador (`cu-familia-<id>`) e vai como
 `?familia=`.
 
 **Painel:**
 - Campos variáveis (`{porta}`, `{ip}`, `{mac}`, `{vlan}`, `{sn}`, `{slot}`, `{pon}`, `{onu}`,
-  `{texto}`) ficam no topo e valem para todos os comandos da família. A porta sugere as interfaces do
+  `{texto}`, `{usuario}`, `{senha}`, `{tipo_onu}`, `{placa}`, `{arquivo}`) ficam no topo e valem para todos os comandos da família. A porta sugere as interfaces do
   último backup (`interfaces-backup`), físicas com descrição primeiro.
 - **⌨ Inserir** digita o comando no terminal ativo **sem Enter** (`terminal.paste`). **▶** digita e
   manda o Enter. Comando de várias linhas (sinal óptico da ONU no MA5800) só tem ▶ e pede
@@ -563,9 +564,23 @@ um seletor "Tipo". A escolha fica no `localStorage` do navegador (`cu-familia-<i
 - Trocar de aba com o painel aberto recarrega para o equipamento da nova aba.
 
 **Catálogo** (`FAMILIAS` em `comandos_uteis.py`): só leitura (show/display/print e diagnóstico
-Linux), mais os comandos que só mudam de modo ou desligam a paginação. O teste
-`CatalogoTest.test_todo_comando_e_de_leitura` barra qualquer outra coisa. Cada comando tem
-`conferido`:
+Linux), mais os comandos que só mudam de modo/diretório ou desligam a paginação. O teste
+`CatalogoTest.test_todo_comando_e_de_leitura` barra qualquer outra coisa — **exceto** em grupo cujo
+título começa com **⚠** (`altera: true` no JSON, 2026-10-28). Esses grupos levam comandos de
+configuração: título laranja no painel e o **▶** pede confirmação ("Alterar a configuração do
+equipamento?"); **⌨ Inserir** continua só digitando. Hoje só a FiberHome tem grupos ⚠
+(provisionar ONU, PPPoE/bridge, uplink/LAG, gerência/SNMP/syslog, usuários, backup FTP, placas,
+distância da PON). Senha/usuário entram pelos campos `{usuario}`/`{senha}`, nunca fixos no
+catálogo.
+
+FiberHome AN5516: a CLI é por diretórios (`cd onu`, `cd gpononu`, `cd service`, `cd ..`), então
+cada grupo começa com o `cd` do diretório. Há dois dialetos de ONU conforme o firmware —
+`slot X pon Y onu Z` (diretório `onu`, RP1000) e `slot X link Y onu Z` (`gpononu`) — os dois
+estão no catálogo. Na lista de origem os blocos de distância da PON vinham com 5k/6k trocados
+(o `config`/`interface pon` é sintaxe do AN6000); ficou cada um na família certa. Comandos de
+telnet na própria ONU (`Config\wan#`) e o ONCONFIG do ANM2000 ficaram fora.
+
+Cada comando tem `conferido`:
 - ✓ **conferido**: rodado num equipamento da família. Raisecom em 26/10/2026 (RAX711), e os
   comandos que o Agent NOC e a automação BGP já usam validados (transceiver Huawei/Datacom, rotas
   BGP recebidas/anunciadas, sessões BGP do MikroTik).
