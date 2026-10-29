@@ -96,6 +96,10 @@ Permissão: back-office com a ferramenta `scripts` e acesso ao host
 - Parsers e sugestão conferidos com o backup real da OLT HU SENTO SE (acesso 9486,
   2907 ONTs, 44 line e 44 srv profiles) e com o autofind ao vivo de 29/10/2026 (2 HWTC
   7756ACG4 na 0/1/0 → VLAN 300, line 300, srv 1001, gemport 1).
-- A escrita (`ont add` → `service-port`) foi testada com o shell simulado
-  (`tests_olt_provisionamento.ProvisionarTest`). O formato da resposta
-  `ONTID :N` é o padrão do MA5800, com o fallback por SN para o caso de faltar.
+- Escrita validada ao vivo em 29/10/2026, na mesma OLT: `485754433B654F8B` em 0/1/0
+  (modo ONU+ONT, VLAN 300, line 300, srv 1001). A OLT respondeu
+  `Number of ONTs that can be added: 1, success: 1` / `PortID :0, ONTID :76`, e o CRM
+  usou o 76 no `native-vlan` e no `service-port` (índice 3378, gerado pela OLT).
+  Conferido depois: `display ont info 0 76` mostra online/match/normal, e
+  `display service-port port 0/1/0 ont 76` mostra `up`. Lote de 1 ONU em ~10 s, com o
+  shell lendo até o prompt.
