@@ -110,6 +110,7 @@ urlpatterns = [
 
     # Perfil do agente
     path('api/display-name/', views.api_display_name, name='api_display_name'),
+    path('api/agent-status/', views.api_agent_status, name='api_agent_status'),
 
     path("sala/", views.sala_virtual, name="sala_virtual"),
 

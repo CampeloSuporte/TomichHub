@@ -282,6 +282,11 @@ class Conversation(models.Model):
     # alerta a cada mensagem enviada por esse número.
     personal_wa_alert_sent = models.BooleanField(default=False)
 
+    # Último aviso ao grupo do NOC de que o cliente escreveu enquanto o
+    # atendente responsável estava offline. Segura o alerta: um por período
+    # offline, repetido no máximo a cada OFFLINE_ALERT_INTERVALO.
+    offline_alert_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         ordering = ['-last_message_at', '-created_at']
         indexes = [
@@ -606,7 +611,11 @@ class ConversationActivity(models.Model):
 
 
 class AgentStatus(models.Model):
-    """Status online dos atendentes"""
+    """Status online dos atendentes.
+
+    O próprio atendente alterna online/offline no rodapé do menu. Offline,
+    toda mensagem nova de cliente num chamado que é dele vira alerta no grupo
+    do NOC (services._alertar_atendente_offline). Sem registro = online."""
     STATUS_CHOICES = [
         ('online', 'Online'),
         ('busy', 'Ocupado'),
@@ -615,7 +624,8 @@ class AgentStatus(models.Model):
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='agent_status')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='offline')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='online')
+    status_changed_at = models.DateTimeField(null=True, blank=True)
     display_name = models.CharField(max_length=100, blank=True, default='',
                                     help_text='Nome exibido nas mensagens enviadas pelo WhatsApp')
     last_seen = models.DateTimeField(auto_now=True)

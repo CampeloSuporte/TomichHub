@@ -298,6 +298,71 @@ def _alertar_atendente_pessoal(conversation, group, attendant_contact, connectio
         logger.warning(f"Falha ao alertar sobre atendente pessoal: {e}")
 
 
+# Cliente que segue escrevendo enquanto o atendente está offline gera um
+# novo aviso no máximo a cada intervalo destes, não um por mensagem.
+OFFLINE_ALERT_INTERVALO = timedelta(minutes=15)
+
+
+def atendente_offline(user) -> bool:
+    """O atendente marcou-se offline? Sem AgentStatus conta como online."""
+    from .models import AgentStatus
+    return AgentStatus.objects.filter(user=user, status='offline').exists()
+
+
+def _alertar_atendente_offline(conversation, group) -> None:
+    """Avisa o grupo do NOC (o mesmo dos 'chamados abertos') que chegou
+    mensagem de cliente num chamado cujo responsável está offline.
+
+    Um aviso por chamado a cada período offline; se o cliente continuar
+    escrevendo, repete só depois de OFFLINE_ALERT_INTERVALO. Contato restrito
+    é avisado sem o nome — o grupo do NOC é lido pela equipe inteira."""
+    try:
+        from .models import SystemSetting, AgentStatus
+        agent = conversation.assigned_to
+        if not agent:
+            return
+        st = AgentStatus.objects.filter(user=agent, status='offline').first()
+        if not st:
+            return
+        now = timezone.now()
+        ultimo = conversation.offline_alert_at
+        if ultimo and (not st.status_changed_at or ultimo >= st.status_changed_at) \
+                and now - ultimo < OFFLINE_ALERT_INTERVALO:
+            return
+        group_id = SystemSetting.get('notif_abertos_group_id', '').strip()
+        if not group_id:
+            return
+        from .models import ContactGroup as _CG, AttendantContact
+        _alert_group = _CG.objects.filter(id=group_id).select_related('connection').first()
+        if not _alert_group or not _alert_group.connection:
+            return
+        nome_atendente = st.get_display_name()
+        if group.restrito:
+            onde = "um chamado de contato restrito"
+        else:
+            onde = f"o chamado do grupo *{group.name}*"
+        texto = (
+            f"📴 *Atendente offline!*\n\n"
+            f"Chegou mensagem nova em {onde} "
+            f"(#{conversation.conversation_id}), que está com "
+            f"*{nome_atendente}* — e ele(a) está *offline* na plataforma.\n\n"
+            f"Alguém precisa assumir ou acompanhar este atendimento."
+        )
+        # Marca o atendente (se tiver WhatsApp cadastrado) para ele ver o
+        # aviso no celular mesmo fora da plataforma.
+        ac = AttendantContact.objects.filter(user=agent).first()
+        mentions = [ac.phone] if ac and ac.phone else None
+        # send_text retorna (bool, msg_id) — ver _alertar_atendente_pessoal.
+        ok, _msg_id = EvolutionAPIClient(_alert_group.connection).send_text(
+            _alert_group.jid, texto, mentions=mentions
+        )
+        if ok:
+            conversation.offline_alert_at = now
+            conversation.save(update_fields=['offline_alert_at'])
+    except Exception as e:
+        logger.warning(f"Falha ao alertar sobre atendente offline: {e}")
+
+
 _TAREFA_VERBOS = ('abrir', 'abre', 'abra', 'criar', 'crie', 'cria', 'gerar', 'gere', 'gera', 'nova', 'novo')
 
 
@@ -1756,6 +1821,8 @@ class ConversationService:
                         conv.save(update_fields=['last_message_at'])
                         ConversationService._broadcast_msg(conv, group, msg)
                         _disparar_agente_ia(conv, content)
+                        if conv.assigned_to_id and not atendente_pessoal:
+                            _alertar_atendente_offline(conv, group)
                     if atendente_pessoal:
                         _alertar_atendente_pessoal(conv, group, atendente_pessoal, connection)
                 # Mensagem do atendente pessoal não deve avançar o fluxo do bot
@@ -1781,6 +1848,8 @@ class ConversationService:
                     conv.save(update_fields=['last_message_at', 'status'])
                     if not conv.assigned_to:
                         _notify_new_open_conversation(conv, connection)
+                    elif not atendente_pessoal:
+                        _alertar_atendente_offline(conv, group)
                     ConversationService._broadcast_msg(conv, group, msg)
                     _disparar_agente_ia(conv, content)
                 if atendente_pessoal:

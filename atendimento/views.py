@@ -3117,7 +3117,7 @@ def api_display_name(request):
     """Retorna ou atualiza o nome de exibição do usuário logado"""
     profile, _ = AgentStatus.objects.get_or_create(
         user=request.user,
-        defaults={'status': 'offline', 'display_name': ''}
+        defaults={'status': 'online', 'display_name': ''}
     )
     if request.method == 'GET':
         return JsonResponse({
@@ -3505,3 +3505,30 @@ def api_my_conversations(request):
         })
 
     return JsonResponse({'conversations': data, 'total': len(data)})
+
+
+@staff_required
+@require_http_methods(["GET", "POST"])
+def api_agent_status(request):
+    """Online/offline do atendente logado (botão no rodapé do menu).
+
+    Offline, mensagem nova de cliente em chamado dele vira alerta no grupo do
+    NOC — ver services._alertar_atendente_offline."""
+    if request.method == 'GET':
+        st = AgentStatus.objects.filter(user=request.user).first()
+        return JsonResponse({'status': 'offline' if st and st.status == 'offline' else 'online'})
+    try:
+        data = json.loads(request.body or '{}')
+    except ValueError:
+        data = {}
+    novo = data.get('status')
+    if novo not in ('online', 'offline'):
+        return JsonResponse({'success': False, 'error': 'Status inválido'}, status=400)
+    profile, _ = AgentStatus.objects.get_or_create(
+        user=request.user, defaults={'status': novo, 'display_name': ''}
+    )
+    if profile.status != novo or not profile.status_changed_at:
+        profile.status = novo
+        profile.status_changed_at = timezone.now()
+        profile.save(update_fields=['status', 'status_changed_at', 'last_seen'])
+    return JsonResponse({'success': True, 'status': novo})
