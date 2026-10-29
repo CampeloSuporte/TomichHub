@@ -105,8 +105,11 @@
                             <label><span class="label-prefix">//</span> Senha</label>
                             <div class="input-senha-wrap">
                                 <input type="text" name="senha" id="novo_senha" placeholder="••••••••" required autocomplete="new-password">
-                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('novo_senha')" title="Gerar senha aleatória">
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('novo_senha', false, this)" title="Gerar senha (só letras e números)">
                                     <i class="fas fa-dice"></i>
+                                </button>
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('novo_senha', true, this)" title="Gerar senha com caracteres especiais">
+                                    <i class="fas fa-asterisk"></i>
                                 </button>
                             </div>
                         </div>
@@ -119,8 +122,11 @@
                             <label><span class="label-prefix">//</span> Senha Admin</label>
                             <div class="input-senha-wrap">
                                 <input type="text" name="senha_adm" id="novo_senha_adm" placeholder="••••••••" autocomplete="new-password">
-                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('novo_senha_adm')" title="Gerar senha aleatória">
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('novo_senha_adm', false, this)" title="Gerar senha (só letras e números)">
                                     <i class="fas fa-dice"></i>
+                                </button>
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('novo_senha_adm', true, this)" title="Gerar senha com caracteres especiais">
+                                    <i class="fas fa-asterisk"></i>
                                 </button>
                             </div>
                         </div>
@@ -305,8 +311,11 @@
                             <label><span class="label-prefix">//</span> Senha</label>
                             <div class="input-senha-wrap">
                                 <input type="text" name="senha" id="dup1_senha" required autocomplete="new-password">
-                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup1_senha')" title="Gerar senha aleatória">
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup1_senha', false, this)" title="Gerar senha (só letras e números)">
                                     <i class="fas fa-dice"></i>
+                                </button>
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup1_senha', true, this)" title="Gerar senha com caracteres especiais">
+                                    <i class="fas fa-asterisk"></i>
                                 </button>
                             </div>
                         </div>
@@ -319,8 +328,11 @@
                             <label><span class="label-prefix">//</span> Senha Admin</label>
                             <div class="input-senha-wrap">
                                 <input type="text" name="senha_adm" id="dup1_senha_adm" autocomplete="new-password">
-                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup1_senha_adm')" title="Gerar senha aleatória">
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup1_senha_adm', false, this)" title="Gerar senha (só letras e números)">
                                     <i class="fas fa-dice"></i>
+                                </button>
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup1_senha_adm', true, this)" title="Gerar senha com caracteres especiais">
+                                    <i class="fas fa-asterisk"></i>
                                 </button>
                             </div>
                         </div>
@@ -525,8 +537,11 @@
                             <label><span class="label-prefix">//</span> Senha</label>
                             <div class="input-senha-wrap">
                                 <input type="text" name="senha" id="dup_senha" required autocomplete="new-password">
-                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup_senha')" title="Gerar senha aleatória">
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup_senha', false, this)" title="Gerar senha (só letras e números)">
                                     <i class="fas fa-dice"></i>
+                                </button>
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup_senha', true, this)" title="Gerar senha com caracteres especiais">
+                                    <i class="fas fa-asterisk"></i>
                                 </button>
                             </div>
                         </div>
@@ -539,8 +554,11 @@
                             <label><span class="label-prefix">//</span> Senha Admin</label>
                             <div class="input-senha-wrap">
                                 <input type="text" name="senha_adm" id="dup_senha_adm" autocomplete="new-password">
-                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup_senha_adm')" title="Gerar senha aleatória">
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup_senha_adm', false, this)" title="Gerar senha (só letras e números)">
                                     <i class="fas fa-dice"></i>
+                                </button>
+                                <button type="button" class="btn-gerar-senha" onclick="_gerarSenha('dup_senha_adm', true, this)" title="Gerar senha com caracteres especiais">
+                                    <i class="fas fa-asterisk"></i>
                                 </button>
                             </div>
                         </div>
@@ -2562,15 +2580,30 @@ function _senhaAleatoriaSemSimbolo(tamanho = 16) {
     }
 }
 
-function _gerarSenha(inputId) {
-    const senha = _senhaAleatoriaSemSimbolo();
+// Variante com símbolo (botão ✱ ao lado do dado). Fica de fora o que costuma
+// quebrar no CLI: aspas, barra invertida, espaço, $ & * %, ? (ajuda do Cisco/VRP),
+// ! e # (comentário).
+function _senhaAleatoriaComSimbolo(tamanho = 16) {
+    const simbolos = '@-_+=.:,';
+    const chars = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789' + simbolos;
+    for (;;) {
+        const arr = new Uint32Array(tamanho);
+        crypto.getRandomValues(arr);
+        const senha = Array.from(arr, v => chars[v % chars.length]).join('');
+        if (/[a-z]/.test(senha) && /[A-Z]/.test(senha) && /[0-9]/.test(senha)
+            && [...senha].some(c => simbolos.includes(c))) return senha;
+    }
+}
+
+function _gerarSenha(inputId, comSimbolo = false, btn = null) {
+    const senha = comSimbolo ? _senhaAleatoriaComSimbolo() : _senhaAleatoriaSemSimbolo();
     const el = document.getElementById(inputId);
     if (!el) return;
     el.value = senha;
     el.type = 'text';
     el.select();
     try { document.execCommand('copy'); } catch(e) {}
-    const btn = el.parentElement.querySelector('.btn-gerar-senha');
+    btn = btn || el.parentElement.querySelector('.btn-gerar-senha');
     if (btn) {
         const orig = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-check"></i>';

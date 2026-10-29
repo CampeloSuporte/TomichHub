@@ -371,8 +371,13 @@ is_admin = request.user.is_staff or request.user.is_superuser
 
 ## Gerador de Senha Aleatória — Modais de Acesso (2026-05-27)
 
-Os modais **Novo Acesso** e **Duplicar Acesso** possuem um botão de dado (🎲) ao lado
-dos campos **Senha** e **Senha Admin** (quando admin).
+Os modais **Novo Acesso**, **Editar Acesso** e **Duplicar Acesso** possuem dois botões ao lado
+dos campos **Senha** e **Senha Admin** (quando admin):
+
+- **🎲 dado** — o padrão: só letras e números (regra abaixo).
+- **✱ asterisco** (desde 29/10/2026) — mesma regra, mas com pelo menos um caractere especial
+  do conjunto `@ - _ + = . : ,` (`_senhaAleatoriaComSimbolo`). Ficam de fora os que quebram no
+  CLI: aspas, `\`, espaço, `$ & * %`, `?` (ajuda do Cisco/VRP), `!` e `#` (comentário).
 
 ### Comportamento
 
@@ -391,7 +396,7 @@ dos campos **Senha** e **Senha Admin** (quando admin).
 ### Função JS
 
 ```javascript
-function _gerarSenha(inputId) {
+function _gerarSenha(inputId, comSimbolo = false, btn = null) {
     // usa crypto.getRandomValues — seguro contra previsibilidade
     // copia para clipboard via execCommand('copy')
 }

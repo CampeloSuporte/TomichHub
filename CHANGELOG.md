@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-29 (Gerador de senha com caractere especial)
+
+### Adicionado
+
+- **Acessos: botão ✱ para gerar senha com caractere especial** nos modais Novo, Editar e Duplicar
+  Acesso (Senha e Senha Admin). O 🎲 continua gerando só letras e números; o ✱ inclui ao menos um
+  símbolo de `@ - _ + = . : ,`, sem os que quebram no CLI. `docs/frontend_acessos.md`.
+
+---
+
 ## [Não publicado] — 2026-10-29 (Provisionamento de ONU Huawei)
 
 ### Adicionado
