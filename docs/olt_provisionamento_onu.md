@@ -67,7 +67,19 @@ ont-lineprofile gpon profile-id 20 profile-name "LINE-MIGRACAO"
 - **Índice do GEM:** é igual ao da VLAN quando cabe (até 1023), como no modelo (gem
   101 ↔ vlan 101). Acima disso, ou com a opção desmarcada, usa o próximo índice livre.
 - **Srv e line:** cada um pode ser criado separadamente (checkbox). Os IDs vêm
-  sugeridos (primeiro livre no backup), e a lista de DBA profiles também vem do backup.
+  sugeridos (primeiro livre no backup).
+- **DBA:** a lista vem do backup (`dba-profile add profile-id N profile-name "X" ...`). Se
+  o backup não tiver nenhum DBA próprio, ou se você escolher **➕ Criar novo DBA...**,
+  aparecem ID (sugerido: primeiro livre a partir de 10), nome, tipo e banda. O DBA é
+  criado **antes** do line profile, no formato do backup:
+  `dba-profile add profile-id 11 profile-name "DBA-TRANSLATE" type4 max 1024000`
+  (type1 `fix`, type2 `assure`, type3 `assure`+`max`, type4 `max`, em kbps). Os IDs 0–9
+  são os DBA padrão do MA5800: existem sem aparecer no backup (o line profile 0 da SENTO
+  SE usa o 0 e o 2), então não são oferecidos para criação. O novo DBA também passa pela
+  conferência ao vivo (`display dba-profile profile-id N` precisa dizer "does not
+  exist"). O texto exato dessa recusa ainda não foi visto ao vivo: na hora do teste, o
+  terminal do operador ocupava o login. Se vier diferente, a criação aborta sem mexer em
+  nada.
 - **Segurança:** um ID que já existe no backup é recusado. Entrar em
   `ont-lineprofile gpon profile-id 300` **edita** o perfil, e um `gem add` ali mudaria as
   96 ONTs ligadas a ele. Antes de criar, o CRM ainda confere ao vivo

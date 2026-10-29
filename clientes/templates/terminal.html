@@ -1369,7 +1369,23 @@
                         <div><span class="op-lbl">ID</span><input class="op-in" id="opPfLineId" type="number" min="0"></div>
                         <div><span class="op-lbl">NOME</span><input class="op-in" id="opPfLineNome" maxlength="32" value="LINE-TRANSLATE"></div>
                         <div><span class="op-lbl">T-CONT</span><input class="op-in" id="opPfTcont" type="number" min="1" max="7" value="1"></div>
-                        <div><span class="op-lbl">DBA PROFILE</span><select class="op-in" id="opPfDba"></select></div>
+                        <div><span class="op-lbl">DBA PROFILE</span><select class="op-in" id="opPfDba" onchange="opPfDbaModo()"></select></div>
+                    </div>
+                    <!-- DBA novo: aparece ao escolher "Criar novo DBA" (ou quando o backup não tem nenhum) -->
+                    <div id="opPfDbaNovo" style="display:none;flex-direction:column;gap:6px;border-left:2px solid #ffa500;padding-left:8px;">
+                        <span class="op-lbl">NOVO DBA PROFILE (criado antes do line profile)</span>
+                        <div class="op-grid" style="grid-template-columns:70px 1fr 80px;">
+                            <div><span class="op-lbl">ID</span><input class="op-in" id="opPfDbaId" type="number" min="10"></div>
+                            <div><span class="op-lbl">NOME</span><input class="op-in" id="opPfDbaNome" maxlength="32" value="DBA-TRANSLATE"></div>
+                            <div><span class="op-lbl">TIPO</span><select class="op-in" id="opPfDbaTipo" onchange="opPfDbaModo()">
+                                <option value="type4" selected>type4 (max)</option><option value="type3">type3 (assure+max)</option>
+                                <option value="type2">type2 (assure)</option><option value="type1">type1 (fix)</option></select></div>
+                        </div>
+                        <div class="op-grid" style="grid-template-columns:1fr 1fr 1fr;">
+                            <div id="opPfDbaFixBox"><span class="op-lbl">FIX (kbps)</span><input class="op-in" id="opPfDbaFix" type="number" min="128" value="1024"></div>
+                            <div id="opPfDbaAssureBox"><span class="op-lbl">ASSURE (kbps)</span><input class="op-in" id="opPfDbaAssure" type="number" min="128" value="1024"></div>
+                            <div id="opPfDbaMaxBox"><span class="op-lbl">MAX (kbps)</span><input class="op-in" id="opPfDbaMax" type="number" min="128" value="1024000"></div>
+                        </div>
                     </div>
                     <div>
                         <span class="op-lbl">VLANS DO LINE PROFILE (<span id="opPfCont">0</span>/<span id="opPfMax">32</span> GEMs)</span>
@@ -3880,8 +3896,8 @@
                 opInvAcesso = id;
                 info.innerHTML = `<b>${_escHtml(opInv.host.nome)}</b> ${_escHtml(opInv.host.ip)} · ${_escHtml(opInv.modelo)} · `
                     + `${opInv.lines.length} line / ${opInv.srvs.length} srv profiles · backup ${_escHtml(opInv.data_backup)}`;
-                document.getElementById('opPfDba').innerHTML = opInv.dbas.map(d =>
-                    `<option value="${d.id}" ${d.id === 10 ? 'selected' : ''}>${d.id} · ${_escHtml(d.nome)}</option>`).join('');
+                opPfRenderDbas(opInv.dbas.some(d => d.id === 10) ? 10 : (opInv.dbas.length ? opInv.dbas[0].id : 'novo'));
+                document.getElementById('opPfDbaId').value = opInv.proximo_dba ?? '';
                 document.getElementById('opPfSrvId').value = opInv.proximo_srv ?? '';
                 document.getElementById('opPfLineId').value = opInv.proximo_line ?? '';
                 ['opPfMax', 'opPfMaxTxt'].forEach(x => { document.getElementById(x).textContent = opInv.max_gems; });
@@ -4011,6 +4027,25 @@
             opPfRender();
         };
 
+        // DBA do line profile: os do backup, ou "Criar novo" — padrão quando
+        // o backup não tem nenhum DBA próprio.
+        function opPfRenderDbas(sel) {
+            const opts = opInv.dbas.map(d => `<option value="${d.id}">${d.id} · ${_escHtml(d.nome)}</option>`).join('');
+            const el = document.getElementById('opPfDba');
+            el.innerHTML = opts + '<option value="novo">➕ Criar novo DBA...</option>';
+            el.value = String(sel);
+            opPfDbaModo();
+        }
+
+        window.opPfDbaModo = function() {
+            const novo = document.getElementById('opPfDba').value === 'novo';
+            document.getElementById('opPfDbaNovo').style.display = novo ? 'flex' : 'none';
+            const campos = {type1: ['Fix'], type2: ['Assure'], type3: ['Assure', 'Max'], type4: ['Max']}[document.getElementById('opPfDbaTipo').value];
+            ['Fix', 'Assure', 'Max'].forEach(k => {
+                document.getElementById(`opPfDba${k}Box`).style.display = campos.includes(k) ? '' : 'none';
+            });
+        };
+
         function opPfSpec() {
             const val = id => document.getElementById(id).value.trim();
             return {
@@ -4018,6 +4053,10 @@
                 line: {criar: document.getElementById('opPfLineCriar').checked, id: val('opPfLineId'), nome: val('opPfLineNome'),
                        tcont: val('opPfTcont'), dba: val('opPfDba')},
                 vlans: opPfVlans, gem_igual_vlan: document.getElementById('opPfGemIgual').checked,
+                dba: val('opPfDba') === 'novo' && document.getElementById('opPfLineCriar').checked
+                    ? {criar: true, id: val('opPfDbaId'), nome: val('opPfDbaNome'), tipo: val('opPfDbaTipo'),
+                       fix: val('opPfDbaFix'), assure: val('opPfDbaAssure'), max: val('opPfDbaMax')}
+                    : {criar: false},
             };
         }
 
@@ -4045,6 +4084,12 @@
         // Perfis recém-criados entram no inventário local, para os selects
         // dos cartões já oferecerem o perfil sem esperar o próximo backup.
         function opPfIncorporar(spec, gems) {
+            if (spec.dba.criar) {
+                opInv.dbas.push({id: parseInt(spec.dba.id), nome: spec.dba.nome});
+                opInv.dbas.sort((a, b) => a.id - b.id);
+                opPfRenderDbas(parseInt(spec.dba.id));
+                document.getElementById('opPfDbaId').value = '';
+            }
             if (spec.srv.criar) opInv.srvs.push({id: parseInt(spec.srv.id), nome: spec.srv.nome, vlans: []});
             if (spec.line.criar) opInv.lines.push({id: parseInt(spec.line.id), nome: spec.line.nome,
                 gems: gems.map(g => g[0]), vlans: gems.map(g => g[1]), mapas: gems});
@@ -4070,7 +4115,7 @@
             const spec = opPfSpec();
             const term = opTerminalDaOlt(opAcessoId());
             const ok = await uiConfirm({tipo: 'aviso', titulo: 'Criar perfis na OLT?', btnLabel: 'Criar',
-                msgHtml: `Criar ${spec.srv.criar ? `srv profile <b>${_escHtml(spec.srv.id)}</b>` : ''}`
+                msgHtml: `Criar ${spec.dba.criar ? `DBA <b>${_escHtml(spec.dba.id)}</b> + ` : ''}${spec.srv.criar ? `srv profile <b>${_escHtml(spec.srv.id)}</b>` : ''}`
                     + `${spec.srv.criar && spec.line.criar ? ' e ' : ''}`
                     + `${spec.line.criar ? `line profile <b>${_escHtml(spec.line.id)}</b> com <b>${prev.gems.length}</b> GEM(s)` : ''}`
                     + ` em <b>${_escHtml(opInv.host.nome)}</b> ${opModoLabel(term)}?`});
@@ -4087,7 +4132,7 @@
                         status = 'sucesso'; texto = 'perfis criados';
                         for (const c of prev.checagens) {
                             const r = await opCmdTerminal(term, c); log.push(`${c}\n${r}`);
-                            const naoExiste = /profile does not exist/i.test(r), existe = /Profile-ID\s*:\s*\d+/i.test(r);
+                            const naoExiste = /does not exist/i.test(r), existe = /Profile-ID\s*:\s*\d+/i.test(r);
                             if (!naoExiste) { status = 'erro'; texto = `${c.replace('display ', '')}: ${existe ? 'já existe na OLT' : 'resposta inesperada da OLT'}. Nada foi criado.`; break; }
                         }
                         if (status === 'sucesso') for (const c of prev.comandos) {

@@ -407,6 +407,15 @@ def comandos_onu(it, ont_id=ONT_ID):
 # aceitar menos, ela recusa, e a recusa é detectada.
 MAX_GEMS_PERFIL = 32
 MAX_GEM_INDEX = 1023
+# DBA profiles 0–9 são os padrão do MA5800: não aparecem no backup (o line
+# profile 0 da SENTO SE usa os DBA 0 e 2), mas existem. Criar começa no 10.
+DBA_PRIMEIRO_LIVRE = 10
+DBA_TIPOS = {
+    'type1': ('fix',),
+    'type2': ('assure',),
+    'type3': ('assure', 'max'),
+    'type4': ('max',),
+}
 _NOME_PERFIL_RE = re.compile(r'^[A-Za-z0-9_.\- ]{1,32}$')
 
 
@@ -442,10 +451,10 @@ def validar_perfis(spec, backup):
     """
     if not isinstance(spec, dict):
         raise ProvisionamentoInvalido('Pedido inválido.')
-    srv, line = spec.get('srv') or {}, spec.get('line') or {}
-    criar_srv, criar_line = bool(srv.get('criar')), bool(line.get('criar'))
-    if not (criar_srv or criar_line):
-        raise ProvisionamentoInvalido('Marque o srv profile, o line profile ou os dois.')
+    srv, line, dba = spec.get('srv') or {}, spec.get('line') or {}, spec.get('dba') or {}
+    criar_srv, criar_line, criar_dba = bool(srv.get('criar')), bool(line.get('criar')), bool(dba.get('criar'))
+    if not (criar_srv or criar_line or criar_dba):
+        raise ProvisionamentoInvalido('Marque o que criar: DBA, srv profile e/ou line profile.')
 
     def _nome(valor, tipo):
         nome = str(valor or '').strip()
@@ -454,7 +463,19 @@ def validar_perfis(spec, backup):
                 f'Nome do {tipo} inválido: "{nome}" (até 32 letras, números, espaço, _ . -).')
         return nome
 
-    avisos, norm = [], {'srv': None, 'line': None}
+    avisos, norm = [], {'srv': None, 'line': None, 'dba': None}
+    if criar_dba:
+        did = _inteiro(dba.get('id'), 'ID do DBA profile', DBA_PRIMEIRO_LIVRE, 1024)
+        if did in backup.get('dbas', {}):
+            raise ProvisionamentoInvalido(
+                f'O DBA profile {did} já existe ("{backup["dbas"][did]}") — escolha-o na lista ou outro ID.')
+        tipo = dba.get('tipo') or 'type4'
+        if tipo not in DBA_TIPOS:
+            raise ProvisionamentoInvalido(f'Tipo de DBA desconhecido: "{tipo}".')
+        banda = {k: _inteiro(dba.get(k), f'DBA {k} (kbps)', 128, 10_000_000) for k in DBA_TIPOS[tipo]}
+        if tipo == 'type3' and banda['max'] < banda['assure']:
+            raise ProvisionamentoInvalido('No DBA type3 o max precisa ser maior ou igual ao assure.')
+        norm['dba'] = {'id': did, 'nome': _nome(dba.get('nome'), 'DBA profile'), 'tipo': tipo, **banda}
     if criar_srv:
         sid = _inteiro(srv.get('id'), 'ID do srv profile', 0, 8192)
         if sid in backup['srvs']:
@@ -478,11 +499,15 @@ def validar_perfis(spec, backup):
         if len(vlans) > MAX_GEMS_PERFIL:
             raise ProvisionamentoInvalido(
                 f'{len(vlans)} VLANs — o line profile comporta no máximo {MAX_GEMS_PERFIL} GEMs.')
-        dba = _inteiro(line.get('dba'), 'DBA profile', 0, 1024)
-        if backup.get('dbas') and dba not in backup['dbas']:
-            avisos.append(f'DBA profile {dba} não está no backup.')
+        if norm['dba'] and str(line.get('dba')) in ('novo', ''):
+            dba_id = norm['dba']['id']
+        else:
+            dba_id = _inteiro(line.get('dba'), 'DBA profile', 0, 1024)
+            if dba_id >= DBA_PRIMEIRO_LIVRE and dba_id not in backup.get('dbas', {}) and not (
+                    norm['dba'] and norm['dba']['id'] == dba_id):
+                avisos.append(f'DBA profile {dba_id} não está no backup.')
         norm['line'] = {'id': lid, 'nome': _nome(line.get('nome'), 'line profile'),
-                        'tcont': _inteiro(line.get('tcont') or 1, 'T-CONT', 1, 7), 'dba': dba,
+                        'tcont': _inteiro(line.get('tcont') or 1, 'T-CONT', 1, 7), 'dba': dba_id,
                         'gems': _alocar_gems(vlans, spec.get('gem_igual_vlan', True) is not False)}
     return norm, avisos
 
@@ -490,6 +515,11 @@ def validar_perfis(spec, backup):
 def comandos_perfis(norm):
     """Os blocos de configuração, no formato do modelo do operador."""
     cmds = []
+    if norm.get('dba'):
+        d = norm['dba']
+        banda = ' '.join(f'{k} {d[k]}' for k in DBA_TIPOS[d['tipo']])
+        # Formato do backup: dba-profile add profile-id 10 profile-name "DBA_PROFILE" type4 max 1000000
+        cmds.append(f'dba-profile add profile-id {d["id"]} profile-name "{d["nome"]}" {d["tipo"]} {banda}')
     if norm['srv']:
         s = norm['srv']
         cmds += [f'ont-srvprofile gpon profile-id {s["id"]} profile-name "{s["nome"]}"',
@@ -507,6 +537,8 @@ def comandos_perfis(norm):
 def checagens_perfis(norm):
     """Leituras feitas antes de criar: o perfil não pode existir na OLT."""
     out = []
+    if norm.get('dba'):
+        out.append(f'display dba-profile profile-id {norm["dba"]["id"]}')
     if norm['srv']:
         out.append(f'display ont-srvprofile gpon profile-id {norm["srv"]["id"]}')
     if norm['line']:
@@ -518,7 +550,7 @@ def perfil_existe(saida):
     """True/False pela resposta do `display ont-*profile` (conferida na
     SENTO SE: "Failure: The line profile does not exist" / "Profile-ID :300").
     None quando a saída não diz nem uma coisa nem outra: aí nada é criado."""
-    if re.search(r'profile does not exist', saida or '', re.IGNORECASE):
+    if re.search(r'does not exist', saida or '', re.IGNORECASE):
         return False
     if re.search(r'Profile-ID\s*:\s*\d+', saida or '', re.IGNORECASE):
         return True

@@ -506,3 +506,37 @@ class ProvisionarTranslateTest(SimpleTestCase):
         _, avisos = op.validar_item(_item(modo='translate', line=20, servicos=[
             {'gem': 9, 'user_vlan': 101, 'vlan': 300}]), INVENTARIO, self.bk)
         self.assertIn('não tem o GEM 9', avisos[0])
+
+
+class DbaNovoTest(SimpleTestCase):
+    def setUp(self):
+        self.bk = op.parse_backup(BACKUP_TRANSLATE)
+
+    def test_cria_dba_antes_do_line_e_usa_o_id(self):
+        norm, avisos = op.validar_perfis(_spec(
+            line={'criar': True, 'id': 21, 'nome': 'L', 'tcont': 1, 'dba': 'novo'},
+            dba={'criar': True, 'id': 11, 'nome': 'DBA-TRANSLATE', 'tipo': 'type4', 'max': 1024000}), self.bk)
+        self.assertEqual(avisos, [])
+        cmds = op.comandos_perfis(norm)
+        self.assertEqual(cmds[0], 'dba-profile add profile-id 11 profile-name "DBA-TRANSLATE" type4 max 1024000')
+        self.assertIn('tcont 1 dba-profile-id 11', cmds)
+        self.assertEqual(op.checagens_perfis(norm)[0], 'display dba-profile profile-id 11')
+
+    def test_type3_e_recusas(self):
+        norm, _ = op.validar_perfis(_spec(dba={'criar': True, 'id': 12, 'nome': 'D', 'tipo': 'type3',
+                                               'assure': 2048, 'max': 4096}), self.bk)
+        self.assertTrue(op.comandos_perfis(norm)[0].endswith('type3 assure 2048 max 4096'))
+        for dba in ({'criar': True, 'id': 10, 'nome': 'D', 'tipo': 'type4', 'max': 1024},   # já existe
+                    {'criar': True, 'id': 5, 'nome': 'D', 'tipo': 'type4', 'max': 1024},    # padrão 0–9
+                    {'criar': True, 'id': 12, 'nome': 'D', 'tipo': 'type9', 'max': 1024},
+                    {'criar': True, 'id': 12, 'nome': 'D', 'tipo': 'type3', 'assure': 4096, 'max': 1024}):
+            with self.subTest(dba=dba), self.assertRaises(op.ProvisionamentoInvalido):
+                op.validar_perfis(_spec(dba=dba), self.bk)
+
+    def test_dba_padrao_nao_avisa(self):
+        _, avisos = op.validar_perfis(_spec(line={'criar': True, 'id': 21, 'nome': 'L', 'dba': 2}), self.bk)
+        self.assertEqual(avisos, [])
+
+    def test_dba_inexistente_na_olt(self):
+        self.assertFalse(op.perfil_existe('  Failure: The DBA profile does not exist'))
+        self.assertTrue(op.perfil_existe('  Profile-name :  DBA_PROFILE\n  Profile-ID:               10'))
