@@ -1243,6 +1243,7 @@
             <div id="sp-tab-hist" class="sp-tab" onclick="spTab('hist')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.06);border-bottom:2px solid transparent;">Histórico</div>
             <div id="sp-tab-output" class="sp-tab" onclick="spTab('output')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.06);border-bottom:2px solid transparent;">Output</div>
             <div id="sp-tab-cgnat" class="sp-tab" onclick="spTab('cgnat')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.06);border-bottom:2px solid transparent;" title="Gerador de CGNAT MikroTik v6/v7">CGNAT</div>
+            <div id="sp-tab-onu" class="sp-tab" onclick="spTab('onu')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.06);border-bottom:2px solid transparent;" title="Provisionar ONU/ONT em OLT Huawei — individual ou em massa">ONU</div>
         </div>
 
         <!-- Tab: Executar -->
@@ -1319,6 +1320,51 @@
                     <button onclick="cgColarTerminal()" style="flex:1;padding:8px;background:rgba(63,185,80,.12);border:1px solid #3fb950;color:#3fb950;border-radius:4px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;">▶ Colar no terminal</button>
                     <button onclick="cgCopiarTerminal()" style="padding:8px 12px;background:transparent;border:1px solid #30363d;color:#c9d1d9;border-radius:4px;font-family:inherit;font-size:12px;cursor:pointer;">Copiar</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Tab: ONU (provisionamento OLT Huawei — clientes/olt_provisionamento.py) -->
+        <style>
+            #sp-pane-onu .op-in { width:100%; background:#0d1117; border:1px solid rgba(255,255,255,.08); border-radius:4px; color:#e6edf3; font-family:inherit; font-size:11px; padding:5px 6px; outline:none; box-sizing:border-box; }
+            #sp-pane-onu .op-lbl { font-size:9px; color:#7d8590; display:block; margin-bottom:2px; letter-spacing:.5px; }
+            #sp-pane-onu .op-btn { padding:8px; background:rgba(255,165,0,.15); border:1px solid #ffa500; color:#ffa500; border-radius:4px; font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+            #sp-pane-onu .op-btn:disabled { opacity:.5; cursor:default; }
+            #sp-pane-onu .op-btn.sec { background:transparent; border-color:#30363d; color:#c9d1d9; font-weight:400; }
+            #sp-pane-onu .op-btn.ok { background:rgba(63,185,80,.12); border-color:#3fb950; color:#3fb950; }
+            #sp-pane-onu .op-card { border:1px solid #30363d; border-radius:6px; padding:8px; display:flex; flex-direction:column; gap:6px; background:#0d1117; }
+            #sp-pane-onu .op-card.off { opacity:.5; }
+            #sp-pane-onu .op-card-top { display:flex; align-items:center; gap:8px; font-size:11px; color:#e6edf3; }
+            #sp-pane-onu .op-grid { display:grid; grid-template-columns: 70px 1fr 1fr 54px 1fr; gap:6px; }
+            #sp-pane-onu .op-orig { font-size:10px; color:#7d8590; }
+            #sp-pane-onu .op-st { margin-left:auto; font-size:10px; padding:1px 6px; border-radius:8px; border:1px solid #30363d; color:#7d8590; white-space:nowrap; }
+            #sp-pane-onu .op-st.sucesso { color:#3fb950; border-color:#3fb950; }
+            #sp-pane-onu .op-st.parcial, #sp-pane-onu .op-st.ignorada { color:#d29922; border-color:#d29922; }
+            #sp-pane-onu .op-st.erro { color:#ff5555; border-color:#ff5555; }
+            #sp-pane-onu .op-st.andamento { color:#58a6ff; border-color:#58a6ff; }
+            #sp-pane-onu pre { background:#0d1117; border:1px solid #30363d; border-radius:4px; padding:8px; font-size:10px; color:#c9d1d9; max-height:260px; overflow:auto; white-space:pre-wrap; margin:0; }
+            @media (max-width: 560px) { #sp-pane-onu .op-grid { grid-template-columns: 1fr 1fr 1fr; } }
+        </style>
+        <div id="sp-pane-onu" style="flex:1;overflow-y:auto;padding:14px;display:none;flex-direction:column;gap:10px;">
+            <div style="font-size:10px;color:#7d8590;">Provisiona ONU/ONT em <b>OLT Huawei</b> (MA5600T/MA5800) — o equipamento é o selecionado na aba Executar. VLAN, line/srv profile e gemport são sugeridos pelo backup (maioria da PON); o ONT-ID é o que a OLT devolver no <code>ont add</code>.</div>
+            <div id="opInfo" style="font-size:11px;color:#c9d1d9;"></div>
+            <div style="display:flex;gap:8px;">
+                <button class="op-btn" id="opBtnBuscar" onclick="opBuscar()" style="flex:1;">🔍 Buscar ONUs pendentes</button>
+            </div>
+            <div id="opMsg" style="font-size:11px;"></div>
+            <div id="opLote" style="display:none;flex-direction:column;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;font-size:11px;color:#c9d1d9;">
+                    <label style="display:flex;align-items:center;gap:4px;"><input type="checkbox" id="opTodas" onchange="opMarcarTodas(this.checked)" checked> Todas</label>
+                    <div style="flex:1;min-width:160px;"><span class="op-lbl">MODO PARA AS MARCADAS</span>
+                        <select class="op-in" id="opModoTodas" onchange="opAplicarModo(this.value)"><option value="">— manter o de cada uma —</option></select></div>
+                </div>
+                <div id="opLista" style="display:flex;flex-direction:column;gap:8px;"></div>
+                <div style="display:flex;gap:8px;">
+                    <button class="op-btn sec" onclick="opPreview()" style="flex:1;">👁 Pré-visualizar comandos</button>
+                    <button class="op-btn ok" id="opBtnExec" onclick="opExecutar()" style="flex:1;">▶ Provisionar</button>
+                </div>
+                <div id="opAvisos" style="font-size:11px;"></div>
+                <pre id="opPreviewBox" style="display:none;"></pre>
+                <pre id="opLog" style="display:none;"></pre>
             </div>
         </div>
 
@@ -3373,6 +3419,7 @@
                 }
             }
             if (spAcesoId) spCarregarHistorico(spAcesoId);
+            if (document.getElementById('sp-pane-onu')?.style.display === 'flex') opCarregarInventario();
         };
 
         // ── Abrir/Fechar ──
@@ -3389,16 +3436,17 @@
 
         // ── Tab ──
         window.spTab = function(tab) {
-            ['exec','hist','output','cgnat'].forEach(t => {
+            ['exec','hist','output','cgnat','onu'].forEach(t => {
                 const pane = document.getElementById(`sp-pane-${t}`);
                 const tabEl = document.getElementById(`sp-tab-${t}`);
                 if (!pane || !tabEl) return;
                 const ativo = t === tab;
                 pane.style.display = ativo ? 'flex' : 'none';
-                if (t === 'exec' || t === 'cgnat') pane.style.flexDirection = ativo ? 'column' : '';
+                if (t === 'exec' || t === 'cgnat' || t === 'onu') pane.style.flexDirection = ativo ? 'column' : '';
                 tabEl.style.color = ativo ? '#ffa500' : '#555';
                 tabEl.style.borderBottom = ativo ? '2px solid #ffa500' : '2px solid transparent';
             });
+            if (tab === 'onu') opCarregarInventario();
         };
 
         // ── Carregar scripts ──
@@ -3681,6 +3729,229 @@
                 await new Promise(r => setTimeout(r, 60));
             }
             t.terminal.focus();
+        };
+
+        // ── ONU: provisionamento em OLT Huawei (clientes/onu_prov_views.py) ──
+        let opInv = null, opInvAcesso = null, opOnus = [], opRodando = false;
+
+        function opAcessoId() {
+            const sel = document.getElementById('spAcesoSelect');
+            return sel && sel.value ? parseInt(sel.value) : null;
+        }
+
+        async function opFetchJson(url, opts) {
+            const r = await fetch(url, opts);
+            const ct = r.headers.get('content-type') || '';
+            // Sessão expirada vira 302 → página de login em HTML.
+            if (!ct.includes('json')) throw new Error('Sessão expirada? Recarregue a página.');
+            const j = await r.json();
+            if (!r.ok) throw new Error(j.error || r.statusText);
+            return j;
+        }
+
+        async function opCarregarInventario() {
+            const id = opAcessoId();
+            const info = document.getElementById('opInfo');
+            const btn = document.getElementById('opBtnBuscar');
+            if (!id) { info.innerHTML = '<span style="color:#d29922">Selecione a OLT na aba Executar.</span>'; btn.disabled = true; return; }
+            if (opInv && opInvAcesso === id) return;
+            info.textContent = 'Lendo perfis do backup...';
+            btn.disabled = true;
+            opInv = null; opOnus = [];
+            document.getElementById('opLote').style.display = 'none';
+            document.getElementById('opMsg').innerHTML = '';
+            try {
+                opInv = await opFetchJson(`/clientes/acessos/${id}/onu-prov/`);
+                opInvAcesso = id;
+                info.innerHTML = `<b>${_escHtml(opInv.host.nome)}</b> ${_escHtml(opInv.host.ip)} · ${_escHtml(opInv.modelo)} · `
+                    + `${opInv.lines.length} line / ${opInv.srvs.length} srv profiles · backup ${_escHtml(opInv.data_backup)}`;
+                const sel = document.getElementById('opModoTodas');
+                sel.innerHTML = '<option value="">— manter o de cada uma —</option>'
+                    + opInv.modos.map(m => `<option value="${m.chave}">${_escHtml(m.label)}</option>`).join('');
+                btn.disabled = false;
+            } catch (e) {
+                info.innerHTML = `<span style="color:#ff5555">✗ ${_escHtml(e.message)}</span>`;
+            }
+        }
+
+        function opOpcoesPerfil(lista, valor) {
+            let html = valor == null ? '<option value="">—</option>' : '';
+            if (valor != null && !lista.some(p => p.id === valor))
+                html += `<option value="${valor}" selected>${valor} (fora do backup)</option>`;
+            return html + lista.map(p => `<option value="${p.id}" ${p.id === valor ? 'selected' : ''}>${p.id} · ${_escHtml(p.nome)}</option>`).join('');
+        }
+
+        function opRenderLista() {
+            const box = document.getElementById('opLista');
+            box.innerHTML = opOnus.map((o, i) => {
+                const s = o.sugestao || {};
+                const modos = opInv.modos.map(m => `<option value="${m.chave}" ${m.chave === s.modo ? 'selected' : ''}>${m.chave === 'onu' ? 'ONU+ONT' : 'Só ONT'}</option>`).join('');
+                const noBk = o.no_backup ? `<div class="op-orig" style="color:#d29922">⚠ Estava no backup em ${_escHtml(o.no_backup)} (removida depois do backup?)</div>` : '';
+                return `<div class="op-card" id="op-card-${i}">
+                    <div class="op-card-top">
+                        <input type="checkbox" id="op-chk-${i}" checked onchange="document.getElementById('op-card-${i}').classList.toggle('off', !this.checked)">
+                        <b>${_escHtml(o.sn)}</b><span style="color:#7d8590">${_escHtml(o.sn_legivel || '')}</span>
+                        <span style="color:#ffa500">${_escHtml(o.fsp)}</span>
+                        <span style="color:#7d8590">${_escHtml(o.modelo || '')}</span>
+                        <span class="op-st" id="op-st-${i}">pendente</span>
+                    </div>
+                    <div class="op-grid">
+                        <div><span class="op-lbl">VLAN</span><input class="op-in" id="op-vlan-${i}" type="number" min="1" max="4094" value="${s.vlan ?? ''}"></div>
+                        <div><span class="op-lbl">LINE PROFILE</span><select class="op-in" id="op-line-${i}">${opOpcoesPerfil(opInv.lines, s.line)}</select></div>
+                        <div><span class="op-lbl">SRV PROFILE</span><select class="op-in" id="op-srv-${i}">${opOpcoesPerfil(opInv.srvs, s.srv)}</select></div>
+                        <div><span class="op-lbl">GEMPORT</span><input class="op-in" id="op-gem-${i}" type="number" min="0" value="${s.gemport ?? 1}"></div>
+                        <div><span class="op-lbl">MODO</span><select class="op-in" id="op-modo-${i}">${modos}</select></div>
+                    </div>
+                    <div><span class="op-lbl">DESCRIÇÃO (opcional — vira desc "..." no ont add)</span><input class="op-in" id="op-desc-${i}" maxlength="64" placeholder="ex.: login do cliente"></div>
+                    <div class="op-orig">Sugestão: ${_escHtml(s.origem || '')}</div>${noBk}
+                </div>`;
+            }).join('');
+        }
+
+        window.opBuscar = async function() {
+            const id = opAcessoId();
+            if (!id || !opInv) return;
+            const btn = document.getElementById('opBtnBuscar');
+            const msg = document.getElementById('opMsg');
+            btn.disabled = true; btn.textContent = '⏳ Consultando a OLT...';
+            msg.innerHTML = '<span style="color:#7d8590">display ont autofind all</span>';
+            document.getElementById('opPreviewBox').style.display = 'none';
+            document.getElementById('opLog').style.display = 'none';
+            document.getElementById('opAvisos').innerHTML = '';
+            try {
+                const j = await opFetchJson(`/clientes/acessos/${id}/onu-prov/autofind/`, {method: 'POST',
+                    headers: {'X-CSRFToken': _getCookie('csrftoken')}});
+                opOnus = j.onus || [];
+                if (!opOnus.length) {
+                    msg.innerHTML = '<span style="color:#3fb950">✓ Nenhuma ONU pendente de provisionamento nesta OLT.</span>';
+                    document.getElementById('opLote').style.display = 'none';
+                    return;
+                }
+                msg.innerHTML = `<span style="color:#c9d1d9">${opOnus.length} ONU(s) pendente(s). Confira os valores e marque as que vai provisionar.</span>`;
+                document.getElementById('opTodas').checked = true;
+                document.getElementById('opModoTodas').value = '';
+                opRenderLista();
+                document.getElementById('opLote').style.display = 'flex';
+            } catch (e) {
+                msg.innerHTML = `<span style="color:#ff5555">✗ ${_escHtml(e.message)}</span>`;
+            } finally {
+                btn.disabled = false; btn.textContent = '🔍 Buscar ONUs pendentes';
+            }
+        };
+
+        window.opMarcarTodas = function(v) {
+            opOnus.forEach((o, i) => {
+                const c = document.getElementById(`op-chk-${i}`);
+                if (c) { c.checked = v; document.getElementById(`op-card-${i}`).classList.toggle('off', !v); }
+            });
+        };
+
+        window.opAplicarModo = function(v) {
+            if (!v) return;
+            opOnus.forEach((o, i) => {
+                if (document.getElementById(`op-chk-${i}`)?.checked) document.getElementById(`op-modo-${i}`).value = v;
+            });
+        };
+
+        function opItens() {
+            const itens = [];
+            opOnus.forEach((o, i) => {
+                if (!document.getElementById(`op-chk-${i}`)?.checked) return;
+                const v = k => document.getElementById(`op-${k}-${i}`).value.trim();
+                itens.push({_i: i, sn: o.sn, slot: o.slot, porta: o.porta, vlan: v('vlan'), line: v('line'),
+                            srv: v('srv'), gemport: v('gem'), modo: v('modo'), desc: v('desc')});
+            });
+            return itens;
+        }
+
+        async function opPedirPreview(itens) {
+            return opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-prov/executar/`, {method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
+                body: JSON.stringify({preview: true, itens})});
+        }
+
+        function opMostrarAvisos(avisos) {
+            document.getElementById('opAvisos').innerHTML = (avisos || []).map(a => `<div style="color:#d29922">⚠ ${_escHtml(a)}</div>`).join('');
+        }
+
+        window.opPreview = async function() {
+            const itens = opItens();
+            const box = document.getElementById('opPreviewBox');
+            if (!itens.length) { uiAlert('Marque pelo menos uma ONU.'); return; }
+            try {
+                const j = await opPedirPreview(itens);
+                opMostrarAvisos(j.avisos);
+                box.textContent = j.onus.map(o => `# ${o.sn}\n` + o.comandos.join('\n')).join('\n\n')
+                    + '\n\n# {ONT_ID} = ID que a OLT devolver no "ont add" de cada ONU';
+                box.style.display = '';
+            } catch (e) {
+                opMostrarAvisos([]);
+                document.getElementById('opAvisos').innerHTML = `<div style="color:#ff5555">✗ ${_escHtml(e.message)}</div>`;
+                box.style.display = 'none';
+            }
+        };
+
+        window.opExecutar = async function() {
+            if (opRodando) return;
+            const itens = opItens();
+            if (!itens.length) { uiAlert('Marque pelo menos uma ONU.'); return; }
+            let prev;
+            try { prev = await opPedirPreview(itens); }
+            catch (e) { document.getElementById('opAvisos').innerHTML = `<div style="color:#ff5555">✗ ${_escHtml(e.message)}</div>`; return; }
+            opMostrarAvisos(prev.avisos);
+            const avisosHtml = (prev.avisos || []).length
+                ? `<br><br><span style="color:#d29922">${prev.avisos.length} aviso(s) do backup — confira abaixo do botão.</span>` : '';
+            const ok = await uiConfirm({tipo: 'aviso', titulo: 'Provisionar ONU(s)?', btnLabel: `Provisionar ${itens.length}`,
+                msgHtml: `Enviar <b>ont add</b> + <b>service-port</b> de <b>${itens.length}</b> ONU(s) para `
+                    + `<b>${_escHtml(opInv.host.nome)}</b> (${_escHtml(opInv.host.ip)})?${avisosHtml}`});
+            if (!ok) return;
+
+            opRodando = true;
+            const btn = document.getElementById('opBtnExec');
+            btn.disabled = true; btn.textContent = '⏳ Provisionando...';
+            const log = document.getElementById('opLog');
+            log.textContent = ''; log.style.display = '';
+            const porSn = {};
+            itens.forEach(it => { porSn[it.sn] = it._i; const st = document.getElementById(`op-st-${it._i}`); st.className = 'op-st'; st.textContent = 'na fila'; });
+            const linha = t => { log.textContent += t + '\n'; log.scrollTop = log.scrollHeight; };
+            const marcar = (sn, cls, txt) => { const st = document.getElementById(`op-st-${porSn[sn]}`); if (st) { st.className = 'op-st ' + cls; st.textContent = txt; } };
+
+            try {
+                const resp = await fetch(`/clientes/acessos/${opAcessoId()}/onu-prov/executar/`, {method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
+                    body: JSON.stringify({preview: false, itens})});
+                if (!resp.ok || !(resp.headers.get('content-type') || '').includes('event-stream')) {
+                    const j = await resp.json().catch(() => ({error: 'Sessão expirada? Recarregue a página.'}));
+                    linha(`✗ ${j.error || resp.statusText}`); return;
+                }
+                const reader = resp.body.getReader(), dec = new TextDecoder();
+                let buf = '';
+                while (true) {
+                    const {done, value} = await reader.read();
+                    if (done) break;
+                    buf += dec.decode(value, {stream: true});
+                    const partes = buf.split('\n\n'); buf = partes.pop();
+                    for (const p of partes) {
+                        if (!p.startsWith('data:')) continue;
+                        let ev; try { ev = JSON.parse(p.slice(5).trim()); } catch (e) { continue; }
+                        if (ev.tipo === 'info') linha(`ℹ ${ev.msg}`);
+                        else if (ev.tipo === 'progresso') { linha(`\n▶ [${ev.idx}/${ev.total}] ${ev.msg}`); marcar(ev.sn, 'andamento', 'enviando...'); }
+                        else if (ev.tipo === 'onu') {
+                            const icone = {sucesso: '✓', parcial: '⚠', ignorada: '↷', erro: '✗'}[ev.status] || '•';
+                            if (ev.comandos) linha(ev.comandos);
+                            linha(`${icone} ${ev.sn}: ${ev.msg}`);
+                            marcar(ev.sn, ev.status, ev.status === 'sucesso' ? `ONT ${ev.ont_id}` : ev.status);
+                        }
+                        else if (ev.tipo === 'erro') linha(`\n✗ ERRO: ${ev.erro}`);
+                        else if (ev.tipo === 'fim') linha(`\n━━ ${ev.sucesso} provisionada(s), ${ev.parcial} parcial(is), ${ev.erro} erro(s), ${ev.ignorada} ignorada(s) ━━`);
+                    }
+                }
+            } catch (e) {
+                linha(`✗ ${e}`);
+            } finally {
+                opRodando = false;
+                btn.disabled = false; btn.textContent = '▶ Provisionar';
+            }
         };
 
         // ── Histórico ──

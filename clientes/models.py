@@ -1769,6 +1769,7 @@ class AcaoOltPon(models.Model):
 
     STATUS = [
         ('sucesso', 'Sucesso'),
+        ('parcial', 'Parcial'),   # provisionar: ONT entrou, serviço falhou
         ('erro',    'Erro'),
     ]
     ACOES = [
@@ -1776,6 +1777,7 @@ class AcaoOltPon(models.Model):
         ('state',     'Estado da porta'),
         ('laser_off', 'Desligar laser'),
         ('laser_on',  'Ligar laser'),
+        ('provisionar', 'Provisionar ONU'),
     ]
 
     acesso         = models.ForeignKey('Acesso', on_delete=models.CASCADE, related_name='acoes_olt_pon')
