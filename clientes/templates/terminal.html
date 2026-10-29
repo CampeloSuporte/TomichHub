@@ -4046,6 +4046,8 @@
             return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;')
                 .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
+        // "distancia" acha "Distância"
+        function semAcento(t) { return String(t).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
         function lerFamilia(id) { try { return localStorage.getItem('cu-familia-' + id) || ''; } catch (_) { return ''; } }
         function gravarFamilia(id, f) {
             try { f ? localStorage.setItem('cu-familia-' + id, f) : localStorage.removeItem('cu-familia-' + id); } catch (_) {}
@@ -4172,7 +4174,7 @@
                 <div class="cu-grupo${g.altera ? ' altera' : ''}"><h4 ${g.altera ? 'title="Estes comandos alteram o equipamento"' : ''}>${esc(g.titulo)}</h4>${g.comandos.map((c, ci) => {
                     const multi = c.cmd.includes('\n');
                     const cmdHtml = esc(c.cmd).replace(/\{(\w+)\}/g, '<span class="cu-var">{$1}</span>');
-                    return `<div class="cu-item" data-busca="${esc((c.cmd + ' ' + c.desc).toLowerCase())}">
+                    return `<div class="cu-item" data-busca="${esc(semAcento(g.titulo + ' ' + c.cmd + ' ' + c.desc))}">
                         <div class="cu-item-txt">
                             <code>${cmdHtml}</code>
                             <div class="cu-item-desc">${c.conferido ? '<span class="cu-ok" title="Conferido ao vivo neste tipo de equipamento">✓</span>'
@@ -4188,7 +4190,7 @@
         }
 
         window.cuFiltrar = function() {
-            const q = (document.getElementById('cuBusca').value || '').trim().toLowerCase();
+            const q = semAcento((document.getElementById('cuBusca').value || '').trim());
             document.querySelectorAll('#cuCorpo .cu-grupo').forEach(g => {
                 let visiveis = 0;
                 g.querySelectorAll('.cu-item').forEach(it => {

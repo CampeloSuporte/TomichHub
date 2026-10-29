@@ -103,6 +103,13 @@ class GrupoQueAlteraTest(SimpleTestCase):
                 if not g['altera']:
                     self.assertFalse(any(c['cmd'].startswith('set ') for c in g['comandos']), g['titulo'])
 
+    def test_distancia_da_pon_em_cada_versao(self):
+        def cmds(f):
+            g = next(g for g in cu.catalogo(f)['grupos'] if g['titulo'] == '⚠ Distância da PON')
+            return ' '.join(c['cmd'] for c in g['comandos'])
+        self.assertIn('set pon_distance slot {slot} pon {pon}', cmds('fiberhome_6k'))
+        self.assertIn('interface pon 1/{slot}/{pon}', cmds('fiberhome_5k'))
+
     def test_fiberhome_sem_senha_fixa(self):
         texto = repr(cu.FAMILIAS['fiberhome_5k']) + repr(cu.FAMILIAS['fiberhome_6k'])
         self.assertNotIn('infocloud', texto)
