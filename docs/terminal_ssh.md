@@ -538,6 +538,12 @@ sem resultado, Esc), Ctrl+C com e sem seleção, colagem de 1 linha direta, de 3
 confirmação e pelo botão direito, Alt+1, Ctrl+Shift+→, divisor arrastado a 30% com `resize` no PTY,
 empilhar, F6, fonte e F1.
 
+## ⚡ Scripts → aba ONU: provisionar ONU em OLT Huawei — Adicionado em 2026-10-29
+
+Provisionamento de ONU/ONT individual ou em massa (autofind ao vivo, VLAN e perfis
+sugeridos pelo backup, ONT-ID devolvido pela OLT). Detalhes em
+[`olt_provisionamento_onu.md`](olt_provisionamento_onu.md).
+
 ## 💡 Comandos úteis do equipamento — Adicionado em 2026-10-26
 
 Só no terminal web (`clientes/templates/terminal.html`). O link externo e o modal do terminal não

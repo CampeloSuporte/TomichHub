@@ -366,42 +366,12 @@ def executar(acesso, comandos):
     # Import tardio: `views` importa este módulo, então importar no topo daria
     # ciclo (mesmo motivo do import de `vpn_cobre_ip` dentro de
     # `script_views._conectar_script`).
-    from .views import (
-        is_private_ip, criar_ssh_tunnel, vpn_cobre_ip, _executar_comandos_huawei,
-    )
-    from .models import ProxyServer
-
-    import paramiko
+    from .views import _executar_comandos_huawei
 
     tunel = None
     client = None
     try:
-        host = acesso.host
-        porta = int(acesso.porta or 22)
-
-        if is_private_ip(host):
-            proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
-            if proxy:
-                tunel = criar_ssh_tunnel(
-                    {'host': proxy.host, 'porta': proxy.porta,
-                     'usuario': proxy.usuario, 'senha': proxy.senha},
-                    host, porta)
-                host, porta = tunel['local_host'], tunel['local_port']
-            else:
-                tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host)
-                if not tunel_vpn:
-                    return ('IP privado sem proxy SSH ativo e sem túnel OpenVPN cobrindo o host — '
-                            'configure um dos dois na aba "Túneis".'), 'erro'
-                from . import vpn_rota
-                host, porta = vpn_rota.endpoint_local(tunel_vpn, acesso.host, porta)
-
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.connect(hostname=host, port=porta, username=acesso.usuario,
-                       password=acesso.senha, timeout=30, look_for_keys=False,
-                       allow_agent=False, banner_timeout=30)
-        client.get_transport().set_keepalive(10)
-
+        client, tunel = conectar(acesso)
         output = _executar_comandos_huawei(client, comandos)
         # A conexão funcionou, mas a CLI pode ter recusado o comando — quem
         # decide o status é a saída, não a ausência de exceção.
@@ -414,17 +384,65 @@ def executar(acesso, comandos):
         logger.error(f'❌ Erro no diagnóstico PON em {acesso}: {e}')
         return str(e), 'erro'
     finally:
-        if client:
+        desconectar(client, tunel)
+
+
+def conectar(acesso):
+    """Client Paramiko já autenticado na OLT, passando pelo proxy SSH do
+    cliente ou pelo túnel OpenVPN quando o IP é privado. Devolve
+    (client, tunel_ou_None); levanta exceção se não houver caminho.
+    Também usado pelo provisionamento de ONU (`olt_provisionamento`)."""
+    from .views import is_private_ip, criar_ssh_tunnel, vpn_cobre_ip
+    from .models import ProxyServer
+
+    import paramiko
+
+    host = acesso.host
+    porta = int(acesso.porta or 22)
+    tunel = None
+
+    if is_private_ip(host):
+        proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+        if proxy:
+            tunel = criar_ssh_tunnel(
+                {'host': proxy.host, 'porta': proxy.porta,
+                 'usuario': proxy.usuario, 'senha': proxy.senha},
+                host, porta)
+            host, porta = tunel['local_host'], tunel['local_port']
+        else:
+            tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host)
+            if not tunel_vpn:
+                raise ConnectionError(
+                    'IP privado sem proxy SSH ativo e sem túnel OpenVPN cobrindo o host — '
+                    'configure um dos dois na aba "Túneis".')
+            from . import vpn_rota
+            host, porta = vpn_rota.endpoint_local(tunel_vpn, acesso.host, porta)
+
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        client.connect(hostname=host, port=porta, username=acesso.usuario,
+                       password=acesso.senha, timeout=30, look_for_keys=False,
+                       allow_agent=False, banner_timeout=30)
+        client.get_transport().set_keepalive(10)
+    except Exception:
+        desconectar(client, tunel)
+        raise
+    return client, tunel
+
+
+def desconectar(client, tunel):
+    if client:
+        try:
+            client.close()
+        except Exception:
+            pass
+    if tunel:
+        # Mesmo teardown de `realizar_backup`: o túnel é um dict com o
+        # client do proxy e o socket de forwarding, não um objeto com stop().
+        for chave in ('ssh_client', 'server_socket'):
             try:
-                client.close()
+                if chave in tunel:
+                    tunel[chave].close()
             except Exception:
                 pass
-        if tunel:
-            # Mesmo teardown de `realizar_backup`: o túnel é um dict com o
-            # client do proxy e o socket de forwarding, não um objeto com stop().
-            for chave in ('ssh_client', 'server_socket'):
-                try:
-                    if chave in tunel:
-                        tunel[chave].close()
-                except Exception:
-                    pass

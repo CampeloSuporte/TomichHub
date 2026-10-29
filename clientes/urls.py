@@ -7,6 +7,7 @@ from . import script_views as sv
 from . import cgnat_views as cgv
 from . import hotspot_views as hv
 from . import bgp_views as bgpv
+from . import onu_prov_views as onuv
 
 urlpatterns = [
     path('dashboard/', views.cliente_dashboard, name='cliente_dashboard'),
@@ -147,6 +148,10 @@ urlpatterns = [
     # Portas PON de OLT Huawei (inventário do backup + display/laser ao vivo)
     path('acessos/<int:acesso_id>/olt-pon/', views.olt_pon_acesso, name='olt_pon_acesso'),
     path('acessos/<int:acesso_id>/olt-pon/executar/', views.olt_pon_executar, name='olt_pon_executar'),
+    # Provisionamento de ONU/ONT em OLT Huawei (aba ONU do painel ⚡ Scripts)
+    path('acessos/<int:acesso_id>/onu-prov/', onuv.onu_prov_inventario, name='onu_prov_inventario'),
+    path('acessos/<int:acesso_id>/onu-prov/autofind/', onuv.onu_prov_autofind, name='onu_prov_autofind'),
+    path('acessos/<int:acesso_id>/onu-prov/executar/', onuv.onu_prov_executar, name='onu_prov_executar'),
 
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/(?P<porta>[0-9]+)/(?P<scheme>https?)(?P<path>/.*)?$', views.proxy_web_acesso, name='proxy_web_acesso'),
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/?$', views.proxy_web_acesso, name='proxy_web_acesso_legacy'),

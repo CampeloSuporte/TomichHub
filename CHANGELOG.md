@@ -5,6 +5,26 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-29 (Provisionamento de ONU Huawei)
+
+### Adicionado
+
+- **⚡ Scripts → aba ONU: provisionamento de ONU/ONT em OLT Huawei, individual ou em massa.**
+  "Buscar ONUs pendentes" roda `display ont autofind all` ao vivo. Cada ONU vem com VLAN, line/srv
+  profile, gemport e modo sugeridos pela maioria da PON no backup (o srv profile segue o mesmo
+  vendor: na SENTO SE as Huawei usam o 1001 "adaptive"). Dois modos: genérico ONU + ONT (com
+  `native-vlan`) e só ONT. O `ont add` vai sem ID, a OLT devolve o `ONTID` e o `native-vlan`/
+  `service-port` usam esse ID. O lote relê o autofind antes de gravar, uma falha não para as
+  outras ONUs, há um lote por OLT de cada vez e cada ONU é auditada em `AcaoOltPon`
+  (`provisionar`, status novo `parcial`; migração 0126). `docs/olt_provisionamento_onu.md`.
+
+### Alterado
+
+- `olt_pon.executar`: a conexão (proxy/OpenVPN + Paramiko) foi para `olt_pon.conectar`/`desconectar`,
+  reaproveitada pelo provisionamento. O comportamento é o mesmo.
+
+---
+
 ## [Não publicado] — 2026-10-28 (💡 Comandos úteis: FiberHome)
 
 ### Adicionado

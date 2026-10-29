@@ -145,6 +145,11 @@ A conexão respeita IP privado do mesmo jeito que o backup: ProxyServer ativo do
 cliente vira túnel SSH; sem proxy, confere se um túnel OpenVPN cobre o host;
 sem nenhum dos dois, recusa com mensagem em vez de tentar e travar.
 
+Desde 2026-10-29 essa conexão está em `olt_pon.conectar(acesso)` /
+`desconectar(client, tunel)`, reaproveitada pelo provisionamento de ONU
+(`docs/olt_provisionamento_onu.md`). O `executar` continua devolvendo o erro de
+conexão como output, com status `erro`, sem levantar exceção.
+
 ## Detecção: só OLT Huawei
 
 69 acessos deste ambiente têm `interface gpon` no backup — mas 51 são ZTE,
