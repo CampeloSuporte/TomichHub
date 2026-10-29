@@ -184,6 +184,13 @@ service-port vlan 1553 gpon 0/1/0 ont {ONT_ID} gemport 1 multi-service user-vlan
 service-port vlan 3869 gpon 0/1/0 ont {ONT_ID} gemport 1 multi-service user-vlan 3869 tag-transform transparent
 ```
 
+**VLANs à mão no cartão:** nos dois modos (Passagem VLANs e Translate), embaixo da
+lista há um campo **+ VLAN** (aceita `1553,3869` ou `101-105`) e o GEM das VLANs
+adicionadas (padrão: o GEMPORT do cartão). Assim dá para passar 2+ VLANs numa ONU
+única mesmo quando o line profile não tem os gem mappings no backup (ex.: perfil
+criado depois do backup, ou o line 10 do exemplo). As linhas manuais aparecem como
+"(manual)" e têm ✕; um GEM ausente do perfil gera só aviso.
+
 O modo **Translate** também aceita várias VLANs: marque mais linhas (GEM · user-vlan →
 VLAN da OLT). Um GEM pode levar várias VLANs; só não pode repetir a mesma VLAN no mesmo
 GEM. Quando a maioria das ONTs da PON tem service-port `transparent`, a sugestão já
