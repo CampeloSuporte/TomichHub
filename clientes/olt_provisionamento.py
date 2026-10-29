@@ -413,12 +413,42 @@ class ShellOlt:
         return '\n'.join(linhas).strip('\n')
 
     def fechar(self):
+        """Logout de verdade: `quit` até a OLT encerrar a sessão.
+
+        Um `quit` só, no modo config, só volta um nível — e fechar o canal SSH
+        assim deixa a VTY presa na MA5800 até o idle-timeout. Em 29/10/2026 os
+        testes do dia encheram as VTYs da SENTO SE e toda conexão nova passou
+        a receber `ChannelException(4, 'Resource shortage')`.
+        """
         try:
-            self.channel.send('quit\n')
-            time.sleep(0.3)
-            self.channel.close()
+            for _ in range(5):
+                if self.channel.closed or self.channel.exit_status_ready():
+                    break
+                self.channel.send('quit\n')
+                time.sleep(0.6)
+                saida = ''
+                while self.channel.recv_ready():
+                    saida += self.channel.recv(65536).decode('utf-8', errors='replace')
+                if re.search(r'\(y/n\)', saida, re.IGNORECASE):
+                    self.channel.send('y\n')
+                    time.sleep(0.6)
         except Exception:
             pass
+        finally:
+            try:
+                self.channel.close()
+            except Exception:
+                pass
+
+
+def mensagem_de_falha(erro):
+    """Texto para o operador a partir da exceção de conexão."""
+    texto = str(erro)
+    if 'Resource shortage' in texto:
+        return ('A OLT aceitou o login mas recusou abrir a sessão (Resource shortage): '
+                'as VTYs estão todas ocupadas. Feche sessões esquecidas (terminal, outros '
+                'usuários) ou aguarde o idle-timeout da OLT e tente de novo.')
+    return texto
 
 
 def _id_da_resposta(shell, it, resposta):
@@ -510,7 +540,7 @@ def provisionar(acesso, itens):
                           if falhas else f'ONT {ont_id} provisionada'}
     except Exception as e:
         logger.exception(f'Provisionamento de ONU em {acesso}')
-        yield 'erro', {'erro': str(e)}
+        yield 'erro', {'erro': mensagem_de_falha(e)}
     finally:
         if shell:
             shell.fechar()

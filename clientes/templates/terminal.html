@@ -3365,6 +3365,13 @@
         let spScripts = [];
         let spScriptAtual = null;
         let spExecutando = false;
+        let spFamiliaAtual = '';
+        // Entradas do menu que não são ScriptCRM: abrem a aba ONU
+        // (provisionamento Huawei, clientes/onu_prov_views.py).
+        const SP_ONU_HUAWEI = [
+            {id: 'onu-unico', nome: 'Huawei — Provisionar ONU (único)'},
+            {id: 'onu-massa', nome: 'Huawei — Provisionar ONUs em massa'},
+        ];
 
         // ── Carregar equipamentos disponíveis ──
         async function spCarregarAcessos() {
@@ -3382,7 +3389,9 @@
                     opt.value = a.id;
                     opt.dataset.tipo = a.tipo || '';
                     opt.dataset.host = a.host || '';
-                    opt.textContent = `${a.tipo} — ${a.host} (${a.cliente_nome})`;
+                    opt.dataset.fabricante = a.fabricante || '';
+                    opt.dataset.familia = a.familia || '';
+                    opt.textContent = `${a.tipo} — ${a.host}${a.modelo ? ' · ' + a.modelo : ''} (${a.cliente_nome})`;
                     sel.appendChild(opt);
                 });
                 // Tenta pré-selecionar o terminal ativo
@@ -3403,12 +3412,15 @@
             const opt = sel ? sel.options[sel.selectedIndex] : null;
             const label = document.getElementById('spAcesoLabel');
             if (label) label.textContent = opt && opt.value ? (opt.dataset.host || opt.dataset.tipo) : '';
-            // Infere fabricante pelo tipo
+            spFamiliaAtual = opt && opt.value ? (opt.dataset.familia || '') : '';
+            // Fabricante pelo Modelo cadastrado (vem do servidor); o palpite
+            // pelo nome do acesso fica só para host sem modelo.
             if (opt && opt.value) {
                 const tipo = (opt.dataset.tipo || '').toLowerCase();
                 const selFab = document.getElementById('spFabricante');
                 if (selFab) {
-                    if      (tipo.includes('zte'))                               selFab.value = 'zte';
+                    if      (opt.dataset.fabricante)                             selFab.value = opt.dataset.fabricante;
+                    else if (tipo.includes('zte'))                               selFab.value = 'zte';
                     else if (tipo.includes('huawei'))                            selFab.value = 'huawei';
                     else if (tipo.includes('cisco'))                             selFab.value = 'cisco';
                     else if (tipo.includes('mikrotik')||tipo.includes('router')) selFab.value = 'mikrotik';
@@ -3468,6 +3480,15 @@
             if (!sel) return;
             const val = sel.value;
             sel.innerHTML = '<option value="">— Selecione um script —</option>';
+            const fab = document.getElementById('spFabricante')?.value || '';
+            if (spFamiliaAtual === 'huawei_olt' || fab === 'huawei') {
+                SP_ONU_HUAWEI.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = `[Huawei] ${s.nome.replace('Huawei — ', '')}`;
+                    sel.appendChild(opt);
+                });
+            }
             scripts.forEach(s => {
                 const opt = document.createElement('option');
                 opt.value = s.id;
@@ -3485,6 +3506,17 @@
             const sel = document.getElementById('spScriptSelect');
             const id = sel?.value;
             if (!id) { spScriptAtual = null; renderParamsForm([]); return; }
+            if (id.startsWith('onu-')) {
+                spScriptAtual = null;
+                renderParamsForm([]);
+                const descBox = document.getElementById('spDescBox');
+                if (descBox) {
+                    descBox.textContent = 'Abre a aba ONU: busca as ONUs pendentes (display ont autofind all) com VLAN e perfis sugeridos pelo backup.';
+                    descBox.style.display = '';
+                }
+                opAbrir(id === 'onu-unico' ? 'unico' : 'massa');
+                return;
+            }
 
             try {
                 const r = await fetch(`/clientes/scripts/${id}/`);
@@ -3550,6 +3582,8 @@
                 uiAlert('Selecione o equipamento alvo no topo do painel.');
                 return;
             }
+            const selScript = document.getElementById('spScriptSelect')?.value || '';
+            if (selScript.startsWith('onu-')) { opAbrir(selScript === 'onu-unico' ? 'unico' : 'massa'); return; }
             if (!spScriptAtual) {
                 uiAlert('Selecione um script.');
                 return;
@@ -3732,7 +3766,16 @@
         };
 
         // ── ONU: provisionamento em OLT Huawei (clientes/onu_prov_views.py) ──
-        let opInv = null, opInvAcesso = null, opOnus = [], opRodando = false;
+        let opInv = null, opInvAcesso = null, opOnus = [], opRodando = false, opSelecao = 'massa';
+
+        // Vindo do menu de scripts: abre a aba e já busca. "Único" deixa só a
+        // primeira ONU marcada.
+        async function opAbrir(selecao) {
+            opSelecao = selecao;
+            spTab('onu');
+            await opCarregarInventario();
+            if (opInv && !document.getElementById('opBtnBuscar').disabled) opBuscar();
+        }
 
         function opAcessoId() {
             const sel = document.getElementById('spAcesoSelect');
@@ -3828,9 +3871,13 @@
                     return;
                 }
                 msg.innerHTML = `<span style="color:#c9d1d9">${opOnus.length} ONU(s) pendente(s). Confira os valores e marque as que vai provisionar.</span>`;
-                document.getElementById('opTodas').checked = true;
+                document.getElementById('opTodas').checked = opSelecao !== 'unico';
                 document.getElementById('opModoTodas').value = '';
                 opRenderLista();
+                if (opSelecao === 'unico') opOnus.forEach((o, i) => { if (i > 0) {
+                    document.getElementById(`op-chk-${i}`).checked = false;
+                    document.getElementById(`op-card-${i}`).classList.add('off'); } });
+                opSelecao = 'massa';
                 document.getElementById('opLote').style.display = 'flex';
             } catch (e) {
                 msg.innerHTML = `<span style="color:#ff5555">✗ ${_escHtml(e.message)}</span>`;

@@ -18,6 +18,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   outras ONUs, há um lote por OLT de cada vez e cada ONU é auditada em `AcaoOltPon`
   (`provisionar`, status novo `parcial`; migração 0126). `docs/olt_provisionamento_onu.md`.
 
+### Corrigido
+
+- **Aba ONU: "Resource shortage" ao buscar as ONUs.** A sessão de provisionamento saía com um
+  `quit` só, o que não fazia logout no modo config, e as VTYs da OLT ficavam presas. Agora ela
+  manda `quit` até a OLT encerrar a sessão, e a recusa aparece como "VTYs ocupadas".
+- **⚡ Scripts não identificava o fabricante.** O fabricante vinha do nome do acesso ("OLT HU
+  SENTO SE" ficava sem fabricante). Agora vem do Modelo cadastrado. Com OLT Huawei, o menu SCRIPT
+  mostra "Provisionar ONU (único)" e "Provisionar ONUs em massa", que abrem a aba ONU.
+
 ### Alterado
 
 - `olt_pon.executar`: a conexão (proxy/OpenVPN + Paramiko) foi para `olt_pon.conectar`/`desconectar`,
