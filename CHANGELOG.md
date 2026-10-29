@@ -16,6 +16,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   PPPoE e bridge, uplink/LAG, gerência/SNMP/syslog, usuários da CLI, backup/restore FTP,
   placas, distância da PON): título laranja e o ▶ pede confirmação. Campos novos `{usuario}`,
   `{senha}`, `{tipo_onu}`, `{placa}`, `{arquivo}`. `docs/terminal_ssh.md`.
+- **Sub-menu de versão FiberHome: 5500 ou 6k.** Com uma OLT FiberHome aberta, o painel mostra
+  os botões "AN5516 · 5500 | AN6000 · 6k" e lista só os comandos da versão escolhida (fica salvo
+  por host). No seletor "Tipo" a FiberHome aparece uma vez só.
 
 ## [Não publicado] — 2026-10-28 (Sala Virtual: remover atendente e conversa privada)
 

@@ -292,6 +292,12 @@
         }
         .cu-familia select { flex: 1; }
         .cu-familia select:focus, .cu-busca:focus, .cu-campo input:focus { outline: none; border-color: #facc15; }
+        .cu-versoes { margin-top: 8px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #7d8590; }
+        .cu-versoes .cu-seg { display: flex; flex: 1; border: 1px solid rgba(255,255,255,.12); border-radius: 4px; overflow: hidden; }
+        .cu-versoes button { flex: 1; background: #0d1117; border: 0; color: #c9d1d9; padding: 5px 8px; font-size: 12px; font-family: inherit; cursor: pointer; }
+        .cu-versoes button + button { border-left: 1px solid rgba(255,255,255,.12); }
+        .cu-versoes button:hover { color: #facc15; }
+        .cu-versoes button.ativo { background: rgba(250,204,21,.14); color: #facc15; font-weight: 600; }
         .cu-aviso { margin-top: 8px; font-size: 11px; color: #e3b341; background: rgba(227,179,65,.08); border: 1px solid rgba(227,179,65,.25); border-radius: 4px; padding: 6px 8px; }
         .cu-aviso code { font-family: 'Cascadia Code','JetBrains Mono','Menlo','Consolas',monospace; color: #facc15; }
         .cu-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; margin-top: 8px; }
@@ -1195,6 +1201,7 @@
                 <span>Tipo</span>
                 <select id="cuFamilia" onchange="cuTrocarFamilia(this.value)"></select>
             </label>
+            <div class="cu-versoes" id="cuVersoes" style="display:none"></div>
             <div class="cu-aviso" id="cuAviso" style="display:none"></div>
             <div class="cu-campos" id="cuCampos"></div>
             <input type="text" class="cu-busca" id="cuBusca" placeholder="Filtrar comandos..." autocomplete="off" spellcheck="false" oninput="cuFiltrar()">
@@ -4053,6 +4060,7 @@
         function mensagem(html) {
             document.getElementById('cuEquip').innerHTML = '';
             document.getElementById('cuFamiliaBox').style.display = 'none';
+            document.getElementById('cuVersoes').style.display = 'none';
             document.getElementById('cuAviso').style.display = 'none';
             document.getElementById('cuCampos').innerHTML = '';
             document.getElementById('cuCorpo').innerHTML = `<div class="cu-vazio">${html}</div>`;
@@ -4121,9 +4129,19 @@
 
             const sel = document.getElementById('cuFamilia');
             sel.innerHTML = (d.detectada ? '' : '<option value="">— escolha o tipo de equipamento —</option>') +
-                d.familias.map(f => `<option value="${f.familia}">${esc(f.nome)}${f.familia === d.detectada ? ' (identificado)' : ''}</option>`).join('');
-            sel.value = cat ? cat.familia : '';
+                d.familias.map(f => `<option value="${f.familia}">${esc(f.nome)}${(f.membros || [f.familia]).includes(d.detectada) ? ' (identificado)' : ''}</option>`).join('');
+            // Família de uma linha com versões aparece pela opção da linha
+            const opcao = cat && d.familias.find(f => (f.membros || [f.familia]).includes(cat.familia));
+            sel.value = opcao ? opcao.familia : '';
             document.getElementById('cuFamiliaBox').style.display = '';
+
+            // Sub-menu de versão quando a linha tem mais de uma (FiberHome 5500 / 6k)
+            const vers = document.getElementById('cuVersoes');
+            const lista = (cat && cat.versoes) || [];
+            vers.style.display = lista.length > 1 ? '' : 'none';
+            vers.innerHTML = lista.length > 1 ? '<span>Versão</span><div class="cu-seg">' + lista.map(v =>
+                `<button type="button" class="${v.familia === cat.familia ? 'ativo' : ''}" onclick="cuTrocarFamilia('${v.familia}')">${esc(v.versao)}</button>`
+            ).join('') + '</div>' : '';
 
             if (!cat) {
                 document.getElementById('cuAviso').style.display = 'none';
