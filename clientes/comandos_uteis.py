@@ -4,10 +4,10 @@ Comandos úteis por família de equipamento — a 💡 do terminal web.
 O terminal identifica o equipamento pelo cadastro (Modelo → fabricante +
 nome; sem modelo, pelo `tipo` do acesso) e mostra os comandos de
 verificação daquela família: sistema, interfaces, sinal óptico, L2,
-roteamento, PON. Os grupos comuns são SOMENTE LEITURA (show/display/print).
-Configuração só entra em grupo cujo título começa com ⚠ (`altera` no
-catálogo): o painel destaca o grupo e o ▶ pede confirmação. O clique só
-digita o comando no terminal do operador; executar é um segundo botão.
+roteamento, PON. Os grupos são assuntos (o painel filtra por eles). Comando
+comum é SOMENTE LEITURA (show/display/print); configuração só entra por
+`_cfg()` (`altera=True`): o painel marca ⚠ e o ▶ pede confirmação. O clique
+só digita o comando no terminal do operador; executar é um segundo botão.
 
 `conferido=True` só para o que foi rodado de verdade num equipamento da
 família (Raisecom em 26/10/2026 num RAX711; o resto vem das funções já
@@ -45,8 +45,13 @@ CAMPOS = {
 _CAMPO_RE = re.compile(r'\{(' + '|'.join(CAMPOS) + r')\}')
 
 
-def _c(cmd, desc, conferido=False):
-    return {'cmd': cmd, 'desc': desc, 'conferido': conferido}
+def _c(cmd, desc, conferido=False, altera=False):
+    return {'cmd': cmd, 'desc': desc, 'conferido': conferido, 'altera': altera}
+
+
+def _cfg(cmd, desc, conferido=False):
+    """Comando que altera o equipamento: ⚠ no painel e ▶ com confirmação."""
+    return _c(cmd, desc, conferido, altera=True)
 
 
 FAMILIAS = {
@@ -363,9 +368,9 @@ FAMILIAS = {
         'nome': 'FiberHome OLT AN5516 (RP1000 / RP1200 / RP1800)',
         'linha': 'FiberHome',
         'versao': 'AN5516 · 5500',
-        'aviso': 'A CLI é por diretórios: `cd onu`, `cd gpononu`, `cd service`… entram e `cd ..` volta. '
-                 'Cada grupo começa com o `cd` do diretório certo. `lll` entra no modo DEBUG. '
-                 'Grupos marcados ⚠ alteram o equipamento — o ▶ pede confirmação.',
+        'aviso': 'A CLI é por diretórios: `cd onu`, `cd gpononu`, `cd service`… entram e `cd ..` volta — '
+                 'cada assunto traz o `cd` antes dos comandos daquele diretório. `lll` entra no modo DEBUG. '
+                 'Comandos com ⚠ alteram o equipamento: o ▶ pede confirmação.',
         'exemplos': {'slot': '1', 'pon': '1', 'onu': '1', 'porta': '19:2', 'vlan': '100',
                      'sn': 'FHTT06ebe2e0', 'mac': '001122aabbcc', 'tipo_onu': '5506-01-a1',
                      'ip': '192.168.1.32', 'arquivo': 'OLT.txt', 'placa': 'gc8b'},
@@ -373,124 +378,124 @@ FAMILIAS = {
             ('Sistema', [
                 _c('terminal length 0', 'Desliga a paginação (em Admin\\service#)'),
                 _c('show cpuusage', 'Uso de CPU da OLT'),
-                _c('show card', 'Placas e estado'),
                 _c('sh auto_save', 'Auto save ligado e período'),
-                _c('show system onusum authed_and_online', 'Total de ONUs autorizadas e online/offline'),
                 _c('list {texto}', 'Procura comandos que contêm o texto'),
                 _c('lll', 'Entra no modo DEBUG (Admin(DEBUG_H)>)'),
-                _c('sh curalarm', 'Alarmes ativos (no modo DEBUG)'),
+                _c('sh curalarm', 'Alarmes ativos (modo DEBUG)'),
                 _c('show debugv', 'Data de compilação do firmware da controladora (modo DEBUG)'),
+                _cfg('set auto_save enable period 1440', 'Auto save a cada 24 h'),
+                _cfg('set save sync enable', 'Sincroniza a configuração entre as controladoras'),
+                _cfg('set power_alarm enable 1', 'Alarme da fonte de energia'),
             ]),
-            ('ONU — diretório onu (RP1000)', [
-                _c('cd onu', 'Entra em Admin\\onu#'),
+            ('Placas', [
+                _c('show card', 'Placas e estado'),
+                _c('show privateip', 'IP privado de acesso aos cards (em Admin\\service#)'),
+                _cfg('set card_auth slot {slot} type {placa}', 'Autoriza a placa no slot'),
+                _cfg('set card_unauth slot {slot}', 'Desautoriza a placa do slot'),
+            ]),
+            ('ONU — consulta', [
+                _c('show system onusum authed_and_online', 'Total de ONUs autorizadas e online/offline'),
+                _c('cd onu', 'Entra em Admin\\onu# (comandos abaixo, RP1000)'),
                 _c('show online slot {slot} pon {pon}', 'ONUs online na PON'),
                 _c('show onu_state slot {slot} pon {pon} onulist {onu}', 'Ativa/desativada (aceita lista: 1,2,3)'),
                 _c('show onu_time slot {slot} pon {pon} onu {onu}', 'Uptime da ONU'),
                 _c('show onu_last_on_and_off_time slot {slot} pon {pon} onu {onu}', 'Última vez que desligou e ligou'),
-                _c('show optic_module slot {slot} pon {pon} onu {onu}', 'Sinal óptico da ONU (RX/TX)'),
-                _c('show optic_module_para slot {slot} pon {pon}', 'Sinal óptico de todas as ONUs da PON'),
                 _c('show onu_vendor_and_equipment_info slot {slot} pon {pon}', 'Modelo, hardware e marca das ONUs da PON'),
                 _c('show onu_ver slot {slot} pon {pon}', 'Versão de software/hardware das ONUs'),
                 _c('show feport_status slot {slot} pon {pon} onu {onu}', 'Estado das portas LAN da ONU'),
-                _c('show mac_list slot {slot} pon {pon} onu {onu} port 1', 'MACs aprendidos na porta LAN 1 da ONU'),
-                _c('show onu_local_manage_config slot {slot} pon {pon} onu {onu}', 'Acesso web/telnet e porta HTTP da ONU'),
                 _c('show energy_saving_cfg slot {slot} pon {pon} onu {onu}', 'Tipos de porta da ONU'),
+                _c('show onu_local_manage_config slot {slot} pon {pon} onu {onu}', 'Acesso web/telnet e porta HTTP da ONU'),
             ]),
-            ('ONU — diretório gpononu', [
+            ('ONU — sinal óptico', [
+                _c('cd onu', 'Entra em Admin\\onu#'),
+                _c('show optic_module slot {slot} pon {pon} onu {onu}', 'RX/TX da ONU'),
+                _c('show optic_module_para slot {slot} pon {pon}', 'RX/TX de todas as ONUs da PON'),
+                _c('cd ..\ncd gponline', 'Vai para Admin\\gponline#'),
+                _c('sh optic_module_par slot {slot} link {pon}', 'TX/RX de todas as ONUs da PON (gponline)'),
+            ]),
+            ('ONU — autorizar / remover', [
                 _c('cd gpononu', 'Entra em Admin\\gpononu#'),
                 _c('sh discovery slot all link all', 'ONUs descobertas e ainda não autorizadas'),
                 _c('sh authorization slot all link all', 'ONUs autorizadas'),
-                _c('show mac_list slot {slot} link {pon} onu {onu} port 0', 'MACs aprendidos na ONU'),
+                _cfg('set authorization slot {slot} link {pon} type {tipo_onu} onuid {onu} phy_id {sn} password null logic_sn fiberhome password fiberhome',
+                     'Autoriza a ONU pelo serial (phy_id)'),
+                _cfg('set whitelist phy_addr address {sn} password null action add', 'Põe a ONU na whitelist'),
+                _cfg('set whitelist phy_addr address {sn} password null action delete slot {slot} link {pon} onu {onu} type {tipo_onu}',
+                     'Remove a ONU (deleta da whitelist)'),
             ]),
-            ('PON — diretório gponline', [
-                _c('cd gponline', 'Entra em Admin\\gponline#'),
-                _c('sh optic_module_par slot {slot} link {pon}', 'TX/RX de todas as ONUs da PON'),
+            ('ONU — PPPoE / bridge', [
+                _c('cd epononu\ncd qinq', 'Entra em Admin\\epononu\\qinq#'),
+                _cfg('set wancfg sl {slot} {pon} {onu} ind 1 mode inter ty r {vlan} 0 nat en qos dis qinq dis 33024 65535 1 '
+                     'dsp pppoe pro dis {usuario} {senha} null auto active en', 'PPPoE: WAN roteada na VLAN'),
+                _cfg('set wanbind sl {slot} {pon} {onu} ind 1 entr 2 fe1 ssid1', 'PPPoE: liga a WAN à LAN 1 e ao SSID 1'),
+                _cfg('apply wancfg slot {slot} {pon} {onu}', 'PPPoE: aplica a WAN'),
+                _cfg('apply wanbind slot {slot} {pon} {onu}', 'PPPoE: aplica o bind'),
+                _cfg('set ep sl {slot} p {pon} o {onu} p 1 serv num 1', 'Bridge: 1 serviço na porta 1'),
+                _cfg('set ep sl {slot} p {pon} o {onu} p 1 serv 1 vlan_m tag 4 33024 {vlan}', 'Bridge: VLAN tagueada no serviço 1'),
+                _cfg('apply onu {slot} {pon} {onu} vlan', 'Bridge: aplica a VLAN'),
+            ]),
+            ('ONU — Wi-Fi / acesso remoto / TR-069', [
+                _c('cd gpononu', 'Entra em Admin\\gpononu#'),
+                _cfg('set wifi_serv_cfg slot {slot} link {pon} onu {onu} wifi disable', 'Desliga o Wi-Fi da ONU'),
+                _cfg('set onu_local_manage_config slot {slot} link {pon} onu {onu} config_enable_switch enable console_switch enable '
+                     'telnet_switch enable web_switch enable web_port 80 web_ani_switch enable tel_ani_switch enable',
+                     'Libera web/telnet da ONU pela WAN'),
+                _cfg('set remote_manage_cfg slot {slot} link {pon} onu {onu} tr069 enable acs_url {texto} acl_user {usuario} '
+                     'acl_pswd {senha} inform enable interval 0 port 30000 user user pswd user',
+                     'TR-069: URL do ACS (no Texto) e usuário/senha do ACS'),
+            ]),
+            ('PON', [
+                _cfg('config\ninterface pon 1/{slot}/{pon}\ndistance max-distance 30 diff-distance 30',
+                     'Distância máxima e diferencial da PON (30 km)'),
+                _cfg('cd gponline\nset pon_interconnection_switch slot {slot} switch enable union_interconnect_switch enable\n'
+                     'set sys_apply_flag 0 apply_sence 0', 'Aceita ONU de outros fabricantes'),
             ]),
             ('MAC / L2', [
                 _c('show mac-address vlan {vlan}', 'MACs da VLAN (em Admin#)'),
                 _c('show mac-address card 0/{slot}', 'MACs da placa PON (em Admin#)'),
                 _c('cd device', 'Entra em Admin\\device#'),
-                _c('show mac_find onu mac_address {mac}', 'Em que slot/PON/ONU está o MAC (Admin\\device#)'),
-                _c('show port {porta}', 'Estado da porta uplink (Admin\\device#)'),
-                _c('sh fdb slot {slot}', 'Tabela MAC da placa (Admin\\fdb#)'),
+                _c('show mac_find onu mac_address {mac}', 'Em que slot/PON/ONU está o MAC'),
+                _c('cd ..\ncd onu', 'Vai para Admin\\onu#'),
+                _c('show mac_list slot {slot} pon {pon} onu {onu} port 1', 'MACs na porta LAN 1 da ONU'),
+                _c('sh fdb slot {slot}', 'Tabela MAC da placa (em Admin\\fdb#)'),
             ]),
-            ('Gerência', [
-                _c('cd service', 'Entra em Admin\\service#'),
-                _c('show privateip', 'IP privado de acesso aos cards'),
-                _c('show port_map', 'Mapa de portas (modo DEBUG)'),
-            ]),
-            ('⚠ Provisionar ONU', [
-                _c('cd gpononu', 'Entra em Admin\\gpononu#'),
-                _c('set authorization slot {slot} link {pon} type {tipo_onu} onuid {onu} phy_id {sn} password null logic_sn fiberhome password fiberhome',
-                   'Autoriza a ONU pelo serial (phy_id)'),
-                _c('set whitelist phy_addr address {sn} password null action add', 'Põe a ONU na whitelist'),
-                _c('set whitelist phy_addr address {sn} password null action delete slot {slot} link {pon} onu {onu} type {tipo_onu}',
-                   'Remove a ONU (deleta da whitelist)'),
-                _c('set wifi_serv_cfg slot {slot} link {pon} onu {onu} wifi disable', 'Desliga o Wi-Fi da ONU'),
-                _c('set onu_local_manage_config slot {slot} link {pon} onu {onu} config_enable_switch enable console_switch enable '
-                   'telnet_switch enable web_switch enable web_port 80 web_ani_switch enable tel_ani_switch enable',
-                   'Libera web/telnet da ONU pela WAN'),
-                _c('set remote_manage_cfg slot {slot} link {pon} onu {onu} tr069 enable acs_url {texto} acl_user {usuario} '
-                   'acl_pswd {senha} inform enable interval 0 port 30000 user user pswd user',
-                   'TR-069: URL do ACS (no Texto) e usuário/senha do ACS'),
-            ]),
-            ('⚠ Serviço da ONU — diretório epononu\\qinq', [
-                _c('cd epononu\ncd qinq', 'Entra em Admin\\epononu\\qinq#'),
-                _c('set wancfg sl {slot} {pon} {onu} ind 1 mode inter ty r {vlan} 0 nat en qos dis qinq dis 33024 65535 1 '
-                   'dsp pppoe pro dis {usuario} {senha} null auto active en', 'WAN PPPoE roteada na VLAN'),
-                _c('set wanbind sl {slot} {pon} {onu} ind 1 entr 2 fe1 ssid1', 'Liga a WAN à LAN 1 e ao SSID 1'),
-                _c('apply wancfg slot {slot} {pon} {onu}', 'Aplica a WAN'),
-                _c('apply wanbind slot {slot} {pon} {onu}', 'Aplica o bind'),
-                _c('set ep sl {slot} p {pon} o {onu} p 1 serv num 1', 'Bridge: 1 serviço na porta 1'),
-                _c('set ep sl {slot} p {pon} o {onu} p 1 serv 1 vlan_m tag 4 33024 {vlan}', 'Bridge: VLAN tagueada no serviço 1'),
-                _c('apply onu {slot} {pon} {onu} vlan', 'Aplica a VLAN da bridge'),
-            ]),
-            ('⚠ Uplink / LAG', [
+            ('Uplink / LAG', [
                 _c('cd device', 'Entra em Admin\\device#'),
-                _c('set uplink port {porta} enable', 'Habilita a porta uplink'),
-                _c('set uplink port {porta} auto_negotiation disable speed 1000m duplex full', 'Força 1G full'),
-                _c('set uplink port {porta} interface_mode sgmii', 'Interface mode SGMII'),
-                _c('set trunking groupno 1 mode lacp', 'LAG 1 em LACP'),
-                _c('set trunking groupno 1 criteria sdmac', 'Balanceamento por MAC origem/destino'),
-                _c('set lacp port {porta} key 1', 'Porta no LACP key 1 (em Admin\\device\\lacp#, depois de `set lacp enable`)'),
-                _c('set mib performance switch enable', 'Habilita MIB de performance / todos os traps'),
-                _c('save', 'Grava a configuração'),
+                _c('show port {porta}', 'Estado da porta uplink'),
+                _cfg('set uplink port {porta} enable', 'Habilita a porta uplink'),
+                _cfg('set uplink port {porta} auto_negotiation disable speed 1000m duplex full', 'Força 1G full'),
+                _cfg('set uplink port {porta} interface_mode sgmii', 'Interface mode SGMII'),
+                _cfg('set trunking groupno 1 mode lacp', 'LAG 1 em LACP'),
+                _cfg('set trunking groupno 1 criteria sdmac', 'Balanceamento por MAC origem/destino'),
+                _cfg('cd lacp\nset lacp enable', 'Liga o LACP (Admin\\device\\lacp#)'),
+                _cfg('set lacp port {porta} key 1', 'Porta no LACP key 1'),
+                _cfg('save', 'Grava a configuração'),
             ]),
-            ('⚠ Gerência / SNMP / Syslog', [
-                _c('set debugip {ip} mask 255.255.255.0', 'IP da gerência outband (em Admin#)'),
+            ('Gerência / SNMP / Syslog', [
                 _c('cd service', 'Entra em Admin\\service#'),
-                _c('set manage vlan name GERENCIA vid {vlan} inputport {porta} tagged', 'VLAN de gerência inband'),
-                _c('set manage vlan name GERENCIA ip {ip}/24 {texto}', 'IP da gerência inband (gateway no Texto)'),
-                _c('set snmp community readonly {texto}', 'Community SNMP somente leitura'),
-                _c('set snmp community readwrite {texto}', 'Community SNMP leitura/escrita'),
-                _c('set telnet acl 1 ip {ip} mask 255.255.255.0 enable', 'ACL de acesso telnet à OLT'),
-                _c('set syslog_server func enable', 'Liga o envio de syslog'),
-                _c('set syslog {ip} 100', 'Servidor de syslog'),
-                _c('idle-timeout 0', 'Sessão telnet sem timeout'),
+                _cfg('set manage vlan name GERENCIA vid {vlan} inputport {porta} tagged', 'VLAN de gerência inband'),
+                _cfg('set manage vlan name GERENCIA ip {ip}/24 {texto}', 'IP da gerência inband (gateway no Texto)'),
+                _cfg('set snmp community readonly {texto}', 'Community SNMP somente leitura'),
+                _cfg('set snmp community readwrite {texto}', 'Community SNMP leitura/escrita'),
+                _cfg('set telnet acl 1 ip {ip} mask 255.255.255.0 enable', 'ACL de acesso telnet à OLT'),
+                _cfg('set syslog_server func enable', 'Liga o envio de syslog'),
+                _cfg('set syslog {ip} 100', 'Servidor de syslog'),
+                _cfg('idle-timeout 0', 'Sessão telnet sem timeout'),
+                _cfg('set debugip {ip} mask 255.255.255.0', 'IP da gerência outband (em Admin#)'),
+                _cfg('cd ..\ncd device\nset mib performance switch enable', 'Habilita MIB de performance / traps'),
             ]),
-            ('⚠ Usuários da CLI', [
-                _c('cd service\nssh auth enable method password', 'Habilita SSH com senha'),
-                _c('user add {usuario} login-password {senha}', 'Cria usuário (Admin\\service#; RP1200: em `cd aaa`)'),
-                _c('user role {usuario} admin enable-password {senha}', 'Torna o usuário admin'),
-                _c('user enable-password {usuario}', 'Troca a senha (pede a nova)'),
-                _c('terminal user name {usuario} {senha} role admin', 'Cria usuário admin (RP1800)'),
+            ('Usuários da CLI', [
+                _cfg('cd service\nssh auth enable method password', 'Habilita SSH com senha'),
+                _cfg('user add {usuario} login-password {senha}', 'Cria usuário (Admin\\service#; RP1200: em `cd aaa`)'),
+                _cfg('user role {usuario} admin enable-password {senha}', 'Torna o usuário admin'),
+                _cfg('user enable-password {usuario}', 'Troca a senha (pede a nova)'),
+                _cfg('terminal user name {usuario} {senha} role admin', 'Cria usuário admin (RP1800)'),
             ]),
-            ('⚠ Distância da PON', [
-                _c('config\ninterface pon 1/{slot}/{pon}\ndistance max-distance 30 diff-distance 30',
-                   'Distância máxima e diferencial da PON (30 km)'),
-            ]),
-            ('⚠ Sistema / backup', [
-                _c('set auto_save enable period 1440', 'Auto save a cada 24 h'),
-                _c('set save sync enable', 'Sincroniza a configuração entre as controladoras'),
-                _c('set power_alarm enable 1', 'Alarme da fonte de energia'),
-                _c('upload ftp config {ip} {usuario} {senha} {arquivo}', 'Backup da configuração para o FTP'),
-                _c('download ftp config {ip} {usuario} {senha} {arquivo}', 'Restaura a configuração do FTP'),
-                _c('download ftp system {ip} {usuario} {senha} {arquivo}', 'Atualiza a controladora'),
-                _c('upgrade xdu {ip} {usuario} {senha} {arquivo} {slot}', 'Atualiza a placa de linha do slot'),
-                _c('set card_auth slot {slot} type {placa}', 'Autoriza a placa no slot'),
-                _c('set card_unauth slot {slot}', 'Desautoriza a placa do slot'),
-                _c('set pon_interconnection_switch slot {slot} switch enable union_interconnect_switch enable',
-                   'Aceita ONU de outros fabricantes (em Admin\\gponline#; depois `set sys_apply_flag 0 apply_sence 0`)'),
+            ('Backup / firmware', [
+                _cfg('upload ftp config {ip} {usuario} {senha} {arquivo}', 'Backup da configuração para o FTP'),
+                _cfg('download ftp config {ip} {usuario} {senha} {arquivo}', 'Restaura a configuração do FTP'),
+                _cfg('download ftp system {ip} {usuario} {senha} {arquivo}', 'Atualiza a controladora'),
+                _cfg('upgrade xdu {ip} {usuario} {senha} {arquivo} {slot}', 'Atualiza a placa de linha do slot'),
             ]),
         ],
     },
@@ -499,45 +504,45 @@ FAMILIAS = {
         'linha': 'FiberHome',
         'versao': 'AN6000 · 6k',
         'aviso': 'Frame é sempre 1 (`1/slot/porta`). Configuração em `config`. '
-                 'Grupos marcados ⚠ alteram o equipamento — o ▶ pede confirmação.',
+                 'Comandos com ⚠ alteram o equipamento: o ▶ pede confirmação.',
         'exemplos': {'slot': '7', 'pon': '1', 'porta': '1/9/4', 'ip': '192.168.1.252', 'vlan': '4002', 'placa': 'GPOA'},
         'grupos': [
             ('Sistema', [
-                _c('show card info', 'Placas e estado'),
-                _c('show manage-vlan all', 'VLANs de gerência'),
                 _c('show ip address', 'IPs da OLT'),
-                _c('show snmp-agent trap-receiver', 'Destinos de trap SNMP'),
+                _cfg('save', 'Grava a configuração'),
             ]),
-            ('ONU (telnet na placa)', [
+            ('Placas', [
+                _c('show card info', 'Placas e estado'),
+                _cfg('config\ncard auth 1/{slot} {placa}', 'Autoriza a placa do slot'),
+                _cfg('config\ncard auto-auth', 'Autoriza todas as placas'),
+            ]),
+            ('ONU', [
                 _c('telnet slot 1/{slot}', 'Entra na placa PON'),
                 _c('cd onu\nshow discovery pono {pon}', 'ONUs descobertas na PON (dentro da placa)'),
                 _c('cd ..\ncd omci\nshow stack_para', 'Parâmetros OMCI (dentro da placa)'),
+                _cfg('set stack_para msgtype 13 retry 3 rsp_time 3',
+                     'Corrige "STE WORK MODE FAIL" de ONU Sumec (em omci, dentro da placa)'),
             ]),
-            ('⚠ Placas', [
-                _c('config\ncard auth 1/{slot} {placa}', 'Autoriza a placa do slot'),
-                _c('config\ncard auto-auth', 'Autoriza todas as placas'),
-                _c('set stack_para msgtype 13 retry 3 rsp_time 3',
-                   'Corrige "STE WORK MODE FAIL" de ONU Sumec (em omci, dentro da placa)'),
-            ]),
-            ('⚠ Uplink', [
-                _c('config\ninterface eth {porta}\nshutdown\nauto-neg disable\nspeed 10000m\nduplex full\nport type XFI\nno shutdown',
-                   'Força a uplink em 10G full (XFI)'),
-            ]),
-            ('⚠ Gerência / SNMP', [
-                _c('config\ninterface meth 1\nip address {ip} mask 255.255.255.0', 'IP da porta de gerência (debug)'),
-                _c('config\nmanage-vlan GR svlan {vlan} svlan-cos 0\nmanage-vlan ipv4 GR {ip}/30\nport vlan {vlan} tag {porta} 1',
-                   'Gerência inband (porta como 1/9)'),
-                _c('snmp-agent trap-receiver add ip {ip} security-name {texto} v2c', 'Destino de trap SNMP (community no Texto)'),
-                _c('snmp-time interval 3600 servip ipv4 {ip}', 'Sincroniza a hora com o servidor (UNM)'),
-                _c('save', 'Grava a configuração'),
-            ]),
-            ('⚠ Distância da PON', [
+            ('PON', [
                 _c('cd card', 'Entra em Admin\\card#'),
-                _c('set pon_distance slot {slot} pon {pon} max_distance 20 diff_distance 40',
-                   'Distância máxima (20 km) e diferencial (40 km) da PON'),
+                _cfg('set pon_distance slot {slot} pon {pon} max_distance 20 diff_distance 40',
+                     'Distância máxima (20 km) e diferencial (40 km) da PON'),
             ]),
-            ('⚠ Ventilação', [
-                _c('config\ninterface fan 1/23\nfan mode manual speed 1', 'Ventilador em velocidade manual'),
+            ('Uplink', [
+                _cfg('config\ninterface eth {porta}\nshutdown\nauto-neg disable\nspeed 10000m\nduplex full\nport type XFI\nno shutdown',
+                     'Força a uplink em 10G full (XFI)'),
+            ]),
+            ('Gerência / SNMP', [
+                _c('show manage-vlan all', 'VLANs de gerência'),
+                _c('show snmp-agent trap-receiver', 'Destinos de trap SNMP'),
+                _cfg('config\ninterface meth 1\nip address {ip} mask 255.255.255.0', 'IP da porta de gerência (debug)'),
+                _cfg('config\nmanage-vlan GR svlan {vlan} svlan-cos 0\nmanage-vlan ipv4 GR {ip}/30\nport vlan {vlan} tag {porta} 1',
+                     'Gerência inband (porta como 1/9)'),
+                _cfg('snmp-agent trap-receiver add ip {ip} security-name {texto} v2c', 'Destino de trap SNMP (community no Texto)'),
+                _cfg('snmp-time interval 3600 servip ipv4 {ip}', 'Sincroniza a hora com o servidor (UNM)'),
+            ]),
+            ('Ventilação', [
+                _cfg('config\ninterface fan 1/23\nfan mode manual speed 1', 'Ventilador em velocidade manual'),
             ]),
         ],
     },
@@ -627,7 +632,7 @@ def catalogo(familia):
         for item in comandos:
             campos = list(dict.fromkeys(_CAMPO_RE.findall(item['cmd'])))
             itens.append({**item, 'campos': campos})
-        grupos.append({'titulo': titulo, 'comandos': itens, 'altera': titulo.startswith('⚠')})
+        grupos.append({'titulo': titulo, 'comandos': itens})
     return {
         'familia': familia,
         'nome': fam['nome'],

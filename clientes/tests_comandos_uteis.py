@@ -56,7 +56,7 @@ class IdentificarFamiliaTest(SimpleTestCase):
 class CatalogoTest(SimpleTestCase):
     # Só leitura: show/display/print/diagnóstico Linux, mais os comandos que
     # apenas mudam de modo/diretório ou desligam a paginação. Configuração só
-    # em grupo ⚠ (altera).
+    # por _cfg() (altera=True, ⚠ no painel).
     LEITURA = re.compile(
         r'^(show |sh |display |list |cd |telnet slot |/.+ (print|monitor|monitor-traffic)\b|'
         r'(uptime|free -m|df -h|ip -br a|ip r|ip r get |ss -tulpn|ping -c 4 |pveversion|qm list|pct list|pvesm status)|'
@@ -66,9 +66,9 @@ class CatalogoTest(SimpleTestCase):
     def test_todo_comando_e_de_leitura(self):
         for familia in cu.FAMILIAS:
             for grupo in cu.catalogo(familia)['grupos']:
-                if grupo['altera']:
-                    continue
                 for c in grupo['comandos']:
+                    if c['altera']:
+                        continue
                     for linha in c['cmd'].split('\n'):
                         self.assertTrue(
                             linha in self.MODO or linha.startswith('interface gpon ') or self.LEITURA.match(linha),
@@ -88,24 +88,28 @@ class CatalogoTest(SimpleTestCase):
         self.assertTrue(all(c['conferido'] for g in cu.catalogo('raisecom')['grupos'] for c in g['comandos']))
 
 
-class GrupoQueAlteraTest(SimpleTestCase):
-    def test_altera_so_pelo_titulo_com_aviso(self):
+class ConfiguracaoTest(SimpleTestCase):
+    def test_so_fiberhome_tem_comando_que_altera(self):
         for familia in cu.FAMILIAS:
-            for g in cu.catalogo(familia)['grupos']:
-                self.assertEqual(g['altera'], g['titulo'].startswith('⚠'), f'{familia}: {g["titulo"]}')
+            tem = any(c['altera'] for g in cu.catalogo(familia)['grupos'] for c in g['comandos'])
+            self.assertEqual(tem, familia.startswith('fiberhome'), familia)
 
-    def test_fiberhome_separa_leitura_de_configuracao(self):
+    def test_fiberhome_set_e_apply_sempre_marcados(self):
         for familia in ('fiberhome_5k', 'fiberhome_6k'):
-            grupos = cu.catalogo(familia)['grupos']
-            self.assertTrue(any(g['altera'] for g in grupos), familia)
-            self.assertFalse(grupos[0]['altera'], familia)
-            for g in grupos:
-                if not g['altera']:
-                    self.assertFalse(any(c['cmd'].startswith('set ') for c in g['comandos']), g['titulo'])
+            for g in cu.catalogo(familia)['grupos']:
+                for c in g['comandos']:
+                    if re.search(r'^(set|apply|upload|download|upgrade|user|config)\b', c['cmd'], re.M):
+                        self.assertTrue(c['altera'], c['cmd'])
+
+    def test_fiberhome_por_assunto_sem_titulo_repetido(self):
+        for familia in ('fiberhome_5k', 'fiberhome_6k'):
+            titulos = [g['titulo'] for g in cu.catalogo(familia)['grupos']]
+            self.assertEqual(len(titulos), len(set(titulos)), familia)
+            self.assertFalse(any(t.startswith('⚠') for t in titulos), familia)
 
     def test_distancia_da_pon_em_cada_versao(self):
         def cmds(f):
-            g = next(g for g in cu.catalogo(f)['grupos'] if g['titulo'] == '⚠ Distância da PON')
+            g = next(g for g in cu.catalogo(f)['grupos'] if g['titulo'] == 'PON')
             return ' '.join(c['cmd'] for c in g['comandos'])
         self.assertIn('set pon_distance slot {slot} pon {pon}', cmds('fiberhome_6k'))
         self.assertIn('interface pon 1/{slot}/{pon}', cmds('fiberhome_5k'))

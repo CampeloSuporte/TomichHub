@@ -22,6 +22,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **FiberHome 6k: "Alterar distância da PON" não aparecia.** O `set pon_distance` (via `cd card`)
   estava na 5500; agora fica no 6k, como na lista da equipe, num grupo próprio
   "⚠ Distância da PON" em cada versão. O filtro da 💡 passou a ignorar acento ("distancia").
+- **💡 Comandos úteis: FiberHome organizada por assunto e filtro de assunto.** Cada assunto
+  (Sistema, Placas, ONU — consulta, sinal óptico, autorizar/remover, PPPoE/bridge, Wi-Fi/TR-069,
+  PON, MAC/L2, Uplink/LAG, Gerência/SNMP, Usuários, Backup/firmware) num grupo só, leitura
+  primeiro e configuração depois — o ⚠ agora fica no comando, não num grupo separado. Chips no
+  topo do painel ("Todos" + um por assunto) mostram só o assunto escolhido, em qualquer família.
 
 ## [Não publicado] — 2026-10-28 (Sala Virtual: remover atendente e conversa privada)
 
