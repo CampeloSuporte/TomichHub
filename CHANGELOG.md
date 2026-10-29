@@ -24,6 +24,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Corrigido
 
+- **⚡ Scripts mostrava scripts de todos os fabricantes com a Huawei selecionada.** Ao abrir o
+  painel, a carga sem filtro podia chegar depois da filtrada e sobrescrevê-la. Agora só a resposta
+  mais recente vale, e a lista é filtrada pelo fabricante selecionado.
 - **Aba ONU usa o terminal já aberto na OLT.** A OLT recusa um segundo login do mesmo usuário,
   então, com o terminal aberto, a busca e o provisionamento falhavam. Agora, havendo uma aba
   conectada na OLT, os comandos vão por ela (enviados e lidos pelo WebSocket da aba) e o operador

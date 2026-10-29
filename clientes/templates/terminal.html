@@ -3474,13 +3474,22 @@
         };
 
         // ── Carregar scripts ──
+        // Abrir o painel dispara duas cargas quase juntas: a sem filtro e a
+        // filtrada, depois que o equipamento é reconhecido. Se a sem filtro
+        // chegasse por último, voltava a mostrar os scripts de todos os
+        // fabricantes. Só a resposta mais recente vale, e a lista ainda é
+        // filtrada aqui pelo fabricante selecionado.
+        let spListaSeq = 0;
         async function spCarregarListaScripts() {
+            const seq = ++spListaSeq;
             try {
                 const fab = document.getElementById('spFabricante')?.value || '';
                 const url = '/clientes/scripts/' + (fab ? `?fabricante=${fab}` : '');
                 const r = await fetch(url);
                 const data = await r.json();
-                spScripts = data.scripts || [];
+                if (seq !== spListaSeq) return;
+                const fabAgora = document.getElementById('spFabricante')?.value || '';
+                spScripts = (data.scripts || []).filter(s => !fabAgora || s.fabricante === fabAgora);
                 renderScriptOptions(spScripts);
             } catch(e) {
                 console.warn('[Scripts] Erro ao carregar lista:', e);
