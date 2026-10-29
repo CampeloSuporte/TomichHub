@@ -4440,3 +4440,126 @@ class SalaVirtualRemoverEPrivadoTests(TestCase):
             await a.disconnect()
             await c.disconnect()
         self._rodar(cenario())
+
+
+class AtendenteOfflineTest(TestCase):
+    """Atendente se marca offline: mensagem nova de cliente num chamado que é
+    dele vira alerta no grupo do NOC (o mesmo dos chamados abertos)."""
+
+    def setUp(self):
+        from atendimento.models import AgentStatus
+        self.agente = _criar_agente_staff('bia')
+        self.conversation = _criar_conversa()
+        self.group = self.conversation.group
+        self.group.jid = '551930903602-1620661695@g.us'
+        self.group.save(update_fields=['jid'])
+        self.conversation.status = 'open'
+        self.conversation.assigned_to = self.agente
+        self.conversation.save(update_fields=['status', 'assigned_to'])
+        self.noc = ContactGroup.objects.create(
+            jid='120363999@g.us', connection=self.group.connection, name='NOC')
+        SystemSetting.set('notif_abertos_group_id', str(self.noc.id))
+        self.status = AgentStatus.objects.create(
+            user=self.agente, status='offline', status_changed_at=timezone.now())
+
+    def _webhook(self, msg_id, texto='alguém aí?'):
+        return ConversationService.process_webhook({
+            'event': 'MESSAGES_UPSERT',
+            'instance': self.group.connection.instance_name,
+            'data': {
+                'key': {'id': msg_id, 'fromMe': False,
+                        'remoteJid': self.group.jid, 'participant': '55279@lid'},
+                'pushName': 'Cliente',
+                'message': {'conversation': texto},
+            },
+        })
+
+    def _alertas(self, mock_cls):
+        return [c for c in mock_cls.return_value.send_text.call_args_list
+                if c.args[0] == self.noc.jid]
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_offline_alerta_o_noc(self, mock_cls):
+        mock_cls.return_value.send_text.return_value = (True, 'id')
+        self._webhook('OFF1')
+        alertas = self._alertas(mock_cls)
+        self.assertEqual(len(alertas), 1)
+        self.assertIn('offline', alertas[0].args[1])
+        self.assertIn(self.group.name, alertas[0].args[1])
+        self.conversation.refresh_from_db()
+        self.assertIsNotNone(self.conversation.offline_alert_at)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_online_nao_alerta(self, mock_cls):
+        self.status.status = 'online'
+        self.status.save()
+        self._webhook('OFF2')
+        self.assertEqual(self._alertas(mock_cls), [])
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_sem_agentstatus_conta_como_online(self, mock_cls):
+        self.status.delete()
+        self._webhook('OFF3')
+        self.assertEqual(self._alertas(mock_cls), [])
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_rajada_do_cliente_gera_um_alerta_so(self, mock_cls):
+        mock_cls.return_value.send_text.return_value = (True, 'id')
+        self._webhook('OFF4a')
+        self._webhook('OFF4b', 'oi??')
+        self._webhook('OFF4c', 'urgente')
+        self.assertEqual(len(self._alertas(mock_cls)), 1)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_repete_depois_do_intervalo(self, mock_cls):
+        mock_cls.return_value.send_text.return_value = (True, 'id')
+        self._webhook('OFF5a')
+        Conversation.objects.filter(pk=self.conversation.pk).update(
+            offline_alert_at=timezone.now() - timedelta(minutes=20))
+        self._webhook('OFF5b')
+        self.assertEqual(len(self._alertas(mock_cls)), 2)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_novo_periodo_offline_alerta_de_novo(self, mock_cls):
+        mock_cls.return_value.send_text.return_value = (True, 'id')
+        self._webhook('OFF6a')
+        # Voltou online e saiu de novo: novo período, novo aviso
+        self.status.status_changed_at = timezone.now() + timedelta(seconds=1)
+        self.status.save()
+        Conversation.objects.filter(pk=self.conversation.pk).update(
+            offline_alert_at=timezone.now() - timedelta(seconds=5))
+        self._webhook('OFF6b')
+        self.assertEqual(len(self._alertas(mock_cls)), 2)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_falha_no_envio_nao_marca_como_avisado(self, mock_cls):
+        mock_cls.return_value.send_text.return_value = (False, '')
+        self._webhook('OFF7')
+        self.conversation.refresh_from_db()
+        self.assertIsNone(self.conversation.offline_alert_at)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_contato_restrito_alerta_sem_o_nome(self, mock_cls):
+        mock_cls.return_value.send_text.return_value = (True, 'id')
+        from atendimento.models import UserGroupPermission
+        UserGroupPermission.objects.create(group=self.group, user=self.agente)
+        self._webhook('OFF8')
+        alertas = self._alertas(mock_cls)
+        self.assertEqual(len(alertas), 1)
+        self.assertNotIn(self.group.name, alertas[0].args[1])
+
+    def test_botao_alterna_status(self):
+        from atendimento.models import AgentStatus
+        self.status.delete()
+        self.client.force_login(self.agente)
+        url = reverse('atendimento:api_agent_status')
+        self.assertEqual(self.client.get(url).json()['status'], 'online')
+        r = self.client.post(url, json.dumps({'status': 'offline'}),
+                             content_type='application/json')
+        self.assertTrue(r.json()['success'])
+        st = AgentStatus.objects.get(user=self.agente)
+        self.assertEqual(st.status, 'offline')
+        self.assertIsNotNone(st.status_changed_at)
+        r = self.client.post(url, json.dumps({'status': 'xpto'}),
+                             content_type='application/json')
+        self.assertEqual(r.status_code, 400)

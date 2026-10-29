@@ -189,6 +189,30 @@ Envia lembrete WhatsApp **individual** para cada atendente cadastrado no `Attend
 
 ---
 
+## 📴 Atendente online / offline *(29/10/2026)*
+
+Botão no rodapé do menu do atendimento (acima do nome do usuário): **● Online**
+/ **● Offline**, alterna com um clique (`POST /atendimento/api/agent-status/`
+`{"status": "online"|"offline"}`; `GET` devolve o atual). Grava em
+`AgentStatus.status` + `status_changed_at`. Sem `AgentStatus` = online; a
+migração 0021 pôs todos os registros antigos em `online` (o campo existia com
+default `offline` sem ninguém usar).
+
+**Offline:** mensagem nova de **cliente** num chamado aberto cujo
+`assigned_to` é esse atendente gera aviso no grupo do NOC — o mesmo de
+`notif_abertos_group_id` (Configurações → chamados abertos). O aviso traz o
+grupo, o nº do chamado e o nome de exibição, e marca o atendente (mention) se
+ele tiver WhatsApp em Contatos dos Atendentes.
+
+- Um aviso por chamado a cada período offline; se o cliente continuar
+  escrevendo, repete só após 15 min (`OFFLINE_ALERT_INTERVALO`). Voltar online
+  e sair de novo abre um período novo. Guard em `Conversation.offline_alert_at`,
+  gravado só se o envio deu certo.
+- Contato restrito: avisa sem o nome do grupo (o grupo do NOC é lido por todos).
+- Mensagem do atendente pelo WhatsApp pessoal não dispara (já tem o aviso próprio).
+- Código: `services._alertar_atendente_offline`, chamado no webhook (chamado
+  já aberto e auto-atendimento em andamento). Testes: `AtendenteOfflineTest`.
+
 ## 📱 Contatos dos Atendentes
 
 Aba **"Contatos Atendentes"** nas configurações (exibe apenas usuários `is_staff=True`).

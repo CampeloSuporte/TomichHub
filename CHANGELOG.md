@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-29 (Atendente online/offline)
+
+### Adicionado
+
+- **Atendimento: botão Online/Offline do atendente** no rodapé do menu. Offline, toda mensagem
+  nova de cliente num chamado que está com ele avisa o grupo do NOC (o mesmo dos chamados
+  abertos), marcando o atendente; um aviso por chamado por período offline, repetido no máximo
+  a cada 15 min. Contato restrito é avisado sem o nome. Migração 0021 (todos começam online).
+  `docs/ATENDIMENTO.md` → "Atendente online / offline".
+
+---
+
 ## [Não publicado] — 2026-10-29 (Gerador de senha com caractere especial)
 
 ### Adicionado
