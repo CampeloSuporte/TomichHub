@@ -23,6 +23,7 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   até o limite de 32 GEMs. O GEM tem o mesmo número da VLAN quando cabe. Recusa ID que já existe
   (no backup e conferido ao vivo antes de criar). O modo Translate cria um service-port por GEM
   (`user-vlan` → VLAN da OLT, `tag-transform translate`). Auditoria `acao='perfil'` (migração 0127).
+  No menu SCRIPT aparece como "[Huawei] Criar srv/line profile (VLAN translate)".
 - **Aba ONU em massa: line e srv profile únicos para o lote.** Os seletores "Line profile" e
   "Srv profile para as marcadas" aplicam o mesmo perfil a todas as ONUs marcadas, no lugar da
   sugestão do backup.

@@ -39,8 +39,10 @@ aparece como `{ONT_ID}`.
 
 ## VLAN translate: criar srv/line profile e provisionar — Adicionado em 2026-10-29
 
-Seção **➕ Criar srv/line profile para VLAN translate** na aba ONU, no formato do
-modelo passado pelo operador:
+Seção **➕ Criar srv/line profile para VLAN translate** na aba ONU. Também abre pelo
+menu SCRIPT (OLT Huawei selecionada) → **[Huawei] Criar srv/line profile (VLAN
+translate)**, que já abre a aba com a seção expandida. Segue o formato do modelo
+passado pelo operador:
 
 ```
 ont-srvprofile gpon profile-id 8 profile-name "translate"
