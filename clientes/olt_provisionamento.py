@@ -50,6 +50,9 @@ class ProvisionamentoInvalido(Exception):
 MODOS = {
     'onu': {'label': 'Genérico ONU + ONT (com native-vlan)', 'native_vlan': True},
     'ont': {'label': 'Só ONT (sem native-vlan)', 'native_vlan': False},
+    # Um service-port por GEM do line profile, traduzindo a user-vlan da ONT
+    # para a VLAN da OLT (ex.: GEM 101 / user-vlan 101 → VLAN 3304).
+    'translate': {'label': 'VLAN translate (service-port por GEM)', 'native_vlan': False},
 }
 
 # Teto do lote: cada ONU são ~5 comandos numa sessão só. 64 já é uma PON
@@ -141,6 +144,7 @@ _ONT_ADD_RE = re.compile(
 _NATIVE_RE = re.compile(r'^\s*ont port native-vlan (\d+) (\d+) eth \d+ vlan (\d+)')
 _SERVICE_PORT_RE = re.compile(
     r'^\s*service-port \d+ vlan (\d+) gpon (\d+/\d+)/(\d+) ont (\d+) gemport (\d+)')
+_DBA_RE = re.compile(r'^\s*dba-profile add profile-id (\d+) profile-name "([^"]*)"')
 _VLAN_RE = re.compile(r'^\s*vlan (\d+)(?: to (\d+))? ')
 
 
@@ -150,7 +154,7 @@ def parse_backup(conteudo):
     `onts[(slot, porta)]` = {ont_id: {...}} junta as três linhas que formam
     um assinante (ont add + native-vlan + service-port).
     """
-    lines, srvs, vlans = {}, {}, set()
+    lines, srvs, vlans, dbas = {}, {}, set(), {}
     onts, sns = {}, {}
     perfil_atual, slot_atual = None, None
 
@@ -162,7 +166,8 @@ def parse_backup(conteudo):
         m = _LINE_RE.match(linha)
         if m:
             perfil_atual = lines.setdefault(int(m.group(1)), {
-                'id': int(m.group(1)), 'nome': m.group(2).strip(), 'gems': [], 'vlans': []})
+                'id': int(m.group(1)), 'nome': m.group(2).strip(), 'gems': [], 'vlans': [],
+                'mapas': []})
             continue
         m = _SRV_RE.match(linha)
         if m:
@@ -174,11 +179,19 @@ def parse_backup(conteudo):
             if m and 'gems' in perfil_atual:
                 perfil_atual['gems'].append(int(m.group(1)))
                 continue
-            m = _GEM_MAP_RE.match(linha) or _SRV_VLAN_RE.match(linha)
+            m = _GEM_MAP_RE.match(linha)
+            if m and 'mapas' in perfil_atual:
+                perfil_atual['mapas'].append([int(m.group(1)), int(m.group(2))])
+            m = m or _SRV_VLAN_RE.match(linha)
             if m:
                 vlan = int(m.groups()[-1])
                 if vlan not in perfil_atual['vlans']:
                     perfil_atual['vlans'].append(vlan)
+            continue
+
+        m = _DBA_RE.match(linha)
+        if m:
+            dbas[int(m.group(1))] = m.group(2).strip()
             continue
 
         m = _VLAN_RE.match(linha)
@@ -219,7 +232,7 @@ def parse_backup(conteudo):
                 ont['vlan'] = int(m.group(1))
                 ont['gemport'] = int(m.group(5))
 
-    return {'lines': lines, 'srvs': srvs, 'vlans': vlans, 'onts': onts, 'sns': sns}
+    return {'lines': lines, 'srvs': srvs, 'vlans': vlans, 'onts': onts, 'sns': sns, 'dbas': dbas}
 
 
 def _mais_comum(valores):
@@ -305,29 +318,53 @@ def validar_item(item, inventario, backup):
         raise ProvisionamentoInvalido(
             f'{sn}: a placa {slot} tem {placa["portas_total"]} portas — a PON {porta} não existe.')
 
-    vlan = _inteiro(item.get('vlan'), f'{sn}: VLAN', 1, 4094)
-    line = _inteiro(item.get('line'), f'{sn}: line-profile', 0, 8192)
-    srv = _inteiro(item.get('srv'), f'{sn}: srv-profile', 0, 8192)
-    gemport = _inteiro(item.get('gemport') or 1, f'{sn}: gemport', 0, 1023)
     modo = item.get('modo') or 'onu'
     if modo not in MODOS:
         raise ProvisionamentoInvalido(f'{sn}: modo desconhecido "{modo}".')
+    # No translate a VLAN vem de cada service-port (preenchida mais abaixo).
+    vlan = None if modo == 'translate' else _inteiro(item.get('vlan'), f'{sn}: VLAN', 1, 4094)
+    line = _inteiro(item.get('line'), f'{sn}: line-profile', 0, 8192)
+    srv = _inteiro(item.get('srv'), f'{sn}: srv-profile', 0, 8192)
+    gemport = _inteiro(item.get('gemport') or 1, f'{sn}: gemport', 0, 1023)
 
     avisos = []
     if line not in backup['lines']:
         avisos.append(f'{sn}: line-profile {line} não está no backup.')
-    elif backup['lines'][line]['gems'] and gemport not in backup['lines'][line]['gems']:
+    elif modo != 'translate' and backup['lines'][line]['gems'] and gemport not in backup['lines'][line]['gems']:
         avisos.append(f'{sn}: o line-profile {line} não tem o gemport {gemport} '
                       f'(tem {", ".join(map(str, backup["lines"][line]["gems"]))}).')
     if srv not in backup['srvs']:
         avisos.append(f'{sn}: srv-profile {srv} não está no backup.')
-    if backup['vlans'] and vlan not in backup['vlans']:
+    if vlan is not None and backup['vlans'] and vlan not in backup['vlans']:
         avisos.append(f'{sn}: VLAN {vlan} não está criada no backup.')
     if sn in backup['sns']:
         avisos.append(f'{sn}: já aparece no backup em {backup["sns"][sn]} — a OLT vai recusar se ainda estiver lá.')
 
+    servicos = []
+    if modo == 'translate':
+        brutos = item.get('servicos')
+        if not isinstance(brutos, list) or not brutos:
+            raise ProvisionamentoInvalido(f'{sn}: no modo translate marque pelo menos um GEM com VLAN da OLT.')
+        if len(brutos) > MAX_GEMS_PERFIL:
+            raise ProvisionamentoInvalido(f'{sn}: no máximo {MAX_GEMS_PERFIL} service-ports por ONU.')
+        gems_line = backup['lines'].get(line, {}).get('gems') or []
+        for sv in brutos:
+            if not isinstance(sv, dict):
+                raise ProvisionamentoInvalido(f'{sn}: serviço inválido.')
+            g = _inteiro(sv.get('gem'), f'{sn}: GEM', 0, MAX_GEM_INDEX)
+            servicos.append({'gem': g,
+                             'user_vlan': _inteiro(sv.get('user_vlan'), f'{sn}: user-vlan do GEM {g}', 1, 4094),
+                             'vlan': _inteiro(sv.get('vlan'), f'{sn}: VLAN da OLT do GEM {g}', 1, 4094)})
+            if gems_line and g not in gems_line:
+                avisos.append(f'{sn}: o line-profile {line} não tem o GEM {g}.')
+            if backup['vlans'] and servicos[-1]['vlan'] not in backup['vlans']:
+                avisos.append(f'{sn}: VLAN {servicos[-1]["vlan"]} não está criada no backup.')
+        if len({sv['gem'] for sv in servicos}) != len(servicos):
+            raise ProvisionamentoInvalido(f'{sn}: GEM repetido nos serviços.')
+        vlan = servicos[0]['vlan']
+
     return {'sn': sn, 'slot': slot, 'porta': porta, 'vlan': vlan, 'line': line,
-            'srv': srv, 'gemport': gemport, 'modo': modo,
+            'srv': srv, 'gemport': gemport, 'modo': modo, 'servicos': servicos,
             'desc': _desc_limpa(item.get('desc'))}, avisos
 
 
@@ -347,8 +384,11 @@ def comandos_pos_add(it, ont_id):
     dentro = []
     if MODOS[it['modo']]['native_vlan']:
         dentro.append(f'ont port native-vlan {it["porta"]} {ont_id} eth 1 vlan {it["vlan"]} priority 0')
-    fora = [f'service-port vlan {it["vlan"]} gpon {it["slot"]}/{it["porta"]} ont {ont_id} '
-            f'gemport {it["gemport"]} multi-service user-vlan {it["vlan"]} tag-transform translate']
+    servicos = it.get('servicos') or [
+        {'gem': it['gemport'], 'user_vlan': it['vlan'], 'vlan': it['vlan']}]
+    fora = [f'service-port vlan {sv["vlan"]} gpon {it["slot"]}/{it["porta"]} ont {ont_id} '
+            f'gemport {sv["gem"]} multi-service user-vlan {sv["user_vlan"]} tag-transform translate'
+            for sv in servicos]
     return dentro, fora
 
 
@@ -357,6 +397,153 @@ def comandos_onu(it, ont_id=ONT_ID):
     fica como `{ONT_ID}` — quem preenche é a resposta do `ont add`."""
     dentro, fora = comandos_pos_add(it, ont_id)
     return [f'interface gpon {it["slot"]}', comando_ont_add(it), *dentro, 'quit', *fora]
+
+
+# ─── Criação de srv/line profile para VLAN translate ─────────────────────────
+
+# Teto de GEMs num line profile criado aqui. O índice vai até 1023 na MA5800,
+# mas o limite prático é o da ONT: as Huawei HG/EG suportam 32 GEM ports. Nos
+# 34 backups Huawei deste ambiente, o maior perfil tem 5 GEMs. Se a OLT
+# aceitar menos, ela recusa, e a recusa é detectada.
+MAX_GEMS_PERFIL = 32
+MAX_GEM_INDEX = 1023
+_NOME_PERFIL_RE = re.compile(r'^[A-Za-z0-9_.\- ]{1,32}$')
+
+
+def proximo_id_livre(usados, inicio=1, fim=8192):
+    for i in range(inicio, fim + 1):
+        if i not in usados:
+            return i
+    return None
+
+
+def _alocar_gems(vlans, gem_igual_vlan):
+    """[(gem, vlan)]: GEM com o mesmo número da VLAN quando cabe, como no
+    modelo do operador (gem 101 ↔ vlan 101); senão, o próximo índice livre."""
+    usados, pares = set(), []
+    for v in vlans:
+        if gem_igual_vlan and v <= MAX_GEM_INDEX and v not in usados:
+            g = v
+        else:
+            g = proximo_id_livre(usados | {v for v in vlans if v <= MAX_GEM_INDEX and gem_igual_vlan},
+                                 1, MAX_GEM_INDEX)
+        usados.add(g)
+        pares.append((g, v))
+    return pares
+
+
+def validar_perfis(spec, backup):
+    """Normaliza o pedido de criação. Devolve (spec, avisos).
+
+    Recusa ID que já existe no backup: entrar em `ont-lineprofile gpon
+    profile-id 300` EDITA o perfil existente, e um `gem add` ali muda as 96
+    ONTs ligadas nele. Como o backup pode estar velho, a execução ainda confere
+    ao vivo (`checagens_perfis`) antes de criar.
+    """
+    if not isinstance(spec, dict):
+        raise ProvisionamentoInvalido('Pedido inválido.')
+    srv, line = spec.get('srv') or {}, spec.get('line') or {}
+    criar_srv, criar_line = bool(srv.get('criar')), bool(line.get('criar'))
+    if not (criar_srv or criar_line):
+        raise ProvisionamentoInvalido('Marque o srv profile, o line profile ou os dois.')
+
+    def _nome(valor, tipo):
+        nome = str(valor or '').strip()
+        if not _NOME_PERFIL_RE.match(nome):
+            raise ProvisionamentoInvalido(
+                f'Nome do {tipo} inválido: "{nome}" (até 32 letras, números, espaço, _ . -).')
+        return nome
+
+    avisos, norm = [], {'srv': None, 'line': None}
+    if criar_srv:
+        sid = _inteiro(srv.get('id'), 'ID do srv profile', 0, 8192)
+        if sid in backup['srvs']:
+            raise ProvisionamentoInvalido(
+                f'O srv profile {sid} já existe ("{backup["srvs"][sid]["nome"]}") — escolha outro ID.')
+        norm['srv'] = {'id': sid, 'nome': _nome(srv.get('nome'), 'srv profile'),
+                       'eth': _inteiro(srv.get('eth') or 8, 'portas ETH adaptive', 1, 24)}
+    if criar_line:
+        lid = _inteiro(line.get('id'), 'ID do line profile', 0, 8192)
+        if lid in backup['lines']:
+            raise ProvisionamentoInvalido(
+                f'O line profile {lid} já existe ("{backup["lines"][lid]["nome"]}") — escolha outro ID.')
+        vlans_brutas = spec.get('vlans')
+        if not isinstance(vlans_brutas, list) or not vlans_brutas:
+            raise ProvisionamentoInvalido('Adicione pelo menos uma VLAN ao line profile.')
+        vlans = []
+        for v in vlans_brutas:
+            v = _inteiro(v, 'VLAN', 1, 4094)
+            if v not in vlans:
+                vlans.append(v)
+        if len(vlans) > MAX_GEMS_PERFIL:
+            raise ProvisionamentoInvalido(
+                f'{len(vlans)} VLANs — o line profile comporta no máximo {MAX_GEMS_PERFIL} GEMs.')
+        dba = _inteiro(line.get('dba'), 'DBA profile', 0, 1024)
+        if backup.get('dbas') and dba not in backup['dbas']:
+            avisos.append(f'DBA profile {dba} não está no backup.')
+        norm['line'] = {'id': lid, 'nome': _nome(line.get('nome'), 'line profile'),
+                        'tcont': _inteiro(line.get('tcont') or 1, 'T-CONT', 1, 7), 'dba': dba,
+                        'gems': _alocar_gems(vlans, spec.get('gem_igual_vlan', True) is not False)}
+    return norm, avisos
+
+
+def comandos_perfis(norm):
+    """Os blocos de configuração, no formato do modelo do operador."""
+    cmds = []
+    if norm['srv']:
+        s = norm['srv']
+        cmds += [f'ont-srvprofile gpon profile-id {s["id"]} profile-name "{s["nome"]}"',
+                 f'ont-port eth adaptive {s["eth"]}', 'native-vlan unconcern', 'commit', 'quit']
+    if norm['line']:
+        ln = norm['line']
+        cmds += [f'ont-lineprofile gpon profile-id {ln["id"]} profile-name "{ln["nome"]}"',
+                 f'tcont {ln["tcont"]} dba-profile-id {ln["dba"]}']
+        cmds += [f'gem add {g} eth tcont {ln["tcont"]}' for g, _ in ln['gems']]
+        cmds += [f'gem mapping {g} 1 vlan {v}' for g, v in ln['gems']]
+        cmds += ['commit', 'quit']
+    return cmds
+
+
+def checagens_perfis(norm):
+    """Leituras feitas antes de criar: o perfil não pode existir na OLT."""
+    out = []
+    if norm['srv']:
+        out.append(f'display ont-srvprofile gpon profile-id {norm["srv"]["id"]}')
+    if norm['line']:
+        out.append(f'display ont-lineprofile gpon profile-id {norm["line"]["id"]}')
+    return out
+
+
+def perfil_existe(saida):
+    """True/False pela resposta do `display ont-*profile` (conferida na
+    SENTO SE: "Failure: The line profile does not exist" / "Profile-ID :300").
+    None quando a saída não diz nem uma coisa nem outra: aí nada é criado."""
+    if re.search(r'profile does not exist', saida or '', re.IGNORECASE):
+        return False
+    if re.search(r'Profile-ID\s*:\s*\d+', saida or '', re.IGNORECASE):
+        return True
+    return None
+
+
+def criar_perfis(shell, norm):
+    """Confere e cria numa sessão já em (config)#. Devolve (status, log, msg)."""
+    log = []
+    for cmd in checagens_perfis(norm):
+        saida = shell.enviar(cmd)
+        log.append(f'{cmd}\n{saida}')
+        existe = perfil_existe(saida)
+        if existe is not False:
+            motivo = 'já existe na OLT' if existe else 'resposta inesperada da OLT'
+            return 'erro', '\n'.join(log), f'{cmd[len("display "):]}: {motivo}. Nada foi criado.'
+    for cmd in comandos_perfis(norm):
+        saida = shell.enviar(cmd)
+        log.append(f'{cmd}\n{saida}')
+        recusa = detectar_erro_cli(saida)
+        if recusa:
+            # Sai do modo de edição do perfil para a sessão não ficar presa nele.
+            shell.enviar('quit')
+            return 'erro', '\n'.join(log), f'{cmd}: {recusa}'
+    return 'sucesso', '\n'.join(log), 'perfis criados'
 
 
 # ─── Execução ────────────────────────────────────────────────────────────────

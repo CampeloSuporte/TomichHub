@@ -1342,6 +1342,9 @@
             #sp-pane-onu .op-st.erro { color:#ff5555; border-color:#ff5555; }
             #sp-pane-onu .op-st.andamento { color:#58a6ff; border-color:#58a6ff; }
             #sp-pane-onu pre { background:#0d1117; border:1px solid #30363d; border-radius:4px; padding:8px; font-size:10px; color:#c9d1d9; max-height:260px; overflow:auto; white-space:pre-wrap; margin:0; }
+            #sp-pane-onu .op-chip { font-size:10px; padding:2px 6px; border:1px solid #30363d; border-radius:10px; color:#c9d1d9; display:inline-flex; gap:4px; align-items:center; }
+            #sp-pane-onu .op-chip button { background:none; border:none; color:#ff5555; cursor:pointer; padding:0; font-size:11px; }
+            #sp-pane-onu .op-svc { display:grid; grid-template-columns: 18px 1fr 90px; gap:6px; align-items:center; font-size:10px; color:#c9d1d9; }
             @media (max-width: 560px) { #sp-pane-onu .op-grid { grid-template-columns: 1fr 1fr 1fr; } }
         </style>
         <div id="sp-pane-onu" style="flex:1;overflow-y:auto;padding:14px;display:none;flex-direction:column;gap:10px;">
@@ -1351,6 +1354,40 @@
                 <button class="op-btn" id="opBtnBuscar" onclick="opBuscar()" style="flex:1;">🔍 Buscar ONUs pendentes</button>
             </div>
             <div id="opMsg" style="font-size:11px;"></div>
+            <details id="opPerfisBox" style="border:1px solid #30363d;border-radius:6px;padding:8px;">
+                <summary style="cursor:pointer;font-size:11px;color:#ffa500;font-weight:700;">➕ Criar srv/line profile para VLAN translate</summary>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+                    <div style="font-size:10px;color:#7d8590;">Cada VLAN vira um GEM no line profile (<code>gem add</code> + <code>gem mapping</code>), até o limite de <span id="opPfMaxTxt">32</span> GEMs. O ID não pode existir na OLT: o CRM confere ao vivo antes de criar.</div>
+                    <label style="font-size:11px;color:#c9d1d9;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="opPfSrvCriar" checked> Srv profile</label>
+                    <div class="op-grid" style="grid-template-columns:70px 1fr 70px;">
+                        <div><span class="op-lbl">ID</span><input class="op-in" id="opPfSrvId" type="number" min="0"></div>
+                        <div><span class="op-lbl">NOME</span><input class="op-in" id="opPfSrvNome" maxlength="32" value="translate"></div>
+                        <div><span class="op-lbl">ETH ADAPT.</span><input class="op-in" id="opPfSrvEth" type="number" min="1" max="24" value="8"></div>
+                    </div>
+                    <label style="font-size:11px;color:#c9d1d9;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="opPfLineCriar" checked> Line profile</label>
+                    <div class="op-grid" style="grid-template-columns:70px 1fr 60px 1fr;">
+                        <div><span class="op-lbl">ID</span><input class="op-in" id="opPfLineId" type="number" min="0"></div>
+                        <div><span class="op-lbl">NOME</span><input class="op-in" id="opPfLineNome" maxlength="32" value="LINE-TRANSLATE"></div>
+                        <div><span class="op-lbl">T-CONT</span><input class="op-in" id="opPfTcont" type="number" min="1" max="7" value="1"></div>
+                        <div><span class="op-lbl">DBA PROFILE</span><select class="op-in" id="opPfDba"></select></div>
+                    </div>
+                    <div>
+                        <span class="op-lbl">VLANS DO LINE PROFILE (<span id="opPfCont">0</span>/<span id="opPfMax">32</span> GEMs)</span>
+                        <div style="display:flex;gap:6px;">
+                            <input class="op-in" id="opPfVlanIn" placeholder="101  ou  101-105  ou  101,110,3304" onkeydown="if(event.key==='Enter'){event.preventDefault();opPfAddVlan();}">
+                            <button class="op-btn sec" id="opPfVlanBtn" onclick="opPfAddVlan()" style="padding:5px 10px;">+ Adicionar</button>
+                        </div>
+                        <div id="opPfChips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;"></div>
+                        <label style="font-size:10px;color:#7d8590;display:flex;gap:6px;align-items:center;margin-top:4px;"><input type="checkbox" id="opPfGemIgual" checked> GEM com o mesmo número da VLAN (gem 101 ↔ vlan 101; acima de 1023 usa o próximo livre)</label>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="op-btn sec" onclick="opPfPreview()" style="flex:1;">👁 Pré-visualizar</button>
+                        <button class="op-btn ok" id="opPfBtnCriar" onclick="opPfCriar()" style="flex:1;">▶ Criar na OLT</button>
+                    </div>
+                    <div id="opPfMsg" style="font-size:11px;"></div>
+                    <pre id="opPfPreview" style="display:none;"></pre>
+                </div>
+            </details>
             <div id="opLote" style="display:none;flex-direction:column;gap:8px;">
                 <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;font-size:11px;color:#c9d1d9;">
                     <label style="display:flex;align-items:center;gap:4px;"><input type="checkbox" id="opTodas" onchange="opMarcarTodas(this.checked)" checked> Todas</label>
@@ -3829,6 +3866,12 @@
                 opInvAcesso = id;
                 info.innerHTML = `<b>${_escHtml(opInv.host.nome)}</b> ${_escHtml(opInv.host.ip)} · ${_escHtml(opInv.modelo)} · `
                     + `${opInv.lines.length} line / ${opInv.srvs.length} srv profiles · backup ${_escHtml(opInv.data_backup)}`;
+                document.getElementById('opPfDba').innerHTML = opInv.dbas.map(d =>
+                    `<option value="${d.id}" ${d.id === 10 ? 'selected' : ''}>${d.id} · ${_escHtml(d.nome)}</option>`).join('');
+                document.getElementById('opPfSrvId').value = opInv.proximo_srv ?? '';
+                document.getElementById('opPfLineId').value = opInv.proximo_line ?? '';
+                ['opPfMax', 'opPfMaxTxt'].forEach(x => { document.getElementById(x).textContent = opInv.max_gems; });
+                opPfVlans = []; opPfRender();
                 const manter = '<option value="">— manter o sugerido de cada uma —</option>';
                 document.getElementById('opLineTodas').innerHTML = manter + opOpcoesPerfil(opInv.lines, null).replace('<option value="">—</option>', '');
                 document.getElementById('opSrvTodas').innerHTML = manter + opOpcoesPerfil(opInv.srvs, null).replace('<option value="">—</option>', '');
@@ -3852,7 +3895,8 @@
             const box = document.getElementById('opLista');
             box.innerHTML = opOnus.map((o, i) => {
                 const s = o.sugestao || {};
-                const modos = opInv.modos.map(m => `<option value="${m.chave}" ${m.chave === s.modo ? 'selected' : ''}>${m.chave === 'onu' ? 'ONU+ONT' : 'Só ONT'}</option>`).join('');
+                const rotulo = {onu: 'ONU+ONT', ont: 'Só ONT', translate: 'Translate'};
+                const modos = opInv.modos.map(m => `<option value="${m.chave}" ${m.chave === s.modo ? 'selected' : ''}>${rotulo[m.chave] || m.chave}</option>`).join('');
                 const noBk = o.no_backup ? `<div class="op-orig" style="color:#d29922">⚠ Estava no backup em ${_escHtml(o.no_backup)} (removida depois do backup?)</div>` : '';
                 return `<div class="op-card" id="op-card-${i}">
                     <div class="op-card-top">
@@ -3864,16 +3908,203 @@
                     </div>
                     <div class="op-grid">
                         <div><span class="op-lbl">VLAN</span><input class="op-in" id="op-vlan-${i}" type="number" min="1" max="4094" value="${s.vlan ?? ''}"></div>
-                        <div><span class="op-lbl">LINE PROFILE</span><select class="op-in" id="op-line-${i}">${opOpcoesPerfil(opInv.lines, s.line)}</select></div>
+                        <div><span class="op-lbl">LINE PROFILE</span><select class="op-in" id="op-line-${i}" onchange="opRenderServicos(${i})">${opOpcoesPerfil(opInv.lines, s.line)}</select></div>
                         <div><span class="op-lbl">SRV PROFILE</span><select class="op-in" id="op-srv-${i}">${opOpcoesPerfil(opInv.srvs, s.srv)}</select></div>
                         <div><span class="op-lbl">GEMPORT</span><input class="op-in" id="op-gem-${i}" type="number" min="0" value="${s.gemport ?? 1}"></div>
-                        <div><span class="op-lbl">MODO</span><select class="op-in" id="op-modo-${i}">${modos}</select></div>
+                        <div><span class="op-lbl">MODO</span><select class="op-in" id="op-modo-${i}" onchange="opRenderServicos(${i})">${modos}</select></div>
                     </div>
+                    <div id="op-svc-${i}" style="display:none;flex-direction:column;gap:4px;"></div>
                     <div><span class="op-lbl">DESCRIÇÃO (opcional — vira desc "..." no ont add)</span><input class="op-in" id="op-desc-${i}" maxlength="64" placeholder="ex.: login do cliente"></div>
                     <div class="op-orig">Sugestão: ${_escHtml(s.origem || '')}</div>${noBk}
                 </div>`;
             }).join('');
+            opOnus.forEach((o, i) => opRenderServicos(i));
         }
+
+        // Modo translate: um service-port por GEM do line profile escolhido.
+        // Linha marcada = vira service-port (user-vlan do GEM → VLAN da OLT).
+        window.opRenderServicos = function(i) {
+            const box = document.getElementById(`op-svc-${i}`);
+            if (!box) return;
+            const modo = document.getElementById(`op-modo-${i}`).value;
+            if (modo !== 'translate') { box.style.display = 'none'; box.innerHTML = ''; return; }
+            const line = opInv.lines.find(p => String(p.id) === document.getElementById(`op-line-${i}`).value);
+            const mapas = (line && line.mapas && line.mapas.length) ? line.mapas : [];
+            const vlanOlt = document.getElementById(`op-vlan-${i}`).value;
+            box.style.display = 'flex';
+            if (!mapas.length) {
+                box.innerHTML = '<div class="op-orig" style="color:#d29922">⚠ Este line profile não tem gem mapping no backup. Escolha um com GEMs (ou crie um acima).</div>';
+                return;
+            }
+            box.innerHTML = '<span class="op-lbl">SERVICE-PORTS (GEM · USER-VLAN → VLAN DA OLT)</span>' + mapas.map(([g, uv], k) => `
+                <div class="op-svc">
+                    <input type="checkbox" id="op-svc-${i}-${k}" ${k === 0 ? 'checked' : ''}
+                        onchange="const v=document.getElementById('op-svcv-${i}-${k}'); if(this.checked && !v.value) v.value=document.getElementById('op-vlan-${i}').value;">
+                    <span>GEM ${g} · user-vlan ${uv} →</span>
+                    <input class="op-in" id="op-svcv-${i}-${k}" type="number" min="1" max="4094" placeholder="VLAN OLT"
+                        value="${k === 0 ? _escHtml(vlanOlt) : ''}" data-gem="${g}" data-uv="${uv}">
+                </div>`).join('');
+        };
+
+        function opServicosDoCartao(i) {
+            const out = [];
+            document.querySelectorAll(`#op-svc-${i} input[data-gem]`).forEach((inp, k) => {
+                if (document.getElementById(`op-svc-${i}-${k}`)?.checked)
+                    out.push({gem: inp.dataset.gem, user_vlan: inp.dataset.uv, vlan: inp.value.trim()});
+            });
+            return out;
+        }
+
+        // ── Criação de srv/line profile (VLAN translate) ──
+        let opPfVlans = [];
+
+        function opPfRender() {
+            const max = opInv ? opInv.max_gems : 32;
+            document.getElementById('opPfChips').innerHTML = opPfVlans.map(v =>
+                `<span class="op-chip">${v}<button title="Remover" onclick="opPfRemover(${v})">✕</button></span>`).join('');
+            document.getElementById('opPfCont').textContent = opPfVlans.length;
+            const cheio = opPfVlans.length >= max;
+            document.getElementById('opPfVlanBtn').disabled = cheio;
+            document.getElementById('opPfVlanIn').disabled = cheio;
+            document.getElementById('opPfVlanIn').placeholder = cheio ? `limite de ${max} GEMs atingido` : '101  ou  101-105  ou  101,110,3304';
+        }
+
+        window.opPfAddVlan = function() {
+            const max = opInv ? opInv.max_gems : 32;
+            const inp = document.getElementById('opPfVlanIn');
+            const msg = document.getElementById('opPfMsg');
+            const novas = [];
+            for (const parte of inp.value.split(/[,\s;]+/).filter(Boolean)) {
+                const m = parte.match(/^(\d+)(?:-(\d+))?$/);
+                if (!m) { msg.innerHTML = `<span style="color:#ff5555">✗ "${_escHtml(parte)}" não é VLAN nem faixa.</span>`; return; }
+                const a = parseInt(m[1]), b = parseInt(m[2] || m[1]);
+                if (a < 1 || b > 4094 || b < a) { msg.innerHTML = `<span style="color:#ff5555">✗ Faixa inválida: ${_escHtml(parte)} (1–4094).</span>`; return; }
+                for (let v = a; v <= b; v++) novas.push(v);
+            }
+            let cortadas = 0;
+            for (const v of novas) {
+                if (opPfVlans.includes(v)) continue;
+                if (opPfVlans.length >= max) { cortadas++; continue; }
+                opPfVlans.push(v);
+            }
+            msg.innerHTML = cortadas ? `<span style="color:#d29922">⚠ Limite de ${max} GEMs: ${cortadas} VLAN(s) ficaram de fora.</span>` : '';
+            inp.value = '';
+            opPfRender();
+        };
+
+        window.opPfRemover = function(v) {
+            opPfVlans = opPfVlans.filter(x => x !== v);
+            opPfRender();
+        };
+
+        function opPfSpec() {
+            const val = id => document.getElementById(id).value.trim();
+            return {
+                srv: {criar: document.getElementById('opPfSrvCriar').checked, id: val('opPfSrvId'), nome: val('opPfSrvNome'), eth: val('opPfSrvEth')},
+                line: {criar: document.getElementById('opPfLineCriar').checked, id: val('opPfLineId'), nome: val('opPfLineNome'),
+                       tcont: val('opPfTcont'), dba: val('opPfDba')},
+                vlans: opPfVlans, gem_igual_vlan: document.getElementById('opPfGemIgual').checked,
+            };
+        }
+
+        async function opPfPost(corpo) {
+            return opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-prov/perfis/`, {method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
+                body: JSON.stringify(corpo)});
+        }
+
+        window.opPfPreview = async function() {
+            const msg = document.getElementById('opPfMsg'), box = document.getElementById('opPfPreview');
+            try {
+                const j = await opPfPost({spec: opPfSpec(), acao: 'preview'});
+                msg.innerHTML = (j.avisos || []).map(a => `<div style="color:#d29922">⚠ ${_escHtml(a)}</div>`).join('');
+                box.textContent = '# conferido antes (não pode existir):\n' + j.checagens.join('\n') + '\n\n' + j.comandos.join('\n');
+                box.style.display = '';
+                return j;
+            } catch (e) {
+                msg.innerHTML = `<span style="color:#ff5555">✗ ${_escHtml(e.message)}</span>`;
+                box.style.display = 'none';
+                return null;
+            }
+        };
+
+        // Perfis recém-criados entram no inventário local, para os selects
+        // dos cartões já oferecerem o perfil sem esperar o próximo backup.
+        function opPfIncorporar(spec, gems) {
+            if (spec.srv.criar) opInv.srvs.push({id: parseInt(spec.srv.id), nome: spec.srv.nome, vlans: []});
+            if (spec.line.criar) opInv.lines.push({id: parseInt(spec.line.id), nome: spec.line.nome,
+                gems: gems.map(g => g[0]), vlans: gems.map(g => g[1]), mapas: gems});
+            opInv.srvs.sort((a, b) => a.id - b.id); opInv.lines.sort((a, b) => a.id - b.id);
+            const manter = '<option value="">— manter o sugerido de cada uma —</option>';
+            document.getElementById('opLineTodas').innerHTML = manter + opOpcoesPerfil(opInv.lines, null).replace('<option value="">—</option>', '');
+            document.getElementById('opSrvTodas').innerHTML = manter + opOpcoesPerfil(opInv.srvs, null).replace('<option value="">—</option>', '');
+            opOnus.forEach((o, i) => {
+                ['line', 'srv'].forEach(k => {
+                    const sel = document.getElementById(`op-${k}-${i}`);
+                    if (!sel) return;
+                    const v = sel.value ? parseInt(sel.value) : null;
+                    sel.innerHTML = opOpcoesPerfil(k === 'line' ? opInv.lines : opInv.srvs, v);
+                });
+                opRenderServicos(i);
+            });
+        }
+
+        window.opPfCriar = async function() {
+            if (opRodando) return;
+            const prev = await opPfPreview();
+            if (!prev) return;
+            const spec = opPfSpec();
+            const term = opTerminalDaOlt(opAcessoId());
+            const ok = await uiConfirm({tipo: 'aviso', titulo: 'Criar perfis na OLT?', btnLabel: 'Criar',
+                msgHtml: `Criar ${spec.srv.criar ? `srv profile <b>${_escHtml(spec.srv.id)}</b>` : ''}`
+                    + `${spec.srv.criar && spec.line.criar ? ' e ' : ''}`
+                    + `${spec.line.criar ? `line profile <b>${_escHtml(spec.line.id)}</b> com <b>${prev.gems.length}</b> GEM(s)` : ''}`
+                    + ` em <b>${_escHtml(opInv.host.nome)}</b> ${opModoLabel(term)}?`});
+            if (!ok) return;
+            const msg = document.getElementById('opPfMsg'), box = document.getElementById('opPfPreview');
+            const btn = document.getElementById('opPfBtnCriar');
+            opRodando = true; btn.disabled = true; btn.textContent = '⏳ Criando...';
+            try {
+                let status, saida, texto;
+                if (term) {
+                    const log = [];
+                    const inicial = await opPrepararTerminal(term);
+                    try {
+                        status = 'sucesso'; texto = 'perfis criados';
+                        for (const c of prev.checagens) {
+                            const r = await opCmdTerminal(term, c); log.push(`${c}\n${r}`);
+                            const naoExiste = /profile does not exist/i.test(r), existe = /Profile-ID\s*:\s*\d+/i.test(r);
+                            if (!naoExiste) { status = 'erro'; texto = `${c.replace('display ', '')}: ${existe ? 'já existe na OLT' : 'resposta inesperada da OLT'}. Nada foi criado.`; break; }
+                        }
+                        if (status === 'sucesso') for (const c of prev.comandos) {
+                            const r = await opCmdTerminal(term, c); log.push(`${c}\n${r}`);
+                            const f = (r.match(OP_ERRO) || [''])[0].trim();
+                            if (f) { status = 'erro'; texto = `${c}: ${f}`; await opCmdTerminal(term, 'quit').catch(() => {}); break; }
+                        }
+                    } finally {
+                        await opRestaurarTerminal(term, inicial);
+                    }
+                    saida = log.join('\n');
+                    await opPfPost({spec, acao: 'registrar', status, saida, msg: texto}).catch(e => console.warn('[ONU] auditoria:', e));
+                } else {
+                    const j = await opPfPost({spec, acao: 'executar'});
+                    status = j.status; saida = j.saida; texto = j.msg;
+                }
+                box.textContent = saida; box.style.display = '';
+                if (status === 'sucesso') {
+                    msg.innerHTML = `<span style="color:#3fb950">✓ ${_escHtml(texto)} — já disponíveis nos cartões das ONUs (modo Translate).</span>`;
+                    opPfIncorporar(spec, prev.gems);
+                    if (spec.srv.criar) document.getElementById('opPfSrvId').value = '';
+                    if (spec.line.criar) document.getElementById('opPfLineId').value = '';
+                } else {
+                    msg.innerHTML = `<span style="color:#ff5555">✗ ${_escHtml(texto)}</span>`;
+                }
+            } catch (e) {
+                msg.innerHTML = `<span style="color:#ff5555">✗ ${_escHtml(e.message || e)}</span>`;
+            } finally {
+                opRodando = false; btn.disabled = false; btn.textContent = '▶ Criar na OLT';
+            }
+        };
 
         // ── Sessão: o terminal JÁ ABERTO na OLT ──
         // A OLT da WTD não deixa o mesmo login entrar duas vezes (reenter
@@ -4007,14 +4238,17 @@
         window.opAplicarPerfil = function(campo, v) {
             if (!v) return;
             opOnus.forEach((o, i) => {
-                if (document.getElementById(`op-chk-${i}`)?.checked) document.getElementById(`op-${campo}-${i}`).value = v;
+                if (document.getElementById(`op-chk-${i}`)?.checked) {
+                    document.getElementById(`op-${campo}-${i}`).value = v;
+                    opRenderServicos(i);
+                }
             });
         };
 
         window.opAplicarModo = function(v) {
             if (!v) return;
             opOnus.forEach((o, i) => {
-                if (document.getElementById(`op-chk-${i}`)?.checked) document.getElementById(`op-modo-${i}`).value = v;
+                if (document.getElementById(`op-chk-${i}`)?.checked) { document.getElementById(`op-modo-${i}`).value = v; opRenderServicos(i); }
             });
         };
 
@@ -4023,8 +4257,13 @@
             opOnus.forEach((o, i) => {
                 if (!document.getElementById(`op-chk-${i}`)?.checked) return;
                 const v = k => document.getElementById(`op-${k}-${i}`).value.trim();
-                itens.push({_i: i, sn: o.sn, slot: o.slot, porta: o.porta, vlan: v('vlan'), line: v('line'),
-                            srv: v('srv'), gemport: v('gem'), modo: v('modo'), desc: v('desc')});
+                const it = {_i: i, sn: o.sn, slot: o.slot, porta: o.porta, vlan: v('vlan'), line: v('line'),
+                            srv: v('srv'), gemport: v('gem'), modo: v('modo'), desc: v('desc')};
+                if (it.modo === 'translate') {
+                    it.servicos = opServicosDoCartao(i);
+                    if (it.servicos.length && !it.vlan) it.vlan = it.servicos[0].vlan;
+                }
+                itens.push(it);
             });
             return itens;
         }

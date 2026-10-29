@@ -384,3 +384,125 @@ class ModoTerminalViewsTest(SimpleTestCase):
             resp = v.onu_prov_registrar.__wrapped__.__wrapped__.__wrapped__(
                 self._req({'item': _item(), 'status': 'talvez'}), 9486)
         self.assertEqual(resp.status_code, 400)
+
+
+BACKUP_TRANSLATE = BACKUP.replace(
+    ' ont-lineprofile gpon profile-id 301',
+    ' dba-profile add profile-id 10 profile-name "DBA_PROFILE" type4 max 1000000\n'
+    ' ont-lineprofile gpon profile-id 20 profile-name "LINE-MIGRACAO"\n'
+    '  tcont 1 dba-profile-id 10\n'
+    '  gem add 101 eth tcont 1\n'
+    '  gem add 102 eth tcont 1\n'
+    '  gem mapping 101 1 vlan 101\n'
+    '  gem mapping 102 1 vlan 102\n'
+    '  commit\n'
+    '  quit\n'
+    ' ont-lineprofile gpon profile-id 301')
+
+
+def _spec(**kw):
+    spec = {'srv': {'criar': True, 'id': 8, 'nome': 'translate'},
+            'line': {'criar': True, 'id': 21, 'nome': 'LINE-MIGRACAO', 'tcont': 1, 'dba': 10},
+            'vlans': [101, 102, 103, 104, 105]}
+    spec.update(kw)
+    return spec
+
+
+class PerfisTranslateTest(SimpleTestCase):
+    def setUp(self):
+        self.bk = op.parse_backup(BACKUP_TRANSLATE)
+
+    def test_backup_traz_mapas_e_dba(self):
+        self.assertEqual(self.bk['lines'][20]['mapas'], [[101, 101], [102, 102]])
+        self.assertEqual(self.bk['dbas'], {10: 'DBA_PROFILE'})
+
+    def test_comandos_no_formato_do_modelo(self):
+        norm, avisos = op.validar_perfis(_spec(), self.bk)
+        self.assertEqual(avisos, [])
+        self.assertEqual(op.comandos_perfis(norm), [
+            'ont-srvprofile gpon profile-id 8 profile-name "translate"',
+            'ont-port eth adaptive 8', 'native-vlan unconcern', 'commit', 'quit',
+            'ont-lineprofile gpon profile-id 21 profile-name "LINE-MIGRACAO"',
+            'tcont 1 dba-profile-id 10',
+            'gem add 101 eth tcont 1', 'gem add 102 eth tcont 1', 'gem add 103 eth tcont 1',
+            'gem add 104 eth tcont 1', 'gem add 105 eth tcont 1',
+            'gem mapping 101 1 vlan 101', 'gem mapping 102 1 vlan 102', 'gem mapping 103 1 vlan 103',
+            'gem mapping 104 1 vlan 104', 'gem mapping 105 1 vlan 105',
+            'commit', 'quit'])
+        self.assertEqual(op.checagens_perfis(norm), [
+            'display ont-srvprofile gpon profile-id 8', 'display ont-lineprofile gpon profile-id 21'])
+
+    def test_uma_vlan_so(self):
+        norm, _ = op.validar_perfis(_spec(vlans=[3304], srv={'criar': False}), self.bk)
+        self.assertEqual(norm['line']['gems'], [(1, 3304)])
+        self.assertIsNone(norm['srv'])
+
+    def test_gem_acima_de_1023_pega_o_proximo_livre(self):
+        norm, _ = op.validar_perfis(_spec(vlans=[1, 3304, 2]), self.bk)
+        self.assertEqual(norm['line']['gems'], [(1, 1), (3, 3304), (2, 2)])
+
+    def test_limite_de_gems(self):
+        with self.assertRaises(op.ProvisionamentoInvalido):
+            op.validar_perfis(_spec(vlans=list(range(100, 100 + op.MAX_GEMS_PERFIL + 1))), self.bk)
+        norm, _ = op.validar_perfis(_spec(vlans=list(range(100, 100 + op.MAX_GEMS_PERFIL))), self.bk)
+        self.assertEqual(len(norm['line']['gems']), op.MAX_GEMS_PERFIL)
+
+    def test_recusa_id_existente_e_nome_com_aspas(self):
+        for kw in ({'line': {'criar': True, 'id': 300, 'nome': 'x', 'dba': 10}},
+                   {'srv': {'criar': True, 'id': 1001, 'nome': 'x'}},
+                   {'srv': {'criar': True, 'id': 8, 'nome': 'a"b'}},
+                   {'srv': {'criar': False}, 'line': {'criar': False}},
+                   {'vlans': []}, {'vlans': [5000]}):
+            with self.subTest(kw=kw), self.assertRaises(op.ProvisionamentoInvalido):
+                op.validar_perfis(_spec(**kw), self.bk)
+
+    def test_perfil_existe_pela_resposta_real(self):
+        self.assertFalse(op.perfil_existe('  Failure: The line profile does not exist\n'))
+        self.assertFalse(op.perfil_existe('  Failure: The service profile does not exist\n'))
+        self.assertTrue(op.perfil_existe('  Profile-ID          :300\n  Profile-name :VLANID 300'))
+        self.assertTrue(op.perfil_existe('  Profile-ID  : 1001\n'))
+        self.assertIsNone(op.perfil_existe('% Unknown command'))
+
+    def test_criar_para_se_ja_existe_ao_vivo(self):
+        norm, _ = op.validar_perfis(_spec(), self.bk)
+        shell = mock.Mock()
+        shell.enviar.side_effect = lambda c, **k: ('  Profile-ID  : 8\n' if 'srvprofile' in c
+                                                   else '  Failure: The line profile does not exist')
+        status, _, msg = op.criar_perfis(shell, norm)
+        self.assertEqual(status, 'erro')
+        self.assertIn('já existe', msg)
+        self.assertFalse(any(c.args[0].startswith('ont-') for c in shell.enviar.call_args_list))
+
+    def test_criar_ok(self):
+        norm, _ = op.validar_perfis(_spec(), self.bk)
+        shell = mock.Mock()
+        shell.enviar.side_effect = lambda c, **k: ('  Failure: The profile does not exist'
+                                                   if c.startswith('display') else 'MA5800-X7(config)#')
+        status, _, _ = op.criar_perfis(shell, norm)
+        self.assertEqual(status, 'sucesso')
+        self.assertEqual(shell.enviar.call_args_list[-1].args[0], 'quit')
+
+
+class ProvisionarTranslateTest(SimpleTestCase):
+    def setUp(self):
+        self.bk = op.parse_backup(BACKUP_TRANSLATE)
+
+    def test_service_port_por_gem_com_translate(self):
+        it, avisos = op.validar_item(_item(modo='translate', line=20, srv=300, vlan='', servicos=[
+            {'gem': 101, 'user_vlan': 101, 'vlan': 300}, {'gem': 102, 'user_vlan': 102, 'vlan': 315}]),
+            INVENTARIO, self.bk)
+        self.assertEqual(avisos, [])
+        self.assertEqual(op.comandos_onu(it, 0), [
+            'interface gpon 0/1',
+            'ont add 0 sn-auth 485754433B654F8B omci ont-lineprofile-id 20 ont-srvprofile-id 300',
+            'quit',
+            'service-port vlan 300 gpon 0/1/0 ont 0 gemport 101 multi-service user-vlan 101 tag-transform translate',
+            'service-port vlan 315 gpon 0/1/0 ont 0 gemport 102 multi-service user-vlan 102 tag-transform translate',
+        ])
+
+    def test_translate_exige_servico_e_avisa_gem_fora_do_perfil(self):
+        with self.assertRaises(op.ProvisionamentoInvalido):
+            op.validar_item(_item(modo='translate', line=20, servicos=[]), INVENTARIO, self.bk)
+        _, avisos = op.validar_item(_item(modo='translate', line=20, servicos=[
+            {'gem': 9, 'user_vlan': 101, 'vlan': 300}]), INVENTARIO, self.bk)
+        self.assertIn('não tem o GEM 9', avisos[0])
