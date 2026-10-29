@@ -1355,7 +1355,7 @@
             </div>
             <div id="opMsg" style="font-size:11px;"></div>
             <details id="opPerfisBox" style="border:1px solid #30363d;border-radius:6px;padding:8px;">
-                <summary style="cursor:pointer;font-size:11px;color:#ffa500;font-weight:700;">➕ Criar srv/line profile para VLAN translate</summary>
+                <summary style="cursor:pointer;font-size:12px;color:#ffa500;font-weight:700;padding:2px 0;">➕ Criar srv/line profile para VLAN translate <span style="font-weight:400;color:#7d8590;font-size:10px;">(clique para abrir)</span></summary>
                 <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
                     <div style="font-size:10px;color:#7d8590;">Cada VLAN vira um GEM no line profile (<code>gem add</code> + <code>gem mapping</code>), até o limite de <span id="opPfMaxTxt">32</span> GEMs. O ID não pode existir na OLT: o CRM confere ao vivo antes de criar.</div>
                     <label style="font-size:11px;color:#c9d1d9;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="opPfSrvCriar" checked> Srv profile</label>
@@ -3420,6 +3420,7 @@
         const SP_ONU_HUAWEI = [
             {id: 'onu-unico', nome: 'Huawei — Provisionar ONU (único)'},
             {id: 'onu-massa', nome: 'Huawei — Provisionar ONUs em massa'},
+            {id: 'onu-perfis', nome: 'Huawei — Criar srv/line profile (VLAN translate)'},
         ];
 
         // ── Carregar equipamentos disponíveis ──
@@ -3569,10 +3570,12 @@
                 renderParamsForm([]);
                 const descBox = document.getElementById('spDescBox');
                 if (descBox) {
-                    descBox.textContent = 'Abre a aba ONU: busca as ONUs pendentes (display ont autofind all) com VLAN e perfis sugeridos pelo backup.';
+                    descBox.textContent = id === 'onu-perfis'
+                        ? 'Abre a aba ONU na criação de srv/line profile: lista de VLANs, cada uma vira um GEM (gem add + gem mapping) até o limite.'
+                        : 'Abre a aba ONU: busca as ONUs pendentes (display ont autofind all) com VLAN e perfis sugeridos pelo backup.';
                     descBox.style.display = '';
                 }
-                opAbrir(id === 'onu-unico' ? 'unico' : 'massa');
+                if (id === 'onu-perfis') opAbrirPerfis(); else opAbrir(id === 'onu-unico' ? 'unico' : 'massa');
                 return;
             }
 
@@ -3641,6 +3644,7 @@
                 return;
             }
             const selScript = document.getElementById('spScriptSelect')?.value || '';
+            if (selScript === 'onu-perfis') { opAbrirPerfis(); return; }
             if (selScript.startsWith('onu-')) { opAbrir(selScript === 'onu-unico' ? 'unico' : 'massa'); return; }
             if (!spScriptAtual) {
                 uiAlert('Selecione um script.');
@@ -3828,6 +3832,16 @@
 
         // Vindo do menu de scripts: abre a aba e já busca. "Único" deixa só a
         // primeira ONU marcada.
+        // Menu SCRIPT → "Criar srv/line profile": abre a aba já na seção.
+        async function opAbrirPerfis() {
+            spTab('onu');
+            await opCarregarInventario();
+            const box = document.getElementById('opPerfisBox');
+            box.open = true;
+            box.scrollIntoView({behavior: 'smooth', block: 'start'});
+            document.getElementById('opPfVlanIn').focus();
+        }
+
         async function opAbrir(selecao) {
             opSelecao = selecao;
             spTab('onu');
