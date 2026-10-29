@@ -53,7 +53,13 @@ MODOS = {
     # Um service-port por GEM do line profile, traduzindo a user-vlan da ONT
     # para a VLAN da OLT (ex.: GEM 101 / user-vlan 101 → VLAN 3304).
     'translate': {'label': 'VLAN translate (service-port por GEM)', 'native_vlan': False},
+    # Uma ou mais VLANs tagueadas passando direto (user-vlan = VLAN da OLT,
+    # `tag-transform transparent`), uma service-port por VLAN do line profile.
+    'transparente': {'label': 'Passagem de VLANs (transparent, 1 ou mais)', 'native_vlan': False},
 }
+
+# Modos cujo service-port sai de `servicos` (um por GEM/VLAN do line profile).
+MODOS_SERVICOS = ('translate', 'transparente')
 
 # Teto do lote: cada ONU são ~5 comandos numa sessão só. 64 já é uma PON
 # inteira de ONUs novas; acima disso é melhor dividir e conferir no meio.
@@ -144,9 +150,12 @@ _ONT_ADD_RE = re.compile(
 _NATIVE_RE = re.compile(r'^\s*ont port native-vlan (\d+) (\d+) eth \d+ vlan (\d+)')
 _SERVICE_PORT_RE = re.compile(
     r'^\s*service-port \d+ vlan (\d+) gpon (\d+/\d+)/(\d+) ont (\d+) gemport (\d+)'
-    r'(?:.*?\buser-vlan (\d+))?')
+    r'(?:.*?\buser-vlan (\d+))?(?:.*?\btag-transform (\w+))?')
 _DBA_RE = re.compile(r'^\s*dba-profile add profile-id (\d+) profile-name "([^"]*)"')
 _VLAN_RE = re.compile(r'^\s*vlan (\d+)(?: to (\d+))? ')
+# `port vlan 300 to 330 0/8 0` (VLANs na uplink). Só no nível de config: o
+# `port vlan eth 1 translation ...` do srv profile tem outro formato.
+_PORT_VLAN_RE = re.compile(r'^\s?port vlan (\d+)(?: to (\d+))? (\d+/\d+) (\d+)\s*$')
 
 
 def parse_backup(conteudo):
@@ -155,7 +164,7 @@ def parse_backup(conteudo):
     `onts[(slot, porta)]` = {ont_id: {...}} junta as três linhas que formam
     um assinante (ont add + native-vlan + service-port).
     """
-    lines, srvs, vlans, dbas = {}, {}, set(), {}
+    lines, srvs, vlans, dbas, uplinks = {}, {}, set(), {}, {}
     onts, sns = {}, {}
     perfil_atual, slot_atual = None, None
 
@@ -195,6 +204,13 @@ def parse_backup(conteudo):
             dbas[int(m.group(1))] = m.group(2).strip()
             continue
 
+        m = _PORT_VLAN_RE.match(linha)
+        if m:
+            ini = int(m.group(1))
+            fim = int(m.group(2) or ini)
+            uplinks.setdefault((m.group(3), int(m.group(4))), set()).update(range(ini, fim + 1))
+            continue
+
         m = _VLAN_RE.match(linha)
         if m and linha.rstrip().endswith(('smart', 'standard', 'mux', 'super')):
             ini = int(m.group(1))
@@ -216,7 +232,8 @@ def parse_backup(conteudo):
                 sn = m.group(3).upper()
                 onts.setdefault((slot_atual, porta), {})[ont_id] = {
                     'sn': sn, 'line': int(m.group(4)), 'srv': int(m.group(5)),
-                    'native_vlan': None, 'vlan': None, 'gemport': None, 'user_vlan': None}
+                    'native_vlan': None, 'vlan': None, 'gemport': None, 'user_vlan': None,
+                    'tag': ''}
                 sns[sn] = f'{slot_atual}/{porta} ONT {ont_id}'
                 continue
             m = _NATIVE_RE.match(linha)
@@ -233,8 +250,21 @@ def parse_backup(conteudo):
                 ont['vlan'] = int(m.group(1))
                 ont['gemport'] = int(m.group(5))
                 ont['user_vlan'] = int(m.group(6)) if m.group(6) else None
+                ont['tag'] = m.group(7) or ''
 
-    return {'lines': lines, 'srvs': srvs, 'vlans': vlans, 'onts': onts, 'sns': sns, 'dbas': dbas}
+    return {'lines': lines, 'srvs': srvs, 'vlans': vlans, 'onts': onts, 'sns': sns, 'dbas': dbas,
+            'uplinks': uplinks}
+
+
+def uplinks_do_backup(backup):
+    """[{'porta': '0/8 0', 'vlans': N}] das portas que recebem `port vlan`,
+    a que carrega mais VLANs primeiro. `padrao` marca as que levam pelo menos
+    metade do que a principal leva: é onde uma VLAN nova normalmente passa
+    (0/8 0 na SENTO SE; 0/8 0 e 0/8 1 na DS TECH, que divide a carga)."""
+    itens = sorted(backup.get('uplinks', {}).items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    topo = len(itens[0][1]) if itens else 0
+    return [{'porta': f'{slot} {porta}', 'vlans': len(vs), 'padrao': len(vs) * 2 >= topo}
+            for (slot, porta), vs in itens]
 
 
 def _mais_comum(valores):
@@ -262,6 +292,7 @@ def sugerir(backup, slot, porta, sn=''):
     # Translate de verdade: o service-port troca a VLAN (user-vlan 1 → vlan
     # 101, modelo "VLAN fixa" da DKY). Nas PONs da SENTO SE user-vlan == vlan.
     traduz = sum(1 for o in na_pon if o.get('user_vlan') not in (None, o['vlan']))
+    transparente = sum(1 for o in na_pon if o.get('tag') == 'transparent')
 
     if na_pon:
         origem = f'maioria das {len(na_pon)} ONTs da PON {slot}/{porta} no backup'
@@ -282,7 +313,8 @@ def sugerir(backup, slot, porta, sn=''):
 
     return {
         'vlan': vlan, 'line': line, 'srv': srv, 'gemport': gemport or 1,
-        'modo': ('translate' if na_pon and traduz * 2 > len(na_pon) else
+        'modo': ('transparente' if na_pon and transparente * 2 > len(na_pon) else
+                 'translate' if na_pon and traduz * 2 > len(na_pon) else
                  'ont' if na_pon and com_native * 2 < len(na_pon) else 'onu'),
         'origem': origem,
     }
@@ -328,7 +360,7 @@ def validar_item(item, inventario, backup):
     if modo not in MODOS:
         raise ProvisionamentoInvalido(f'{sn}: modo desconhecido "{modo}".')
     # No translate a VLAN vem de cada service-port (preenchida mais abaixo).
-    vlan = None if modo == 'translate' else _inteiro(item.get('vlan'), f'{sn}: VLAN', 1, 4094)
+    vlan = None if modo in MODOS_SERVICOS else _inteiro(item.get('vlan'), f'{sn}: VLAN', 1, 4094)
     line = _inteiro(item.get('line'), f'{sn}: line-profile', 0, 8192)
     srv = _inteiro(item.get('srv'), f'{sn}: srv-profile', 0, 8192)
     gemport = _inteiro(item.get('gemport') or 1, f'{sn}: gemport', 0, 1023)
@@ -336,7 +368,7 @@ def validar_item(item, inventario, backup):
     avisos = []
     if line not in backup['lines']:
         avisos.append(f'{sn}: line-profile {line} não está no backup.')
-    elif modo != 'translate' and backup['lines'][line]['gems'] and gemport not in backup['lines'][line]['gems']:
+    elif modo not in MODOS_SERVICOS and backup['lines'][line]['gems'] and gemport not in backup['lines'][line]['gems']:
         avisos.append(f'{sn}: o line-profile {line} não tem o gemport {gemport} '
                       f'(tem {", ".join(map(str, backup["lines"][line]["gems"]))}).')
     if srv not in backup['srvs']:
@@ -347,10 +379,10 @@ def validar_item(item, inventario, backup):
         avisos.append(f'{sn}: já aparece no backup em {backup["sns"][sn]} — a OLT vai recusar se ainda estiver lá.')
 
     servicos = []
-    if modo == 'translate':
+    if modo in MODOS_SERVICOS:
         brutos = item.get('servicos')
         if not isinstance(brutos, list) or not brutos:
-            raise ProvisionamentoInvalido(f'{sn}: no modo translate marque pelo menos um GEM com VLAN da OLT.')
+            raise ProvisionamentoInvalido(f'{sn}: no modo {modo} marque pelo menos uma VLAN do line profile.')
         if len(brutos) > MAX_GEMS_PERFIL:
             raise ProvisionamentoInvalido(f'{sn}: no máximo {MAX_GEMS_PERFIL} service-ports por ONU.')
         gems_line = backup['lines'].get(line, {}).get('gems') or []
@@ -358,15 +390,18 @@ def validar_item(item, inventario, backup):
             if not isinstance(sv, dict):
                 raise ProvisionamentoInvalido(f'{sn}: serviço inválido.')
             g = _inteiro(sv.get('gem'), f'{sn}: GEM', 0, MAX_GEM_INDEX)
-            servicos.append({'gem': g,
-                             'user_vlan': _inteiro(sv.get('user_vlan'), f'{sn}: user-vlan do GEM {g}', 1, 4094),
-                             'vlan': _inteiro(sv.get('vlan'), f'{sn}: VLAN da OLT do GEM {g}', 1, 4094)})
+            uv = _inteiro(sv.get('user_vlan'), f'{sn}: user-vlan do GEM {g}', 1, 4094)
+            # Transparente: a VLAN passa como está — a da OLT é a própria user-vlan.
+            vo = uv if modo == 'transparente' else _inteiro(
+                sv.get('vlan'), f'{sn}: VLAN da OLT do GEM {g}', 1, 4094)
+            servicos.append({'gem': g, 'user_vlan': uv, 'vlan': vo})
             if gems_line and g not in gems_line:
                 avisos.append(f'{sn}: o line-profile {line} não tem o GEM {g}.')
             if backup['vlans'] and servicos[-1]['vlan'] not in backup['vlans']:
                 avisos.append(f'{sn}: VLAN {servicos[-1]["vlan"]} não está criada no backup.')
-        if len({sv['gem'] for sv in servicos}) != len(servicos):
-            raise ProvisionamentoInvalido(f'{sn}: GEM repetido nos serviços.')
+        # Um GEM pode levar várias VLANs (gem mapping 1 1 vlan 3998 / 1 2 vlan 3084).
+        if len({(sv['gem'], sv['user_vlan']) for sv in servicos}) != len(servicos):
+            raise ProvisionamentoInvalido(f'{sn}: VLAN repetida no mesmo GEM.')
         vlan = servicos[0]['vlan']
 
     return {'sn': sn, 'slot': slot, 'porta': porta, 'vlan': vlan, 'line': line,
@@ -375,6 +410,65 @@ def validar_item(item, inventario, backup):
 
 
 ONT_ID = '{ONT_ID}'
+
+_PORTA_UPLINK_RE = re.compile(r'^(\d+/\d+)\s+(\d+)$')
+
+
+def validar_uplink(spec, backup, vlans_padrao=()):
+    """{criar, portas: ["0/8 0", ...], vlans: [...]} → (norm|None, avisos).
+
+    Toda VLAN que um script pede precisa existir na OLT (`vlan V smart`) e
+    passar na uplink (`port vlan V 0/8 0`); sem isso o service-port até entra,
+    mas o tráfego não sai da OLT. As portas vêm do backup
+    (`uplinks_do_backup`); uma porta fora dele entra com aviso.
+    """
+    spec = spec if isinstance(spec, dict) else {}
+    if not spec.get('criar'):
+        return None, []
+    brutas = spec.get('vlans') if spec.get('vlans') not in (None, []) else list(vlans_padrao)
+    vlans = []
+    for v in brutas or []:
+        v = _inteiro(v, 'VLAN da uplink', 1, 4094)
+        if v not in vlans:
+            vlans.append(v)
+    if not vlans:
+        raise ProvisionamentoInvalido('Informe as VLANs que vão para a uplink.')
+    portas, avisos = [], []
+    for p in spec.get('portas') or []:
+        m = _PORTA_UPLINK_RE.match(str(p).strip())
+        if not m:
+            raise ProvisionamentoInvalido(f'Porta de uplink inválida: "{p}" (use frame/slot porta, ex. 0/8 0).')
+        chave = (m.group(1), int(m.group(2)))
+        if chave not in portas:
+            portas.append(chave)
+        if backup.get('uplinks') and chave not in backup['uplinks']:
+            avisos.append(f'A porta {chave[0]} {chave[1]} não recebe nenhuma VLAN no backup — confira se é uplink.')
+    if not portas:
+        raise ProvisionamentoInvalido('Escolha pelo menos uma porta de uplink.')
+    return {'vlans': vlans, 'portas': portas}, avisos
+
+
+def comandos_vlans_uplink(up, backup):
+    """Só o que falta pelo backup: `vlan V smart` para VLAN que não existe e
+    `port vlan V F/S P` para porta que ainda não leva a VLAN."""
+    if not up:
+        return []
+    cmds = [f'vlan {v} smart' for v in up['vlans'] if v not in backup.get('vlans', set())]
+    for v in up['vlans']:
+        for slot, porta in up['portas']:
+            if v not in backup.get('uplinks', {}).get((slot, porta), set()):
+                cmds.append(f'port vlan {v} {slot} {porta}')
+    return cmds
+
+
+# "Já existe" não é falha para VLAN/uplink: o backup pode estar velho, e o
+# objetivo (a VLAN existir e passar na porta) já foi cumprido.
+_JA_EXISTE_RE = re.compile(r'already|exist', re.IGNORECASE)
+
+
+def falha_vlan_uplink(saida):
+    recusa = detectar_erro_cli(saida)
+    return '' if (recusa and _JA_EXISTE_RE.search(saida)) else recusa
 
 
 def comando_ont_add(it):
@@ -392,8 +486,9 @@ def comandos_pos_add(it, ont_id):
         dentro.append(f'ont port native-vlan {it["porta"]} {ont_id} eth 1 vlan {it["vlan"]} priority 0')
     servicos = it.get('servicos') or [
         {'gem': it['gemport'], 'user_vlan': it['vlan'], 'vlan': it['vlan']}]
+    tag = 'transparent' if it['modo'] == 'transparente' else 'translate'
     fora = [f'service-port vlan {sv["vlan"]} gpon {it["slot"]}/{it["porta"]} ont {ont_id} '
-            f'gemport {sv["gem"]} multi-service user-vlan {sv["user_vlan"]} tag-transform translate'
+            f'gemport {sv["gem"]} multi-service user-vlan {sv["user_vlan"]} tag-transform {tag}'
             for sv in servicos]
     return dentro, fora
 
@@ -454,7 +549,15 @@ def _alocar_gems(vlans, gem_igual_vlan):
 #   `port vlan eth N translation V user-vlan V`, GEM 1 com encrypt (perfil
 #   "SRV_DKY_100"/"VLAN_1" da OLT da DKY). O service-port traduz user-vlan 1 para
 #   a VLAN da OLT (ex.: 101), igual ao modo translate do provisionamento.
-MODELOS_PERFIL = ('translate', 'vlan_fixa')
+# - multi_vlan: duas ou mais VLANs tagueadas passando pela ONU/ONT num GEM só
+#   (perfil "FULLCAM": `port vlan eth 1 translation V user-vlan V` por VLAN e
+#   `gem mapping 1 <idx> vlan V`), provisionado no modo transparente.
+MODELOS_PERFIL = ('translate', 'vlan_fixa', 'multi_vlan')
+
+# O `gem mapping` tem índice 0–7: no máximo 8 VLANs num mesmo GEM. O modelo do
+# operador começa no 1 (1, 2, ...), então o 0 fica para a 8ª.
+MAX_VLANS_GEM = 8
+_INDICES_MAPPING = [1, 2, 3, 4, 5, 6, 7, 0]
 
 
 def validar_perfis(spec, backup):
@@ -527,6 +630,9 @@ def validar_perfis(spec, backup):
         if len(vlans) > MAX_GEMS_PERFIL:
             raise ProvisionamentoInvalido(
                 f'{len(vlans)} VLANs — o line profile comporta no máximo {MAX_GEMS_PERFIL} GEMs.')
+        if modelo == 'multi_vlan' and len(vlans) > MAX_VLANS_GEM:
+            raise ProvisionamentoInvalido(
+                f'{len(vlans)} VLANs num GEM só — o gem mapping vai até {MAX_VLANS_GEM} (índices 0–7).')
         if norm['dba'] and str(line.get('dba')) in ('novo', ''):
             dba_id = norm['dba']['id']
         else:
@@ -538,8 +644,31 @@ def validar_perfis(spec, backup):
                         'tcont': _inteiro(line.get('tcont') or (4 if vlan_fixa else 1), 'T-CONT', 1, 7),
                         'dba': dba_id,
                         # VLAN fixa: GEM 1, como no perfil "VLAN_1" (gem 1 ↔ vlan 1).
+                        # Multi-VLAN: todas no GEM 1 (perfil "FULLCAM").
                         'gems': ([(1, vlan_fixa)] if vlan_fixa is not None else
+                                 [(1, v) for v in vlans] if modelo == 'multi_vlan' else
                                  _alocar_gems(vlans, spec.get('gem_igual_vlan', True) is not False))}
+        if modelo == 'multi_vlan':
+            norm['line']['tcont'] = _inteiro(line.get('tcont') or 4, 'T-CONT', 1, 7)
+    if modelo == 'multi_vlan' and norm['srv']:
+        vlans_srv = []
+        for v in spec.get('vlans') or []:
+            v = _inteiro(v, 'VLAN', 1, 4094)
+            if v not in vlans_srv:
+                vlans_srv.append(v)
+        if not vlans_srv:
+            raise ProvisionamentoInvalido('Adicione pelo menos uma VLAN.')
+        if len(vlans_srv) > MAX_VLANS_GEM:
+            raise ProvisionamentoInvalido(f'No máximo {MAX_VLANS_GEM} VLANs neste modelo.')
+        norm['srv'].update({'vlans': vlans_srv,
+                            'eth_vlan': _inteiro(srv.get('eth_vlan') or 1, 'portas ETH com as VLANs', 1, 8)})
+
+    # VLANs na OLT + uplink. Padrão: as VLANs que de fato saem da OLT com a
+    # mesma tag — as do perfil no multi-VLAN; no translate e na VLAN fixa a
+    # VLAN da OLT é outra (escolhida no service-port), então vem do pedido.
+    padrao = [v for _, v in (norm['line'] or {}).get('gems', [])] if modelo == 'multi_vlan' else []
+    norm['uplink'], av = validar_uplink(spec.get('uplink'), backup, padrao)
+    avisos += av
     return norm, avisos
 
 
@@ -552,10 +681,15 @@ def comandos_perfis(norm):
         # Formato do backup: dba-profile add profile-id 10 profile-name "DBA_PROFILE" type4 max 1000000
         cmds.append(f'dba-profile add profile-id {d["id"]} profile-name "{d["nome"]}" {d["tipo"]} {banda}')
     fixa = norm.get('modelo') == 'vlan_fixa'
+    multi = norm.get('modelo') == 'multi_vlan'
     if norm['srv']:
         s = norm['srv']
         cmds.append(f'ont-srvprofile gpon profile-id {s["id"]} profile-name "{s["nome"]}"')
-        if fixa:
+        if multi:
+            cmds.append('ont-port pots adaptive eth adaptive')
+            cmds += [f'port vlan eth {n} translation {v} user-vlan {v}'
+                     for v in s['vlans'] for n in range(1, s['eth_vlan'] + 1)]
+        elif fixa:
             pots = f'pots adaptive {s["pots"]} ' if s['pots'] else ''
             cmds.append(f'ont-port {pots}eth adaptive {s["eth"]}')
             cmds += [f'port vlan eth {n} translation {s["vlan"]} user-vlan {s["vlan"]}'
@@ -570,10 +704,15 @@ def comandos_perfis(norm):
             cmds.append('omcc encrypt on')
         cmds.append(f'tcont {ln["tcont"]} dba-profile-id {ln["dba"]}')
         cifra = ' encrypt on' if fixa else ''
-        cmds += [f'gem add {g} eth tcont {ln["tcont"]}{cifra}' for g, _ in ln['gems']]
-        # mapping-index 0 no modelo VLAN fixa ("gem mapping 1 0 vlan 1"), 1 no translate.
-        idx = 0 if fixa else 1
-        cmds += [f'gem mapping {g} {idx} vlan {v}' for g, v in ln['gems']]
+        gems_unicos = list(dict.fromkeys(g for g, _ in ln['gems']))
+        cmds += [f'gem add {g} eth tcont {ln["tcont"]}{cifra}' for g in gems_unicos]
+        if multi:
+            # Todas no GEM 1, um índice de mapping por VLAN (1, 2, ...).
+            cmds += [f'gem mapping {g} {_INDICES_MAPPING[k]} vlan {v}' for k, (g, v) in enumerate(ln['gems'])]
+        else:
+            # mapping-index 0 no modelo VLAN fixa ("gem mapping 1 0 vlan 1"), 1 no translate.
+            idx = 0 if fixa else 1
+            cmds += [f'gem mapping {g} {idx} vlan {v}' for g, v in ln['gems']]
         cmds += ['commit', 'quit']
     return cmds
 
@@ -601,8 +740,9 @@ def perfil_existe(saida):
     return None
 
 
-def criar_perfis(shell, norm):
-    """Confere e cria numa sessão já em (config)#. Devolve (status, log, msg)."""
+def criar_perfis(shell, norm, backup=None):
+    """Confere e cria numa sessão já em (config)#. Devolve (status, log, msg).
+    As VLANs/uplink vão por último: só depois de os perfis existirem."""
     log = []
     for cmd in checagens_perfis(norm):
         saida = shell.enviar(cmd)
@@ -619,6 +759,12 @@ def criar_perfis(shell, norm):
             # Sai do modo de edição do perfil para a sessão não ficar presa nele.
             shell.enviar('quit')
             return 'erro', '\n'.join(log), f'{cmd}: {recusa}'
+    for cmd in comandos_vlans_uplink(norm.get('uplink'), backup or {}):
+        saida = shell.enviar(cmd)
+        log.append(f'{cmd}\n{saida}')
+        recusa = falha_vlan_uplink(saida)
+        if recusa:
+            return 'erro', '\n'.join(log), f'perfis criados, mas {cmd}: {recusa}'
     return 'sucesso', '\n'.join(log), 'perfis criados'
 
 
@@ -726,7 +872,7 @@ def _id_da_resposta(shell, it, resposta):
     return (int(m.group(1)) if m else None), f'\n{cmd}\n{saida}'
 
 
-def provisionar(acesso, itens):
+def provisionar(acesso, itens, preparo=()):
     """Gerador de eventos `(tipo, payload)` para o SSE do painel.
 
     Uma sessão para o lote inteiro. Antes de qualquer `ont add` relê o
@@ -748,6 +894,13 @@ def provisionar(acesso, itens):
             shell.enviar(cmd)
         yield 'info', {'msg': 'Conectado. Relendo as ONUs pendentes (display ont autofind all)...'}
 
+        if preparo:
+            yield 'info', {'msg': f'Criando VLANs e passando na uplink ({len(preparo)} comando(s))...'}
+            for cmd in preparo:
+                recusa = falha_vlan_uplink(shell.enviar(cmd))
+                if recusa:
+                    yield 'erro', {'erro': f'{cmd}: {recusa} — lote não iniciado.'}
+                    return
         pendentes = {o['sn']: o for o in parse_autofind(shell.enviar('display ont autofind all', max_wait=90))}
 
         total = len(itens)

@@ -27,6 +27,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   Modelo "ONU com VLAN fixa" (ex.: VLAN 1): srv com `port vlan eth N translation V user-vlan V`,
   line com `omcc encrypt on` e GEM 1 `encrypt on`, provisionado em Translate (user-vlan 1 → VLAN da
   OLT). Também no menu SCRIPT. A sugestão vem em Translate quando a PON já usa `user-vlan` ≠ `vlan`.
+  Modelo "Passagem de 2+ VLANs" (perfil FULLCAM: todas no GEM 1, até 8 VLANs) e modo de
+  provisionamento "Passagem VLANs" (`tag-transform transparent`, um service-port por VLAN). O
+  Translate também aceita várias VLANs. **VLAN na OLT + uplink:** todo script que pede VLAN cria
+  `vlan V smart` e `port vlan V F/S P` na uplink lida do backup (0/8 0 na SENTO SE), só o que falta,
+  nos perfis (depois de criar) e no lote (antes do primeiro `ont add`).
   O DBA do line profile vem da lista do backup ou é criado na hora ("➕ Criar novo DBA...", padrão
   quando o backup não tem nenhum), com type1–4 e banda, antes do line profile.
 - **Aba ONU em massa: line e srv profile únicos para o lote.** Os seletores "Line profile" e

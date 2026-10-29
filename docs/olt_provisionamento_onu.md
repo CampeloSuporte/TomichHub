@@ -128,6 +128,67 @@ Quando a maioria das ONTs da PON no backup tem service-port com `user-vlan` ≠ 
 (o caso desse modelo), a sugestão já vem no modo **Translate**. Na SENTO SE, onde
 `user-vlan` é igual à `vlan`, as 49 PONs continuam sugerindo ONU+ONT.
 
+### Modelo "Passagem de 2+ VLANs" (todas no GEM 1)
+
+Menu SCRIPT → **[Huawei] Criar perfis passagem de 2+ VLANs**, ou MODELO "Passagem de 2+
+VLANs na ONU/ONT". Saiu do perfil `FULLCAM` passado pelo operador:
+
+```
+ont-srvprofile gpon profile-id 3998 profile-name "FULLCAM"
+ ont-port pots adaptive eth adaptive
+ port vlan eth 1 translation 3998 user-vlan 3998   ← por VLAN (eth 1..N, "portas ETH com as VLANs")
+ port vlan eth 1 translation 3084 user-vlan 3084
+ commit
+ quit
+ont-lineprofile gpon profile-id 3998 profile-name "FULLCAM"
+ tcont 4 dba-profile-id 101
+ gem add 1 eth tcont 4
+ gem mapping 1 1 vlan 3998                          ← índice 1, 2, ... (o 0 fica para a 8ª)
+ gem mapping 1 2 vlan 3084
+ commit
+ quit
+```
+
+No máximo 8 VLANs (`MAX_VLANS_GEM`): o índice do `gem mapping` vai de 0 a 7.
+
+## VLANs na OLT e na uplink — Adicionado em 2026-10-29
+
+Todo script que pede VLAN cria a VLAN (`vlan V smart`) e a passa na uplink
+(`port vlan V F/S P`). Sem isso, o service-port entra, mas o tráfego não sai da OLT.
+
+- **Onde está a uplink:** vem do backup. São as portas que recebem `port vlan` no
+  nível de config (`uplinks_do_backup`), ordenadas pela quantidade de VLANs. Vêm
+  marcadas as que levam pelo menos metade do que a principal leva. Na SENTO SE é a
+  `0/8 0` (34 VLANs). Nos 34 backups Huawei aparecem `0/8 0`, `0/8 1`, `0/4 1`,
+  `0/17 0`, `0/3 0`... Com LAG, a VLAN vai na porta mestre, que é a que aparece no
+  backup. Também dá para digitar outra porta.
+- **Só o que falta:** VLAN que já está no backup não é recriada, e porta que já leva
+  a VLAN fica como está. Se a OLT responder "already exists" (backup velho), isso não
+  conta como falha.
+- **Nos perfis:** o bloco de VLAN/uplink roda depois de criar os perfis.
+  - No multi-VLAN, as VLANs da OLT são as do próprio perfil.
+  - No translate e na VLAN fixa, a VLAN da OLT é outra (ex.: 3304, 101) e é
+    informada no campo "VLAN(S) DA OLT".
+- **No provisionamento** (bloco acima da lista de ONUs): as VLANs são as dos
+  service-ports do lote. Elas são criadas e passadas na uplink **antes** do primeiro
+  `ont add`; se a OLT recusar, o lote nem começa.
+
+## Provisionar com passagem de 1 ou mais VLANs (modo "Passagem VLANs")
+
+Modo `transparente` nos cartões: uma service-port por VLAN do line profile escolhido
+(todas marcadas, dá para desmarcar), com a mesma VLAN dos dois lados:
+
+```
+ont add 0 sn-auth 53484C4E3C685A47 omci ont-lineprofile-id 10 ont-srvprofile-id 10 desc "2_VLAN_TAG"
+service-port vlan 1553 gpon 0/1/0 ont {ONT_ID} gemport 1 multi-service user-vlan 1553 tag-transform transparent
+service-port vlan 3869 gpon 0/1/0 ont {ONT_ID} gemport 1 multi-service user-vlan 3869 tag-transform transparent
+```
+
+O modo **Translate** também aceita várias VLANs: marque mais linhas (GEM · user-vlan →
+VLAN da OLT). Um GEM pode levar várias VLANs; só não pode repetir a mesma VLAN no mesmo
+GEM. Quando a maioria das ONTs da PON tem service-port `transparent`, a sugestão já
+vem em "Passagem VLANs".
+
 **Provisionar em modo Translate** (modo novo nos cartões): o cartão lista os GEMs do
 line profile escolhido (`gem mapping` do backup, ou do perfil recém-criado). Cada linha
 marcada vira um service-port, traduzindo a user-vlan do GEM para a VLAN da OLT:
