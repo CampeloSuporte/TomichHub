@@ -1355,9 +1355,19 @@
             </div>
             <div id="opMsg" style="font-size:11px;"></div>
             <details id="opPerfisBox" style="border:1px solid #30363d;border-radius:6px;padding:8px;">
-                <summary style="cursor:pointer;font-size:12px;color:#ffa500;font-weight:700;padding:2px 0;">➕ Criar srv/line profile para VLAN translate <span style="font-weight:400;color:#7d8590;font-size:10px;">(clique para abrir)</span></summary>
+                <summary style="cursor:pointer;font-size:12px;color:#ffa500;font-weight:700;padding:2px 0;">➕ Criar srv/line profile (VLAN translate / VLAN fixa) <span style="font-weight:400;color:#7d8590;font-size:10px;">(clique para abrir)</span></summary>
                 <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
                     <div style="font-size:10px;color:#7d8590;">Cada VLAN vira um GEM no line profile (<code>gem add</code> + <code>gem mapping</code>), até o limite de <span id="opPfMaxTxt">32</span> GEMs. O ID não pode existir na OLT: o CRM confere ao vivo antes de criar.</div>
+                    <div><span class="op-lbl">MODELO</span>
+                        <select class="op-in" id="opPfModelo" onchange="opPfTrocarModelo()">
+                            <option value="translate">VLAN translate — várias VLANs, um GEM por VLAN</option>
+                            <option value="vlan_fixa">ONU com VLAN fixa nas portas (ex.: VLAN 1)</option>
+                        </select></div>
+                    <div id="opPfFixaBox" style="display:none;" class="op-grid">
+                        <div><span class="op-lbl">VLAN SETADA NA ONU</span><input class="op-in" id="opPfVlanFixa" type="number" min="1" max="4094" value="1" oninput="opPfNomesFixa()"></div>
+                        <div><span class="op-lbl">PORTAS ETH COM A VLAN</span><input class="op-in" id="opPfEthVlan" type="number" min="1" max="8" value="4"></div>
+                        <div><span class="op-lbl">POTS ADAPTIVE</span><input class="op-in" id="opPfPots" type="number" min="0" max="32" value="32"></div>
+                    </div>
                     <label style="font-size:11px;color:#c9d1d9;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="opPfSrvCriar" checked> Srv profile</label>
                     <div class="op-grid" style="grid-template-columns:70px 1fr 70px;">
                         <div><span class="op-lbl">ID</span><input class="op-in" id="opPfSrvId" type="number" min="0"></div>
@@ -1387,7 +1397,7 @@
                             <div id="opPfDbaMaxBox"><span class="op-lbl">MAX (kbps)</span><input class="op-in" id="opPfDbaMax" type="number" min="128" value="1024000"></div>
                         </div>
                     </div>
-                    <div>
+                    <div id="opPfVlansBox">
                         <span class="op-lbl">VLANS DO LINE PROFILE (<span id="opPfCont">0</span>/<span id="opPfMax">32</span> GEMs)</span>
                         <div style="display:flex;gap:6px;">
                             <input class="op-in" id="opPfVlanIn" placeholder="101  ou  101-105  ou  101,110,3304" onkeydown="if(event.key==='Enter'){event.preventDefault();opPfAddVlan();}">
@@ -3437,6 +3447,7 @@
             {id: 'onu-unico', nome: 'Huawei — Provisionar ONU (único)'},
             {id: 'onu-massa', nome: 'Huawei — Provisionar ONUs em massa'},
             {id: 'onu-perfis', nome: 'Huawei — Criar srv/line profile (VLAN translate)'},
+            {id: 'onu-perfis-fixa', nome: 'Huawei — Criar perfis ONU com VLAN fixa (VLAN 1)'},
         ];
 
         // ── Carregar equipamentos disponíveis ──
@@ -3591,7 +3602,8 @@
                         : 'Abre a aba ONU: busca as ONUs pendentes (display ont autofind all) com VLAN e perfis sugeridos pelo backup.';
                     descBox.style.display = '';
                 }
-                if (id === 'onu-perfis') opAbrirPerfis(); else opAbrir(id === 'onu-unico' ? 'unico' : 'massa');
+                if (id.startsWith('onu-perfis')) opAbrirPerfis(id === 'onu-perfis-fixa' ? 'vlan_fixa' : 'translate');
+                else opAbrir(id === 'onu-unico' ? 'unico' : 'massa');
                 return;
             }
 
@@ -3660,7 +3672,7 @@
                 return;
             }
             const selScript = document.getElementById('spScriptSelect')?.value || '';
-            if (selScript === 'onu-perfis') { opAbrirPerfis(); return; }
+            if (selScript.startsWith('onu-perfis')) { opAbrirPerfis(selScript === 'onu-perfis-fixa' ? 'vlan_fixa' : 'translate'); return; }
             if (selScript.startsWith('onu-')) { opAbrir(selScript === 'onu-unico' ? 'unico' : 'massa'); return; }
             if (!spScriptAtual) {
                 uiAlert('Selecione um script.');
@@ -3849,13 +3861,15 @@
         // Vindo do menu de scripts: abre a aba e já busca. "Único" deixa só a
         // primeira ONU marcada.
         // Menu SCRIPT → "Criar srv/line profile": abre a aba já na seção.
-        async function opAbrirPerfis() {
+        async function opAbrirPerfis(modelo) {
             spTab('onu');
             await opCarregarInventario();
             const box = document.getElementById('opPerfisBox');
             box.open = true;
+            document.getElementById('opPfModelo').value = modelo || 'translate';
+            opPfTrocarModelo();
             box.scrollIntoView({behavior: 'smooth', block: 'start'});
-            document.getElementById('opPfVlanIn').focus();
+            document.getElementById(modelo === 'vlan_fixa' ? 'opPfVlanFixa' : 'opPfVlanIn').focus();
         }
 
         async function opAbrir(selecao) {
@@ -4046,13 +4060,38 @@
             });
         };
 
+        // Modelo "VLAN fixa": a ONU sai com uma VLAN setada nas portas ETH
+        // (port vlan eth N translation V user-vlan V) e GEM 1 com encrypt; o
+        // service-port depois traduz essa user-vlan para a VLAN da OLT.
+        window.opPfTrocarModelo = function() {
+            const fixa = document.getElementById('opPfModelo').value === 'vlan_fixa';
+            document.getElementById('opPfFixaBox').style.display = fixa ? 'grid' : 'none';
+            document.getElementById('opPfVlansBox').style.display = fixa ? 'none' : '';
+            document.getElementById('opPfTcont').value = fixa ? 4 : 1;
+            if (fixa) opPfNomesFixa();
+            else {
+                document.getElementById('opPfSrvNome').value = 'translate';
+                document.getElementById('opPfLineNome').value = 'LINE-TRANSLATE';
+            }
+        };
+
+        window.opPfNomesFixa = function() {
+            const v = document.getElementById('opPfVlanFixa').value || '1';
+            document.getElementById('opPfSrvNome').value = `SRV_VLAN_${v}`;
+            document.getElementById('opPfLineNome').value = `VLAN_${v}`;
+        };
+
         function opPfSpec() {
             const val = id => document.getElementById(id).value.trim();
+            const fixa = val('opPfModelo') === 'vlan_fixa';
             return {
-                srv: {criar: document.getElementById('opPfSrvCriar').checked, id: val('opPfSrvId'), nome: val('opPfSrvNome'), eth: val('opPfSrvEth')},
+                modelo: val('opPfModelo'),
+                vlan_fixa: fixa ? val('opPfVlanFixa') : null,
+                srv: {criar: document.getElementById('opPfSrvCriar').checked, id: val('opPfSrvId'), nome: val('opPfSrvNome'), eth: val('opPfSrvEth'),
+                      pots: fixa ? val('opPfPots') : null, eth_vlan: fixa ? val('opPfEthVlan') : null},
                 line: {criar: document.getElementById('opPfLineCriar').checked, id: val('opPfLineId'), nome: val('opPfLineNome'),
                        tcont: val('opPfTcont'), dba: val('opPfDba')},
-                vlans: opPfVlans, gem_igual_vlan: document.getElementById('opPfGemIgual').checked,
+                vlans: fixa ? [] : opPfVlans, gem_igual_vlan: document.getElementById('opPfGemIgual').checked,
                 dba: val('opPfDba') === 'novo' && document.getElementById('opPfLineCriar').checked
                     ? {criar: true, id: val('opPfDbaId'), nome: val('opPfDbaNome'), tipo: val('opPfDbaTipo'),
                        fix: val('opPfDbaFix'), assure: val('opPfDbaAssure'), max: val('opPfDbaMax')}

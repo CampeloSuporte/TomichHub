@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 # Sobe junto com qualquer mudança em `op.parse_backup` (mesma regra do
 # `_PON_CACHE_VERSAO`).
-_CACHE_VERSAO = 2
+_CACHE_VERSAO = 3
 _CACHE_TTL = 6 * 60 * 60
 # Um lote por OLT de cada vez: duas abas provisionando a mesma ONU dariam um
 # `ont add` duplicado (o segundo falha) no meio do lote do outro.

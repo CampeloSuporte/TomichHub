@@ -143,7 +143,8 @@ _ONT_ADD_RE = re.compile(
     r'ont-lineprofile-id (\d+) ont-srvprofile-id (\d+)')
 _NATIVE_RE = re.compile(r'^\s*ont port native-vlan (\d+) (\d+) eth \d+ vlan (\d+)')
 _SERVICE_PORT_RE = re.compile(
-    r'^\s*service-port \d+ vlan (\d+) gpon (\d+/\d+)/(\d+) ont (\d+) gemport (\d+)')
+    r'^\s*service-port \d+ vlan (\d+) gpon (\d+/\d+)/(\d+) ont (\d+) gemport (\d+)'
+    r'(?:.*?\buser-vlan (\d+))?')
 _DBA_RE = re.compile(r'^\s*dba-profile add profile-id (\d+) profile-name "([^"]*)"')
 _VLAN_RE = re.compile(r'^\s*vlan (\d+)(?: to (\d+))? ')
 
@@ -215,7 +216,7 @@ def parse_backup(conteudo):
                 sn = m.group(3).upper()
                 onts.setdefault((slot_atual, porta), {})[ont_id] = {
                     'sn': sn, 'line': int(m.group(4)), 'srv': int(m.group(5)),
-                    'native_vlan': None, 'vlan': None, 'gemport': None}
+                    'native_vlan': None, 'vlan': None, 'gemport': None, 'user_vlan': None}
                 sns[sn] = f'{slot_atual}/{porta} ONT {ont_id}'
                 continue
             m = _NATIVE_RE.match(linha)
@@ -231,6 +232,7 @@ def parse_backup(conteudo):
             if ont and ont['vlan'] is None:
                 ont['vlan'] = int(m.group(1))
                 ont['gemport'] = int(m.group(5))
+                ont['user_vlan'] = int(m.group(6)) if m.group(6) else None
 
     return {'lines': lines, 'srvs': srvs, 'vlans': vlans, 'onts': onts, 'sns': sns, 'dbas': dbas}
 
@@ -257,6 +259,9 @@ def sugerir(backup, slot, porta, sn=''):
     srv = _mais_comum([o['srv'] for o in mesmo_vendor]) or _mais_comum([o['srv'] for o in na_pon])
     gemport = _mais_comum([o['gemport'] for o in na_pon])
     com_native = sum(1 for o in na_pon if o['native_vlan'] is not None)
+    # Translate de verdade: o service-port troca a VLAN (user-vlan 1 → vlan
+    # 101, modelo "VLAN fixa" da DKY). Nas PONs da SENTO SE user-vlan == vlan.
+    traduz = sum(1 for o in na_pon if o.get('user_vlan') not in (None, o['vlan']))
 
     if na_pon:
         origem = f'maioria das {len(na_pon)} ONTs da PON {slot}/{porta} no backup'
@@ -277,7 +282,8 @@ def sugerir(backup, slot, porta, sn=''):
 
     return {
         'vlan': vlan, 'line': line, 'srv': srv, 'gemport': gemport or 1,
-        'modo': 'ont' if na_pon and com_native * 2 < len(na_pon) else 'onu',
+        'modo': ('translate' if na_pon and traduz * 2 > len(na_pon) else
+                 'ont' if na_pon and com_native * 2 < len(na_pon) else 'onu'),
         'origem': origem,
     }
 
@@ -441,6 +447,16 @@ def _alocar_gems(vlans, gem_igual_vlan):
     return pares
 
 
+# Modelos de perfil, ambos vindos de config real passada pelo operador:
+# - translate: várias VLANs, um GEM por VLAN, srv "eth adaptive" + "native-vlan
+#   unconcern" (a tradução fica no service-port);
+# - vlan_fixa: a ONU sai com UMA VLAN setada nas portas (ex.: VLAN 1), srv com
+#   `port vlan eth N translation V user-vlan V`, GEM 1 com encrypt (perfil
+#   "SRV_DKY_100"/"VLAN_1" da OLT da DKY). O service-port traduz user-vlan 1 para
+#   a VLAN da OLT (ex.: 101), igual ao modo translate do provisionamento.
+MODELOS_PERFIL = ('translate', 'vlan_fixa')
+
+
 def validar_perfis(spec, backup):
     """Normaliza o pedido de criação. Devolve (spec, avisos).
 
@@ -463,7 +479,12 @@ def validar_perfis(spec, backup):
                 f'Nome do {tipo} inválido: "{nome}" (até 32 letras, números, espaço, _ . -).')
         return nome
 
-    avisos, norm = [], {'srv': None, 'line': None, 'dba': None}
+    modelo = spec.get('modelo') or 'translate'
+    if modelo not in MODELOS_PERFIL:
+        raise ProvisionamentoInvalido(f'Modelo de perfil desconhecido: "{modelo}".')
+    vlan_fixa = (_inteiro(spec.get('vlan_fixa') or 1, 'VLAN setada na ONU', 1, 4094)
+                 if modelo == 'vlan_fixa' else None)
+    avisos, norm = [], {'srv': None, 'line': None, 'dba': None, 'modelo': modelo}
     if criar_dba:
         did = _inteiro(dba.get('id'), 'ID do DBA profile', DBA_PRIMEIRO_LIVRE, 1024)
         if did in backup.get('dbas', {}):
@@ -483,12 +504,19 @@ def validar_perfis(spec, backup):
                 f'O srv profile {sid} já existe ("{backup["srvs"][sid]["nome"]}") — escolha outro ID.')
         norm['srv'] = {'id': sid, 'nome': _nome(srv.get('nome'), 'srv profile'),
                        'eth': _inteiro(srv.get('eth') or 8, 'portas ETH adaptive', 1, 24)}
+        if vlan_fixa is not None:
+            norm['srv'].update({
+                'vlan': vlan_fixa,
+                'pots': _inteiro(srv.get('pots') if srv.get('pots') not in (None, '') else 32,
+                                 'POTS adaptive', 0, 32),
+                'eth_vlan': _inteiro(srv.get('eth_vlan') or 4, 'portas ETH com a VLAN', 1, 8),
+            })
     if criar_line:
         lid = _inteiro(line.get('id'), 'ID do line profile', 0, 8192)
         if lid in backup['lines']:
             raise ProvisionamentoInvalido(
                 f'O line profile {lid} já existe ("{backup["lines"][lid]["nome"]}") — escolha outro ID.')
-        vlans_brutas = spec.get('vlans')
+        vlans_brutas = [vlan_fixa] if vlan_fixa is not None else spec.get('vlans')
         if not isinstance(vlans_brutas, list) or not vlans_brutas:
             raise ProvisionamentoInvalido('Adicione pelo menos uma VLAN ao line profile.')
         vlans = []
@@ -507,8 +535,11 @@ def validar_perfis(spec, backup):
                     norm['dba'] and norm['dba']['id'] == dba_id):
                 avisos.append(f'DBA profile {dba_id} não está no backup.')
         norm['line'] = {'id': lid, 'nome': _nome(line.get('nome'), 'line profile'),
-                        'tcont': _inteiro(line.get('tcont') or 1, 'T-CONT', 1, 7), 'dba': dba_id,
-                        'gems': _alocar_gems(vlans, spec.get('gem_igual_vlan', True) is not False)}
+                        'tcont': _inteiro(line.get('tcont') or (4 if vlan_fixa else 1), 'T-CONT', 1, 7),
+                        'dba': dba_id,
+                        # VLAN fixa: GEM 1, como no perfil "VLAN_1" (gem 1 ↔ vlan 1).
+                        'gems': ([(1, vlan_fixa)] if vlan_fixa is not None else
+                                 _alocar_gems(vlans, spec.get('gem_igual_vlan', True) is not False))}
     return norm, avisos
 
 
@@ -520,16 +551,29 @@ def comandos_perfis(norm):
         banda = ' '.join(f'{k} {d[k]}' for k in DBA_TIPOS[d['tipo']])
         # Formato do backup: dba-profile add profile-id 10 profile-name "DBA_PROFILE" type4 max 1000000
         cmds.append(f'dba-profile add profile-id {d["id"]} profile-name "{d["nome"]}" {d["tipo"]} {banda}')
+    fixa = norm.get('modelo') == 'vlan_fixa'
     if norm['srv']:
         s = norm['srv']
-        cmds += [f'ont-srvprofile gpon profile-id {s["id"]} profile-name "{s["nome"]}"',
-                 f'ont-port eth adaptive {s["eth"]}', 'native-vlan unconcern', 'commit', 'quit']
+        cmds.append(f'ont-srvprofile gpon profile-id {s["id"]} profile-name "{s["nome"]}"')
+        if fixa:
+            pots = f'pots adaptive {s["pots"]} ' if s['pots'] else ''
+            cmds.append(f'ont-port {pots}eth adaptive {s["eth"]}')
+            cmds += [f'port vlan eth {n} translation {s["vlan"]} user-vlan {s["vlan"]}'
+                     for n in range(1, s['eth_vlan'] + 1)]
+        else:
+            cmds += [f'ont-port eth adaptive {s["eth"]}', 'native-vlan unconcern']
+        cmds += ['commit', 'quit']
     if norm['line']:
         ln = norm['line']
-        cmds += [f'ont-lineprofile gpon profile-id {ln["id"]} profile-name "{ln["nome"]}"',
-                 f'tcont {ln["tcont"]} dba-profile-id {ln["dba"]}']
-        cmds += [f'gem add {g} eth tcont {ln["tcont"]}' for g, _ in ln['gems']]
-        cmds += [f'gem mapping {g} 1 vlan {v}' for g, v in ln['gems']]
+        cmds.append(f'ont-lineprofile gpon profile-id {ln["id"]} profile-name "{ln["nome"]}"')
+        if fixa:
+            cmds.append('omcc encrypt on')
+        cmds.append(f'tcont {ln["tcont"]} dba-profile-id {ln["dba"]}')
+        cifra = ' encrypt on' if fixa else ''
+        cmds += [f'gem add {g} eth tcont {ln["tcont"]}{cifra}' for g, _ in ln['gems']]
+        # mapping-index 0 no modelo VLAN fixa ("gem mapping 1 0 vlan 1"), 1 no translate.
+        idx = 0 if fixa else 1
+        cmds += [f'gem mapping {g} {idx} vlan {v}' for g, v in ln['gems']]
         cmds += ['commit', 'quit']
     return cmds
 
