@@ -4671,7 +4671,7 @@ def listar_acessos_terminal(request):
     """Retorna JSON com acessos SSH/Telnet. Filtra por cliente_id se informado."""
     cliente_id = request.GET.get('cliente')
 
-    base_qs = Acesso.objects.select_related('cliente', 'funcao').filter(
+    base_qs = Acesso.objects.select_related('cliente', 'funcao', 'modelo').filter(
         protocolo__iregex=r'^(ssh|telnet|rlogin)$'
     )
 
@@ -4712,10 +4712,26 @@ def listar_acessos_terminal(request):
             'cliente_id': a.cliente.id,
             'funcao': a.funcao.descricao if a.funcao else '',
             'winbox': a.winbox or 0,
+            # Fabricante/família pelo Modelo cadastrado: o painel ⚡ Scripts
+            # adivinhava pelo `tipo` e "OLT HU SENTO SE" não diz "huawei".
+            'modelo': (a.modelo.nome if a.modelo else ''),
+            **_fabricante_script(a),
         }
         for a in acessos
     ]
     return JsonResponse({'acessos': data})
+
+
+def _fabricante_script(acesso):
+    """{'familia', 'fabricante'} do acesso: família da 💡 (`comandos_uteis`)
+    e a chave de fabricante dos Scripts (`ScriptCRM.FABRICANTES`)."""
+    from .comandos_uteis import identificar_familia
+    familia = identificar_familia(acesso) or ''
+    fabricante = familia.split('_')[0] if familia else ''
+    if fabricante not in ('zte', 'huawei', 'cisco', 'mikrotik', 'datacom', 'juniper'):
+        texto = f'{getattr(acesso.modelo, "fabricante", "") or ""} {acesso.tipo or ""}'.lower()
+        fabricante = 'parks' if 'parks' in texto else ''
+    return {'familia': familia, 'fabricante': fabricante}
 
 
 @login_required(login_url='login')

@@ -117,7 +117,7 @@ def onu_prov_autofind(request, acesso_id):
         saida = shell.enviar('display ont autofind all', max_wait=90)
     except Exception as e:
         logger.warning(f'Autofind em {acesso}: {e}')
-        return JsonResponse({'error': f'Falha ao consultar a OLT: {e}'}, status=502)
+        return JsonResponse({'error': f'Falha ao consultar a OLT: {op.mensagem_de_falha(e)}'}, status=502)
     finally:
         if shell:
             shell.fechar()

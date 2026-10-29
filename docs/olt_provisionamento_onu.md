@@ -80,6 +80,27 @@ comandos × 3 s dariam 7 minutos parados. Responde sozinho `{ <cr>||<K> }:` e
 `---- More`. O preâmbulo é o mesmo do backup (`enable`, `config`,
 `undo interactive`, `undo smart`, `scroll`).
 
+## Logout e VTY cheia — corrigido em 2026-10-29
+
+Na primeira versão, `ShellOlt.fechar` mandava um `quit` só e fechava o canal. No modo
+config, isso volta só um nível e não faz logout. Depois dos testes do dia, a SENTO SE
+passou a aceitar o login SSH e recusar o shell com
+`ChannelException(4, 'Resource shortage')` (VTYs todas ocupadas). O proxy estava
+saudável e alcançava a porta 22. Agora o `fechar` manda `quit` até a OLT encerrar a
+sessão (no máximo 5 vezes, respondendo `y` se pedir confirmação). A recusa aparece
+para o operador como "VTYs ocupadas" (`mensagem_de_falha`). Para liberar na hora, num
+terminal já aberto na OLT: `display client` mostra quem está conectado, e
+`kill client <id>` derruba uma sessão esquecida.
+
+## Menu de scripts e fabricante
+
+- O `terminal/acessos/` devolve `fabricante`, `familia` e `modelo`, tirados do
+  **Modelo** cadastrado (`comandos_uteis.identificar_familia`). Antes, o painel
+  adivinhava pelo nome do acesso, e "OLT HU SENTO SE" ficava sem fabricante.
+- Com uma OLT Huawei selecionada, o menu SCRIPT mostra **[Huawei] Provisionar ONU
+  (único)** e **[Huawei] Provisionar ONUs em massa**. As duas abrem a aba ONU e já
+  buscam o autofind; no "único", só a primeira ONU fica marcada.
+
 ## Endpoints
 
 | Método | URL | |

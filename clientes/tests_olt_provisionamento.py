@@ -269,3 +269,71 @@ class PromptTest(SimpleTestCase):
         for cauda in ('\nMA5800-X7(config)#', '\nMA5800-X7(config-if-gpon-0/1)# ', '\nMA5800-X7#'):
             self.assertTrue(op._PROMPT_FIM_RE.search(cauda), cauda)
         self.assertTrue(op._CONTINUA_RE.search('display ont autofind all\n{ <cr>||<K> }:'))
+
+
+class CanalFalso:
+    """Canal Paramiko: a cada `quit` desce um nível; no último, fecha."""
+
+    def __init__(self, niveis=3, confirma=False):
+        self.niveis, self.confirma, self.enviados, self.closed, self._buf = niveis, confirma, [], False, ''
+
+    def send(self, txt):
+        self.enviados.append(txt)
+        if txt == 'quit\n':
+            self.niveis -= 1
+            if self.niveis <= 0:
+                if self.confirma:
+                    self._buf = 'Are you sure to log out? (y/n)[n]:'
+                else:
+                    self.closed = True
+        elif txt == 'y\n':
+            self.closed = True
+
+    def exit_status_ready(self):
+        return self.closed
+
+    def recv_ready(self):
+        return bool(self._buf)
+
+    def recv(self, n):
+        b, self._buf = self._buf, ''
+        return b.encode()
+
+    def close(self):
+        self.closed = True
+
+
+class FecharTest(SimpleTestCase):
+    def _shell(self, canal):
+        sh = op.ShellOlt.__new__(op.ShellOlt)
+        sh.channel = canal
+        return sh
+
+    @mock.patch('clientes.olt_provisionamento.time.sleep')
+    def test_quit_ate_deslogar(self, _):
+        canal = CanalFalso(niveis=3)
+        self._shell(canal).fechar()
+        self.assertEqual(canal.enviados, ['quit\n'] * 3)
+
+    @mock.patch('clientes.olt_provisionamento.time.sleep')
+    def test_confirma_logout(self, _):
+        canal = CanalFalso(niveis=2, confirma=True)
+        self._shell(canal).fechar()
+        self.assertEqual(canal.enviados[-1], 'y\n')
+
+    def test_mensagem_vty_cheia(self):
+        from paramiko import ChannelException
+        self.assertIn('VTYs', op.mensagem_de_falha(ChannelException(4, 'Resource shortage')))
+        self.assertEqual(op.mensagem_de_falha(ValueError('x')), 'x')
+
+
+class FabricanteScriptTest(SimpleTestCase):
+    def test_pelo_modelo_e_nao_pelo_nome(self):
+        from clientes.views import _fabricante_script
+        acesso = SimpleNamespace(tipo='OLT HU SENTO SE',
+                                 modelo=SimpleNamespace(fabricante='Huawei', nome='OLT HUAWEI MA5800X7'))
+        self.assertEqual(_fabricante_script(acesso), {'familia': 'huawei_olt', 'fabricante': 'huawei'})
+        zte = SimpleNamespace(tipo='OLT X', modelo=SimpleNamespace(fabricante='ZTE', nome='C610'))
+        self.assertEqual(_fabricante_script(zte)['fabricante'], 'zte')
+        sem = SimpleNamespace(tipo='BRAS', modelo=None)
+        self.assertEqual(_fabricante_script(sem), {'familia': '', 'fabricante': ''})
