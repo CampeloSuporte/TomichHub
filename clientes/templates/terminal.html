@@ -1432,7 +1432,6 @@
                     <div style="flex:1;min-width:160px;"><span class="op-lbl">SRV PROFILE PARA AS MARCADAS</span>
                         <select class="op-in" id="opSrvTodas" onchange="opAplicarPerfil('srv', this.value)"></select></div>
                 </div>
-                <div id="opLoteUplink"></div>
                 <div id="opLista" style="display:flex;flex-direction:column;gap:8px;"></div>
                 <div style="display:flex;gap:8px;">
                     <button class="op-btn sec" onclick="opPreview()" style="flex:1;">👁 Pré-visualizar comandos</button>
@@ -4050,7 +4049,7 @@
             return out;
         }
 
-        // ── VLANs na OLT + uplink (perfis e lote) ──
+        // ── VLANs na OLT + uplink (só nos scripts que criam srv/line profile) ──
         // Toda VLAN que um script pede precisa existir (vlan V smart) e passar na
         // uplink (port vlan V F/S P). As portas vêm do backup (as que recebem
         // `port vlan`), marcadas as que levam a maior parte das VLANs.
@@ -4439,7 +4438,6 @@
                     return;
                 }
                 msg.innerHTML = `<span style="color:#c9d1d9">${opOnus.length} ONU(s) pendente(s) — ${opModoLabel(term)}. Confira os valores e marque as que vai provisionar.</span>`;
-                opRenderUplink('opLoteUplink', 'oplu', false);
                 document.getElementById('opTodas').checked = opSelecao !== 'unico';
                 ['opModoTodas', 'opLineTodas', 'opSrvTodas'].forEach(x => { document.getElementById(x).value = ''; });
                 opRenderLista();
@@ -4500,7 +4498,7 @@
         async function opPedirPreview(itens) {
             return opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-prov/executar/`, {method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
-                body: JSON.stringify({preview: true, itens, uplink: opLerUplink('oplu')})});
+                body: JSON.stringify({preview: true, itens})});
         }
 
         function opMostrarAvisos(avisos) {
@@ -4596,7 +4594,7 @@
         async function* opProvisionarServidor(itens) {
             const resp = await fetch(`/clientes/acessos/${opAcessoId()}/onu-prov/executar/`, {method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
-                body: JSON.stringify({preview: false, itens, uplink: opLerUplink('oplu')})});
+                body: JSON.stringify({preview: false, itens})});
             if (!resp.ok || !(resp.headers.get('content-type') || '').includes('event-stream')) {
                 const j = await resp.json().catch(() => ({error: 'Sessão expirada? Recarregue a página.'}));
                 yield {tipo: 'erro', erro: j.error || resp.statusText}; return;
