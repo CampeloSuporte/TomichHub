@@ -613,3 +613,140 @@ class VlanFixaTest(SimpleTestCase):
     def test_sento_se_continua_onu(self):
         bk = op.parse_backup(BACKUP)
         self.assertEqual(op.sugerir(bk, '0/1', 0, '485754433B654F8B')['modo'], 'onu')
+
+
+BACKUP_UPLINK = BACKUP_TRANSLATE.replace(
+    ' vlan 1000 smart\n',
+    ' vlan 1000 smart\n'
+    ' port vlan 300 to 330 0/8 0\n'
+    ' port vlan 1000 0/8 0\n'
+    ' port vlan 1000 0/8 1\n') + (
+    ' ont-lineprofile gpon profile-id 3998 profile-name "FULLCAM"\n'
+    '  tcont 4 dba-profile-id 101\n'
+    '  gem add 1 eth tcont 4\n'
+    '  gem mapping 1 1 vlan 3998\n'
+    '  gem mapping 1 2 vlan 3084\n'
+    '  commit\n'
+    '  quit\n')
+
+
+class UplinkTest(SimpleTestCase):
+    def setUp(self):
+        self.bk = op.parse_backup(BACKUP_UPLINK)
+
+    def test_uplinks_do_backup(self):
+        ups = op.uplinks_do_backup(self.bk)
+        self.assertEqual(ups[0], {'porta': '0/8 0', 'vlans': 32, 'padrao': True})
+        self.assertEqual(ups[1], {'porta': '0/8 1', 'vlans': 1, 'padrao': False})
+        # O `port vlan eth 1 translation` do srv profile não conta como uplink.
+        self.assertEqual(len(ups), 2)
+
+    def test_so_o_que_falta(self):
+        up, avisos = op.validar_uplink({'criar': True, 'portas': ['0/8 0', '0/8 1'], 'vlans': [300, 1553]}, self.bk)
+        self.assertEqual(avisos, [])
+        self.assertEqual(op.comandos_vlans_uplink(up, self.bk),
+                         ['vlan 1553 smart', 'port vlan 300 0/8 1', 'port vlan 1553 0/8 0', 'port vlan 1553 0/8 1'])
+
+    def test_recusas_e_aviso(self):
+        self.assertEqual(op.validar_uplink({'criar': False}, self.bk), (None, []))
+        for spec in ({'criar': True, 'portas': [], 'vlans': [10]},
+                     {'criar': True, 'portas': ['0/8'], 'vlans': [10]},
+                     {'criar': True, 'portas': ['0/8 0'], 'vlans': []}):
+            with self.subTest(spec=spec), self.assertRaises(op.ProvisionamentoInvalido):
+                op.validar_uplink(spec, self.bk)
+        _, avisos = op.validar_uplink({'criar': True, 'portas': ['0/9 3'], 'vlans': [10]}, self.bk)
+        self.assertIn('0/9 3', avisos[0])
+
+    def test_ja_existe_nao_e_falha(self):
+        self.assertEqual(op.falha_vlan_uplink('  Failure: The VLAN already exists'), '')
+        self.assertTrue(op.falha_vlan_uplink('  % Unknown command, the error locates at \'^\''))
+
+
+class MultiVlanTest(SimpleTestCase):
+    def setUp(self):
+        self.bk = op.parse_backup(BACKUP_UPLINK)
+
+    def test_perfil_fullcam_igual_ao_modelo(self):
+        norm, _ = op.validar_perfis({
+            'modelo': 'multi_vlan', 'vlans': [3998, 3084],
+            'srv': {'criar': True, 'id': 3998, 'nome': 'FULLCAM'},
+            'line': {'criar': True, 'id': 3997, 'nome': 'FULLCAM', 'dba': 101},
+            'uplink': {'criar': True, 'portas': ['0/8 0']}}, self.bk)
+        self.assertEqual(op.comandos_perfis(norm), [
+            'ont-srvprofile gpon profile-id 3998 profile-name "FULLCAM"',
+            'ont-port pots adaptive eth adaptive',
+            'port vlan eth 1 translation 3998 user-vlan 3998',
+            'port vlan eth 1 translation 3084 user-vlan 3084',
+            'commit', 'quit',
+            'ont-lineprofile gpon profile-id 3997 profile-name "FULLCAM"',
+            'tcont 4 dba-profile-id 101',
+            'gem add 1 eth tcont 4',
+            'gem mapping 1 1 vlan 3998', 'gem mapping 1 2 vlan 3084',
+            'commit', 'quit'])
+        # Uplink padrão = as VLANs do próprio perfil.
+        self.assertEqual(op.comandos_vlans_uplink(norm['uplink'], self.bk),
+                         ['vlan 3998 smart', 'vlan 3084 smart', 'port vlan 3998 0/8 0', 'port vlan 3084 0/8 0'])
+
+    def test_limite_de_8_vlans_no_gem(self):
+        with self.assertRaises(op.ProvisionamentoInvalido):
+            op.validar_perfis({'modelo': 'multi_vlan', 'vlans': list(range(10, 19)),
+                               'line': {'criar': True, 'id': 3990, 'nome': 'X', 'dba': 101}}, self.bk)
+        norm, _ = op.validar_perfis({'modelo': 'multi_vlan', 'vlans': list(range(10, 18)),
+                                     'line': {'criar': True, 'id': 3990, 'nome': 'X', 'dba': 101}}, self.bk)
+        mapas = [c for c in op.comandos_perfis(norm) if c.startswith('gem mapping')]
+        self.assertEqual(mapas[0], 'gem mapping 1 1 vlan 10')
+        self.assertEqual(mapas[-1], 'gem mapping 1 0 vlan 17')
+
+    def test_translate_exige_vlan_da_olt_para_uplink(self):
+        with self.assertRaises(op.ProvisionamentoInvalido):
+            op.validar_perfis(_spec(uplink={'criar': True, 'portas': ['0/8 0']}), self.bk)
+        norm, _ = op.validar_perfis(_spec(uplink={'criar': True, 'portas': ['0/8 0'], 'vlans': [3304]}), self.bk)
+        self.assertEqual(op.comandos_vlans_uplink(norm['uplink'], self.bk), ['vlan 3304 smart', 'port vlan 3304 0/8 0'])
+
+    def test_provisionar_transparente_duas_vlans_no_gem_1(self):
+        it, avisos = op.validar_item(_item(modo='transparente', line=3998, srv=300, vlan='', servicos=[
+            {'gem': 1, 'user_vlan': 3998}, {'gem': 1, 'user_vlan': 3084}]), INVENTARIO, self.bk)
+        self.assertEqual(op.comandos_onu(it, 5)[-2:], [
+            'service-port vlan 3998 gpon 0/1/0 ont 5 gemport 1 multi-service user-vlan 3998 tag-transform transparent',
+            'service-port vlan 3084 gpon 0/1/0 ont 5 gemport 1 multi-service user-vlan 3084 tag-transform transparent'])
+        self.assertTrue(any('3998' in a for a in avisos))   # VLAN ainda não existe na OLT
+
+    def test_translate_com_varias_vlans(self):
+        it, _ = op.validar_item(_item(modo='translate', line=20, servicos=[
+            {'gem': 101, 'user_vlan': 101, 'vlan': 3304}, {'gem': 102, 'user_vlan': 102, 'vlan': 3305}]),
+            INVENTARIO, self.bk)
+        self.assertEqual([c.split(' tag-transform ')[1] for c in op.comandos_onu(it, 1) if c.startswith('service-port')],
+                         ['translate', 'translate'])
+
+    def test_vlan_repetida_no_mesmo_gem(self):
+        with self.assertRaises(op.ProvisionamentoInvalido):
+            op.validar_item(_item(modo='transparente', line=3998, servicos=[
+                {'gem': 1, 'user_vlan': 3998}, {'gem': 1, 'user_vlan': 3998}]), INVENTARIO, self.bk)
+
+    def test_provisionar_roda_preparo_antes(self):
+        shell = ShellFalso()
+        eventos = _rodar_com_preparo([_item()], shell, ['vlan 1553 smart', 'port vlan 1553 0/8 0'])
+        n = len(op.PREAMBULO)
+        self.assertEqual(shell.enviados[n:n + 3], ['vlan 1553 smart', 'port vlan 1553 0/8 0', 'display ont autofind all'])
+        self.assertEqual([p['status'] for t, p in eventos if t == 'onu'], ['sucesso'])
+
+    def test_preparo_recusado_nao_inicia_lote(self):
+        shell = ShellFalso(recusas=('port vlan',))
+        shell.recusas = ()
+        shell.enviar_orig = shell.enviar
+        shell.enviar = lambda c, **k: ("  % Parameter error" if c.startswith('port vlan') else shell.enviar_orig(c))
+        eventos = _rodar_com_preparo([_item()], shell, ['port vlan 1553 0/9 9'])
+        self.assertEqual(eventos[-1][0], 'erro')
+        self.assertFalse(any(t == 'onu' for t, _ in eventos))
+
+    def test_sugestao_transparente(self):
+        bk = op.parse_backup(BACKUP_VLAN_FIXA.replace('user-vlan 1 tag-transform translate',
+                                                      'user-vlan 101 tag-transform transparent'))
+        self.assertEqual(op.sugerir(bk, '0/7', 0)['modo'], 'transparente')
+
+
+def _rodar_com_preparo(itens, shell, preparo):
+    with mock.patch('clientes.olt_pon.conectar', return_value=(object(), None)), \
+            mock.patch('clientes.olt_pon.desconectar'), \
+            mock.patch.object(op, 'ShellOlt', return_value=shell):
+        return list(op.provisionar(SimpleNamespace(host='x'), itens, preparo))

@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 # Sobe junto com qualquer mudança em `op.parse_backup` (mesma regra do
 # `_PON_CACHE_VERSAO`).
-_CACHE_VERSAO = 3
+_CACHE_VERSAO = 4
 _CACHE_TTL = 6 * 60 * 60
 # Um lote por OLT de cada vez: duas abas provisionando a mesma ONU dariam um
 # `ont add` duplicado (o segundo falha) no meio do lote do outro.
@@ -105,6 +105,9 @@ def onu_prov_inventario(request, acesso_id):
         'proximo_line': op.proximo_id_livre(set(backup['lines'])),
         'proximo_srv': op.proximo_id_livre(set(backup['srvs'])),
         'max_gems': op.MAX_GEMS_PERFIL,
+        'max_vlans_gem': op.MAX_VLANS_GEM,
+        'uplinks': op.uplinks_do_backup(backup),
+        'vlans_olt': sorted(backup['vlans']),
         'srvs': [{'id': p['id'], 'nome': p['nome'], 'vlans': p['vlans']}
                  for p in sorted(backup['srvs'].values(), key=lambda p: p['id'])],
         'modos': [{'chave': k, 'label': v['label']} for k, v in op.MODOS.items()],
@@ -200,12 +203,20 @@ def onu_prov_executar(request, acesso_id):
 
     try:
         itens, avisos = _validar_lote(body, inventario, backup)
+        # VLANs dos service-ports do lote: criadas e passadas na uplink antes
+        # do primeiro `ont add` quando o operador marca a opção.
+        vlans_lote = list(dict.fromkeys(
+            sv['vlan'] for it in itens for sv in (it['servicos'] or [{'vlan': it['vlan']}])))
+        uplink, av = op.validar_uplink(body.get('uplink'), backup, vlans_lote)
+        avisos += av
     except op.ProvisionamentoInvalido as e:
         return JsonResponse({'error': str(e)}, status=422)
+    preparo = op.comandos_vlans_uplink(uplink, backup)
 
     if bool(body.get('preview', True)):
         return JsonResponse({
             'avisos': avisos,
+            'preparo': preparo,
             'onus': [{'sn': it['sn'], 'comandos': op.comandos_onu(it)} for it in itens],
         })
 
@@ -226,7 +237,7 @@ def onu_prov_executar(request, acesso_id):
         contagem = {'sucesso': 0, 'parcial': 0, 'erro': 0, 'ignorada': 0}
         try:
             yield sse('info', {'msg': f'{len(itens)} ONU(s) para provisionar em {acesso.tipo} ({acesso.host}).'})
-            for tipo, payload in op.provisionar(acesso, itens):
+            for tipo, payload in op.provisionar(acesso, itens, preparo):
                 if tipo == 'onu':
                     contagem[payload['status']] = contagem.get(payload['status'], 0) + 1
                     it = por_sn[payload['sn']]
@@ -309,11 +320,14 @@ def onu_prov_perfis(request, acesso_id):
     except Exception:
         return JsonResponse({'error': 'JSON inválido'}, status=400)
 
-    comandos = op.comandos_perfis(norm)
+    comandos_uplink = op.comandos_vlans_uplink(norm.get('uplink'), backup)
+    comandos = op.comandos_perfis(norm) + comandos_uplink
     acao = body.get('acao') or 'preview'
     if acao == 'preview':
         return JsonResponse({
-            'comandos': comandos, 'checagens': op.checagens_perfis(norm), 'avisos': avisos,
+            # `comandos` são os perfis (recusa = erro); `uplink` aceita "já existe".
+            'comandos': op.comandos_perfis(norm), 'uplink': comandos_uplink,
+            'checagens': op.checagens_perfis(norm), 'avisos': avisos,
             'gems': (norm['line'] or {}).get('gems', []),
             'dba': norm['dba'],
         })
@@ -345,7 +359,7 @@ def onu_prov_perfis(request, acesso_id):
         shell = op.ShellOlt(client)
         for cmd in PREAMBULO:
             shell.enviar(cmd)
-        status, saida, msg = op.criar_perfis(shell, norm)
+        status, saida, msg = op.criar_perfis(shell, norm, backup)
     except Exception as e:
         logger.warning(f'Perfis em {acesso}: {e}')
         return JsonResponse({'error': f'Falha ao falar com a OLT: {op.mensagem_de_falha(e)}'}, status=502)
