@@ -768,6 +768,55 @@ def criar_perfis(shell, norm, backup=None):
     return 'sucesso', '\n'.join(log), 'perfis criados'
 
 
+# ─── Service-ports criados e validação de MAC ────────────────────────────────
+
+# Linha do `display service-port port F/S/P ont N` (lida na SENTO SE):
+#     3378  300 common   gpon 0/1 /0  76   1     vlan  300        -    -    up
+# INDEX VLAN ATTR PORT-TYPE F/S/P (com espaço antes da barra) VPI=ONT VCI=GEM
+_SP_LINHA_RE = re.compile(
+    r'^\s*(\d+)\s+(\d+)\s+\S+\s+gpon\s+(\d+)\s*/\s*(\d+)\s*/\s*(\d+)\s+(\d+)\s+(\d+)\b', re.MULTILINE)
+_MAC_RE = re.compile(r'\b([0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4})\b', re.IGNORECASE)
+_MAC_TIPO_RE = re.compile(r'\b(dynamic|static|bound|learning)\b', re.IGNORECASE)
+
+
+def comando_listar_service_ports(it, ont_id):
+    return f'display service-port port {it["slot"]}/{it["porta"]} ont {ont_id}'
+
+
+def parse_service_ports(saida):
+    return [{'index': int(m.group(1)), 'vlan': int(m.group(2)),
+             'fsp': f'{m.group(3)}/{m.group(4)}/{m.group(5)}',
+             'ont': int(m.group(6)), 'gem': int(m.group(7))}
+            for m in _SP_LINHA_RE.finditer(saida or '')]
+
+
+def comando_mac(sp):
+    """Modelo passado pelo operador: `mac-address vlan 301 | include 206`
+    (206 = índice do service-port), no `display` do modo config."""
+    return f'display mac-address vlan {int(sp["vlan"])} | include {int(sp["index"])}'
+
+
+def service_ports_com_mac(sps):
+    return [{**sp, 'cmd_mac': comando_mac(sp)} for sp in sps]
+
+
+def parse_macs(saida, index):
+    """MACs aprendidos no service-port `index`. O `include 206` também casa
+    "206" dentro de um MAC ou de outra coluna, então só vale a linha cujo
+    PRIMEIRO número é o índice (coluna SRV-P INDEX)."""
+    macs = []
+    for linha in (saida or '').splitlines():
+        campos = linha.split()
+        if not campos or campos[0] != str(index):
+            continue
+        m = _MAC_RE.search(linha)
+        if m:
+            t = _MAC_TIPO_RE.search(linha)
+            macs.append({'mac': m.group(1).lower(), 'tipo': t.group(1).lower() if t else '',
+                         'linha': linha.strip()})
+    return macs
+
+
 # ─── Execução ────────────────────────────────────────────────────────────────
 
 _PROMPT_FIM_RE = re.compile(r'(?:^|\n)[^\n]*?[A-Za-z0-9_.\-]+(?:\([^)\n]*\))?[#>]\s*$')
@@ -950,7 +999,10 @@ def provisionar(acesso, itens, preparo=()):
                 if falha:
                     falhas.append(falha)
 
-            yield 'onu', {**base, 'ont_id': ont_id, 'comandos': '\n'.join(log),
+            # Índices que a OLT deu aos service-ports: é por eles que a
+            # validação de MAC filtra a tabela depois.
+            sps = service_ports_com_mac(parse_service_ports(_env(comando_listar_service_ports(it, ont_id))))
+            yield 'onu', {**base, 'ont_id': ont_id, 'comandos': '\n'.join(log), 'service_ports': sps,
                           'status': 'parcial' if falhas else 'sucesso',
                           'msg': ('; '.join(falhas) + f' — ONT {ont_id} ficou cadastrada, confira o serviço')
                           if falhas else f'ONT {ont_id} provisionada'}

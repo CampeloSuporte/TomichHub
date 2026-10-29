@@ -151,6 +151,31 @@ ont-lineprofile gpon profile-id 3998 profile-name "FULLCAM"
 
 No máximo 8 VLANs (`MAX_VLANS_GEM`): o índice do `gem mapping` vai de 0 a 7.
 
+## Validar MAC depois de provisionar — Adicionado em 2026-10-29
+
+Depois que a ONU é provisionada (status `sucesso` ou `parcial`), o CRM roda
+`display service-port port F/S/P ont <ID>` e guarda o **índice** que a OLT deu a cada
+service-port criado. Só aí aparece no cartão o botão **🔍 Validar MAC**, com a lista
+"service-port 3378 (VLAN 300)...". Para cada service-port, o botão roda o modelo do
+operador:
+
+```
+display mac-address vlan 301 | include 206      ← 206 = índice do service-port
+```
+
+O resultado aparece no cartão: `✓ SP 3378 · VLAN 300: 2c3a-fd12-3456 (dynamic)` ou
+"nenhum MAC ainda" (a ONU pode estar subindo ou sem cliente ligado; dá para repetir). O
+`include` casa o número em qualquer lugar da linha, inclusive dentro de um MAC de outra
+ONU, então só vale a linha cujo **primeiro** campo é o índice (coluna SRV-P INDEX,
+`parse_macs`). Pelo terminal aberto, os comandos vão pela sessão e o servidor só
+interpreta (`onu-prov/mac/` com `saidas`). Sem terminal, o servidor conecta. É leitura
+pura e não gera auditoria.
+
+O formato do `display service-port` foi conferido na SENTO SE. O do `display
+mac-address` ainda não foi visto ao vivo nesta OLT (o terminal do operador ocupava o
+login): se as colunas vierem diferentes, o parse só deixa de achar o MAC e não grava
+nada.
+
 ## Backup automático depois de criar perfis — Adicionado em 2026-10-29
 
 O provisionamento lê os perfis do **backup** (o inventário é cacheado pelo id do
@@ -339,6 +364,7 @@ comandos.
 | POST | `/clientes/acessos/<id>/onu-prov/executar/` | `preview: true` → JSON; `false` → SSE (modo servidor) |
 | POST | `/clientes/acessos/<id>/onu-prov/registrar/` | auditoria de ONU provisionada pelo terminal |
 | POST | `/clientes/acessos/<id>/onu-prov/perfis/` | srv/line profile translate: `acao` preview, executar ou registrar |
+| POST | `/clientes/acessos/<id>/onu-prov/mac/` | MAC dos service-ports da ONU provisionada (`saidas` = pelo terminal) |
 | POST | `/clientes/acessos/<id>/onu-prov/backup/` | backup após criar perfis: `{"saida"}` grava a captura do terminal; vazio dispara o backup normal |
 
 Permissão: back-office com a ferramenta `scripts` e acesso ao host

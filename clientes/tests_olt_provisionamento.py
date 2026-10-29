@@ -805,3 +805,72 @@ class BackupAposPerfisTest(SimpleTestCase):
             self.assertTrue(v._agendar_backup(self._acesso(), None))   # já rodando: não dispara outro
         self.assertEqual(thread.call_count, 1)
         cache.delete('onuprov:backup:9486')
+
+
+# Saída real do MA5800 da SENTO SE (display service-port port 0/1/0 ont 76).
+SP_SAIDA = """  Switch-Oriented Flow List
+  -----------------------------------------------------------------------------
+   INDEX VLAN VLAN     PORT F/ S/ P VPI  VCI   FLOW  FLOW       RX   TX   STATE
+         ID   ATTR     TYPE                    TYPE  PARA
+  -----------------------------------------------------------------------------
+    3378  300 common   gpon 0/1 /0  76   1     vlan  300        -    -    up   
+    3379 3998 common   gpon 0/1 /0  76   1     vlan  3998       -    -    down 
+  -----------------------------------------------------------------------------
+   Total : 2  (Up/Down :    1/1)
+"""
+
+MAC_SAIDA = """  ------------------------------------------------------------------------------
+  SRV-P BUNDLE TYPE MAC            MAC TYPE F /S /P  VPI  VCI   VLAN ID
+  INDEX INDEX
+  ------------------------------------------------------------------------------
+   3378    -   gpon 2c3a-fd12-3378 dynamic  0 /1 /0  76   1     300
+     12    -   gpon 3378-aa00-0001 dynamic  0 /1 /3  5    1     300
+"""
+
+
+class ValidarMacTest(SimpleTestCase):
+    def test_service_ports_da_saida_real(self):
+        sps = op.parse_service_ports(SP_SAIDA)
+        self.assertEqual([(s['index'], s['vlan'], s['fsp'], s['ont'], s['gem']) for s in sps],
+                         [(3378, 300, '0/1/0', 76, 1), (3379, 3998, '0/1/0', 76, 1)])
+        self.assertEqual(op.comando_mac(sps[0]), 'display mac-address vlan 300 | include 3378')
+
+    def test_mac_so_da_linha_do_indice(self):
+        # "3378" também aparece dentro do MAC de outra ONU (SP 12): não conta.
+        macs = op.parse_macs(MAC_SAIDA, 3378)
+        self.assertEqual(macs, [{'mac': '2c3a-fd12-3378', 'tipo': 'dynamic',
+                                 'linha': '3378    -   gpon 2c3a-fd12-3378 dynamic  0 /1 /0  76   1     300'}])
+        self.assertEqual(op.parse_macs('  Failure: There is no MAC address', 3378), [])
+
+    def test_provisionar_devolve_service_ports(self):
+        shell = ShellFalso()
+        original = shell.enviar
+        def enviar(c, **k):
+            if c.startswith('display service-port'):
+                shell.enviados.append(c)
+                return SP_SAIDA
+            return original(c)
+        shell.enviar = enviar
+        onu = [p for t, p in _rodar([_item()], shell) if t == 'onu'][0]
+        self.assertEqual(shell.enviados[-1], 'display service-port port 0/1/0 ont 44')
+        self.assertEqual([s['index'] for s in onu['service_ports']], [3378, 3379])
+        self.assertEqual(onu['service_ports'][1]['cmd_mac'], 'display mac-address vlan 3998 | include 3379')
+
+    def test_endpoint_mac_com_saidas_do_terminal(self):
+        import json
+        from django.test import RequestFactory
+        from clientes import onu_prov_views as v
+        body = {'service_ports': [{'index': 3378, 'vlan': 300, 'gem': 1}, {'index': 3379, 'vlan': 3998}],
+                'saidas': {'3378': MAC_SAIDA, '3379': ''}}
+        r = RequestFactory().post('/', data=json.dumps(body), content_type='application/json')
+        r.user = SimpleNamespace(is_authenticated=True)
+        with mock.patch('clientes.onu_prov_views._carregar', return_value=(SimpleNamespace(), {}, {}, None, None)), \
+                mock.patch('clientes.onu_prov_views.conectar') as conectar:
+            resp = v.onu_prov_mac.__wrapped__.__wrapped__.__wrapped__(r, 9486)
+        conectar.assert_not_called()
+        res = json.loads(resp.content)['resultados']
+        self.assertEqual([len(x['macs']) for x in res], [1, 0])
+        r2 = RequestFactory().post('/', data=json.dumps({'service_ports': []}), content_type='application/json')
+        r2.user = r.user
+        with mock.patch('clientes.onu_prov_views._carregar', return_value=(SimpleNamespace(), {}, {}, None, None)):
+            self.assertEqual(v.onu_prov_mac.__wrapped__.__wrapped__.__wrapped__(r2, 9486).status_code, 422)

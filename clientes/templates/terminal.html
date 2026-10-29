@@ -3966,9 +3966,10 @@
                     <div id="op-svc-${i}" style="display:none;flex-direction:column;gap:4px;"></div>
                     <div><span class="op-lbl">DESCRIÇÃO (opcional — vira desc "..." no ont add)</span><input class="op-in" id="op-desc-${i}" maxlength="64" placeholder="ex.: login do cliente"></div>
                     <div class="op-orig">Sugestão: ${_escHtml(s.origem || '')}</div>${noBk}
+                    <div id="op-mac-${i}" style="display:none;flex-direction:column;gap:4px;"></div>
                 </div>`;
             }).join('');
-            opExtras = {};
+            opExtras = {}; opSps = {};
             opOnus.forEach((o, i) => opRenderServicos(i));
         }
 
@@ -4031,6 +4032,54 @@
                         value="${_escHtml(document.getElementById(`op-gem-${i}`).value || '1')}" style="width:60px;">
                     <button class="op-btn sec" onclick="opAdicionarVlanCartao(${i})" style="padding:4px 8px;">+ VLAN</button>
                 </div>`;
+        };
+
+        // ── Validar MAC: só depois de provisionar, pelos service-ports criados ──
+        // `display mac-address vlan V | include <índice do service-port>`.
+        let opSps = {};
+
+        function opMostrarValidarMac(i, sps) {
+            opSps[i] = sps;
+            const box = document.getElementById(`op-mac-${i}`);
+            if (!box) return;
+            box.style.display = 'flex';
+            box.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <button class="op-btn sec" id="op-macbtn-${i}" onclick="opValidarMac(${i})" style="padding:4px 10px;font-size:11px;">🔍 Validar MAC</button>
+                    <span class="op-orig">service-port ${sps.map(sp => `${sp.index} (VLAN ${sp.vlan})`).join(', ')}</span>
+                </div>
+                <div id="op-macres-${i}" style="font-size:11px;"></div>`;
+        }
+
+        window.opValidarMac = async function(i) {
+            const sps = opSps[i] || [];
+            const btn = document.getElementById(`op-macbtn-${i}`), res = document.getElementById(`op-macres-${i}`);
+            if (!sps.length || opRodando) return;
+            btn.disabled = true; btn.textContent = '⏳ Consultando...';
+            try {
+                const term = opTerminalDaOlt(opAcessoId());
+                const corpo = {service_ports: sps.map(sp => ({index: sp.index, vlan: sp.vlan, gem: sp.gem}))};
+                if (term) {
+                    corpo.saidas = {};
+                    const inicial = await opPrepararTerminal(term);
+                    try {
+                        for (const sp of sps) corpo.saidas[String(sp.index)] = await opCmdTerminal(term, sp.cmd_mac);
+                    } finally {
+                        await opRestaurarTerminal(term, inicial);
+                    }
+                }
+                const j = await opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-prov/mac/`, {method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
+                    body: JSON.stringify(corpo)});
+                const hora = new Date().toLocaleTimeString();
+                res.innerHTML = j.resultados.map(r => r.macs.length
+                    ? `<div style="color:#3fb950">✓ SP ${r.index} · VLAN ${r.vlan}: ${r.macs.map(m => `<b>${_escHtml(m.mac)}</b>${m.tipo ? ' (' + _escHtml(m.tipo) + ')' : ''}`).join(', ')}</div>`
+                    : `<div style="color:#d29922">✗ SP ${r.index} · VLAN ${r.vlan}: nenhum MAC ainda — a ONU pode estar subindo ou sem cliente ligado; tente de novo em alguns segundos.</div>`
+                ).join('') + `<div class="op-orig">consultado às ${hora}</div>`;
+            } catch (e) {
+                res.innerHTML = `<div style="color:#ff5555">✗ ${_escHtml(e.message || e)}</div>`;
+            } finally {
+                btn.disabled = false; btn.textContent = '🔍 Validar MAC';
+            }
         };
 
         window.opPassarMaisVlans = function(i) {
@@ -4671,12 +4720,17 @@
                         ev = {...base, tipo: 'onu', ont_id: ontId, status: falhas.length ? 'parcial' : 'sucesso',
                               msg: falhas.length ? `${falhas.join('; ')} — ONT ${ontId} ficou cadastrada, confira o serviço` : `ONT ${ontId} provisionada`};
                     }
+                    // Índices que a OLT deu aos service-ports (para o "Validar MAC").
+                    let saidaSp = '';
+                    if (ev.ont_id != null) saidaSp = await env(`display service-port port ${it.slot}/${it.porta} ont ${ev.ont_id}`);
                     ev.comandos = log.join('\n');
                     // Auditoria no servidor (AcaoOltPon), igual ao modo servidor.
-                    await opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-prov/registrar/`, {method: 'POST',
+                    const reg = await opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-prov/registrar/`, {method: 'POST',
                         headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
-                        body: JSON.stringify({item: it, ont_id: ev.ont_id ?? null, status: ev.status, saida: ev.comandos, msg: ev.msg})})
-                        .catch(e => console.warn('[ONU] auditoria:', e));
+                        body: JSON.stringify({item: it, ont_id: ev.ont_id ?? null, status: ev.status, saida: ev.comandos,
+                                              msg: ev.msg, saida_service_ports: saidaSp})})
+                        .catch(e => { console.warn('[ONU] auditoria:', e); return {}; });
+                    ev.service_ports = reg.service_ports || [];
                     yield ev;
                 }
             } finally {
@@ -4744,6 +4798,7 @@
                         if (ev.comandos) linha(ev.comandos);
                         linha(`${icone} ${ev.sn}: ${ev.msg}`);
                         marcar(ev.sn, ev.status, ev.status === 'sucesso' ? `ONT ${ev.ont_id}` : ev.status);
+                        if (ev.service_ports && ev.service_ports.length) opMostrarValidarMac(porSn[ev.sn], ev.service_ports);
                     }
                     else if (ev.tipo === 'erro') linha(`\n✗ ERRO: ${ev.erro}`);
                 }

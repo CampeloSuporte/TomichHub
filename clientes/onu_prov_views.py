@@ -8,6 +8,7 @@ Provisionamento de ONU/ONT em OLT Huawei — endpoints da aba "ONU" do painel
     POST acessos/<id>/onu-prov/registrar/  auditoria de ONU provisionada pelo terminal
     POST acessos/<id>/onu-prov/perfis/     criar srv/line profile de VLAN translate
     POST acessos/<id>/onu-prov/backup/     backup logo depois de criar perfis
+    POST acessos/<id>/onu-prov/mac/        MAC aprendido nos service-ports da ONU provisionada
 
 Duas formas de falar com a OLT. Com o terminal do operador ABERTO nela, tudo
 vai por aquela sessão (o JS do painel envia e lê pelo WebSocket): a OLT da WTD
@@ -296,7 +297,10 @@ def onu_prov_registrar(request, acesso_id):
         output=str(body.get('saida') or '')[:200_000], status=status)
     logger.warning(f'ONU {it["sn"]} em {acesso} {it["slot"]}/{it["porta"]} pelo terminal '
                    f'de {request.user} — {status}: {str(body.get("msg") or "")[:200]}')
-    return JsonResponse({'ok': True})
+    # O terminal mandou a saída do `display service-port ... ont N`: devolve
+    # os índices para o botão "Validar MAC" do cartão.
+    sps = op.service_ports_com_mac(op.parse_service_ports(str(body.get('saida_service_ports') or '')))
+    return JsonResponse({'ok': True, 'service_ports': sps})
 
 
 @login_required(login_url='login')
@@ -480,3 +484,64 @@ def onu_prov_backup(request, acesso_id):
     if not _agendar_backup(acesso, request.user):
         return JsonResponse({'error': 'Backup não habilitado neste host (ou sem template).'}, status=422)
     return JsonResponse({'ok': True, 'agendado': True})
+
+
+def _service_ports_do_pedido(body):
+    brutos = body.get('service_ports')
+    if not isinstance(brutos, list) or not brutos or len(brutos) > op.MAX_GEMS_PERFIL:
+        raise op.ProvisionamentoInvalido('Nenhum service-port para validar.')
+    sps = []
+    for sp in brutos:
+        if not isinstance(sp, dict):
+            raise op.ProvisionamentoInvalido('Service-port inválido.')
+        sps.append({'index': op._inteiro(sp.get('index'), 'índice do service-port', 0, 65535),
+                    'vlan': op._inteiro(sp.get('vlan'), 'VLAN do service-port', 1, 4094),
+                    'gem': sp.get('gem')})
+    return op.service_ports_com_mac(sps)
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+@ferramenta_instancia_required('scripts')
+def onu_prov_mac(request, acesso_id):
+    """Confere se a ONU recém-provisionada já trouxe MAC: `display
+    mac-address vlan V | include <índice do service-port>` para cada
+    service-port criado. Leitura pura.
+
+    body: {"service_ports": [{index, vlan, gem}], "saidas": {"<index>": "..."}}
+    Com `saidas` (rodado no terminal aberto) só interpreta; sem, conecta.
+    """
+    acesso, inventario, backup, log, erro = _carregar(request, acesso_id)
+    if erro:
+        return erro
+    try:
+        body = json.loads(request.body)
+        sps = _service_ports_do_pedido(body)
+    except op.ProvisionamentoInvalido as e:
+        return JsonResponse({'error': str(e)}, status=422)
+    except Exception:
+        return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+    saidas = body.get('saidas')
+    if not isinstance(saidas, dict):
+        saidas = {}
+        client = tunel = shell = None
+        try:
+            client, tunel = conectar(acesso)
+            shell = op.ShellOlt(client)
+            for cmd in PREAMBULO:
+                shell.enviar(cmd)
+            for sp in sps:
+                saidas[str(sp['index'])] = shell.enviar(sp['cmd_mac'])
+        except Exception as e:
+            return JsonResponse({'error': f'Falha ao consultar a OLT: {op.mensagem_de_falha(e)}'}, status=502)
+        finally:
+            if shell:
+                shell.fechar()
+            desconectar(client, tunel)
+
+    resultados = []
+    for sp in sps:
+        saida = str(saidas.get(str(sp['index'])) or '')[:100_000]
+        resultados.append({**sp, 'macs': op.parse_macs(saida, sp['index']), 'saida': saida})
+    return JsonResponse({'resultados': resultados})
