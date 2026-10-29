@@ -38,6 +38,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   **Backup depois de criar perfis:** criar srv/line profile dispara um backup do equipamento (com o
   terminal aberto, a configuração é lida por ele e gravada como backup; sem terminal, roda o backup
   normal em segundo plano), e a tela recarrega os perfis, já disponíveis no provisionamento.
+  O cartão sempre mostra "➕ Passar mais de uma VLAN nesta ONU" (antes, a lista só aparecia depois de
+  trocar o modo), e um line profile com 2+ VLANs muda o modo para Passagem VLANs sozinho.
   O DBA do line profile vem da lista do backup ou é criado na hora ("➕ Criar novo DBA...", padrão
   quando o backup não tem nenhum), com type1–4 e banda, antes do line profile.
 - **Aba ONU em massa: line e srv profile únicos para o lote.** Os seletores "Line profile" e

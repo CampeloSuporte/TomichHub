@@ -207,6 +207,11 @@ service-port vlan 1553 gpon 0/1/0 ont {ONT_ID} gemport 1 multi-service user-vlan
 service-port vlan 3869 gpon 0/1/0 ont {ONT_ID} gemport 1 multi-service user-vlan 3869 tag-transform transparent
 ```
 
+**Sempre à vista:** nos modos ONU+ONT e Só ONT, o cartão mostra o botão **➕ Passar mais
+de uma VLAN nesta ONU**. Ele troca para "Passagem VLANs" e já põe a VLAN do cartão na
+lista. Escolher um line profile com 2+ VLANs mapeadas (ex.: `MULTI_VLAN`, gem 1 → 301 e
+3998) troca o modo sozinho: em ONU+ONT só uma VLAN passaria.
+
 **VLANs à mão no cartão:** nos dois modos (Passagem VLANs e Translate), embaixo da
 lista há um campo **+ VLAN** (aceita `1553,3869` ou `101-105`) e o GEM das VLANs
 adicionadas (padrão: o GEMPORT do cartão). Assim dá para passar 2+ VLANs numa ONU
