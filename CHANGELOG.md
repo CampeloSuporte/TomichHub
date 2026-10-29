@@ -32,6 +32,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   Translate também aceita várias VLANs. **VLAN na OLT + uplink:** todo script que pede VLAN cria
   `vlan V smart` e `port vlan V F/S P` na uplink lida do backup (0/8 0 na SENTO SE), só o que falta,
   nos perfis (depois de criar) e no lote (antes do primeiro `ont add`).
+  No cartão da ONU, "+ VLAN" adiciona VLANs à mão (ex.: `1553,3869` no GEM 1) nos modos Passagem
+  VLANs e Translate, independentemente dos gem mappings do backup.
   O DBA do line profile vem da lista do backup ou é criado na hora ("➕ Criar novo DBA...", padrão
   quando o backup não tem nenhum), com type1–4 e banda, antes do line profile.
 - **Aba ONU em massa: line e srv profile únicos para o lote.** Os seletores "Line profile" e
