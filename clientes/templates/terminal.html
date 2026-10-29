@@ -3984,11 +3984,23 @@
         window.opRenderServicos = function(i) {
             const box = document.getElementById(`op-svc-${i}`);
             if (!box) return;
-            const modo = document.getElementById(`op-modo-${i}`).value;
-            if (modo !== 'translate' && modo !== 'transparente') { box.style.display = 'none'; box.innerHTML = ''; return; }
-            const transp = modo === 'transparente';
+            const modoSel = document.getElementById(`op-modo-${i}`);
+            let modo = modoSel.value;
             const line = opInv.lines.find(p => String(p.id) === document.getElementById(`op-line-${i}`).value);
             const mapas = (line && line.mapas && line.mapas.length) ? line.mapas : [];
+            // Line profile com 2+ VLANs mapeadas (ex.: MULTI_VLAN) em ONU+ONT/Só
+            // ONT passaria só uma: vira "Passagem VLANs" sozinho.
+            if ((modo === 'onu' || modo === 'ont') && mapas.length > 1) {
+                modoSel.value = modo = 'transparente';
+            }
+            if (modo !== 'translate' && modo !== 'transparente') {
+                // A opção fica sempre à vista: um clique troca para a passagem
+                // de VLANs, já com a VLAN do cartão na lista.
+                box.style.display = 'flex';
+                box.innerHTML = `<button class="op-btn sec" onclick="opPassarMaisVlans(${i})" style="padding:4px 8px;font-size:11px;align-self:flex-start;">➕ Passar mais de uma VLAN nesta ONU</button>`;
+                return;
+            }
+            const transp = modo === 'transparente';
             const vlanOlt = document.getElementById(`op-vlan-${i}`).value;
             const linhas = [...mapas.map(([g, uv]) => ({g, uv, extra: false})),
                             ...(opExtras[i] || []).map(e => ({...e, extra: true}))];
@@ -4019,6 +4031,21 @@
                         value="${_escHtml(document.getElementById(`op-gem-${i}`).value || '1')}" style="width:60px;">
                     <button class="op-btn sec" onclick="opAdicionarVlanCartao(${i})" style="padding:4px 8px;">+ VLAN</button>
                 </div>`;
+        };
+
+        window.opPassarMaisVlans = function(i) {
+            document.getElementById(`op-modo-${i}`).value = 'transparente';
+            const line = opInv.lines.find(p => String(p.id) === document.getElementById(`op-line-${i}`).value);
+            const vlan = parseInt(document.getElementById(`op-vlan-${i}`).value);
+            const g = parseInt(document.getElementById(`op-gem-${i}`).value || '1');
+            const temNoPerfil = line && (line.mapas || []).some(([, uv]) => uv === vlan);
+            // A VLAN do cartão entra como primeira linha quando o perfil não a mapeia.
+            if (vlan && !temNoPerfil) {
+                const lista = opExtras[i] || (opExtras[i] = []);
+                if (!lista.some(e => e.g === g && e.uv === vlan)) lista.push({g, uv: vlan, vlan});
+            }
+            opRenderServicos(i);
+            document.getElementById(`op-addv-${i}`)?.focus();
         };
 
         window.opAdicionarVlanCartao = function(i) {
