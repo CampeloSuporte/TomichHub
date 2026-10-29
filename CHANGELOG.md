@@ -19,6 +19,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **Sub-menu de versão FiberHome: 5500 ou 6k.** Com uma OLT FiberHome aberta, o painel mostra
   os botões "AN5516 · 5500 | AN6000 · 6k" e lista só os comandos da versão escolhida (fica salvo
   por host). No seletor "Tipo" a FiberHome aparece uma vez só.
+- **FiberHome 6k: "Alterar distância da PON" não aparecia.** O `set pon_distance` (via `cd card`)
+  estava na 5500; agora fica no 6k, como na lista da equipe, num grupo próprio
+  "⚠ Distância da PON" em cada versão. O filtro da 💡 passou a ignorar acento ("distancia").
 
 ## [Não publicado] — 2026-10-28 (Sala Virtual: remover atendente e conversa privada)
 

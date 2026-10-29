@@ -581,8 +581,10 @@ catálogo.
 FiberHome AN5516: a CLI é por diretórios (`cd onu`, `cd gpononu`, `cd service`, `cd ..`), então
 cada grupo começa com o `cd` do diretório. Há dois dialetos de ONU conforme o firmware —
 `slot X pon Y onu Z` (diretório `onu`, RP1000) e `slot X link Y onu Z` (`gpononu`) — os dois
-estão no catálogo. Na lista de origem os blocos de distância da PON vinham com 5k/6k trocados
-(o `config`/`interface pon` é sintaxe do AN6000); ficou cada um na família certa. Comandos de
+estão no catálogo. Distância da PON segue a lista da equipe: 6k usa `cd card` +
+`set pon_distance slot … pon …`, 5500 usa `config` / `interface pon` / `distance …` (grupo
+"⚠ Distância da PON" nas duas). O filtro do painel ignora acento e também procura no título do
+grupo ("distancia" acha). Comandos de
 telnet na própria ONU (`Config\wan#`) e o ONCONFIG do ANM2000 ficaram fora.
 
 Cada comando tem `conferido`:

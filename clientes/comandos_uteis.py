@@ -475,6 +475,10 @@ FAMILIAS = {
                 _c('user enable-password {usuario}', 'Troca a senha (pede a nova)'),
                 _c('terminal user name {usuario} {senha} role admin', 'Cria usuário admin (RP1800)'),
             ]),
+            ('⚠ Distância da PON', [
+                _c('config\ninterface pon 1/{slot}/{pon}\ndistance max-distance 30 diff-distance 30',
+                   'Distância máxima e diferencial da PON (30 km)'),
+            ]),
             ('⚠ Sistema / backup', [
                 _c('set auto_save enable period 1440', 'Auto save a cada 24 h'),
                 _c('set save sync enable', 'Sincroniza a configuração entre as controladoras'),
@@ -485,7 +489,6 @@ FAMILIAS = {
                 _c('upgrade xdu {ip} {usuario} {senha} {arquivo} {slot}', 'Atualiza a placa de linha do slot'),
                 _c('set card_auth slot {slot} type {placa}', 'Autoriza a placa no slot'),
                 _c('set card_unauth slot {slot}', 'Desautoriza a placa do slot'),
-                _c('set pon_distance slot {slot} pon {pon} max_distance 20 diff_distance 40', 'Distância da PON (em Admin\\card#)'),
                 _c('set pon_interconnection_switch slot {slot} switch enable union_interconnect_switch enable',
                    'Aceita ONU de outros fabricantes (em Admin\\gponline#; depois `set sys_apply_flag 0 apply_sence 0`)'),
             ]),
@@ -528,8 +531,12 @@ FAMILIAS = {
                 _c('snmp-time interval 3600 servip ipv4 {ip}', 'Sincroniza a hora com o servidor (UNM)'),
                 _c('save', 'Grava a configuração'),
             ]),
-            ('⚠ PON / ventilação', [
-                _c('config\ninterface pon 1/{slot}/{pon}\ndistance max-distance 30 diff-distance 30', 'Distância da PON'),
+            ('⚠ Distância da PON', [
+                _c('cd card', 'Entra em Admin\\card#'),
+                _c('set pon_distance slot {slot} pon {pon} max_distance 20 diff_distance 40',
+                   'Distância máxima (20 km) e diferencial (40 km) da PON'),
+            ]),
+            ('⚠ Ventilação', [
                 _c('config\ninterface fan 1/23\nfan mode manual speed 1', 'Ventilador em velocidade manual'),
             ]),
         ],
