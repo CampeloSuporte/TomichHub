@@ -616,6 +616,114 @@ class VlanFixaTest(SimpleTestCase):
         self.assertEqual(op.sugerir(bk, '0/1', 0, '485754433B654F8B')['modo'], 'onu')
 
 
+
+# Exemplos reais passados pelo operador em 29/10/2026.
+BACKUP_EXEMPLOS = """
+ dba-profile add profile-id 300 profile-name "dba-profile_300" type4 max 1024000
+ ont-lineprofile gpon profile-id 2 profile-name "ARCH-LINEPROFILE-V3087"
+  fec-upstream enable
+  omcc encrypt on
+  tr069-management enable
+  qos-mode gem-car
+  mapping-mode priority
+  tcont 0 dba-profile-id 2
+  tcont 1 dba-profile-id 10
+  tcont 2 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 1 vlan 3087
+  commit
+  quit
+ ont-srvprofile gpon profile-id 5 profile-name "ARCH2-1GE-0"
+  ont-port eth 1 catv adaptive 8 
+  ring check enable 
+  port vlan eth 1 translation 3087 user-vlan 3087
+  commit
+ ont-srvprofile gpon profile-id 2 profile-name "THINK"
+  ont-port eth 4 catv 1 
+  commit
+ ont-lineprofile gpon profile-id 1 profile-name "PPPOE"
+  omcc encrypt on
+  tcont 1 dba-profile-id 10
+  gem add 1 eth tcont 1 encrypt on
+  gem mapping 1 0 vlan 128
+  commit
+  quit
+#
+"""
+
+
+class ExemplosPerfisTest(SimpleTestCase):
+    def setUp(self):
+        self.bk = op.parse_backup(BACKUP_TRANSLATE)
+
+    def test_arch_1ge_catv(self):
+        norm, _ = op.validar_perfis({
+            'modelo': 'vlan_fixa', 'vlan_fixa': 3087,
+            'srv': {'criar': True, 'id': 5, 'nome': 'ARCH2-1GE-0', 'eth_vlan': 1, 'ring_check': True,
+                    'portas': {'pots': '', 'eth': '1', 'catv': 'adaptive 8'}},
+            'line': {'criar': True, 'id': 2, 'nome': 'ARCH-LINEPROFILE-V3087', 'dba': 10, 'tcont': 1,
+                     'gem': 1, 'mapping_idx': 1, 'fec': True, 'tr069': True, 'gem_car': True,
+                     'mapping_mode': 'priority'}}, self.bk)
+        self.assertEqual(op.comandos_perfis(norm), [
+            'ont-srvprofile gpon profile-id 5 profile-name "ARCH2-1GE-0"',
+            'ont-port eth 1 catv adaptive 8', 'ring check enable',
+            'port vlan eth 1 translation 3087 user-vlan 3087', 'commit', 'quit',
+            'ont-lineprofile gpon profile-id 2 profile-name "ARCH-LINEPROFILE-V3087"',
+            'fec-upstream enable', 'omcc encrypt on', 'tr069-management enable', 'qos-mode gem-car',
+            'mapping-mode priority', 'tcont 1 dba-profile-id 10',
+            'gem add 1 eth tcont 1 encrypt on', 'gem mapping 1 1 vlan 3087', 'commit', 'quit'])
+
+    def test_id_igual_vlan_110(self):
+        norm, _ = op.validar_perfis({
+            'modelo': 'vlan_fixa', 'vlan_fixa': 110,
+            'srv': {'criar': True, 'id': 110, 'nome': 'srv-profile_110', 'eth_vlan': 4,
+                    'portas': {'pots': 'adaptive 2', 'eth': 'adaptive 4', 'catv': ''}},
+            'line': {'criar': True, 'id': 110, 'nome': 'line-profile_110', 'dba': 'novo', 'tcont': 5, 'gem': 5},
+            'dba': {'criar': True, 'id': 300, 'nome': 'dba-profile_300', 'tipo': 'type4', 'max': 1024000}}, self.bk)
+        self.assertEqual(op.comandos_perfis(norm), [
+            'dba-profile add profile-id 300 profile-name "dba-profile_300" type4 max 1024000',
+            'ont-srvprofile gpon profile-id 110 profile-name "srv-profile_110"',
+            'ont-port pots adaptive 2 eth adaptive 4',
+            'port vlan eth 1 translation 110 user-vlan 110', 'port vlan eth 2 translation 110 user-vlan 110',
+            'port vlan eth 3 translation 110 user-vlan 110', 'port vlan eth 4 translation 110 user-vlan 110',
+            'commit', 'quit',
+            'ont-lineprofile gpon profile-id 110 profile-name "line-profile_110"',
+            'omcc encrypt on', 'tcont 5 dba-profile-id 300',
+            'gem add 5 eth tcont 5 encrypt on', 'gem mapping 5 0 vlan 110', 'commit', 'quit'])
+
+    def test_roteada_think_pppoe(self):
+        norm, _ = op.validar_perfis({
+            'modelo': 'roteada', 'vlan_fixa': 128,
+            'srv': {'criar': True, 'id': 2, 'nome': 'THINK', 'portas': {'eth': '4', 'catv': '1'}},
+            'line': {'criar': True, 'id': 1, 'nome': 'PPPOE', 'dba': 10, 'tcont': 1},
+            'uplink': {'criar': True, 'portas': ['0/8 0'], 'vlans': []}}, self.bk)
+        self.assertEqual(op.comandos_perfis(norm), [
+            'ont-srvprofile gpon profile-id 2 profile-name "THINK"', 'ont-port eth 4 catv 1', 'commit', 'quit',
+            'ont-lineprofile gpon profile-id 1 profile-name "PPPOE"', 'omcc encrypt on',
+            'tcont 1 dba-profile-id 10', 'gem add 1 eth tcont 1 encrypt on', 'gem mapping 1 0 vlan 128',
+            'commit', 'quit'])
+        # A VLAN do perfil é a VLAN da OLT: vai para a uplink sem digitar.
+        self.assertEqual(norm['uplink']['vlans'], [128])
+
+    def test_portas_invalidas(self):
+        for portas, eth_vlan in (({'eth': 'adaptiv'}, 1), ({'eth': ''}, 1), ({'eth': '1'}, 4), ({'eth': '0'}, 1)):
+            with self.subTest(portas=portas), self.assertRaises(op.ProvisionamentoInvalido):
+                op.validar_perfis({'modelo': 'vlan_fixa', 'vlan_fixa': 10, 'line': {'criar': False},
+                                   'srv': {'criar': True, 'id': 300, 'nome': 'S', 'portas': portas,
+                                           'eth_vlan': eth_vlan}}, self.bk)
+
+    def test_backup_guarda_bloco_e_vlans(self):
+        bk = op.parse_backup(BACKUP_EXEMPLOS)
+        self.assertEqual(bk['srvs'][5]['vlans'], [3087])
+        self.assertEqual(bk['srvs'][2]['vlans'], [])
+        self.assertEqual(bk['lines'][2]['mapas'], [[1, 3087]])
+        self.assertEqual(bk['lines'][1]['vlans'], [128])
+        self.assertEqual(bk['srvs'][2]['texto'],
+                         ['ont-srvprofile gpon profile-id 2 profile-name "THINK"', '  ont-port eth 4 catv 1', '  commit'])
+        self.assertIn('  mapping-mode priority', bk['lines'][2]['texto'])
+        self.assertEqual(bk['dbas'][300], 'dba-profile_300')
+
+
 BACKUP_UPLINK = BACKUP_TRANSLATE.replace(
     ' vlan 1000 smart\n',
     ' vlan 1000 smart\n'

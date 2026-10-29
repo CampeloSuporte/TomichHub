@@ -48,6 +48,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   (migração 0128).
   O DBA do line profile vem da lista do backup ou é criado na hora ("➕ Criar novo DBA...", padrão
   quando o backup não tem nenhum), com type1–4 e banda, antes do line profile.
+- **Aba ONU: 🔍 inspecionar line/srv profile e VLAN do perfil no cartão.** A 🔍 ao lado dos
+  seletores mostra as VLANs do perfil (GEM → VLAN no line, VLAN das portas no srv), quantas
+  ONTs o usam e o bloco do backup. Ao trocar o line/srv nos modos ONU+ONT e Só ONT, a VLAN e o
+  GEMPORT do cartão passam a ser os do perfil (antes, ficavam os da sugestão anterior), e o
+  cartão avisa quando a VLAN/GEM não casa com o line profile. Cache do backup v5.
+- **Criar perfis: portas por tipo, extras do line, modelo ONT roteada e três exemplos reais.**
+  POTS/ETH/CATV (`adaptive`, `adaptive 8` ou fixo), GEM e índice do mapping configuráveis,
+  `ring check`, `fec-upstream`, `tr069-management`, `qos-mode gem-car` e `mapping-mode`. Modelo
+  novo **ONT roteada / PPPoE** (srv só com portas, VLAN só no line). Exemplos no MODELO e no menu
+  SCRIPT: ARCH (1 GE + CATV, VLAN 3087), ID = VLAN (`srv-profile_110`/`line-profile_110`, tcont e
+  GEM 5) e THINK + PPPOE (VLAN 128).
 - **Aba ONU em massa: line e srv profile únicos para o lote.** Os seletores "Line profile" e
   "Srv profile para as marcadas" aplicam o mesmo perfil a todas as ONUs marcadas, no lugar da
   sugestão do backup.

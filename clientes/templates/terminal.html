@@ -1344,6 +1344,10 @@
             #sp-pane-onu pre { background:#0d1117; border:1px solid #30363d; border-radius:4px; padding:8px; font-size:10px; color:#c9d1d9; max-height:260px; overflow:auto; white-space:pre-wrap; margin:0; }
             #sp-pane-onu .op-chip { font-size:10px; padding:2px 6px; border:1px solid #30363d; border-radius:10px; color:#c9d1d9; display:inline-flex; gap:4px; align-items:center; }
             #sp-pane-onu .op-chip button { background:none; border:none; color:#ff5555; cursor:pointer; padding:0; font-size:11px; }
+            #sp-pane-onu .op-sel-lupa { display:flex; gap:3px; }
+            #sp-pane-onu .op-sel-lupa select { flex:1; min-width:0; }
+            #sp-pane-onu .op-lupa { background:#21262d; border:1px solid #30363d; border-radius:4px; color:#c9d1d9; cursor:pointer; padding:0 6px; font-size:11px; }
+            #sp-pane-onu .op-lupa:hover { border-color:#58a6ff; }
             #sp-pane-onu .op-svc { display:grid; grid-template-columns: 18px 1fr 90px; gap:6px; align-items:center; font-size:10px; color:#c9d1d9; }
             @media (max-width: 560px) { #sp-pane-onu .op-grid { grid-template-columns: 1fr 1fr 1fr; } }
         </style>
@@ -1355,28 +1359,48 @@
             </div>
             <div id="opMsg" style="font-size:11px;"></div>
             <details id="opPerfisBox" style="border:1px solid #30363d;border-radius:6px;padding:8px;">
-                <summary style="cursor:pointer;font-size:12px;color:#ffa500;font-weight:700;padding:2px 0;">➕ Criar srv/line profile (VLAN translate / VLAN fixa) <span style="font-weight:400;color:#7d8590;font-size:10px;">(clique para abrir)</span></summary>
+                <summary style="cursor:pointer;font-size:12px;color:#ffa500;font-weight:700;padding:2px 0;">➕ Criar srv/line profile (translate / VLAN fixa / roteada) <span style="font-weight:400;color:#7d8590;font-size:10px;">(clique para abrir)</span></summary>
                 <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
                     <div style="font-size:10px;color:#7d8590;">Cada VLAN vira um GEM no line profile (<code>gem add</code> + <code>gem mapping</code>), até o limite de <span id="opPfMaxTxt">32</span> GEMs. O ID não pode existir na OLT: o CRM confere ao vivo antes de criar.</div>
                     <div><span class="op-lbl">MODELO</span>
                         <select class="op-in" id="opPfModelo" onchange="opPfTrocarModelo()">
                             <option value="translate">VLAN translate — várias VLANs, um GEM por VLAN</option>
-                            <option value="vlan_fixa">ONU com VLAN fixa nas portas (ex.: VLAN 1)</option>
+                            <option value="vlan_fixa">ONU bridge com VLAN fixa nas portas (ex.: VLAN 1)</option>
+                            <option value="vlan_fixa:arch">ONU bridge 1 GE + CATV (ex.: ARCH, VLAN 3087, TR-069)</option>
+                            <option value="vlan_fixa:id">ONU bridge, ID do perfil = VLAN (ex.: 110, 2 POTS + 4 GE)</option>
+                            <option value="roteada">ONT roteada / PPPoE — VLAN só no line (ex.: THINK + PPPOE, VLAN 128)</option>
                             <option value="multi_vlan">Passagem de 2+ VLANs na ONU/ONT (todas no GEM 1)</option>
                         </select></div>
                     <div id="opPfMultiBox" style="display:none;" class="op-grid">
                         <div><span class="op-lbl">PORTAS ETH COM AS VLANS</span><input class="op-in" id="opPfEthMulti" type="number" min="1" max="8" value="1"></div>
                     </div>
-                    <div id="opPfFixaBox" style="display:none;" class="op-grid">
-                        <div><span class="op-lbl">VLAN SETADA NA ONU</span><input class="op-in" id="opPfVlanFixa" type="number" min="1" max="4094" value="1" oninput="opPfNomesFixa()"></div>
-                        <div><span class="op-lbl">PORTAS ETH COM A VLAN</span><input class="op-in" id="opPfEthVlan" type="number" min="1" max="8" value="4"></div>
-                        <div><span class="op-lbl">POTS ADAPTIVE</span><input class="op-in" id="opPfPots" type="number" min="0" max="32" value="32"></div>
+                    <!-- VLAN fixa / roteada: uma VLAN, portas da ONU por tipo e extras do line -->
+                    <div id="opPfFixaBox" style="display:none;flex-direction:column;gap:6px;">
+                        <div class="op-grid">
+                            <div><span class="op-lbl" id="opPfVlanFixaLbl">VLAN SETADA NA ONU</span><input class="op-in" id="opPfVlanFixa" type="number" min="1" max="4094" value="1" oninput="opPfNomesFixa()"></div>
+                            <div id="opPfEthVlanBox"><span class="op-lbl">PORTAS ETH COM A VLAN</span><input class="op-in" id="opPfEthVlan" type="number" min="1" max="8" value="4"></div>
+                            <div><span class="op-lbl">GEM</span><input class="op-in" id="opPfGem" type="number" min="0" max="1023" value="1"></div>
+                            <div><span class="op-lbl" title="gem mapping G &lt;índice&gt; vlan V">ÍNDICE MAPPING</span><input class="op-in" id="opPfMapIdx" type="number" min="0" max="7" value="0"></div>
+                        </div>
+                        <div class="op-grid" title="Cada tipo: vazio (não declara), adaptive, adaptive 8 ou um número fixo">
+                            <div><span class="op-lbl">POTS</span><input class="op-in" id="opPfPots" placeholder="vazio = sem" value="adaptive 32"></div>
+                            <div><span class="op-lbl">ETH</span><input class="op-in" id="opPfEthPortas" placeholder="adaptive 8 ou 4" value="adaptive 8"></div>
+                            <div><span class="op-lbl">CATV</span><input class="op-in" id="opPfCatv" placeholder="vazio = sem" value=""></div>
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:11px;color:#c9d1d9;align-items:center;">
+                            <label style="display:flex;gap:4px;align-items:center;"><input type="checkbox" id="opPfRing"> ring check (srv)</label>
+                            <label style="display:flex;gap:4px;align-items:center;"><input type="checkbox" id="opPfFec"> fec-upstream</label>
+                            <label style="display:flex;gap:4px;align-items:center;"><input type="checkbox" id="opPfTr069"> tr069-management</label>
+                            <label style="display:flex;gap:4px;align-items:center;"><input type="checkbox" id="opPfGemCar"> qos-mode gem-car</label>
+                            <label style="display:flex;gap:4px;align-items:center;">mapping-mode
+                                <select class="op-in" id="opPfMapMode" style="width:auto;padding:2px 4px;"><option value="">padrão (vlan)</option><option value="priority">priority</option><option value="vlan-priority">vlan-priority</option></select></label>
+                        </div>
                     </div>
                     <label style="font-size:11px;color:#c9d1d9;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="opPfSrvCriar" checked> Srv profile</label>
                     <div class="op-grid" style="grid-template-columns:70px 1fr 70px;">
                         <div><span class="op-lbl">ID</span><input class="op-in" id="opPfSrvId" type="number" min="0"></div>
                         <div><span class="op-lbl">NOME</span><input class="op-in" id="opPfSrvNome" maxlength="32" value="translate"></div>
-                        <div><span class="op-lbl">ETH ADAPT.</span><input class="op-in" id="opPfSrvEth" type="number" min="1" max="24" value="8"></div>
+                        <div id="opPfSrvEthBox"><span class="op-lbl">ETH ADAPT.</span><input class="op-in" id="opPfSrvEth" type="number" min="1" max="24" value="8"></div>
                     </div>
                     <label style="font-size:11px;color:#c9d1d9;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="opPfLineCriar" checked> Line profile</label>
                     <div class="op-grid" style="grid-template-columns:70px 1fr 60px 1fr;">
@@ -1428,9 +1452,9 @@
                 <!-- Lote: um line/srv profile único para todas as marcadas -->
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                     <div style="flex:1;min-width:160px;"><span class="op-lbl">LINE PROFILE PARA AS MARCADAS</span>
-                        <select class="op-in" id="opLineTodas" onchange="opAplicarPerfil('line', this.value)"></select></div>
+                        <div class="op-sel-lupa"><select class="op-in" id="opLineTodas" onchange="opAplicarPerfil('line', this.value)"></select><button class="op-lupa" title="Inspecionar o line profile" onclick="opInspecionarPerfil('line', document.getElementById('opLineTodas').value)">🔍</button></div></div>
                     <div style="flex:1;min-width:160px;"><span class="op-lbl">SRV PROFILE PARA AS MARCADAS</span>
-                        <select class="op-in" id="opSrvTodas" onchange="opAplicarPerfil('srv', this.value)"></select></div>
+                        <div class="op-sel-lupa"><select class="op-in" id="opSrvTodas" onchange="opAplicarPerfil('srv', this.value)"></select><button class="op-lupa" title="Inspecionar o srv profile" onclick="opInspecionarPerfil('srv', document.getElementById('opSrvTodas').value)">🔍</button></div></div>
                 </div>
                 <div id="opLista" style="display:flex;flex-direction:column;gap:8px;"></div>
                 <div style="display:flex;gap:8px;">
@@ -3454,7 +3478,13 @@
             {id: 'onu-perfis', nome: 'Huawei — Criar srv/line profile (VLAN translate)'},
             {id: 'onu-perfis-fixa', nome: 'Huawei — Criar perfis ONU com VLAN fixa (VLAN 1)'},
             {id: 'onu-perfis-multi', nome: 'Huawei — Criar perfis passagem de 2+ VLANs'},
+            {id: 'onu-perfis-arch', nome: 'Huawei — Criar perfis ONU 1 GE + CATV (ARCH)'},
+            {id: 'onu-perfis-id', nome: 'Huawei — Criar perfis com ID = VLAN (srv/line-profile_110)'},
+            {id: 'onu-perfis-roteada', nome: 'Huawei — Criar perfis ONT roteada / PPPoE'},
         ];
+        // Entrada do menu → modelo (e exemplo) do formulário de criação de perfis.
+        const SP_ONU_PERFIS = {'onu-perfis-fixa': 'vlan_fixa', 'onu-perfis-multi': 'multi_vlan',
+            'onu-perfis-arch': 'vlan_fixa:arch', 'onu-perfis-id': 'vlan_fixa:id', 'onu-perfis-roteada': 'roteada'};
 
         // ── Carregar equipamentos disponíveis ──
         async function spCarregarAcessos() {
@@ -3608,7 +3638,7 @@
                         : 'Abre a aba ONU: busca as ONUs pendentes (display ont autofind all) com VLAN e perfis sugeridos pelo backup.';
                     descBox.style.display = '';
                 }
-                if (id.startsWith('onu-perfis')) opAbrirPerfis({'onu-perfis-fixa': 'vlan_fixa', 'onu-perfis-multi': 'multi_vlan'}[id] || 'translate');
+                if (id.startsWith('onu-perfis')) opAbrirPerfis(SP_ONU_PERFIS[id] || 'translate');
                 else opAbrir(id === 'onu-unico' ? 'unico' : 'massa');
                 return;
             }
@@ -3678,7 +3708,7 @@
                 return;
             }
             const selScript = document.getElementById('spScriptSelect')?.value || '';
-            if (selScript.startsWith('onu-perfis')) { opAbrirPerfis({'onu-perfis-fixa': 'vlan_fixa', 'onu-perfis-multi': 'multi_vlan'}[selScript] || 'translate'); return; }
+            if (selScript.startsWith('onu-perfis')) { opAbrirPerfis(SP_ONU_PERFIS[selScript] || 'translate'); return; }
             if (selScript.startsWith('onu-')) { opAbrir(selScript === 'onu-unico' ? 'unico' : 'massa'); return; }
             if (!spScriptAtual) {
                 uiAlert('Selecione um script.');
@@ -3875,7 +3905,7 @@
             document.getElementById('opPfModelo').value = modelo || 'translate';
             opPfTrocarModelo();
             box.scrollIntoView({behavior: 'smooth', block: 'start'});
-            document.getElementById(modelo === 'vlan_fixa' ? 'opPfVlanFixa' : 'opPfVlanIn').focus();
+            document.getElementById(['vlan_fixa', 'roteada'].includes(opPfModeloBase()) ? 'opPfVlanFixa' : 'opPfVlanIn').focus();
         }
 
         async function opAbrir(selecao) {
@@ -3957,12 +3987,13 @@
                         <span class="op-st" id="op-st-${i}">pendente</span>
                     </div>
                     <div class="op-grid">
-                        <div><span class="op-lbl">VLAN</span><input class="op-in" id="op-vlan-${i}" type="number" min="1" max="4094" value="${s.vlan ?? ''}"></div>
-                        <div><span class="op-lbl">LINE PROFILE</span><select class="op-in" id="op-line-${i}" onchange="opRenderServicos(${i})">${opOpcoesPerfil(opInv.lines, s.line)}</select></div>
-                        <div><span class="op-lbl">SRV PROFILE</span><select class="op-in" id="op-srv-${i}">${opOpcoesPerfil(opInv.srvs, s.srv)}</select></div>
-                        <div><span class="op-lbl">GEMPORT</span><input class="op-in" id="op-gem-${i}" type="number" min="0" value="${s.gemport ?? 1}"></div>
-                        <div><span class="op-lbl">MODO</span><select class="op-in" id="op-modo-${i}" onchange="opRenderServicos(${i})">${modos}</select></div>
+                        <div><span class="op-lbl">VLAN</span><input class="op-in" id="op-vlan-${i}" type="number" min="1" max="4094" value="${s.vlan ?? ''}" oninput="opConferirVlan(${i})"></div>
+                        <div><span class="op-lbl">LINE PROFILE</span><div class="op-sel-lupa"><select class="op-in" id="op-line-${i}" onchange="opPerfilTrocado(${i}, 'line')">${opOpcoesPerfil(opInv.lines, s.line)}</select><button class="op-lupa" title="Inspecionar o line profile (VLANs, GEMs e o bloco do backup)" onclick="opInspecionarPerfil('line', document.getElementById('op-line-${i}').value)">🔍</button></div></div>
+                        <div><span class="op-lbl">SRV PROFILE</span><div class="op-sel-lupa"><select class="op-in" id="op-srv-${i}" onchange="opPerfilTrocado(${i}, 'srv')">${opOpcoesPerfil(opInv.srvs, s.srv)}</select><button class="op-lupa" title="Inspecionar o srv profile (portas, VLANs e o bloco do backup)" onclick="opInspecionarPerfil('srv', document.getElementById('op-srv-${i}').value)">🔍</button></div></div>
+                        <div><span class="op-lbl">GEMPORT</span><input class="op-in" id="op-gem-${i}" type="number" min="0" value="${s.gemport ?? 1}" oninput="opConferirVlan(${i})"></div>
+                        <div><span class="op-lbl">MODO</span><select class="op-in" id="op-modo-${i}" onchange="opRenderServicos(${i}); opConferirVlan(${i})">${modos}</select></div>
                     </div>
+                    <div class="op-orig" id="op-pfv-${i}"></div>
                     <div id="op-svc-${i}" style="display:none;flex-direction:column;gap:4px;"></div>
                     <div><span class="op-lbl">DESCRIÇÃO (opcional — vira desc "..." no ont add)</span><input class="op-in" id="op-desc-${i}" maxlength="64" placeholder="ex.: login do cliente"></div>
                     <div class="op-orig">Sugestão: ${_escHtml(s.origem || '')}</div>${noBk}
@@ -3970,8 +4001,93 @@
                 </div>`;
             }).join('');
             opExtras = {}; opSps = {}; opProv = {};
-            opOnus.forEach((o, i) => opRenderServicos(i));
+            opOnus.forEach((o, i) => { opRenderServicos(i); opConferirVlan(i); });
         }
+
+        // ── 🔍 Inspecionar line/srv profile: VLANs, GEMs e o bloco do backup ──
+        window.opInspecionarPerfil = function(tipo, id) {
+            if (!opInv || id === '' || id == null) { uiAlert('Escolha um perfil primeiro.'); return; }
+            const lista = tipo === 'line' ? opInv.lines : opInv.srvs;
+            const p = lista.find(x => String(x.id) === String(id));
+            const nomeTipo = tipo === 'line' ? 'Line profile' : 'Srv profile';
+            if (!p) {
+                uiAlert({tipo: 'aviso', titulo: `${nomeTipo} ${id}`, msg: 'Este perfil não está no backup (criado depois do último backup?).'});
+                return;
+            }
+            const chip = v => `<span style="display:inline-block;border:1px solid #58a6ff;color:#58a6ff;border-radius:10px;padding:1px 8px;margin:0 4px 4px 0;font-weight:700">${v}</span>`;
+            let resumo;
+            if (tipo === 'line') {
+                const mapas = p.mapas || [];
+                resumo = mapas.length
+                    ? `<div><b>VLANs:</b> ${[...new Set(mapas.map(m => m[1]))].map(chip).join('')}</div>`
+                      + `<div style="font-size:12px;color:#7d8590">${mapas.map(([g, v]) => `GEM ${g} → VLAN ${v}`).join(' · ')}</div>`
+                    : `<div style="color:#d29922">⚠ Sem <code>gem mapping</code> no backup: o line profile não diz a VLAN.</div>`;
+            } else {
+                resumo = (p.vlans || []).length
+                    ? `<div><b>VLANs nas portas:</b> ${p.vlans.map(chip).join('')}</div>`
+                    : `<div style="color:#7d8590">Sem VLAN nas portas (ONT roteada, ou a VLAN está só no line profile).</div>`;
+            }
+            const uso = p.onts != null ? `<div style="font-size:12px;color:#7d8590;margin-top:4px">${p.onts} ONT(s) usam este perfil no backup de ${_escHtml(opInv.data_backup)}.</div>` : '';
+            const bloco = (p.texto || []).join('\n') || '(bloco não encontrado no backup)';
+            uiAlert({tipo: 'info', titulo: `${nomeTipo} ${p.id} · ${p.nome}`,
+                msgHtml: resumo + uso + `<pre style="background:#0d1117;border:1px solid #30363d;border-radius:4px;padding:8px;font-size:11px;white-space:pre;text-align:left;margin:8px 0 0;max-height:320px;overflow:auto;color:#c9d1d9">${_escHtml(bloco)}</pre>`});
+        };
+
+        function opPerfisDoCartao(i) {
+            const val = k => document.getElementById(`op-${k}-${i}`)?.value;
+            const line = opInv.lines.find(p => String(p.id) === val('line'));
+            const srv = opInv.srvs.find(p => String(p.id) === val('srv'));
+            return {line, srv, mapas: (line && line.mapas) || [], vlansSrv: (srv && srv.vlans) || []};
+        }
+
+        // Trocou o line/srv: no ONU+ONT e no Só ONT o service-port usa
+        // user-vlan = VLAN, então a VLAN do cartão tem de ser a do perfil —
+        // traz a VLAN (e o GEM) quando o perfil tem uma só. Translate e
+        // Passagem VLANs montam a lista de service-ports pelo perfil.
+        window.opPerfilTrocado = function(i, campo) {
+            if (campo === 'line') opRenderServicos(i);
+            const modo = document.getElementById(`op-modo-${i}`).value;
+            if (modo === 'onu' || modo === 'ont') {
+                const {mapas, vlansSrv} = opPerfisDoCartao(i);
+                const vlansLine = [...new Set(mapas.map(m => m[1]))];
+                let vlan = null, gem = null;
+                if (vlansLine.length === 1) {
+                    vlan = vlansLine[0];
+                    gem = mapas[0][0];
+                } else if (!vlansLine.length && vlansSrv.length === 1) {
+                    vlan = vlansSrv[0];
+                }
+                if (vlan != null) document.getElementById(`op-vlan-${i}`).value = vlan;
+                if (gem != null) document.getElementById(`op-gem-${i}`).value = gem;
+            }
+            opConferirVlan(i);
+        };
+
+        // Linha abaixo dos campos: a VLAN de cada perfil e o aviso quando a
+        // VLAN/GEM do cartão não casa com o line profile.
+        window.opConferirVlan = function(i) {
+            const box = document.getElementById(`op-pfv-${i}`);
+            if (!box || !opInv) return;
+            const {line, srv, mapas, vlansSrv} = opPerfisDoCartao(i);
+            const partes = [];
+            if (line) partes.push(`Line ${line.id}: ${mapas.length ? mapas.map(([g, v]) => `GEM ${g} → VLAN ${v}`).join(', ') : 'sem gem mapping no backup'}`);
+            if (srv) partes.push(`Srv ${srv.id}: ${vlansSrv.length ? 'VLAN ' + vlansSrv.join(', ') : 'sem VLAN nas portas'}`);
+            const modo = document.getElementById(`op-modo-${i}`).value;
+            const vlan = parseInt(document.getElementById(`op-vlan-${i}`).value);
+            const gem = parseInt(document.getElementById(`op-gem-${i}`).value);
+            const avisos = [];
+            if ((modo === 'onu' || modo === 'ont') && mapas.length) {
+                const vlansLine = [...new Set(mapas.map(m => m[1]))];
+                if (vlan && !vlansLine.includes(vlan))
+                    avisos.push(`VLAN ${vlan} não está no line profile ${line.id} (${vlansLine.join(', ')}) — o service-port não casa com o GEM.`);
+                else if (vlan && !mapas.some(([g, v]) => g === gem && v === vlan))
+                    avisos.push(`No line profile ${line.id} a VLAN ${vlan} está no GEM ${mapas.filter(m => m[1] === vlan).map(m => m[0]).join('/')}, não no ${gem}.`);
+            }
+            if ((modo === 'onu' || modo === 'ont') && vlansSrv.length && vlan && !vlansSrv.includes(vlan))
+                avisos.push(`O srv profile ${srv.id} seta a VLAN ${vlansSrv.join(', ')} nas portas, não a ${vlan}.`);
+            box.innerHTML = (partes.length ? `🔎 ${_escHtml(partes.join(' · '))}` : '')
+                + avisos.map(a => `<div style="color:#d29922">⚠ ${_escHtml(a)}</div>`).join('');
+        };
 
         // Modo translate: um service-port por GEM do line profile escolhido.
         // Linha marcada = vira service-port (user-vlan do GEM → VLAN da OLT).
@@ -4260,7 +4376,12 @@
 
         function opPfMax() {
             if (!opInv) return 32;
-            return document.getElementById('opPfModelo')?.value === 'multi_vlan' ? opInv.max_vlans_gem : opInv.max_gems;
+            return opPfModeloBase() === 'multi_vlan' ? opInv.max_vlans_gem : opInv.max_gems;
+        }
+
+        // "vlan_fixa:arch" → "vlan_fixa": o que vem depois do ":" é só o exemplo.
+        function opPfModeloBase() {
+            return (document.getElementById('opPfModelo')?.value || 'translate').split(':')[0];
         }
 
         function opPfRender() {
@@ -4293,7 +4414,7 @@
                 if (opPfVlans.length >= max) { cortadas++; continue; }
                 opPfVlans.push(v);
             }
-            msg.innerHTML = cortadas ? `<span style="color:#d29922">⚠ Limite de ${max} ${opPfMax() === opInv?.max_vlans_gem && document.getElementById('opPfModelo').value === 'multi_vlan' ? 'VLANs no GEM' : 'GEMs'}: ${cortadas} VLAN(s) ficaram de fora.</span>` : '';
+            msg.innerHTML = cortadas ? `<span style="color:#d29922">⚠ Limite de ${max} ${opPfMax() === opInv?.max_vlans_gem && opPfModeloBase() === 'multi_vlan' ? 'VLANs no GEM' : 'GEMs'}: ${cortadas} VLAN(s) ficaram de fora.</span>` : '';
             inp.value = '';
             opPfRender();
         };
@@ -4322,28 +4443,61 @@
             });
         };
 
+        // Exemplos dos modelos de uma VLAN (config real passada pelo operador).
+        // nomes(v) → [srv, line]; idsVlan: ID do srv/line = VLAN quando livre.
+        const OP_PF_EXEMPLOS = {
+            'vlan_fixa': {vlan: 1, ethVlan: 4, pots: 'adaptive 32', eth: 'adaptive 8', catv: '', gem: 1, idx: 0, tcont: 4,
+                          nomes: v => [`SRV_VLAN_${v}`, `VLAN_${v}`]},
+            'vlan_fixa:arch': {vlan: 3087, ethVlan: 1, pots: '', eth: '1', catv: 'adaptive 8', gem: 1, idx: 1, tcont: 1,
+                               ring: true, fec: true, tr069: true, gemCar: true, mapMode: 'priority',
+                               nomes: v => [`ARCH-1GE-${v}`, `ARCH-LINEPROFILE-V${v}`]},
+            'vlan_fixa:id': {vlan: 110, ethVlan: 4, pots: 'adaptive 2', eth: 'adaptive 4', catv: '', gem: 5, idx: 0, tcont: 5,
+                             idsVlan: true, nomes: v => [`srv-profile_${v}`, `line-profile_${v}`]},
+            'roteada': {vlan: 128, pots: '', eth: '4', catv: '1', gem: 1, idx: 0, tcont: 1,
+                        nomes: v => [`ROTEADA_${v}`, `PPPOE_${v}`]},
+        };
+
         // Modelo "VLAN fixa": a ONU sai com uma VLAN setada nas portas ETH
-        // (port vlan eth N translation V user-vlan V) e GEM 1 com encrypt; o
+        // (port vlan eth N translation V user-vlan V) e GEM com encrypt; o
         // service-port depois traduz essa user-vlan para a VLAN da OLT.
+        // "Roteada": srv só com as portas, a VLAN fica só no line.
         window.opPfTrocarModelo = function() {
-            const modelo = document.getElementById('opPfModelo').value;
-            const fixa = modelo === 'vlan_fixa', multi = modelo === 'multi_vlan';
-            document.getElementById('opPfFixaBox').style.display = fixa ? 'grid' : 'none';
+            const modelo = opPfModeloBase();
+            const fixa = modelo === 'vlan_fixa', multi = modelo === 'multi_vlan', roteada = modelo === 'roteada';
+            const umaVlan = fixa || roteada;
+            document.getElementById('opPfFixaBox').style.display = umaVlan ? 'flex' : 'none';
+            document.getElementById('opPfEthVlanBox').style.display = fixa ? '' : 'none';
+            document.getElementById('opPfSrvEthBox').style.display = umaVlan ? 'none' : '';
+            document.getElementById('opPfVlanFixaLbl').textContent = roteada ? 'VLAN DO LINE PROFILE (= VLAN DA OLT)' : 'VLAN SETADA NA ONU';
             document.getElementById('opPfMultiBox').style.display = multi ? 'grid' : 'none';
-            document.getElementById('opPfVlansBox').style.display = fixa ? 'none' : '';
+            document.getElementById('opPfVlansBox').style.display = umaVlan ? 'none' : '';
             document.getElementById('opPfGemIgualBox').style.display = multi ? 'none' : 'flex';
-            document.getElementById('opPfTcont').value = (fixa || multi) ? 4 : 1;
-            if (fixa) opPfNomesFixa();
-            else if (multi) {
+            document.getElementById('opPfTcont').value = multi ? 4 : 1;
+            const ex = OP_PF_EXEMPLOS[document.getElementById('opPfModelo').value];
+            if (ex) {
+                const set = (id, v) => { document.getElementById(id).value = v; };
+                set('opPfVlanFixa', ex.vlan); set('opPfEthVlan', ex.ethVlan || 1); set('opPfGem', ex.gem);
+                set('opPfMapIdx', ex.idx); set('opPfTcont', ex.tcont); set('opPfPots', ex.pots);
+                set('opPfEthPortas', ex.eth); set('opPfCatv', ex.catv); set('opPfMapMode', ex.mapMode || '');
+                document.getElementById('opPfRing').checked = !!ex.ring;
+                document.getElementById('opPfFec').checked = !!ex.fec;
+                document.getElementById('opPfTr069').checked = !!ex.tr069;
+                document.getElementById('opPfGemCar').checked = !!ex.gemCar;
+                if (opInv) {
+                    document.getElementById('opPfSrvId').value = opInv.proximo_srv ?? '';
+                    document.getElementById('opPfLineId').value = opInv.proximo_line ?? '';
+                }
+                opPfNomesFixa();
+            } else if (multi) {
                 document.getElementById('opPfSrvNome').value = 'MULTI_VLAN';
                 document.getElementById('opPfLineNome').value = 'MULTI_VLAN';
             } else {
                 document.getElementById('opPfSrvNome').value = 'translate';
                 document.getElementById('opPfLineNome').value = 'LINE-TRANSLATE';
             }
-            // Multi-VLAN: as VLANs da OLT são as do próprio perfil (passam tagueadas).
+            // Multi-VLAN e roteada: as VLANs da OLT são as do próprio perfil.
             // Translate / VLAN fixa: a VLAN da OLT é outra (ex.: 3304, 101).
-            opRenderUplink('opPfUplink', 'oppfu', !multi);
+            opRenderUplink('opPfUplink', 'oppfu', !(multi || roteada));
             const lbl = document.getElementById('oppfu-vlans-lbl');
             if (lbl) lbl.textContent = fixa ? 'VLAN(S) DA OLT (para onde a VLAN da ONU é traduzida, ex.: 101)'
                                             : 'VLAN(S) DA OLT (para onde as VLANs do perfil são traduzidas, ex.: 3304)';
@@ -4352,25 +4506,41 @@
         };
 
         window.opPfNomesFixa = function() {
-            const v = document.getElementById('opPfVlanFixa').value || '1';
-            document.getElementById('opPfSrvNome').value = `SRV_VLAN_${v}`;
-            document.getElementById('opPfLineNome').value = `VLAN_${v}`;
+            const ex = OP_PF_EXEMPLOS[document.getElementById('opPfModelo').value];
+            if (!ex) return;
+            const v = document.getElementById('opPfVlanFixa').value || String(ex.vlan);
+            const [srv, line] = ex.nomes(v);
+            document.getElementById('opPfSrvNome').value = srv;
+            document.getElementById('opPfLineNome').value = line;
+            // ID = VLAN só se estiver livre no backup; senão fica o próximo livre.
+            if (ex.idsVlan && opInv) {
+                const n = parseInt(v);
+                document.getElementById('opPfSrvId').value = opInv.srvs.some(p => p.id === n) ? (opInv.proximo_srv ?? '') : n;
+                document.getElementById('opPfLineId').value = opInv.lines.some(p => p.id === n) ? (opInv.proximo_line ?? '') : n;
+            }
         };
 
         function opPfSpec() {
             const val = id => document.getElementById(id).value.trim();
-            const fixa = val('opPfModelo') === 'vlan_fixa', multi = val('opPfModelo') === 'multi_vlan';
-            const vlansUp = multi ? [] : opVlansDoTexto(document.getElementById('oppfu-vlans')?.value);
+            const modelo = opPfModeloBase();
+            const fixa = modelo === 'vlan_fixa', multi = modelo === 'multi_vlan', roteada = modelo === 'roteada';
+            const umaVlan = fixa || roteada;
+            const marcado = id => document.getElementById(id).checked;
+            const vlansUp = (multi || roteada) ? [] : opVlansDoTexto(document.getElementById('oppfu-vlans')?.value);
             return {
                 uplink: opLerUplink('oppfu', vlansUp),
-                modelo: val('opPfModelo'),
-                vlan_fixa: fixa ? val('opPfVlanFixa') : null,
-                srv: {criar: document.getElementById('opPfSrvCriar').checked, id: val('opPfSrvId'), nome: val('opPfSrvNome'), eth: val('opPfSrvEth'),
-                      pots: fixa ? val('opPfPots') : null,
+                modelo,
+                vlan_fixa: umaVlan ? val('opPfVlanFixa') : null,
+                srv: {criar: marcado('opPfSrvCriar'), id: val('opPfSrvId'), nome: val('opPfSrvNome'), eth: val('opPfSrvEth'),
+                      portas: umaVlan ? {pots: val('opPfPots'), eth: val('opPfEthPortas'), catv: val('opPfCatv')} : null,
+                      ring_check: umaVlan && marcado('opPfRing'),
                       eth_vlan: fixa ? val('opPfEthVlan') : multi ? val('opPfEthMulti') : null},
-                line: {criar: document.getElementById('opPfLineCriar').checked, id: val('opPfLineId'), nome: val('opPfLineNome'),
-                       tcont: val('opPfTcont'), dba: val('opPfDba')},
-                vlans: fixa ? [] : opPfVlans, gem_igual_vlan: document.getElementById('opPfGemIgual').checked,
+                line: {criar: marcado('opPfLineCriar'), id: val('opPfLineId'), nome: val('opPfLineNome'),
+                       tcont: val('opPfTcont'), dba: val('opPfDba'),
+                       ...(umaVlan ? {gem: val('opPfGem'), mapping_idx: val('opPfMapIdx'), fec: marcado('opPfFec'),
+                                      tr069: marcado('opPfTr069'), gem_car: marcado('opPfGemCar'),
+                                      mapping_mode: val('opPfMapMode')} : {})},
+                vlans: umaVlan ? [] : opPfVlans, gem_igual_vlan: document.getElementById('opPfGemIgual').checked,
                 dba: val('opPfDba') === 'novo' && document.getElementById('opPfLineCriar').checked
                     ? {criar: true, id: val('opPfDbaId'), nome: val('opPfDbaNome'), tipo: val('opPfDbaTipo'),
                        fix: val('opPfDbaFix'), assure: val('opPfDbaAssure'), max: val('opPfDbaMax')}
@@ -4409,9 +4579,13 @@
                 opPfRenderDbas(parseInt(spec.dba.id));
                 document.getElementById('opPfDbaId').value = '';
             }
-            if (spec.srv.criar) opInv.srvs.push({id: parseInt(spec.srv.id), nome: spec.srv.nome, vlans: []});
+            const novo = '(perfil recém-criado — o bloco aparece aqui depois do backup)';
+            const vlansSrv = spec.modelo === 'vlan_fixa' ? [parseInt(spec.vlan_fixa)]
+                : spec.modelo === 'multi_vlan' ? spec.vlans.map(Number) : [];
+            if (spec.srv.criar) opInv.srvs.push({id: parseInt(spec.srv.id), nome: spec.srv.nome, vlans: vlansSrv,
+                texto: [novo], onts: 0});
             if (spec.line.criar) opInv.lines.push({id: parseInt(spec.line.id), nome: spec.line.nome,
-                gems: gems.map(g => g[0]), vlans: gems.map(g => g[1]), mapas: gems});
+                gems: gems.map(g => g[0]), vlans: gems.map(g => g[1]), mapas: gems, texto: [novo], onts: 0});
             opInv.srvs.sort((a, b) => a.id - b.id); opInv.lines.sort((a, b) => a.id - b.id);
             opAtualizarSelectsPerfis();
         }
@@ -4428,6 +4602,7 @@
                     sel.innerHTML = opOpcoesPerfil(k === 'line' ? opInv.lines : opInv.srvs, v);
                 });
                 opRenderServicos(i);
+                opConferirVlan(i);
             });
         }
 
@@ -4691,7 +4866,7 @@
             opOnus.forEach((o, i) => {
                 if (document.getElementById(`op-chk-${i}`)?.checked) {
                     document.getElementById(`op-${campo}-${i}`).value = v;
-                    opRenderServicos(i);
+                    opPerfilTrocado(i, campo);
                 }
             });
         };

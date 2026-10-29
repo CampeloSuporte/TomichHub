@@ -142,7 +142,9 @@ _LINE_RE = re.compile(r'^\s*ont-lineprofile gpon profile-id (\d+) profile-name "
 _SRV_RE = re.compile(r'^\s*ont-srvprofile gpon profile-id (\d+) profile-name "([^"]*)"')
 _GEM_ADD_RE = re.compile(r'^\s*gem add (\d+) eth tcont (\d+)')
 _GEM_MAP_RE = re.compile(r'^\s*gem mapping (\d+) \d+ vlan (\d+)')
-_SRV_VLAN_RE = re.compile(r'^\s*port vlan eth \d+ translation (\d+)')
+# `port vlan eth 1 translation 3087 user-vlan 3087` ou `port vlan eth 1 128`
+# (tag fixa sem translation). `transparent` não tem VLAN.
+_SRV_VLAN_RE = re.compile(r'^\s*port vlan eth \d+ (?:translation )?(\d+)\b')
 _INTERFACE_GPON_RE = re.compile(r'^\s*interface gpon (\d+/\d+)\s*$')
 _ONT_ADD_RE = re.compile(
     r'^\s*ont add (\d+) (\d+) sn-auth "?([0-9A-Fa-f]{16})"?.*?'
@@ -177,14 +179,18 @@ def parse_backup(conteudo):
         if m:
             perfil_atual = lines.setdefault(int(m.group(1)), {
                 'id': int(m.group(1)), 'nome': m.group(2).strip(), 'gems': [], 'vlans': [],
-                'mapas': []})
+                'mapas': [], 'texto': [linha.strip()]})
             continue
         m = _SRV_RE.match(linha)
         if m:
             perfil_atual = srvs.setdefault(int(m.group(1)), {
-                'id': int(m.group(1)), 'nome': m.group(2).strip(), 'vlans': []})
+                'id': int(m.group(1)), 'nome': m.group(2).strip(), 'vlans': [],
+                'texto': [linha.strip()]})
             continue
         if perfil_atual is not None:
+            # O bloco como está no backup: é o que a 🔍 do provisionamento mostra.
+            if linha.strip():
+                perfil_atual['texto'].append('  ' + linha.strip())
             m = _GEM_ADD_RE.match(linha)
             if m and 'gems' in perfil_atual:
                 perfil_atual['gems'].append(int(m.group(1)))
@@ -552,7 +558,51 @@ def _alocar_gems(vlans, gem_igual_vlan):
 # - multi_vlan: duas ou mais VLANs tagueadas passando pela ONU/ONT num GEM só
 #   (perfil "FULLCAM": `port vlan eth 1 translation V user-vlan V` por VLAN e
 #   `gem mapping 1 <idx> vlan V`), provisionado no modo transparente.
-MODELOS_PERFIL = ('translate', 'vlan_fixa', 'multi_vlan')
+# - roteada: ONT roteadora (PPPoE/WAN configurada na própria ONT ou por TR-069):
+#   o srv só declara as portas (perfil "THINK": `ont-port eth 4 catv 1`) e a
+#   VLAN fica só no line (perfil "PPPOE": `gem mapping 1 0 vlan 128`).
+#
+# vlan_fixa e roteada aceitam as portas da ONU por tipo (`portas`: pots/eth/
+# catv, cada uma "adaptive", "adaptive 8" ou "4"), `ring check enable`, o GEM e
+# o índice do mapping, e os extras do line profile — os exemplos reais:
+#   ARCH (1 GE + CATV):  ont-port eth 1 catv adaptive 8 / ring check enable;
+#                        line com fec-upstream, tr069-management, qos-mode
+#                        gem-car, mapping-mode priority, gem mapping 1 1 vlan 3087
+#   ID = VLAN (110):     ont-port pots adaptive 2 eth adaptive 4, port vlan eth
+#                        1..4, tcont 5 + gem 5 (gem mapping 5 0 vlan 110), DBA 300
+MODELOS_PERFIL = ('translate', 'vlan_fixa', 'multi_vlan', 'roteada')
+
+# Ordem em que a CLI espera os tipos de porta no `ont-port`.
+TIPOS_PORTA = ('pots', 'eth', 'catv')
+_PORTA_QTD_RE = re.compile(r'^(?:adaptive(?: (\d{1,3}))?|(\d{1,3}))$')
+MAPPING_MODES = ('priority', 'vlan-priority', 'port', 'port-vlan')
+
+
+def _porta_spec(valor, tipo):
+    """'' (sem a porta), 'adaptive', 'adaptive 8' ou '4' → texto normalizado."""
+    texto = ' '.join(str(valor if valor is not None else '').lower().split())
+    if not texto:
+        return ''
+    m = _PORTA_QTD_RE.match(texto)
+    n = m and (m.group(1) or m.group(2))
+    if not m or (n is not None and not 0 < int(n) <= 64):
+        raise ProvisionamentoInvalido(
+            f'Portas {tipo.upper()} inválidas: "{texto}" (use adaptive, adaptive 8 ou um número).')
+    return texto
+
+
+def _max_portas(spec):
+    """Quantas portas o `ont-port` declara (None = adaptive sem teto)."""
+    m = _PORTA_QTD_RE.match(spec or '')
+    if not m:
+        return 0
+    n = m.group(1) or m.group(2)
+    return int(n) if n else None
+
+
+def ont_port(portas):
+    partes = [f'{t} {portas[t]}' for t in TIPOS_PORTA if portas.get(t)]
+    return 'ont-port ' + ' '.join(partes)
 
 # O `gem mapping` tem índice 0–7: no máximo 8 VLANs num mesmo GEM. O modelo do
 # operador começa no 1 (1, 2, ...), então o 0 fica para a 8ª.
@@ -585,8 +635,10 @@ def validar_perfis(spec, backup):
     modelo = spec.get('modelo') or 'translate'
     if modelo not in MODELOS_PERFIL:
         raise ProvisionamentoInvalido(f'Modelo de perfil desconhecido: "{modelo}".')
-    vlan_fixa = (_inteiro(spec.get('vlan_fixa') or 1, 'VLAN setada na ONU', 1, 4094)
-                 if modelo == 'vlan_fixa' else None)
+    uma_vlan = modelo in ('vlan_fixa', 'roteada')
+    vlan_fixa = (_inteiro(spec.get('vlan_fixa') or 1,
+                          'VLAN setada na ONU' if modelo == 'vlan_fixa' else 'VLAN do line profile', 1, 4094)
+                 if uma_vlan else None)
     avisos, norm = [], {'srv': None, 'line': None, 'dba': None, 'modelo': modelo}
     if criar_dba:
         did = _inteiro(dba.get('id'), 'ID do DBA profile', DBA_PRIMEIRO_LIVRE, 1024)
@@ -607,13 +659,26 @@ def validar_perfis(spec, backup):
                 f'O srv profile {sid} já existe ("{backup["srvs"][sid]["nome"]}") — escolha outro ID.')
         norm['srv'] = {'id': sid, 'nome': _nome(srv.get('nome'), 'srv profile'),
                        'eth': _inteiro(srv.get('eth') or 8, 'portas ETH adaptive', 1, 24)}
-        if vlan_fixa is not None:
-            norm['srv'].update({
-                'vlan': vlan_fixa,
-                'pots': _inteiro(srv.get('pots') if srv.get('pots') not in (None, '') else 32,
-                                 'POTS adaptive', 0, 32),
-                'eth_vlan': _inteiro(srv.get('eth_vlan') or 4, 'portas ETH com a VLAN', 1, 8),
-            })
+        if uma_vlan:
+            if isinstance(srv.get('portas'), dict):
+                portas = {t: _porta_spec(srv['portas'].get(t), t) for t in TIPOS_PORTA}
+            else:
+                # Pedido antigo (só números): pots/eth adaptive N.
+                pots = _inteiro(srv.get('pots') if srv.get('pots') not in (None, '') else 32,
+                                'POTS adaptive', 0, 32)
+                portas = {'pots': f'adaptive {pots}' if pots else '', 'eth': f'adaptive {norm["srv"]["eth"]}',
+                          'catv': ''}
+            if not portas['eth']:
+                raise ProvisionamentoInvalido('Informe as portas ETH da ONU (ex.: adaptive 4 ou 1).')
+            norm['srv'].update({'portas': portas,
+                                'ring_check': bool(srv.get('ring_check'))})
+        if modelo == 'vlan_fixa':
+            eth_vlan = _inteiro(srv.get('eth_vlan') or 4, 'portas ETH com a VLAN', 1, 8)
+            teto = _max_portas(norm['srv']['portas']['eth'])
+            if teto is not None and eth_vlan > teto:
+                raise ProvisionamentoInvalido(
+                    f'{eth_vlan} portas ETH com a VLAN, mas a ONU declara só {teto} ETH.')
+            norm['srv'].update({'vlan': vlan_fixa, 'eth_vlan': eth_vlan})
     if criar_line:
         lid = _inteiro(line.get('id'), 'ID do line profile', 0, 8192)
         if lid in backup['lines']:
@@ -640,16 +705,29 @@ def validar_perfis(spec, backup):
             if dba_id >= DBA_PRIMEIRO_LIVRE and dba_id not in backup.get('dbas', {}) and not (
                     norm['dba'] and norm['dba']['id'] == dba_id):
                 avisos.append(f'DBA profile {dba_id} não está no backup.')
+        gem_unico = (_inteiro(line.get('gem') if line.get('gem') not in (None, '') else 1, 'GEM', 0, MAX_GEM_INDEX)
+                     if uma_vlan else None)
         norm['line'] = {'id': lid, 'nome': _nome(line.get('nome'), 'line profile'),
-                        'tcont': _inteiro(line.get('tcont') or (4 if vlan_fixa else 1), 'T-CONT', 1, 7),
+                        'tcont': _inteiro(line.get('tcont') or (4 if modelo == 'vlan_fixa' else 1), 'T-CONT', 1, 7),
                         'dba': dba_id,
                         # VLAN fixa: GEM 1, como no perfil "VLAN_1" (gem 1 ↔ vlan 1).
                         # Multi-VLAN: todas no GEM 1 (perfil "FULLCAM").
-                        'gems': ([(1, vlan_fixa)] if vlan_fixa is not None else
+                        'gems': ([(gem_unico, vlan_fixa)] if uma_vlan else
                                  [(1, v) for v in vlans] if modelo == 'multi_vlan' else
                                  _alocar_gems(vlans, spec.get('gem_igual_vlan', True) is not False))}
         if modelo == 'multi_vlan':
             norm['line']['tcont'] = _inteiro(line.get('tcont') or 4, 'T-CONT', 1, 7)
+        if uma_vlan:
+            mm = str(line.get('mapping_mode') or '').strip()
+            if mm and mm not in MAPPING_MODES:
+                raise ProvisionamentoInvalido(f'mapping-mode desconhecido: "{mm}".')
+            norm['line'].update({
+                # mapping-index 0 nos perfis "VLAN_1"/"PPPOE"/110; 1 no ARCH.
+                'mapping_idx': _inteiro(line.get('mapping_idx') if line.get('mapping_idx') not in (None, '') else 0,
+                                        'índice do gem mapping', 0, 7),
+                'fec': bool(line.get('fec')), 'tr069': bool(line.get('tr069')),
+                'gem_car': bool(line.get('gem_car')), 'mapping_mode': mm,
+            })
     if modelo == 'multi_vlan' and norm['srv']:
         vlans_srv = []
         for v in spec.get('vlans') or []:
@@ -666,7 +744,8 @@ def validar_perfis(spec, backup):
     # VLANs na OLT + uplink. Padrão: as VLANs que de fato saem da OLT com a
     # mesma tag — as do perfil no multi-VLAN; no translate e na VLAN fixa a
     # VLAN da OLT é outra (escolhida no service-port), então vem do pedido.
-    padrao = [v for _, v in (norm['line'] or {}).get('gems', [])] if modelo == 'multi_vlan' else []
+    padrao = ([v for _, v in (norm['line'] or {}).get('gems', [])] if modelo == 'multi_vlan' else
+              [vlan_fixa] if modelo == 'roteada' else [])
     norm['uplink'], av = validar_uplink(spec.get('uplink'), backup, padrao)
     avisos += av
     return norm, avisos
@@ -682,6 +761,7 @@ def comandos_perfis(norm):
         cmds.append(f'dba-profile add profile-id {d["id"]} profile-name "{d["nome"]}" {d["tipo"]} {banda}')
     fixa = norm.get('modelo') == 'vlan_fixa'
     multi = norm.get('modelo') == 'multi_vlan'
+    roteada = norm.get('modelo') == 'roteada'
     if norm['srv']:
         s = norm['srv']
         cmds.append(f'ont-srvprofile gpon profile-id {s["id"]} profile-name "{s["nome"]}"')
@@ -689,21 +769,32 @@ def comandos_perfis(norm):
             cmds.append('ont-port pots adaptive eth adaptive')
             cmds += [f'port vlan eth {n} translation {v} user-vlan {v}'
                      for v in s['vlans'] for n in range(1, s['eth_vlan'] + 1)]
-        elif fixa:
-            pots = f'pots adaptive {s["pots"]} ' if s['pots'] else ''
-            cmds.append(f'ont-port {pots}eth adaptive {s["eth"]}')
-            cmds += [f'port vlan eth {n} translation {s["vlan"]} user-vlan {s["vlan"]}'
-                     for n in range(1, s['eth_vlan'] + 1)]
+        elif fixa or roteada:
+            cmds.append(ont_port(s['portas']))
+            if s.get('ring_check'):
+                cmds.append('ring check enable')
+            if fixa:
+                cmds += [f'port vlan eth {n} translation {s["vlan"]} user-vlan {s["vlan"]}'
+                         for n in range(1, s['eth_vlan'] + 1)]
         else:
             cmds += [f'ont-port eth adaptive {s["eth"]}', 'native-vlan unconcern']
         cmds += ['commit', 'quit']
     if norm['line']:
         ln = norm['line']
         cmds.append(f'ont-lineprofile gpon profile-id {ln["id"]} profile-name "{ln["nome"]}"')
-        if fixa:
+        if fixa or roteada:
+            # Mesma ordem do backup do perfil ARCH.
+            if ln.get('fec'):
+                cmds.append('fec-upstream enable')
             cmds.append('omcc encrypt on')
+            if ln.get('tr069'):
+                cmds.append('tr069-management enable')
+            if ln.get('gem_car'):
+                cmds.append('qos-mode gem-car')
+            if ln.get('mapping_mode'):
+                cmds.append(f'mapping-mode {ln["mapping_mode"]}')
         cmds.append(f'tcont {ln["tcont"]} dba-profile-id {ln["dba"]}')
-        cifra = ' encrypt on' if fixa else ''
+        cifra = ' encrypt on' if fixa or roteada else ''
         gems_unicos = list(dict.fromkeys(g for g, _ in ln['gems']))
         cmds += [f'gem add {g} eth tcont {ln["tcont"]}{cifra}' for g in gems_unicos]
         if multi:
@@ -711,7 +802,7 @@ def comandos_perfis(norm):
             cmds += [f'gem mapping {g} {_INDICES_MAPPING[k]} vlan {v}' for k, (g, v) in enumerate(ln['gems'])]
         else:
             # mapping-index 0 no modelo VLAN fixa ("gem mapping 1 0 vlan 1"), 1 no translate.
-            idx = 0 if fixa else 1
+            idx = ln.get('mapping_idx', 0) if fixa or roteada else 1
             cmds += [f'gem mapping {g} {idx} vlan {v}' for g, v in ln['gems']]
         cmds += ['commit', 'quit']
     return cmds
