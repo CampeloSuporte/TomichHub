@@ -16,8 +16,9 @@ Código: `clientes/olt_provisionamento.py` (lógica), `clientes/onu_prov_views.p
 2. **🔍 Buscar ONUs pendentes**: roda `display ont autofind all` ao vivo (só leitura).
    Cada ONU vem num cartão com SN, F/S/P, modelo e os valores sugeridos.
 3. Ajustar VLAN, line profile, srv profile, gemport, modo e descrição (opcional) de
-   cada ONU, e marcar as que serão provisionadas. "Modo para as marcadas" troca o modo
-   de todas de uma vez.
+   cada ONU, e marcar as que serão provisionadas. No lote, "Modo", "Line profile" e
+   "Srv profile para as marcadas" aplicam um valor único a todas as marcadas, sobrescrevendo
+   a sugestão do backup. Cada cartão continua editável depois.
 4. **👁 Pré-visualizar** mostra os comandos e os avisos do backup. **▶ Provisionar**
    pede confirmação e executa em streaming (SSE): o status de cada cartão muda para
    `ONT <id>`, `parcial`, `erro` ou `ignorada`.
