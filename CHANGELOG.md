@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-30 (Login e permissão em /ws/proxy/ e /ws/agent/)
+
+### Segurança
+
+- **`/ws/proxy/` não conferia login:** qualquer um na internet alcançava a porta de qualquer host
+  cadastrado pelo túnel do CRM. Agora exige login e permissão no acesso, como o proxy HTTP.
+- **`/ws/agent/` não conferia permissão no host nem no `?cliente=`** vindos do navegador. Agora confere
+  antes de criar a sessão do Agent. `docs/winbox_vnc.md` → "Permissão".
+
+---
+
 ## [Não publicado] — 2026-10-30 (Permissão nos WebSockets de WinBox, RDP e WebFig)
 
 ### Segurança

@@ -2712,6 +2712,14 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         self.is_running  = False
         self.recv_thread = None
 
+        # Mesma regra do proxy HTTP (views.proxy_web_acesso). O navegador manda
+        # o cookie de sessão no upgrade; sem isto, a rede interna do cliente
+        # ficava aberta a qualquer um na internet.
+        user = self.scope.get('user')
+        if not user or isinstance(user, AnonymousUser) or not user.is_authenticated:
+            self.close(code=4001)
+            return
+
         subprotocols = self.scope.get('subprotocols', [])
         try:
             if subprotocols:
@@ -2731,6 +2739,10 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             full_path   = path + ('?' + qs if qs else '')
 
             acesso      = Acesso.objects.get(id=acesso_id)
+            if not _perms.pode_acessar_acesso(user, acesso):
+                logger.warning(f"[WS_PROXY] acesso={acesso_id} negado para {user.get_username()}")
+                self.close(code=4003)
+                return
             target_host = acesso.host.strip()
             if '://' in target_host:
                 from urllib.parse import urlparse as _up
