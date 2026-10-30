@@ -137,6 +137,9 @@ Binário do WinBox 4: `/opt/crm/static/winbox4/WinBox` (ELF 64-bit)
 criar a sessão de auditoria e subir qualquer processo. A checagem da página não basta: o WebSocket é aberto
 direto pelo id e usa a senha salva. Sem permissão: fecha com código 4003, sem registro em `AcessoSessao`.
 
+`/ws/proxy/` exige login (4001) e `pode_acessar_acesso` (4003), a mesma regra de `proxy_web_acesso`; `/ws/agent/`
+confere o host da URL ou, sem host, o `?cliente=`, antes de criar a `AgentSessao`.
+
 ## UNM2000 Web — Adicionado em 30/10/2026
 
 Abre o cliente do UNM2000 (FiberHome) no navegador. Protocolo **UNM2000** no cadastro do acesso

@@ -96,6 +96,19 @@ class AgentNOCConsumer(AsyncWebsocketConsumer):
                     except Exception:
                         pass
 
+            # Acesso e ?cliente= vêm do navegador: o Agent executa comandos neles
+            from usuario import perms as _perms
+            if acesso:
+                permitido = await sync_to_async(_perms.pode_acessar_acesso)(user, acesso)
+            elif cliente:
+                permitido = await sync_to_async(_perms.pode_acessar_cliente)(user, cliente)
+            else:
+                permitido = True
+            if not permitido:
+                await self._send_json({"type": "error", "message": "Sem permissão para este acesso."})
+                await self.close(code=4003)
+                return
+
             if not cliente:
                 # Tentar pegar pelo perfil do usuário
                 try:
