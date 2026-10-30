@@ -432,6 +432,10 @@ comandos.
 - Com uma OLT Huawei selecionada, o menu SCRIPT mostra **[Huawei] Provisionar ONU
   (único)** e **[Huawei] Provisionar ONUs em massa**. As duas abrem a aba ONU e já
   buscam o autofind; no "único", só a primeira ONU fica marcada.
+- A aba ONU mostra só o fluxo do script escolhido no menu (`opDefinirTela`, atributo
+  `data-op-tela` em `#sp-pane-onu`): um script de criar perfis esconde a busca e as ONUs;
+  um de provisionar esconde a criação de perfis. Com outro script ou nenhum, os dois
+  aparecem. A troca só esconde: o lote já buscado e o formulário preenchido continuam lá.
 
 ## Endpoints
 

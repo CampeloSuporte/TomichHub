@@ -5,6 +5,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-30 (aba ONU mostra só o script escolhido)
+
+### Corrigido
+
+- **Aba ONU misturava criar perfis e provisionar na mesma tela.** Ao escolher um script no menu
+  SCRIPT, a aba agora mostra só o fluxo dele: criar srv/line profile esconde a busca e as ONUs, e
+  provisionar esconde a criação de perfis. Sem script ONU escolhido, os dois continuam aparecendo.
+
 ## [Não publicado] — 2026-10-30 (nome do host na topologia)
 
 ### Corrigido
