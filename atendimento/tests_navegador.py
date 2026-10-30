@@ -6,6 +6,7 @@ tests.py): aqui o que se confere é o que a pessoa vê — menu, alerta, tremida
 som e o que o botão Escutar faz. Pulado quando não há Chrome instalado.
 """
 import os
+import time
 import unittest
 
 from django.conf import settings
@@ -32,6 +33,13 @@ window.WebSocket = WsFalso;
 const CtxReal = window.AudioContext;
 window.AudioContext = class extends CtxReal {
   createOscillator() { window.__osciladores++; return super.createOscillator(); }
+};
+window.__notifs = [];
+window.Notification = class {
+  static permission = 'granted';
+  static requestPermission() { return Promise.resolve('granted'); }
+  constructor(t, o) { this.fechada = false; window.__notifs.push(this); this.corpo = o.body; }
+  close() { this.fechada = true; }
 };
 window.__msg = m => window.__sala.onmessage({data: JSON.stringify(m)});
 """
@@ -67,11 +75,20 @@ class ChamarAtencaoNavegadorTest(StaticLiveServerTestCase):
         self.assertEqual(b.js('window.__osciladores'), 1)
         b.esperar("document.title.includes('chamando')", timeout=3)
         b.esperar("!document.documentElement.classList.contains('chamada-tremendo')", timeout=3)
+        # Notifica mesmo com a aba visível: o navegador pode estar atrás de outro programa.
+        self.assertEqual(b.js('__notifs.length'), 1)
+        self.assertIn('Bia', b.js('__notifs[0].corpo'))
+        # Continua tocando até a pessoa responder.
+        b.esperar('window.__osciladores >= 2', timeout=5)
 
     def _escutar(self):
         self.b.js("document.querySelector('#chamada-alerta .ca-escutar').click()")
         self.assertFalse(self.b.js("document.getElementById('chamada-alerta').classList.contains('open')"))
         self.assertNotIn('chamando', self.b.js('document.title'))
+        self.assertTrue(self.b.js('__notifs[0].fechada'))
+        toques = self.b.js('window.__osciladores')
+        time.sleep(3.3)
+        self.assertEqual(self.b.js('window.__osciladores'), toques)
 
     def _enviadas(self, tipo):
         return self.b.js(f"__enviadas.filter(m => m.type === '{tipo}')")
@@ -114,3 +131,21 @@ class ChamarAtencaoNavegadorTest(StaticLiveServerTestCase):
         self._escutar()
         self.assertEqual(self._enviadas('private_end'), [{'type': 'private_end'}])
         self.assertTrue(b.js("document.getElementById('sala-panel-body').classList.contains('open')"))
+
+    def test_chamada_aparece_nas_outras_abas(self):
+        b = self.b
+        b.ir(self.live_server_url + '/atendimento/')  # esta aba nem entrou na sala
+        b.js("window.__outra = new BroadcastChannel('sala-chamada')")
+        b.js("__outra.postMessage({acao: 'chamada', display_name: 'Bia', from: 'bia'})")
+        b.esperar("document.getElementById('chamada-alerta')?.classList.contains('open')", timeout=3)
+        self.assertEqual(b.js('__notifs.length'), 0)  # quem notifica é a aba da sala
+        b.js("__outra.postMessage({acao: 'fechar'})")
+        b.esperar("!document.getElementById('chamada-alerta').classList.contains('open')", timeout=3)
+
+        # Escutar sem estar na sala: entra por aqui e avisa as outras abas.
+        b.js("__outra.postMessage({acao: 'chamada', display_name: 'Bia', from: 'bia'})")
+        b.esperar("document.getElementById('chamada-alerta').classList.contains('open')", timeout=3)
+        b.js("window.__fechou = false; __outra.onmessage = e => { if (e.data.acao === 'fechar') window.__fechou = true; }")
+        b.js("document.querySelector('#chamada-alerta .ca-escutar').click()")
+        b.esperar('!!window.__sala', timeout=3)
+        b.esperar('window.__fechou', timeout=3)

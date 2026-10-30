@@ -453,6 +453,7 @@ systemctl restart gunicorn daphne celery
 | 09/10/2026 | **Arrastar arquivo para o chat** — soltar um arquivo em qualquer ponto da conversa abre o mesmo preview do "+" (legenda + enviar), como no WhatsApp Web; um arquivo por vez, limite de 15 MB; arquivo solto fora do chat não faz o navegador sair do CRM |
 | 28/10/2026 | **Sala Virtual** — clicar no card de um atendente abre menu: **conversa privada** (só os dois se ouvem, a sala não escuta) e **remover da sala** (Admin/Consultor; bloqueio de 2 min para voltar) |
 | 30/10/2026 | **Sala Virtual** — **chamar atenção** no menu do atendente: som, tela tremendo e alerta com botão Escutar, igual ao MSN |
+| 30/10/2026 | **Sala Virtual** — chamar atenção reforçado: notificação do navegador sempre, alerta em tela cheia em todas as abas, som mais alto repetido por até 30 s |
 
 ---
 
@@ -470,16 +471,20 @@ Clicar no card de um colega e escolher **Chamar atenção** avisa só aquele ate
 "chamar atenção" do MSN. Mensagem `nudge {target}`; o consumer entrega `nudge` só ao alvo e
 responde `nudge_sent` a quem chamou.
 
-Quem é chamado recebe, mesmo com o painel fechado ou em outra aba:
+Quem é chamado recebe, mesmo com o painel fechado:
 
-- **som** sintetizado (Web Audio, sem arquivo), que toca mesmo com os alertas sonoros do
-  atendimento desligados e com a sala silenciada, porque foi um colega que chamou de propósito;
-- **tela tremendo** por 0,85 s (animação no `body`; respeita `prefers-reduced-motion`; em aba
-  oculta treme ao voltar para ela);
-- **alerta fixo no topo** até a pessoa responder, com título da aba piscando e notificação do
-  navegador se a aba estiver em segundo plano e a permissão tiver sido dada.
+- **notificação do navegador** sempre, inclusive com a aba visível (o navegador pode estar atrás
+  de outro programa), e fixa até responder. A permissão é pedida ao abrir o atendimento e no
+  primeiro clique; se estiver bloqueada, o alerta explica como liberar no cadeado;
+- **alerta em tela cheia** com borda piscando, em **todas as abas** do CRM abertas com o
+  atendimento ou a sala (`BroadcastChannel('sala-chamada')`, porque a sala só fica ligada numa
+  aba). Responder em uma fecha nas outras;
+- **som e tela tremendo** repetidos a cada 3 s, por até 30 s ou até responder. O som toca mesmo
+  com os alertas sonoros do atendimento desligados e com a sala silenciada, porque foi um colega
+  que chamou de propósito. Tremida respeita `prefers-reduced-motion`.
 
-O botão **Escutar** resolve o que impede de ouvir: abre o painel, volta a escutar se a sala
+O botão **Escutar** resolve o que impede de ouvir: abre o painel (em aba fora da sala, entra na
+sala por ela, como ouvinte), volta a escutar se a sala
 estava silenciada (só a página cheia tem esse botão) e encerra a conversa privada com outra
 pessoa, avisando disso no alerta antes do clique. **Agora não** só fecha o alerta.
 
@@ -488,6 +493,9 @@ Limite de **uma chamada a cada 10 s por par** de atendentes, conferido no servid
 
 **Limitação:** o navegador não toca som em página recém-carregada, sem nenhum clique e sem
 microfone ativo. Nesse caso sobram a tremida, o alerta e o título piscando.
+
+Só recebe quem está na sala; se a sala caiu ou a pessoa saiu, a chamada não chega. Página aberta
+antes deste ajuste precisa de F5.
 
 Vale nas duas telas (`base.html` e `sala_virtual.html`). Teste em Chrome real:
 `atendimento/tests_navegador.py`.
