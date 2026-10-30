@@ -2888,6 +2888,10 @@ def api_conversation_hosts(request, conversation_id):
             action_url = f'/clientes/acessos/{a.id}/web/{porta_web}/{scheme}/'
             action_label = 'Web'
             action_icon = 'fa-globe'
+        elif proto == 'UNM':
+            action_url = f'/clientes/unm/{a.id}/'
+            action_label = 'UNM2000'
+            action_icon = 'fa-desktop'
         elif proto == 'WINBOX' or getattr(a, 'winbox', None):
             action_url = f'/clientes/winbox/{a.id}/'
             action_label = 'Winbox'

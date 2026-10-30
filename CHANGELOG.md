@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-30 (UNM2000 Web)
+
+### Adicionado
+
+- **Acessos: UNM2000 (FiberHome) pelo navegador**, como o WinBox Web. Protocolo novo "UNM2000" no
+  cadastro; o Acessar abre o cliente rodando no servidor, com login automático e gravação na
+  auditoria. Em IP privado, todo o tráfego do cliente sai pelo proxy SSH do cliente, num namespace de
+  rede próprio e sem root. Migração 0129 (só opções). `docs/winbox_vnc.md` → "UNM2000 Web".
+
+---
+
 ## [Não publicado] — 2026-10-29 (Atendente online/offline)
 
 ### Adicionado

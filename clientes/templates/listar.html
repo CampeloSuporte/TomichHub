@@ -6829,7 +6829,7 @@ function getCsrfToken(){
     // buscado a partir do card do botão clicado (nada de id), porque a busca
     // de acessos exibe cópias dos cards.
     const _PORTA_PADRAO_PROTO = {SSH: 22, TELNET: 23, HTTP: 80, HTTPS: 443, RDP: 3389};
-    const _ICONE_PROTO = {SSH: 'fa-terminal', TELNET: 'fa-terminal', HTTP: 'fa-globe', HTTPS: 'fa-lock', RDP: 'fa-desktop', WINBOX: 'fa-network-wired'};
+    const _ICONE_PROTO = {UNM: 'fa-desktop', SSH: 'fa-terminal', TELNET: 'fa-terminal', HTTP: 'fa-globe', HTTPS: 'fa-lock', RDP: 'fa-desktop', WINBOX: 'fa-network-wired'};
 
     function toggleNovoProtocolo(el, abrir) {
         const card = el.closest('.card');
@@ -10886,6 +10886,7 @@ function getCsrfToken(){
         const proto = (acesso.protocolo || '').toUpperCase();
         if (proto === 'HTTP' || proto === 'HTTPS') return;
         if (proto === 'WINBOX') { window.abrirWinboxWeb(acesso.id); return; }
+        if (proto === 'UNM') { window.open(`/clientes/unm/${acesso.id}/`, `UNM_${acesso.id}`); return; }
         // Abre no terminal de página completa
         if (typeof terminalTabManager !== 'undefined') {
             terminalTabManager.abrirTerminal(acesso.id, acesso.host, acesso.porta,

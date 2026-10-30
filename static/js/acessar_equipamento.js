@@ -85,6 +85,11 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
                 'width=1400,height=800,menubar=no,toolbar=no,location=no,status=no');
             return;
 
+        case 'unm':
+            window.open('/clientes/unm/' + acessoId + '/', 'unm_' + acessoId,
+                'width=1400,height=800,menubar=no,toolbar=no,location=no,status=no');
+            return;
+
         case 'vnc':
             urlAcesso = `vnc://${host}:${porta}`;
             break;
