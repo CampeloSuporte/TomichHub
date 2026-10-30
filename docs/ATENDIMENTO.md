@@ -452,6 +452,7 @@ systemctl restart gunicorn daphne celery
 | 29/09/2026 | **Sala Virtual** — escolher qual microfone usar (seta ao lado do botão do mic); troca na hora, sem renegociar |
 | 09/10/2026 | **Arrastar arquivo para o chat** — soltar um arquivo em qualquer ponto da conversa abre o mesmo preview do "+" (legenda + enviar), como no WhatsApp Web; um arquivo por vez, limite de 15 MB; arquivo solto fora do chat não faz o navegador sair do CRM |
 | 28/10/2026 | **Sala Virtual** — clicar no card de um atendente abre menu: **conversa privada** (só os dois se ouvem, a sala não escuta) e **remover da sala** (Admin/Consultor; bloqueio de 2 min para voltar) |
+| 30/10/2026 | **Sala Virtual** — **chamar atenção** no menu do atendente: som, tela tremendo e alerta com botão Escutar, igual ao MSN |
 
 ---
 
@@ -462,6 +463,34 @@ systemctl restart gunicorn daphne celery
 
 Chamada de voz/tela em malha completa (full mesh) entre atendentes conectados na sala —
 cada participante mantém uma `RTCPeerConnection` direta com todos os demais.
+
+### Chamar atenção (30/10/2026)
+
+Clicar no card de um colega e escolher **Chamar atenção** avisa só aquele atendente, como o
+"chamar atenção" do MSN. Mensagem `nudge {target}`; o consumer entrega `nudge` só ao alvo e
+responde `nudge_sent` a quem chamou.
+
+Quem é chamado recebe, mesmo com o painel fechado ou em outra aba:
+
+- **som** sintetizado (Web Audio, sem arquivo), que toca mesmo com os alertas sonoros do
+  atendimento desligados e com a sala silenciada, porque foi um colega que chamou de propósito;
+- **tela tremendo** por 0,85 s (animação no `body`; respeita `prefers-reduced-motion`; em aba
+  oculta treme ao voltar para ela);
+- **alerta fixo no topo** até a pessoa responder, com título da aba piscando e notificação do
+  navegador se a aba estiver em segundo plano e a permissão tiver sido dada.
+
+O botão **Escutar** resolve o que impede de ouvir: abre o painel, volta a escutar se a sala
+estava silenciada (só a página cheia tem esse botão) e encerra a conversa privada com outra
+pessoa, avisando disso no alerta antes do clique. **Agora não** só fecha o alerta.
+
+Limite de **uma chamada a cada 10 s por par** de atendentes, conferido no servidor
+(`_chamadas`, em memória); antes disso quem chamou recebe `room_error` com os segundos restantes.
+
+**Limitação:** o navegador não toca som em página recém-carregada, sem nenhum clique e sem
+microfone ativo. Nesse caso sobram a tremida, o alerta e o título piscando.
+
+Vale nas duas telas (`base.html` e `sala_virtual.html`). Teste em Chrome real:
+`atendimento/tests_navegador.py`.
 
 ### Remover atendente e conversa privada (28/10/2026)
 
