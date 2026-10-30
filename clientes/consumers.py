@@ -2345,6 +2345,9 @@ class WinboxConsumer(SSHConsumer):
         try:
             self.acessoId = acesso_id
             acesso = Acesso.objects.get(id=acesso_id)
+            if not self._usuario_pode_acessar(acesso):
+                self.send_error('Sem permissão para este acesso')
+                return
             host = acesso.host
             porta = int(acesso.winbox) if hasattr(acesso, 'winbox') and acesso.winbox else 8291
 
@@ -2504,15 +2507,20 @@ class WinboxVNCConsumer(SSHConsumer):
                 tela_w = tela_h = 0
             
             acesso = Acesso.objects.get(id=acesso_id)
+            # As páginas (winbox/rdp/webfig/unm) já checam, mas o WebSocket é
+            # aberto direto pelo id e usa a senha salva: sem isto, qualquer
+            # login abria a sessão de qualquer host de qualquer cliente.
+            if not self._usuario_pode_acessar(acesso):
+                logger.warning(f"⛔ VNC acesso {acesso_id} negado (mode={mode}) para {self._label_usuario()}")
+                self.send_error('Sem permissão para este acesso')
+                self.close(code=4003)
+                return
             host = acesso.host
             # RDP de um protocolo extra do host (?pid=): troca só a porta, em
             # memória; proxy x direto abaixo segue igual ao acesso padrão.
             pid = params.get('pid', [None])[0]
             if pid and mode == 'rdp':
                 acesso.aplicar_protocolo_extra(pid, permitidos=('RDP',))
-
-            if mode == 'unm' and not self._usuario_pode_acessar(acesso):
-                raise Exception('Sem permissão para este acesso')
 
             _tipo_sessao = {'browser': 'webfig', 'rdp': 'rdp', 'unm': 'unm'}.get(mode, 'winbox')
             self._sessao_auditoria = AcessoSessao.objects.create(
