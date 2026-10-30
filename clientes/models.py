@@ -3,7 +3,7 @@ import logging
 import uuid as _uuid_mod
 
 from django.db import models
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -407,7 +407,48 @@ class TopologiaDiagrama(models.Model):
     def __str__(self):
         return f"{self.nome} — {self.cliente.nome_empresa}"
 
-    
+
+def _renomear_host_nos_nodes(nodes, acesso_id, nome_antigo, nome_novo):
+    """Troca o rótulo dos nodes do acesso (inclusive dentro de grupos). Só os
+    que ainda estão com o nome antigo: rótulo editado à mão no mapa fica."""
+    mudou = False
+    for node in nodes:
+        id_node = str(node.get('id', ''))
+        acesso = node.get('acesso_id') or (id_node[4:] if id_node.startswith('crm_') else None)
+        if str(acesso) == str(acesso_id) and node.get('label') == nome_antigo:
+            node['label'] = nome_novo
+            mudou = True
+        if _renomear_host_nos_nodes(node.get('grupo_membros') or [], acesso_id, nome_antigo, nome_novo):
+            mudou = True
+    return mudou
+
+
+@receiver(pre_save, sender=Acesso, dispatch_uid='topologia_guardar_nome_anterior_acesso')
+def guardar_nome_anterior_acesso(sender, instance, raw=False, update_fields=None, **kwargs):
+    instance._tipo_anterior = None
+    if raw or not instance.pk or (update_fields is not None and 'tipo' not in update_fields):
+        return
+    instance._tipo_anterior = Acesso.objects.filter(pk=instance.pk).values_list('tipo', flat=True).first()
+
+
+@receiver(post_save, sender=Acesso, dispatch_uid='topologia_renomear_host_do_acesso')
+def renomear_host_na_topologia(sender, instance, raw=False, **kwargs):
+    """O nome do host fica copiado no `dados_json` de cada mapa: renomear o
+    acesso tem de chegar lá, mesmo sem o editor aberto. Qualquer falha aqui é
+    só registrada — nunca pode impedir o acesso de ser salvo."""
+    nome_antigo = getattr(instance, '_tipo_anterior', None)
+    if raw or not nome_antigo or not instance.tipo or nome_antigo == instance.tipo:
+        return
+    for diagrama in TopologiaDiagrama.objects.filter(cliente_id=instance.cliente_id):
+        try:
+            dados = _json.loads(diagrama.dados_json or '{}')
+            if _renomear_host_nos_nodes(dados.get('nodes') or [], instance.pk, nome_antigo, instance.tipo):
+                diagrama.dados_json = _json.dumps(dados)
+                diagrama.save(update_fields=['dados_json', 'atualizado_em'])
+        except Exception:
+            logging.getLogger(__name__).exception(
+                'Falha ao renomear o host na topologia (acesso %s, diagrama %s)', instance.pk, diagrama.pk)
+
 
 class ArquivoVPN(models.Model):
     cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='arquivos_vpn')

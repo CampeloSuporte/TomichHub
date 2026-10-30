@@ -68,6 +68,7 @@ class TopoEditor {
     // no dados_json como `hosts_removidos` (ids de Acesso).
     this.hostsRemovidos = new Set();
     this._hostsCrm = [];  // última lista de /topologia/hosts/ (nomes da paleta)
+    this._nomesCrm = new Map();  // acesso → nome na última sincronização (detecta renomeação)
     this.wpDrag = null;   // {linkId, wpIdx} — arrastar waypoint
     this.lblDrag = null;  // {linkId, k, ...} — arrastar rótulo de link (link.rotulos)
     this.areaResizing = null; // {id, corner, fx, fy} — arrastar canto de uma Área
@@ -4003,8 +4004,16 @@ class TopoEditor {
       let tipoMudou = false;
       hosts.forEach(h => {
         const node = this.nodes.find(n => n.id === 'crm_' + h.id);
+        const nomeAntes = this._nomesCrm.get(h.id);
+        this._nomesCrm.set(h.id, h.label);
         if (!node) return;
         node.funcao = h.funcao;
+        // Host renomeado com o editor aberto: sem isto o auto-save devolveria o
+        // nome velho ao mapa. Rótulo editado à mão não é tocado.
+        if (nomeAntes !== undefined && nomeAntes !== h.label && node.label === nomeAntes) {
+          node.label = h.label;
+          this._renderNode(node); tipoMudou = true;
+        }
         if (!node.type_manual && node.type !== h.tipo) {
           node.type = h.tipo;
           this._renderNode(node); tipoMudou = true;

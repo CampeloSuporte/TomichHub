@@ -1415,4 +1415,9 @@ layout em faixas de antes (`_layoutImportados`), e o auto-save grava.
 - **Sub-mapa** não importa nada (só sincroniza o tipo dos hosts que já tem) — antes um sub-mapa vazio
   recebia todos os hosts do cliente. **Cenário TO-BE** importa só se abrir vazio (como antes).
 - A sincronização de tipo (função do CRM → ícone, respeitando `type_manual`) roda na mesma rodada.
+- **Host renomeado** (2026-10-30): o nome fica copiado em `node.label` no `dados_json`. O signal
+  `renomear_host_na_topologia` (`clientes/models.py`) grava o nome novo em todos os mapas do cliente,
+  sub-mapas e `grupo_membros`, sem depender do editor. Com o editor aberto, `_sincronizarHosts` aplica
+  a mesma troca (`_nomesCrm`) para o auto-save não devolver o nome velho. Só muda o node que ainda está
+  com o nome antigo: rótulo editado à mão fica. IP e cenários TO-BE não são sincronizados.
 - Testes: `clientes/tests_topologia_navegador.py` (Chrome headless).

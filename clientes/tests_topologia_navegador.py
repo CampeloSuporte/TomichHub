@@ -83,6 +83,17 @@ class TopologiaHostsAutomaticosTest(StaticLiveServerTestCase):
         self.assertNotIn('hosts_removidos', dados)
         self.assertFalse(b.js("!!document.querySelector('.pal-host')"))
 
+    def test_host_renomeado_com_editor_aberto_nao_volta_ao_nome_velho(self):
+        b = self.b
+        b.ir(f'{self.live_server_url}/clientes/{self.cliente.id}/topologia/editor/')
+        b.esperar("window.topo && topo._ultimoSyncHosts && !topo._syncHostsEmVoo")
+        self.rtr.tipo = 'RTR-BORDA-NOVO'
+        self.rtr.save()
+        b.js("topo._sincronizarHosts()")
+        b.esperar(f"topo.nodes.find(n => n.id === 'crm_{self.rtr.id}').label === 'RTR-BORDA-NOVO'")
+        dados = self.salvo()
+        self.assertEqual(dados['nodes'][0]['label'], 'RTR-BORDA-NOVO')
+
     def test_submapa_nao_importa_e_host_de_submapa_nao_duplica_no_raiz(self):
         b = self.b
         sw = self.acesso('SW-AGG-01', '10.0.0.1')
