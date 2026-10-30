@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-30 (Sala Virtual: chamar atenção)
+
+### Adicionado
+
+- **Sala Virtual: chamar a atenção de um atendente, igual ao MSN.** Clicar no card do colega agora
+  oferece "Chamar atenção": ele ouve um som, a tela treme e aparece um alerta com o botão Escutar,
+  que abre a sala e desfaz o que o impede de ouvir (sala silenciada ou conversa privada com outra
+  pessoa). Limite de uma chamada a cada 10 s por par. `docs/ATENDIMENTO.md`.
+
+### Corrigido
+
+- **Página `/atendimento/sala/` não funcionava.** O nome do atendente ia sem aspas para o JavaScript,
+  o script inteiro quebrava e a pessoa ficava parada na tela de permissão do microfone.
+
+---
+
 ## [Não publicado] — 2026-10-30 (aba ONU mostra só o script escolhido)
 
 ### Corrigido

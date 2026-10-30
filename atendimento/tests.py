@@ -4339,10 +4339,8 @@ class ResponderMensagemTest(TestCase):
         self.assertEqual(blocos[0]['id'], str(self.msg.id))
 
 
-class SalaVirtualRemoverEPrivadoTests(TestCase):
-    """Sala virtual: remover atendente (Admin/Consultor) e conversa privada 1:1.
-
-    As checagens de permissão vão por mock — o consumer as roda em outra
+class _SalaVirtualBase(TestCase):
+    """As checagens de permissão vão por mock — o consumer as roda em outra
     thread, que não enxerga a transação do TestCase.
     """
 
@@ -4378,6 +4376,10 @@ class SalaVirtualRemoverEPrivadoTests(TestCase):
             m = await com.receive_json_from(timeout=2)
             if m['type'] == tipo:
                 return m
+
+
+class SalaVirtualRemoverEPrivadoTests(_SalaVirtualBase):
+    """Sala virtual: remover atendente (Admin/Consultor) e conversa privada 1:1."""
 
     def test_admin_remove_e_bloqueia_reentrada(self):
         async def cenario():
@@ -4439,6 +4441,69 @@ class SalaVirtualRemoverEPrivadoTests(TestCase):
             self.assertIsNone(VirtualRoomConsumer._members[ja['my_id']]['private_with'])
             await a.disconnect()
             await c.disconnect()
+        self._rodar(cenario())
+
+
+class SalaVirtualChamarAtencaoTests(_SalaVirtualBase):
+    """Chamar a atenção: só o alvo recebe, com limite por par de atendentes."""
+
+    def setUp(self):
+        from atendimento.consumers import VirtualRoomConsumer
+        super().setUp()
+        VirtualRoomConsumer._chamadas.clear()
+
+    def test_so_o_alvo_recebe_e_quem_chamou_tem_confirmacao(self):
+        async def cenario():
+            a, ja = await self._entrar(1, 'Ana', False)
+            b, jb = await self._entrar(2, 'Bia', False)
+            c, jc = await self._entrar(3, 'Caio', False)
+
+            await a.send_json_to({'type': 'nudge', 'target': jb['my_id']})
+            recebida = await self._ate(b, 'nudge')
+            self.assertEqual(recebida['display_name'], 'Ana')
+            self.assertEqual(recebida['from'], ja['my_id'])
+            self.assertEqual((await self._ate(a, 'nudge_sent'))['display_name'], 'Bia')
+
+            # O terceiro só viu a própria entrada/saída dos colegas: nada de chamada.
+            while not await c.receive_nothing(timeout=0.2):
+                self.assertNotEqual((await c.receive_json_from())['type'], 'nudge')
+            for com in (a, b, c):
+                await com.disconnect()
+        self._rodar(cenario())
+
+    def test_repeticao_e_limitada_por_par(self):
+        async def cenario():
+            from atendimento.consumers import VirtualRoomConsumer
+            a, ja = await self._entrar(1, 'Ana', False)
+            b, jb = await self._entrar(2, 'Bia', False)
+            c, jc = await self._entrar(3, 'Caio', False)
+
+            await a.send_json_to({'type': 'nudge', 'target': jb['my_id']})
+            await self._ate(b, 'nudge')
+            await a.send_json_to({'type': 'nudge', 'target': jb['my_id']})
+            self.assertIn('Aguarde', (await self._ate(a, 'room_error'))['text'])
+            self.assertTrue(await b.receive_nothing(timeout=0.2) or
+                            (await b.receive_json_from())['type'] != 'nudge')
+
+            # Outro colega não é afetado pelo limite de Ana.
+            await c.send_json_to({'type': 'nudge', 'target': jb['my_id']})
+            self.assertEqual((await self._ate(b, 'nudge'))['display_name'], 'Caio')
+
+            # Passado o intervalo, Ana pode chamar de novo.
+            VirtualRoomConsumer._chamadas[('1', '2')] = 0
+            await a.send_json_to({'type': 'nudge', 'target': jb['my_id']})
+            self.assertEqual((await self._ate(b, 'nudge'))['display_name'], 'Ana')
+            for com in (a, b, c):
+                await com.disconnect()
+        self._rodar(cenario())
+
+    def test_alvo_invalido_ou_a_si_mesmo(self):
+        async def cenario():
+            a, ja = await self._entrar(1, 'Ana', False)
+            for alvo in ('canal-inexistente', None, ja['my_id']):
+                await a.send_json_to({'type': 'nudge', 'target': alvo})
+                self.assertIn('não está', (await self._ate(a, 'room_error'))['text'])
+            await a.disconnect()
         self._rodar(cenario())
 
 

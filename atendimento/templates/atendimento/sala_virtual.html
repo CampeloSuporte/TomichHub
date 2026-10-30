@@ -79,6 +79,28 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;he
 #peer-menu button i{width:14px}
 #peer-menu button.pm-private i{color:var(--purple)}
 #peer-menu button.pm-kick{color:var(--red)}
+#peer-menu button.pm-nudge i{color:var(--orange)}
+@keyframes chamada-tremer {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-9px, 4px); } 20% { transform: translate(8px, -5px); }
+  30% { transform: translate(-7px, -4px); } 40% { transform: translate(9px, 5px); }
+  50% { transform: translate(-8px, 3px); } 60% { transform: translate(7px, -4px); }
+  70% { transform: translate(-6px, 4px); } 80% { transform: translate(5px, -3px); }
+  90% { transform: translate(-3px, 2px); }
+}
+html.chamada-tremendo { overflow: hidden; }
+html.chamada-tremendo body { animation: chamada-tremer .85s linear; }
+#chamada-alerta { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); width: min(380px, calc(100vw - 32px));
+  z-index: 100000; display: none; align-items: flex-start; gap: 12px; padding: 14px; color: #e6edf3;
+  background: #161b22; border: 1px solid #ffa657; border-radius: 12px; box-shadow: 0 12px 36px rgba(0,0,0,.6); }
+#chamada-alerta.open { display: flex; }
+#chamada-alerta > i { color: #ffa657; font-size: 1.3rem; margin-top: 2px; }
+#chamada-alerta .ca-texto { flex: 1; min-width: 0; font-size: .86rem; line-height: 1.4; overflow-wrap: anywhere; }
+#chamada-alerta .ca-dica { display: block; color: #7d8590; font-size: .74rem; margin-top: 3px; }
+#chamada-alerta .ca-botoes { display: flex; gap: 8px; margin-top: 10px; }
+#chamada-alerta button { border-radius: 6px; padding: 5px 12px; font-size: .78rem; cursor: pointer;
+  background: none; border: 1px solid #30363d; color: #e6edf3; }
+#chamada-alerta button.ca-escutar { background: #238636; border-color: #238636; color: #fff; }
 
 /* ── Faixa da conversa privada ── */
 #private-bar{display:none;align-items:center;justify-content:center;gap:12px;padding:8px 16px;background:rgba(188,140,255,.12);border-bottom:1px solid rgba(188,140,255,.35);color:var(--purple);font-size:.8rem;flex-shrink:0}
@@ -237,7 +259,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;he
 <div id="peer-menu"></div>
 
 <script>
-const MY_DISPLAY = {{ display_name|escapejs|default:"'Eu'" }};
+const MY_DISPLAY = "{{ display_name|escapejs }}";
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/atendimento/sala/';
 
 let ws = null;
@@ -366,6 +388,14 @@ async function handleSignal(msg) {
 
     case 'room_error':
       toast(msg.text, true);
+      break;
+
+    case 'nudge':
+      receberChamada(msg);
+      break;
+
+    case 'nudge_sent':
+      toast(`Você chamou a atenção de ${msg.display_name}.`);
       break;
 
     case 'kicked':
@@ -988,7 +1018,7 @@ function addPeerCard(peer) {
     <div class="peer-status">Conectando…</div>
     <div class="peer-private-badge" style="display:none"></div>`;
   div.classList.add('clicavel');
-  div.title = 'Clique para conversa privada' + (canKick ? ' ou remover da sala' : '');
+  div.title = 'Clique para chamar a atenção, conversa privada' + (canKick ? ' ou remover da sala' : '');
   div.onclick = e => { e.stopPropagation(); abrirMenuPeer(peer.channel_name, div); };
   strip.appendChild(div);
 }
@@ -1083,6 +1113,7 @@ function abrirMenuPeer(peerId, card) {
   if (!info) return;
   const nome = esc(info.display_name);
   let html = `<div class="pm-title">${nome}</div>`;
+  html += `<button class="pm-nudge" data-acao="nudge"><i class="fas fa-bell"></i>Chamar atenção</button>`;
   if (myPrivateWith === peerId) {
     html += `<button class="pm-private" data-acao="end"><i class="fas fa-right-from-bracket"></i>Encerrar conversa privada</button>`;
   } else if (info.private_with) {
@@ -1099,7 +1130,8 @@ function abrirMenuPeer(peerId, card) {
       e.stopPropagation();
       menu.classList.remove('open');
       const acao = b.dataset.acao;
-      if (acao === 'private') wsSend({type: 'private_start', target: peerId});
+      if (acao === 'nudge') wsSend({type: 'nudge', target: peerId});
+      else if (acao === 'private') wsSend({type: 'private_start', target: peerId});
       else if (acao === 'end') wsSend({type: 'private_end'});
       else if (acao === 'kick') {
         if (confirm(`Remover ${info.display_name} da sala? Ele só poderá voltar em 2 minutos.`)) {
@@ -1123,9 +1155,107 @@ document.addEventListener('click', e => {
   if (menu.classList.contains('open') && !menu.contains(e.target)) menu.classList.remove('open');
 });
 
+// ── Chamar a atenção (recebida) ───────────────────────────────────
+let _chamadaCtx = null;
+let _chamadaTitulo = null;
+function tocarChamada() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    _chamadaCtx = _chamadaCtx || new Ctx();
+    _chamadaCtx.resume();
+    const t0 = _chamadaCtx.currentTime;
+    const g = _chamadaCtx.createGain();
+    g.connect(_chamadaCtx.destination);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02);
+    g.gain.setValueAtTime(0.25, t0 + 0.75);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.95);
+    const o = _chamadaCtx.createOscillator();
+    o.type = 'square';
+    // Vibração em duas notas alternadas, como o "chamar atenção" do MSN.
+    for (let i = 0; i < 12; i++) o.frequency.setValueAtTime(i % 2 ? 330 : 247, t0 + i * 0.08);
+    o.connect(g);
+    o.start(t0);
+    o.stop(t0 + 0.96);
+  } catch (e) {}
+}
+
+function tremerTela() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const el = document.documentElement;
+  el.classList.remove('chamada-tremendo');
+  void el.offsetWidth;  // reinicia a animação se já estiver tremendo
+  el.classList.add('chamada-tremendo');
+  setTimeout(() => el.classList.remove('chamada-tremendo'), 900);
+}
+
+function pararTituloChamada() {
+  if (!_chamadaTitulo) return;
+  clearInterval(_chamadaTitulo.timer);
+  document.title = _chamadaTitulo.original;
+  _chamadaTitulo = null;
+}
+
+function fecharChamada() {
+  document.getElementById('chamada-alerta')?.classList.remove('open');
+  pararTituloChamada();
+}
+
+function receberChamada(msg) {
+  const nome = msg.display_name || 'Um colega';
+  let el = document.getElementById('chamada-alerta');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'chamada-alerta';
+    el.setAttribute('role', 'alert');
+    document.body.appendChild(el);
+  }
+  const dica = deafened
+    ? 'A sala está silenciada: Escutar volta a ouvir.'
+    : (myPrivateWith && myPrivateWith !== msg.from
+      ? 'Você está em conversa privada e não ouve a sala: Escutar encerra a conversa.' : '');
+  el.innerHTML = `<i class="fas fa-bell"></i><div class="ca-texto"><strong></strong> está chamando sua atenção na Sala Virtual.`
+    + (dica ? '<span class="ca-dica"></span>' : '')
+    + `<div class="ca-botoes"><button class="ca-escutar"><i class="fas fa-headphones"></i> Escutar</button><button class="ca-fechar">Agora não</button></div></div>`;
+  el.querySelector('strong').textContent = nome;
+  if (dica) el.querySelector('.ca-dica').textContent = dica;
+  el.querySelector('.ca-fechar').onclick = fecharChamada;
+  el.querySelector('.ca-escutar').onclick = () => {
+    if (deafened) {
+      deafened = false;
+      localStorage.setItem('sala_deafen', '0');
+      aplicarSurdez();
+    }
+    if (myPrivateWith && myPrivateWith !== msg.from) wsSend({type: 'private_end'});
+    fecharChamada();
+  };
+  el.classList.add('open');
+  tocarChamada();
+  tremerTela();
+
+  // Aba em segundo plano: sem isso o alerta só seria visto ao voltar para ela.
+  pararTituloChamada();
+  const original = document.title, aviso = `🔔 ${nome} está chamando!`;
+  _chamadaTitulo = {
+    original,
+    timer: setInterval(() => { document.title = document.title === aviso ? original : aviso; }, 1000),
+  };
+  if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+    try {
+      const n = new Notification('Sala Virtual', {body: `${nome} está chamando sua atenção.`, tag: 'sala-chamada', renotify: true});
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch (e) {}
+  }
+}
+// Animação não roda em aba oculta: treme quando a pessoa voltar para ela.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && document.getElementById('chamada-alerta')?.classList.contains('open')) tremerTela();
+});
+
 // ── Removido da sala ──────────────────────────────────────────────
 function mostrarRemovido(msg) {
   cleanup();
+  fecharChamada();
   const ov = document.getElementById('perm-overlay');
   const box = ov.querySelector('.perm-box');
   let titulo, desc;

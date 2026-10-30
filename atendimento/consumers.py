@@ -1,4 +1,5 @@
 import json
+import math
 import time
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
@@ -126,6 +127,10 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
     # Quem foi removido não volta na hora com um F5: {user_id: (expira_em, por_quem)}
     _bloqueados = {}
     BLOQUEIO_SEGUNDOS = 120
+    # Chamar a atenção toca som e treme a tela do colega: um clique a cada
+    # 10 s por par basta, e o limite vale mesmo mexendo no navegador.
+    _chamadas = {}  # {(user_id de quem chama, user_id do chamado): expira_em}
+    CHAMADA_INTERVALO_SEGUNDOS = 10
     GROUP = "atendimento_sala_virtual"
 
     async def connect(self):
@@ -283,6 +288,9 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
         elif msg_type == "kick":
             await self._remover(msg.get("target"))
 
+        elif msg_type == "nudge":
+            await self._chamar_atencao(msg.get("target"))
+
     # ── Conversa privada ──────────────────────────────────────────
     # A sala só guarda e anuncia o par; quem corta o áudio é o navegador
     # de cada um (para de ENVIAR o microfone a quem está fora do par e
@@ -365,6 +373,30 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
         except Exception:
             pass
 
+    # ── Chamar a atenção ──────────────────────────────────────────
+    async def _chamar_atencao(self, target):
+        alvo = VirtualRoomConsumer._members.get(target) if target else None
+        if not alvo or target == self.channel_name:
+            await self._erro("Atendente não está mais na sala.")
+            return
+        agora = time.time()
+        par = (self.user_id, alvo["user_id"])
+        expira = VirtualRoomConsumer._chamadas.get(par, 0)
+        if expira > agora:
+            await self._erro(
+                f"Aguarde {math.ceil(expira - agora)} s para chamar {alvo['display_name']} de novo.")
+            return
+        VirtualRoomConsumer._chamadas[par] = agora + self.CHAMADA_INTERVALO_SEGUNDOS
+        await self.channel_layer.send(target, {
+            "type": "room_nudge",
+            "from": self.channel_name,
+            "display_name": self.display_name,
+        })
+        await self.send(text_data=json.dumps({
+            "type": "nudge_sent",
+            "display_name": alvo["display_name"],
+        }))
+
     async def _erro(self, texto):
         await self.send(text_data=json.dumps({"type": "room_error", "text": texto}))
 
@@ -391,6 +423,13 @@ class VirtualRoomConsumer(AsyncWebsocketConsumer):
 
     async def room_private_state(self, event):
         await self.send(text_data=json.dumps(event["state"]))
+
+    async def room_nudge(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "nudge",
+            "from": event["from"],
+            "display_name": event["display_name"],
+        }))
 
     async def room_kick(self, event):
         """Fecha esta conexão: removida por um colega (reason=removed) ou
