@@ -165,6 +165,17 @@ function acessarEquipamento(protocolo, host, porta, usuario, senha, acessoId, ti
         return;
     }
 
+    // ✅ PARA UNM2000 - CLIENTE NO SERVIDOR VIA WEB (ver clientes/unm_vnc.py)
+    if (proto === 'UNM') {
+        const opcoes = 'width=1400,height=800,menubar=no,toolbar=no,location=no,status=no';
+        window.open(`/clientes/unm/${acessoId}/`, `UNM_${acessoId}`, opcoes);
+
+        if (typeof showSuccess === 'function') {
+            showSuccess('UNM2000 ABERTO', `Abrindo o UNM2000 de ${host}`, 3000);
+        }
+        return;
+    }
+
     // ✅ PARA SSH, TELNET, ETC - ABRIR TERMINAL
     console.log('🖥️ Protocolo de terminal detectado:', proto);
     

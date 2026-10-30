@@ -2417,6 +2417,7 @@ class WinboxConsumer(SSHConsumer):
 from .winbox_vnc import WinboxVNCManager
 from .browser_vnc import BrowserVNCManager
 from .rdp_vnc import RdpVNCManager
+from .unm_vnc import UnmVNCManager
 
 
 class WinboxVNCConsumer(SSHConsumer):
@@ -2510,7 +2511,10 @@ class WinboxVNCConsumer(SSHConsumer):
             if pid and mode == 'rdp':
                 acesso.aplicar_protocolo_extra(pid, permitidos=('RDP',))
 
-            _tipo_sessao = 'webfig' if mode == 'browser' else ('rdp' if mode == 'rdp' else 'winbox')
+            if mode == 'unm' and not self._usuario_pode_acessar(acesso):
+                raise Exception('Sem permissão para este acesso')
+
+            _tipo_sessao = {'browser': 'webfig', 'rdp': 'rdp', 'unm': 'unm'}.get(mode, 'winbox')
             self._sessao_auditoria = AcessoSessao.objects.create(
                 acesso=acesso,
                 usuario=getattr(self, '_crm_user', None),
@@ -2528,7 +2532,11 @@ class WinboxVNCConsumer(SSHConsumer):
                 logger.error(f"❌ Erro ao preparar caminho de gravação: {e}")
                 record_path = None
 
-            if mode == 'browser':
+            if mode == 'unm':
+                # Sem porta: o cliente usa as que o servidor UNM informar, por
+                # isso o proxy entra inteiro no caminho em vez de um túnel.
+                porta = None
+            elif mode == 'browser':
                 # Se o protocolo for explicitamente HTTP/HTTPS, usar a porta configurada
                 if acesso.protocolo.upper() in ['HTTP', 'HTTPS']:
                     porta = int(acesso.porta)
@@ -2545,7 +2553,14 @@ class WinboxVNCConsumer(SSHConsumer):
                 porta = int(acesso.winbox) if hasattr(acesso, 'winbox') and acesso.winbox else 8291
 
 
-            if self.is_private_ip(host):
+            if mode == 'unm':
+                proxy_unm = None
+                if self.is_private_ip(host):
+                    proxy_unm = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+                    if not proxy_unm:
+                        raise Exception(f"UNM2000 em IP privado exige um proxy SSH ativo em {acesso.cliente.nome_empresa}")
+
+            elif self.is_private_ip(host):
                 proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
                 if proxy:
                     msg_tipo = {"browser": "Navegador", "rdp": "RDP"}.get(mode, "Winbox")
@@ -2574,7 +2589,21 @@ class WinboxVNCConsumer(SSHConsumer):
                 target_host = host
                 target_port = porta
 
-            if mode == 'browser':
+            if mode == 'unm':
+                # Inicia Xvfb + UNM2000 + x11vnc
+                self.vnc_manager = UnmVNCManager(
+                    host=host.strip(),
+                    user=acesso.usuario,
+                    password=acesso.senha,
+                    proxy=proxy_unm,
+                    width=vnc_w,
+                    height=vnc_h,
+                    screen_width=tela_w,
+                    screen_height=tela_h,
+                    record_path=record_path
+                )
+
+            elif mode == 'browser':
                 # Inicia Xvfb + Navegador + x11vnc
                 protocolo_web = 'https' if porta == 443 else 'http'
                 url = f"{protocolo_web}://127.0.0.1:{target_port}/"
@@ -2637,7 +2666,7 @@ class WinboxVNCConsumer(SSHConsumer):
             self.read_thread = threading.Thread(target=self.read_tcp_output, daemon=True)
             self.read_thread.start()
             
-            servico_nome = {"browser": "WebFig (Navegador)", "rdp": "RDP"}.get(mode, "Winbox")
+            servico_nome = {"browser": "WebFig (Navegador)", "rdp": "RDP", "unm": "UNM2000"}.get(mode, "Winbox")
             self.send_json({'type': 'connected', 'message': f'Ambiente {servico_nome} criado no servidor. Recebendo tela...'})
 
         except Exception as e:

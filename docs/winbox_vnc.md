@@ -115,6 +115,8 @@ O `xdotool search --sync` serve como fallback caso o Openbox ainda não tenha ap
 apt-get install xvfb openbox x11vnc xdotool wmctrl
 ```
 
+O UNM2000 Web tem dependências próprias (ver a seção dele).
+
 Binário do WinBox 4: `/opt/crm/static/winbox4/WinBox` (ELF 64-bit)
 
 ---
@@ -128,6 +130,55 @@ Binário do WinBox 4: `/opt/crm/static/winbox4/WinBox` (ELF 64-bit)
   "Preparando WebFig", `WinBox · IP` e "Preparando WinBox". Antes o RDP também mostrava "Preparando
   WinBox", o que parecia um Winbox Web aberto no lugar do RDP.
 - No card, Winbox Web 4.4 e 3.43 saem pela escolha do **Acessar** ([acessos_protocolos_extras.md](acessos_protocolos_extras.md)).
+
+## UNM2000 Web — Adicionado em 30/10/2026
+
+Abre o cliente do UNM2000 (FiberHome) no navegador. Protocolo **UNM2000** no cadastro do acesso
+(`host` = IP do servidor UNM; usuário e senha = login do UNM; a porta não é usada pelo cliente).
+Página `/clientes/unm/<id>/`, modo `unm` do `WinboxVNCConsumer`, classe `UnmVNCManager`
+(`clientes/unm_vnc.py`), que herda Xvfb, x11vnc, resize e gravação do `WinboxVNCManager`.
+
+**Cliente.** Port em Java 21, sem Wine ([unm2000-linux-port](https://github.com/Reinoldo-Ozy/unm2000-linux-port) v1.3.1):
+
+```bash
+apt-get install openjdk-21-jre redsocks socat sshpass unrar bsdiff
+systemctl disable --now redsocks   # cada sessão sobe o próprio
+curl -O http://<ip-do-unm>:8080/webstart/unm2000_Client_en.exe
+sudo bash install.sh unm2000_Client_en.exe   # instala em /opt/unm2000
+```
+
+**Rede.** O cliente fala ZeroC Ice em dezenas de portas informadas pelo servidor (18 na Sartor), então
+o túnel de porta única (`_criar_tunel_paramiko`) não serve. Em IP privado:
+
+```
+UNM2000 -> iptables REDIRECT -> redsocks -> socat -> socket UNIX | socat -> ssh -D -> proxy do cliente
+           |-------- namespace da sessão (só loopback) --------|   |------- host ---------|
+```
+
+- `unshare -Urn --pid --fork --kill-child`: roda como `www-data`, **sem root nem sudo**. Dentro, o
+  processo é "root" só naquele namespace, o bastante para o `iptables`.
+- O namespace não tem interface além do loopback: a única saída é o socket UNIX. Não há como escapar do
+  proxy nem alcançar a rede do servidor, e sessões de clientes diferentes não se enxergam.
+- Rota padrão no `lo` com origem `10.255.0.1`: sem a rota o `connect()` dá *unreachable* antes do
+  `REDIRECT` ("Socket errors" no cliente); sem a origem, a resposta se perde.
+- O namespace de PID faz o kernel matar tudo junto, mesmo se o daphne cair sem passar por `stop()`.
+- IP público: o cliente sai direto, sem namespace. IP privado sem `ProxyServer` ativo: erro claro (via
+  VPN ainda não foi implementado).
+
+**Telas iniciais.** A home é nova a cada sessão (`/tmp/unm_*`, apagada no `stop()`), com
+`-J-Duser.home` para isolar também as preferências Java, que iriam para `/var/www/.java`. Por isso o
+cliente sempre pede a pasta de trabalho, num diálogo escondido atrás da tela de abertura.
+`_automatizar_telas` esconde a abertura, responde e preenche o login com os atalhos do diálogo
+(`Alt+U/P/S/L`), que não dependem da posição da janela. A senha vai pela entrada padrão do `xdotool`,
+fora da lista de processos. Sem senha no cadastro, o login fica na tela para digitar.
+
+**Openbox.** `openbox_rc_unm.xml` maximiza só a janela principal (`title="UNM2000*" type="normal"`). Avisos
+também têm o título "UNM2000", daí o `type`; NE Manager e diálogos mantêm a borda para mover e fechar.
+
+**Limitações.** O que a conta do UNM pode fazer, a sessão pode: `admin` vê "Delete NE" e afins, então use
+um usuário de perfil restrito no cadastro. Cerca de 900 MB por sessão. O contador global de alarmes da
+janela principal fica em 0 (o do NE Manager funciona). Painéis com JxBrowser não abrem.
+A tela de alarmes correntes sem filtro carrega centenas de milhares de linhas pelo proxy.
 
 ## Resize em tempo real e WinBox 4.4 — Adicionado em 22/10/2026
 

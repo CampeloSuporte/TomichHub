@@ -22,6 +22,8 @@ TELA_MAX_W, TELA_MAX_H = 3840, 2160
 class WinboxVNCManager:
     """Gerencia o ciclo de vida do Xvfb, Openbox, x11vnc e WinBox para uma sessão via Web."""
 
+    openbox_rc = OPENBOX_RC
+
     def __init__(self, host, port, user, password, version='4', width=1366, height=768,
                  screen_width=None, screen_height=None, record_path=None):
         self.host = host
@@ -66,7 +68,7 @@ class WinboxVNCManager:
         """Config do Openbox da sessão: a de clientes/openbox_rc.xml (sem borda,
         tudo maximizado) mais margens que limitam a área útil ao recorte
         visível — janela maximizada ocupa exatamente o que o noVNC mostra."""
-        with open(OPENBOX_RC) as f:
+        with open(self.openbox_rc) as f:
             xml = f.read()
         margens = (f"<margins><top>0</top><left>0</left>"
                    f"<right>{self.tela_w - self.width}</right>"
@@ -222,6 +224,27 @@ class WinboxVNCManager:
         if not self._wait_for_port(self.vnc_port):
             logger.warning(f"⏱️ x11vnc na porta {self.vnc_port} não respondeu a tempo, seguindo mesmo assim")
 
+        # 4-5. Programa da sessão (WinBox aqui; ver UnmVNCManager)
+        self._iniciar_app(env)
+
+        # 6. Start ffmpeg (gravação de tela para auditoria) — disparado numa
+        # thread à parte pra não segurar o retorno de start() (e, com isso,
+        # a conexão do cliente ao VNC) atrás do delay de 1.5s que dá tempo
+        # do WinBox terminar de desenhar a UI antes de começar a capturar
+        # (o ícone com fundo preto era causado pelo depth 16bpp do Xvfb, não
+        # pela gravação — ver comentário no Xvfb acima). `self.recording` é
+        # decidido de forma síncrona aqui (só checando se o binário existe),
+        # pra o chamador já saber na hora se a auditoria vai ter vídeo.
+        if self.record_path:
+            if shutil.which("ffmpeg"):
+                self.recording = True
+                threading.Thread(target=self._start_recording, args=(env,), daemon=True).start()
+            else:
+                logger.warning("ffmpeg não encontrado — gravação de tela desabilitada para esta sessão.")
+
+        return self.vnc_port
+
+    def _iniciar_app(self, env):
         # 4. Start WinBox
         target = f"{self.host}:{self.port}"
         if self.version == '3':
@@ -250,23 +273,6 @@ class WinboxVNCManager:
              f"sleep 1 && wmctrl -lG >> /tmp/winbox_debug.log 2>&1"],
             env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
-
-        # 6. Start ffmpeg (gravação de tela para auditoria) — disparado numa
-        # thread à parte pra não segurar o retorno de start() (e, com isso,
-        # a conexão do cliente ao VNC) atrás do delay de 1.5s que dá tempo
-        # do WinBox terminar de desenhar a UI antes de começar a capturar
-        # (o ícone com fundo preto era causado pelo depth 16bpp do Xvfb, não
-        # pela gravação — ver comentário no Xvfb acima). `self.recording` é
-        # decidido de forma síncrona aqui (só checando se o binário existe),
-        # pra o chamador já saber na hora se a auditoria vai ter vídeo.
-        if self.record_path:
-            if shutil.which("ffmpeg"):
-                self.recording = True
-                threading.Thread(target=self._start_recording, args=(env,), daemon=True).start()
-            else:
-                logger.warning("ffmpeg não encontrado — gravação de tela desabilitada para esta sessão.")
-
-        return self.vnc_port
 
     def _start_recording(self, env):
         """Roda em thread separada: espera a UI do WinBox assentar e só

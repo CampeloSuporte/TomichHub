@@ -85,6 +85,7 @@ urlpatterns = [
     path('terminal/link/<uuid:token>/', views.terminal_link_externo, name='terminal_link_externo'),
     path('winbox/<int:acesso_id>/', views.winbox_page, name='winbox_page'),
     path('rdp/<int:acesso_id>/', views.rdp_page, name='rdp_page'),
+    path('unm/<int:acesso_id>/', views.unm_page, name='unm_page'),
     path('webfig-vnc/<int:acesso_id>/', views.webfig_vnc_page, name='webfig_vnc_page'),
 
 

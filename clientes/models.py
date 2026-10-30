@@ -102,6 +102,7 @@ class Acesso(models.Model):
         FTP = 'FTP', 'FTP'
         FTPS = 'FTPS', 'FTPS'
         RDP = 'RDP', 'RDP'
+        UNM = 'UNM', 'UNM2000'
 
     cliente = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='acessos')
     funcao = models.ForeignKey('funcao_equipamento.Funcao_equipamento', on_delete=models.SET_NULL, null=True, blank=True)
@@ -256,6 +257,7 @@ class AcessoSessao(models.Model):
         ('winbox_nativo', 'WinBox Nativo'),
         ('webfig', 'WebFig'),
         ('rdp', 'RDP Web'),
+        ('unm', 'UNM2000 Web'),
     ]
     STATUS = [
         ('ativa', 'Ativa'),

@@ -598,11 +598,11 @@ def template_excel_acessos(request, cliente_id):
     # ── Validação: Protocolo (coluna C = 3) ───────────────────────
     dv_proto = DataValidation(
         type='list',
-        formula1='"SSH,TELNET,HTTP,HTTPS,WINBOX,FTP,FTPS,RDP"',
+        formula1='"SSH,TELNET,HTTP,HTTPS,WINBOX,FTP,FTPS,RDP,UNM"',
         allow_blank=False,
         showDropDown=False,
     )
-    dv_proto.error       = 'Use: SSH, TELNET, HTTP, HTTPS, WINBOX, FTP, FTPS, RDP'
+    dv_proto.error       = 'Use: SSH, TELNET, HTTP, HTTPS, WINBOX, FTP, FTPS, RDP, UNM'
     dv_proto.errorTitle  = 'Protocolo inválido'
     dv_proto.showErrorMessage = True
     ws.add_data_validation(dv_proto)
@@ -697,11 +697,11 @@ def importar_acessos_excel(request, cliente_id):
     # e-mail de credenciais traz o valor do banco e é mantido como está.
     PROTO_CANON = {
         'SSH': 'SSH', 'TELNET': 'Telnet', 'HTTP': 'HTTP', 'HTTPS': 'HTTPS',
-        'WINBOX': 'WINBOX', 'FTP': 'FTP', 'FTPS': 'FTPS', 'RDP': 'RDP',
+        'WINBOX': 'WINBOX', 'FTP': 'FTP', 'FTPS': 'FTPS', 'RDP': 'RDP', 'UNM': 'UNM',
     }
     DEFAULT_PORTS = {
         'SSH': 22, 'TELNET': 23, 'HTTP': 80, 'HTTPS': 443,
-        'FTP': 21, 'FTPS': 990, 'WINBOX': 8291, 'RDP': 3389,
+        'FTP': 21, 'FTPS': 990, 'WINBOX': 8291, 'RDP': 3389, 'UNM': 8080,
     }
 
     arquivo = request.FILES.get('arquivo')
@@ -4777,6 +4777,18 @@ def rdp_page(request, acesso_id):
     }
 
     return render(request, 'winbox.html', context)
+
+
+@login_required(login_url='login')
+@modulo_habilitado_required('acessos')
+def unm_page(request, acesso_id):
+    """Renderiza a página do UNM2000 via Web (ver clientes/unm_vnc.py)."""
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+
+    if not _perms.pode_acessar_acesso(request.user, acesso):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    return render(request, 'winbox.html', {'acesso': acesso, 'vnc_mode': 'unm'})
 
 
 @modulo_habilitado_required('acessos')
