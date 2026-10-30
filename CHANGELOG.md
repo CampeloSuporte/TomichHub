@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-30 (nome do host na topologia)
+
+### Corrigido
+
+- **Renomear um acesso não mudava o nome na topologia.** O nome novo agora chega aos mapas, sub-mapas e grupos
+  do cliente, mesmo com o editor aberto. Rótulo editado à mão no mapa é mantido.
+
+---
+
 ## [Não publicado] — 2026-10-30 (UNM2000 abria como SSH)
 
 ### Corrigido
