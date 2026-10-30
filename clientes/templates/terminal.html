@@ -1350,11 +1350,16 @@
             #sp-pane-onu .op-lupa:hover { border-color:#58a6ff; }
             #sp-pane-onu .op-svc { display:grid; grid-template-columns: 18px 1fr 90px; gap:6px; align-items:center; font-size:10px; color:#c9d1d9; }
             @media (max-width: 560px) { #sp-pane-onu .op-grid { grid-template-columns: 1fr 1fr 1fr; } }
+            /* Script escolhido no menu: a aba mostra só o fluxo dele (opDefinirTela). */
+            #sp-pane-onu[data-op-tela="perfis"] #opBuscarBox,
+            #sp-pane-onu[data-op-tela="perfis"] #opMsg,
+            #sp-pane-onu[data-op-tela="perfis"] #opLote,
+            #sp-pane-onu[data-op-tela="provisionar"] #opPerfisBox { display:none !important; }
         </style>
         <div id="sp-pane-onu" style="flex:1;overflow-y:auto;padding:14px;display:none;flex-direction:column;gap:10px;">
             <div style="font-size:10px;color:#7d8590;">Provisiona ONU/ONT em <b>OLT Huawei</b> (MA5600T/MA5800) — o equipamento é o selecionado na aba Executar. VLAN, line/srv profile e gemport são sugeridos pelo backup (maioria da PON); o ONT-ID é o que a OLT devolver no <code>ont add</code>.</div>
             <div id="opInfo" style="font-size:11px;color:#c9d1d9;"></div>
-            <div style="display:flex;gap:8px;">
+            <div id="opBuscarBox" style="display:flex;gap:8px;">
                 <button class="op-btn" id="opBtnBuscar" onclick="opBuscar()" style="flex:1;">🔍 Buscar ONUs pendentes</button>
             </div>
             <div id="opMsg" style="font-size:11px;"></div>
@@ -3632,6 +3637,7 @@
         window.spCarregarScript = async function() {
             const sel = document.getElementById('spScriptSelect');
             const id = sel?.value;
+            if (!id || !id.startsWith('onu-')) opDefinirTela('');
             if (!id) { spScriptAtual = null; renderParamsForm([]); return; }
             if (id.startsWith('onu-')) {
                 spScriptAtual = null;
@@ -3903,6 +3909,7 @@
         // primeira ONU marcada.
         // Menu SCRIPT → "Criar srv/line profile": abre a aba já na seção.
         async function opAbrirPerfis(modelo) {
+            opDefinirTela('perfis');
             spTab('onu');
             await opCarregarInventario();
             const box = document.getElementById('opPerfisBox');
@@ -3913,8 +3920,17 @@
             document.getElementById(['vlan_fixa', 'roteada'].includes(opPfModeloBase()) ? 'opPfVlanFixa' : 'opPfVlanIn').focus();
         }
 
+        // A aba mostra só o fluxo do script escolhido; sem script ONU, os dois.
+        function opDefinirTela(tela) {
+            const pane = document.getElementById('sp-pane-onu');
+            if (tela) pane.dataset.opTela = tela;
+            else delete pane.dataset.opTela;
+            pane.scrollTop = 0;
+        }
+
         async function opAbrir(selecao) {
             opSelecao = selecao;
+            opDefinirTela('provisionar');
             spTab('onu');
             await opCarregarInventario();
             if (opInv && !document.getElementById('opBtnBuscar').disabled) opBuscar();
