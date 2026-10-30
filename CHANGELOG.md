@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-30 (UNM2000 abria como SSH)
+
+### Corrigido
+
+- **Acessar de um host UNM2000 abria o terminal SSH e dava timeout no proxy.** A versão do
+  `terminal_tab_manager.js` na URL não tinha mudado, e o navegador seguia com o JS antigo. A tela de terminal
+  também passou a encaminhar o UNM2000 para a página dele.
+
+---
+
 ## [Não publicado] — 2026-10-30 (Login e permissão em /ws/proxy/ e /ws/agent/)
 
 ### Segurança

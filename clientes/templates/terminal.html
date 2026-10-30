@@ -2251,6 +2251,11 @@
         }
 
         abrirTerminal(acessoData) {
+            // UNM2000 não é terminal: chega aqui pelo JS antigo em cache da lista de acessos
+            if (String(acessoData.protocolo || '').toUpperCase() === 'UNM') {
+                window.open(`/clientes/unm/${acessoData.id}/`, `UNM_${acessoData.id}`);
+                return;
+            }
             // Trava contra abertura duplicada em rajada do mesmo host: a janela do
             // terminal recebe o acesso por DOIS caminhos (localStorage
             // 'acessoPendente' na carga da página e postMessage NOVA_CONEXAO do
