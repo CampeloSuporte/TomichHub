@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-30 (Permissão nos WebSockets de WinBox, RDP e WebFig)
+
+### Segurança
+
+- **`/ws/vnc/` e `/ws/winbox/` agora checam permissão no acesso.** Só a página checava: abrindo o
+  WebSocket direto pelo id, qualquer login abria a sessão de qualquer host, com a senha salva. A
+  regra é a mesma das páginas (`pode_acessar_acesso`). `docs/winbox_vnc.md` → "Permissão".
+
+---
+
 ## [Não publicado] — 2026-10-30 (UNM2000 Web)
 
 ### Adicionado

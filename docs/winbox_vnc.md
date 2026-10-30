@@ -131,6 +131,12 @@ Binário do WinBox 4: `/opt/crm/static/winbox4/WinBox` (ELF 64-bit)
   WinBox", o que parecia um Winbox Web aberto no lugar do RDP.
 - No card, Winbox Web 4.4 e 3.43 saem pela escolha do **Acessar** ([acessos_protocolos_extras.md](acessos_protocolos_extras.md)).
 
+## Permissão no WebSocket — Corrigido em 30/10/2026
+
+`/ws/vnc/<id>/` (WinBox Web, WebFig, RDP, UNM2000) e `/ws/winbox/` checam `_usuario_pode_acessar` antes de
+criar a sessão de auditoria e subir qualquer processo. A checagem da página não basta: o WebSocket é aberto
+direto pelo id e usa a senha salva. Sem permissão: fecha com código 4003, sem registro em `AcessoSessao`.
+
 ## UNM2000 Web — Adicionado em 30/10/2026
 
 Abre o cliente do UNM2000 (FiberHome) no navegador. Protocolo **UNM2000** no cadastro do acesso
