@@ -3224,15 +3224,17 @@ window.fadeOutRemove = function(el, cb) {
 }
 html.chamada-tremendo { overflow: hidden; }
 html.chamada-tremendo body { animation: chamada-tremer .85s linear; }
-#chamada-alerta { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); width: min(380px, calc(100vw - 32px));
-  z-index: 100000; display: none; align-items: flex-start; gap: 12px; padding: 14px; color: #e6edf3;
-  background: #161b22; border: 1px solid #ffa657; border-radius: 12px; box-shadow: 0 12px 36px rgba(0,0,0,.6); }
+#chamada-alerta { position: fixed; inset: 0; z-index: 100000; display: none; align-items: center; justify-content: center;
+  padding: 16px; background: rgba(0,0,0,.65); animation: chamada-piscar 1s ease-in-out infinite; }
 #chamada-alerta.open { display: flex; }
-#chamada-alerta > i { color: #ffa657; font-size: 1.3rem; margin-top: 2px; }
-#chamada-alerta .ca-texto { flex: 1; min-width: 0; font-size: .86rem; line-height: 1.4; overflow-wrap: anywhere; }
-#chamada-alerta .ca-dica { display: block; color: #7d8590; font-size: .74rem; margin-top: 3px; }
-#chamada-alerta .ca-botoes { display: flex; gap: 8px; margin-top: 10px; }
-#chamada-alerta button { border-radius: 6px; padding: 5px 12px; font-size: .78rem; cursor: pointer;
+@keyframes chamada-piscar { 0%, 100% { box-shadow: inset 0 0 0 6px rgba(255,166,87,.25); } 50% { box-shadow: inset 0 0 0 18px #ffa657; } }
+#chamada-alerta .ca-card { width: min(460px, 100%); display: flex; gap: 16px; padding: 24px; color: #e6edf3;
+  background: #161b22; border: 2px solid #ffa657; border-radius: 14px; box-shadow: 0 16px 48px rgba(0,0,0,.7); }
+#chamada-alerta .ca-card > i { color: #ffa657; font-size: 2.2rem; margin-top: 2px; }
+#chamada-alerta .ca-texto { flex: 1; min-width: 0; font-size: 1.1rem; line-height: 1.4; overflow-wrap: anywhere; }
+#chamada-alerta .ca-dica { display: block; color: #7d8590; font-size: .8rem; margin-top: 6px; }
+#chamada-alerta .ca-botoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+#chamada-alerta button { border-radius: 8px; padding: 9px 18px; font-size: .9rem; font-weight: 600; cursor: pointer;
   background: none; border: 1px solid #30363d; color: #e6edf3; }
 #chamada-alerta button.ca-escutar { background: #238636; border-color: #238636; color: #fff; }
 
@@ -4059,25 +4061,41 @@ document.addEventListener('click', e => {
 // ── Chamar a atenção (recebida) ───────────────────────────────────
 let _chamadaCtx = null;
 let _chamadaTitulo = null;
+let _chamadaToque = null;
+let _chamadaNotif = null;
+const CHAMADA_TOQUES = 10;  // um a cada 3 s: para sozinho em 30 s, o alerta continua
+const _chamadaCanal = 'BroadcastChannel' in window ? new BroadcastChannel('sala-chamada') : null;
+
+function chamadaAudio() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  _chamadaCtx = _chamadaCtx || new Ctx();
+  _chamadaCtx.resume();
+  return _chamadaCtx;
+}
+// O navegador só libera som depois de um gesto na página: guarda o áudio pronto
+// no primeiro clique/tecla, para a chamada tocar mesmo chegando sem interação.
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => {
+  try { chamadaAudio(); } catch (e) {}
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+}, {once: true, capture: true}));
+
 function tocarChamada() {
   try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    _chamadaCtx = _chamadaCtx || new Ctx();
-    _chamadaCtx.resume();
-    const t0 = _chamadaCtx.currentTime;
-    const g = _chamadaCtx.createGain();
-    g.connect(_chamadaCtx.destination);
+    const ctx = chamadaAudio();
+    const t0 = ctx.currentTime;
+    const g = ctx.createGain();
+    g.connect(ctx.destination);
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(0.25, t0 + 0.02);
-    g.gain.setValueAtTime(0.25, t0 + 0.75);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.95);
-    const o = _chamadaCtx.createOscillator();
+    g.gain.exponentialRampToValueAtTime(0.6, t0 + 0.02);
+    g.gain.setValueAtTime(0.6, t0 + 1.1);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.3);
+    const o = ctx.createOscillator();
     o.type = 'square';
-    // Vibração em duas notas alternadas, como o "chamar atenção" do MSN.
-    for (let i = 0; i < 12; i++) o.frequency.setValueAtTime(i % 2 ? 330 : 247, t0 + i * 0.08);
+    // Vibração em duas notas alternadas, agudas para vencer alto-falante de notebook.
+    for (let i = 0; i < 16; i++) o.frequency.setValueAtTime(i % 2 ? 880 : 660, t0 + i * 0.08);
     o.connect(g);
     o.start(t0);
-    o.stop(t0 + 0.96);
+    o.stop(t0 + 1.31);
   } catch (e) {}
 }
 
@@ -4090,7 +4108,10 @@ function tremerTela() {
   setTimeout(() => el.classList.remove('chamada-tremendo'), 900);
 }
 
-function pararTituloChamada() {
+function pararAvisosChamada() {
+  clearInterval(_chamadaToque);
+  _chamadaToque = null;
+  if (_chamadaNotif) { _chamadaNotif.close(); _chamadaNotif = null; }
   if (!_chamadaTitulo) return;
   clearInterval(_chamadaTitulo.timer);
   document.title = _chamadaTitulo.original;
@@ -4099,10 +4120,26 @@ function pararTituloChamada() {
 
 function fecharChamada() {
   document.getElementById('chamada-alerta')?.classList.remove('open');
-  pararTituloChamada();
+  pararAvisosChamada();
+}
+// Respondeu em uma aba: o alerta some das outras também.
+function responderChamada() {
+  fecharChamada();
+  if (_chamadaCanal) _chamadaCanal.postMessage({acao: 'fechar'});
 }
 
-function receberChamada(msg) {
+function notificarChamada(nome) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    // Sempre, não só em aba oculta: com o navegador atrás de outro programa a
+    // aba continua "visível" e a pessoa não veria mais nada.
+    const n = new Notification('🔔 Sala Virtual', {body: `${nome} está chamando sua atenção.`, tag: 'sala-chamada', renotify: true, requireInteraction: true});
+    n.onclick = () => { window.focus(); n.close(); };
+    _chamadaNotif = n;
+  } catch (e) {}
+}
+
+function receberChamada(msg, deOutraAba) {
   const nome = msg.display_name || 'Um colega';
   let el = document.getElementById('chamada-alerta');
   if (!el) {
@@ -4111,38 +4148,50 @@ function receberChamada(msg) {
     el.setAttribute('role', 'alert');
     document.body.appendChild(el);
   }
-  const dica = salaPrivateWith && salaPrivateWith !== msg.from
-    ? 'Você está em conversa privada e não ouve a sala: Escutar encerra a conversa.' : '';
-  el.innerHTML = `<i class="fas fa-bell"></i><div class="ca-texto"><strong></strong> está chamando sua atenção na Sala Virtual.`
+  const bloqueada = 'Notification' in window && Notification.permission === 'denied';
+  const dica = [salaPrivateWith && salaPrivateWith !== msg.from
+      ? 'Você está em conversa privada e não ouve a sala: Escutar encerra a conversa.' : '',
+    bloqueada ? 'As notificações deste site estão bloqueadas: libere no cadeado da barra de endereço para ser avisado com o navegador em segundo plano.' : ''
+  ].filter(Boolean).join(' ');
+  el.innerHTML = `<div class="ca-card"><i class="fas fa-bell"></i><div class="ca-texto"><strong></strong> está chamando sua atenção na Sala Virtual.`
     + (dica ? '<span class="ca-dica"></span>' : '')
-    + `<div class="ca-botoes"><button class="ca-escutar"><i class="fas fa-headphones"></i> Escutar</button><button class="ca-fechar">Agora não</button></div></div>`;
+    + `<div class="ca-botoes"><button class="ca-escutar"><i class="fas fa-headphones"></i> Escutar</button><button class="ca-fechar">Agora não</button></div></div></div>`;
   el.querySelector('strong').textContent = nome;
   if (dica) el.querySelector('.ca-dica').textContent = dica;
-  el.querySelector('.ca-fechar').onclick = fecharChamada;
+  el.querySelector('.ca-fechar').onclick = responderChamada;
   el.querySelector('.ca-escutar').onclick = () => {
     if (salaPrivateWith && salaPrivateWith !== msg.from) wsSend({type: 'private_end'});
+    // Chamada que veio de outra aba: traz a sala para esta, onde a pessoa está.
+    if (!connected) salaOpenWsNoMic();
     panelOpen = true;
     salaRenderBar();
-    fecharChamada();
+    responderChamada();
   };
   el.classList.add('open');
+
+  pararAvisosChamada();
   tocarChamada();
   tremerTela();
-
-  // Aba em segundo plano: sem isso o alerta só seria visto ao voltar para ela.
-  pararTituloChamada();
+  let toques = 1;
+  _chamadaToque = setInterval(() => {
+    if (++toques >= CHAMADA_TOQUES) { clearInterval(_chamadaToque); _chamadaToque = null; }
+    tocarChamada();
+    tremerTela();
+  }, 3000);
   const original = document.title, aviso = `🔔 ${nome} está chamando!`;
   _chamadaTitulo = {
     original,
     timer: setInterval(() => { document.title = document.title === aviso ? original : aviso; }, 1000),
   };
-  if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-    try {
-      const n = new Notification('Sala Virtual', {body: `${nome} está chamando sua atenção.`, tag: 'sala-chamada', renotify: true});
-      n.onclick = () => { window.focus(); n.close(); };
-    } catch (e) {}
-  }
+  if (deOutraAba) return;
+  notificarChamada(nome);
+  // A sala só está ligada numa aba: a pessoa pode estar trabalhando em outra.
+  if (_chamadaCanal) _chamadaCanal.postMessage({acao: 'chamada', display_name: nome, from: msg.from});
 }
+if (_chamadaCanal) _chamadaCanal.onmessage = e => {
+  if (e.data.acao === 'fechar') fecharChamada();
+  else if (e.data.acao === 'chamada') receberChamada(e.data, true);
+};
 // Animação não roda em aba oculta: treme quando a pessoa voltar para ela.
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && document.getElementById('chamada-alerta')?.classList.contains('open')) tremerTela();

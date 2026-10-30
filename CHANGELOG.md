@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-30 (Sala Virtual: chamar atenção mais forte)
+
+### Corrigido
+
+- **Chamar atenção passava despercebido.** A notificação do navegador só saía com a aba oculta, então
+  quem estava com o navegador atrás de outro programa não recebia nada. Agora ela sai sempre e fica
+  até a pessoa responder. O alerta passou a ocupar a tela toda e aparece em todas as abas do
+  atendimento; som mais alto e agudo, repetido com a tremida a cada 3 s por até 30 s. Se as
+  notificações estiverem bloqueadas, o alerta explica como liberar. `docs/ATENDIMENTO.md`.
+
+---
+
 ## [Não publicado] — 2026-10-30 (Sala Virtual: chamar atenção)
 
 ### Adicionado
