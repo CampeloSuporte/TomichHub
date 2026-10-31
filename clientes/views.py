@@ -16,6 +16,8 @@ from .models import Cliente, Acesso, Documento, ArquivoVPN, ImagemTopologia, Cat
 from .models import AcaoL2vpn
 from .models import L2vpnEmpresa, L2vpnTransporte, TransporteEnlace
 from .transportes import links_transporte
+from .transportes_diagrama import gerar_pdf, gerar_png
+from django.utils.text import slugify
 from .models import AcaoOltPon
 from .models import ProxyServer
 from .models import AcessoSessao, AcessoComando, TerminalLinkExterno, AcessoProtocolo
@@ -8659,18 +8661,11 @@ def l2vpn_empresa_deletar(request, empresa_id):
     return JsonResponse({'ok': True})
 
 
-@login_required(login_url='login')
-@require_http_methods(['GET'])
-@modulo_habilitado_required('acessos')
-def l2vpn_empresa_detalhe(request, empresa_id):
+def _l2vpn_empresa_itens(empresa):
     """Todos os transportes L2VPN da empresa, cada um cruzado com o backup
     atual do switch: peers (já resolvidos pro host do outro lado), VLAN, MTU
     e interfaces. Serviço que sumiu do backup volta com `encontrado=False` e
     os dados do retrato tirado na marcação."""
-    empresa = get_object_or_404(L2vpnEmpresa.objects.select_related('cliente'), id=empresa_id)
-    if not _perms.pode_acessar_cliente(request.user, empresa.cliente):
-        return JsonResponse({'error': 'Sem permissão'}, status=403)
-
     transportes = list(empresa.transportes.select_related('acesso').order_by('acesso__tipo', 'tecnologia', 'servico_id'))
     mapa = _l2vpn_mapa_identidade(list(Acesso.objects.filter(cliente=empresa.cliente))) if transportes else {}
     servicos_por_acesso = {}
@@ -8705,13 +8700,46 @@ def l2vpn_empresa_detalhe(request, empresa_id):
                 'interfaces': servico.get('interfaces') or [],
             })
         itens.append(item)
+    return itens
 
+
+@login_required(login_url='login')
+@require_http_methods(['GET'])
+@modulo_habilitado_required('acessos')
+def l2vpn_empresa_detalhe(request, empresa_id):
+    empresa = get_object_or_404(L2vpnEmpresa.objects.select_related('cliente'), id=empresa_id)
+    if not _perms.pode_acessar_cliente(request.user, empresa.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    itens = _l2vpn_empresa_itens(empresa)
     enlaces = [t for t in links_transporte(empresa.cliente) if t['empresa_id'] == empresa.id]
     return JsonResponse({
         'empresa': dict(_l2vpn_empresa_dict(empresa, len(itens)), enlaces=len(enlaces)),
         'transportes': itens,
         'enlaces': enlaces,
     })
+
+
+@login_required(login_url='login')
+@require_http_methods(['GET'])
+@modulo_habilitado_required('acessos')
+def l2vpn_empresa_diagrama(request, empresa_id, formato):
+    """Baixa o diagrama "Transportes: cliente x empresa" em PNG ou PDF."""
+    empresa = get_object_or_404(L2vpnEmpresa.objects.select_related('cliente'), id=empresa_id)
+    if not _perms.pode_acessar_cliente(request.user, empresa.cliente):
+        return JsonResponse({'error': 'Sem permissão'}, status=403)
+
+    titulo = f'Transportes: {empresa.cliente.nome_empresa} x {empresa.nome}'
+    rodape = f'Gerado em {timezone.localtime().strftime("%d/%m/%Y %H:%M")}'
+    itens = _l2vpn_empresa_itens(empresa)
+    enlaces = [t for t in links_transporte(empresa.cliente) if t['empresa_id'] == empresa.id]
+    gerar, tipo = {
+        'png': (gerar_png, 'image/png'),
+        'pdf': (gerar_pdf, 'application/pdf'),
+    }[formato]
+    resposta = HttpResponse(gerar(titulo, itens, enlaces, rodape), content_type=tipo)
+    resposta['Content-Disposition'] = f'attachment; filename="transportes-{slugify(empresa.nome) or empresa.id}.{formato}"'
+    return resposta
 
 
 @login_required(login_url='login')

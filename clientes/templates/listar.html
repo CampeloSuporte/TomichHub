@@ -5034,6 +5034,9 @@ function _l2empRenderLista(){
                 <div class="switch-folder-meta">
                     <span class="l2vpn-chip ${e.transportes ? 'l2vpn-chip-emp' : 'l2vpn-chip-vazio'}">${e.transportes} L2VPN</span>
                     ${e.enlaces ? `<span class="l2vpn-chip l2vpn-chip-vpws"><i class="fas fa-route me-1"></i>${e.enlaces} enlace${e.enlaces !== 1 ? 's' : ''} de transporte</span>` : ''}
+                    ${(e.transportes || e.enlaces) ? `
+                    <a class="btn btn-sm btn-link p-0 ms-2" style="color:var(--text-muted);font-size:.78rem;text-decoration:none;" title="Baixar diagrama dos transportes em imagem" href="/clientes/ipam/l2vpn/empresas/${e.id}/diagrama.png" onclick="event.stopPropagation()"><i class="fas fa-image me-1"></i>Imagem</a>
+                    <a class="btn btn-sm btn-link p-0 ms-2" style="color:var(--text-muted);font-size:.78rem;text-decoration:none;" title="Baixar diagrama dos transportes em PDF" href="/clientes/ipam/l2vpn/empresas/${e.id}/diagrama.pdf" onclick="event.stopPropagation()"><i class="fas fa-file-pdf me-1"></i>PDF</a>` : ''}
                     ${acoes}
                 </div>
             </div>
