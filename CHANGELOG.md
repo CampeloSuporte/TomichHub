@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-10-31 (Diagrama de transportes por empresa)
+
+### Adicionado
+
+- **Documentação de Rede → Empresas: botões Imagem e PDF.** Baixam o desenho "Transportes: cliente x
+  empresa", com os hosts ligados pelos serviços L2VPN marcados e pelos enlaces de transporte da
+  topologia. O mesmo serviço marcado nas duas pontas vira uma linha só, e host com 4 destinos ou mais
+  vira estrela. Serviço sem a outra ponta é listado no fim do arquivo. Detalhes em
+  `docs/topologia_l2vpn.md`.
+
+---
+
 ## [Não publicado] — 2026-10-30 (Sala Virtual: chamar atenção mais forte)
 
 ### Corrigido

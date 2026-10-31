@@ -141,6 +141,7 @@ urlpatterns = [
     path('<int:cliente_id>/ipam/l2vpn/empresas/salvar/', views.l2vpn_empresa_salvar, name='l2vpn_empresa_salvar'),
     path('ipam/l2vpn/empresas/<int:empresa_id>/', views.l2vpn_empresa_detalhe, name='l2vpn_empresa_detalhe'),
     path('ipam/l2vpn/empresas/<int:empresa_id>/deletar/', views.l2vpn_empresa_deletar, name='l2vpn_empresa_deletar'),
+    re_path(r'^ipam/l2vpn/empresas/(?P<empresa_id>\d+)/diagrama\.(?P<formato>png|pdf)$', views.l2vpn_empresa_diagrama, name='l2vpn_empresa_diagrama'),
     path('acessos/<int:acesso_id>/l2vpn-transporte/', views.l2vpn_transporte_marcar, name='l2vpn_transporte_marcar'),
     path('<int:cliente_id>/ipam/transportes/', views.transportes_cliente, name='transportes_cliente'),
     path('<int:cliente_id>/ipam/transportes/salvar/', views.transporte_enlace_salvar, name='transporte_enlace_salvar'),

@@ -644,6 +644,28 @@ equipe edita. Testes em `TransportesTopologiaTest` (`clientes/tests_l2vpn_empres
 
 ---
 
+## Diagrama de transportes da empresa (imagem/PDF) — 2026-10-31
+
+Na sub-aba **Empresas**, cada empresa com transporte tem os botões **Imagem** e
+**PDF**. Eles baixam o desenho "Transportes: cliente x empresa", com uma página só
+e fundo escuro. O PDF mantém o texto selecionável.
+
+- Código: `clientes/transportes_diagrama.py` (puro, sem DB). O layout vira uma lista
+  de primitivas e cada formato só desenha essa lista.
+- Endpoint: `/clientes/ipam/l2vpn/empresas/<id>/diagrama.png` ou `.pdf`, com a
+  mesma permissão de leitura do detalhe da empresa.
+- Fontes dos dados: serviços L2VPN marcados, com os peers do backup atual, e enlaces
+  de transporte da topologia. Nada é guardado.
+- Cada par de hosts vira um bloco. O mesmo serviço marcado nas duas pontas (par + ID)
+  vira uma linha só, com o nome da primeira ponta em ordem alfabética.
+- Host com 4 destinos ou mais (`MIN_DESTINOS_ESTRELA`) vira estrela. Um host pode
+  repetir em vários blocos.
+- Cores: VPLS/VSI em verde, ponto a ponto (VPWS/L2VC) em rosa, enlace em azul.
+- Peer não identificado aparece com o IP. Serviço que sumiu do backup ou está sem peer
+  sai na lista "Sem a outra ponta", no fim do arquivo.
+
+---
+
 ## Limitações conhecidas
 
 - Serviços aparecem conforme o **último backup**: mudança feita no equipamento
