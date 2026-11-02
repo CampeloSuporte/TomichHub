@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-02 (Túneis OpenVPN: cliente não abre conexão com o servidor)
+
+### Segurança
+
+- **Túneis OpenVPN: o lado do cliente não abre mais conexão com o servidor do CRM.** Pelo IP da tun,
+  a rede do cliente alcançava FTP, TFTP, SSH e HTTP do servidor. A tabela nftables `inet crm_tuneis`
+  deixa passar só as respostas ao que o CRM abriu e o ping, em todas as `tun-crm-*`. Detalhes em
+  `docs/tunel_openvpn_mikrotik.md`.
+
+---
+
 ## [Não publicado] — 2026-10-31 (Diagrama de transportes por empresa)
 
 ### Adicionado

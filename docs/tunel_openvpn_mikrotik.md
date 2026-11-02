@@ -104,6 +104,24 @@ Consequências:
   - `origem(tunel)` — para `ssh -b`, `ping -I`, `mtr -a`, `traceroute -s`, e o
     `ProxyEngine(origem=…)` do proxy web.
 
+### O lado do cliente não abre conexão com o servidor (desde 02/11/2026)
+
+O `ip_forward=0` já impede um cliente de chegar em outro, mas não impede de falar com o próprio
+servidor: FTP, TFTP, SSH e HTTP escutam em todos os IPs, inclusive no da tun. A tabela nftables
+`inet crm_tuneis` (`deploy/openvpn/crm-tuneis.nft`) fecha isso em toda `tun-crm-*`, inclusive nas
+instâncias criadas depois. Passam respostas ao que o CRM abriu, TCP sem SYN e ping; o resto cai.
+
+```bash
+install -D -o root -g root -m 0644 deploy/openvpn/crm-tuneis.nft /etc/nftables.d/crm-tuneis.nft
+grep -q crm-tuneis /etc/nftables.conf || printf '\ninclude "/etc/nftables.d/crm-tuneis.nft"\n' >> /etc/nftables.conf
+nft -f /etc/nftables.d/crm-tuneis.nft
+```
+
+Não usar `systemctl reload nftables` para aplicar: o `flush ruleset` do `nftables.conf` apaga a
+tabela do fail2ban. O contador do descarte (`nft list table inet crm_tuneis`) sobe sozinho com os
+broadcasts de descoberta do MikroTik (MNDP, UDP 5678), o que é normal. Firmware por FTP/TFTP entregue
+pelo túnel não funciona mais: o equipamento precisa buscar no IP público, pela internet dele.
+
 ### Redes que o modal já traz (desde 19/10/2026)
 
 O modal **Novo Túnel OpenVPN** abre com **todas as faixas privadas/CGNAT** já declaradas

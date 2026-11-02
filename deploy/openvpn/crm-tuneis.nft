@@ -1,0 +1,28 @@
+#!/usr/sbin/nft -f
+# Quem está atrás de um túnel OpenVPN de cliente não abre conexão com o
+# servidor do CRM: o túnel serve para o CRM chegar no equipamento, não o
+# contrário. Instalar em /etc/nftables.d/ (root:root 0644) e incluir em
+# /etc/nftables.conf. Tabela própria: o `nft -f` deste arquivo troca só ela,
+# sem o `flush ruleset` que apagaria a tabela do fail2ban.
+#
+# O coringa cobre também as instâncias que o CRM criar depois.
+table inet crm_tuneis
+delete table inet crm_tuneis
+
+table inet crm_tuneis {
+	chain input {
+		type filter hook input priority filter; policy accept;
+		iifname "tun-crm-*" jump vindo_do_tunel
+	}
+
+	chain vindo_do_tunel {
+		# Respostas ao que o CRM abriu (SSH, HTTP, SNMP, ping).
+		ct state established,related accept
+		# TCP sem SYN: conexão já aberta antes de o conntrack começar a segui-la
+		# (ao recarregar). Sem listener para ela, não abre nada.
+		tcp flags & (syn | ack) != syn accept
+		# O setup.rsc testa o túnel com ping no IP do servidor.
+		icmp type echo-request accept
+		counter drop
+	}
+}
