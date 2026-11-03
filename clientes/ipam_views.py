@@ -145,6 +145,17 @@ def _json(request):
         return {}
 
 
+def _obter_ou_criar(modelo, defaults=None, **lookup):
+    """get_or_create que tolera duplicata: o IPAM não tem unique em
+    (cliente, ip)/(cliente, rede)/(cliente, numero), e um único par repetido
+    fazia o get() estourar MultipleObjectsReturned e derrubar a análise inteira
+    (500 → "JSON.parse: unexpected character" na tela). Fica com o mais antigo."""
+    obj = modelo.objects.filter(**lookup).order_by('id').first()
+    if obj is not None:
+        return obj, False
+    return modelo.objects.create(**lookup, **(defaults or {})), True
+
+
 def _computar_pai_id(alvo_net, candidatos, excluir_id=None):
     """
     Acha o prefixo mais específico, dentre `candidatos`, que contém `alvo_net`.
@@ -1917,7 +1928,7 @@ def _importar_subnets(cliente, reader, headers):
             if vlan_num:
                 try:
                     vlan_num_int = int(vlan_num)
-                    vlan_obj, _ = IPAMVlan.objects.get_or_create(
+                    vlan_obj, _ = _obter_ou_criar(IPAMVlan,
                         cliente=cliente, numero=vlan_num_int,
                         defaults={'nome': f'VLAN {vlan_num_int}'}
                     )
@@ -1925,7 +1936,7 @@ def _importar_subnets(cliente, reader, headers):
                     pass
 
             # Criar sub-rede (evitar duplicata)
-            obj, created = IPAMSubRede.objects.get_or_create(
+            obj, created = _obter_ou_criar(IPAMSubRede,
                 cliente=cliente, rede=cidr,
                 defaults={
                     'gateway': gateway, 'descricao': desc,
@@ -1996,7 +2007,7 @@ def _importar_ips(cliente, reader, headers):
                     except Exception:
                         pass
 
-            obj, created = IPAMEndereco.objects.get_or_create(
+            obj, created = _obter_ou_criar(IPAMEndereco,
                 cliente=cliente, ip=ip_str,
                 defaults={
                     'hostname': hostname, 'descricao': desc,
@@ -3094,7 +3105,7 @@ def ipam_analisar_backups(request, cliente_id):
         # Criar/atualizar VLANs
         vlan_map = {}
         for v in parsed['vlans']:
-            obj, created = IPAMVlan.objects.get_or_create(
+            obj, created = _obter_ou_criar(IPAMVlan,
                 cliente=c, numero=v['numero'],
                 defaults={'nome': v['nome']}
             )
@@ -3118,7 +3129,7 @@ def ipam_analisar_backups(request, cliente_id):
             cidr_pai = str(pai_net)
             if cidr_pai in prefixo_cache:
                 return prefixo_cache[cidr_pai], False
-            obj, created = IPAMPrefixo.objects.get_or_create(
+            obj, created = _obter_ou_criar(IPAMPrefixo,
                 cliente=c, prefixo=cidr_pai,
                 defaults={'tipo': 'container', 'descricao': f'Bloco {cidr_pai} (auto)'}
             )
@@ -3126,7 +3137,7 @@ def ipam_analisar_backups(request, cliente_id):
             if created:
                 _ancorar_prefixo(c, obj)
             # Garante que o bloco /24 também apareça como IPAMSubRede
-            sub_pai, sub_criada = IPAMSubRede.objects.get_or_create(
+            sub_pai, sub_criada = _obter_ou_criar(IPAMSubRede,
                 cliente=c, rede=cidr_pai,
                 defaults={
                     'prefixo': obj,
@@ -3165,7 +3176,7 @@ def ipam_analisar_backups(request, cliente_id):
                 if vlan_num in vlan_map:
                     vlan_obj = vlan_map[vlan_num]
                 else:
-                    obj, created = IPAMVlan.objects.get_or_create(
+                    obj, created = _obter_ou_criar(IPAMVlan,
                         cliente=c, numero=vlan_num,
                         defaults={'nome': f'VLAN {vlan_num}'}
                     )
@@ -3178,7 +3189,7 @@ def ipam_analisar_backups(request, cliente_id):
             prefixo_pai, _ = _get_or_create_prefixo_pai(net)
 
             # Sub-rede com CIDR real (ex: /30), vinculada ao prefixo pai
-            sub, sub_created = IPAMSubRede.objects.get_or_create(
+            sub, sub_created = _obter_ou_criar(IPAMSubRede,
                 cliente=c, rede=cidr_rede,
                 defaults={
                     'vlan': vlan_obj,
@@ -3200,7 +3211,7 @@ def ipam_analisar_backups(request, cliente_id):
                     sub.save(update_fields=fields)
 
             # IP
-            ip_obj, ip_created = IPAMEndereco.objects.get_or_create(
+            ip_obj, ip_created = _obter_ou_criar(IPAMEndereco,
                 cliente=c, ip=ip_host,
                 defaults={
                     'descricao': desc,
