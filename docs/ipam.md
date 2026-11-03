@@ -376,6 +376,16 @@ estourava `DataError: value too long` no meio de `analisar_backups_ipam` — que
 cliente por cliente, então tudo o que viria depois daquele acesso ficava sem documentar.
 `_parse_mikrotik` corta o nome em 100.
 
+### IP repetido no IPAM derrubava a análise inteira (2026-11-03)
+
+`IPAMEndereco`, `IPAMSubRede`, `IPAMVlan` e `IPAMPrefixo` não têm unique por cliente. Com um só
+par repetido (no Startnet, `198.18.16.65` duas vezes na `198.18.16.64/30`), o `get_or_create`
+estourava `MultipleObjectsReturned`. O botão "Analisar e Documentar" mostrava
+`JSON.parse: unexpected character` (era um 500 em HTML), e a task de 3 em 3 dias morria no meio,
+sem documentar os clientes que vinham depois. Agora a view, a task e a importação CSV usam
+`_obter_ou_criar` (em `ipam_views.py`), que fica com o registro mais antigo quando há repetição.
+A duplicata em si continua no banco: ela não é apagada sozinha.
+
 > Um caso real do porquê da regra: `CGNAT-BORDA` tem 512 `/32` públicos pendurados na bridge
 > `loopback`, todos sem `comment` — os 512 eram documentados com descrição vazia e agora
 > carregam `BORDA_CGNAT_FRIENDS_150`.

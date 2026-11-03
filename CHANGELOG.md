@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-03 (IPAM: auto-documentar via backup quebrava com IP repetido)
+
+### Corrigido
+
+- **IPAM → "Analisar e Documentar" dava `JSON.parse: unexpected character`.** Um IP cadastrado duas
+  vezes no IPAM do cliente fazia a análise estourar (500). A task de 3 em 3 dias também parava nesse
+  cliente e não chegava aos seguintes. Quando há repetição, a análise usa o registro mais antigo.
+  Detalhes em `docs/ipam.md`.
+
+---
+
 ## [Não publicado] — 2026-11-02 (Túneis OpenVPN: cliente não abre conexão com o servidor)
 
 ### Segurança

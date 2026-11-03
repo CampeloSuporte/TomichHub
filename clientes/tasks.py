@@ -525,7 +525,8 @@ def analisar_backups_ipam():
     import ipaddress
     from .models import Cliente, IPAMVlan, IPAMSubRede, IPAMEndereco
     from .ipam_views import (_detect_vendor, _parse_mikrotik, _parse_huawei,
-                             _parse_generic, _descricao_e_so_nome_de_loopback)
+                             _parse_generic, _descricao_e_so_nome_de_loopback,
+                             _obter_ou_criar)
 
     total_clientes   = 0
     total_processados = 0
@@ -591,7 +592,7 @@ def analisar_backups_ipam():
 
             vlan_map = {}
             for v in parsed['vlans']:
-                obj, created = IPAMVlan.objects.get_or_create(
+                obj, created = _obter_ou_criar(IPAMVlan,
                     cliente=cliente, numero=v['numero'],
                     defaults={'nome': v['nome']}
                 )
@@ -619,7 +620,7 @@ def analisar_backups_ipam():
                     if vlan_num in vlan_map:
                         vlan_obj = vlan_map[vlan_num]
                     else:
-                        obj, created = IPAMVlan.objects.get_or_create(
+                        obj, created = _obter_ou_criar(IPAMVlan,
                             cliente=cliente, numero=vlan_num,
                             defaults={'nome': f'VLAN {vlan_num}'}
                         )
@@ -628,7 +629,7 @@ def analisar_backups_ipam():
                         vlan_map[vlan_num] = obj
                         vlan_obj = obj
 
-                sub, sub_created = IPAMSubRede.objects.get_or_create(
+                sub, sub_created = _obter_ou_criar(IPAMSubRede,
                     cliente=cliente, rede=cidr_rede,
                     defaults={'vlan': vlan_obj, 'descricao': desc}
                 )
@@ -638,7 +639,7 @@ def analisar_backups_ipam():
                     sub.vlan = vlan_obj
                     sub.save(update_fields=['vlan'])
 
-                ip_obj, ip_created = IPAMEndereco.objects.get_or_create(
+                ip_obj, ip_created = _obter_ou_criar(IPAMEndereco,
                     cliente=cliente, ip=ip_host,
                     defaults={
                         'descricao': desc, 'hostname': host_label,
