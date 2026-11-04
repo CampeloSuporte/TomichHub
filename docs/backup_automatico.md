@@ -621,3 +621,25 @@ O shell genérico também segue `--More--` (`_RE_MORE_VSOL`). O prompt do ISAM (
 - O shell genérico segue a paginação por `_RE_MORE_GENERICO`. Ela cobre `--More--`, `---- More ----`
   e o `--More ( Press 'Q' to quit )--` da OLT TP-Link, que vem seguido de um byte `\x00`.
 
+---
+
+## Alerta "Erro de Backup" preso num erro antigo — 2026-11-04
+
+O alerta do painel do cliente (`clientes/views.py`, `acessos_com_erro_backup`) olhava só o último
+`BackupLog` do host. Quando o backup seguinte dá "sem mudanças", não nasce registro novo: só a
+`ultima_verificacao` do backup bom é atualizada. Assim, uma queda de um dia (o proxy
+`tunnel_zabbix-startnet`, 24.152.31.3:666, ficou fora em 02/11) deixava o erro "Unable to connect to
+port 666" no alerta para sempre. Foram 20 hosts da Startnet, todos com backup verificado em 04/11.
+
+Agora o erro só aparece se nenhum SUCESSO do host tiver `ultima_verificacao` mais nova que ele.
+
+Na mesma lista havia 7 hosts novos, sem backup nenhum:
+
+- SW-ALENITA, SW-AGROVILA e CRS-OURO-VERDE (MikroTik CRS309): o SSH está na porta 65111, o padrão
+  da Startnet, e eles estavam cadastrados na 22. Cadastro corrigido.
+- SW-ONF-BRASIL: é um CSS610 (SwOS), sem SSH. Não dá para fazer backup por CLI.
+- OLT-VSOL-AGROVILA: só Telnet (porta 23). O SSH aceita a conexão e fecha sem banner, e o backup do
+  CRM é só por SSH.
+- GROVE-CLEANDRO e BRAS_PREFEITURA BRASNORTE: não respondem em nenhuma porta, nem pelo proxy nem pelo
+  servidor.
+

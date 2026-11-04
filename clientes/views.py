@@ -1,5 +1,5 @@
 from django.utils import timezone
-from django.db.models import Q, Count, OuterRef, Subquery
+from django.db.models import Q, Count, Max, OuterRef, Subquery
 from django.core.paginator import Paginator
 from django.shortcuts import render,redirect, get_object_or_404
 from django.views.decorators.http import require_http_methods
@@ -143,6 +143,16 @@ def listar_clientes(request):
     acessos_com_erro_backup = []
     for ac in acessos_do_cliente.filter(ativo=True, backup_habilitado=True):
         ultimo_backup = BackupLog.objects.filter(acesso=ac).order_by('-data_backup').first()
+        # "Sem mudanças" não cria log novo, só atualiza ultima_verificacao do
+        # backup bom. Sem esta checagem, uma queda de 1 dia (proxy da Startnet
+        # fora em 02/11/2026) deixava 20 hosts no alerta para sempre, embora o
+        # backup rodasse certo todo dia depois.
+        if ultimo_backup and ultimo_backup.status == 'ERRO':
+            _verif = BackupLog.objects.filter(
+                acesso=ac, status='SUCESSO',
+            ).aggregate(m=Max('ultima_verificacao'))['m']
+            if _verif and _verif > ultimo_backup.data_backup:
+                ultimo_backup = None
         if ultimo_backup and ultimo_backup.status == 'ERRO':
             acessos_com_erro_backup.append({
                 'tipo': ac.tipo,
