@@ -53,8 +53,26 @@ def _get_zabbix_version(url: str) -> tuple:
 _AUTH_ERROR_MARKERS = ('re-login', 'not authorized', 'session terminated', 'expected another format')
 
 
+# Disjuntor por URL: depois de um timeout/erro de conexão, a mesma URL falha
+# na hora por _ZBX_FORA_TTL s. Sem isso, um Zabbix de cliente oscilando prendia
+# uma thread do Gunicorn por 15 s por chamada (30 s com o fallback
+# history→trends), e uma aba com 6–8 gráficos tomava a maioria das 12 threads
+# — o CRM inteiro ficava lento para todo mundo (04/11/2026).
+_ZBX_FORA_TTL = 30
+
+
+class ZabbixForaDoAr(requests.ConnectionError):
+    """Zabbix não respondeu há pouco; nem tentamos de novo (disjuntor)."""
+
+
+def _chave_fora(url: str) -> str:
+    return f"zbx_fora:{url.rstrip('/')}"
+
+
 def _rpc(url: str, method: str, params: dict, auth: str = None, config=None) -> dict:
     endpoint = f"{url.rstrip('/')}/api_jsonrpc.php"
+    if cache.get(_chave_fora(url)):
+        raise ZabbixForaDoAr(f'{url} não respondeu há pouco (nova tentativa em até {_ZBX_FORA_TTL}s)')
     payload  = {"jsonrpc": "2.0", "method": method, "params": params, "id": 1}
     headers  = {"Content-Type": "application/json"}
 
@@ -65,7 +83,11 @@ def _rpc(url: str, method: str, params: dict, auth: str = None, config=None) -> 
         else:
             payload["auth"] = auth
 
-    resp = requests.post(endpoint, json=payload, headers=headers, timeout=15, verify=False)
+    try:
+        resp = requests.post(endpoint, json=payload, headers=headers, timeout=15, verify=False)
+    except (requests.Timeout, requests.ConnectionError):
+        cache.set(_chave_fora(url), 1, _ZBX_FORA_TTL)
+        raise
     resp.raise_for_status()
     data = resp.json()
 
@@ -130,6 +152,7 @@ def _get_auth_token(config, force_refresh=False):
 
 
 def testar_conexao(config) -> str:
+    cache.delete(_chave_fora(config.url))   # teste manual sempre tenta de verdade
     version = _rpc(config.url, "apiinfo.version", {})
     _get_auth_token(config)
     return version
