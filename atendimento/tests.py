@@ -4628,3 +4628,58 @@ class AtendenteOfflineTest(TestCase):
         r = self.client.post(url, json.dumps({'status': 'xpto'}),
                              content_type='application/json')
         self.assertEqual(r.status_code, 400)
+
+
+class MencaoRecebidaViraNomeTest(TestCase):
+    """No grupo, a marcação chega no texto como "@<lid>" — o chat mostrava
+    esse número cru (grupo DIGICONN, #2043). Agora vira "@Nome"."""
+
+    def setUp(self):
+        from django.core.cache import cache
+        cache.clear()
+        self.conversation = _criar_conversa()
+        self.connection = self.conversation.group.connection
+        self.group_jid = '120363000000000000@g.us'
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_lid_vira_nome_e_sem_nome_vira_telefone(self, mock_client_cls):
+        from atendimento.services import resolver_mencoes_recebidas
+        cli = mock_client_cls.return_value
+        cli.get_contacts_map.return_value = {}
+        cli.get_group_participants_info.return_value = [
+            {'phone': '5521977389673', 'lid': '137245797413081@lid', 'nome': 'Alex'},
+            {'phone': '5527920010085', 'lid': '80862070702186@lid', 'nome': ''},
+        ]
+
+        self.assertEqual(
+            resolver_mencoes_recebidas(self.connection, self.group_jid,
+                                       '@137245797413081 consegue verificar?'),
+            '@Alex consegue verificar?')
+        self.assertEqual(
+            resolver_mencoes_recebidas(self.connection, self.group_jid, '@80862070702186'),
+            '@+55 27 92001-0085')
+        # Desconhecido fica como veio; e a lista sai do cache na 2ª vez.
+        self.assertEqual(
+            resolver_mencoes_recebidas(self.connection, self.group_jid, '@123456789012 oi'),
+            '@123456789012 oi')
+        self.assertEqual(cli.get_group_participants_info.call_count, 1)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_quem_saiu_do_grupo_usa_nome_aprendido(self, mock_client_cls):
+        from atendimento.models import GroupMemberName
+        from atendimento.services import resolver_mencoes_recebidas
+        mock_client_cls.return_value.get_group_participants_info.return_value = []
+        GroupMemberName.objects.create(
+            connection=self.connection, jid='44809544802320@lid', name='Sara')
+
+        self.assertEqual(
+            resolver_mencoes_recebidas(self.connection, self.group_jid, 'oi @44809544802320'),
+            'oi @Sara')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_sem_mencao_nao_consulta_evolution(self, mock_client_cls):
+        from atendimento.services import resolver_mencoes_recebidas
+        self.assertEqual(
+            resolver_mencoes_recebidas(self.connection, self.group_jid, 'email a@b.com 2026'),
+            'email a@b.com 2026')
+        mock_client_cls.assert_not_called()
