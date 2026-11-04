@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-04 (tarefa do cliente para assumir)
+
+### Corrigido
+
+- **Tarefa criada pelo cliente no portal não aparecia para a equipe.** O painel flutuante "Tarefas a
+  concluir" só mostrava as tarefas do próprio usuário. Agora a tarefa aberta pelo portal e ainda sem
+  responsável aparece no painel de todos os atendentes da instância e dos Administradores, com o
+  botão **Assumir**. Quem assume vira o responsável e ela passa a aparecer só no painel dele (se dois
+  clicarem juntos, o segundo recebe "outra pessoa já assumiu"). Detalhes em `docs/TAREFAS.md`.
+
 ## [Não publicado] — 2026-11-04 (enviar arquivo pelo WinBox Web)
 
 ### Adicionado

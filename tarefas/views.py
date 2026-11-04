@@ -154,14 +154,31 @@ def tarefa_editar(request, tarefa_id):
 @backoffice_required
 def tarefa_assumir(request, tarefa_id):
     """Adiciona `request.user` como (mais um) responsável — não substitui
-    quem já estava, pra permitir vários atendentes na mesma tarefa."""
+    quem já estava, pra permitir vários atendentes na mesma tarefa.
+
+    Pelo painel flutuante (fetch, tarefa aberta pelo portal do cliente) é
+    "o primeiro que assumir leva": se outro colega assumiu no meio tempo,
+    devolve `ja_assumida` em vez de entrar junto."""
     tarefa = _get_tarefa_no_escopo(request, tarefa_id)
-    if request.method == 'POST':
+    ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+    if request.method != 'POST':
+        if ajax:
+            return JsonResponse({'success': False, 'error': 'Use POST.'}, status=405)
+        return redirect(_next_url(request))
+    with transaction.atomic():
+        tarefa = Tarefa.objects.select_for_update().get(pk=tarefa.pk)
+        if ajax:
+            if tarefa.status in (Tarefa.STATUS_CONCLUIDA, Tarefa.STATUS_CANCELADA):
+                return JsonResponse({'success': False, 'error': 'A tarefa já está encerrada.'}, status=400)
+            if tarefa.responsaveis.exclude(pk=request.user.pk).exists():
+                return JsonResponse({'success': True, 'ja_assumida': True})
         tarefa.responsaveis.add(request.user)
         if tarefa.status == Tarefa.STATUS_PENDENTE:
             tarefa.status = Tarefa.STATUS_ANDAMENTO
-            tarefa.save(update_fields=['status'])
-        messages.success(request, 'Você entrou como responsável pela tarefa.')
+            tarefa.save(update_fields=['status', 'atualizado_em'])
+    if ajax:
+        return JsonResponse({'success': True, 'ja_assumida': False})
+    messages.success(request, 'Você entrou como responsável pela tarefa.')
     return redirect(_next_url(request))
 
 

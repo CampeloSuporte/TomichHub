@@ -576,3 +576,68 @@ class AvisoTarefasLoginTest(TestCase):
         self.assertEqual(r.status_code, 404)
         self.minha.refresh_from_db()
         self.assertNotEqual(self.minha.status, Tarefa.STATUS_CONCLUIDA)
+
+
+class TarefaDoPortalParaAssumirTest(TestCase):
+    """Tarefa aberta pelo cliente no portal aparece no painel flutuante de
+    toda a equipe do escopo até alguém assumir; depois só para quem assumiu."""
+
+    def setUp(self):
+        self.inst = Instancia.objects.create(nome='Instância A')
+        self.outra_inst = Instancia.objects.create(nome='Instância B')
+        self.op1 = _dar_2fa(User.objects.create_user(username='op1', email='op1@example.com', password='x', is_staff=True))
+        PerfilUsuario.objects.create(usuario=self.op1, role=PerfilUsuario.ROLE_OPERADOR, instancia=self.inst)
+        self.op2 = _dar_2fa(User.objects.create_user(username='op2', email='op2@example.com', password='x', is_staff=True))
+        PerfilUsuario.objects.create(usuario=self.op2, role=PerfilUsuario.ROLE_OPERADOR, instancia=self.inst)
+        self.op_b = _dar_2fa(User.objects.create_user(username='opb', email='opb@example.com', password='x', is_staff=True))
+        PerfilUsuario.objects.create(usuario=self.op_b, role=PerfilUsuario.ROLE_OPERADOR, instancia=self.outra_inst)
+        self.admin = _dar_2fa(User.objects.create_user(username='adm', email='adm@example.com', password='x', is_staff=True))
+        PerfilUsuario.objects.create(usuario=self.admin, role=PerfilUsuario.ROLE_ADMIN)
+        self.portal = User.objects.create_user(username='portal_cli', email='pc@example.com', password='x')
+        self.cliente = _cliente('CLIENTE PORTAL', self.inst)
+        self.tarefa = Tarefa.objects.create(
+            titulo='Verificar acesso NUCLEO', cliente=self.cliente, instancia=self.inst, criado_por=self.portal,
+        )
+
+    def _painel(self, user):
+        self.client.force_login(user)
+        html = self.client.get(reverse('cadastrar_cliente')).content.decode()
+        if 'id="avisoTarefas"' not in html:
+            return ''
+        return html[html.index('id="avisoTarefas"'):html.index('data-tav-expandir')]
+
+    def test_aparece_para_equipe_e_admin_com_assumir(self):
+        for u in (self.op1, self.op2, self.admin):
+            painel = self._painel(u)
+            self.assertIn('Verificar acesso NUCLEO', painel, u.username)
+            self.assertIn('data-tav-assumir', painel)
+        self.assertNotIn('Verificar acesso NUCLEO', self._painel(self.op_b))
+
+    def test_tarefa_criada_pela_equipe_nao_entra_para_os_colegas(self):
+        Tarefa.objects.create(titulo='Criada pelo op2', cliente=self.cliente, instancia=self.inst, criado_por=self.op2)
+        self.assertNotIn('Criada pelo op2', self._painel(self.op1))
+
+    def test_assumir_pelo_painel_some_para_os_outros(self):
+        self.client.force_login(self.op1)
+        r = self.client.post(reverse('tarefa_assumir', args=[self.tarefa.id]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(r.json(), {'success': True, 'ja_assumida': False})
+        self.tarefa.refresh_from_db()
+        self.assertEqual(list(self.tarefa.responsaveis.all()), [self.op1])
+        self.assertEqual(self.tarefa.status, Tarefa.STATUS_ANDAMENTO)
+        painel = self._painel(self.op1)
+        self.assertIn('Verificar acesso NUCLEO', painel)
+        self.assertNotIn('data-tav-assumir', painel)
+        self.assertNotIn('Verificar acesso NUCLEO', self._painel(self.op2))
+        self.assertNotIn('Verificar acesso NUCLEO', self._painel(self.admin))
+
+    def test_segundo_a_assumir_nao_entra_junto(self):
+        self.tarefa.responsaveis.add(self.op1)
+        self.client.force_login(self.op2)
+        r = self.client.post(reverse('tarefa_assumir', args=[self.tarefa.id]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertTrue(r.json()['ja_assumida'])
+        self.assertEqual(list(self.tarefa.responsaveis.all()), [self.op1])
+
+    def test_outra_instancia_nao_assume(self):
+        self.client.force_login(self.op_b)
+        r = self.client.post(reverse('tarefa_assumir', args=[self.tarefa.id]), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(r.status_code, 404)
