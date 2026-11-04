@@ -3275,7 +3275,8 @@ def _executar_comandos_huawei(client, comandos):
 
 # Paginação genérica do shell: "--More--", "---- More ----" e o da TP-Link,
 # "--More ( Press 'Q' to quit )--".
-_RE_MORE_GENERICO = re.compile(r'-{2,}\s*More\b[^\n]{0,40}?-{2,}[ \t]*$', re.IGNORECASE)
+# A TP-Link manda um \x00 depois do marcador.
+_RE_MORE_GENERICO = re.compile(r'-{2,}\s*More\b[^\n]{0,40}?-{2,}[ \t\x00]*$', re.IGNORECASE)
 _RE_MORE_GENERICO_LINHA = re.compile(r'[ \t]*-{2,}\s*More\b[^\n]{0,40}?-{2,}[^\S\n]*(\x08+\s*\x08+)?', re.IGNORECASE)
 _RE_MORE_VSOL = re.compile(r'-{2,}\s*More\s*-{2,}[^\n]*$', re.IGNORECASE)
 _RE_MORE_VSOL_LINHA = re.compile(r'[ \t]*-{2,}\s*More\s*-{2,}[^\S\n]*(\x08+\s*\x08+)?', re.IGNORECASE)
@@ -3479,7 +3480,7 @@ def _ler_ate_silencio(channel, silencio=2.0, max_wait=120):
 _RE_PROMPT_CLI = re.compile(
     r'(?:^|\n)[<\[]?[~*]?[A-Za-z0-9][\w.\-:/@\\]{0,80}(?:>[\w\-]*)?(?:\([^\s()]{0,60}\))?[>#\]][ \t]*$'
 )
-_RE_ANSI_PROMPT = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])|\r')
+_RE_ANSI_PROMPT = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])|[\r\x00]')
 
 # Marca gravada na saída quando o comando não devolveu o prompt: o
 # realizar_backup recusa o backup inteiro (ERRO) em vez de gravar SUCESSO.
