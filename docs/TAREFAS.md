@@ -316,6 +316,26 @@ Testes: `AvisoTarefasLoginTest` (lista só as abertas do responsável e com a at
 aparece em toda navegação, concluir tira da lista, sem tarefa não mostra nada, login do portal
 responsável não vê o painel).
 
+### Tarefa aberta pelo cliente no portal: Assumir pelo painel (2026-11-04)
+
+Caso real: o cliente Sartor criou pelo portal "Verificar acesso a NUCLEO-IRANTXE-2" (tarefa 46,
+sem responsável, já atrasada) e ninguém da equipe viu — o painel só listava tarefas do próprio
+usuário, e o Kanban da aba do cliente só aparece para quem abre aquele cliente.
+
+- **Quem vê:** tarefa em aberto **sem responsável** cujo autor é login do portal (sem
+  `PerfilUsuario` e sem `is_staff`/`is_superuser`, a regra de `perms.get_role`) entra no painel de
+  **toda a equipe do escopo**: `Tarefa.objects.visiveis_para` (Administrador vê todas,
+  Consultor/Operador só as da instância). Função `tarefas_do_portal_para_assumir(user)`. Tarefa sem
+  dono criada pela equipe continua só no painel de quem criou.
+- **Visual:** borda azul, linha "Aberta pelo cliente · ninguém assumiu" e botão **Assumir** no
+  lugar do ✓. O resumo conta "N do cliente para assumir".
+- **Assumir:** `POST /tarefas/<id>/assumir/` via fetch (`X-Requested-With`) devolve JSON. Quem
+  assume vira responsável (Pendente → Em Andamento) e o item fica no painel dele com o ✓ concluir;
+  para os colegas ele some na próxima página (deixa de estar sem responsável). Corrida: com
+  `select_for_update`, se outro já assumiu, responde `ja_assumida` e o item sai do painel com aviso
+  — não entra junto. O formulário do dashboard (sem fetch) continua permitindo vários responsáveis.
+- Testes: `TarefaDoPortalParaAssumirTest`.
+
 ## "abrir tarefa" no comentário interno do atendimento (2026-10-23)
 
 O gatilho já existia (`atendimento.services._pede_abertura_de_tarefa` → Celery
