@@ -50,7 +50,7 @@ class PromptTest(TestCase):
 
     def test_segue_more_da_tplink(self):
         canal = mock.Mock(closed=False)
-        leituras = ["ont add 2 14\n  --More ( Press 'Q' to quit )-- ", '\n  ont add 2 15\nOLT# ']
+        leituras = ["ont add 2 14\n  --More ( Press 'Q' to quit )-- \x00", '\n  ont add 2 15\nOLT# \x00']
         with mock.patch.object(views, '_ler_ate_silencio', side_effect=leituras):
             texto, completo = _ler_ate_prompt(canal, re_more=views._RE_MORE_GENERICO)
         self.assertTrue(completo)

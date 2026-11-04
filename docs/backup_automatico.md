@@ -619,5 +619,5 @@ O shell genérico também segue `--More--` (`_RE_MORE_VSOL`). O prompt do ISAM (
   vinham os 494 KB (testado ao vivo). Agora o `realizar_backup` não liga o keepalive quando o
   fabricante é Huawei e o template tem "olt" no nome.
 - O shell genérico segue a paginação por `_RE_MORE_GENERICO`. Ela cobre `--More--`, `---- More ----`
-  e o `--More ( Press 'Q' to quit )--` da OLT TP-Link.
+  e o `--More ( Press 'Q' to quit )--` da OLT TP-Link, que vem seguido de um byte `\x00`.
 
