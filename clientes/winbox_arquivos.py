@@ -30,7 +30,6 @@ logger = logging.getLogger(__name__)
 
 TAMANHO_MAX = 512 * 1024 * 1024  # .npk/backup/rsc ficam muito abaixo disso
 _TTL = 3600
-_PASTA_TMP = os.path.join(tempfile.gettempdir(), 'crm_winbox_envio')
 _NOME_RUIM = re.compile(r'[\x00-\x1f\x7f/\\]')
 
 
@@ -109,8 +108,9 @@ def iniciar_envio(acesso, arquivo, pasta, usuario, ip_origem=None):
         raise ValueError(f'Arquivo maior que {TAMANHO_MAX // (1024 * 1024)} MB.')
     acesso_s = acesso_ssh(acesso)
 
-    os.makedirs(_PASTA_TMP, mode=0o700, exist_ok=True)
-    fd, tmp = tempfile.mkstemp(prefix='envio_', dir=_PASTA_TMP)
+    # Direto no /tmp, sem subpasta fixa: uma pasta criada por um shell como
+    # root (0700) deixava o gunicorn (www-data) sem gravar → HTTP 500.
+    fd, tmp = tempfile.mkstemp(prefix='crm_winbox_envio_')
     with os.fdopen(fd, 'wb') as f:
         for bloco in arquivo.chunks():
             f.write(bloco)
