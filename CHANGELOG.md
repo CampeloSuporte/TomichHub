@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-04 (Alerta de erro de backup preso num erro antigo)
+
+### Corrigido
+
+- **Painel do cliente: "Erro de Backup" listava host com backup em dia.** Depois de uma falha, os
+  backups "sem mudanças" não criam registro novo, e o alerta continuava mostrando o erro antigo. Isso
+  afetava 20 hosts da Startnet, presos no erro do proxy de 02/11. O alerta agora some quando uma
+  verificação posterior dá certo. Detalhes em `docs/backup_automatico.md`.
+
+---
+
 ## [Não publicado] — 2026-11-04 (Backup cortado no meio era gravado como SUCESSO)
 
 ### Corrigido
