@@ -15,6 +15,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   proxy/VPN/direto), em segundo plano. Exige SSH ativo e policy `ftp` no usuário. Registrado na
   auditoria da sessão. Detalhes em `docs/winbox_vnc.md` (Enviar arquivo para o Files).
 
+### Corrigido
+
+- **Envio dava "HTTP 500" no primeiro uso.** O temporário ia para uma pasta fixa em `/tmp` que um
+  teste rodado como root criou com 0700; o gunicorn (www-data) não gravava nela. Agora o temporário
+  vai direto no `/tmp`, sem subpasta.
+
 ## [Não publicado] — 2026-11-04 (excluir usuário)
 
 ### Adicionado
