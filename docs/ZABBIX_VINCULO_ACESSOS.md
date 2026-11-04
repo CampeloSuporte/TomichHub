@@ -67,6 +67,14 @@ por IP: é o caso típico da escolha manual.
 - Zabbix inalcançável: o erro fica em cache por 5 min (`zbx_vinc_indisp:<id>`)
   para a aba não prender um worker do gunicorn tentando todos os candidatos a
   cada abertura.
+- Disjuntor no `services._rpc` (04/11/2026): timeout ou erro de conexão numa URL
+  marca `zbx_fora:<url>` no Redis por 30 s, e as chamadas seguintes à mesma URL
+  falham na hora (`ZabbixForaDoAr`, subclasse de `requests.ConnectionError`).
+  Motivo: o Gunicorn tem só 12 threads (3 workers × 4). Com o Zabbix do cliente
+  90 oscilando, cada gráfico prendia uma thread por 30 s (`history.get` 15 s +
+  fallback `trend.get` 15 s), e uma única aba com 6–8 gráficos deixava o CRM
+  inteiro lento (atendimento chegou a 5,6 s). `testar_conexao` limpa a marca
+  antes de testar.
 - Lista de hosts para o seletor: cache de 5 min.
 
 ## Rotas

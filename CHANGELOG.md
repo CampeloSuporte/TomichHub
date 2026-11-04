@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-04 (CRM lento quando o Zabbix de um cliente oscila)
+
+### Corrigido
+
+- **CRM inteiro lento enquanto alguém via os gráficos de um cliente com Zabbix instável.** Cada
+  gráfico esperava 15 s no `history.get` e mais 15 s no `trend.get`, ocupando uma das 12 threads do
+  Gunicorn. Uma aba com 6–8 gráficos tomava a maioria delas e o resto do sistema ficava na fila
+  (atendimento chegou a 5,6 s às 12:26). Agora, depois de um timeout, a mesma URL do Zabbix falha na
+  hora por 30 s. Detalhes em `docs/ZABBIX_VINCULO_ACESSOS.md` (Desempenho).
+
+---
+
 ## [Não publicado] — 2026-11-04 (iDRAC pelo proxy abria em branco)
 
 ### Corrigido
