@@ -564,3 +564,10 @@ L2VPN/BGP/IPAM.
 Core CPD Sinop, 266 SW-BRAVIN (GREEN), 722 SW-HU-CORE (Friends), 231 e 890 SW Huawei Villaggio
 Business, 753 OLT CORE SORRISO 01 (Alta Rádio), e as FiberHome 1729 OLT FB COLNIZA e 1132 OLT-NBR
 (`show startup-config` vazio). Testes: `clientes/tests_backup_incompleto.py`.
+
+**Complemento (mesmo dia): FiberHome "system busy".** Ao regerar, a OLT FB COLNIZA respondeu
+`system busy,please try later. / Command executes failed.` ao `show startup-config`, e esse 1 KB era
+gravado como SUCESSO. Isso valia para 15 FiberHome, várias assim desde 14/10. Agora o shell genérico
+espera 20 s e repete o comando até 3 vezes. Se continuar ocupada, `_motivo_backup_incompleto`
+(`_RE_CLI_OCUPADA`) recusa o backup como ERRO.
+
