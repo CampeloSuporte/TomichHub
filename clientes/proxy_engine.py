@@ -439,8 +439,11 @@ class ProxyEngine:
     _ssh_pool = SSHConnectionPool()
 
     def __init__(self, proxy_server=None, device_username: str = None, device_password: str = None,
-                 origem: str = None):
+                 origem: str = None, forcar_tunel: bool = False):
         self.proxy_server    = proxy_server
+        # Roteador avulso da aba Ferramentas: IP público também sai pelo proxy
+        # SSH do cliente — o CRM nunca abre conexão direta para um alvo digitado.
+        self.forcar_tunel    = forcar_tunel
         self.device_username = device_username or ''
         self.device_password = device_password or ''
         # IP do túnel OpenVPN do cliente: o caminho direto sai com essa origem
@@ -597,7 +600,7 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
         target_port = parsed.port or (443 if parsed.scheme == 'https' else 80)
         scheme      = parsed.scheme
 
-        use_tunnel = bool(self.proxy_server and self.is_private_ip(target_host))
+        use_tunnel = bool(self.proxy_server and (self.forcar_tunel or self.is_private_ip(target_host)))
 
         if use_tunnel:
             return self._via_tunnel(method, url, target_host, target_port, scheme,
@@ -1183,7 +1186,7 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
     # device, vira o proxy_base daquela porta — o link continua dentro do proxy
     # em vez de escapar para o IP privado, que o navegador do operador não
     # alcança.
-    _RX_PROXY_BASE = re.compile(r'^(/clientes/acessos/\d+/web)/(\d+)/(https?)$')
+    _RX_PROXY_BASE = re.compile(r'^(/clientes/acessos/(?:\d+|r\d+-[0-9.]+)/web)/(\d+)/(https?)$')
 
     @classmethod
     def _rewrite_urls_absolutas(cls, html: str, proxy_base: str, target_host: str,

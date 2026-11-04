@@ -16,6 +16,7 @@ abrindo páginas do tomich.com.br num iframe; agora são nativas do CRM e os tes
 | Teste de Portas | proxy | `bash /dev/tcp` com `timeout 3` (aberta / fechada / filtrada) → `nc -z` |
 | Teste de Qualidade | proxy | `ping -i 0.2` (10–100 pacotes): latência, jitter, perda e nota |
 | Calculadora IP | servidor | `ipaddress` do Python (IPv4 e IPv6, sem proxy) |
+| Acessar Roteador | proxy | túnel SSH (`direct-tcpip`) até IP:porta — abre a interface web numa aba nova |
 
 ## Peças
 
@@ -49,4 +50,31 @@ Vários proxies (ex.: Sartor) não têm `mtr`: o MTR cai no traceroute com 3
 sondas por salto e mostra a perda por salto calculada pelos `*`. Para o MTR
 completo, instalar `mtr-tiny` no proxy.
 
-Testes: `clientes/tests_ferramentas_rede.py`.
+## Acessar Roteador (04/11/2026)
+
+Sub-aba para abrir a interface web de um equipamento da rede do cliente **sem
+cadastrar um Acesso**: digita IP (IPv4), porta (opcional) e protocolo
+(Automático / HTTPS / HTTP) e clica **Acessar**.
+
+- `views.roteador_web_sondar` — `POST /clientes/ferramentas-rede/roteador/`
+  (JSON `{cliente_id, ip, porta, protocolo}`). Mesma permissão das outras
+  ferramentas (`_cliente_das_ferramentas`). Faz um `GET /` pelo proxy: no modo
+  automático tenta HTTPS e, sem resposta, HTTP (sem porta: 443 e depois 80).
+  Qualquer resposta HTTP, até 401/404, conta — quem respondeu foi o equipamento.
+  Devolve a URL do proxy; o front abre a aba já no clique (senão o bloqueador de
+  popup barra) e só troca o endereço depois. Os 6 últimos alvos ficam em
+  `localStorage` por cliente (chips "Recentes").
+- `views.proxy_web_roteador` — `/clientes/acessos/r<cliente_id>-<ip>/web/<porta>/<scheme>/…`.
+  O formato é o mesmo do proxy web dos Acessos de propósito: toda a reescrita do
+  `ProxyEngine` (links, redirects, cookies, WebSocket) funciona sem caso especial.
+  A parte comum das duas views é `_proxy_web_executar`. Cookies do equipamento
+  ficam isolados como `r<cliente>_<ip com _>_NOME`. Login é o da tela do próprio
+  roteador (ou Basic digitado no navegador); não há credencial de cadastro.
+- **Sempre pelo proxy SSH do cliente** (`ProxyEngine(forcar_tunel=True)`), IP
+  público inclusive: o alvo foi digitado, então o CRM nunca abre conexão direta
+  a partir do servidor. Sem proxy ativo, só funciona se um túnel VPN do cliente
+  cobrir o IP (`vpn_cobre_ip`); senão dá erro.
+- WebSocket: `ws/proxy/r<cliente>-<ip>/…` no `WebSocketProxyConsumer`, mesma
+  regra (permissão das Ferramentas, sempre pelo proxy/túnel).
+
+Testes: `clientes/tests_ferramentas_rede.py`, `clientes/tests_acessar_roteador.py`.

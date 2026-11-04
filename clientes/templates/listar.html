@@ -6339,6 +6339,7 @@ function getCsrfToken(){
                     <li class="nav-item"><a class="nav-link" href="#" onclick="testeRedeSubAba(event, 'portas')"><i class="fas fa-network-wired me-1"></i>Portas</a></li>
                     <li class="nav-item"><a class="nav-link" href="#" onclick="testeRedeSubAba(event, 'qualidade')"><i class="fas fa-signal me-1"></i>Qualidade</a></li>
                     <li class="nav-item"><a class="nav-link" href="#" onclick="testeRedeSubAba(event, 'calculadora')"><i class="fas fa-calculator me-1"></i>Calculadora IP</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#" onclick="testeRedeSubAba(event, 'roteador')"><i class="fas fa-globe me-1"></i>Acessar Roteador</a></li>
                     <li class="nav-item">
                         <a class="nav-link" href="#" onclick="testeRedeSubAba(event, 'conectividade')">
                             📡 Conectividade
@@ -11906,6 +11907,8 @@ function getCsrfToken(){
         if (ferramenta) frSelecionar(aba);
         document.getElementById('tr-sub-conectividade').style.display = aba === 'conectividade' ? '' : 'none';
         document.getElementById('tr-sub-dns').style.display = aba === 'dns' ? '' : 'none';
+        document.getElementById('tr-sub-roteador').style.display = aba === 'roteador' ? '' : 'none';
+        if (aba === 'roteador') rtAoAbrir();
     }
 
     /* ─── Conectividade ──────────────────────────────────────── */

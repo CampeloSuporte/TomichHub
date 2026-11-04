@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-04 (acessar roteador pela aba Ferramentas)
+
+### Adicionado
+
+- **Acessar Roteador na aba Ferramentas.** Nova sub-aba: digita o IP e a porta de um equipamento da
+  rede do cliente e o CRM abre a interface web dele numa aba nova, pelo proxy SSH do cliente (ou
+  túnel VPN que cubra o IP), sem precisar cadastrar um Acesso. No modo Automático tenta HTTPS e,
+  sem resposta, HTTP (sem porta: 443 e depois 80). Usa o mesmo motor do acesso web dos cards
+  (reescrita de links, cookies isolados, WebSocket). Mesmas permissões das outras Ferramentas; o
+  CRM nunca conecta direto do servidor ao IP digitado. Detalhes em `docs/FERRAMENTAS_REDE_CLIENTE.md`.
+
 ## [Não publicado] — 2026-11-04 (tarefa do cliente para assumir)
 
 ### Corrigido

@@ -1979,6 +1979,29 @@ def cliente_dashboard(request):
     return redirect(f"{reverse('listar_clientes')}?id={cliente.id}")
 
 
+def _cliente_das_ferramentas(user, cliente_id):
+    """(cliente, None) se o usuário pode usar as Ferramentas de Rede desse
+    cliente, senão (None, mensagem). Equipe precisa enxergar o cliente; login do
+    portal, estar vinculado a ele. Vale a liberação do módulo "testes_rede"."""
+    try:
+        cliente_id = int(cliente_id or 0)
+    except (TypeError, ValueError):
+        cliente_id = 0
+    if _perms.is_backoffice(user):
+        cliente = Cliente.objects.filter(id=cliente_id).first()
+        if not cliente or not _perms.pode_acessar_cliente(user, cliente):
+            return None, 'Sem permissão.'
+        liberado = _perms.is_admin(user) or _perms.ferramenta_habilitada(user, 'testes_rede')
+    else:
+        cliente = Cliente.objects.filter_by_usuario_vinculado(user).filter(id=cliente_id).first()
+        if not cliente:
+            return None, 'Sem permissão.'
+        liberado = _perms.portal_pode_usar_ferramenta(user, 'testes_rede')
+    if not liberado:
+        return None, 'As Ferramentas de Rede não estão liberadas para o seu usuário.'
+    return cliente, None
+
+
 @login_required(login_url='login')
 @require_http_methods(['POST'])
 def ferramenta_rede_cliente(request):
@@ -2001,22 +2024,9 @@ def ferramenta_rede_cliente(request):
     if not isinstance(body, dict):
         return JsonResponse({'error': 'Requisição inválida.'}, status=400)
 
-    try:
-        cliente_id = int(body.get('cliente_id') or 0)
-    except (TypeError, ValueError):
-        cliente_id = 0
-    if _perms.is_backoffice(request.user):
-        cliente = Cliente.objects.filter(id=cliente_id).first()
-        if not cliente or not _perms.pode_acessar_cliente(request.user, cliente):
-            return JsonResponse({'error': 'Sem permissão.'}, status=403)
-        liberado = _perms.is_admin(request.user) or _perms.ferramenta_habilitada(request.user, 'testes_rede')
-    else:
-        cliente = Cliente.objects.filter_by_usuario_vinculado(request.user).filter(id=cliente_id).first()
-        if not cliente:
-            return JsonResponse({'error': 'Sem permissão.'}, status=403)
-        liberado = _perms.portal_pode_usar_ferramenta(request.user, 'testes_rede')
-    if not liberado:
-        return JsonResponse({'error': 'As Ferramentas de Rede não estão liberadas para o seu usuário.'}, status=403)
+    cliente, erro = _cliente_das_ferramentas(request.user, body.get('cliente_id'))
+    if erro:
+        return JsonResponse({'error': erro}, status=403)
 
     ferramenta = body.get('ferramenta')
     if ferramenta == 'calculadora':
@@ -7528,12 +7538,6 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
         if p_no_slash != bp and not p_no_slash.startswith(bp + '/'):
             path = base_path + path
 
-    qs = request.GET.urlencode()
-    full_path = path + ('?' + qs if qs else '')
-
-    proxy_base = f'/clientes/acessos/{acesso_id}/web/{porta_web}/{scheme}'
-    target_url = f"{scheme}://{target_host}:{porta_web}{full_path}"
-
     # ── Proxy SSH se IP privado ───────────────────────────────────────
     proxy_srv = None
     origem_vpn = None
@@ -7555,15 +7559,39 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
                     400
                 )
 
-    # ── Executar Requisição via ProxyEngine ───────────────────────────
     # Credenciais digitadas no navegador (Basic — ver _digest_para_basic)
     # têm prioridade sobre as do cadastro: é o que o usuário acabou de
     # informar, e o cadastro pode estar desatualizado.
     dev_user, dev_senha = _credenciais_basic_do_browser(request) or (acesso.usuario, acesso.senha)
+    return _proxy_web_executar(
+        request, proxy_srv=proxy_srv, origem_vpn=origem_vpn,
+        target_host=target_host, porta_web=porta_web, scheme=scheme, path=path,
+        url_base=f'/clientes/acessos/{acesso_id}/web', cookie_prefix=f'a{acesso_id}_',
+        dev_user=dev_user, dev_senha=dev_senha, ref=f'acesso={acesso_id}',
+    )
+
+
+def _proxy_web_executar(request, *, proxy_srv, origem_vpn, target_host, porta_web,
+                        scheme, path, url_base, cookie_prefix, dev_user, dev_senha,
+                        ref, forcar_tunel=False):
+    """Parte comum do proxy web: repassa a requisição do navegador ao
+    equipamento (via proxy SSH ou túnel VPN), reescreve o conteúdo para dentro
+    de `url_base` (".../web", sem porta/scheme) e isola os cookies do
+    equipamento com `cookie_prefix`. Usada pelo acesso web do card
+    (proxy_web_acesso) e pelo "Acessar roteador" da aba Ferramentas
+    (proxy_web_roteador)."""
+    from urllib.parse import urlparse as _up, urljoin as _uj
+
+    qs = request.GET.urlencode()
+    full_path = path + ('?' + qs if qs else '')
+    proxy_base = f'{url_base}/{porta_web}/{scheme}'
+    target_url = f"{scheme}://{target_host}:{porta_web}{full_path}"
+
     engine = ProxyEngine(proxy_srv,
                          device_username=dev_user,
                          device_password=dev_senha,
-                         origem=origem_vpn)
+                         origem=origem_vpn,
+                         forcar_tunel=forcar_tunel)
 
     _django_cookies = {'sessionid', 'csrftoken', 'messages'}
     raw_cookie = request.META.get('HTTP_COOKIE', '')
@@ -7571,7 +7599,6 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
     # Only forward cookies belonging to THIS acesso (stripped of prefix).
     # This prevents AIROS_SESSIONID (or any session cookie) from device A
     # bleeding into requests to device B.
-    cookie_prefix = f'a{acesso_id}_'
     filtered_cookie_parts = []
     for c in raw_cookie.split(';'):
         c = c.strip()
@@ -7650,7 +7677,7 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
             if not p.netloc or redir_host == target_host:
                 redir_path = p.path or '/'
                 redir_qs   = ('?' + p.query) if p.query else ''
-                new_loc = (f'/clientes/acessos/{acesso_id}/web/{redir_port}/{redir_scheme}'
+                new_loc = (f'{url_base}/{redir_port}/{redir_scheme}'
                            f'{redir_path}{redir_qs}')
                 response = HttpResponse(status=resp.status_code)
                 response['Location'] = new_loc
@@ -7716,8 +7743,8 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
         if request.META.get('HTTP_AUTHORIZATION', '').lower().startswith('basic '):
             # Diagnóstico de "digito a senha certa e não loga": registra quem
             # tentou e o que o equipamento respondeu (nunca a senha).
-            logger.warning("[PROXY_WEB] acesso=%s login digitado usuario=%r → %s %s",
-                           acesso_id, dev_user, resp.status_code, path)
+            logger.warning("[PROXY_WEB] %s login digitado usuario=%r → %s %s",
+                           ref, dev_user, resp.status_code, path)
 
         # Bundle com hash no nome vem do device com max-age de 30 dias: guardado
         # assim, uma mudança na reescrita não chegaria a quem já abriu o acesso.
@@ -7733,7 +7760,7 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
         return django_resp
 
     except Exception as e:
-        logger.exception("Erro no ProxyEngine acesso_id=%s: %s", acesso_id, e)
+        logger.exception("Erro no ProxyEngine %s: %s", ref, e)
         return _falha_proxy_web(
             ProxyEngine.get_error_page(f"Erro interno no proxy: <code>{str(e)}</code>"),
             500
@@ -7778,6 +7805,133 @@ def _falha_proxy_web(html, status):
     resp = HttpResponse(html, content_type='text/html', status=status)
     resp['X-CRM-Proxy-Falha'] = '1'
     return resp
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ACESSAR ROTEADOR (aba Ferramentas): IP + porta digitados, abre a interface
+# web do equipamento pelo proxy SSH (ou túnel VPN) do cliente, sem cadastro.
+#
+# A URL segue o formato do proxy dos Acessos — /clientes/acessos/<alvo>/web/
+# <porta>/<scheme>/ — com <alvo> = "r<cliente_id>-<ip>". Assim toda a reescrita
+# do ProxyEngine (links, cookies isolados, WebSocket) vale sem mudança.
+# ─────────────────────────────────────────────────────────────────────────────
+
+_RX_ALVO_ROTEADOR = re.compile(r'^r(\d+)-([0-9.]+)$')
+
+
+def alvo_roteador(user, alvo):
+    """(cliente, ip) do token "r<cliente_id>-<ip>" se o usuário pode usar as
+    Ferramentas desse cliente; senão (None, mensagem)."""
+    m = _RX_ALVO_ROTEADOR.match(alvo or '')
+    if not m:
+        return None, 'Endereço inválido.'
+    try:
+        ip = str(ipaddress.IPv4Address(m.group(2)))
+    except ValueError:
+        return None, 'IP inválido.'
+    cliente, erro = _cliente_das_ferramentas(user, m.group(1))
+    if erro:
+        return None, erro
+    return (cliente, ip), None
+
+
+def caminho_roteador(cliente, ip):
+    """Proxy SSH ativo do cliente ou, sem ele, o túnel VPN que cobre o IP.
+    Devolve (proxy_srv, origem_vpn, erro). Nunca conexão direta do CRM: o alvo
+    foi digitado, e o roteador está na rede do cliente."""
+    proxy_srv = ProxyServer.objects.filter(cliente=cliente, ativo=True).first()
+    if proxy_srv:
+        return proxy_srv, None, None
+    tunel_vpn = vpn_cobre_ip(cliente, ip)
+    if tunel_vpn:
+        from . import vpn_rota
+        return None, vpn_rota.origem(tunel_vpn), None
+    return None, None, (f'Nenhum proxy SSH ativo neste cliente e nenhum túnel VPN '
+                        f'cobrindo {ip}. Configure um dos dois na aba "Túneis".')
+
+
+@login_required(login_url='login')
+@require_http_methods(['POST'])
+def roteador_web_sondar(request):
+    """Testa o roteador digitado na aba Ferramentas e devolve a URL do proxy.
+    Protocolo "auto" tenta HTTPS e, sem resposta, HTTP. Qualquer resposta HTTP
+    (até 401/404) conta: quem respondeu foi o equipamento."""
+    try:
+        body = json.loads(request.body or b'{}')
+    except ValueError:
+        return JsonResponse({'error': 'Requisição inválida.'}, status=400)
+    if not isinstance(body, dict):
+        return JsonResponse({'error': 'Requisição inválida.'}, status=400)
+    cliente, erro = _cliente_das_ferramentas(request.user, body.get('cliente_id'))
+    if erro:
+        return JsonResponse({'error': erro}, status=403)
+
+    try:
+        ip = str(ipaddress.IPv4Address(str(body.get('ip') or '').strip()))
+    except ValueError:
+        return JsonResponse({'error': 'Informe um IPv4 válido (ex.: 192.168.88.1).'}, status=400)
+    porta_txt = str(body.get('porta') or '').strip()
+    protocolo = body.get('protocolo') or 'auto'
+    if protocolo not in ('auto', 'https', 'http'):
+        return JsonResponse({'error': 'Protocolo inválido.'}, status=400)
+    if porta_txt:
+        if not porta_txt.isdigit() or not 1 <= int(porta_txt) <= 65535:
+            return JsonResponse({'error': 'Porta inválida (1 a 65535).'}, status=400)
+        porta = int(porta_txt)
+    else:
+        porta = None
+
+    proxy_srv, origem_vpn, erro = caminho_roteador(cliente, ip)
+    if erro:
+        return JsonResponse({'error': erro}, status=400)
+
+    if protocolo == 'auto':
+        tentativas = [('https', porta or 443), ('http', porta or 80)]
+    else:
+        tentativas = [(protocolo, porta or (443 if protocolo == 'https' else 80))]
+
+    engine = ProxyEngine(proxy_srv, origem=origem_vpn, forcar_tunel=True)
+    tentadas = []
+    for scheme, p in tentativas:
+        tentadas.append(f'{scheme}://{ip}:{p}')
+        try:
+            resp = engine.do_request('GET', f'{scheme}://{ip}:{p}/', headers={}, timeout=(6, 12))
+        except Exception as e:
+            logger.info('roteador_web_sondar cliente=%s %s://%s:%s: %s', cliente.id, scheme, ip, p, e)
+            resp = None
+        if resp is not None:
+            return JsonResponse({
+                'ok': True, 'scheme': scheme, 'porta': p, 'status': resp.status_code,
+                'url': f'/clientes/acessos/r{cliente.id}-{ip}/web/{p}/{scheme}/',
+                'via': proxy_srv.nome if proxy_srv else 'túnel VPN',
+            })
+    via = f'pelo proxy {proxy_srv.nome}' if proxy_srv else 'pelo túnel VPN'
+    return JsonResponse({'error': f'Sem resposta {via} em ' + ' nem '.join(tentadas) + '.'}, status=502)
+
+
+@csrf_exempt
+@login_required(login_url='login')
+def proxy_web_roteador(request, alvo, porta, scheme, path=''):
+    """Proxy web do "Acessar roteador" — mesmo motor do acesso web do card."""
+    resolvido, erro = alvo_roteador(request.user, alvo)
+    if erro:
+        return HttpResponse(erro, status=403)
+    cliente, ip = resolvido
+    proxy_srv, origem_vpn, erro = caminho_roteador(cliente, ip)
+    if erro:
+        return _falha_proxy_web(ProxyEngine.get_error_page(erro), 400)
+    if not path:
+        path = '/'
+    dev = _credenciais_basic_do_browser(request) or ('', '')
+    return _proxy_web_executar(
+        request, proxy_srv=proxy_srv, origem_vpn=origem_vpn,
+        target_host=ip, porta_web=int(porta), scheme=scheme, path=path,
+        url_base=f'/clientes/acessos/{alvo}/web',
+        cookie_prefix=f'r{cliente.id}_{ip.replace(".", "_")}_',
+        dev_user=dev[0], dev_senha=dev[1], ref=f'roteador={alvo}',
+        forcar_tunel=True,
+    )
 
 
 

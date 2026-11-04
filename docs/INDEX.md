@@ -95,7 +95,7 @@
 | Documentação | Tema |
 |--------------|------|
 | **[ZABBIX_VINCULO_ACESSOS.md](ZABBIX_VINCULO_ACESSOS.md)** | Casamento, métricas, gráficos, cadastro, SNMP, portas, versões, armadilhas |
-| **[FERRAMENTAS_REDE_CLIENTE.md](FERRAMENTAS_REDE_CLIENTE.md)** | Ping, traceroute, MTR, portas, qualidade e calculadora IP do portal do cliente, executados pelo proxy |
+| **[FERRAMENTAS_REDE_CLIENTE.md](FERRAMENTAS_REDE_CLIENTE.md)** | Ping, traceroute, MTR, portas, qualidade, calculadora IP e Acessar Roteador (interface web por IP:porta) do cliente, executados pelo proxy |
 | **[monitoramento.md](monitoramento.md)** | Botão Clonar no painel de gráficos |
 
 ---

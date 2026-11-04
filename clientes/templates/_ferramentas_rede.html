@@ -3,6 +3,8 @@
   MTR, Portas e Qualidade rodam no proxy SSH do cliente; Calculadora IP é local.
   Backend: clientes/ferramentas_rede.py + views.ferramenta_rede_cliente.
   O seletor de ferramenta são as sub-abas de #testeRedeSubTabs (listar.html).
+  "Acessar Roteador" (#tr-sub-roteador): IP + porta digitados, abre a interface
+  web pelo proxy do cliente (views.roteador_web_sondar + proxy_web_roteador).
 {% endcomment %}
 <div id="fr-painel" class="fr-painel">
     {% if proxy_ferramentas %}
@@ -44,6 +46,51 @@
         <pre id="fr-saida" class="fr-saida"></pre>
     </details>
 </div>
+
+<div id="tr-sub-roteador" class="fr-painel" style="display:none;">
+    {% if proxy_ferramentas %}
+    <p class="fr-origem"><i class="fas fa-server me-1"></i> A interface abre pela rede do cliente, via proxy <strong>{{ proxy_ferramentas.nome }}</strong>.</p>
+    {% else %}
+    <p class="fr-origem fr-origem-aviso"><i class="fas fa-exclamation-triangle me-1"></i> Sem proxy SSH ativo: só funciona se um túnel VPN do cliente cobrir o IP.</p>
+    {% endif %}
+    <h6 class="fr-titulo"><i class="fas fa-globe me-2"></i>Acessar Roteador</h6>
+    <form id="rt-form" class="fr-form" onsubmit="rtAcessar(event)" autocomplete="off">
+        <div class="fr-campo rt-c-ip">
+            <label for="rt-ip">IP do roteador</label>
+            <input id="rt-ip" class="form-control" placeholder="ex.: 192.168.88.1" maxlength="15" spellcheck="false" autocapitalize="off" inputmode="decimal" required>
+        </div>
+        <div class="fr-campo rt-c-porta">
+            <label for="rt-porta">Porta</label>
+            <input id="rt-porta" class="form-control" type="number" min="1" max="65535" inputmode="numeric" placeholder="443 / 80">
+        </div>
+        <div class="fr-campo rt-c-proto">
+            <label for="rt-proto">Protocolo</label>
+            <select id="rt-proto" class="form-select">
+                <option value="auto">Automático (HTTPS, depois HTTP)</option>
+                <option value="https">HTTPS</option>
+                <option value="http">HTTP</option>
+            </select>
+        </div>
+        <div class="fr-campo fr-c-botao">
+            <button id="rt-acessar" type="submit" class="btn btn-primary w-100"><i class="fas fa-external-link-alt me-1"></i> Acessar</button>
+        </div>
+    </form>
+    <p class="fr-dica">Abre em nova aba a página de gerência do equipamento. Sem porta, tenta 443 (HTTPS) e depois 80 (HTTP). O login é feito na própria tela do roteador.</p>
+    <div id="rt-status" class="fr-status" role="status" aria-live="polite"></div>
+    <div id="rt-recentes" class="rt-recentes"></div>
+</div>
+
+<style>
+@media (min-width: 576px) {
+    .rt-c-ip { grid-column: span 4; }
+    .rt-c-porta { grid-column: span 2; }
+    .rt-c-proto { grid-column: span 4; }
+}
+.rt-recentes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.rt-recentes .rt-chip { background: #161b22; border: 1px solid #30363d; color: var(--text-light); border-radius: 14px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
+.rt-recentes .rt-chip:hover { border-color: #58a6ff; }
+.rt-recentes .rt-rot { font-size: 12px; color: var(--text-muted); align-self: center; }
+</style>
 
 <style>
 .fr-titulo { color: var(--primary-green); font-size: 15px; margin: 4px 0 12px; }
@@ -267,6 +314,74 @@ function frRenderizar(j) {
         wrap.hidden = false;
         // Sem tabela (formato que o parser não reconheceu), a saída crua é o resultado.
         wrap.open = !html || (['traceroute', 'mtr', 'portas'].includes(j.ferramenta) && !(res && res.length));
+    }
+}
+
+/* ─── Acessar Roteador ─────────────────────────────────────── */
+const RT_URL = "{% url 'roteador_web_sondar' %}";
+const RT_CHAVE_RECENTES = 'crm_rt_recentes_' + FR_CLIENTE_ID;
+let rtRodando = false;
+
+function rtLerRecentes() {
+    try { return JSON.parse(localStorage.getItem(RT_CHAVE_RECENTES) || '[]').slice(0, 6); } catch (e) { return []; }
+}
+function rtGuardarRecente(item) {
+    try {
+        const lista = rtLerRecentes().filter(r => !(r.ip === item.ip && r.porta === item.porta && r.protocolo === item.protocolo));
+        lista.unshift(item);
+        localStorage.setItem(RT_CHAVE_RECENTES, JSON.stringify(lista.slice(0, 6)));
+    } catch (e) {}
+}
+function rtAoAbrir() {
+    const box = document.getElementById('rt-recentes');
+    const lista = rtLerRecentes();
+    box.innerHTML = lista.length ? '<span class="rt-rot">Recentes:</span>' + lista.map((r, i) =>
+        `<button type="button" class="rt-chip" data-i="${i}">${frEsc(r.ip)}${r.porta ? ':' + frEsc(r.porta) : ''}${r.protocolo !== 'auto' ? ' · ' + frEsc(r.protocolo.toUpperCase()) : ''}</button>`).join('') : '';
+    box.querySelectorAll('.rt-chip').forEach(b => b.onclick = () => {
+        const r = lista[+b.dataset.i];
+        document.getElementById('rt-ip').value = r.ip;
+        document.getElementById('rt-porta').value = r.porta || '';
+        document.getElementById('rt-proto').value = r.protocolo || 'auto';
+    });
+    document.getElementById('rt-ip').focus();
+}
+
+async function rtAcessar(ev) {
+    ev.preventDefault();
+    if (rtRodando) return;
+    const ip = document.getElementById('rt-ip').value.trim();
+    const porta = document.getElementById('rt-porta').value.trim();
+    const protocolo = document.getElementById('rt-proto').value;
+    const st = document.getElementById('rt-status'), btn = document.getElementById('rt-acessar');
+    st.className = 'fr-status';
+    // Aba aberta já no clique: depois do await o navegador bloquearia o popup.
+    const janela = window.open('about:blank', '_blank');
+    if (janela) { janela.opener = null; janela.document.write('<p style="font-family:sans-serif;color:#888">Conectando ao roteador pelo proxy do cliente…</p>'); }
+    rtRodando = true; btn.disabled = true;
+    st.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Testando ' + frEsc(ip) + (protocolo === 'auto' ? ' em HTTPS e HTTP…' : '…');
+    try {
+        const r = await fetch(RT_URL, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': FR_CSRF, 'Accept': 'application/json'},
+            body: JSON.stringify({cliente_id: FR_CLIENTE_ID, ip, porta, protocolo}),
+        });
+        const tipo = r.headers.get('content-type') || '';
+        if (r.redirected || !tipo.includes('application/json')) throw new Error('Sua sessão expirou. Recarregue a página e entre novamente.');
+        const j = await r.json();
+        if (!r.ok || j.error) throw new Error(j.error || ('Erro ' + r.status));
+        rtGuardarRecente({ip, porta, protocolo});
+        rtAoAbrir();
+        const rotulo = `${j.scheme.toUpperCase()} ${ip}:${j.porta}`;
+        st.innerHTML = `<i class="fas fa-check-circle fr-ok me-1"></i> Abrindo ${frEsc(rotulo)} via ${frEsc(j.via)}. `
+            + `<a href="${frEsc(j.url)}" target="_blank" rel="noopener">Abrir de novo</a>`;
+        if (janela && !janela.closed) janela.location.href = j.url;
+        else window.open(j.url, '_blank');
+    } catch (e) {
+        if (janela && !janela.closed) janela.close();
+        st.className = 'fr-status erro';
+        st.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> ' + frEsc(e.message || 'Falha ao acessar o roteador.');
+    } finally {
+        rtRodando = false; btn.disabled = false;
     }
 }
 
