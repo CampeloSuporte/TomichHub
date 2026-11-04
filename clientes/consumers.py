@@ -2738,15 +2738,32 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             qs          = self.scope.get('query_string', b'').decode()
             full_path   = path + ('?' + qs if qs else '')
 
-            acesso      = Acesso.objects.get(id=acesso_id)
-            if not _perms.pode_acessar_acesso(user, acesso):
-                logger.warning(f"[WS_PROXY] acesso={acesso_id} negado para {user.get_username()}")
-                self.close(code=4003)
-                return
-            target_host = acesso.host.strip()
-            if '://' in target_host:
-                from urllib.parse import urlparse as _up
-                target_host = _up(target_host).hostname
+            if acesso_id.startswith('r'):
+                # "Acessar roteador" da aba Ferramentas (views.proxy_web_roteador):
+                # sem Acesso cadastrado, alvo = r<cliente_id>-<ip>, sempre pelo
+                # proxy/túnel do cliente, IP público inclusive.
+                from .views import alvo_roteador
+                resolvido, erro = alvo_roteador(user, acesso_id)
+                if erro:
+                    logger.warning(f"[WS_PROXY] roteador={acesso_id} negado para {user.get_username()}: {erro}")
+                    self.close(code=4003)
+                    return
+                cliente_alvo, target_host = resolvido
+                cookie_prefix = f'r{cliente_alvo.id}_{target_host.replace(".", "_")}_'
+                forcar_tunel = True
+            else:
+                acesso      = Acesso.objects.get(id=acesso_id)
+                if not _perms.pode_acessar_acesso(user, acesso):
+                    logger.warning(f"[WS_PROXY] acesso={acesso_id} negado para {user.get_username()}")
+                    self.close(code=4003)
+                    return
+                cliente_alvo = acesso.cliente
+                target_host = acesso.host.strip()
+                if '://' in target_host:
+                    from urllib.parse import urlparse as _up
+                    target_host = _up(target_host).hostname
+                cookie_prefix = f'a{acesso_id}_'
+                forcar_tunel = False
 
             # Mesmo esquema de isolamento de cookies do proxy HTTP (views.py
             # proxy_web_acesso): browser guarda cookies do device como
@@ -2754,7 +2771,6 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             # PVEAuthCookie do Proxmox), o upgrade da WebSocket é rejeitado
             # e o noVNC recebe "Falha ao conectar-se ao servidor".
             _django_cookies = {'sessionid', 'csrftoken', 'messages'}
-            cookie_prefix   = f'a{acesso_id}_'
             filtered_cookie_parts = []
             for name, val in self.scope.get('cookies', {}).items():
                 if name in _django_cookies:
@@ -2769,9 +2785,9 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                 is_private = False
 
             connect_host, connect_port = target_host, porta
-            if is_private:
+            if is_private or forcar_tunel:
                 proxy_srv = ProxyServer.objects.filter(
-                    cliente=acesso.cliente, ativo=True
+                    cliente=cliente_alvo, ativo=True
                 ).first()
                 if proxy_srv:
                     from .proxy_engine import TunnelPortCache, SSHConnectionPool
@@ -2786,11 +2802,11 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
                     # mas a WebSocket da console morria com "Connection failed".
                     from .views import vpn_cobre_ip
                     from . import vpn_rota
-                    tunel_vpn = vpn_cobre_ip(acesso.cliente, target_host)
+                    tunel_vpn = vpn_cobre_ip(cliente_alvo, target_host)
                     if not tunel_vpn:
                         raise Exception(
-                            f'IP privado {target_host} sem proxy SSH ativo e sem '
-                            f'túnel VPN cobrindo esse IP ({acesso.cliente})'
+                            f'IP {target_host} sem proxy SSH ativo e sem '
+                            f'túnel VPN cobrindo esse IP ({cliente_alvo})'
                         )
                     # Tabela isolada do túnel: relay local com a origem dele
                     connect_host, connect_port = vpn_rota.endpoint_local(tunel_vpn, target_host, porta)

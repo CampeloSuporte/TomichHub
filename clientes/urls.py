@@ -12,6 +12,7 @@ from . import onu_prov_views as onuv
 urlpatterns = [
     path('dashboard/', views.cliente_dashboard, name='cliente_dashboard'),
     path('ferramentas-rede/', views.ferramenta_rede_cliente, name='ferramenta_rede_cliente'),
+    path('ferramentas-rede/roteador/', views.roteador_web_sondar, name='roteador_web_sondar'),
     path('listar/', views.listar_clientes, name='listar_clientes'),
     path('cadastrar/', views.cadastrar_cliente, name='cadastrar_cliente'),
     path('cadastrar_acesso/', views.cadastrar_acesso, name='cadastrar_acesso'),
@@ -164,6 +165,8 @@ urlpatterns = [
 
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/(?P<porta>[0-9]+)/(?P<scheme>https?)(?P<path>/.*)?$', views.proxy_web_acesso, name='proxy_web_acesso'),
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/?$', views.proxy_web_acesso, name='proxy_web_acesso_legacy'),
+    # Acessar roteador (aba Ferramentas): alvo = r<cliente_id>-<ip>, sem cadastro
+    re_path(r'^acessos/(?P<alvo>r[0-9]+-[0-9.]+)/web/(?P<porta>[0-9]+)/(?P<scheme>https?)(?P<path>/.*)?$', views.proxy_web_roteador, name='proxy_web_roteador'),
 
 
     # ── Túnel OpenVPN (aba Túneis) ───────────────────────────────────────
