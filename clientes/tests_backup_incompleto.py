@@ -63,6 +63,11 @@ class MotivoIncompletoTest(TestCase):
         # Só vale para Huawei: Datacom/ZTE não terminam em "return".
         self.assertEqual(_motivo_backup_incompleto(CORTADA, False), '')
 
+    def test_fiberhome_ocupada(self):
+        saida = ("\n" + "=" * 60 + "\nComando: show startup-config\n" + "=" * 60 + "\n"
+                 "\nsystem busy,please try later.\nCommand executes failed.\nOLT-X# \n")
+        self.assertIn('system busy', _motivo_backup_incompleto(saida, False))
+
     def test_marca_de_prompt_ausente(self):
         saida = COMPLETA + f"{MARCA_SAIDA_INCOMPLETA}: o prompt não voltou depois de 'x'\n"
         self.assertIn('prompt', _motivo_backup_incompleto(saida, False))

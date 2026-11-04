@@ -18,6 +18,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **"Sem mudanças" escondia o backup completo.** A comparação era feita com qualquer backup antigo:
   a config completa casava com um de julho, e o cortado continuava como o mais recente. Agora compara
   só com o último. Detalhes em `docs/backup_automatico.md`.
+- **OLTs FiberHome "ocupadas" gravavam só o erro como backup.** A resposta `system busy, please try
+  later` era aceita como configuração (15 OLTs). Agora o CRM espera e tenta de novo até 3 vezes. Se a
+  OLT continuar ocupada, o backup vira ERRO.
 
 ---
 

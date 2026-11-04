@@ -2620,6 +2620,7 @@ _RE_CMD_PAGINACAO = re.compile(
 )
 
 
+_RE_CLI_OCUPADA = re.compile(r'system busy[^\n]*|Command executes failed\.?', re.IGNORECASE)
 _RE_CMD_CONFIG_HUAWEI = re.compile(r'^display\s+current(-configuration)?\b', re.IGNORECASE)
 
 
@@ -2632,6 +2633,12 @@ def _motivo_backup_incompleto(output, is_huawei=False):
       "return". Sem ele, a leitura parou no meio (S6730/S5732/MA5800).
     """
     texto = output or ''
+    # FiberHome ocupada (outra sessão salvando/lendo a config) responde isto
+    # ao "show startup-config" — 1 KB de erro era gravado como SUCESSO
+    # (OLT FB COLNIZA, 04/11/2026).
+    m = _RE_CLI_OCUPADA.search(texto)
+    if m:
+        return f"o equipamento recusou o comando: '{m.group(0).strip()}'"
     if MARCA_SAIDA_INCOMPLETA in texto:
         m = re.search(re.escape(MARCA_SAIDA_INCOMPLETA) + r': (.+)', texto)
         return (m.group(1).strip() if m else 'o prompt não voltou') + \
@@ -3356,6 +3363,15 @@ def _executar_comandos_shell_generico(client, comandos):
             # startup-config" das FiberHome (1,8 MB na OLT FB COLNIZA) saía
             # vazio quando a OLT demorava a começar a responder.
             resultado, completo = _ler_ate_prompt(channel, silencio=3.0)
+            # FiberHome ocupada ("system busy,please try later") — espera e
+            # repete; se continuar ocupada, _motivo_backup_incompleto recusa.
+            for _tentativa in range(3):
+                if not (completo and _RE_CLI_OCUPADA.search(resultado or '')):
+                    break
+                print(f"    ⏳ equipamento ocupado — nova tentativa em 20s ({_tentativa + 1}/3)")
+                time.sleep(20)
+                channel.send(comando + '\n')
+                resultado, completo = _ler_ate_prompt(channel, silencio=3.0)
 
             if resultado:
                 resultado = limpar_ansi(resultado)
