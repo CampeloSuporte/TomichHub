@@ -31,6 +31,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   `Backup Nokia ISAM` e `Backup OLT TP-Link` usam o roteiro de cada CLI. Antes esses equipamentos
   nunca tinham backup de verdade.
 
+### Corrigido (complemento)
+
+- **OLT Huawei MA5800 cortava a config em toda madrugada.** O keepalive SSH do CRM fazia a OLT
+  derrubar a sessão no meio do backup. Ele foi desligado para as OLTs Huawei.
+- **OLT TP-Link parava na primeira página.** O CRM agora segue o `--More ( Press 'Q' to quit )--`.
+
 ---
 
 ## [Não publicado] — 2026-11-03 (IPAM: auto-documentar via backup quebrava com IP repetido)

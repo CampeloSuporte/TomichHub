@@ -2410,7 +2410,12 @@ def realizar_backup(acesso, usuario=None):
                         raise
                     print(f"⚠️ Handshake SSH falhou ({_e}) — tentando novamente em 3s...")
                     time.sleep(3)
-            client.get_transport().set_keepalive(10)
+            # OLT Huawei (MA5800) derruba a sessão ao receber o keepalive do
+            # paramiko no meio de um "display current-configuration" longo: a
+            # OLT CORE SORRISO 01 cortava em 137 KB de 494 KB toda madrugada
+            # (sem keepalive vem completa — testado ao vivo em 04/11/2026).
+            if not (is_huawei and 'olt' in _nome_tpl):
+                client.get_transport().set_keepalive(10)
             print(f"✅ Conectado!")
 
             print(f"\n{'='*80}")
@@ -3268,6 +3273,10 @@ def _executar_comandos_huawei(client, comandos):
     return output
 
 
+# Paginação genérica do shell: "--More--", "---- More ----" e o da TP-Link,
+# "--More ( Press 'Q' to quit )--".
+_RE_MORE_GENERICO = re.compile(r'-{2,}\s*More\b[^\n]{0,40}?-{2,}[ \t]*$', re.IGNORECASE)
+_RE_MORE_GENERICO_LINHA = re.compile(r'[ \t]*-{2,}\s*More\b[^\n]{0,40}?-{2,}[^\S\n]*(\x08+\s*\x08+)?', re.IGNORECASE)
 _RE_MORE_VSOL = re.compile(r'-{2,}\s*More\s*-{2,}[^\n]*$', re.IGNORECASE)
 _RE_MORE_VSOL_LINHA = re.compile(r'[ \t]*-{2,}\s*More\s*-{2,}[^\S\n]*(\x08+\s*\x08+)?', re.IGNORECASE)
 
@@ -3396,7 +3405,7 @@ def _executar_comandos_shell_generico(client, comandos):
             # Até o prompt voltar: com só 3 s de silêncio o "show
             # startup-config" das FiberHome (1,8 MB na OLT FB COLNIZA) saía
             # vazio quando a OLT demorava a começar a responder.
-            resultado, completo = _ler_ate_prompt(channel, silencio=3.0, re_more=_RE_MORE_VSOL)
+            resultado, completo = _ler_ate_prompt(channel, silencio=3.0, re_more=_RE_MORE_GENERICO)
             # FiberHome ocupada ("system busy,please try later") — espera e
             # repete; se continuar ocupada, _motivo_backup_incompleto recusa.
             for _tentativa in range(3):
@@ -3405,10 +3414,10 @@ def _executar_comandos_shell_generico(client, comandos):
                 print(f"    ⏳ equipamento ocupado — nova tentativa em 20s ({_tentativa + 1}/3)")
                 time.sleep(20)
                 channel.send(comando + '\n')
-                resultado, completo = _ler_ate_prompt(channel, silencio=3.0, re_more=_RE_MORE_VSOL)
+                resultado, completo = _ler_ate_prompt(channel, silencio=3.0, re_more=_RE_MORE_GENERICO)
 
             if resultado:
-                resultado = _RE_MORE_VSOL_LINHA.sub('', resultado)
+                resultado = _RE_MORE_GENERICO_LINHA.sub('', resultado)
                 resultado = limpar_ansi(resultado)
                 linhas = resultado.split('\n')
                 if linhas and comando.strip() in linhas[0]:

@@ -48,6 +48,14 @@ class PromptTest(TestCase):
         self.assertTrue(completo)
         self.assertIn('interface GE0/0/1', texto)
 
+    def test_segue_more_da_tplink(self):
+        canal = mock.Mock(closed=False)
+        leituras = ["ont add 2 14\n  --More ( Press 'Q' to quit )-- ", '\n  ont add 2 15\nOLT# ']
+        with mock.patch.object(views, '_ler_ate_silencio', side_effect=leituras):
+            texto, completo = _ler_ate_prompt(canal, re_more=views._RE_MORE_GENERICO)
+        self.assertTrue(completo)
+        canal.send.assert_called_once_with(' ')
+
     def test_sem_prompt_devolve_incompleto(self):
         canal = mock.Mock(closed=False)
         with mock.patch.object(views, '_ler_ate_silencio', side_effect=['vlan 1\n'] + [''] * 50), \

@@ -612,3 +612,12 @@ O shell genérico também segue `--More--` (`_RE_MORE_VSOL`). O prompt do ISAM (
 - Rádios Mimosa com template A10: sem CLI de configuração.
 - Senha/SSH: OLT VSOL NOVO HORIZONTE (senha), Intelbras 4840E (`No existing session`).
 
+**Complemento: keepalive e paginação TP-Link.**
+
+- A OLT CORE SORRISO 01 (MA5800) derrubava a sessão quando recebia o keepalive SSH de 10 s do
+  paramiko no meio do `display current-configuration`. Com keepalive, cortava em 137 KB; sem ele,
+  vinham os 494 KB (testado ao vivo). Agora o `realizar_backup` não liga o keepalive quando o
+  fabricante é Huawei e o template tem "olt" no nome.
+- O shell genérico segue a paginação por `_RE_MORE_GENERICO`. Ela cobre `--More--`, `---- More ----`
+  e o `--More ( Press 'Q' to quit )--` da OLT TP-Link.
+
