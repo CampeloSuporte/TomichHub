@@ -571,3 +571,44 @@ gravado como SUCESSO. Isso valia para 15 FiberHome, várias assim desde 14/10. A
 espera 20 s e repete o comando até 3 vezes. Se continuar ocupada, `_motivo_backup_incompleto`
 (`_RE_CLI_OCUPADA`) recusa o backup como ERRO.
 
+---
+
+## Backup só com erro da CLI gravado como SUCESSO — 2026-11-04
+
+A varredura de 741 backups achou **54 hosts** cujo último "SUCESSO" não tinha configuração, só a
+recusa do equipamento. Exemplos: `%% Invalid command`, `bad command name show`, `Bad UserName or Bad
+Password`, `% Unknown command.`, `Only tacacs authenticated users…`. Somando erro, prompt e banner, a
+saída passava dos 40 caracteres de `_backup_tem_conteudo`.
+
+**Correção na checagem:**
+
+- `_backup_tem_conteudo` descarta as linhas que casam com `_RE_LINHA_ERRO_CLI` e o prompt sozinho
+  (`_RE_PROMPT_CLI`) antes de contar. Na varredura, 40 backups passaram a ser recusados e nenhum com
+  config real (a menor config legítima, um MikroTik, tem 690 caracteres úteis).
+- `_motivo_backup_incompleto` dá o motivo legível de usuário sem privilégio (`_RE_SEM_PRIVILEGIO`).
+  Exemplos: FiberHome com TACACS, `enable` → "Only tacacs authenticated users can use this command"
+  ou "you do not have improve the privilege". Isso se resolve no equipamento/TACACS, não no CRM.
+- O retry de 20 s do shell genérico vale só para `system busy`. `Command executes failed` sozinho
+  não é ocupação.
+
+**Fluxos novos, pelo nome do template:**
+
+| Template | Equipamento | Roteiro |
+|---|---|---|
+| `Backup OLT Intelbras G16` | Intelbras G16 | executor VSOL (`g16` no nome): senha de novo no shell, `enable`, `show running-config` |
+| `Backup Nokia ISAM` | Nokia ISAM FX-4 | shell genérico: `environment inhibit-alarms mode batch`, `info configure flat` (2 MB, minutos, pausas) |
+| `Backup OLT TP-Link` | OLT TP-Link | shell genérico: `enable`, `show current-config` (não existe `show running-config`) |
+
+O shell genérico também segue `--More--` (`_RE_MORE_VSOL`). O prompt do ISAM (`typ:isadmin>#`,
+`typ:isadmin>environment#`) entrou no `_RE_PROMPT_CLI`.
+
+**Ficaram sem solução no CRM (backup agora aparece como ERRO, com o motivo):**
+
+- Intelbras 8820i: não tem `show running-config`/`enable`. Só `backup file`/`backup network`, que
+  exportam por arquivo e exigem outro fluxo.
+- FiberHome com usuário sem privilégio (Sartor: JUARA, TIBAJI, ITANHANGA, NOVA HORIZONTE, PORTO DOS
+  GAUCHOS, TAPURAH, FONTANILHAS, JAPURANA, COTRIGUACU, AMERICANA; Infoline: TRVD, STED, SHPG…).
+- FiberHome JUINA: `cli not have enough memory` (memória da OLT).
+- Rádios Mimosa com template A10: sem CLI de configuração.
+- Senha/SSH: OLT VSOL NOVO HORIZONTE (senha), Intelbras 4840E (`No existing session`).
+

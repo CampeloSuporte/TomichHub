@@ -21,6 +21,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **OLTs FiberHome "ocupadas" gravavam só o erro como backup.** A resposta `system busy, please try
   later` era aceita como configuração (15 OLTs). Agora o CRM espera e tenta de novo até 3 vezes. Se a
   OLT continuar ocupada, o backup vira ERRO.
+- **Backup só com mensagem de erro do equipamento aparecia como SUCESSO (54 hosts).** Respostas como
+  "Invalid command", "Unknown command", "senha incorreta" e "sem privilégio" agora viram ERRO, com o
+  motivo. Quando falta privilégio, a mensagem diz que o usuário precisa ser liberado no equipamento.
+
+### Adicionado
+
+- **Backup de Intelbras G16, Nokia ISAM e OLT TP-Link.** Os templates `Backup OLT Intelbras G16`,
+  `Backup Nokia ISAM` e `Backup OLT TP-Link` usam o roteiro de cada CLI. Antes esses equipamentos
+  nunca tinham backup de verdade.
 
 ---
 
