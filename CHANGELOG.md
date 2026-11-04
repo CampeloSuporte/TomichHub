@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-04 (enviar arquivo pelo WinBox Web)
+
+### Adicionado
+
+- **Enviar arquivo do PC para o Files do MikroTik pela tela do WinBox Web.** Botão 📁 (ou arrastar o
+  arquivo para a tela), pasta opcional, barra de progresso. O WinBox roda no servidor e não enxerga
+  o PC, então o CRM grava no equipamento por SFTP na porta SSH do host (mesmo caminho do backup:
+  proxy/VPN/direto), em segundo plano. Exige SSH ativo e policy `ftp` no usuário. Registrado na
+  auditoria da sessão. Detalhes em `docs/winbox_vnc.md` (Enviar arquivo para o Files).
+
 ## [Não publicado] — 2026-11-04 (excluir usuário)
 
 ### Adicionado

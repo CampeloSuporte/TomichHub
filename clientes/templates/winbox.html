@@ -121,6 +121,71 @@
         }
         #wb-clip-panel .wb-clip-colar:hover { background: #d29922; color: #0a0a0a; }
 
+        /* Envio de arquivo para o Files do MikroTik (so no modo WinBox) */
+        #wb-file-btn {
+            position: fixed;
+            bottom: 14px; right: 60px;
+            width: 38px; height: 38px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(10,10,10,0.82);
+            border: 1px solid #333; border-radius: 8px;
+            color: #aaa; font-size: 17px;
+            cursor: pointer; z-index: 150; user-select: none;
+            transition: background 0.15s, color 0.15s;
+        }
+        #wb-file-btn:hover { background: rgba(30,30,30,0.9); color: #d29922; }
+        #wb-file-btn.ativo { color: #d29922; border-color: #d29922; }
+        #wb-file-panel {
+            position: fixed;
+            bottom: 60px; right: 14px;
+            width: 320px;
+            background: rgba(15,15,15,0.96);
+            border: 1px solid #333; border-radius: 8px;
+            padding: 10px; z-index: 150; display: none;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 11px; color: #bbb;
+        }
+        #wb-file-panel.aberto { display: block; }
+        #wb-file-panel .wb-clip-titulo {
+            font-size: 11px; color: #d29922; margin-bottom: 8px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        #wb-file-drop {
+            border: 1px dashed #444; border-radius: 6px;
+            padding: 14px 8px; text-align: center; cursor: pointer;
+            color: #888; word-break: break-all; line-height: 1.5;
+        }
+        #wb-file-drop:hover, #wb-file-drop.sobre { border-color: #d29922; color: #d29922; }
+        #wb-file-panel label { display: block; margin: 8px 0 3px; color: #777; font-size: 10px; }
+        #wb-file-pasta {
+            width: 100%; background: #0a0a0a; color: #ddd;
+            border: 1px solid #333; border-radius: 4px;
+            font-family: inherit; font-size: 12px; padding: 5px 6px; outline: none;
+        }
+        #wb-file-pasta:focus { border-color: #d29922; }
+        #wb-file-barra { height: 4px; background: #222; border-radius: 2px; margin-top: 8px; overflow: hidden; display: none; }
+        #wb-file-barra div { height: 100%; width: 0; background: #d29922; transition: width 0.2s; }
+        #wb-file-msg { margin-top: 6px; min-height: 14px; line-height: 1.4; }
+        #wb-file-msg.ok   { color: #3fb950; }
+        #wb-file-msg.erro { color: #f85149; }
+        #wb-file-enviar {
+            width: 100%; margin-top: 7px; padding: 6px;
+            background: #1a1a1a; color: #d29922;
+            border: 1px solid #d29922; border-radius: 4px;
+            font-family: inherit; font-size: 11px; cursor: pointer;
+        }
+        #wb-file-enviar:hover:not(:disabled) { background: #d29922; color: #0a0a0a; }
+        #wb-file-enviar:disabled { opacity: 0.4; cursor: default; }
+        /* Arrastar arquivo do PC por cima da tela */
+        #wb-file-overlay {
+            position: fixed; inset: 0; z-index: 140; display: none;
+            align-items: center; justify-content: center;
+            background: rgba(210,153,34,0.12); border: 3px dashed #d29922;
+            font-family: monospace; font-size: 15px; color: #d29922;
+            pointer-events: none;
+        }
+        #wb-file-overlay.ativo { display: flex; }
+
         /* Alvo invisivel que recebe o evento "paste" do navegador (ver o bloco
            de Ctrl+V no script). Precisa ser focavel de verdade: display:none ou
            visibility:hidden nao recebem foco e o paste nunca chegaria. */
@@ -346,7 +411,7 @@
                 (ev.shiftKey && !ev.ctrlKey && ev.code === 'Insert');
             if (!ehColar) return;
             // No textarea do painel manual, deixa o colar nativo do navegador agir.
-            if (ev.target && ev.target.id === 'wb-clip-text') return;
+            if (ev.target && (ev.target.id === 'wb-clip-text' || ev.target.id === 'wb-file-pasta')) return;
 
             // Segura a tecla: se ela chegasse agora no app remoto, ele colaria o
             // conteudo antigo do clipboard da sessao. Ela e reenviada por
@@ -368,6 +433,8 @@
 
         // ── Painel de clipboard ──
         function abrirPainelClipboard() {
+            const pa = document.getElementById('wb-file-panel');
+            if (pa) { pa.classList.remove('aberto'); document.getElementById('wb-file-btn').classList.remove('ativo'); }
             document.getElementById('wb-clip-panel').classList.add('aberto');
             document.getElementById('wb-clip-btn').classList.add('ativo');
         }
@@ -412,8 +479,155 @@
         window.enviarClipboardParaSessao = enviarClipboardParaSessao;
         window.colarPainelNaSessao = colarPainelNaSessao;
 
+        // ── Envio de arquivo do PC para o Files do MikroTik ──
+        // O seletor de arquivo do WinBox (no servidor) não enxerga o PC do
+        // usuário; o arquivo vai pro CRM, que grava no equipamento por SFTP
+        // (clientes/winbox_arquivos.py). Ao terminar, aparece no Files.
+        let _arquivoEscolhido = null;
+        let _enviando = false;
+        function _fmtTam(b) {
+            if (b < 1024) return b + ' B';
+            if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+            return (b / 1048576).toFixed(1) + ' MB';
+        }
+        function _fileMsg(txt, cls) {
+            const el = document.getElementById('wb-file-msg');
+            el.textContent = txt || '';
+            el.className = cls || '';
+        }
+        function _fileBarra(pct) {
+            const b = document.getElementById('wb-file-barra');
+            b.style.display = pct === null ? 'none' : 'block';
+            b.firstElementChild.style.width = (pct || 0) + '%';
+        }
+        function abrirPainelArquivo() {
+            fecharPainelClipboard();
+            document.getElementById('wb-file-panel').classList.add('aberto');
+            document.getElementById('wb-file-btn').classList.add('ativo');
+        }
+        function fecharPainelArquivo() {
+            document.getElementById('wb-file-panel').classList.remove('aberto');
+            document.getElementById('wb-file-btn').classList.remove('ativo');
+            _focarSessao();
+        }
+        function toggleArquivo() {
+            const p = document.getElementById('wb-file-panel');
+            if (p.classList.contains('aberto')) fecharPainelArquivo(); else abrirPainelArquivo();
+        }
+        function escolherArquivo(f) {
+            if (_enviando || !f) return;
+            _arquivoEscolhido = f;
+            document.getElementById('wb-file-drop').textContent = f.name + ' (' + _fmtTam(f.size) + ')';
+            document.getElementById('wb-file-enviar').disabled = false;
+            _fileMsg('');
+            _fileBarra(null);
+            abrirPainelArquivo();
+        }
+        function _fimEnvio() {
+            _enviando = false;
+            document.getElementById('wb-file-enviar').disabled = !_arquivoEscolhido;
+            document.getElementById('wb-file-input').value = '';
+        }
+        function _acompanharEnvio(envioId) {
+            fetch('/clientes/winbox/' + acessoId + '/arquivo/' + envioId + '/', { credentials: 'same-origin' })
+                .then(r => r.json())
+                .then(st => {
+                    if (!st.ok) throw new Error(st.erro || 'Falha ao consultar o envio');
+                    if (st.status === 'ok') {
+                        _fileBarra(100);
+                        _fileMsg('✓ Gravado no equipamento: ' + st.destino + '. Atualize a janela Files do WinBox.', 'ok');
+                        _arquivoEscolhido = null;
+                        document.getElementById('wb-file-drop').textContent = 'Clique ou arraste outro arquivo aqui';
+                        _fimEnvio();
+                    } else if (st.status === 'erro') {
+                        _fileBarra(null);
+                        _fileMsg('✕ ' + st.erro, 'erro');
+                        _fimEnvio();
+                    } else {
+                        const pct = st.total ? Math.round(st.enviado * 100 / st.total) : 0;
+                        _fileBarra(50 + pct / 2);
+                        _fileMsg('Gravando no equipamento... ' + pct + '%');
+                        setTimeout(() => _acompanharEnvio(envioId), 700);
+                    }
+                })
+                .catch(e => { _fileBarra(null); _fileMsg('✕ ' + e.message, 'erro'); _fimEnvio(); });
+        }
+        function enviarArquivo() {
+            if (_enviando || !_arquivoEscolhido) return;
+            _enviando = true;
+            document.getElementById('wb-file-enviar').disabled = true;
+            const fd = new FormData();
+            fd.append('arquivo', _arquivoEscolhido);
+            fd.append('pasta', document.getElementById('wb-file-pasta').value);
+            // XHR (não fetch) por causa do progresso do upload: 1ª metade da
+            // barra = PC → CRM, 2ª metade = CRM → equipamento.
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/clientes/winbox/' + acessoId + '/arquivo/');
+            xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+            xhr.upload.onprogress = (e) => {
+                if (!e.lengthComputable) return;
+                const pct = Math.round(e.loaded * 100 / e.total);
+                _fileBarra(pct / 2);
+                _fileMsg('Enviando para o servidor... ' + pct + '%');
+            };
+            xhr.onload = () => {
+                let r = null;
+                try { r = JSON.parse(xhr.responseText); } catch (_) {}
+                if (!r) {
+                    // 302 p/ login = sessão expirada; HTML de erro = proxy/servidor
+                    _fileBarra(null);
+                    _fileMsg('✕ Resposta inesperada do servidor (HTTP ' + xhr.status + '). Sessão expirada?', 'erro');
+                    _fimEnvio();
+                } else if (!r.ok) {
+                    _fileBarra(null);
+                    _fileMsg('✕ ' + r.erro, 'erro');
+                    _fimEnvio();
+                } else {
+                    _fileBarra(50);
+                    _fileMsg('Conectando no equipamento...');
+                    _acompanharEnvio(r.envio_id);
+                }
+            };
+            xhr.onerror = () => { _fileBarra(null); _fileMsg('✕ Falha de rede no envio.', 'erro'); _fimEnvio(); };
+            _fileBarra(0);
+            xhr.send(fd);
+        }
+        window.toggleArquivo = toggleArquivo;
+        window.fecharPainelArquivo = fecharPainelArquivo;
+        window.enviarArquivo = enviarArquivo;
+
+        function _ligarEnvioArquivo() {
+            if (vncMode !== 'winbox') return;
+            const input = document.getElementById('wb-file-input');
+            input.addEventListener('change', () => escolherArquivo(input.files[0]));
+            document.getElementById('wb-file-drop').addEventListener('click', () => { if (!_enviando) input.click(); });
+            document.getElementById('wb-file-pasta').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') enviarArquivo();
+            });
+            // Arrastar do PC para qualquer ponto da tela
+            const overlay = document.getElementById('wb-file-overlay');
+            let _dragN = 0;
+            const temArquivo = (e) => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+            document.addEventListener('dragenter', (e) => {
+                if (!temArquivo(e)) return;
+                e.preventDefault(); _dragN++; overlay.classList.add('ativo');
+            }, true);
+            document.addEventListener('dragover', (e) => { if (temArquivo(e)) e.preventDefault(); }, true);
+            document.addEventListener('dragleave', (e) => {
+                if (!temArquivo(e)) return;
+                if (--_dragN <= 0) { _dragN = 0; overlay.classList.remove('ativo'); }
+            }, true);
+            document.addEventListener('drop', (e) => {
+                if (!temArquivo(e)) return;
+                e.preventDefault(); e.stopPropagation();
+                _dragN = 0; overlay.classList.remove('ativo');
+                if (e.dataTransfer.files.length) escolherArquivo(e.dataTransfer.files[0]);
+            }, true);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             initVNC();
+            _ligarEnvioArquivo();
             // Colar direto (Ctrl+V) manda o texto pro clipboard remoto sem precisar
             // abrir o painel — so funciona quando o painel/textarea esta com foco
             // (colar com o canvas focado ja e roteado como tecla pra sessao).
@@ -460,6 +674,26 @@
         <button class="wb-clip-colar" onclick="colarPainelNaSessao()">Colar na sessão</button>
         <div class="wb-clip-dica">Normalmente basta dar Ctrl+V direto na tela remota. Este painel é a alternativa manual: o que for copiado lá dentro também aparece aqui.</div>
     </div>
+
+    {% if vnc_mode == 'winbox' %}
+    <!-- Envio de arquivo do PC para o Files do MikroTik (via SFTP pelo CRM) -->
+    <div id="wb-file-btn" onclick="toggleArquivo()" title="Enviar arquivo para o Files do MikroTik">📁</div>
+    <div id="wb-file-panel">
+        <div class="wb-clip-titulo">
+            <span>ENVIAR ARQUIVO PARA O FILES</span>
+            <span style="cursor:pointer;color:#666" onclick="fecharPainelArquivo()">✕</span>
+        </div>
+        <div id="wb-file-drop">Clique para escolher ou arraste um arquivo para a tela</div>
+        <input type="file" id="wb-file-input" style="display:none">
+        <label for="wb-file-pasta">Pasta no equipamento (vazio = raiz do Files)</label>
+        <input type="text" id="wb-file-pasta" placeholder="ex.: flash" autocomplete="off" spellcheck="false">
+        <div id="wb-file-barra"><div></div></div>
+        <div id="wb-file-msg"></div>
+        <button id="wb-file-enviar" onclick="enviarArquivo()" disabled>Enviar para o equipamento</button>
+        <div class="wb-clip-dica" style="font-size:10px;color:#666;margin-top:6px;line-height:1.4">Vai por SFTP na porta SSH do host — o usuário do acesso precisa da policy "ftp". Arquivo com o mesmo nome é substituído.</div>
+    </div>
+    <div id="wb-file-overlay">Solte para enviar ao Files do MikroTik</div>
+    {% endif %}
 
     <!-- Alvo invisível do evento "paste" do navegador (ver script) -->
     <textarea id="wb-paste-sink" tabindex="-1" aria-hidden="true"></textarea>

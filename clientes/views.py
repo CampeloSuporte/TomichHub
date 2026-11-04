@@ -4951,6 +4951,39 @@ def winbox_page(request, acesso_id):
 
 @login_required(login_url='login')
 @modulo_habilitado_required('acessos')
+@require_http_methods(['POST'])
+def winbox_enviar_arquivo(request, acesso_id):
+    """Recebe um arquivo da tela do WinBox Web e grava no Files do MikroTik
+    por SFTP, em segundo plano (ver clientes/winbox_arquivos.py)."""
+    from . import winbox_arquivos
+    acesso = get_object_or_404(Acesso, id=acesso_id)
+    if not _perms.pode_acessar_acesso(request.user, acesso):
+        return JsonResponse({'ok': False, 'erro': 'Sem permissão'}, status=403)
+    arquivo = request.FILES.get('arquivo')
+    if not arquivo:
+        return JsonResponse({'ok': False, 'erro': 'Nenhum arquivo recebido.'}, status=400)
+    try:
+        envio_id = winbox_arquivos.iniciar_envio(
+            acesso, arquivo, request.POST.get('pasta', ''), request.user,
+            ip_origem=get_client_ip(request))
+    except ValueError as e:
+        return JsonResponse({'ok': False, 'erro': str(e)}, status=400)
+    return JsonResponse({'ok': True, 'envio_id': envio_id})
+
+
+@login_required(login_url='login')
+@modulo_habilitado_required('acessos')
+def winbox_envio_status(request, acesso_id, envio_id):
+    from . import winbox_arquivos
+    st = winbox_arquivos.estado(envio_id)
+    # Só quem disparou o envio, e no mesmo host, enxerga o andamento
+    if not st or st.get('acesso_id') != acesso_id or st.get('usuario_id') != request.user.id:
+        return JsonResponse({'ok': False, 'erro': 'Envio não encontrado.'}, status=404)
+    return JsonResponse({'ok': True, **{k: v for k, v in st.items() if k not in ('acesso_id', 'usuario_id')}})
+
+
+@login_required(login_url='login')
+@modulo_habilitado_required('acessos')
 def rdp_page(request, acesso_id):
     """Renderiza a página de acesso RDP via Web (mesmo padrão do Winbox Web:
     Xvfb + xfreerdp + x11vnc + noVNC, ver clientes/rdp_vnc.py)."""
