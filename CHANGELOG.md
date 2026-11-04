@@ -5,6 +5,15 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-04 (conferência do Git)
+
+### Documentação
+
+- **Conferência do que está no `main`, no GitHub e parado em branches.** `main` e GitHub estão iguais.
+  Ficaram fora do `main` a exclusão de usuário (branch de 18/08), o token ipinfo/IPligence (28/07)
+  e uma reescrita do `listar.html` nunca commitada (02/08); o resto já está no `main`. Detalhes em
+  `docs/CONFERENCIA_GIT_2026-11-04.md`.
+
 ## [Não publicado] — 2026-11-04 (menção no grupo aparecia como número)
 
 ### Corrigido

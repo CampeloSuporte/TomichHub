@@ -2,6 +2,15 @@
 
 ## 🔥 Implementações Recentes
 
+### Conferência do Git — 04/11/2026
+
+- ✅ `main` local = GitHub (`b30c900db`); nada pendente de push
+- ⚠️ 2 branches antigos com código fora do `main` (exclusão de usuário; ipinfo/IPligence) e 1 worktree com `listar.html` não commitado — aguardando decisão
+
+| Documento | O que cobre |
+|---|---|
+| **[CONFERENCIA_GIT_2026-11-04.md](CONFERENCIA_GIT_2026-11-04.md)** | Estado do `main`/GitHub, branches e worktrees fora do `main`, o que já foi superado e o que falta decidir |
+
 ### Sessão 64 — 27/10/2026: Gerador de CGNAT MikroTik (v6/v7)
 
 - ✅ Tela `/clientes/cgnat/` e aba **CGNAT** no ⚡ Scripts do terminal web
