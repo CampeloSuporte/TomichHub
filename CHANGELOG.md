@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-04 (iDRAC pelo proxy abria em branco)
+
+### Corrigido
+
+- **Acesso web pelo proxy SSH: iDRAC9 da Startnet abria só o esqueleto da página.** O iDRAC só entrega
+  os JS/CSS se o pedido aceitar gzip, e o túnel não mandava esse cabeçalho, então quase todos voltavam
+  404 e a tela de login ficava em branco. O túnel agora pede `gzip, deflate`, como o acesso direto já
+  fazia. Detalhes em `docs/proxy_web_acessos.md`.
+
+---
+
 ## [Não publicado] — 2026-11-04 (UNM2000 da Infoline: "Unknown Command" no NE Manager)
 
 ### Corrigido
