@@ -22,6 +22,7 @@ import os
 import re
 import tempfile
 import threading
+import time
 import uuid
 
 from django.core.cache import cache
@@ -30,6 +31,10 @@ logger = logging.getLogger(__name__)
 
 TAMANHO_MAX = 512 * 1024 * 1024  # .npk/backup/rsc ficam muito abaixo disso
 _TTL = 3600
+PREFIXO_TMP = 'crm_winbox_envio_'
+# Cópia mais longa possível (512 MB num link ruim) cabe folgada nisso; um
+# temporário mais velho é de envio cuja thread morreu com o gunicorn.
+SOBRA_SEGUNDOS = 6 * 3600
 _NOME_RUIM = re.compile(r'[\x00-\x1f\x7f/\\]')
 
 
@@ -108,22 +113,57 @@ def iniciar_envio(acesso, arquivo, pasta, usuario, ip_origem=None):
         raise ValueError(f'Arquivo maior que {TAMANHO_MAX // (1024 * 1024)} MB.')
     acesso_s = acesso_ssh(acesso)
 
+    limpar_sobras()
+    # O arquivo NÃO fica no servidor: este temporário só existe até a cópia
+    # para o equipamento acabar (ok ou erro, ver _executar) e some também se
+    # algo falhar antes da thread começar.
     # Direto no /tmp, sem subpasta fixa: uma pasta criada por um shell como
     # root (0700) deixava o gunicorn (www-data) sem gravar → HTTP 500.
-    fd, tmp = tempfile.mkstemp(prefix='crm_winbox_envio_')
-    with os.fdopen(fd, 'wb') as f:
-        for bloco in arquivo.chunks():
-            f.write(bloco)
+    fd, tmp = tempfile.mkstemp(prefix=PREFIXO_TMP)
+    try:
+        with os.fdopen(fd, 'wb') as f:
+            for bloco in arquivo.chunks():
+                f.write(bloco)
 
-    envio_id = uuid.uuid4().hex
-    destino = caminho_remoto(pasta, nome)
-    _gravar_estado(envio_id, status='enviando', enviado=0, total=arquivo.size,
-                   destino=destino, acesso_id=acesso.id, usuario_id=getattr(usuario, 'id', None))
-    threading.Thread(
-        target=_executar, args=(envio_id, acesso_s, tmp, destino, arquivo.size, usuario, ip_origem),
-        daemon=True, name=f'winbox-envio-{envio_id[:8]}',
-    ).start()
+        envio_id = uuid.uuid4().hex
+        destino = caminho_remoto(pasta, nome)
+        _gravar_estado(envio_id, status='enviando', enviado=0, total=arquivo.size,
+                       destino=destino, acesso_id=acesso.id, usuario_id=getattr(usuario, 'id', None))
+        threading.Thread(
+            target=_executar, args=(envio_id, acesso_s, tmp, destino, arquivo.size, usuario, ip_origem),
+            daemon=True, name=f'winbox-envio-{envio_id[:8]}',
+        ).start()
+    except BaseException:
+        _apagar(tmp)
+        raise
     return envio_id
+
+
+def _apagar(caminho):
+    try:
+        os.unlink(caminho)
+    except OSError:
+        pass
+
+
+def limpar_sobras(idade=SOBRA_SEGUNDOS):
+    """Apaga temporários de envios cuja thread morreu sem chegar ao finally
+    (gunicorn reiniciado no meio da cópia). Roda a cada envio novo."""
+    limite = time.time() - idade
+    pasta = tempfile.gettempdir()
+    try:
+        nomes = os.listdir(pasta)
+    except OSError:
+        return
+    for nome in nomes:
+        if not nome.startswith(PREFIXO_TMP):
+            continue
+        caminho = os.path.join(pasta, nome)
+        try:
+            if os.path.getmtime(caminho) < limite:
+                os.unlink(caminho)
+        except OSError:
+            pass
 
 
 def _executar(envio_id, acesso, tmp, destino, total, usuario, ip_origem):
@@ -159,10 +199,7 @@ def _executar(envio_id, acesso, tmp, destino, total, usuario, ip_origem):
     finally:
         if client:
             _fechar_ssh(client, tunel)
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
+        _apagar(tmp)
         close_old_connections()
 
 

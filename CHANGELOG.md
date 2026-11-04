@@ -20,6 +20,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **Envio dava "HTTP 500" no primeiro uso.** O temporário ia para uma pasta fixa em `/tmp` que um
   teste rodado como root criou com 0700; o gunicorn (www-data) não gravava nela. Agora o temporário
   vai direto no `/tmp`, sem subpasta.
+- **Arquivo enviado não fica no servidor.** O temporário já era apagado ao fim da cópia; agora também
+  quando algo falha antes da cópia começar, e sobras de cópia cortada por restart do gunicorn (> 6 h)
+  são varridas a cada envio novo.
 
 ## [Não publicado] — 2026-11-04 (excluir usuário)
 

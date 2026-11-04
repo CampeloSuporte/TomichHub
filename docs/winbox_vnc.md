@@ -327,11 +327,17 @@ acesso for SSH, senão o primeiro SSH de Protocolos). Conexão igual à do backu
 - Auditoria: vira um `AcessoComando` `[envio de arquivo] <destino> (<bytes>)` na sessão WinBox Web
   ativa do usuário naquele host, e uma linha no log.
 - Limite 512 MB. Arquivo com o mesmo nome é substituído (comportamento do SFTP do RouterOS).
+- **O arquivo não fica guardado no servidor.** Ele passa por um temporário
+  `/tmp/crm_winbox_envio_*` (0600, www-data) que é apagado quando a cópia termina (ok ou erro) ou
+  se algo falha antes dela começar. Se o gunicorn reiniciar no meio da cópia, a thread morre sem
+  apagar; cada envio novo varre e apaga sobras com mais de 6 h (`limpar_sobras`). O temporário do
+  próprio Django (upload > 100 MB) e o buffer do nginx somem ao fim da requisição. No Redis fica só
+  o andamento (nome/destino/bytes) por 1 h, nunca o conteúdo.
 - Requisitos no equipamento: serviço SSH habilitado e usuário com a policy **`ftp`** (sem ela o
   RouterOS devolve *permission denied*, que a tela traduz). Sem SSH cadastrado no host, a tela avisa.
 - Conferido em 04/11/2026: SFTP abre e lista o Files direto (ALTA RADIO 131.161.45.8) e via proxy
-  (Agiliza 172.31.1.4, que só tem `flash`). A gravação em si não foi testada em equipamento de
-  cliente — o primeiro envio real pela tela é a validação.
+  (Agiliza 172.31.1.4, que só tem `flash`). Validado ao vivo no mesmo dia: `routeros-7.24.6-tile.npk`
+  (16,9 MB) gravado em 172.18.18.42 via proxy, WinBox 3, ~14 s; temporário apagado ao fim.
 
 ## Problemas Conhecidos e Soluções
 
