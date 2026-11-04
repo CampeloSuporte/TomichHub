@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-04 (excluir usuário)
+
+### Adicionado
+
+- **Excluir usuário em `/auth/cadastrar_usuario/`.** Até agora só dava para cadastrar, editar e
+  desativar. Lixeira na linha de cada usuário, com confirmação; Administrador exclui qualquer um,
+  Consultor só Operadores e logins de portal da própria instância. Recusa o próprio login, um
+  Administrador (para quem não é) e o **login principal de um cliente** — excluir esse apagaria o
+  cliente inteiro junto, por causa do CASCADE. Feito em 18/08 num branch que não tinha entrado no
+  `main`. Detalhes em `docs/PERMISSOES_CONSULTOR.md` (Excluir usuário).
+
 ## [Não publicado] — 2026-11-04 (conferência do Git)
 
 ### Documentação

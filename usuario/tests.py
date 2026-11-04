@@ -539,3 +539,63 @@ class DesativarUsuarioTest(TestCase):
         self.alvo.save()
         self.client.post(reverse('verificar_2fa'), {'codigo': pyotp.TOTP('JBSWY3DPEHPK3PXP').now()})
         self.assertNotIn('_auth_user_id', self.client.session)
+
+
+class ExcluirUsuarioTest(TestCase):
+    """Excluir usuário de vez — escopo igual ao de editar, e nunca o login
+    principal de um cliente (a FK Cliente.usuario é CASCADE e levaria o
+    cliente inteiro junto)."""
+
+    def setUp(self):
+        self.admin = _criar_admin_staff()
+        self.client.force_login(self.admin)
+
+    def _excluir(self, user):
+        return self.client.post(reverse('deletar_usuario'), {'id': user.id})
+
+    def test_admin_exclui(self):
+        alvo = User.objects.create_user(username='alvo', password='x')
+        self.assertEqual(self._excluir(alvo).status_code, 302)
+        self.assertFalse(User.objects.filter(id=alvo.id).exists())
+
+    def test_nao_exclui_a_si_mesmo(self):
+        self._excluir(self.admin)
+        self.assertTrue(User.objects.filter(id=self.admin.id).exists())
+
+    def test_get_nao_exclui(self):
+        alvo = User.objects.create_user(username='alvo', password='x')
+        self.client.get(reverse('deletar_usuario'), {'id': alvo.id})
+        self.assertTrue(User.objects.filter(id=alvo.id).exists())
+
+    def test_login_principal_de_cliente_nao_e_excluido(self):
+        from clientes.models import Cliente
+        dono = User.objects.create_user(username='portal', password='x')
+        cliente = Cliente.objects.create(
+            usuario=dono, nome_empresa='ACME', cnpj='00.000.000/0001-00', endereco='Rua 1')
+        self._excluir(dono)
+        self.assertTrue(User.objects.filter(id=dono.id).exists())
+        self.assertTrue(Cliente.objects.filter(id=cliente.id).exists())
+
+    def test_consultor_so_exclui_da_propria_instancia(self):
+        inst_a = Instancia.objects.create(nome='A')
+        inst_b = Instancia.objects.create(nome='B')
+        consultor = User.objects.create_user(username='cons', password='x', is_staff=True)
+        PerfilUsuario.objects.create(usuario=consultor, role=PerfilUsuario.ROLE_CONSULTOR, instancia=inst_a)
+        TOTPDevice.objects.create(usuario=consultor, secret='JBSWY3DPEHPK3PXP', confirmado=True)
+        op_a = User.objects.create_user(username='op_a', password='x', is_staff=True)
+        PerfilUsuario.objects.create(usuario=op_a, role=PerfilUsuario.ROLE_OPERADOR, instancia=inst_a)
+        op_b = User.objects.create_user(username='op_b', password='x', is_staff=True)
+        PerfilUsuario.objects.create(usuario=op_b, role=PerfilUsuario.ROLE_OPERADOR, instancia=inst_b)
+
+        self.client.force_login(consultor)
+        self._excluir(op_a)
+        self._excluir(op_b)
+        self._excluir(self.admin)
+        self.assertFalse(User.objects.filter(id=op_a.id).exists())
+        self.assertTrue(User.objects.filter(id=op_b.id).exists())
+        self.assertTrue(User.objects.filter(id=self.admin.id).exists())
+
+    def test_botao_aparece_na_lista(self):
+        User.objects.create_user(username='alvo', password='x')
+        resp = self.client.get(reverse('cadastrar_usuario'))
+        self.assertContains(resp, reverse('deletar_usuario'))

@@ -40,7 +40,7 @@ enganoso porque o `main` andou muito desde então).
 | `claude/crm-proxy-access-fixes-827bcf` | 18/08 | ✅ Código já está no `main` (proxy, 2FA, backups, Kanban de tarefas); só o texto antigo dos docs difere, e os docs foram reescritos depois. Pode apagar. |
 | `claude/geofeed-update-error-3679ba` | 30/07 | ✅ Equivalente já aplicado (`git cherry` marca `-`). Pode apagar. |
 | `claude/irr-route-update-query-67d35d` | 10/08 | ✅ Código (descr/member-of por rota, migração 0103) está no `main`; só o texto do doc é o antigo — `docs/IRR_ATUALIZACAO_TC.md` foi reescrito para o envio por API. Pode apagar. |
-| `claude/consultant-user-delete-permission-eed128` | 18/08 | ⚠️ **Não está no `main`.** Botão/rota `deletar_usuario` (excluir usuário, Consultor limitado à própria Instância). Hoje não existe exclusão de usuário pela tela. Decidir se entra. |
+| `claude/consultant-user-delete-permission-eed128` | 18/08 | ✅ **Trazido para o `main` em 04/11** (refeito sobre o código atual, com trava contra excluir login principal de cliente — ver `docs/PERMISSOES_CONSULTOR.md`). Pode apagar. |
 | `claude/ipinfo-geolocation-enrichment-a8b290` | 28/07 | ⚠️ **Não está no `main`.** Token do ipinfo.io, correção automática via IPligence, atalho `/geofeed.csv` e remoção da automação MaxMind. O `main` segue consultando ipinfo.io sem token e MaxMind via RIPE. Decidir se entra ou se foi abandonado. |
 
 ## 3. Worktrees com código editado e nunca commitado
@@ -56,7 +56,7 @@ enganoso porque o `main` andou muito desde então).
 
 ## 4. Pendências de decisão
 
-1. Exclusão de usuário (`consultant-user-delete-permission-eed128`) — trazer para o `main`?
+1. ~~Exclusão de usuário~~ — trazida para o `main` em 04/11.
 2. ipinfo token / IPligence (`ipinfo-geolocation-enrichment-a8b290`) — trazer ou descartar?
 3. Reescrita do `listar.html` (`ip-address-documentation-195a6a`) — descartar?
 4. Apagar os branches/worktrees marcados ✅ (limpeza; nada se perde).

@@ -20,6 +20,9 @@ from . import perms
 from . import totp as totp_lib
 from seguranca import services as seguranca
 from seguranca.models import TentativaLogin
+import logging
+
+logger = logging.getLogger(__name__)
 
 TURNSTILE_VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
 
@@ -814,6 +817,59 @@ def resetar_2fa_admin(request):
     TOTPDevice.objects.filter(usuario=usuario).delete()
     messages.success(request, f"2FA de '{usuario.username}' foi resetado.")
     return redirect(destino)
+
+@login_required(login_url='login')
+@perms.pode_gerenciar_usuarios_required
+def deletar_usuario(request):
+    """Exclui um usuário de vez (o "desativar" ao lado só tranca o login).
+
+    Escopo igual ao de `editar_usuario`: Administrador alcança todos,
+    Consultor só os que gerencia (`usuarios_gerenciaveis_por` — Operadores
+    e logins de portal da própria Instancia). Recusa:
+
+    - o próprio login;
+    - Administrador, quando quem pede não é Administrador;
+    - login principal de cliente (`Cliente.usuario`): a FK é CASCADE, então
+      apagar o usuário apagaria o CLIENTE inteiro junto (acessos, backups,
+      documentos). Troca-se o login do cliente antes, ou desativa-se.
+
+    O resto que cai junto é do próprio usuário (perfil, módulos, 2FA,
+    dispositivos confiáveis, token); histórico em chamados/auditoria fica,
+    com o autor em branco (SET_NULL).
+    """
+    if request.method != 'POST':
+        return redirect('cadastrar_usuario')
+
+    usuario_id = str(request.POST.get('id') or '')
+    if not usuario_id.isdigit():
+        messages.error(request, 'Usuário inválido.')
+        return redirect('cadastrar_usuario')
+    if usuario_id == str(request.user.id):
+        messages.error(request, 'Você não pode excluir seu próprio usuário.')
+        return redirect('cadastrar_usuario')
+    if not perms.usuarios_gerenciaveis_por(request.user).filter(id=usuario_id).exists():
+        messages.error(request, 'Você não possui permissão para excluir este usuário.')
+        return redirect('cadastrar_usuario')
+
+    usuario = get_object_or_404(User, id=usuario_id)
+    if perms.is_admin(usuario) and not perms.is_admin(request.user):
+        messages.error(request, 'Você não possui permissão para excluir um Administrador.')
+        return redirect('cadastrar_usuario')
+
+    clientes = list(Cliente.objects.filter(usuario=usuario).values_list('nome_empresa', flat=True)[:5])
+    if clientes:
+        messages.error(
+            request,
+            f"'{usuario.username}' é o login principal do cliente {', '.join(clientes)} — "
+            "excluir apagaria o cliente junto. Troque o login do cliente antes, ou use Desativar.")
+        return redirect('cadastrar_usuario')
+
+    username = usuario.username
+    usuario.delete()
+    logger.info("Usuário %s (id=%s) excluído por %s", username, usuario_id, request.user.username)
+    messages.success(request, f"Usuário '{username}' excluído.")
+    return redirect('cadastrar_usuario')
+
 
 @login_required(login_url='login')
 @perms.pode_gerenciar_usuarios_required

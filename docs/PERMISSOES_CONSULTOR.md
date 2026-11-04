@@ -4,12 +4,12 @@
 - `usuario/perms.py` — ponto único de verdade de papel/instância (`get_role`, `is_admin`,
   `is_consultor`, `is_backoffice`, `pode_acessar_cliente`, `usuarios_gerenciaveis_por`)
 - `usuario/models.py` — `PerfilUsuario` (back-office), `Instancia`, novo `PortalUsuarioInstancia`
-- `usuario/views.py` — `cadastrar_usuario`, `editar_usuario`
+- `usuario/views.py` — `cadastrar_usuario`, `editar_usuario`, `deletar_usuario`
 - `clientes/consumers.py` — `SSHConsumer._usuario_pode_acessar`
 - `clientes/views.py` — `deletar_backup`, `deletar_cliente` (este já corrigido em 09/08,
   commit `0370002cd`)
 
-**Atualizado em:** 2026-08-10
+**Atualizado em:** 2026-11-04
 
 **Ver também:** [terminal_ssh.md](terminal_ssh.md), [frontend_acessos.md](frontend_acessos.md)
 
@@ -334,3 +334,33 @@ Regressão automatizada em `atendimento.tests.IsolamentoInstanciaTest` (8 testes
 - **Os "administradores legados"** (`is_staff=True` sem `PerfilUsuario`: `adm_466dee`,
   `adm_6cb110`, `admweb_2211cb`) continuam com acesso total por `get_role`. São sobra do lote de
   teste citado na seção anterior — enquanto existirem, são contas de Administrador de fato.
+
+## Excluir usuário (2026-11-04)
+
+Não existia exclusão de usuário pela tela, nem para o Administrador: só cadastrar, editar e (desde
+outubro) desativar. Foi feita em 18/08 num branch que nunca entrou no `main`
+(`claude/consultant-user-delete-permission-eed128`) e trazida agora, com uma trava a mais.
+
+- **Rota:** `POST /auth/excluir-usuario/` → `usuario/views.py` `deletar_usuario`. GET não exclui.
+- **Botão:** lixeira na linha de cada usuário em `/auth/cadastrar_usuario/`, ao lado de
+  Desativar, com o mesmo `data-confirm` (tipo perigo). Some na linha do próprio usuário logado.
+- **Escopo:** igual ao de `editar_usuario` — `usuarios_gerenciaveis_por` (Administrador alcança
+  todos; Consultor só Operadores e logins de portal da própria `Instancia`). Não é o escopo de
+  `pode_resetar_2fa`/desativar, que alcança também logins de cliente vinculados: excluir é mais
+  destrutivo e fica restrito ao que o Consultor de fato gerencia.
+- **Recusas:**
+  - o próprio login;
+  - Administrador, quando quem pede não é Administrador;
+  - **login principal de cliente** (`Cliente.usuario`). A FK é `OneToOneField(on_delete=CASCADE)`:
+    apagar o usuário apagaria o **cliente inteiro** junto (acessos, backups, documentos). A
+    mensagem nomeia o cliente e manda trocar o login dele antes, ou usar Desativar. O branch
+    de agosto não tinha essa trava.
+- **O que cai junto** (CASCADE, tudo do próprio usuário): `PerfilUsuario`, `UsuarioModulo`,
+  `UsuarioAcesso`, `UsuarioFuncao`, `PortalUsuarioInstancia`, `TOTPDevice`,
+  `DispositivoConfiavel`, token da API, `AgentStatus`, `AttendantContact`,
+  `UserGroupPermission`, `BloqueioLogin` e o `LogEntry` do admin. Histórico em chamados,
+  tarefas e auditoria de acessos fica, com o autor em branco (`SET_NULL`). Ser
+  `usuarios_adicionais` de um cliente só tira o vínculo (M2M).
+- **Log:** `usuario.views` registra `Usuário X (id=N) excluído por Y`.
+- **Testes:** `usuario/tests.py` `ExcluirUsuarioTest` (admin exclui, si mesmo, GET, login de
+  cliente, Consultor × outra instância × Administrador, botão na lista).
