@@ -13,8 +13,9 @@ Nada foi mesclado nem descartado nesta conferência: só registrado.
 - Nenhum commit local fora do GitHub (`git log origin/main..main` vazio).
 - Nenhuma alteração não commitada no `/opt/crm`, exceto `vsi.png` na raiz (arquivo solto, sem
   relação com código; não versionado de propósito).
-- O push das 13:xx funcionou; no fim do dia o token voltou a ser recusado
-  ("Invalid username or token"). Próximo push precisa de `gh auth login`.
+- A credencial do GitHub oscila: um push foi recusado ("Invalid username or token") e o seguinte,
+  minutos depois, passou. Se recusar de novo, renovar com `gh auth login`.
+- Esta própria conferência foi publicada em seguida (`c6e695318`).
 
 ### Alterações publicadas hoje (04/11/2026)
 
@@ -59,4 +60,4 @@ enganoso porque o `main` andou muito desde então).
 2. ipinfo token / IPligence (`ipinfo-geolocation-enrichment-a8b290`) — trazer ou descartar?
 3. Reescrita do `listar.html` (`ip-address-documentation-195a6a`) — descartar?
 4. Apagar os branches/worktrees marcados ✅ (limpeza; nada se perde).
-5. Renovar a credencial do GitHub no servidor (`gh auth login`).
+5. Se o push voltar a falhar, renovar a credencial do GitHub no servidor (`gh auth login`).
