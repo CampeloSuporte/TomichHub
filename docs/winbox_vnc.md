@@ -301,6 +301,38 @@ Para repetir as medições: cliente RFB mínimo em Python contra a porta do x11v
 (`ss -tlnp | grep x11vnc`), pedindo quadro inteiro com cada lista de encodings e mandando
 keydown/keyup com espera da próxima `FramebufferUpdate`.
 
+## Enviar arquivo para o Files do MikroTik — Adicionado em 04/11/2026
+
+Botão **📁** no canto inferior direito da tela do WinBox Web (só no modo WinBox, à esquerda do 📋),
+ou arrastar o arquivo do PC para qualquer ponto da tela. Campo opcional de pasta (vazio = raiz do
+Files; ex.: `flash` nos CRS/hAP que só gravam lá). Ao terminar, basta atualizar a janela Files.
+
+**Por que não pelo próprio WinBox:** ele roda no servidor (Xvfb), então o "Upload..." do Files abre
+o disco do servidor, e arrastar do PC para o noVNC não atravessa o VNC. O arquivo vai PC → CRM e o
+CRM grava no equipamento por **SFTP**, na porta SSH do host (`Acesso.porta_ssh()`: a principal se o
+acesso for SSH, senão o primeiro SSH de Protocolos). Conexão igual à do backup
+(`tasks._conectar_ssh_acesso`): IP privado via proxy SSH do cliente ou túnel OpenVPN, público direto.
+
+| Peça | Onde |
+|------|------|
+| Validação de nome/pasta, thread de cópia, andamento no Redis | `clientes/winbox_arquivos.py` |
+| `POST /clientes/winbox/<id>/arquivo/` (campos `arquivo`, `pasta`) → `envio_id` | `views.winbox_enviar_arquivo` |
+| `GET /clientes/winbox/<id>/arquivo/<envio_id>/` → `status` enviando/ok/erro, `enviado`, `total`, `destino`, `erro` | `views.winbox_envio_status` |
+| Botão, painel, arrastar-e-soltar, barra (1ª metade PC→CRM, 2ª CRM→equipamento) | `clientes/templates/winbox.html` |
+
+- A cópia roda numa thread do gunicorn porque um `.npk` por proxy lento passa do timeout do nginx;
+  o andamento fica no cache (Redis, comum aos workers) por 1 h. Só quem disparou vê o status.
+- Permissão: a mesma de abrir o WinBox Web (`pode_acessar_acesso`). Login somente leitura também
+  envia — ele já conseguiria pelo WinBox; o envio não toca no cadastro nem expõe a senha.
+- Auditoria: vira um `AcessoComando` `[envio de arquivo] <destino> (<bytes>)` na sessão WinBox Web
+  ativa do usuário naquele host, e uma linha no log.
+- Limite 512 MB. Arquivo com o mesmo nome é substituído (comportamento do SFTP do RouterOS).
+- Requisitos no equipamento: serviço SSH habilitado e usuário com a policy **`ftp`** (sem ela o
+  RouterOS devolve *permission denied*, que a tela traduz). Sem SSH cadastrado no host, a tela avisa.
+- Conferido em 04/11/2026: SFTP abre e lista o Files direto (ALTA RADIO 131.161.45.8) e via proxy
+  (Agiliza 172.31.1.4, que só tem `flash`). A gravação em si não foi testada em equipamento de
+  cliente — o primeiro envio real pela tela é a validação.
+
 ## Problemas Conhecidos e Soluções
 
 ### WinBox abre pequeno no browser
