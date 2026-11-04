@@ -96,3 +96,57 @@ class EnvioTest(SimpleTestCase):
         st = estados[wa._chave(envio)]
         self.assertEqual(st['status'], 'erro')
         self.assertIn('Tempo esgotado', st['erro'])
+
+
+class TemporarioNaoFicaTest(SimpleTestCase):
+    """O arquivo enviado não pode ficar guardado no servidor."""
+
+    def _tmps(self):
+        import os, tempfile
+        return {n for n in os.listdir(tempfile.gettempdir()) if n.startswith(wa.PREFIXO_TMP)}
+
+    def test_apaga_se_falhar_antes_da_thread(self):
+        antes = self._tmps()
+        a = mock.Mock(id=7, host='10.0.0.1')
+        a.porta_ssh.return_value = 22
+        with mock.patch.object(wa, '_gravar_estado', side_effect=RuntimeError('redis fora')), \
+                self.assertRaises(RuntimeError):
+            wa.iniciar_envio(a, SimpleUploadedFile('x.rsc', b'abc'), '', mock.Mock(id=1))
+        self.assertEqual(self._tmps(), antes)
+
+    def test_apaga_depois_de_enviar(self):
+        antes = self._tmps()
+        estados = {}
+        client = mock.Mock()
+
+        class ThreadSincrona:
+            def __init__(self, target, args, **kw):
+                self.target, self.args = target, args
+
+            def start(self):
+                self.target(*self.args)
+        a = mock.Mock(id=7, host='10.0.0.1')
+        a.porta_ssh.return_value = 22
+        with mock.patch.object(wa.cache, 'get', side_effect=lambda k: estados.get(k)), \
+                mock.patch.object(wa.cache, 'set', side_effect=lambda k, v, t: estados.__setitem__(k, v)), \
+                mock.patch.object(wa.threading, 'Thread', ThreadSincrona), \
+                mock.patch('clientes.tasks._conectar_ssh_acesso', return_value=(client, None)), \
+                mock.patch('clientes.tasks._fechar_ssh'), mock.patch.object(wa, '_auditar'):
+            wa.iniciar_envio(a, SimpleUploadedFile('x.rsc', b'abc'), '', mock.Mock(id=1))
+        self.assertEqual(self._tmps(), antes)
+
+    def test_limpa_sobra_antiga(self):
+        import os, tempfile, time
+        fd, velho = tempfile.mkstemp(prefix=wa.PREFIXO_TMP)
+        os.close(fd)
+        fd, novo = tempfile.mkstemp(prefix=wa.PREFIXO_TMP)
+        os.close(fd)
+        os.utime(velho, (time.time() - wa.SOBRA_SEGUNDOS - 10,) * 2)
+        try:
+            wa.limpar_sobras()
+            self.assertFalse(os.path.exists(velho))
+            self.assertTrue(os.path.exists(novo))
+        finally:
+            for p in (velho, novo):
+                if os.path.exists(p):
+                    os.unlink(p)
