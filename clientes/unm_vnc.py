@@ -10,7 +10,20 @@ from .winbox_vnc import WinboxVNCManager
 
 logger = logging.getLogger(__name__)
 
-UNM_APP        = "/opt/unm2000/app/bin/unm2000access"
+UNM_DIR        = "/opt/unm2000/app"
+UNM_APP        = UNM_DIR + "/bin/unm2000access"
+# Cliente de outra versão para um servidor específico: o cliente precisa ser da
+# mesma versão do servidor, senão as RPCs de capacidade não decodificam e o NE
+# Manager manda comandos de outra versão à OLT ("Unknown Command").
+UNM_SERVIDORES = "/opt/unm2000/servidores"
+
+
+def unm_dir(host):
+    """Pasta do cliente para o servidor `host` (a específica, se houver)."""
+    especifico = os.path.join(UNM_SERVIDORES, os.path.basename(host.strip()), "app")
+    if os.path.exists(os.path.join(especifico, "bin", "unm2000access")):
+        return especifico
+    return UNM_DIR
 OPENBOX_RC_UNM = os.path.join(os.path.dirname(os.path.abspath(__file__)), "openbox_rc_unm.xml")
 
 # O cliente pede a pasta de trabalho na 1ª abertura (a home é nova a cada
@@ -95,16 +108,18 @@ class UnmVNCManager(WinboxVNCManager):
         return sock
 
     def _iniciar_app(self, env):
-        if not os.path.exists(UNM_APP):
+        app_dir = unm_dir(self.host)
+        app = os.path.join(app_dir, "bin", "unm2000access")
+        if not os.path.exists(app):
             raise Exception("UNM2000 não está instalado no servidor (ver docs/winbox_vnc.md)")
         self._home = tempfile.mkdtemp(prefix="unm_")
-        cmd = [UNM_APP, f"-J-Duser.home={self._home}"]
+        cmd = [app, f"-J-Duser.home={self._home}"]
         if self.proxy:
             cmd = ["unshare", "-Urn", "--pid", "--fork", "--kill-child", "--mount-proc",
                    "sh", "-c", REDE_SH, "unm-rede",
                    self._abrir_proxy(), os.path.join(self._home, "redsocks.conf")] + cmd
         app_env = dict(env, HOME=self._home, _JAVA_AWT_WM_NONREPARENTING="1")
-        self.processes.append(subprocess.Popen(cmd, env=app_env, cwd="/opt/unm2000/app",
+        self.processes.append(subprocess.Popen(cmd, env=app_env, cwd=app_dir,
                                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
         threading.Thread(target=self._automatizar_telas, args=(env,), daemon=True).start()
 
