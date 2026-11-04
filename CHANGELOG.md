@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-04 (UNM2000 da Infoline: "Unknown Command" no NE Manager)
+
+### Corrigido
+
+- **UNM2000 Web: telas do NE Manager da Infoline davam "[Device Return Error]Unkown Command".** O
+  servidor só tinha um cliente instalado, da versão da Sartor. Na Infoline, de outra versão, a
+  capacidade da OLT não decodificava e o UNM mandava comandos que a OLT não conhece. Cada servidor
+  agora pode ter o cliente da própria versão em `/opt/unm2000/servidores/<ip>`, e a Infoline já tem o
+  dela. Detalhes em `docs/winbox_vnc.md`.
+
+---
+
 ## [Não publicado] — 2026-11-04 (Alerta de erro de backup preso num erro antigo)
 
 ### Corrigido

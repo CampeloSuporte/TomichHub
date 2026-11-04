@@ -184,6 +184,21 @@ fora da lista de processos. Sem senha no cadastro, o login fica na tela para dig
 **Openbox.** `openbox_rc_unm.xml` maximiza só a janela principal (`title="UNM2000*" type="normal"`). Avisos
 também têm o título "UNM2000", daí o `type`; NE Manager e diálogos mantêm a borda para mover e fechar.
 
+**Versão do cliente por servidor (04/11/2026).** O cliente tem de ser da mesma versão do servidor.
+Com versão diferente o login funciona, mas a RPC `GetDeviceCapability` não decodifica
+(`EN_BUS_DISPATCH_DECODE_RPC_REQUEST` no `unm_ui.log` da sessão), o `CapabilityBean` da OLT vem todo
+zerado e o NE Manager manda comandos de outra versão: rodapé "Searching the equipment capability
+failed... Make sure the background version matches the client version" e
+"[Device Return Error]Unkown Command" (ex.: *Add Slot Port to VLAN*). Foi o caso da Infoline
+(10.18.1.62, instalador de 06/10/2022) com o cliente da Sartor em `/opt/unm2000/app`.
+
+`unm_dir(host)` usa `/opt/unm2000/servidores/<host>/app` quando existe, senão `/opt/unm2000/app`.
+Os patches do port são bsdiff de jars exatos e não servem em outra versão; para montar a pasta,
+`tools/unm2000_cliente_servidor.py <ip> <instalador-do-servidor.exe> <instalador-da-versao-atual.exe>`
+transplanta só as classes que os patches mudam (aborta se elas mudaram na versão nova). O
+`/opt/unm2000/lib` (hookagent) é compartilhado. Comparar o `Content-Length` do instalador de cada
+servidor (`curl -I` pelo proxy) diz se a versão difere.
+
 **Limitações.** O que a conta do UNM pode fazer, a sessão pode: `admin` vê "Delete NE" e afins, então use
 um usuário de perfil restrito no cadastro. Cerca de 900 MB por sessão. O contador global de alarmes da
 janela principal fica em 0 (o do NE Manager funciona). Painéis com JxBrowser não abrem.

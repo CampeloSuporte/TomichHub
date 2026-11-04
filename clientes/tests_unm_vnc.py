@@ -14,12 +14,32 @@ class Proxy:
     nome, host, porta, usuario, senha = 'p', '192.0.2.1', 22, 'root', 'segredo-do-proxy'
 
 
+class UnmVersaoPorServidorTest(SimpleTestCase):
+    """Cliente de versão diferente do servidor não decodifica a capacidade da
+    OLT e o NE Manager responde "Unknown Command" (Infoline, 04/11/2026)."""
+
+    def test_usa_cliente_do_servidor_quando_instalado(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as raiz:
+            bin_dir = os.path.join(raiz, '10.18.1.62', 'app', 'bin')
+            os.makedirs(bin_dir)
+            open(os.path.join(bin_dir, 'unm2000access'), 'w').close()
+            with mock.patch.object(unm_vnc, 'UNM_SERVIDORES', raiz):
+                self.assertEqual(unm_vnc.unm_dir(' 10.18.1.62 '), os.path.join(raiz, '10.18.1.62', 'app'))
+                self.assertEqual(unm_vnc.unm_dir('172.16.10.2'), unm_vnc.UNM_DIR)
+
+    def test_host_nao_escapa_da_pasta(self):
+        with mock.patch.object(unm_vnc, 'UNM_SERVIDORES', '/nao/existe'):
+            self.assertEqual(unm_vnc.unm_dir('../../etc'), unm_vnc.UNM_DIR)
+
+
 class UnmRedeTest(SimpleTestCase):
     def _iniciar(self, proxy):
         m = UnmVNCManager('198.18.1.23', 'admin', 'senha-unm', proxy=proxy, width=1000, height=600)
         self.addCleanup(m.stop)
         env = {'DISPLAY': ':150'}
         with mock.patch.object(unm_vnc.os.path, 'exists', return_value=True), \
+                mock.patch.object(unm_vnc, 'unm_dir', return_value=unm_vnc.UNM_DIR), \
                 mock.patch.object(unm_vnc.subprocess, 'Popen') as popen, \
                 mock.patch.object(m, '_wait_for_port', return_value=True), \
                 mock.patch.object(unm_vnc.threading, 'Thread'):
