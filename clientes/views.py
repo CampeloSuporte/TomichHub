@@ -2453,6 +2453,13 @@ def realizar_backup(acesso, usuario=None):
                 "Verifique os comandos do template e a CLI do equipamento."
             )
 
+        # Config pela metade nunca vira SUCESSO (nem substitui o último backup
+        # bom): Switch Huawei Servidores Core CPD Sinop ficou de 16/08 a 11/2026
+        # com metade da config como "último backup".
+        _incompleto = _motivo_backup_incompleto(output, is_huawei)
+        if _incompleto:
+            raise Exception(f"Backup incompleto: {_incompleto}")
+
         # ── Normalizar saída e calcular hash ─────────────────────────────
         # Remove ANSI escape codes e linhas que contenham apenas timestamps
         output_norm = re.sub(r'\x1b\[[0-9;]*[mGKHF]', '', output)
@@ -2462,11 +2469,16 @@ def realizar_backup(acesso, usuario=None):
         hash_novo = hashlib.sha256(output_norm.encode('utf-8', errors='replace')).hexdigest()
 
         # ── Comparar com último backup bem-sucedido ──────────────────────
+        # Só contra o ÚLTIMO backup bom: comparar com qualquer um antigo fazia
+        # a config completa de hoje "casar" com um backup de julho e só
+        # atualizar a verificação dele — o arquivo cortado de 16/08 continuava
+        # sendo o mais recente na tela e para o L2VPN/BGP/IPAM.
         ultimo = BackupLog.objects.filter(
             acesso=acesso,
             status='SUCESSO',
-            hash_conteudo=hash_novo,
-        ).first()
+        ).exclude(arquivo_path='').order_by('-data_backup').first()
+        if ultimo and ultimo.hash_conteudo != hash_novo:
+            ultimo = None
 
         duracao = time.time() - inicio
 
@@ -2606,6 +2618,32 @@ _RE_CMD_PAGINACAO = re.compile(
     r'disable\s+clipaging|set\s+cli\s+screen-length)',
     re.IGNORECASE,
 )
+
+
+_RE_CMD_CONFIG_HUAWEI = re.compile(r'^display\s+current(-configuration)?\b', re.IGNORECASE)
+
+
+def _motivo_backup_incompleto(output, is_huawei=False):
+    """
+    Texto do problema quando a configuração veio pela metade; '' se ok.
+
+    - Algum comando não devolveu o prompt (MARCA_SAIDA_INCOMPLETA).
+    - Huawei VRP: o "display current-configuration" sempre termina em
+      "return". Sem ele, a leitura parou no meio (S6730/S5732/MA5800).
+    """
+    texto = output or ''
+    if MARCA_SAIDA_INCOMPLETA in texto:
+        m = re.search(re.escape(MARCA_SAIDA_INCOMPLETA) + r': (.+)', texto)
+        return (m.group(1).strip() if m else 'o prompt não voltou') + \
+            ' (o equipamento parou de responder no meio da configuração)'
+    if is_huawei:
+        partes = re.split(r'\n={60}\nComando: (.+)\n={60}\n', texto)
+        for cmd, corpo in zip(partes[1::2], partes[2::2]):
+            if _RE_CMD_CONFIG_HUAWEI.match(cmd.strip()) and \
+                    not re.search(r'(?m)^\s*return\s*$', corpo):
+                return (f"'{cmd.strip()}' não terminou em 'return' — "
+                        "a configuração veio cortada")
+    return ''
 
 
 def _backup_tem_conteudo(output, minimo=40):
@@ -3148,21 +3186,15 @@ def _executar_comandos_huawei(client, comandos):
         try:
             channel.send(comando + '\n')
 
-            # Aguardar o output completo (silence detection)
-            resultado = _ler_ate_silencio(channel, silencio=3.0, max_wait=120)
-
-            # Paginação ainda ligada: o "screen-length 0 temporary" pode se
-            # perder se for digitado enquanto o banner de login ainda chega
-            # (visto no SW-HU-NOVA-MONTE-VERDE, VRP V200R010 — o backup parava
-            # no primeiro "---- More ----" com 1,7 KB). Segue as páginas com
-            # espaço em vez de depender só do screen-length.
-            paginas = 0
-            while resultado and _RE_MORE_HUAWEI.search(resultado[-300:]) and paginas < 2000:
-                channel.send(' ')
-                resultado += _ler_ate_silencio(channel, silencio=1.5, max_wait=60)
-                paginas += 1
-            if paginas:
-                print(f"    ↪️ {paginas} página(s) seguidas com espaço")
+            # Lê até o prompt voltar (não só até 3 s de silêncio — ver
+            # _ler_ate_prompt). Paginação ainda ligada: o "screen-length 0
+            # temporary" pode se perder se for digitado enquanto o banner de
+            # login ainda chega (visto no SW-HU-NOVA-MONTE-VERDE, VRP V200R010
+            # — o backup parava no primeiro "---- More ----" com 1,7 KB).
+            # Segue as páginas com espaço em vez de depender só do
+            # screen-length.
+            resultado, completo = _ler_ate_prompt(
+                channel, silencio=3.0, re_more=_RE_MORE_HUAWEI)
 
             if resultado:
                 resultado = limpar_ansi(resultado)
@@ -3178,6 +3210,8 @@ def _executar_comandos_huawei(client, comandos):
                 print(f"    ✅ {len(resultado)} bytes")
             else:
                 print(f"    ⚠️ Output vazio")
+            if not completo:
+                output += f"{MARCA_SAIDA_INCOMPLETA}: o prompt não voltou depois de '{comando}'\n"
 
         except Exception as e:
             print(f"    ❌ {e}")
@@ -3318,7 +3352,10 @@ def _executar_comandos_shell_generico(client, comandos):
 
         try:
             channel.send(comando + '\n')
-            resultado = _ler_ate_silencio(channel, silencio=3.0, max_wait=120)
+            # Até o prompt voltar: com só 3 s de silêncio o "show
+            # startup-config" das FiberHome (1,8 MB na OLT FB COLNIZA) saía
+            # vazio quando a OLT demorava a começar a responder.
+            resultado, completo = _ler_ate_prompt(channel, silencio=3.0)
 
             if resultado:
                 resultado = limpar_ansi(resultado)
@@ -3330,6 +3367,8 @@ def _executar_comandos_shell_generico(client, comandos):
                 print(f"    ✅ {len(resultado)} bytes")
             else:
                 print(f"    ⚠️ Output vazio")
+            if not completo:
+                output += f"{MARCA_SAIDA_INCOMPLETA}: o prompt não voltou depois de '{comando}'\n"
 
         except Exception as e:
             print(f"    ❌ {e}")
@@ -3370,6 +3409,81 @@ def _ler_ate_silencio(channel, silencio=2.0, max_wait=120):
             time.sleep(0.05)
 
     return resultado.decode('utf-8', errors='replace')
+
+
+# Prompt de CLI no fim da saída: "<SW-X>", "[~SW-X]", "OLT.CCIT>",
+# "MA5800-X7(config)#", "OLT-NBR#", "OLT-NBR\service#" (FiberHome após
+# "cd service"). Começa na coluna 0 e não tem espaço — linhas de config
+# ("#", " rule 5 permit", "!</MSAN>") não casam.
+_RE_PROMPT_CLI = re.compile(
+    r'(?:^|\n)[<\[]?[~*]?[A-Za-z0-9][\w.\-:/@\\]{0,80}(?:\([^\s()]{0,60}\))?[>#\]][ \t]*$'
+)
+_RE_ANSI_PROMPT = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])|\r')
+
+# Marca gravada na saída quando o comando não devolveu o prompt: o
+# realizar_backup recusa o backup inteiro (ERRO) em vez de gravar SUCESSO.
+MARCA_SAIDA_INCOMPLETA = 'ERRO: saida incompleta'
+
+
+def _termina_em_prompt(texto):
+    cauda = _RE_ANSI_PROMPT.sub('', (texto or '')[-400:]).rstrip(' \t\n')
+    return bool(_RE_PROMPT_CLI.search(cauda))
+
+
+def _ler_ate_prompt(channel, silencio=3.0, max_wait=900, pausa_max=90,
+                    re_more=None, paginas_max=5000):
+    """
+    Lê a saída de um comando até o PROMPT voltar.
+
+    Silêncio sozinho não encerra mais a leitura: o equipamento pode pausar no
+    meio da configuração (o S6730 do CPD Sinop parava 1–4 s logo depois das
+    VLANs, montando a seção de interfaces) e com "3 s sem dados = fim" o
+    backup saía cortado e era gravado como SUCESSO — ficou assim de 16/08 a
+    11/2026. Agora o silêncio só encerra junto com o prompt na cauda; sem
+    prompt, continua lendo até `pausa_max` segundos seguidos sem nenhum byte
+    (ou `max_wait` no total) e devolve completo=False.
+
+    `re_more`: regex de paginação ("---- More ----") — responde com espaço.
+    Retorna (texto, completo).
+    """
+    resultado = ''
+    inicio = time.time()
+    parado_desde = None
+    paginas = 0
+    paginou = False
+    while True:
+        resto = max_wait - (time.time() - inicio)
+        if resto <= 0:
+            print(f"    ⚠️ max_wait atingido ({max_wait}s) sem o prompt voltar")
+            return resultado, False
+        # Logo depois de um espaço de paginação a próxima página chega rápido:
+        # 1,5 s basta (o seguidor de "More" antigo já usava isso).
+        parte = _ler_ate_silencio(channel, silencio=1.5 if paginou else silencio,
+                                  max_wait=min(resto, 120))
+        paginou = False
+        if parte:
+            resultado += parte
+            parado_desde = None
+        if re_more is not None and resultado and paginas < paginas_max \
+                and re_more.search(resultado[-300:]):
+            channel.send(' ')
+            paginas += 1
+            paginou = True
+            continue
+        if _termina_em_prompt(resultado):
+            if paginas:
+                print(f"    ↪️ {paginas} página(s) seguidas com espaço")
+            return resultado, True
+        if getattr(channel, 'closed', False) is True:
+            print("    ⚠️ canal fechado pelo equipamento antes do prompt")
+            return resultado, False
+        if not parte:
+            parado_desde = parado_desde or time.time()
+            if time.time() - parado_desde >= pausa_max:
+                print(f"    ⚠️ {pausa_max}s sem dados e sem prompt — saída incompleta")
+                return resultado, False
+        else:
+            print(f"    … pausa do equipamento após {len(resultado)} bytes, sem prompt — aguardando")
 
 
 def limpar_ansi(texto):

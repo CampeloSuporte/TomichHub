@@ -527,3 +527,40 @@ Tempos medidos (mesmo equipamento, mesmo dia):
 
 MikroTik com export saudável não muda nada: o EOF chega e nenhuma seção extra é pedida.
 Testes: `clientes/tests_backup_mikrotik_travado.py`.
+
+---
+
+## Backup cortado no meio gravado como SUCESSO — 2026-11-04
+
+**Sintoma:** "Switch Huawei Servidores Core CPD Sinop" (Sartor, S6730) com o último backup de 16/08
+com 7 KB, contra 13 KB dos anteriores. O arquivo parava em `vlan 1001 / description
+1001-br-storages`, sem interfaces, BGP nem `return`, e estava marcado SUCESSO.
+
+**Causa 1: fim do comando por silêncio.** `_executar_comandos_huawei` e
+`_executar_comandos_shell_generico` davam o comando por encerrado após 3 s sem dados. O S6730 pausa
+logo depois das VLANs para montar a seção de interfaces (medido ao vivo: 1,4 s num dia, mais de 3 s
+em outros). Quando a pausa passava de 3 s, metade da config era gravada.
+
+**Causa 2: deduplicação contra qualquer backup antigo.** O hash era comparado com *qualquer* SUCESSO
+do acesso. A config completa voltava, casava com o backup de 30/07 e só atualizava a
+`ultima_verificacao` dele. O cortado de 16/08 seguia como "último backup" na tela e para
+L2VPN/BGP/IPAM.
+
+**Correção:**
+
+- `_ler_ate_prompt(channel, …)` lê até o **prompt** voltar (`<SW>`, `[~SW]`, `OLT>`,
+  `MA5800(config)#`, `OLT-NBR#` — `_RE_PROMPT_CLI`). O silêncio só encerra junto com o prompt. Sem
+  prompt, continua até 90 s seguidos sem nenhum byte (teto de 900 s) e devolve `completo=False`. Ele
+  também segue o `---- More ----` (1,5 s de espera após cada espaço). Hoje é usado pelo Huawei e pelo
+  shell genérico (FiberHome). Cisco/ZTE/VSOL/MikroTik não mudaram: na varredura não havia corte
+  neles.
+- Comando sem prompt grava `MARCA_SAIDA_INCOMPLETA` na saída. `_motivo_backup_incompleto` também
+  exige `return` no fim do `display current-configuration` do Huawei (VRP sempre termina assim; 155
+  de 155 backups Huawei bons tinham). Qualquer um dos dois → `realizar_backup` registra **ERRO
+  "Backup incompleto: …"**. Nunca grava SUCESSO e não substitui o último backup bom.
+- A deduplicação compara só com o **último** SUCESSO. A → B → A grava um arquivo novo.
+
+**Hosts afetados encontrados na varredura (último backup cortado):** 1058 Switch Huawei Servidores
+Core CPD Sinop, 266 SW-BRAVIN (GREEN), 722 SW-HU-CORE (Friends), 231 e 890 SW Huawei Villaggio
+Business, 753 OLT CORE SORRISO 01 (Alta Rádio), e as FiberHome 1729 OLT FB COLNIZA e 1132 OLT-NBR
+(`show startup-config` vazio). Testes: `clientes/tests_backup_incompleto.py`.

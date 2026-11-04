@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-04 (Backup cortado no meio era gravado como SUCESSO)
+
+### Corrigido
+
+- **Backups Huawei e FiberHome saíam pela metade e eram gravados como SUCESSO.** O CRM dava o comando
+  por terminado após 3 s sem dados. Se o equipamento pausasse no meio da config, o backup ficava
+  cortado. Agora a leitura vai até o prompt do equipamento voltar. Config Huawei sem o `return` final,
+  ou comando que não devolve o prompt, vira ERRO "Backup incompleto" e não substitui o último backup
+  bom. Afetava Switch Huawei Servidores Core CPD Sinop, SW-BRAVIN, SW-HU-CORE (Friends), SW Huawei
+  Villaggio Business (2), OLT CORE SORRISO 01, OLT FB COLNIZA e OLT-NBR.
+- **"Sem mudanças" escondia o backup completo.** A comparação era feita com qualquer backup antigo:
+  a config completa casava com um de julho, e o cortado continuava como o mais recente. Agora compara
+  só com o último. Detalhes em `docs/backup_automatico.md`.
+
+---
+
 ## [Não publicado] — 2026-11-03 (IPAM: auto-documentar via backup quebrava com IP repetido)
 
 ### Corrigido
