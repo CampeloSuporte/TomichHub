@@ -15,6 +15,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   sem resposta, HTTP (sem porta: 443 e depois 80). Usa o mesmo motor do acesso web dos cards
   (reescrita de links, cookies isolados, WebSocket). Mesmas permissões das outras Ferramentas; o
   CRM nunca conecta direto do servidor ao IP digitado. Detalhes em `docs/FERRAMENTAS_REDE_CLIENTE.md`.
+- Com túnel VPN ativo mas sem a rede do IP digitado no campo "Redes", a mensagem agora diz isso
+  (antes dizia que não havia túnel nenhum).
 
 ## [Não publicado] — 2026-11-04 (tarefa do cliente para assumir)
 

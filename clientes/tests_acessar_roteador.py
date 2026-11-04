@@ -122,3 +122,14 @@ class ProxyRoteadorTest(_Base):
         html = ProxyEngine._rewrite_urls_absolutas(
             'x http://10.0.0.1:8291/a', f'/clientes/acessos/r7-10.0.0.1/web/80/http', '10.0.0.1')
         self.assertEqual(html, 'x /clientes/acessos/r7-10.0.0.1/web/8291/http/a')
+
+
+class MensagemTunelSemRedeTest(_Base):
+    def test_tunel_ativo_sem_a_rede_explica(self):
+        from clientes.models import VPNOpenVPN
+        from clientes.views import caminho_roteador
+        self.proxy.delete()
+        VPNOpenVPN.objects.create(cliente=self.cliente, nome='VPN MikroTik', ativo=True, redes_privadas='10.0.0.0/24', vpn_ip='10.91.0.99')
+        _, _, erro = caminho_roteador(self.cliente, '100.65.0.52')
+        self.assertIn('nenhuma das redes', erro)
+        self.assertIn('VPN MikroTik', erro)

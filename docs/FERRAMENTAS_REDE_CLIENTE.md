@@ -74,6 +74,9 @@ cadastrar um Acesso**: digita IP (IPv4), porta (opcional) e protocolo
   público inclusive: o alvo foi digitado, então o CRM nunca abre conexão direta
   a partir do servidor. Sem proxy ativo, só funciona se um túnel VPN do cliente
   cobrir o IP (`vpn_cobre_ip`); senão dá erro.
+  O túnel só entrega o que está no campo **Redes** dele (tabela isolada): um IP
+  fora delas — ex. CGNAT `100.64.0.0/10` — não tem rota, e a mensagem diz que
+  falta a rede no túnel (não que o túnel não existe).
 - WebSocket: `ws/proxy/r<cliente>-<ip>/…` no `WebSocketProxyConsumer`, mesma
   regra (permissão das Ferramentas, sempre pelo proxy/túnel).
 
