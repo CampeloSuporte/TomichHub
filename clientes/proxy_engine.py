@@ -791,6 +791,11 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
                                 'Chrome/124.0 Safari/537.36'),
             'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+            # O Accept-Encoding do navegador é descartado (pode pedir br/zstd,
+            # que _build_resp não abre), mas sem nenhum o iDRAC9 dá 404 em todo
+            # JS/CSS: o Apache dele só guarda os assets em .gz. Pede o que
+            # _build_resp descomprime — igual ao caminho direto (_base_headers).
+            'Accept-Encoding': 'gzip, deflate',
             'Connection':      'keep-alive',
         }
         for k, v in headers.items():

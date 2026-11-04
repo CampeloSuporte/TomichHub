@@ -290,6 +290,26 @@ Testes em `clientes/tests_proxy_engine_pmtu.py`, com servidor TCP local que trav
 
 ---
 
+### iDRAC9 abre o `start.html` e a tela de login fica em branco — Corrigido em 04/11/2026
+
+**Sintoma:** acesso iDRAC da Startnet (`198.18.1.3`, acesso 1798, via proxy SSH `tunnel_zabbix-startnet`)
+abria o `/restgui/start.html` (200), mas quase todo JS/CSS (`angular.min.js`, `loginapp.js`,
+`custom.css`...) voltava 404. Só os arquivos pequenos (`xml2json.min.js`, `personality.css`) passavam.
+
+**Causa:** o Apache do iDRAC9 guarda os assets do `/restgui` só em `.gz` e responde 404 se a
+requisição não trouxer `Accept-Encoding: gzip`. O `_via_tunnel` descartava o `Accept-Encoding` do
+navegador (que pode pedir `br`/`zstd`, que o CRM não abre) e não mandava nenhum. O caminho direto
+(`_base_headers`) já mandava `gzip, deflate`, então só acessos pelo túnel tinham o problema.
+
+Teste de dentro do proxy (`curl -sk https://198.18.1.3/restgui/js/loginapp.js`): 404 de 196 bytes;
+com `-H 'Accept-Encoding: gzip'`: 200 de 3415 bytes.
+
+**Correção:** o túnel sempre pede `Accept-Encoding: gzip, deflate`. `_build_resp` já descomprimia
+antes do rewrite, e `content-encoding` está no `STRIP_HEADERS`, então o navegador recebe o corpo puro.
+Testes em `clientes/tests_proxy_engine_gzip.py`, com um servidor local que se comporta como o iDRAC.
+
+---
+
 ### Porta órfã em URL absoluta do device — Corrigido em 24/08/2026
 
 **Sintoma:** link do próprio equipamento apontando pra ele mesmo com porta explícita
