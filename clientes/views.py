@@ -7847,6 +7847,12 @@ def caminho_roteador(cliente, ip):
     if tunel_vpn:
         from . import vpn_rota
         return None, vpn_rota.origem(tunel_vpn), None
+    from .models import VPNOpenVPN
+    tuneis = list(VPNOpenVPN.objects.filter(cliente=cliente, ativo=True).values_list('nome', flat=True))
+    if tuneis:
+        return None, None, (f'O túnel VPN ({", ".join(tuneis)}) está ativo, mas nenhuma das redes '
+                            f'cadastradas nele inclui {ip}. Adicione a rede desse IP no campo '
+                            f'"Redes" do túnel, na aba "Túneis".')
     return None, None, (f'Nenhum proxy SSH ativo neste cliente e nenhum túnel VPN '
                         f'cobrindo {ip}. Configure um dos dois na aba "Túneis".')
 
