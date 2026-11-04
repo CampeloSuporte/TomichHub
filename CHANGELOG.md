@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-04 (menção no grupo aparecia como número)
+
+### Corrigido
+
+- **Atendimento: pessoa marcada no grupo aparecia como número no chat.** No grupo DIGICONN (#2043) a
+  mensagem "@137245797413081 consegue verificar essa questão?" chegava com o id interno (`@lid`) do
+  WhatsApp e o CRM gravava assim. Agora a menção é trocada pelo nome (`@Alex`) usando a lista de
+  participantes do grupo e os nomes já conhecidos; sem nome, mostra o telefone formatado. As mensagens
+  já gravadas com menção numérica foram corrigidas. Detalhes em `docs/ATENDIMENTO.md` (Histórico).
+
+---
+
 ## [Não publicado] — 2026-11-04 (CRM lento quando o Zabbix de um cliente oscila)
 
 ### Corrigido

@@ -454,6 +454,7 @@ systemctl restart gunicorn daphne celery
 | 28/10/2026 | **Sala Virtual** — clicar no card de um atendente abre menu: **conversa privada** (só os dois se ouvem, a sala não escuta) e **remover da sala** (Admin/Consultor; bloqueio de 2 min para voltar) |
 | 30/10/2026 | **Sala Virtual** — **chamar atenção** no menu do atendente: som, tela tremendo e alerta com botão Escutar, igual ao MSN |
 | 30/10/2026 | **Sala Virtual** — chamar atenção reforçado: notificação do navegador sempre, alerta em tela cheia em todas as abas, som mais alto repetido por até 30 s |
+| 04/11/2026 | **Menção recebida mostra o nome** — quem marcava alguém no grupo aparecia no chat como `@137245797413081` (id `@lid` interno do WhatsApp; caso DIGICONN #2043). `resolver_mencoes_recebidas` (services.py) troca por `@Nome` na chegada e na edição: participantes do grupo (cache 10 min) + mesmas fontes do autocomplete, depois `GroupMemberName`; sem nome vira o telefone formatado, desconhecido fica como veio |
 
 ---
 

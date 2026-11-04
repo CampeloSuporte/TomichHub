@@ -151,6 +151,73 @@ def aprender_nome_participante(connection, participant_jid: str, push_name: str)
         logger.debug(f"Falha ao registrar nome de participante {jid}: {e}")
 
 
+_RE_MENCAO_NUMERICA = _re.compile(r'@(\d{8,20})\b')
+
+
+def _formatar_telefone_mencao(phone: str) -> str:
+    """5527920010085 → +55 27 92001-0085 (só para menção sem nome)."""
+    d = _re.sub(r"\D", "", phone or "")
+    if d.startswith('55') and len(d) in (12, 13):
+        ddd, resto = d[2:4], d[4:]
+        return f'+55 {ddd} {resto[:-4]}-{resto[-4:]}'
+    return f'+{d}' if d else ''
+
+
+def resolver_mencoes_recebidas(connection, group_jid: str, texto: str) -> str:
+    """Troca "@137245797413081" pelo nome de quem foi marcado ("@Alex").
+
+    No grupo, o WhatsApp manda a marcação como "@<id>" no próprio texto — e
+    hoje esse id é quase sempre o `@lid` interno, não o telefone. O CRM
+    gravava isso cru, e no chat aparecia só um número que ninguém
+    reconhecia (caso do grupo DIGICONN, chamado #2043).
+
+    O id é cruzado com a lista de participantes do grupo (lid e telefone),
+    completada pelas mesmas fontes de nome do autocomplete do "@"
+    (`completar_nomes_participantes`), e por último com `GroupMemberName`
+    (quem já saiu do grupo mas falou nele). Sem nome conhecido, vira o
+    telefone formatado; sem nada, fica como veio. A lista fica 10 min em
+    cache por grupo e só é consultada quando o texto tem menção numérica.
+    """
+    if not texto or not connection or '@' not in texto:
+        return texto
+    ids = set(_RE_MENCAO_NUMERICA.findall(texto))
+    if not ids:
+        return texto
+
+    nomes = {}
+    try:
+        if group_jid and group_jid.endswith('@g.us'):
+            from django.core.cache import cache
+            chave = f'mencoes_part_{connection.id}_{group_jid}'
+            nomes = cache.get(chave)
+            if nomes is None:
+                nomes = {}
+                parts = EvolutionAPIClient(connection).get_group_participants_info(group_jid)
+                for p in completar_nomes_participantes(connection, parts):
+                    rotulo = p.get('nome') or _formatar_telefone_mencao(p.get('phone'))
+                    if not rotulo:
+                        continue
+                    for k in (p.get('phone') or '', (p.get('lid') or '').split('@')[0]):
+                        if k:
+                            nomes[k] = rotulo
+                cache.set(chave, nomes, 600 if nomes else 60)
+        faltam = [i for i in ids if i not in nomes]
+        if faltam:
+            jids = [f'{i}@lid' for i in faltam] + [f'{i}@s.whatsapp.net' for i in faltam]
+            for jid, nome in (GroupMemberName.objects
+                              .filter(connection=connection, jid__in=jids)
+                              .values_list('jid', 'name')):
+                nomes = {**nomes, jid.split('@')[0]: nome}
+    except Exception as e:
+        logger.debug(f"Falha ao resolver menções em {group_jid}: {e}")
+        return texto
+
+    return _RE_MENCAO_NUMERICA.sub(
+        lambda m: f'@{nomes[m.group(1)]}' if nomes.get(m.group(1)) else m.group(0),
+        texto,
+    )
+
+
 def completar_nomes_participantes(connection, participantes: List[Dict]) -> List[Dict]:
     """Preenche o `nome` de cada participante do grupo cruzando três fontes,
     da mais confiável para a menos.
@@ -1725,6 +1792,7 @@ class ConversationService:
             # continuaria mostrando o texto antigo.
             edicao = _extrair_edicao(msg_content)
             if edicao:
+                edicao["texto"] = resolver_mencoes_recebidas(connection, jid, edicao.get("texto"))
                 return ConversationService._registrar_edicao_recebida(edicao)
 
             # Eventos sem conteúdo pra mostrar. Viravam balão "[sem conteúdo]".
@@ -1802,6 +1870,9 @@ class ConversationService:
             # totalmente (não cria nem abre chamado).
             if '@noc' in (content or '').lower():
                 return {"success": True, "message": "noc_ignored"}
+
+            # "@137245797413081" (id interno de quem foi marcado) → "@Alex".
+            content = resolver_mencoes_recebidas(connection, jid, content)
 
             now = timezone.now()
 
