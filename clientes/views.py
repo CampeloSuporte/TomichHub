@@ -2292,7 +2292,14 @@ def realizar_backup(acesso, usuario=None):
         # pelo NOME do template, não pelo modelo: há OLTs FiberHome/CDATA
         # cadastradas com modelo "OLT VSOL" que fazem backup pelo template
         # FiberHome ("cd service") e não podem mudar de fluxo.
-        is_vsol = 'vsol' in (acesso.backup_template.nome or '').lower()
+        _nome_tpl = (acesso.backup_template.nome or '').lower()
+        # Intelbras G16 tem o mesmo roteiro: senha pedida de novo dentro do
+        # shell ("Password(1-96 chars):"), "enable" e "show running-config".
+        is_vsol = 'vsol' in _nome_tpl or 'g16' in _nome_tpl
+        # Nokia ISAM ("info configure flat" leva minutos e pausa no meio) e
+        # TP-Link ("enable" + "show current-config") só funcionam no shell
+        # interativo, com leitura até o prompt.
+        usa_shell_generico = any(k in _nome_tpl for k in ('nokia', 'isam', 'tp-link', 'tplink'))
 
         print(f"🏭 Huawei: {is_huawei} | A10: {is_a10} | Cisco: {is_cisco} | ZTE: {is_zte} | Parks: {is_parks} | MikroTik: {is_mikrotik} | Raisecom: {is_raisecom}")
 
@@ -2418,7 +2425,8 @@ def realizar_backup(acesso, usuario=None):
             # confirmado em teste real numa OLT VSOL/WOS) derrubam a sessão
             # SSH inteira depois do primeiro exec_command, quebrando todos os
             # comandos seguintes do template.
-            precisa_shell_persistente = any(c.strip().lower().startswith('cd ') for c in comandos)
+            precisa_shell_persistente = usa_shell_generico or any(
+                c.strip().lower().startswith('cd ') for c in comandos)
 
             if is_vsol:
                 output = _executar_comandos_vsol(
@@ -2620,6 +2628,9 @@ _RE_CMD_PAGINACAO = re.compile(
 )
 
 
+_RE_SEM_PRIVILEGIO = re.compile(
+    r'only tacacs authenticated users[^\n]*|you do not have improve the privilege[^\n]*|'
+    r'permission denied[^\n]*|insufficient privilege[^\n]*', re.IGNORECASE)
 _RE_CLI_OCUPADA = re.compile(r'system busy[^\n]*|Command executes failed\.?', re.IGNORECASE)
 _RE_CMD_CONFIG_HUAWEI = re.compile(r'^display\s+current(-configuration)?\b', re.IGNORECASE)
 
@@ -2636,6 +2647,10 @@ def _motivo_backup_incompleto(output, is_huawei=False):
     # FiberHome ocupada (outra sessão salvando/lendo a config) responde isto
     # ao "show startup-config" — 1 KB de erro era gravado como SUCESSO
     # (OLT FB COLNIZA, 04/11/2026).
+    m = _RE_SEM_PRIVILEGIO.search(texto)
+    if m:
+        return (f"o usuário do acesso não tem privilégio no equipamento ('{m.group(0).strip()}') "
+                "— liberar no equipamento/TACACS ou cadastrar um usuário administrador")
     m = _RE_CLI_OCUPADA.search(texto)
     if m:
         return f"o equipamento recusou o comando: '{m.group(0).strip()}'"
@@ -2651,6 +2666,21 @@ def _motivo_backup_incompleto(output, is_huawei=False):
                 return (f"'{cmd.strip()}' não terminou em 'return' — "
                         "a configuração veio cortada")
     return ''
+
+
+# Linhas que são erro/recusa da CLI, não configuração. Sem descartá-las,
+# backups só com "%% Invalid command", "bad command name show",
+# "Bad UserName or Bad Password", "% Unknown command."… passavam dos 40
+# caracteres e eram gravados como SUCESSO — 54 hosts assim em 04/11/2026.
+_RE_LINHA_ERRO_CLI = re.compile(
+    r'(invalid (command|input)|unrecognized command|unknown command|syntax error|'
+    r'bad command name|bad username|bad password|login fail|please retry|^password:|'
+    r'^login:|^-*\^$|^error:|incomplete command|ambiguous command|'
+    r'possible alternatives|show default values|configure show command|'
+    r'system busy|command executes failed|closing some connections|'
+    r'not have enough memory|vty out fail|shmget error|session not active)',
+    re.IGNORECASE,
+)
 
 
 def _backup_tem_conteudo(output, minimo=40):
@@ -2679,6 +2709,10 @@ def _backup_tem_conteudo(output, minimo=40):
             em_paginacao = bool(_RE_CMD_PAGINACAO.match(limpa[len('Comando:'):].strip()))
             continue
         if em_paginacao or limpa.startswith('ERRO:'):
+            continue
+        # Erro da CLI e prompt sozinho na linha ("intelbras-olt>") não são
+        # configuração.
+        if _RE_LINHA_ERRO_CLI.search(limpa) or _RE_PROMPT_CLI.match(linha.strip()):
             continue
         corpo.append(limpa)
     return len('\n'.join(corpo)) >= minimo
@@ -3362,18 +3396,19 @@ def _executar_comandos_shell_generico(client, comandos):
             # Até o prompt voltar: com só 3 s de silêncio o "show
             # startup-config" das FiberHome (1,8 MB na OLT FB COLNIZA) saía
             # vazio quando a OLT demorava a começar a responder.
-            resultado, completo = _ler_ate_prompt(channel, silencio=3.0)
+            resultado, completo = _ler_ate_prompt(channel, silencio=3.0, re_more=_RE_MORE_VSOL)
             # FiberHome ocupada ("system busy,please try later") — espera e
             # repete; se continuar ocupada, _motivo_backup_incompleto recusa.
             for _tentativa in range(3):
-                if not (completo and _RE_CLI_OCUPADA.search(resultado or '')):
+                if not (completo and re.search(r'system busy', resultado or '', re.I)):
                     break
                 print(f"    ⏳ equipamento ocupado — nova tentativa em 20s ({_tentativa + 1}/3)")
                 time.sleep(20)
                 channel.send(comando + '\n')
-                resultado, completo = _ler_ate_prompt(channel, silencio=3.0)
+                resultado, completo = _ler_ate_prompt(channel, silencio=3.0, re_more=_RE_MORE_VSOL)
 
             if resultado:
+                resultado = _RE_MORE_VSOL_LINHA.sub('', resultado)
                 resultado = limpar_ansi(resultado)
                 linhas = resultado.split('\n')
                 if linhas and comando.strip() in linhas[0]:
@@ -3429,10 +3464,11 @@ def _ler_ate_silencio(channel, silencio=2.0, max_wait=120):
 
 # Prompt de CLI no fim da saída: "<SW-X>", "[~SW-X]", "OLT.CCIT>",
 # "MA5800-X7(config)#", "OLT-NBR#", "OLT-NBR\service#" (FiberHome após
-# "cd service"). Começa na coluna 0 e não tem espaço — linhas de config
-# ("#", " rule 5 permit", "!</MSAN>") não casam.
+# "cd service"), "typ:isadmin>#" / "typ:isadmin>environment#" (Nokia ISAM).
+# Começa na coluna 0 e não tem espaço — linhas de config ("#",
+# " rule 5 permit", "!</MSAN>") não casam.
 _RE_PROMPT_CLI = re.compile(
-    r'(?:^|\n)[<\[]?[~*]?[A-Za-z0-9][\w.\-:/@\\]{0,80}(?:\([^\s()]{0,60}\))?[>#\]][ \t]*$'
+    r'(?:^|\n)[<\[]?[~*]?[A-Za-z0-9][\w.\-:/@\\]{0,80}(?:>[\w\-]*)?(?:\([^\s()]{0,60}\))?[>#\]][ \t]*$'
 )
 _RE_ANSI_PROMPT = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])|\r')
 

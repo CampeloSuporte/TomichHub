@@ -31,7 +31,7 @@ CORTADA = CABECALHO + "#\nsysname SW\n#\nvlan 1001\n description storages\n"
 class PromptTest(TestCase):
     def test_reconhece_prompts(self):
         for txt in ('x\n<SW-SERVIDORES-CORE-CPD>', 'x\n[~SW]', 'x\nOLT.CCIT>',
-                    'x\nMA5800-X7(config)#', 'x\nOLT-NBR# ', 'x\nOLT-NBR\\service# ', 'x\nZXAN#\n'):
+                    'x\nMA5800-X7(config)#', 'x\nOLT-NBR# ', 'x\nOLT-NBR\\service# ', 'x\ntyp:isadmin>#', 'x\ntyp:isadmin>environment# ', 'x\nZXAN#\n'):
             self.assertTrue(_termina_em_prompt(txt), txt)
 
     def test_linha_de_config_nao_e_prompt(self):
@@ -56,6 +56,18 @@ class PromptTest(TestCase):
         self.assertFalse(completo)
 
 
+class SoErroDaCliTest(TestCase):
+    def test_so_erro_nao_e_conteudo(self):
+        from clientes.views import _backup_tem_conteudo
+        sec = "\n" + "=" * 60 + "\nComando: show running-config\n" + "=" * 60 + "\n"
+        for corpo in ("%% Invalid command\nintelbras-olt> \n\nClosing some connections to improve memory ...",
+                      "bad command name show (line 1 column 1)\n[admin@AP] > ",
+                      "\nBad UserName or Bad Password , Login Failed.\n\nPlease retry\nPassword: ",
+                      "            ^\nError: Unrecognized command found at '^' position.\n<SW.HW.CCIT>"):
+            self.assertFalse(_backup_tem_conteudo(sec + corpo), corpo)
+        self.assertTrue(_backup_tem_conteudo(sec + COMPLETA))
+
+
 class MotivoIncompletoTest(TestCase):
     def test_huawei_sem_return(self):
         self.assertEqual(_motivo_backup_incompleto(COMPLETA, True), '')
@@ -67,6 +79,11 @@ class MotivoIncompletoTest(TestCase):
         saida = ("\n" + "=" * 60 + "\nComando: show startup-config\n" + "=" * 60 + "\n"
                  "\nsystem busy,please try later.\nCommand executes failed.\nOLT-X# \n")
         self.assertIn('system busy', _motivo_backup_incompleto(saida, False))
+
+    def test_sem_privilegio(self):
+        saida = ("\n" + "=" * 60 + "\nComando: cd service\n" + "=" * 60 + "\n"
+                 "enable\nOnly tacacs authenticated users can use this command.\nOLT-JUARA# \n")
+        self.assertIn('privilégio', _motivo_backup_incompleto(saida, False))
 
     def test_marca_de_prompt_ausente(self):
         saida = COMPLETA + f"{MARCA_SAIDA_INCOMPLETA}: o prompt não voltou depois de 'x'\n"
