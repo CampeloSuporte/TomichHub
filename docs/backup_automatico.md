@@ -658,10 +658,30 @@ vty out fail! cli not have enough memory
 Command executes failed.
 ```
 
-Em toda sessão, não é ocupação momentânea. O mesmo template funciona nas outras FiberHome da Sartor.
-**O problema é na OLT** (processo da CLI sem memória): resolve fechando sessões presas ou
-reiniciando a controladora, em janela, pelo cliente. Repetir o comando não adianta.
+Acontece em toda sessão, não é ocupação momentânea. O mesmo `show startup-config` funcionava nas
+outras FiberHome da Sartor.
 
-No CRM, `_RE_CLI_SEM_MEMORIA` faz `_motivo_backup_incompleto` dar esse motivo, e o "Backup vazio"
+**Solução: modo debug.** O `show running-config` do modo debug (`lll`, prompt `HOST(DEBUG_H)>`)
+devolve a config completa, terminando em `!end  of config`: 2,3 MB na JUINA, em cerca de 5 min.
+Fora do debug, `show running-config` só aceita `slot` e responde "Command incomplete". O
+`terminal length 0` precisa vir **antes** do `lll`. Dentro do debug ele não existe, e sem ele a OLT
+pagina com `--Press any key to continue Ctrl+c to stop--`, que o shell genérico não reconhece.
+
+O template **"Backup fiberhome"** (id 15, todos os 43 acessos) passou a ser:
+
+```
+cd service
+terminal length 0
+cd ..
+lll
+show running-config
+```
+
+Validado ao vivo antes da troca em JDCA, COTRI, NORDESTINA (VSOL), VILA-VELHA e AEXPNET, com o
+mesmo tamanho do backup anterior. JAPURANA, SHPG e JUARA continuam em ERRO exatamente como antes
+(`Command executes failed`, sem privilégio). O modo debug tem `reboot`, `recover`, `reset` e
+`delete`. O template só usa `show`.
+
+Independente disso, `_RE_CLI_SEM_MEMORIA` faz `_motivo_backup_incompleto` dar esse motivo, e o "Backup vazio"
 agora diz por que o equipamento recusou (sem memória, ocupado, sem privilégio) em vez da frase
 genérica.

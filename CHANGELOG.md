@@ -5,10 +5,14 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
-## [Não publicado] — 2026-11-05 (backup FiberHome com a CLI sem memória)
+## [Não publicado] — 2026-11-05 (backup FiberHome pelo modo debug)
 
 ### Alterado
 
+- **Template "Backup fiberhome" usa o modo debug.** Agora roda `lll` + `show running-config` em vez
+  de `show startup-config`. A OLT FB JUINA recusava o `show startup-config` ("cli not have enough
+  memory") e nunca tinha tido backup; agora grava 2,3 MB. Validado antes em 5 FiberHome que já
+  funcionavam, sem regressão.
 - **Backup vazio diz o motivo.** Quando o equipamento recusa o comando e explica por quê (CLI sem
   memória, ocupado, sem privilégio), o erro do backup agora mostra isso em vez de "nenhum comando do
   template retornou configuração". Caso real: OLT FB JUINA responde "vty out fail, cli not have
