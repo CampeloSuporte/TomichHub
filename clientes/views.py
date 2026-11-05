@@ -2481,6 +2481,12 @@ def realizar_backup(acesso, usuario=None):
             client.close()
 
         if len(output.strip()) < 100 or not _backup_tem_conteudo(output):
+            # Se o equipamento disse POR QUE recusou (sem memória, ocupado,
+            # sem privilégio), a mensagem diz isso — "Backup vazio" genérico
+            # escondia o "cli not have enough memory" da OLT FB JUINA.
+            _recusa = _motivo_backup_incompleto(output, is_huawei)
+            if _recusa and MARCA_SAIDA_INCOMPLETA not in output:
+                raise Exception(f"Backup vazio: {_recusa}")
             raise Exception(
                 "Backup vazio: nenhum comando do template retornou configuração. "
                 "Verifique os comandos do template e a CLI do equipamento."
@@ -2656,6 +2662,11 @@ _RE_CMD_PAGINACAO = re.compile(
 _RE_SEM_PRIVILEGIO = re.compile(
     r'only tacacs authenticated users[^\n]*|you do not have improve the privilege[^\n]*|'
     r'permission denied[^\n]*|insufficient privilege[^\n]*', re.IGNORECASE)
+# FiberHome AN5516 com o processo da CLI sem memória (OLT FB JUINA,
+# 05/11/2026): "vty out fail, cli not have enough memory!" a todo
+# "show startup-config", em qualquer sessão. Só se resolve no equipamento
+# (fechar sessões presas / reiniciar a controladora) — repetir não adianta.
+_RE_CLI_SEM_MEMORIA = re.compile(r'cli not have enough memory|vty out fail', re.IGNORECASE)
 _RE_CLI_OCUPADA = re.compile(r'system busy[^\n]*|Command executes failed\.?', re.IGNORECASE)
 _RE_CMD_CONFIG_HUAWEI = re.compile(r'^display\s+current(-configuration)?\b', re.IGNORECASE)
 
@@ -2676,6 +2687,9 @@ def _motivo_backup_incompleto(output, is_huawei=False):
     if m:
         return (f"o usuário do acesso não tem privilégio no equipamento ('{m.group(0).strip()}') "
                 "— liberar no equipamento/TACACS ou cadastrar um usuário administrador")
+    if _RE_CLI_SEM_MEMORIA.search(texto):
+        return ("a CLI do equipamento está sem memória ('vty out fail, cli not have enough "
+                "memory') — fechar sessões presas ou reiniciar a controladora; não é falha do CRM")
     m = _RE_CLI_OCUPADA.search(texto)
     if m:
         return f"o equipamento recusou o comando: '{m.group(0).strip()}'"

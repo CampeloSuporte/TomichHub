@@ -643,3 +643,25 @@ Na mesma lista havia 7 hosts novos, sem backup nenhum:
 - GROVE-CLEANDRO e BRAS_PREFEITURA BRASNORTE: não respondem em nenhuma porta, nem pelo proxy nem pelo
   servidor.
 
+
+---
+
+## FiberHome com a CLI sem memória (OLT FB JUINA) — 2026-11-05
+
+A 1724 OLT FB JUINA (Sartor, AN5516-06, V104R002, uma só controladora HSWA no slot 9) nunca teve
+backup bom: dava "Backup vazio" (e uma vez "Command executes failed"). Testado ao vivo pelo proxy: o
+login e o `cd service` / `terminal length 0` funcionam, mas o `show startup-config` responde
+
+```
+vty out fail, cli not have enough memory!
+vty out fail! cli not have enough memory
+Command executes failed.
+```
+
+Em toda sessão, não é ocupação momentânea. O mesmo template funciona nas outras FiberHome da Sartor.
+**O problema é na OLT** (processo da CLI sem memória): resolve fechando sessões presas ou
+reiniciando a controladora, em janela, pelo cliente. Repetir o comando não adianta.
+
+No CRM, `_RE_CLI_SEM_MEMORIA` faz `_motivo_backup_incompleto` dar esse motivo, e o "Backup vazio"
+agora diz por que o equipamento recusou (sem memória, ocupado, sem privilégio) em vez da frase
+genérica.
