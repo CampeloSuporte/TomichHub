@@ -2320,6 +2320,15 @@ def realizar_backup(acesso, usuario=None):
         # TP-Link ("enable" + "show current-config") só funcionam no shell
         # interativo, com leitura até o prompt.
         usa_shell_generico = any(k in _nome_tpl for k in ('nokia', 'isam', 'tp-link', 'tplink'))
+        # FiberHome (AN5516 com "cd service"/"lll", série 6k com "config"):
+        # sempre shell interativo, pelo NOME do template. Várias OLTs FB da
+        # Sartor estão cadastradas com modelo "OLT HUAWEI MA5800X7" e iam
+        # para o executor Huawei; e o template 6k não tem "cd", então caía
+        # no exec_command por comando — o "terminal length 0" se perdia
+        # antes do "show startup-config".
+        if 'fiberhome' in _nome_tpl or 'fiber home' in _nome_tpl:
+            usa_shell_generico = True
+            is_huawei = is_a10 = is_cisco = is_zte = is_raisecom = is_mikrotik = is_parks = False
 
         print(f"🏭 Huawei: {is_huawei} | A10: {is_a10} | Cisco: {is_cisco} | ZTE: {is_zte} | Parks: {is_parks} | MikroTik: {is_mikrotik} | Raisecom: {is_raisecom}")
 
