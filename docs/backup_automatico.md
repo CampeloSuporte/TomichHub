@@ -685,3 +685,40 @@ mesmo tamanho do backup anterior. JAPURANA, SHPG e JUARA continuam em ERRO exata
 Independente disso, `_RE_CLI_SEM_MEMORIA` faz `_motivo_backup_incompleto` dar esse motivo, e o "Backup vazio"
 agora diz por que o equipamento recusou (sem memória, ocupado, sem privilégio) em vez da frase
 genérica.
+
+### Série 6k: template "Backup fiberhome 6k" (mesmo dia)
+
+As OLTs FiberHome da série 6k (versões RP1300 a RP1600) não têm `cd service` nem `lll`. Com o
+template AN5516, davam `Command executes failed` ou "prompt não voltou depois de 'cd service'". O
+roteiro delas, indicado pelo usuário e validado ao vivo, é:
+
+```
+config
+terminal length 0
+show startup-config
+```
+
+O prompt fica `HOST(config)#` e a config termina em `!end  of config`, seguida de `!version:RPxxxx`.
+O template "Backup fiberhome 6k" foi vinculado a JAPURANA, JUARA, ITANHANGA, COTRIGUACU, TAPURAH,
+NOVA HORIZONTE, PORTO DOS GAUCHOS, FONTANILHAS, AMERICANA e TIBAJI (Sartor). Os 10 backups reais
+deram SUCESSO, de 190 a 820 KB, cerca de 20 s cada.
+
+Para saber a série, use o `show version`. AN5516 mostra `system device version is:V104R002` e
+controladora HSWA. Nela, `config` não muda o prompt e `terminal length 0` dá "Unknown command" fora
+do `cd service`. A ARIPUANA estava na lista de erro, mas é AN5516 e ficou no "Backup fiberhome".
+
+**Paginação "Press any key".** Sem `terminal length 0`, a FiberHome pagina com
+`--Press any key to continue Ctrl+c to stop--`. `_RE_MORE_GENERICO` agora reconhece essa paginação
+e responde com espaço, e `_RE_MORE_GENERICO_LINHA` limpa a linha do arquivo. Seguir página por
+página é lento: uma config de 1,6 MB passa dos 900 s de `max_wait`. Por isso o template certo
+continua sendo o que desliga a paginação.
+
+**Código:** template com `fiberhome` no nome sempre usa `_executar_comandos_shell_generico`.
+Antes, o template 6k não tinha `cd`, então cada comando ia num `exec_command` separado e o
+`terminal length 0` se perdia. Além disso, 5 dessas OLTs estão cadastradas com modelo "OLT HUAWEI
+MA5800X7" e iam para o executor Huawei. Testes: `clientes/tests_backup_fiberhome.py`.
+
+Ficaram de fora por outros motivos:
+- AGUA DA PRATA: "Authentication failed", senha do cadastro.
+- JUARA e ITANHANGA: estão com o mesmo IP (198.18.103.218) e o backup das duas sai igual
+  (`OLT-JUARA`). O IP da ITANHANGA no cadastro deve estar errado.

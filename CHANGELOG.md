@@ -9,6 +9,11 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ### Alterado
 
+- **Novo template "Backup fiberhome 6k"** (`config` / `terminal length 0` / `show startup-config`)
+  para as OLTs FiberHome da série 6k, que não têm `cd service` nem `lll`. Vinculado a 10 OLTs da
+  Sartor que estavam em ERRO. O backup segue também a paginação `--Press any key to continue--`
+  da FiberHome. Template com "fiberhome" no nome agora sempre roda no shell
+  interativo, mesmo sem `cd` e mesmo com modelo Huawei no cadastro.
 - **Template "Backup fiberhome" usa o modo debug.** Agora roda `lll` + `show running-config` em vez
   de `show startup-config`. A OLT FB JUINA recusava o `show startup-config` ("cli not have enough
   memory") e nunca tinha tido backup; agora grava 2,3 MB. Validado antes em 5 FiberHome que já
