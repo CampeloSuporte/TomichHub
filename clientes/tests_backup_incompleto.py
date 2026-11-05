@@ -88,6 +88,14 @@ class MotivoIncompletoTest(TestCase):
                  "\nsystem busy,please try later.\nCommand executes failed.\nOLT-X# \n")
         self.assertIn('system busy', _motivo_backup_incompleto(saida, False))
 
+    def test_fiberhome_sem_memoria(self):
+        # Saída real da OLT FB JUINA (05/11/2026).
+        saida = ("\n" + "=" * 60 + "\nComando: show startup-config\n" + "=" * 60 + "\n"
+                 "vty out fail, cli not have enough memory!\nvty out fail! cli not have enough memory\n"
+                 "Command executes failed.\nOLT-FIBERHOME-POP-JUINA# \n")
+        self.assertFalse(views._backup_tem_conteudo(saida))
+        self.assertIn('sem memória', _motivo_backup_incompleto(saida, False))
+
     def test_sem_privilegio(self):
         saida = ("\n" + "=" * 60 + "\nComando: cd service\n" + "=" * 60 + "\n"
                  "enable\nOnly tacacs authenticated users can use this command.\nOLT-JUARA# \n")
@@ -120,6 +128,14 @@ class RealizarBackupIncompletoTest(TestCase):
                 mock.patch('clientes.views.paramiko.SSHClient'), \
                 mock.patch('clientes.views._executar_comandos_huawei', return_value=saida):
             return realizar_backup(self.acesso)
+
+    def test_sem_memoria_diz_o_motivo(self):
+        saida = ("\n" + "=" * 60 + "\nComando: display current-configuration\n" + "=" * 60 + "\n"
+                 "vty out fail, cli not have enough memory!\nCommand executes failed.\n<SW>\n")
+        resultado = self._rodar(saida)
+        self.assertFalse(resultado['sucesso'])
+        self.assertIn('sem memória', resultado['erro'])
+        self.assertEqual(BackupLog.objects.filter(acesso=self.acesso, status='SUCESSO').count(), 0)
 
     def test_cortada_vira_erro(self):
         resultado = self._rodar(CORTADA)

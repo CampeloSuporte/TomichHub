@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-05 (backup FiberHome com a CLI sem memória)
+
+### Alterado
+
+- **Backup vazio diz o motivo.** Quando o equipamento recusa o comando e explica por quê (CLI sem
+  memória, ocupado, sem privilégio), o erro do backup agora mostra isso em vez de "nenhum comando do
+  template retornou configuração". Caso real: OLT FB JUINA responde "vty out fail, cli not have
+  enough memory" ao `show startup-config`; o problema é na OLT (fechar sessões presas ou reiniciar a
+  controladora), não no CRM.
+
+---
+
 ## [Não publicado] — 2026-11-04 (acessar roteador pela aba Ferramentas)
 
 ### Adicionado
