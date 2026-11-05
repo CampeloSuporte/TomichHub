@@ -56,6 +56,18 @@ class PromptTest(TestCase):
         self.assertTrue(completo)
         canal.send.assert_called_once_with(' ')
 
+    def test_segue_press_any_key_da_fiberhome(self):
+        canal = mock.Mock(closed=False)
+        leituras = ['user add ixc login-password 56a6\n --Press any key to continue Ctrl+c to stop-- ',
+                    '\x08\x08\x08  \x08\x08\x08user add leivy\n!end  of config\nOLT-ARIPUANA# ']
+        with mock.patch.object(views, '_ler_ate_silencio', side_effect=leituras):
+            texto, completo = _ler_ate_prompt(canal, re_more=views._RE_MORE_GENERICO)
+        self.assertTrue(completo)
+        canal.send.assert_called_once_with(' ')
+        limpo = views._RE_MORE_GENERICO_LINHA.sub('', texto)
+        self.assertNotIn('Press any key', limpo)
+        self.assertIn('56a6\nuser add leivy', limpo)
+
     def test_sem_prompt_devolve_incompleto(self):
         canal = mock.Mock(closed=False)
         with mock.patch.object(views, '_ler_ate_silencio', side_effect=['vlan 1\n'] + [''] * 50), \

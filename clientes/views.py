@@ -3319,8 +3319,14 @@ def _executar_comandos_huawei(client, comandos):
 # Paginação genérica do shell: "--More--", "---- More ----" e o da TP-Link,
 # "--More ( Press 'Q' to quit )--".
 # A TP-Link manda um \x00 depois do marcador.
-_RE_MORE_GENERICO = re.compile(r'-{2,}\s*More\b[^\n]{0,40}?-{2,}[ \t\x00]*$', re.IGNORECASE)
-_RE_MORE_GENERICO_LINHA = re.compile(r'[ \t]*-{2,}\s*More\b[^\n]{0,40}?-{2,}[^\S\n]*(\x08+\s*\x08+)?', re.IGNORECASE)
+# "--More--" e a paginação da FiberHome sem "terminal length 0" (OLT FB
+# ARIPUANA, WOS: o comando não existe nela) — "--Press any key to continue
+# Ctrl+c to stop--"; sem segui-la o show startup-config parava na 1ª página.
+_RE_MORE_GENERICO = re.compile(
+    r'-{2,}\s*(?:More\b|Press any key to continue)[^\n]{0,40}?-{2,}[ \t\x00]*$', re.IGNORECASE)
+_RE_MORE_GENERICO_LINHA = re.compile(
+    r'[ \t]*-{2,}\s*(?:More\b|Press any key to continue)[^\n]{0,40}?-{2,}[^\S\n\x08]*\x00?(\x08+\s*\x08+)?',
+    re.IGNORECASE)
 _RE_MORE_VSOL = re.compile(r'-{2,}\s*More\s*-{2,}[^\n]*$', re.IGNORECASE)
 _RE_MORE_VSOL_LINHA = re.compile(r'[ \t]*-{2,}\s*More\s*-{2,}[^\S\n]*(\x08+\s*\x08+)?', re.IGNORECASE)
 
