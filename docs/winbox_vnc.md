@@ -530,6 +530,23 @@ continua guardada em memória e alimentando o diagnóstico, independente do nív
 Validado em produção em 20/08/2026 no `SRV-AGRONELORE` (Grupo Agronelore, 192.168.0.1:3389 pelo
 túnel do ProxyServer): área de trabalho do Windows renderizando no noVNC.
 
+### RDP com porta errada ficava na tela preta — Corrigido em 06/11/2026
+
+O acesso 9556 (Conecta ISP, `172.18.234.246`) estava cadastrado como RDP na **porta 22**. Pelo
+túnel OpenVPN a 22 não responde, mas o relay local (`vpn_rota.endpoint_local`), assim como o túnel
+paramiko do proxy, **aceita a conexão** na hora. O `xfreerdp` ficava ~15 s esperando, morria com
+`Connection reset by peer` / `ERRCONNECT_CONNECT_TRANSPORT_FAILED` depois da janela de 2 s do
+`RdpVNCManager.start()`, e o noVNC mostrava o Xvfb vazio para sempre.
+
+Correção em `clientes/consumers.py` (`VncConsumer._testar_porta_rdp`): antes de subir o
+`RdpVNCManager`, o modo `rdp` abre e fecha uma conexão TCP até o **destino real** pelo mesmo
+caminho que o `xfreerdp` vai usar: canal `direct-tcpip` no proxy SSH, `vpn_rota.conectar` no túnel
+OpenVPN ou socket direto. Se não houver resposta em 6 s, aparece na tela
+"RDP <host>:<porta> não respondeu — confira a porta do acesso (a porta padrão do RDP é 3389)".
+
+O cadastro do 9556 foi corrigido para a 3389. Pelo túnel, a 3389 responde como RDP com NLA, e o
+login do Administrator foi validado com `xfreerdp +auth-only`.
+
 ### Colar do PC local dentro da sessão não funcionava (WinBox e RDP) — Corrigido em 02/09/2026
 
 Copiar um texto **fora** do navegador (ou em outra aba) e dar `Ctrl+V` dentro da renderização do
