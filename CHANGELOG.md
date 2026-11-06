@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-06 (RDP Web com porta que não responde)
+
+### Corrigido
+
+- **RDP Web não fica mais na tela preta quando a porta não responde.** Antes de abrir o `xfreerdp`,
+  o CRM testa o host e a porta pelo mesmo caminho da sessão (proxy SSH, túnel OpenVPN ou direto).
+  Se não houver resposta, mostra "RDP <host>:<porta> não respondeu — confira a porta do acesso". O
+  acesso 9556 (Conecta ISP) estava com a porta 22 e passou para a 3389.
+
+---
+
 ## [Não publicado] — 2026-11-05 (backup FiberHome pelo modo debug)
 
 ### Alterado

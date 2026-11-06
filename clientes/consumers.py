@@ -2561,6 +2561,10 @@ class WinboxVNCConsumer(SSHConsumer):
                 porta = int(acesso.winbox) if hasattr(acesso, 'winbox') and acesso.winbox else 8291
 
 
+            # Caminho até o destino — o teste de porta do RDP usa o mesmo.
+            proxy = None
+            tunel_vpn = None
+
             if mode == 'unm':
                 proxy_unm = None
                 if self.is_private_ip(host):
@@ -2632,6 +2636,17 @@ class WinboxVNCConsumer(SSHConsumer):
                 self.vnc_manager = BrowserVNCManager(url=url, record_path=record_path, width=vnc_w, height=vnc_h)
 
             elif mode == 'rdp':
+                # Porta errada no cadastro (ex.: 22 num acesso RDP) não falha
+                # rápido: o relay/túnel local aceita, o xfreerdp espera ~15 s,
+                # morre depois da janela de 2 s do RdpVNCManager e o usuário
+                # fica olhando a tela preta do Xvfb. Testa o destino real antes.
+                self.send_json({'type': 'info', 'message': f'🔍 Testando {host}:{porta}...'})
+                self._testar_porta_rdp(
+                    host, porta,
+                    proxy=proxy,
+                    tunel_vpn=tunel_vpn,
+                )
+
                 # Inicia Xvfb + xfreerdp + x11vnc
                 self.vnc_manager = RdpVNCManager(
                     host=target_host,
@@ -2682,6 +2697,28 @@ class WinboxVNCConsumer(SSHConsumer):
             self.send_error(str(e))
             self.limpar_recursos()
 
+
+    def _testar_porta_rdp(self, host, porta, proxy=None, tunel_vpn=None, timeout=6):
+        """Abre e fecha uma conexão TCP até host:porta pelo mesmo caminho que o
+        xfreerdp vai usar (proxy SSH, túnel OpenVPN ou direto). Sem resposta,
+        vira erro legível na tela em vez de tela preta."""
+        try:
+            if proxy and getattr(self, '_paramiko_client', None):
+                canal = self._paramiko_client.get_transport().open_channel(
+                    'direct-tcpip', (host, int(porta)), ('127.0.0.1', 0), timeout=timeout,
+                )
+                canal.close()
+            elif tunel_vpn:
+                from . import vpn_rota
+                vpn_rota.conectar(tunel_vpn, host, porta, timeout=timeout).close()
+            else:
+                socket.create_connection((host, int(porta)), timeout=timeout).close()
+        except Exception as e:
+            dica = '' if int(porta) == 3389 else ' (a porta padrão do RDP é 3389)'
+            raise Exception(
+                f"RDP {host}:{porta} não respondeu — confira a porta do acesso{dica}. "
+                f"Detalhe: {e or type(e).__name__}"
+            )
 
     def read_tcp_output(self):
         try:
