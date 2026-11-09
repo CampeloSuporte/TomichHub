@@ -85,6 +85,40 @@ class EspacoNoRackTest(TestCase):
             self.montar(tipo='switch', acesso_id=alheio.id, u_inicial=1)
 
 
+class MarcaEFonteTest(TestCase):
+    """Placa do fabricante no desenho e equipamento avulso (fonte retificadora)."""
+    def setUp(self):
+        self.cliente = _cliente()
+        self.rack = services.criar_rack(self.cliente, {'nome': 'RACK-01', 'altura_u': 20})
+
+    def test_marca_reconhecida_pelo_modelo(self):
+        from . import catalogo
+        self.assertEqual(catalogo.marca('', 'S5730-48C4XE')['chave'], 'huawei')
+        self.assertEqual(catalogo.marca('', 'SW DM4370')['chave'], 'datacom')
+        self.assertEqual(catalogo.marca('', 'CCR1036-8G-2S+')['chave'], 'mikrotik')
+        self.assertIsNone(catalogo.marca('', 'Servidor'))
+
+    def test_fabricante_digitado_vence_e_desconhecido_aparece_como_escrito(self):
+        from . import catalogo
+        self.assertEqual(catalogo.marca('datacom', 'S5730')['label'], 'DATACOM')
+        self.assertEqual(catalogo.marca('Acme Energia', '')['label'], 'Acme Energia')
+
+    def test_fabricante_vem_do_modelo_do_host_do_crm(self):
+        from modelo_equipamento.models import Modelo_equipamento
+        acesso = _acesso(self.cliente, 'SW-AGG', '10.0.0.9')
+        acesso.modelo = Modelo_equipamento.objects.create(nome='SW HUAWEI S6730 TESTE', fabricante='Huawei')
+        acesso.save()
+        eq = services.montar_equipamento(self.rack, {'tipo': 'switch', 'acesso_id': acesso.id})
+        self.assertEqual(eq.fabricante, 'Huawei')
+        d = services.estado(self.cliente)['racks'][0]['equipamentos'][0]
+        self.assertEqual(d['marca']['chave'], 'huawei')
+
+    def test_fonte_retificadora_avulsa(self):
+        eq = services.montar_equipamento(self.rack, {'tipo': 'fonte', 'nome': 'FONTE-01', 'modelo': 'ETP48200'})
+        self.assertEqual((eq.altura_u, eq.face, eq.acesso_id, eq.topologia_node_id), (2, 'frente', None, ''))
+        self.assertEqual(services.equipamento_dict(eq)['marca']['label'], 'HUAWEI')
+
+
 class TopologiaParaRackTest(TestCase):
     def setUp(self):
         self.cliente = _cliente()

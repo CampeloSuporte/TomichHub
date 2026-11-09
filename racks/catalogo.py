@@ -5,6 +5,8 @@ Catálogo do rack: o que pode ser montado e que cabo liga o quê.
 tudo pronto em `catalogo_para_tela()`, então um tipo novo entra aqui e
 aparece na paleta sem mexer no JS.
 """
+import re
+import unicodedata
 
 # tipo -> label, altura padrão (U), cor, ícone Font Awesome, portas desenhadas
 # no espelho, se ocupa a profundidade inteira do rack e a face padrão.
@@ -24,6 +26,7 @@ TIPOS = {
     'organizador':   {'label': 'Organizador',       'altura': 1, 'cor': '#57606a', 'icone': 'fa-bars-staggered', 'portas': 0,  'profundidade_total': False, 'face': 'frente'},
     'bandeja':       {'label': 'Bandeja',           'altura': 1, 'cor': '#6e7781', 'icone': 'fa-layer-group',    'portas': 0,  'profundidade_total': True,  'face': 'frente'},
     'pdu':           {'label': 'PDU / Régua',       'altura': 1, 'cor': '#d29922', 'icone': 'fa-plug',           'portas': 8,  'profundidade_total': False, 'face': 'traseira'},
+    'fonte':         {'label': 'Fonte retificadora','altura': 2, 'cor': '#f0883e', 'icone': 'fa-bolt',           'portas': 0,  'profundidade_total': True,  'face': 'frente', 'modulos': 4},
     'nobreak':       {'label': 'Nobreak',           'altura': 2, 'cor': '#a371f7', 'icone': 'fa-car-battery',    'portas': 0,  'profundidade_total': True,  'face': 'frente'},
     'tampa':         {'label': 'Tampa cega',        'altura': 1, 'cor': '#30363d', 'icone': 'fa-square',         'portas': 0,  'profundidade_total': False, 'face': 'frente'},
     'outro':         {'label': 'Outro',             'altura': 1, 'cor': '#8b98a5', 'icone': 'fa-cube',           'portas': 0,  'profundidade_total': True,  'face': 'frente'},
@@ -34,7 +37,7 @@ GRUPOS = [
     ('Ativos de rede', ['router', 'switch', 'olt', 'firewall', 'cgnat', 'dwdm', 'radio']),
     ('Servidores', ['servidor']),
     ('Cabeamento', ['patch_panel', 'dio', 'organizador']),
-    ('Energia e acessórios', ['pdu', 'nobreak', 'bandeja', 'tampa', 'outro']),
+    ('Energia e acessórios', ['fonte', 'pdu', 'nobreak', 'bandeja', 'tampa', 'outro']),
 ]
 
 FACES = [('frente', 'Frente'), ('traseira', 'Traseira')]
@@ -92,6 +95,38 @@ MEIO_DA_IFACE = {
     'mw': ('coaxial', 'F'),
 }
 
+# Fabricante -> nome como aparece na placa do equipamento, cor da marca e
+# padrões (regex, sobre "fabricante modelo nome" em maiúsculas) que o
+# reconhecem quando ninguém preencheu o fabricante: "S5730" é Huawei,
+# "DM4370" é Datacom. A ordem importa — o primeiro que casar vence.
+FABRICANTES = {
+    'huawei':    {'label': 'HUAWEI',    'cor': '#e60012', 'padroes': [r'HUAWEI', r'\bS(2|3|5|6|7|12)7\d\d', r'\bNE ?\d{2,4}', r'\bCE ?\d{4}', r'\bMA ?56\d\d', r'\bMA ?58\d\d', r'\bEA ?58\d\d', r'\bETP ?\d', r'\bAR ?\d{3,4}\b']},
+    'datacom':   {'label': 'DATACOM',   'cor': '#0b6fd3', 'padroes': [r'DATACOM', r'\bDM ?\d{3,4}']},
+    'mikrotik':  {'label': 'MikroTik',  'cor': '#5f6f7a', 'padroes': [r'MIKROTIK', r'\bCCR ?\d', r'\bCRS ?\d', r'\bCSS ?\d', r'\bRB ?\d']},
+    'juniper':   {'label': 'Juniper',   'cor': '#6b9a1f', 'padroes': [r'JUNIPER', r'\bMX ?\d', r'\bEX ?\d{4}', r'\bQFX ?\d', r'\bSRX ?\d', r'\bACX ?\d']},
+    'cisco':     {'label': 'CISCO',     'cor': '#049fd9', 'padroes': [r'CISCO', r'\bASR ?\d', r'NEXUS', r'CATALYST', r'\bWS-C', r'\bISR ?\d']},
+    'zte':       {'label': 'ZTE',       'cor': '#0068b7', 'padroes': [r'\bZTE\b', r'ZXA10', r'\bC(300|320|600|610|620|650)\b']},
+    'fiberhome': {'label': 'FiberHome', 'cor': '#d4145a', 'padroes': [r'FIBER ?HOME', r'\bAN ?5516', r'\bAN ?6000']},
+    'nokia':     {'label': 'NOKIA',     'cor': '#2f5fd0', 'padroes': [r'NOKIA', r'\bISAM\b', r'\b7750\b']},
+    'intelbras': {'label': 'intelbras', 'cor': '#00a335', 'padroes': [r'INTELBRAS']},
+    'parks':     {'label': 'Parks',     'cor': '#e07b00', 'padroes': [r'PARKS', r'FIBERLINK']},
+    'vsol':      {'label': 'V-SOL',     'cor': '#e8590c', 'padroes': [r'\bV-?SOL\b']},
+    'raisecom':  {'label': 'RAISECOM',  'cor': '#c8102e', 'padroes': [r'RAISECOM', r'\bRAX ?\d']},
+    'tplink':    {'label': 'tp-link',   'cor': '#1aa5b8', 'padroes': [r'TP-?LINK', r'\bT(1600|1700|2600)G']},
+    'ubiquiti':  {'label': 'UBIQUITI',  'cor': '#0559c9', 'padroes': [r'UBIQUITI?', r'EDGE ?SWITCH', r'EDGE ?ROUTER', r'UNIFI']},
+    'cdata':     {'label': 'C-DATA',    'cor': '#0094d9', 'padroes': [r'\bC-?DATA\b']},
+    'dell':      {'label': 'DELL',      'cor': '#007db8', 'padroes': [r'\bDELL\b', r'POWEREDGE']},
+    'hpe':       {'label': 'HPE',       'cor': '#01a982', 'padroes': [r'\bHPE?\b', r'PROLIANT', r'ARUBA']},
+    'a10':       {'label': 'A10',       'cor': '#5a9e2f', 'padroes': [r'\bA10\b', r'THUNDER']},
+    'hillstone': {'label': 'Hillstone', 'cor': '#e4572e', 'padroes': [r'HILLSTONE']},
+    'fortinet':  {'label': 'FORTINET',  'cor': '#da291c', 'padroes': [r'FORTINET', r'FORTIGATE']},
+    'mimosa':    {'label': 'MIMOSA',    'cor': '#f7941d', 'padroes': [r'MIMOSA']},
+    'eltek':     {'label': 'ELTEK',     'cor': '#d0021b', 'padroes': [r'ELTEK', r'FLATPACK']},
+    'delta':     {'label': 'DELTA',     'cor': '#0060a9', 'padroes': [r'\bDELTA\b']},
+    'vertiv':    {'label': 'VERTIV',    'cor': '#f26522', 'padroes': [r'VERTIV', r'EMERSON', r'NETSURE']},
+    'furukawa':  {'label': 'Furukawa',  'cor': '#0057a8', 'padroes': [r'FURUKAWA']},
+}
+
 ALTURA_RACK_PADRAO = 42
 ALTURA_RACK_MAX = 60
 ALTURA_EQUIPAMENTO_MAX = 20
@@ -106,6 +141,33 @@ def meio_da_iface(iface):
     return MEIO_DA_IFACE.get((iface or '').lower(), ('utp', 'RJ45'))
 
 
+_FABRICANTES_RE = [(chave, [re.compile(p) for p in d['padroes']]) for chave, d in FABRICANTES.items()]
+
+
+def _sem_acento(texto):
+    return unicodedata.normalize('NFD', texto or '').encode('ascii', 'ignore').decode().upper()
+
+
+def marca(fabricante='', *textos):
+    """Placa da marca de um equipamento: {'chave', 'label', 'cor'} ou None.
+
+    `fabricante` digitado vale primeiro (se for uma marca conhecida, ganha a
+    grafia e a cor dela; senão aparece como foi escrito, em cinza). Sem
+    fabricante, procura a marca pelos `textos` (modelo, nome)."""
+    fab = (fabricante or '').strip()
+    for alvo in ([fab] if fab else []) + [' '.join(t or '' for t in textos)]:
+        texto = _sem_acento(alvo)
+        if not texto.strip():
+            continue
+        for chave, padroes in _FABRICANTES_RE:
+            if any(p.search(texto) for p in padroes):
+                d = FABRICANTES[chave]
+                return {'chave': chave, 'label': d['label'], 'cor': d['cor']}
+        if alvo is fab:
+            return {'chave': '', 'label': fab[:24], 'cor': '#6e7781'}
+    return None
+
+
 def catalogo_para_tela():
     return {
         'tipos': TIPOS,
@@ -113,6 +175,7 @@ def catalogo_para_tela():
         'faces': dict(FACES),
         'meios': MEIOS,
         'conectores': CONECTORES,
+        'fabricantes': [d['label'] for d in FABRICANTES.values()],
         'tipo_da_topologia': TIPO_DA_TOPOLOGIA,
         'meio_da_iface': {k: {'meio': m, 'conector': c} for k, (m, c) in MEIO_DA_IFACE.items()},
         'altura_rack_padrao': ALTURA_RACK_PADRAO,

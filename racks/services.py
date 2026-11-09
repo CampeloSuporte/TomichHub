@@ -154,6 +154,19 @@ def _vinculo(cliente, dados, ignorar_id=None):
     return acesso, node_id
 
 
+def _fabricante_do_acesso(acesso):
+    modelo = acesso.modelo if acesso and acesso.modelo_id else None
+    return (modelo.fabricante or '').strip()[:80] if modelo else ''
+
+
+def marca_do_equipamento(eq):
+    """Placa da marca no desenho: fabricante digitado, senão o do modelo do
+    host do CRM, senão reconhecida pelo modelo/nome (S5730 -> Huawei)."""
+    acesso = eq.acesso if eq.acesso_id else None
+    modelo_crm = acesso.modelo.nome if acesso and acesso.modelo_id and acesso.modelo else ''
+    return catalogo.marca(eq.fabricante or _fabricante_do_acesso(acesso), eq.modelo, modelo_crm, eq.nome)
+
+
 def montar_equipamento(rack, dados):
     tipo = dados.get('tipo') or 'outro'
     if tipo not in catalogo.TIPOS:
@@ -183,7 +196,7 @@ def montar_equipamento(rack, dados):
                 nome=_texto(dados, 'nome', 160) or (acesso.tipo if acesso else padrao['label']),
                 u_inicial=u, altura_u=altura, face=face, profundidade_total=total,
                 acesso=acesso, topologia_node_id=node_id,
-                fabricante=_texto(dados, 'fabricante', 80),
+                fabricante=_texto(dados, 'fabricante', 80) or _fabricante_do_acesso(acesso),
                 modelo=_texto(dados, 'modelo', 120) or ((acesso.modelo.nome or '') if acesso and acesso.modelo else ''),
                 num_portas=_inteiro(dados.get('num_portas', padrao['portas']), 'O número de portas', 0, 512),
                 observacoes=_texto(dados, 'observacoes', 4000),
@@ -583,6 +596,7 @@ def equipamento_dict(eq):
         'acesso_id': eq.acesso_id, 'acesso_host': eq.acesso.host if eq.acesso_id and eq.acesso else '',
         'topologia_node_id': eq.topologia_node_id,
         'fabricante': eq.fabricante, 'modelo': eq.modelo, 'num_portas': eq.num_portas,
+        'marca': marca_do_equipamento(eq),
         'observacoes': eq.observacoes,
     }
 
@@ -601,7 +615,7 @@ def conexao_dict(c):
 def estado(cliente):
     """Tudo que a tela do rack precisa num só JSON; toda alteração devolve
     este estado inteiro de novo, então a tela nunca fica fora de sincronia."""
-    racks = list(Rack.objects.filter(cliente=cliente).prefetch_related('equipamentos__acesso'))
+    racks = list(Rack.objects.filter(cliente=cliente).prefetch_related('equipamentos__acesso__modelo'))
     racks_json = [{
         'id': r.id, 'nome': r.nome, 'local': r.local, 'altura_u': r.altura_u, 'observacoes': r.observacoes,
         'equipamentos': [equipamento_dict(eq) for eq in r.equipamentos.all()],

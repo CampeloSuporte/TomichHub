@@ -50,6 +50,31 @@ Na tela de racks:
 - `Delete` remove o selecionado (confirma e avisa quantos cabos vão junto). `Esc` fecha diálogo/limpa seleção.
 - Item da aba "Da topologia" que **já está montado** não arrasta: clicar leva até ele.
 
+### Equipamento avulso (fonte retificadora, servidor…) — 09/11/2026
+
+Botão **Adicionar equipamento** (toolbar) e **+ Equipamento** (cabeçalho do rack) abrem um formulário
+para o que não está na topologia nem nos hosts do CRM: tipo, rack, nome, fabricante, modelo, altura,
+U inicial (vazio = primeiro livre de cima), face, profundidade e portas. Usa a mesma rota de montar
+(`rack/<id>/equipamentos/criar/`). Trocar o tipo traz os padrões dele do catálogo.
+
+O tipo **Fonte retificadora** (`fonte`, 2U, grupo Energia) desenha na frente os módulos retificadores
+com LED e um display "-48V". Para ela, o campo "Portas" vira **Módulos** (padrão 4, máximo 12 no desenho).
+
+### Placa do fabricante no desenho — 09/11/2026
+
+Cada equipamento mostra a marca na cor do fabricante (HUAWEI, DATACOM, MikroTik…), como o logo
+impresso no painel, e o modelo embaixo do nome. A marca sai de `services.marca_do_equipamento`, nesta ordem:
+
+1. **Fabricante** digitado no equipamento (se for marca conhecida, ganha a grafia e a cor dela;
+   senão aparece como foi escrito, em cinza);
+2. fabricante do **modelo do host do CRM** (`Acesso.modelo.fabricante`), que também é gravado no
+   campo ao montar o host;
+3. **reconhecida pelo modelo/nome**: padrões em `catalogo.FABRICANTES` (S5730/S6730/NE8000/ETP → Huawei,
+   DM4xxx → Datacom, CCR/CRS/RB → MikroTik, MX/EX/QFX → Juniper, ASR/Nexus → Cisco, C300/C600 → ZTE…).
+
+Marca nova ou padrão de modelo novo entram só em `catalogo.FABRICANTES`. A placa é texto na cor da
+marca, não a imagem do logo.
+
 ### Frente, traseira e profundidade
 
 Cada equipamento tem `face` (frente/traseira) e `profundidade_total`:

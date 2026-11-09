@@ -233,3 +233,36 @@ class RackNavegadorTest(StaticLiveServerTestCase):
         self.assertEqual((sw.nome, sw.observacoes), ('SW-AGG-01-R', 'uplink 10G'))
         self.assertEqual(b.js("document.getElementById('eq-nome').value"), rtr.nome)
         self.assertEqual(b.erros, [])
+
+    def test_adicionar_fonte_avulsa_e_placa_da_marca(self):
+        """Botão "Adicionar equipamento" monta uma fonte retificadora que não
+        está na topologia, e o desenho mostra a placa do fabricante."""
+        from modelo_equipamento.models import Modelo_equipamento
+        self.sw.modelo = Modelo_equipamento.objects.create(nome='SW HUAWEI S5730 NAV', fabricante='Huawei')
+        self.sw.save()
+        b = self.b
+        rack = Rack.objects.create(cliente=self.cliente, nome='RACK-01', altura_u=16)
+        RackEquipamento.objects.create(rack=rack, tipo='switch', nome='SW-AGG-01', u_inicial=16, acesso=self.sw,
+                                       num_portas=24)
+        RackEquipamento.objects.create(rack=rack, tipo='olt', nome='OLT-CENTRO', u_inicial=13, altura_u=2,
+                                       modelo='DM4615', num_portas=16)
+        b.ir(f'{self.live_server_url}/racks/cliente/{self.cliente.id}/')
+        b.esperar("window.rb && !!document.getElementById('baias')")
+        marcas = b.js("[...document.querySelectorAll('.eq .marca')].map(x => x.textContent)")
+        self.assertEqual(sorted(marcas), ['DATACOM', 'HUAWEI'])
+
+        b.js("[...document.querySelectorAll('#toolbar .tb-btn')].find(x => x.textContent.includes('Adicionar equipamento')).click()")
+        b.esperar("!!document.getElementById('ne-tipo')")
+        self.assertEqual(b.js("document.getElementById('ne-tipo').value"), 'fonte')
+        self.assertEqual(b.js("document.getElementById('ne-alt').value"), '2')
+        b.js("document.getElementById('ne-nome').value = 'FONTE-48V'; document.getElementById('ne-fab').value = 'Huawei';"
+             "document.getElementById('ne-mod').value = 'ETP48200'")
+        self.foto('7_dialogo_equipamento_avulso')
+        b.js("document.getElementById('ne-ok').click()")
+        b.esperar("rb.estado.racks[0].equipamentos.length === 3 && !document.getElementById('dlg').classList.contains('on')")
+        fonte = RackEquipamento.objects.get(tipo='fonte')
+        self.assertEqual((fonte.nome, fonte.u_inicial, fonte.altura_u, fonte.fabricante), ('FONTE-48V', 11, 2, 'Huawei'))
+        self.assertEqual(b.js(f"document.querySelectorAll('.eq[data-id=\"{fonte.id}\"] .modulos b').length"), 4)
+        self.assertEqual(b.js(f"rb.sel"), fonte.id)
+        self.foto('8_rack_fonte_e_marcas')
+        self.assertEqual(b.erros, [])
