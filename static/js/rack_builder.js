@@ -238,6 +238,7 @@ class RackBuilder {
         <div><h1>${this._esc(rack.nome)}</h1>
           <div class="sub">${rack.local ? this._esc(rack.local) + ' · ' : ''}${n}U · vista ${this.face === 'frente' ? 'frontal' : 'traseira'}</div></div>
         <div class="ocup"><div class="barra"><i style="width:${Math.round(ocup / n * 100)}%"></i></div>${ocup}/${n}U ocupados
+          <button class="prop-btn mini primary so-escrita" title="Montar um equipamento que não está na topologia (fonte, servidor…)" onclick="rb.dialogoEquipamento()"><i class="fas fa-plus"></i> Equipamento</button>
           <button class="ico-btn ${this.verCabos ? 'on' : ''}" title="${this.verCabos ? 'Esconder' : 'Mostrar'} os cabos" onclick="rb.alternarCabos()"><i class="fas fa-ethernet"></i></button>
           <button class="ico-btn so-escrita" title="Editar rack" onclick="rb.dialogoRack(${rack.id})"><i class="fas fa-gear"></i></button>
           <button class="ico-btn danger so-escrita" title="Excluir rack" onclick="rb.excluirRack(${rack.id})"><i class="fas fa-trash"></i></button></div>
@@ -278,15 +279,32 @@ class RackBuilder {
     } else if (e.tipo === 'tampa' || e.tipo === 'organizador') {
       miolo = `<div class="rosto"><span class="ip">${this._esc(e.nome)}</span></div>`;
     } else {
-      miolo = `<div class="rosto"><i class="fas ${t.icone} ic"></i>
-        <div class="txt"><span class="nome">${this._esc(e.nome)}</span>${e.acesso_host ? `<span class="ip">${this._esc(e.acesso_host)}</span>` : ''}</div>
-        ${this._portasHtml(e, cabos)}
+      const sub = [e.modelo, e.acesso_host].filter(Boolean).map(x => this._esc(x)).join(' · ');
+      miolo = `<div class="rosto"><i class="fas ${t.icone} ic"></i>${this._marcaHtml(e)}
+        <div class="txt"><span class="nome">${this._esc(e.nome)}</span>${sub ? `<span class="ip">${sub}</span>` : ''}</div>
+        ${e.tipo === 'fonte' ? this._modulosHtml(e, t) : this._portasHtml(e, cabos)}
         ${cabos.length ? `<span class="cabos" title="${cabos.length} cabo(s)"><i class="fas fa-ethernet"></i> ${cabos.length}</span>` : ''}
         ${t.profundidade_total ? '<span class="leds"><i></i><i></i></span>' : ''}</div>`;
     }
     return `<div class="${classes.join(' ')}" data-id="${e.id}" style="top:${topo}px;height:${alt}px;--c:${t.cor}" title="${this._esc(titulo)}">
       <div class="orelha"><i></i>${e.altura_u > 1 ? '<i></i>' : ''}</div><div class="faixa"></div>${miolo}
       <div class="orelha"><i></i>${e.altura_u > 1 ? '<i></i>' : ''}</div></div>`;
+  }
+
+  /** Placa da marca no espelho, como o logo impresso no equipamento. A marca
+   *  vem do servidor (catalogo.marca): fabricante digitado, o do modelo do
+   *  host do CRM ou reconhecida pelo modelo (S5730 -> Huawei). */
+  _marcaHtml(e) {
+    const m = e.marca;
+    if (!m) return '';
+    return `<span class="marca" style="--mc:${this._esc(m.cor)}" title="Fabricante: ${this._esc(m.label)}">${this._esc(m.label)}</span>`;
+  }
+
+  /** Frente da fonte retificadora: os módulos retificadores lado a lado,
+   *  cada um com LED, e o display da controladora. */
+  _modulosHtml(e, t) {
+    const n = Math.max(1, Math.min(12, e.num_portas || t.modulos || 4));
+    return `<span class="modulos">${'<b><i></i></b>'.repeat(n)}</span><span class="display">-48V</span>`;
   }
 
   /** Portas desenhadas no espelho (ímpares em cima, pares embaixo, como nos
@@ -365,16 +383,17 @@ class RackBuilder {
         <div class="prop-group"><label class="prop-label">Face</label><select class="prop-select" id="eq-face" ${ro}>
           <option value="frente" ${e.face === 'frente' ? 'selected' : ''}>Frente</option>
           <option value="traseira" ${e.face === 'traseira' ? 'selected' : ''}>Traseira</option></select></div>
-        <div class="prop-group"><label class="prop-label">Portas</label><input class="prop-input" id="eq-portas" type="number" min="0" max="512" value="${e.num_portas}" ${ro}></div>
+        <div class="prop-group"><label class="prop-label">${e.tipo === 'fonte' ? 'Módulos' : 'Portas'}</label><input class="prop-input" id="eq-portas" type="number" min="0" max="512" value="${e.num_portas}" ${ro}></div>
       </div>
       <div class="prop-group"><label class="chk"><input type="checkbox" id="eq-total" ${e.profundidade_total ? 'checked' : ''} ${ro}>
         Profundidade total <span style="color:var(--faint);font-size:.68rem">(ocupa frente e traseira do U)</span></label></div>
       <div class="prop-group"><label class="prop-label">Host do CRM</label><select class="prop-select" id="eq-acesso" ${ro}>
         <option value="">— nenhum —</option>${hosts}</select></div>
       <div class="prop-row">
-        <div class="prop-group"><label class="prop-label">Fabricante</label><input class="prop-input" id="eq-fab" value="${this._esc(e.fabricante)}" ${ro}></div>
+        <div class="prop-group"><label class="prop-label">Fabricante</label><input class="prop-input" id="eq-fab" list="dl-fabricantes" value="${this._esc(e.fabricante)}" placeholder="${this._esc(e.marca ? e.marca.label + ' (automático)' : '')}" ${ro}></div>
         <div class="prop-group"><label class="prop-label">Modelo</label><input class="prop-input" id="eq-mod" value="${this._esc(e.modelo)}" ${ro}></div>
       </div>
+      ${this._dlFabricantes()}
       <div class="prop-group"><label class="prop-label">Observações</label><textarea class="prop-input" id="eq-obs" rows="2" ${ro}>${this._esc(e.observacoes)}</textarea></div>
       <div class="so-escrita">
         <button class="prop-btn danger" onclick="rb.excluirEquipamento(${e.id})"><i class="fas fa-trash"></i> Remover do rack</button>
@@ -775,6 +794,78 @@ class RackBuilder {
     }
     this.focoLink = linkId;
     this.abaLateral('conexoes');
+  }
+
+  _dlFabricantes() {
+    return `<datalist id="dl-fabricantes">${(this.cat.fabricantes || []).map(f => `<option value="${this._esc(f)}">`).join('')}</datalist>`;
+  }
+
+  /** Equipamento avulso: o que não está na topologia nem nos hosts do CRM
+   *  (fonte retificadora, servidor, nobreak…). Sem U = primeiro espaço livre
+   *  de cima, como o clique no catálogo. */
+  dialogoEquipamento(tipoInicial) {
+    const rack = this._rack();
+    if (!rack) { this._toast('Crie um rack primeiro.', true); return; }
+    const tipo0 = tipoInicial || 'fonte';
+    const grupos = this.cat.grupos.map(g => `<optgroup label="${this._esc(g.nome)}">${g.tipos.map(k =>
+      `<option value="${k}" ${k === tipo0 ? 'selected' : ''}>${this._esc(this.cat.tipos[k].label)}</option>`).join('')}</optgroup>`).join('');
+    const racks = this.estado.racks.map(r => `<option value="${r.id}" ${r.id === rack.id ? 'selected' : ''}>${this._esc(r.nome)}</option>`).join('');
+    this._abrirDialogo(`
+      <h2><i class="fas fa-plus"></i> Adicionar equipamento</h2>
+      <div class="sub">Para o que não aparece na topologia nem nos hosts do CRM — fonte retificadora, servidor, nobreak.
+        O fabricante vira a placa da marca no desenho (deixe vazio para reconhecer pelo modelo: S5730 é Huawei, DM4370 é Datacom).</div>
+      <div class="prop-row">
+        <div class="prop-group"><label class="prop-label">Tipo</label><select class="prop-select" id="ne-tipo">${grupos}</select></div>
+        <div class="prop-group"><label class="prop-label">Rack</label><select class="prop-select" id="ne-rack">${racks}</select></div>
+      </div>
+      <div class="prop-group"><label class="prop-label">Nome</label><input class="prop-input" id="ne-nome" placeholder="FONTE-01"></div>
+      <div class="prop-row">
+        <div class="prop-group"><label class="prop-label">Fabricante</label><input class="prop-input" id="ne-fab" list="dl-fabricantes" placeholder="Huawei, Datacom…"></div>
+        <div class="prop-group"><label class="prop-label">Modelo</label><input class="prop-input" id="ne-mod" placeholder="ETP48200"></div>
+      </div>
+      ${this._dlFabricantes()}
+      <div class="prop-row">
+        <div class="prop-group"><label class="prop-label">Altura (U)</label><input class="prop-input" id="ne-alt" type="number" min="1" max="${this.cat.altura_equipamento_max}"></div>
+        <div class="prop-group"><label class="prop-label">U inicial</label><input class="prop-input" id="ne-u" type="number" min="1" placeholder="1º livre"></div>
+        <div class="prop-group"><label class="prop-label" id="ne-portas-rot">Portas</label><input class="prop-input" id="ne-portas" type="number" min="0" max="512"></div>
+      </div>
+      <div class="prop-row">
+        <div class="prop-group"><label class="prop-label">Face</label><select class="prop-select" id="ne-face">
+          <option value="frente">Frente</option><option value="traseira">Traseira</option></select></div>
+        <div class="prop-group" style="display:flex;align-items:flex-end"><label class="chk"><input type="checkbox" id="ne-total"> Profundidade total</label></div>
+      </div>
+      <div class="prop-group"><label class="prop-label">Observações</label><textarea class="prop-input" id="ne-obs" rows="2"></textarea></div>
+      <div class="acoes"><button class="prop-btn" onclick="rb.fecharDialogo()">Cancelar</button>
+        <button class="prop-btn primary" id="ne-ok"><i class="fas fa-check"></i> Montar no rack</button></div>`);
+    const $ = id => document.getElementById(id);
+    // Trocar o tipo traz os padrões dele (altura, portas, face) — o que a
+    // pessoa já digitou no nome não é tocado.
+    const padroes = () => {
+      const t = this._tipo($('ne-tipo').value);
+      $('ne-alt').value = t.altura;
+      $('ne-portas').value = $('ne-tipo').value === 'fonte' ? (t.modulos || 4) : t.portas;
+      $('ne-portas-rot').textContent = $('ne-tipo').value === 'fonte' ? 'Módulos' : 'Portas';
+      $('ne-face').value = t.face;
+      $('ne-total').checked = !!t.profundidade_total;
+      $('ne-nome').placeholder = t.label;
+    };
+    $('ne-tipo').addEventListener('change', padroes);
+    padroes();
+    $('ne-nome').focus();
+    $('ne-ok').onclick = async () => {
+      const rackId = +$('ne-rack').value;
+      const dados = {
+        tipo: $('ne-tipo').value, nome: $('ne-nome').value.trim(), fabricante: $('ne-fab').value.trim(),
+        modelo: $('ne-mod').value.trim(), altura_u: +$('ne-alt').value || 1, num_portas: +$('ne-portas').value || 0,
+        face: $('ne-face').value, profundidade_total: $('ne-total').checked, observacoes: $('ne-obs').value,
+        u_inicial: $('ne-u').value ? +$('ne-u').value : null,
+      };
+      const r = await this._post(`/racks/rack/${rackId}/equipamentos/criar/`, dados);
+      if (!r) return;
+      this.fecharDialogo();
+      this.selecionar(r.equipamento_id);
+      this._toast('Montado' + this._resumoSync(r.sync));
+    };
   }
 
   // ── Rack ─────────────────────────────────────────────────────────────────

@@ -5,6 +5,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-09 (racks: equipamento avulso e marca do fabricante)
+
+### Adicionado
+
+- **Botão "Adicionar equipamento" na tela de racks.** Abre um formulário para montar o que não está
+  na topologia, como fonte retificadora, servidor ou nobreak. O formulário pede tipo, nome, fabricante,
+  modelo, altura, U e face.
+- **Novo tipo "Fonte retificadora"** (2U). Desenha os módulos retificadores com LED e o display -48V.
+- **Marca do fabricante no desenho do rack.** Cada equipamento mostra uma placa com a marca na cor
+  do fabricante (HUAWEI, DATACOM, MikroTik…) e o modelo embaixo do nome. A marca vem do fabricante
+  digitado ou do modelo do host no CRM. Se nenhum dos dois existir, é reconhecida pelo modelo
+  (S5730 → Huawei, DM4370 → Datacom).
+
+---
+
 ## [Não publicado] — 2026-11-06 (RDP Web com porta que não responde)
 
 ### Corrigido
