@@ -349,6 +349,30 @@ Um caminho novo que grave a senha de um `Acesso` precisa chamar o par `capturar`
 
 Testes: `clientes/tests_auditoria_credenciais.py`.
 
+### Desfazer uma edição de acesso (restaurar pelo backup do banco)
+
+O CRM não guarda versões do `Acesso`. O `AcessoAlteracaoCredencial` mostra **quando** e **quem**
+editou, e o login anterior, mas não as senhas, nem nome, host, porta ou protocolo. Para voltar um
+acesso ao que era, use o dump diário do banco (`/var/backups/crm/crm_db_AAAA-MM-DD_HHMM.dump`,
+7 dias, ver [backup_banco_drive.md](backup_banco_drive.md)). Escolha o dump **anterior** ao
+`alterado_em` do registro de auditoria. O horário do registro está em UTC.
+
+```bash
+pg_restore -a -t clientes_acesso -f - /var/backups/crm/crm_db_2026-11-09_0306.dump | grep -E "^COPY|^9556\b"
+pg_restore -a -t clientes_acessoprotocolo -f - /var/backups/crm/crm_db_2026-11-09_0306.dump | grep -P "\t9556$"
+```
+
+A linha `COPY` mostra a ordem das colunas. Grave os valores pelo `manage.py shell` (rodado de dentro
+de `/opt/crm`, não de um worktree). Quando a edição era para ser um **acesso novo** (o usuário editou
+em vez de duplicar), copie primeiro o acesso atual para um registro novo (`pk = None; save()`) e só
+depois restaure o original. Assim o cadastro novo não se perde e o histórico de sessões e gravações
+(`AcessoSessao`) continua no acesso original.
+
+Caso de origem (09/11/2026, Conecta ISP): o acesso **9556 "VM WINDOWNS"** (RDP `172.18.234.246:3389`,
+`Administrator`) foi editado para "VM SITE CONECTA" (SSH `172.18.234.11:22`, `root`) em vez de ser
+duplicado. O 9556 foi restaurado com os dados do dump de 09/11 às 03:06 e o cadastro novo virou o
+acesso **9572**.
+
 ---
 
 ## Admin (`clientes/admin.py`)
