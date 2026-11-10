@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-09 (acesso VM Windows da Conecta ISP restaurado)
+
+### Corrigido (dados)
+
+- **Acesso 9556 "VM WINDOWNS" (Conecta ISP) voltou ao original.** Ele tinha sido editado para
+  "VM SITE CONECTA" quando a intenção era duplicar. Os dados originais (RDP 172.18.234.246:3389,
+  Administrator e as senhas) vieram do dump do banco de 09/11 às 03:06. O cadastro novo foi
+  preservado como acesso **9572**. Procedimento documentado em `docs/AUDITORIA_ACESSOS.md`
+  ("Desfazer uma edição de acesso"). Sem mudança de código.
+
+---
+
 ## [Não publicado] — 2026-11-09 (racks: equipamento avulso e marca do fabricante)
 
 ### Adicionado
