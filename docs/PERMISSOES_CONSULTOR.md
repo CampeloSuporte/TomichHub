@@ -218,7 +218,8 @@ Marinho.
 - Cliente novo criado pelo Administrador **continua nascendo com `instancia = NULL`** se ele não
   escolher nada no formulário — e aí some da vista dos Operadores da Principal. Tornar o campo
   obrigatório para Administrador, ou fazer a Principal ser o default, resolve; não foi feito
-  porque muda comportamento de cadastro.
+  porque muda comportamento de cadastro. **Resolvido em 10/11/2026** (ver "Cliente do
+  Administrador nascia sem instância", abaixo).
 - Três logins com `is_staff=True` do mesmo lote de teste (`adm_466dee`, `adm_6cb110`,
   `admweb_2211cb`) e um operador órfão (`semperfil_6cb110`) continuam no banco. `is_staff` sem
   `PerfilUsuario` = **administrador legado**, com acesso a tudo.
@@ -364,3 +365,35 @@ outubro) desativar. Foi feita em 18/08 num branch que nunca entrou no `main`
 - **Log:** `usuario.views` registra `Usuário X (id=N) excluído por Y`.
 - **Testes:** `usuario/tests.py` `ExcluirUsuarioTest` (admin exclui, si mesmo, GET, login de
   cliente, Consultor × outra instância × Administrador, botão na lista).
+
+---
+
+## Cliente do Administrador nascia sem instância (2026-11-10)
+
+### O sintoma
+
+O Operador `guilherme` (instância Principal) não via o cliente **"Open Conect LTDA - SICONECT"**
+(id 95), cadastrado em 20/10/2026.
+
+### A causa
+
+O cliente estava com `instancia = NULL`, e `pode_acessar_cliente` só libera para
+Operador/Consultor um cliente da instância deles. `cadastrar_cliente` lia
+`request.POST.get('instancia')` no caminho do Administrador, mas **a tela não tinha esse campo**
+(nem a de edição). Por isso todo cliente cadastrado pelo Administrador nascia "da plataforma",
+visível só para o Administrador, e não havia como corrigir pela tela. Mais três clientes estavam
+assim: 93 Powerlink Telecom, 94 OPCOESNET e 96 WOW/WTD TELECOM.
+
+### O que foi feito
+
+- **Dados:** os quatro clientes (93–96) passaram para a Principal (id 25).
+- **Cadastro:** o Administrador vê o seletor "Instância" no cadastro, com a Principal já
+  selecionada. A opção "Sem instância — só o Administrador vê" continua existindo, mas precisa
+  ser escolhida de propósito.
+- **Edição:** o mesmo seletor aparece no modal de edição, preenchido com a instância atual
+  (`data-instancia` no botão Editar). Um POST sem o campo mantém a instância. Consultor e
+  Operador não recebem o campo e, se o POST trouxer, é ignorado.
+- Instância inexistente ou inativa no POST é recusada (`_instancia_do_post` em
+  `clientes/views.py`).
+- **Testes:** `clientes/tests_cliente_instancia.py`.
+

@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-10 (cliente do Administrador sem instância)
+
+### Corrigido
+
+- **Operador não via cliente cadastrado pelo Administrador.** O cadastro esperava o campo
+  "instância", mas a tela não tinha esse campo. O cliente nascia sem instância e só o
+  Administrador o via (caso do `guilherme` com o SICONECT). Agora o cadastro e a edição mostram
+  ao Administrador o seletor de instância, com a Principal já selecionada.
+- **Dados:** os clientes 93 (Powerlink), 94 (OPCOESNET), 95 (SICONECT) e 96 (WOW/WTD) passaram
+  para a instância Principal. Detalhes em `docs/PERMISSOES_CONSULTOR.md`.
+
+---
+
 ## [Não publicado] — 2026-11-09 (acesso VM Windows da Conecta ISP restaurado)
 
 ### Corrigido (dados)

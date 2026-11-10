@@ -250,6 +250,21 @@ def _validar_usuarios_adicionais(usuario_ids, cliente_id_atual=None):
     return ids_validos, None
 
 
+def _instancia_do_post(request):
+    """Instância escolhida pelo Administrador no formulário de cliente.
+
+    '' = sem instância (cliente da plataforma, só o Administrador vê).
+    Devolve (instancia_id | None, erro | None).
+    """
+    from usuario.models import Instancia
+    valor = (request.POST.get('instancia') or '').strip()
+    if not valor:
+        return None, None
+    if not valor.isdigit() or not Instancia.objects.filter(id=int(valor), ativo=True).exists():
+        return None, 'Erro: Instância selecionada é inválida.'
+    return int(valor), None
+
+
 @login_required(login_url='login')
 @backoffice_required
 def cadastrar_cliente(request):
@@ -269,8 +284,14 @@ def cadastrar_cliente(request):
             usuario = usuarios_gerenciaveis_por(request.user).filter(
                 cliente__isnull=True, clientes_adicionais__isnull=True
             )
-        return render(request, 'cadastrar_cliente.html', {
-            'clientes': clientes, 'usuario': usuario})
+        ctx = {'clientes': clientes, 'usuario': usuario}
+        if is_admin(request.user):
+            # Só o Administrador escolhe a instância do cliente. Sem esse
+            # seletor o cliente nascia sem instância e sumia para todo
+            # Operador/Consultor (caso SICONECT, 10/11/2026).
+            from usuario.models import Instancia
+            ctx['instancias'] = Instancia.objects.filter(ativo=True).order_by('-principal', 'nome')
+        return render(request, 'cadastrar_cliente.html', ctx)
 
     elif request.method == 'POST':
         nome_empresa = request.POST.get('nome_empresa')
@@ -297,7 +318,10 @@ def cadastrar_cliente(request):
         # é escolha do formulário. Administrador pode opcionalmente atribuir
         # o cliente a uma instância (senão fica "da plataforma").
         if is_admin(request.user):
-            instancia_id = request.POST.get('instancia') or None
+            instancia_id, erro = _instancia_do_post(request)
+            if erro:
+                messages.error(request, erro)
+                return redirect('cadastrar_cliente')
         else:
             instancia = get_instancia(request.user)
             if not instancia:
@@ -976,6 +1000,15 @@ def editar_cliente(request):
         cliente.email = email
         cliente.usuario_id = usuario_id
         cliente.notas = request.POST.get('notas', '').strip()
+
+        # Só o Administrador troca a instância; Consultor/Operador não recebem
+        # o campo e, se o POST trouxer, é ignorado.
+        if _perms.is_admin(request.user) and 'instancia' in request.POST:
+            instancia_id, erro = _instancia_do_post(request)
+            if erro:
+                messages.error(request, erro)
+                return redirect('cadastrar_cliente')
+            cliente.instancia_id = instancia_id
 
         # Usuários adicionais: mesma validação de vínculo único do cadastro
         usuarios_adicionais_ids = request.POST.getlist('usuarios_adicionais')
