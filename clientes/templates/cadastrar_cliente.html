@@ -149,7 +149,7 @@
                                         <td>{{cliente.email}}</td>
                                         <td>
                                             <div class="action-buttons">
-                                                <button class="btn-action btn-edit" onclick="editarCliente({{cliente.id}}, '{{cliente.nome_empresa|escapejs}}', '{{cliente.cnpj|escapejs}}', '{{cliente.cep|escapejs}}', '{{cliente.endereco|escapejs}}', '{{cliente.estado|escapejs}}', '{{cliente.cidade|escapejs}}', '{{cliente.telefone|escapejs}}', '{{cliente.email|escapejs}}', {{cliente.usuario_id|default_if_none:'null'}}, '{{cliente.notas|escapejs}}', [{% for u in cliente.usuarios_adicionais.all %}{id: {{ u.id }}, username: '{{ u.username|escapejs }}'}{% if not forloop.last %},{% endif %}{% endfor %}])" title="Editar">
+                                                <button class="btn-action btn-edit" data-instancia="{{ cliente.instancia_id|default_if_none:'' }}" onclick="editarCliente({{cliente.id}}, '{{cliente.nome_empresa|escapejs}}', '{{cliente.cnpj|escapejs}}', '{{cliente.cep|escapejs}}', '{{cliente.endereco|escapejs}}', '{{cliente.estado|escapejs}}', '{{cliente.cidade|escapejs}}', '{{cliente.telefone|escapejs}}', '{{cliente.email|escapejs}}', {{cliente.usuario_id|default_if_none:'null'}}, '{{cliente.notas|escapejs}}', [{% for u in cliente.usuarios_adicionais.all %}{id: {{ u.id }}, username: '{{ u.username|escapejs }}'}{% if not forloop.last %},{% endif %}{% endfor %}])" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
                                                 <form method="post" action="{% url 'alternar_status_cliente' %}" style="display:inline" {% if cliente.ativo %}data-confirm="O cliente {{ cliente.nome_empresa }} fica inativo e as cobranças deixam de ser enviadas." data-confirm-titulo="Desativar cliente" data-confirm-btn="Desativar" data-confirm-tipo="aviso"{% else %}data-confirm="O cliente {{ cliente.nome_empresa }} volta a ficar ativo e as cobranças voltam a ser enviadas." data-confirm-titulo="Reativar cliente" data-confirm-btn="Reativar" data-confirm-tipo="info"{% endif %}>
@@ -252,6 +252,20 @@
                             </div>
                         </div>
                     </div>
+
+                    {% if instancias is not None %}
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="fas fa-sitemap"></i> Instância</div>
+                        <div class="mb-3">
+                            <label for="instancia" class="form-label">Instância do cliente</label>
+                            <select class="form-select" id="instancia" name="instancia">
+                                {% for i in instancias %}<option value="{{ i.id }}"{% if i.principal %} selected{% endif %}>{{ i.nome }}{% if i.principal %} (principal){% endif %}</option>{% endfor %}
+                                <option value="">Sem instância — só o Administrador vê</option>
+                            </select>
+                            <small class="form-text text-muted">Operadores e Consultores só enxergam clientes da instância deles.</small>
+                        </div>
+                    </div>
+                    {% endif %}
 
                     <div class="form-section">
                         <div class="form-section-title"><i class="fas fa-key"></i> Acesso ao painel</div>
@@ -362,6 +376,20 @@
                         </div>
                     </div>
 
+                    {% if instancias is not None %}
+                    <div class="form-section">
+                        <div class="form-section-title"><i class="fas fa-sitemap"></i> Instância</div>
+                        <div class="mb-3">
+                            <label for="edit_instancia" class="form-label">Instância do cliente</label>
+                            <select class="form-select" id="edit_instancia" name="instancia">
+                                {% for i in instancias %}<option value="{{ i.id }}">{{ i.nome }}{% if i.principal %} (principal){% endif %}</option>{% endfor %}
+                                <option value="">Sem instância — só o Administrador vê</option>
+                            </select>
+                            <small class="form-text text-muted">Operadores e Consultores só enxergam clientes da instância deles.</small>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <div class="form-section">
                         <div class="form-section-title"><i class="fas fa-key"></i> Acesso ao painel</div>
                         <div class="mb-3">
@@ -467,6 +495,14 @@
 
     <!-- Seu script que usa a variável usuarios -->
     <script src="{% static 'js/cadastrar_cliente.js' %}?v=20260911"></script>
+    <script>
+    // Instância no modal de edição (só aparece para o Administrador).
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.btn-edit[data-instancia]');
+        const sel = document.getElementById('edit_instancia');
+        if (btn && sel) sel.value = btn.dataset.instancia;
+    }, true);
+    </script>
 
     <!-- ============================================= -->
     <!-- SISTEMA DE MENSAGENS -->
