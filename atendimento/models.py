@@ -424,6 +424,13 @@ class Message(models.Model):
     def excluida(self) -> bool:
         return self.deleted_at is not None
 
+    @property
+    def envio_falhou(self) -> bool:
+        """A Evolution não confirmou o envio: o cliente não recebeu. Ver
+        services._marcar_falha_envio."""
+        return (self.sender_type == 'agent'
+                and (self.external_id or '').startswith('falhou_'))
+
     #: Rótulo do balão citado quando não há texto para mostrar (mídia sem
     #: legenda). O WhatsApp faz igual: mostra o tipo, não um espaço vazio.
     ROTULO_POR_TIPO = {
