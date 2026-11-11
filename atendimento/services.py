@@ -1060,6 +1060,65 @@ def auto_assign_on_reply(conversation: Conversation, agent) -> bool:
     return True
 
 
+_URL_NO_TEXTO = _re.compile(r'https?://[^\s<>"\']+', _re.IGNORECASE)
+
+
+def _previa_de_link_segura(texto: str) -> bool:
+    """Diz se dá para deixar a Evolution montar a prévia dos links do texto.
+
+    A Evolution baixa a URL para montar a prévia e, quando ela é um arquivo
+    grande (o link do Windows Server de 11/11/2026 redirecionava para uma
+    ISO de 7 GB), o `sendText` fica preso mais de 2 min e a mensagem nunca
+    sai — o CRM desistia no timeout de 30 s e o cliente não recebia nada.
+    Só os cabeçalhos são lidos aqui (stream, fecha em seguida): prévia só
+    para página HTML que responde rápido; arquivo, erro ou demora = sem
+    prévia, e a mensagem sai com o link puro.
+    """
+    urls = _URL_NO_TEXTO.findall(texto or '')
+    for url in urls[:3]:
+        url = url.rstrip('.,;:!?)]}*_~')
+        try:
+            r = requests.get(url, stream=True, allow_redirects=True, timeout=4,
+                             headers={'User-Agent': 'Mozilla/5.0 (CRM link check)'})
+            tipo = (r.headers.get('Content-Type') or '').lower()
+            r.close()
+        except Exception:
+            return False
+        if not tipo.startswith(('text/html', 'application/xhtml')):
+            return False
+    return True
+
+
+def _marcar_falha_envio(msg_id, conversation_id: str, erro: str, apagar: bool = False):
+    """O WhatsApp não recebeu a mensagem que o atendente vê no chat.
+
+    Antes a falha do envio em background só ia para o log: o balão ficava
+    com ✓✓ como se tivesse chegado, e o agendador marcava `sent` — foi assim
+    que as agendadas de 11/11/2026 (timeout da Evolution) e o link da
+    SICONECT sumiram sem ninguém saber. Agora o `external_id` vira
+    `falhou_…` (a tela troca o ✓✓ por um aviso vermelho e o atendente sabe
+    que precisa reenviar) e a tela aberta é avisada por WebSocket.
+
+    `apagar=True` (envio síncrono do agendador) remove a Message: a
+    agendada guarda o erro e tenta de novo no próximo ciclo, e cada
+    tentativa criaria um balão novo.
+    """
+    try:
+        if apagar:
+            Message.objects.filter(id=msg_id).delete()
+            _ws_send_conversation(conversation_id, {
+                'type': 'message_removed', 'message': {'id': str(msg_id)}})
+            return
+        Message.objects.filter(id=msg_id).update(
+            external_id=f"falhou_{int(timezone.now().timestamp() * 1000)}_{msg_id}")
+        _ws_send_conversation(conversation_id, {
+            'type': 'message_failed',
+            'message': {'id': str(msg_id), 'erro': (erro or '')[:200]},
+        })
+    except Exception as e:
+        logger.error(f"Falha ao marcar envio não confirmado (msg {msg_id}): {e}")
+
+
 def _numero_nao_existe(response) -> bool:
     """Detecta o 400 específico da Evolution API que indica número inexistente
     no WhatsApp: {"response": {"message": [{"exists": false, ...}]}}."""
@@ -1437,6 +1496,10 @@ class EvolutionAPIClient:
         body = {"number": jid, "text": text}
         if quoted:
             body["quoted"] = quoted
+        # Link para arquivo grande trava a Evolution montando a prévia (ver
+        # _previa_de_link_segura); texto sem link nem passa pela checagem.
+        if _URL_NO_TEXTO.search(text or '') and not _previa_de_link_segura(text):
+            body["linkPreview"] = False
         if everyone and jid.endswith("@g.us"):
             numbers = self.get_group_participants(jid)
             if numbers:
@@ -1473,10 +1536,10 @@ class EvolutionAPIClient:
                     logger.error(f"Erro ao enviar texto para {jid} (variante {jid_alt} também falhou): {e2}")
                     return False, ""
             logger.error(f"Erro ao enviar texto para {jid}: {e}")
-            return False, ""
+            return False, str(e)[:300]
         except Exception as e:
             logger.error(f"Erro ao enviar texto para {jid}: {e}")
-            return False, ""
+            return False, str(e)[:300]
 
     def send_media(self, jid: str, mediatype: str, media_b64: str,
                    filename: str = "arquivo", caption: str = "",
@@ -1504,7 +1567,7 @@ class EvolutionAPIClient:
             return True, (r.json().get("key", {}) or {}).get("id") or ""
         except Exception as e:
             logger.error(f"Erro ao enviar mídia para {jid}: {e}")
-            return False, ""
+            return False, str(e)[:300]
 
     def download_media(self, event_data: dict) -> tuple:
         """Baixa a mídia de uma mensagem recebida via webhook.
@@ -2403,7 +2466,7 @@ class ConversationService:
     @staticmethod
     def send_message(conversation: Conversation, text: str,
                      agent=None, is_internal=False, mentions=None,
-                     reply_to=None) -> Tuple[bool, str]:
+                     reply_to=None, sincrono=False) -> Tuple[bool, str]:
         """Salva a mensagem imediatamente. Se `is_internal`, é uma nota
         interna — fica só no CRM, NUNCA sai pro WhatsApp do cliente (o
         toggle "Comentário Interno" da tela chegava a esta função sem
@@ -2418,6 +2481,11 @@ class ConversationService:
 
         `reply_to` é o id de outra Message desta conversa: a mensagem sai
         citando aquela, com o bloco em cima, como responder no celular.
+
+        `sincrono=True` (agendador) espera a resposta da Evolution e só
+        devolve sucesso com o envio confirmado; na falha a Message é removida
+        para a próxima tentativa não deixar balão repetido. No envio normal
+        (thread) a falha fica marcada no balão — ver _marcar_falha_envio.
         """
         import threading as _threading
 
@@ -2520,18 +2588,26 @@ class ConversationService:
             group_connection = conversation.group.connection
             group_jid = conversation.group.jid
 
+            conv_id = str(conversation.id)
+
             def _send_bg():
                 try:
                     client = EvolutionAPIClient(group_connection)
                     ok, remote_id = client.send_text(
                         group_jid, whatsapp_text, mentions=numeros_mencionados or None,
                         quoted=quoted)
-                    if ok and remote_id:
-                        Message.objects.filter(id=msg_id).update(external_id=remote_id)
-                    elif not ok:
-                        logger.error(f"Envio bg falhou (msg {msg_id}): {remote_id}")
                 except Exception as _e:
-                    logger.error(f"Erro bg no envio (msg {msg_id}): {_e}")
+                    ok, remote_id = False, str(_e)
+                if ok and remote_id:
+                    Message.objects.filter(id=msg_id).update(external_id=remote_id)
+                elif not ok:
+                    logger.error(f"Envio bg falhou (msg {msg_id}): {remote_id}")
+                    _marcar_falha_envio(msg_id, conv_id, remote_id, apagar=sincrono)
+                return ok, remote_id
+
+            if sincrono:
+                ok_env, retorno = _send_bg()
+                return (True, str(msg.id)) if ok_env else (False, retorno or 'Evolution não confirmou o envio')
 
             _threading.Thread(target=_send_bg, daemon=True).start()
 
@@ -2585,7 +2661,7 @@ class ConversationService:
         # background confirma o wamid (`3EB0…`); antes disso, e nas mensagens
         # que o CRM cria por conta própria, ele é um id interno — não há o que
         # editar do outro lado.
-        ids_internos = ('sending_', 'ia_', 'flow_', 'local_media_', 'concluido_', 'reac_')
+        ids_internos = ConversationService.IDS_INTERNOS
         if not message.external_id or message.external_id.startswith(ids_internos):
             return False, 'Essa mensagem ainda não foi confirmada pelo WhatsApp.'
         return True, ''
@@ -2663,7 +2739,8 @@ class ConversationService:
 
     #: ids que o CRM inventa antes (ou no lugar) do wamid do WhatsApp. Mensagem
     #: com um desses nunca existiu do outro lado — não há o que apagar lá.
-    IDS_INTERNOS = ('sending_', 'ia_', 'flow_', 'local_media_', 'concluido_', 'reac_')
+    # `falhou_` = envio que a Evolution não confirmou (ver _marcar_falha_envio).
+    IDS_INTERNOS = ('sending_', 'ia_', 'flow_', 'local_media_', 'concluido_', 'reac_', 'falhou_')
 
     @staticmethod
     def pode_excluir(message, user) -> Tuple[bool, str]:
@@ -2862,7 +2939,7 @@ class ConversationService:
     @staticmethod
     def send_media(conversation: Conversation, media_base64: str, media_type: str,
                    file_name: str, caption: str, agent=None,
-                   reply_to=None) -> Tuple[bool, str]:
+                   reply_to=None, sincrono=False) -> Tuple[bool, str]:
         """Salva a Message de mídia imediatamente e envia ao WhatsApp em
         background. Mesma mecânica de send_message, mas para
         imagem/áudio/vídeo/documento. Igual ao envio imediato, sempre salva
@@ -2933,6 +3010,8 @@ class ConversationService:
             group_jid = conversation.group.jid
             msg_id = msg.id
 
+            conv_id = str(conversation.id)
+
             def _send_bg():
                 try:
                     client = EvolutionAPIClient(group_connection)
@@ -2942,13 +3021,21 @@ class ConversationService:
                         ok_env, remote_id = client.send_media(
                             group_jid, mediatype=media_type, media_b64=media_base64,
                             filename=file_name, caption=caption, quoted=quoted)
-                    # Troca o id local pelo wamid, como o envio de texto já
-                    # fazia: é ele que deixa a mídia que nós mandamos ser
-                    # citada, editada e apagada depois.
-                    if ok_env and remote_id:
-                        Message.objects.filter(id=msg_id).update(external_id=remote_id)
                 except Exception as _e:
-                    logger.error(f"Erro bg envio mídia (msg {msg_id}): {_e}")
+                    ok_env, remote_id = False, str(_e)
+                # Troca o id local pelo wamid, como o envio de texto já
+                # fazia: é ele que deixa a mídia que nós mandamos ser
+                # citada, editada e apagada depois.
+                if ok_env and remote_id:
+                    Message.objects.filter(id=msg_id).update(external_id=remote_id)
+                elif not ok_env:
+                    logger.error(f"Erro bg envio mídia (msg {msg_id}): {remote_id}")
+                    _marcar_falha_envio(msg_id, conv_id, remote_id, apagar=sincrono)
+                return ok_env, remote_id
+
+            if sincrono:
+                ok_env, retorno = _send_bg()
+                return (True, str(msg.id)) if ok_env else (False, retorno or 'Evolution não confirmou o envio')
 
             _threading.Thread(target=_send_bg, daemon=True).start()
 

@@ -405,6 +405,31 @@ systemctl restart gunicorn daphne celery
 1. Verificar `Conversation.is_task_conv = True` no banco
 2. O novo chamado é criado no próximo webhook — não retroativamente
 
+### Mensagem enviada pelo chat não chegou no WhatsApp *(11/11/2026)*
+
+Caso real: as agendadas das 08:00 (INFOLINE e GREEN TELECOM) e um link na SICONECT.
+
+- **Como aparece agora:** o balão troca o ✓✓ por um **⚠ vermelho** ("Não chegou no WhatsApp — envie
+  de novo"). A `Message` fica com `external_id` `falhou_<ms>_<id>` (`Message.envio_falhou`), e a
+  tela aberta recebe o evento WS `message_failed`. Antes a falha do envio em background (thread)
+  só ia para o log e o balão mostrava ✓✓.
+- **Agendadas:** `enviar_mensagens_agendadas` chama `send_message`/`send_media` com
+  `sincrono=True`. Só vira `sent` com o wamid da Evolution. Na falha, o balão é removido (evento
+  `message_removed`), `attempts` +1, `last_error` guarda o motivo e a próxima tentativa sai no
+  minuto seguinte (até `MAX_ATTEMPTS` = 5, depois `failed`). Duas falhas no mesmo ciclo param o
+  ciclo, porque o worker roda com `--concurrency=1` junto do beat.
+- **Link para arquivo grande:** a Evolution baixa a URL para montar a prévia. Um link para uma
+  ISO de 7 GB (`go.microsoft.com/fwlink…` do Windows Server) prendia o `sendText` por mais de
+  120 s, e a mensagem nunca saía. `_previa_de_link_segura` lê só os cabeçalhos (4 s). Se não for
+  página HTML, ou se der erro ou demorar, o envio vai com `linkPreview: false`.
+- **Investigar:** `journalctl -u celery` (agendadas) / `-u gunicorn` (chat), procurando
+  `Envio bg falhou`, `Erro bg envio mídia` ou `Falha ao enviar mensagem agendada`. Um
+  `Read timed out` com textos simples saindo normalmente no mesmo minuto aponta para a prévia de link.
+  Se tudo dá timeout, a Evolution está lenta: os webhooks também chegam atrasados (compare
+  `date_time` do payload com a hora do log). Para conferir o que chegou de fato, use
+  `POST /chat/findMessages/<instância>` com `where.key = {remoteJid, fromMe: true}`. Um timeout do
+  CRM nesses casos **não** entregou a mensagem.
+
 ---
 
 ## 📚 Arquivos Principais

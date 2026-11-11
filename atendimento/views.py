@@ -2659,6 +2659,7 @@ def api_conversation_messages(request, conversation_id):
             # de editar (o servidor revalida na hora de salvar).
             'sender_id': m.sender_id,
             'edited_at': timezone.localtime(m.edited_at).strftime('%H:%M') if m.edited_at else '',
+            'envio_falhou': m.envio_falhou,
             # Bloco citado. Some junto com o conteúdo quando a mensagem foi
             # apagada — o rastro "Mensagem apagada" não cita ninguém.
             'reply': {} if m.deleted_at else m.citacao,

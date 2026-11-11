@@ -969,7 +969,14 @@ def enviar_mensagens_agendadas():
     due = ScheduledMessage.objects.select_related('conversation').filter(
         status='pending', scheduled_for__lte=timezone.now()
     )
+    # O envio agora espera a Evolution (até 30 s por mensagem) e o worker roda
+    # com --concurrency=1 junto do beat: com a Evolution fora, insistir em
+    # todas as pendentes no mesmo ciclo travaria o resto do background. Duas
+    # falhas no ciclo = Evolution com problema; o resto fica para o próximo.
+    falhas_no_ciclo = 0
     for sm in due:
+        if falhas_no_ciclo >= 2:
+            break
         # Releitura: o atendente pode ter cancelado entre a query e agora.
         if not ScheduledMessage.objects.filter(id=sm.id, status='pending').exists():
             continue
@@ -995,13 +1002,17 @@ def enviar_mensagens_agendadas():
 
         try:
             if sm.message_type == 'text':
-                ok, result = ConversationService.send_message(conversation, sm.content, sm.created_by)
+                # sincrono: só conta como enviada com o wamid da Evolution na
+                # mão. Antes o envio ia para uma thread e a agendada virava
+                # `sent` mesmo quando a Evolution dava timeout (11/11/2026).
+                ok, result = ConversationService.send_message(
+                    conversation, sm.content, sm.created_by, sincrono=True)
             else:
                 from .services import _read_attachment_as_base64
                 b64 = _read_attachment_as_base64(sm.attachment_url)
                 ok, result = ConversationService.send_media(
                     conversation, b64, sm.message_type, sm.file_name or 'arquivo',
-                    sm.content, sm.created_by
+                    sm.content, sm.created_by, sincrono=True
                 )
             if not ok:
                 raise Exception(result)
@@ -1015,6 +1026,7 @@ def enviar_mensagens_agendadas():
             if sm.attempts >= ScheduledMessage.MAX_ATTEMPTS:
                 sm.status = 'failed'
             sm.save(update_fields=['attempts', 'last_error', 'status'])
+            falhas_no_ciclo += 1
             logger.error(f"Falha ao enviar mensagem agendada {sm.id}: {e}")
 
 

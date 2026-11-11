@@ -321,6 +321,156 @@ class EnviarMensagensAgendadasGuardTest(TestCase):
         self.assertFalse(Message.objects.filter(content='Cancelada antes do envio').exists())
 
 
+class _ThreadNaHora:
+    """Substitui threading.Thread: roda o alvo na hora, no start()."""
+    def __init__(self, target=None, daemon=None, **kw):
+        self._target = target
+
+    def start(self):
+        self._target()
+
+
+class EnvioNaoConfirmadoTest(TestCase):
+    """11/11/2026: a Evolution deu timeout e o CRM tratou como enviado — a
+    agendada virava `sent` e o balão ficava com ✓✓ sem o cliente receber."""
+
+    def setUp(self):
+        self.conversation = _criar_conversa()
+        self.conversation.status = 'open'
+        self.conversation.save(update_fields=['status'])
+        self.agent = User.objects.create_user(username='ana', first_name='Ana')
+
+    def _agendar(self, texto):
+        return ScheduledMessage.objects.create(
+            conversation=self.conversation, created_by=self.agent,
+            message_type='text', content=texto,
+            scheduled_for=timezone.now() - timedelta(minutes=1),
+        )
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_agendada_com_timeout_da_evolution_continua_pendente(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (False, 'Read timed out. (read timeout=30)')
+        sm = self._agendar('Bom dia pessoal')
+
+        enviar_mensagens_agendadas()
+
+        sm.refresh_from_db()
+        self.assertEqual(sm.status, 'pending')
+        self.assertEqual(sm.attempts, 1)
+        self.assertIn('timed out', sm.last_error)
+        # Sem balão órfão: a próxima tentativa cria o dela.
+        self.assertFalse(Message.objects.filter(content='Bom dia pessoal').exists())
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_agendada_que_falhou_sai_na_tentativa_seguinte(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.side_effect = [
+            (False, 'Read timed out'), (True, 'WAMID_OK')]
+        sm = self._agendar('Segunda tentativa')
+
+        enviar_mensagens_agendadas()
+        enviar_mensagens_agendadas()
+
+        sm.refresh_from_db()
+        self.assertEqual(sm.status, 'sent')
+        msgs = Message.objects.filter(content='Segunda tentativa')
+        self.assertEqual(msgs.count(), 1)
+        self.assertEqual(msgs.get().external_id, 'WAMID_OK')
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_duas_falhas_param_o_ciclo(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (False, 'Read timed out')
+        sms = [self._agendar(f'msg {i}') for i in range(3)]
+
+        enviar_mensagens_agendadas()
+
+        tentativas = sorted(ScheduledMessage.objects.filter(id__in=[s.id for s in sms])
+                            .values_list('attempts', flat=True))
+        self.assertEqual(tentativas, [0, 1, 1])
+
+    @mock.patch('threading.Thread', _ThreadNaHora)
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_envio_manual_que_falhou_fica_marcado(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (False, 'Read timed out')
+
+        ok, msg_id = ConversationService.send_message(self.conversation, 'link', self.agent)
+
+        self.assertTrue(ok)  # a tela já mostrou o balão; a falha vem depois
+        msg = Message.objects.get(id=msg_id)
+        self.assertTrue(msg.external_id.startswith('falhou_'))
+        self.assertTrue(msg.envio_falhou)
+
+    @mock.patch('threading.Thread', _ThreadNaHora)
+    @mock.patch('atendimento.services._save_media_file', return_value='/media/atendimento/media/fake.jpg')
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_midia_manual_que_falhou_fica_marcada(self, mock_client_cls, mock_save):
+        mock_client_cls.return_value.send_media.return_value = (False, 'write operation timed out')
+
+        ok, msg_id = ConversationService.send_media(
+            self.conversation, 'ZmFrZQ==', 'image', 'foto.jpg', '', self.agent)
+
+        self.assertTrue(ok)
+        self.assertTrue(Message.objects.get(id=msg_id).envio_falhou)
+
+    @mock.patch('threading.Thread', _ThreadNaHora)
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_envio_confirmado_nao_fica_marcado(self, mock_client_cls):
+        mock_client_cls.return_value.send_text.return_value = (True, '3EB0ABC')
+
+        ok, msg_id = ConversationService.send_message(self.conversation, 'oi', self.agent)
+
+        msg = Message.objects.get(id=msg_id)
+        self.assertEqual(msg.external_id, '3EB0ABC')
+        self.assertFalse(msg.envio_falhou)
+
+
+class PreviaDeLinkTest(TestCase):
+    """O link da SICONECT (11/11/2026) apontava para uma ISO de 7 GB: a
+    Evolution travava montando a prévia e a mensagem nunca saía."""
+
+    def _client(self):
+        from atendimento.services import EvolutionAPIClient
+        c = EvolutionAPIClient.__new__(EvolutionAPIClient)
+        c.instance = 'x'
+        c._post = mock.Mock()
+        c._post.return_value.json.return_value = {'key': {'id': 'W1'}}
+        return c
+
+    def _resposta(self, tipo):
+        r = mock.Mock()
+        r.headers = {'Content-Type': tipo}
+        return r
+
+    @mock.patch('atendimento.services.requests.get')
+    def test_link_para_arquivo_sai_sem_previa(self, mock_get):
+        mock_get.return_value = self._resposta('application/octet-stream')
+        c = self._client()
+        c.send_text('1@g.us', 'baixa aqui https://go.microsoft.com/fwlink/p/?LinkID=2195174')
+        body = c._post.call_args[0][1]
+        self.assertIs(body['linkPreview'], False)
+
+    @mock.patch('atendimento.services.requests.get')
+    def test_link_que_nao_responde_sai_sem_previa(self, mock_get):
+        mock_get.side_effect = Exception('timeout')
+        c = self._client()
+        c.send_text('1@g.us', 'https://exemplo.invalido/x')
+        self.assertIs(c._post.call_args[0][1]['linkPreview'], False)
+
+    @mock.patch('atendimento.services.requests.get')
+    def test_pagina_html_mantem_previa(self, mock_get):
+        mock_get.return_value = self._resposta('text/html; charset=utf-8')
+        c = self._client()
+        c.send_text('1@g.us', 'olha https://www.exemplo.com.br/pagina.')
+        self.assertNotIn('linkPreview', c._post.call_args[0][1])
+        self.assertEqual(mock_get.call_args[0][0], 'https://www.exemplo.com.br/pagina')
+
+    @mock.patch('atendimento.services.requests.get')
+    def test_texto_sem_link_nem_consulta(self, mock_get):
+        c = self._client()
+        c.send_text('1@g.us', 'bom dia')
+        mock_get.assert_not_called()
+        self.assertNotIn('linkPreview', c._post.call_args[0][1])
+
+
 class ApiScheduleMessageTest(TestCase):
     def setUp(self):
         self.conversation = _criar_conversa()

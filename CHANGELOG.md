@@ -5,6 +5,23 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-11 (mensagens do chat que não chegavam no WhatsApp)
+
+### Corrigido
+
+- **Agendada marcada como enviada sem ter saído.** O envio pela Evolution rodava numa thread, e a
+  task marcava `sent` antes da resposta. Às 08:00 a Evolution deu timeout, e as agendadas da
+  INFOLINE (2 imagens) e da GREEN TELECOM (texto) ficaram como enviadas sem chegar. Agora o
+  agendador espera a confirmação (wamid). Na falha, tenta de novo no minuto seguinte, até 5 vezes.
+- **Link para arquivo grande travava o envio.** O link do Windows Server na SICONECT redirecionava
+  para uma ISO de 7 GB. A Evolution tentava montar a prévia e o `sendText` ficava preso por mais de
+  2 min. Links que não são página HTML (ou que não respondem em 4 s) agora saem sem prévia.
+- **Falha de envio invisível.** O balão mostrava ✓✓ mesmo quando o WhatsApp não recebia. Agora
+  aparece um ⚠ vermelho "Não chegou no WhatsApp — envie de novo". Detalhes em `docs/ATENDIMENTO.md`
+  (Troubleshooting).
+
+---
+
 ## [Não publicado] — 2026-11-11 (retenção das gravações da auditoria)
 
 ### Adicionado
