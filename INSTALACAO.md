@@ -390,7 +390,11 @@ server {
 
 # HTTPS
 server {
-    listen 443 ssl;
+    # http2: em HTTP/1.1 o Chrome abre só 6 conexões por site, somando todas
+    # as abas; com proxy web/Zabbix lento, o resto da página fica na fila
+    # ("Carregando..." eterno na aba Túneis, 11/11/2026). WebSocket continua
+    # em HTTP/1.1 por conta própria.
+    listen 443 ssl http2;
     server_name seu.dominio.com.br;
     client_max_body_size 2G;
 

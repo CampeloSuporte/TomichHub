@@ -10024,8 +10024,13 @@ function getCsrfToken(){
     const TOVPN_CSRF = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
 
     async function tovpnCarregarLista() {
+        // Sem limite, um pedido parado na fila do navegador deixava o
+        // "Carregando..." para sempre (11/11/2026).
+        const ctrl = new AbortController();
+        const limite = setTimeout(() => ctrl.abort(), 15000);
         try {
-            const r = await fetch(`/clientes/${TOVPN_CLIENTE_ID}/vpn-ovpn/listar/`);
+            const r = await fetch(`/clientes/${TOVPN_CLIENTE_ID}/vpn-ovpn/listar/`, {signal: ctrl.signal});
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
             const d = await r.json();
             const el = document.getElementById('tovpn-lista');
             if (!el) return;
@@ -10076,8 +10081,12 @@ function getCsrfToken(){
                 </div>`;
             }).join('');
         } catch(e) {
+            const motivo = e.name === 'AbortError' ? 'o servidor não respondeu em 15 s' : e.message;
             document.getElementById('tovpn-lista').innerHTML =
-                `<div style="color:#f85149;font-size:.82rem">Erro ao carregar túneis OpenVPN: ${e.message}</div>`;
+                `<div style="color:#f85149;font-size:.82rem;text-align:center;padding:12px">Erro ao carregar túneis OpenVPN: ${motivo}
+                    <button class="btn btn-sm ms-2" onclick="tovpnCarregarLista()" style="border:1px solid #e3b341;color:#e3b341;font-size:.75rem">Tentar de novo</button></div>`;
+        } finally {
+            clearTimeout(limite);
         }
     }
 

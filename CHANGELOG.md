@@ -5,6 +5,19 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-11 (lista de túneis presa em "Carregando...")
+
+### Corrigido
+
+- **Aba Túneis presa em "Carregando...".** O servidor respondia em 10 ms, mas o pedido nem saía do
+  navegador. O nginx só falava HTTP/1.1, e nesse modo o Chrome abre no máximo 6 conexões por site,
+  somando todas as abas. Com atendimento, proxy web e Zabbix abertos, o resto ficava na fila. O
+  nginx agora serve HTTP/2 (`listen 443 ssl http2`). Os WebSockets seguem em HTTP/1.1.
+- A lista de túneis OpenVPN desiste em 15 s e mostra o erro com um botão "Tentar de novo", em vez
+  de girar para sempre.
+
+---
+
 ## [Não publicado] — 2026-11-11 (túnel de acesso por host)
 
 ### Adicionado
