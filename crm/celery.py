@@ -100,6 +100,12 @@ app.conf.beat_schedule = {
     },
     # Poda tentativas de login / eventos de injeção fora da retenção — a
     # tabela cresce com tráfego de robô, que é justamente o que não para.
+    # Vídeos da auditoria de acessos: apaga os com mais de
+    # AUDITORIA_GRAVACOES_RETENCAO_DIAS (60). A sessão no banco fica.
+    'auditoria-limpar-gravacoes': {
+        'task': 'clientes.tasks.limpar_gravacoes_auditoria',
+        'schedule': crontab(hour=3, minute=20),
+    },
     'seguranca-limpar-registros': {
         'task': 'seguranca.limpar_registros',
         'schedule': crontab(hour=3, minute=40),

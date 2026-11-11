@@ -433,14 +433,22 @@ depois de rolar; depois, a sobra é 0 e o botão fica em `top:59` em qualquer ro
 
 ## Volume de Dados — Cuidados Operacionais
 
-- **Vídeos** (`MEDIA_ROOT/gravacoes_acessos/<acesso_id>/`) não têm rotina de expurgo automática —
-  crescem indefinidamente. Sessões WinBox/WebFig longas geram arquivos grandes mesmo com CRF 28 e
-  8fps. Considerar rotina de limpeza por idade caso o disco fique um gargalo (não implementada
-  nesta versão).
+- **Vídeos** (`MEDIA_ROOT/gravacoes_acessos/<acesso_id>/`) têm retenção de **60 dias** desde
+  11/11/2026 (`clientes.tasks.limpar_gravacoes_auditoria`, diária às 03:20 no beat de
+  `crm/celery.py`). Configurável por `AUDITORIA_GRAVACOES_RETENCAO_DIAS` (env/settings; `0`
+  desliga). Regras:
+  - só o `.mp4` sai — o `AcessoSessao` (usuário, horário, IP, comandos, transcript) fica, com
+    `arquivo_video` zerado; a tela de auditoria deixa de mostrar o botão "Gravação" daquela sessão;
+  - a idade é por `iniciada_em` da sessão; arquivo órfão (sem sessão apontando) usa a data de
+    modificação; caminho referenciado por sessão recente nunca é apagado; pastas vazias saem;
+  - teste sem apagar: `limpar_gravacoes_auditoria(simular=True)` (rodar a partir de `/opt/crm` —
+    no worktree o `MEDIA_ROOT` aponta para um `media/` vazio).
+  - Contexto: em 11/11/2026 eram 28 GB, crescendo ~15 GB/mês (jul 2,8 GB → nov ~17 GB). A
+    primeira execução libera ~10,6 GB (869 arquivos).
 - **Transcript** já tem limite embutido por sessão (3MB de texto), mas não há limite no total de
   sessões armazenadas no banco.
 
 ---
 
-**Última atualização:** 23/10/2026
+**Última atualização:** 11/11/2026
 **Autor:** CampeloSuporte

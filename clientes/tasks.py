@@ -3008,3 +3008,92 @@ def rotaloop_verificar_clientes_agendado():
 
     logger.info(f'rotaloop_verificar_clientes_agendado: concluído — {ok}/{total} OK, {falhas} falha(s).')
     return {'total': total, 'ok': ok, 'falhas': falhas}
+
+
+# ---------------------------------------------------------------------------
+# Retenção das gravações de tela da auditoria (WinBox/WebFig/RDP/UNM via VNC)
+# ---------------------------------------------------------------------------
+
+@shared_task
+def limpar_gravacoes_auditoria(dias=None, simular=False):
+    """Apaga os .mp4 de media/gravacoes_acessos com mais de `dias` dias.
+
+    Só o vídeo sai: o AcessoSessao (quem, quando, IP, comandos, transcript)
+    fica, com arquivo_video zerado — a tela de auditoria então só não mostra
+    o botão "Gravação". Também apaga arquivos órfãos (sem sessão apontando)
+    pela data de modificação, e pastas de acesso que ficaram vazias.
+    `simular=True` só conta, não apaga.
+    """
+    from .models import AcessoSessao
+
+    dias = int(dias if dias is not None else getattr(settings, 'AUDITORIA_GRAVACOES_RETENCAO_DIAS', 60))
+    if dias <= 0:
+        return {'desativado': True}
+    raiz = os.path.join(str(settings.MEDIA_ROOT), 'gravacoes_acessos')
+    if not os.path.isdir(raiz):
+        return {'arquivos': 0, 'bytes': 0, 'sessoes': 0}
+    limite = timezone.now() - timedelta(days=dias)
+    raiz_real = os.path.realpath(raiz)
+
+    arquivos = bytes_ = sessoes = 0
+    vistos = set()
+
+    def _apagar(caminho):
+        nonlocal arquivos, bytes_
+        real = os.path.realpath(caminho)
+        if not real.startswith(raiz_real + os.sep) or not os.path.isfile(real):
+            return
+        try:
+            tam = os.path.getsize(real)
+            if not simular:
+                os.remove(real)
+            arquivos += 1
+            bytes_ += tam
+        except OSError as e:
+            logger.warning(f'[gravacoes] falha ao apagar {real}: {e}')
+
+    antigas = (AcessoSessao.objects
+               .filter(iniciada_em__lt=limite)
+               .exclude(arquivo_video='')
+               .only('id', 'arquivo_video'))
+    for s in antigas.iterator():
+        caminho = os.path.join(str(settings.MEDIA_ROOT), s.arquivo_video)
+        vistos.add(os.path.realpath(caminho))
+        _apagar(caminho)
+        sessoes += 1
+        if not simular:
+            AcessoSessao.objects.filter(pk=s.pk).update(arquivo_video='')
+
+    # Órfãos: arquivo sem sessão (sessão apagada, gravação de teste...).
+    # Caminhos ainda referenciados por sessão recente nunca entram aqui.
+    em_uso = {
+        os.path.realpath(os.path.join(str(settings.MEDIA_ROOT), p))
+        for p in AcessoSessao.objects.filter(iniciada_em__gte=limite)
+                                     .exclude(arquivo_video='')
+                                     .values_list('arquivo_video', flat=True)
+    }
+    limite_ts = limite.timestamp()
+    for pasta, _subs, nomes in os.walk(raiz):
+        for nome in nomes:
+            caminho = os.path.realpath(os.path.join(pasta, nome))
+            if caminho in vistos or caminho in em_uso:
+                continue
+            try:
+                if os.path.getmtime(caminho) < limite_ts:
+                    _apagar(caminho)
+            except OSError:
+                pass
+
+    if not simular:
+        for pasta, subs, nomes in os.walk(raiz, topdown=False):
+            if pasta != raiz and not subs and not nomes:
+                try:
+                    os.rmdir(pasta)
+                except OSError:
+                    pass
+
+    res = {'dias': dias, 'simular': simular, 'sessoes': sessoes,
+           'arquivos': arquivos, 'bytes': bytes_}
+    logger.info(f'[gravacoes] retenção {dias}d: {arquivos} arquivo(s), '
+                f'{bytes_ / 1e9:.2f} GB, {sessoes} sessão(ões){" (simulação)" if simular else ""}')
+    return res

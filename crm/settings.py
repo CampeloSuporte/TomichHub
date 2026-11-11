@@ -362,6 +362,10 @@ SEGURANCA_JANELA_MINUTOS = int(os.environ.get('SEGURANCA_JANELA_MINUTOS', 15))
 # Retenção do log de tentativas/eventos (task Celery seguranca.limpar_registros).
 SEGURANCA_RETENCAO_DIAS = int(os.environ.get('SEGURANCA_RETENCAO_DIAS', 90))
 
+# Retenção dos vídeos da auditoria de acessos (task limpar_gravacoes_auditoria,
+# 03:20). A sessão (quem/quando/comandos) fica; só o .mp4 sai. 0 = desliga.
+AUDITORIA_GRAVACOES_RETENCAO_DIAS = int(os.environ.get('AUDITORIA_GRAVACOES_RETENCAO_DIAS', 60))
+
 # Filtro de injeção. `BLOQUEAR=False` = modo observação (registra e deixa passar),
 # útil pra checar falso positivo antes de ligar de vez numa rota nova.
 SEGURANCA_INJECAO_ATIVO = os.environ.get('SEGURANCA_INJECAO_ATIVO', '1') == '1'
