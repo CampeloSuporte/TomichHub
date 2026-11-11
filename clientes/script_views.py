@@ -4,6 +4,7 @@ Views para o sistema de Scripts de Automação.
 """
 import json
 import logging
+from clientes import tunel_host
 import socket
 import threading
 from datetime import datetime
@@ -143,7 +144,7 @@ def _conectar_script(acesso, fabricante: str):
     tunel_ssh = None
 
     if eh_privado:
-        proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+        proxy = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
 
         if proxy:
             # Cria túnel SSH via proxy
@@ -202,7 +203,7 @@ def _conectar_script(acesso, fabricante: str):
             porta_conexao = local_port
             tunel_ssh = (ssh, server_sock)
 
-        elif (tunel_vpn := vpn_cobre_ip(acesso.cliente, host)):
+        elif (tunel_vpn := vpn_cobre_ip(acesso.cliente, host, acesso)):
             # túnel OpenVPN: relay local com a origem dele (tabela isolada)
             from clientes import vpn_rota
             host_conexao, porta_conexao = vpn_rota.endpoint_local(tunel_vpn, host, porta_conexao)

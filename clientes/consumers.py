@@ -6,6 +6,7 @@ import telnetlib
 import threading
 import ipaddress
 import logging
+from clientes import tunel_host
 import time
 import os
 import ssl
@@ -242,14 +243,14 @@ class _TerminalSessionRegistry:
 _terminal_sessions = _TerminalSessionRegistry()
 
 
-def _tunel_ovpn_cobre(cliente, host):
+def _tunel_ovpn_cobre(cliente, host, acesso=None):
     """
     Túnel OpenVPN ativo desse cliente que entrega o IP do host, ou None.
     A conexão tem que sair com a origem do túnel (clientes.vpn_rota).
     """
     try:
         from . import vpn_rota
-        return vpn_rota.tunel_para(cliente, host)
+        return vpn_rota.tunel_para(cliente, host, acesso)
     except Exception as e:
         logger.warning(f"⚠️ Erro ao verificar túnel OpenVPN: {e}")
     return None
@@ -650,14 +651,14 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
             except Exception as e:
                 logger.debug(f"setwinsize (pexpect) falhou: {e}")
 
-    def _tunel_ovpn_cobre_ip(self, cliente, host):
+    def _tunel_ovpn_cobre_ip(self, cliente, host, acesso=None):
         """
         Túnel OpenVPN (aba Túneis) que cobre o IP do host, ou None. As redes
         do cliente ficam na tabela isolada do túnel: a conexão precisa sair
         com a origem dele (`self._origem_vpn`, usada por connect_ssh,
         _connect_ssh_paramiko_direct e connect_telnet).
         """
-        tunel = _tunel_ovpn_cobre(cliente, host)
+        tunel = _tunel_ovpn_cobre(cliente, host, acesso)
         if tunel:
             logger.info(f"✅ Túnel OpenVPN cobre {host} via {tunel.nome}")
         return tunel
@@ -962,7 +963,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
 
             if is_private:
                 # IP privado: túnel OpenVPN do cliente ou proxy SSH
-                tunel_ovpn = self._tunel_ovpn_cobre_ip(acesso.cliente, acesso.host)
+                tunel_ovpn = self._tunel_ovpn_cobre_ip(acesso.cliente, acesso.host, acesso)
                 if tunel_ovpn:
                     # Tabela de rotas isolada do túnel: só a origem dele chega
                     # na rede do cliente.
@@ -1068,9 +1069,12 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         else:
             return 'telnet' if porta_int < 1024 else 'ssh'
 
-    def get_active_proxy(self, cliente):
-        proxy = ProxyServer.objects.filter(cliente=cliente, ativo=True).first()
+    def get_active_proxy(self, cliente, acesso=None):
+        proxy = tunel_host.proxy_para(cliente, acesso.host if acesso else None, acesso)
         if not proxy:
+            if acesso is not None and getattr(acesso, 'tunel_vpn_id', None):
+                raise Exception(f"Host fixado no túnel OpenVPN \"{acesso.tunel_vpn.nome}\", "
+                                f"que não está entregando {acesso.host}")
             raise Exception(f"Nenhum proxy SSH ativo para {cliente.nome_empresa}")
         return proxy
 
@@ -1358,7 +1362,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
     def connect_ssh_via_proxy(self, acesso):
         tempo_inicio = time.time()
         try:
-            proxy = self.get_active_proxy(acesso.cliente)
+            proxy = self.get_active_proxy(acesso.cliente, acesso)
             logger.info(f"🔗 SSH via proxy (paramiko e2e): {proxy.nome}")
             self.send_json({'type': 'info', 'message': f'⚡ Conectando via proxy {proxy.nome}...'})
 
@@ -1549,7 +1553,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
         """
         tempo_inicio = time.time()
         try:
-            proxy = self.get_active_proxy(acesso.cliente)
+            proxy = self.get_active_proxy(acesso.cliente, acesso)
             logger.info(f"🔗 {rotulo} via pexpect+proxy: {proxy.nome}")
             self.send_json({'type': 'info', 'message': f'⚡ Conectando via proxy {proxy.nome} [{rotulo}]...'})
 
@@ -1780,7 +1784,7 @@ class SSHConsumer(ThreadedDispatchMixin, WebsocketConsumer):
     def connect_telnet_via_proxy(self, acesso):
         tempo_inicio = time.time()
         try:
-            proxy = self.get_active_proxy(acesso.cliente)
+            proxy = self.get_active_proxy(acesso.cliente, acesso)
             self.send_json({'type': 'info', 'message': f'⚡ Telnet via proxy {proxy.nome}...'})
 
             local_port         = self._criar_tunel_paramiko(proxy, acesso.host, int(acesso.porta))
@@ -2359,7 +2363,7 @@ class WinboxConsumer(SSHConsumer):
             )
 
             if self.is_private_ip(host):
-                proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+                proxy = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
                 if proxy:
                     self.send_json({'type': 'info', 'message': f'🔌 Conectando Winbox via proxy {proxy.nome}...'})
                     local_port = self._criar_tunel_paramiko(proxy, host, porta)
@@ -2371,7 +2375,7 @@ class WinboxConsumer(SSHConsumer):
                     # mesmo fallback em conectar_vnc() acima.
                     from .views import vpn_cobre_ip
                     from . import vpn_rota
-                    tunel_vpn = vpn_cobre_ip(acesso.cliente, host)
+                    tunel_vpn = vpn_cobre_ip(acesso.cliente, host, acesso)
                     if not tunel_vpn:
                         raise Exception(f"Nenhum proxy SSH ativo nem VPN cobrindo {host} para {acesso.cliente.nome_empresa}")
                     self.send_json({'type': 'info', 'message': f'🔌 Conectando Winbox a {host}:{porta} (via VPN)...'})
@@ -2568,12 +2572,12 @@ class WinboxVNCConsumer(SSHConsumer):
             if mode == 'unm':
                 proxy_unm = None
                 if self.is_private_ip(host):
-                    proxy_unm = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+                    proxy_unm = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
                     if not proxy_unm:
                         raise Exception(f"UNM2000 em IP privado exige um proxy SSH ativo em {acesso.cliente.nome_empresa}")
 
             elif self.is_private_ip(host):
-                proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+                proxy = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
                 if proxy:
                     msg_tipo = {"browser": "Navegador", "rdp": "RDP"}.get(mode, "Winbox")
                     self.send_json({'type': 'info', 'message': f'🔌 Conectando {msg_tipo} via proxy {proxy.nome}...'})
@@ -2591,7 +2595,7 @@ class WinboxVNCConsumer(SSHConsumer):
                     # perfeitamente alcançável.
                     from .views import vpn_cobre_ip
                     from . import vpn_rota
-                    tunel_vpn = vpn_cobre_ip(acesso.cliente, host)
+                    tunel_vpn = vpn_cobre_ip(acesso.cliente, host, acesso)
                     if not tunel_vpn:
                         raise Exception(f"Nenhum proxy SSH ativo nem VPN cobrindo {host} para {acesso.cliente.nome_empresa}")
                     # Tabela isolada do túnel: relay local com a origem dele
@@ -2823,9 +2827,7 @@ class WebSocketProxyConsumer(ThreadedDispatchMixin, WebsocketConsumer):
 
             connect_host, connect_port = target_host, porta
             if is_private or forcar_tunel:
-                proxy_srv = ProxyServer.objects.filter(
-                    cliente=cliente_alvo, ativo=True
-                ).first()
+                proxy_srv = tunel_host.proxy_para(cliente_alvo, target_host)
                 if proxy_srv:
                     from .proxy_engine import TunnelPortCache, SSHConnectionPool
                     local_port = TunnelPortCache.get_port(
@@ -3412,13 +3414,13 @@ def platform_ssh_exec(acesso, comando: str, timeout: int = 25) -> str:
 
     # Roteamento: IP privado → túnel OpenVPN do cliente ou proxy; público → direto
     if _is_private(acesso.host):
-        tunel_vpn = _tunel_ovpn_cobre(acesso.cliente, acesso.host)
+        tunel_vpn = _tunel_ovpn_cobre(acesso.cliente, acesso.host, acesso)
         if tunel_vpn:
             # Sem proxy, saindo com a origem do túnel (tabela isolada dele)
             from . import vpn_rota
             return _executar(origem=vpn_rota.origem(tunel_vpn))
         # sem proxy/VPN, tenta direto
-        return _executar(ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first())
+        return _executar(tunel_host.proxy_para(acesso.cliente, acesso.host, acesso))
     elif getattr(acesso, 'tipo', '') == 'CGNAT':
         # Tenta direto primeiro
         try:
@@ -3426,7 +3428,7 @@ def platform_ssh_exec(acesso, comando: str, timeout: int = 25) -> str:
         except Exception:
             pass
         # Fallback via proxy
-        proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+        proxy = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
         if proxy:
             return _executar(proxy)
         raise RuntimeError(f"CGNAT sem proxy disponível para {acesso.host}")

@@ -13,6 +13,7 @@ from .models import Acesso, BackupLog, BackupTemplate, BlocoIP, ValidacaoRPKI_IR
 from .views import realizar_backup, executar_validacao_rpki_irr
 from datetime import datetime
 import traceback
+from clientes import tunel_host
 import os
 import re
 import shutil
@@ -1825,7 +1826,7 @@ def _conectar_ssh_acesso(acesso):
     ssh_tunnel = None
 
     if is_private_ip(acesso.host):
-        proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+        proxy = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
         if proxy:
             ssh_tunnel = criar_ssh_tunnel(
                 {'host': proxy.host, 'porta': proxy.porta,
@@ -1837,7 +1838,7 @@ def _conectar_ssh_acesso(acesso):
             import time
             time.sleep(1)
         else:
-            tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host)
+            tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host, acesso)
             if not tunel_vpn:
                 raise Exception('IP privado sem proxy SSH ativo nem VPN cobrindo o host.')
             # Tabela de rotas isolada do túnel: relay com a origem dele
