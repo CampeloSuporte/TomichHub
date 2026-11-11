@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-11 (retenção das gravações da auditoria)
+
+### Adicionado
+
+- **Gravações de tela da auditoria apagadas após 60 dias.** Os vídeos de WinBox/WebFig/RDP/UNM
+  em `media/gravacoes_acessos` cresciam sem limite (28 GB, ~15 GB/mês). A task diária
+  `limpar_gravacoes_auditoria` (03:20) apaga os `.mp4` com mais de
+  `AUDITORIA_GRAVACOES_RETENCAO_DIAS` (60) dias. O registro da sessão, os comandos e o transcript
+  continuam no banco. Detalhes em `docs/AUDITORIA_ACESSOS.md`.
+
+---
+
 ## [Não publicado] — 2026-11-10 (cliente do Administrador sem instância)
 
 ### Corrigido
