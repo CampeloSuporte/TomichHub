@@ -268,9 +268,8 @@ def _get_config_com_tunel(config, cliente_id):
     if not ip_privado and _responde_como_zabbix(config.url):
         return config, None
 
-    proxy = ProxyServer.objects.filter(
-        cliente_id=cliente_id, ativo=True
-    ).first()
+    from clientes import tunel_host
+    proxy = tunel_host.proxy_para(cliente_id, zbx_host)
 
     if not proxy:
         if ip_privado:

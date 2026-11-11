@@ -26,6 +26,7 @@ o endpoint devolve esse número junto: quem confirma a ação vê antes quantos
 assinantes caem.
 """
 import logging
+from clientes import tunel_host
 import re
 
 logger = logging.getLogger(__name__)
@@ -402,7 +403,7 @@ def conectar(acesso):
     tunel = None
 
     if is_private_ip(host):
-        proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+        proxy = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
         if proxy:
             tunel = criar_ssh_tunnel(
                 {'host': proxy.host, 'porta': proxy.porta,
@@ -410,7 +411,7 @@ def conectar(acesso):
                 host, porta)
             host, porta = tunel['local_host'], tunel['local_port']
         else:
-            tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host)
+            tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host, acesso)
             if not tunel_vpn:
                 raise ConnectionError(
                     'IP privado sem proxy SSH ativo e sem túnel OpenVPN cobrindo o host — '

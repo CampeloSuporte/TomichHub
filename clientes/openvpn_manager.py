@@ -10,6 +10,7 @@ import time
 import secrets
 import string
 import logging
+from clientes import tunel_host
 from collections import Counter
 
 import paramiko
@@ -691,16 +692,14 @@ def executar_config_openvpn(config_id):
         porta_conexao = acesso.porta or 22
 
         if is_private_ip(acesso.host):
-            tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host)
+            tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host, acesso)
             if tunel_vpn:
                 # Alcançável pelo túnel OpenVPN — relay com a origem dele
                 from . import vpn_rota
                 host_conexao, porta_conexao = vpn_rota.endpoint_local(
                     tunel_vpn, acesso.host, porta_conexao)
             else:
-                proxy = ProxyServer.objects.filter(
-                    cliente=acesso.cliente, ativo=True
-                ).first()
+                proxy = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
                 if proxy:
                     ssh_tunnel = criar_ssh_tunnel(
                         {
@@ -897,15 +896,13 @@ def adicionar_usuario_openvpn(usuario_id):
         porta_conexao = acesso.porta or 22
 
         if is_private_ip(acesso.host):
-            tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host)
+            tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host, acesso)
             if tunel_vpn:
                 from . import vpn_rota
                 host_conexao, porta_conexao = vpn_rota.endpoint_local(
                     tunel_vpn, acesso.host, porta_conexao)
             else:
-                proxy = ProxyServer.objects.filter(
-                    cliente=acesso.cliente, ativo=True
-                ).first()
+                proxy = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
                 if proxy:
                     ssh_tunnel = criar_ssh_tunnel(
                         {'host': proxy.host, 'porta': proxy.porta,

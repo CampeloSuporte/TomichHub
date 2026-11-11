@@ -145,6 +145,37 @@ equipamento). Nesse caso, troque as faixas do segundo pelas redes específicas d
 
 ---
 
+## Mais de um túnel no mesmo cliente — túnel por host (desde 11/11/2026)
+
+Um cliente pode ter vários túneis, cada um numa rede: proxies SSH (VM
+Debian, aba Túneis SSH) e túneis OpenVPN (MikroTik). Quando o cliente tem
+**2 ou mais túneis ativos**, os formulários do host (Novo, Editar e
+Duplicar acesso) mostram o campo **Túnel de acesso**:
+
+- **Automático (pela rede do IP)** — o padrão, comportamento de antes:
+  OpenVPN cuja rede declarada contém o IP (a **mais específica** vence:
+  `192.168.50.0/24` ganha de `192.168.0.0/16`) e, sem ela, o primeiro
+  proxy SSH ativo. A ordem entre proxy e VPN varia por tela (algumas tentam
+  o proxy primeiro), por isso, com proxy e VPN no mesmo cliente, fixe o túnel.
+- **Proxy SSH · X** ou **OpenVPN · Y** — o host sempre usa esse túnel.
+  VPN fixada fora do ar dá erro de conexão; **nunca** cai no outro túnel,
+  para não entrar num equipamento de mesmo IP na outra rede.
+
+Com um túnel só, o campo não aparece. Túnel fixado que for desativado ou
+excluído volta o host ao automático. Só a equipe (backoffice) vê e grava o
+campo; o portal do cliente não altera a escolha.
+
+Implementação: `Acesso.tunel_proxy` / `Acesso.tunel_vpn` (no máximo um
+preenchido) e `clientes/tunel_host.py`. Os dois pontos que decidem o caminho
+— `vpn_rota.tunel_para(cliente, host, acesso)` e
+`tunel_host.proxy_para(cliente, host, acesso)` — consultam a escolha. Sem o
+objeto Acesso (proxy web, Acessar Roteador, Zabbix) a escolha é achada pelo
+IP entre os hosts do cliente. As Ferramentas de rede e o scan do IPAM
+continuam no primeiro proxy ativo.
+
+A regra de conflito continua: duas VPNs do mesmo cliente não podem declarar
+**a mesma** rede; redes diferentes que se sobrepõem são aceitas.
+
 ## Diagnóstico rápido
 
 ```bash

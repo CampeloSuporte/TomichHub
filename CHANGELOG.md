@@ -5,6 +5,28 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-11 (túnel de acesso por host)
+
+### Adicionado
+
+- **Escolher no host qual túnel usar.** Cliente com mais de um túnel (proxy SSH e/ou OpenVPN, cada
+  um numa rede) ganha o campo "Túnel de acesso" no Novo/Editar/Duplicar acesso. Com um túnel só, o
+  campo não aparece. Host fixado numa VPN nunca cai no outro túnel. Vale para terminal, WinBox,
+  navegador/proxy web, RDP/VNC, backup, scripts, OLT e Zabbix. Detalhes em
+  `docs/tunel_openvpn_mikrotik.md`.
+
+### Alterado
+
+- **Escolha automática pela rede mais específica.** Com dois OpenVPN no cliente, o IP vai pelo
+  túnel cuja rede declarada é a mais específica (antes, o mais novo que entregasse o IP).
+
+### Corrigido
+
+- `ProxyServer` estava definido duas vezes em `clientes/models.py`. A cópia antiga, sem cliente,
+  impedia criar FK para o modelo e foi removida (não muda o banco).
+
+---
+
 ## [Não publicado] — 2026-11-11 (mensagens do chat que não chegavam no WhatsApp)
 
 ### Corrigido

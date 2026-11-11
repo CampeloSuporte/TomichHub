@@ -159,6 +159,17 @@ class Acesso(models.Model):
         verbose_name='Modelo auto-detectado em',
         help_text='Última vez que a task tentou detectar o modelo via backup'
     )
+    # Túnel escolhido para chegar neste host quando o cliente tem mais de um
+    # (proxy SSH e/ou OpenVPN, cada um numa rede). No máximo um dos dois fica
+    # preenchido; os dois vazios = escolha automática (clientes.tunel_host).
+    tunel_proxy = models.ForeignKey(
+        'ProxyServer', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='acessos_fixados', verbose_name='Túnel (proxy SSH)',
+    )
+    tunel_vpn = models.ForeignKey(
+        'VPNOpenVPN', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='acessos_fixados', verbose_name='Túnel (OpenVPN)',
+    )
 
     def __str__(self):
         return f"{self.tipo} - {self.host}:{self.porta} ({self.cliente.nome_empresa})"
@@ -561,21 +572,6 @@ class ComentarioChamado(models.Model):
         verbose_name = 'Comentário'
         verbose_name_plural = 'Comentários'
         ordering = ['data_criacao']
-
-
-# models.py - Adicione esta classe
-class ProxyServer(models.Model):
-    nome = models.CharField(max_length=100)
-    host = models.CharField(max_length=255)
-    porta = models.IntegerField(default=22)
-    usuario = models.CharField(max_length=100)
-    senha = models.CharField(max_length=100)
-    ativo = models.BooleanField(default=True)
-    data_criacao = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.nome
-
 
 
 class ProxyServer(models.Model):

@@ -36,6 +36,7 @@ from .decorators import (
 )
 from django.http import HttpResponseRedirect
 import logging
+from clientes import tunel_host
 logger = logging.getLogger(__name__)
 from django.http import HttpResponse
 import json
@@ -208,6 +209,8 @@ def listar_clientes(request):
         'zabbix_configurado': zabbix_configurado,
         'destinos_padrao': DESTINOS_PADRAO,
         'proxy_ferramentas': proxies.filter(ativo=True).first(),
+        # Select "Túnel de acesso" do host: só aparece com 2+ túneis ativos
+        'tuneis_host': tunel_host.tuneis_do_cliente(cliente) if is_admin else [],
         'acessos_com_erro_backup': acessos_com_erro_backup,
         'blocos_rpki_invalidos_cliente': blocos_rpki_invalidos_cliente,
         'blocos_irr_invalidos_cliente': blocos_irr_invalidos_cliente,
@@ -951,6 +954,14 @@ def cadastrar_acesso(request):
             backup_template_id=backup_template_id if backup_template_id else None,
             backup_automatico=backup_automatico
         )
+        # Select só existe com 2+ túneis no cliente, e só para a equipe
+        if 'tunel' in request.POST and _perms.is_backoffice(request.user):
+            erro_tunel = tunel_host.aplicar_valor(acesso, request.POST.get('tunel'))
+            if erro_tunel:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'success': False, 'error': erro_tunel})
+                messages.error(request, erro_tunel)
+                return redirect(reverse('listar_clientes') + f'?id={cliente_id}')
         acesso.save()
 
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -1114,6 +1125,7 @@ def buscar_acesso(request, acesso_id):
             'backup_automatico': acesso.backup_automatico,
             'notas': acesso.notas or '',
             'ativo': acesso.ativo,
+            'tunel': tunel_host.valor_do_acesso(acesso),
         }
 
         return JsonResponse(data)
@@ -1154,6 +1166,12 @@ def editar_acesso(request, acesso_id):
             acesso.backup_template_id = template_id if template_id else None
             acesso.backup_automatico = request.POST.get('backup_automatico') == 'on'
             acesso.notas = request.POST.get('notas', '').strip()
+            # Sem o select no form (cliente com 1 túnel só, ou portal do
+            # cliente), a escolha atual fica como está
+            if 'tunel' in request.POST and _perms.is_backoffice(request.user):
+                erro_tunel = tunel_host.aplicar_valor(acesso, request.POST.get('tunel'))
+                if erro_tunel:
+                    raise ValueError(erro_tunel)
 
             # ✅ Tratar WINBOX vazio ou inválido
             winbox = request.POST.get('winbox')
@@ -2371,10 +2389,10 @@ def realizar_backup(acesso, usuario=None):
             print(f"⚠️ IP PRIVADO - CRIANDO TÚNEL SSH")
             print(f"{'='*80}")
 
-            proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+            proxy = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
             if not proxy:
                 # Verificar se um túnel OpenVPN ativo cobre este IP
-                tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host)
+                tunel_vpn = vpn_cobre_ip(acesso.cliente, acesso.host, acesso)
                 if tunel_vpn:
                     print(f"✅ Túnel OpenVPN cobre {acesso.host} — conectando pelo túnel")
                     from . import vpn_rota
@@ -4261,7 +4279,7 @@ def _vpn_declara_ip(vpn, host_ip):
     return False
 
 
-def vpn_cobre_ip(cliente, host):
+def vpn_cobre_ip(cliente, host, acesso=None):
     """Túnel OpenVPN (aba Túneis) desse cliente que realmente entrega o IP do
     host, ou None — nesse caso a conexão vai pelo túnel, sem SSH tunnel.
 
@@ -4271,7 +4289,7 @@ def vpn_cobre_ip(cliente, host):
     main, ou seja, pela internet."""
     try:
         from . import vpn_rota
-        return vpn_rota.tunel_para(cliente, host)
+        return vpn_rota.tunel_para(cliente, host, acesso)
     except Exception as e:
         logger.warning(f'vpn_cobre_ip({host}) falhou: {e}')
     return None
@@ -5132,7 +5150,7 @@ def proxy_ativo_cliente(request):
         if acesso:
             cliente_id = acesso.cliente_id
 
-    proxy = ProxyServer.objects.filter(cliente_id=cliente_id, ativo=True).first()
+    proxy = tunel_host.proxy_para(cliente_id, acesso.host if acesso else None, acesso)
     resposta = {
         'tem_proxy_ativo': bool(proxy),
         'nome': proxy.nome if proxy else None,
@@ -5142,7 +5160,7 @@ def proxy_ativo_cliente(request):
     if acesso:
         host = (acesso.host or '').split(':')[0]
         privado = is_private_ip(host)
-        tem_tunel = bool(privado and not proxy and vpn_cobre_ip(acesso.cliente, host))
+        tem_tunel = bool(privado and not proxy and vpn_cobre_ip(acesso.cliente, host, acesso))
         resposta.update({
             'host_equipamento': host,
             'privado':   privado,
@@ -5178,13 +5196,10 @@ def ping_acesso(request, acesso_id):
         if eh_privado:
             print(f"⚠️ IP PRIVADO - Usando proxy SSH")
 
-            proxy = ProxyServer.objects.filter(
-                cliente=acesso.cliente,
-                ativo=True
-            ).first()
+            proxy = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
 
             if not proxy:
-                tunel_vpn = vpn_cobre_ip(acesso.cliente, host)
+                tunel_vpn = vpn_cobre_ip(acesso.cliente, host, acesso)
                 if tunel_vpn:
                     print(f"✅ Túnel OpenVPN cobre {host} — ping direto pelo túnel")
                     from . import vpn_rota
@@ -5239,9 +5254,9 @@ def status_acesso(request, acesso_id):
     proxy = None
     origem = None
     if is_private_ip(host):
-        proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+        proxy = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
         if not proxy:
-            tunel_vpn = vpn_cobre_ip(acesso.cliente, host)
+            tunel_vpn = vpn_cobre_ip(acesso.cliente, host, acesso)
             if not tunel_vpn:
                 return JsonResponse({'error': 'IP privado sem proxy SSH ativo'}, status=400)
             from . import vpn_rota
@@ -5516,9 +5531,9 @@ def traceroute_acesso(request, acesso_id):
 
     try:
         if eh_privado:
-            proxy = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+            proxy = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
             if not proxy:
-                tunel_vpn = vpn_cobre_ip(acesso.cliente, host)
+                tunel_vpn = vpn_cobre_ip(acesso.cliente, host, acesso)
                 if tunel_vpn:
                     from . import vpn_rota
                     resultado = _traceroute_direto(host, origem=vpn_rota.origem(tunel_vpn))
@@ -7604,9 +7619,9 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
     proxy_srv = None
     origem_vpn = None
     if ProxyEngine.is_private_ip(target_host):
-        proxy_srv = ProxyServer.objects.filter(cliente=acesso.cliente, ativo=True).first()
+        proxy_srv = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
         if not proxy_srv:
-            tunel_vpn = vpn_cobre_ip(acesso.cliente, target_host)
+            tunel_vpn = vpn_cobre_ip(acesso.cliente, target_host, acesso)
             if tunel_vpn:
                 # VPN cobre este IP — direto, saindo com a origem do túnel
                 from . import vpn_rota
@@ -7902,7 +7917,7 @@ def caminho_roteador(cliente, ip):
     """Proxy SSH ativo do cliente ou, sem ele, o túnel VPN que cobre o IP.
     Devolve (proxy_srv, origem_vpn, erro). Nunca conexão direta do CRM: o alvo
     foi digitado, e o roteador está na rede do cliente."""
-    proxy_srv = ProxyServer.objects.filter(cliente=cliente, ativo=True).first()
+    proxy_srv = tunel_host.proxy_para(cliente, ip)
     if proxy_srv:
         return proxy_srv, None, None
     tunel_vpn = vpn_cobre_ip(cliente, ip)

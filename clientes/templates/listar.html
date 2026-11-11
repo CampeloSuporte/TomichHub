@@ -9561,6 +9561,8 @@ function getCsrfToken(){
                 const dup1SenhaAdm = document.getElementById('dup1_senha_adm');
                 if (dup1SenhaAdm) dup1SenhaAdm.value = data.senha_adm || '';
                 document.getElementById('dup1_vlan').value = data.vlan || '';
+                const dup1Tunel = document.getElementById('dup1_tunel');
+                if (dup1Tunel) dup1Tunel.value = data.tunel || '';
                 
                 // ✅ 3. Preenchimento de FUNÇÃO E MODELO
                 document.getElementById('dup1_funcao').value = data.funcao_id;
@@ -9748,6 +9750,8 @@ function getCsrfToken(){
                 const dupSenhaAdm = document.getElementById('dup_senha_adm');
                 if (dupSenhaAdm) dupSenhaAdm.value = data.senha_adm || '';
                 document.getElementById('dup_vlan').value = data.vlan || '';
+                const dupTunel = document.getElementById('dup_tunel');
+                if (dupTunel) dupTunel.value = data.tunel || '';
                 
                 // ✅ 2. Preencher função e modelo
                 document.getElementById('dup_funcao').value = data.funcao_id;

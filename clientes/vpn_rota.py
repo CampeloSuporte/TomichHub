@@ -7,8 +7,9 @@ openvpn_tunnel_manager). Por isso, conectar "direto" no IP do equipamento
 não basta mais: sem a origem, o kernel usa a tabela main e o pacote sai pela
 internet. Toda conexão a equipamento de cliente via VPN passa por aqui:
 
-  - `tunel_para(cliente, host)`: túnel do cliente que entrega o host (a rota
-    da tabela isolada sai mesmo pela tun dele), ou None;
+  - `tunel_para(cliente, host, acesso=None)`: túnel do cliente que entrega o
+    host (o fixado no host, ou o automático cuja tabela isolada sai mesmo pela
+    tun dele), ou None — ver clientes/tunel_host.py;
   - `conectar(tunel, host, porta)`: socket TCP já com a origem do túnel;
   - `endpoint_local(tunel, host, porta)`: ('127.0.0.1', porta) de um relay
     local que conecta com a origem do túnel — para libs que não aceitam
@@ -30,35 +31,57 @@ def _host_ip(host):
         return None
 
 
-def tunel_para(cliente, host):
-    """Túnel OpenVPN ativo do cliente que declara uma rede contendo `host` e
-    cuja tabela isolada realmente entrega o host pela tun dele."""
+def tunel_para(cliente, host, acesso=None):
+    """Túnel OpenVPN do cliente para `host`.
+
+    Host com túnel escolhido (clientes.tunel_host): a VPN escolhida, mesmo
+    fora do ar — nunca outra rede —, ou None se ele escolheu um proxy SSH.
+    Sem escolha: o túnel ativo que declara a rede MAIS ESPECÍFICA contendo o
+    host e cuja tabela isolada realmente o entrega pela tun dele."""
     from .models import VPNOpenVPN
     from . import openvpn_tunnel_manager as ovpnm
+    from . import tunel_host
 
     ip = _host_ip(host)
     if ip is None or ip.version != 4:
         return None
+
+    tipo, escolhido = tunel_host.escolha(cliente, host, acesso)
+    if tipo == tunel_host.PROXY:
+        return None
+    if tipo == tunel_host.VPN:
+        dev = ovpnm.dev_tun(escolhido)
+        origem_ip = ovpnm.origem_tunel(escolhido)
+        if not dev or not origem_ip or ovpnm.rota_dev_para(ip, origem=origem_ip) != dev:
+            logger.warning(f'⚠️ Host {ip} fixado no túnel "{escolhido.nome}", que não está '
+                           f'entregando o IP agora (desconectado ou rede fora do .rotas).')
+        return escolhido
+
+    candidatos = []
     for tunel in VPNOpenVPN.objects.filter(cliente=cliente, ativo=True, cert_emitido=True):
-        declara = False
+        prefixo = -1
         for rede in tunel.redes_lista():
             try:
-                if ip in ipaddress.ip_network(rede, strict=False):
-                    declara = True
-                    break
+                net = ipaddress.ip_network(rede, strict=False)
             except ValueError:
                 continue
-        if not declara:
-            continue
-        origem = ovpnm.origem_tunel(tunel)
+            if ip in net and net.prefixlen > prefixo:
+                prefixo = net.prefixlen
+        if prefixo >= 0:
+            candidatos.append((prefixo, tunel))
+    # Rede mais específica primeiro: com um túnel em 10.0.0.0/8 e outro em
+    # 10.50.0.0/16, o 10.50.x.x vai pelo segundo.
+    candidatos.sort(key=lambda c: -c[0])
+    for _prefixo, tunel in candidatos:
+        origem_ip = ovpnm.origem_tunel(tunel)
         dev = ovpnm.dev_tun(tunel)
-        if not origem or not dev:
+        if not origem_ip or not dev:
             continue
-        dev_real = ovpnm.rota_dev_para(ip, origem=origem)
+        dev_real = ovpnm.rota_dev_para(ip, origem=origem_ip)
         if dev_real == dev:
             return tunel
         logger.warning(
-            f'⚠️ Túnel "{tunel.nome}" de {cliente.nome_empresa} declara {ip}, mas a tabela '
+            f'⚠️ Túnel "{tunel.nome}" de {getattr(cliente, "nome_empresa", cliente)} declara {ip}, mas a tabela '
             f'isolada dele sai por "{dev_real}" (esperado {dev}) — túnel desconectado ou '
             f'rede fora do .rotas.'
         )

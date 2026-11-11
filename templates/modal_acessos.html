@@ -141,6 +141,19 @@
                     </div>
                 </div>
                 
+                {% if is_admin and tuneis_host|length > 1 %}
+                <div class="form-group-modal">
+                    <label><span class="label-prefix">//</span> Túnel de acesso</label>
+                    <select name="tunel" id="novo_tunel">
+                        <option value="">Automático (pela rede do IP)</option>
+                        {% for valor, rotulo in tuneis_host %}
+                        <option value="{{ valor }}">{{ rotulo }}</option>
+                        {% endfor %}
+                    </select>
+                    <small style="color: var(--text-muted); font-size: 11px;">Este cliente tem mais de um túnel: escolha por qual rede chegar neste host.</small>
+                </div>
+                {% endif %}
+
                 <div class="backup-section mt-3">
                     <h6 style="color: var(--accent-cyan); font-family: 'Courier New', monospace; text-transform: uppercase; font-size: 12px; margin-bottom: 15px; letter-spacing: 1px;">
                         <i class="fas fa-database me-2"></i> Configuração de Backup
@@ -348,6 +361,19 @@
                     </div>
                 </div>
                 
+                {% if is_admin and tuneis_host|length > 1 %}
+                <div class="form-group-modal">
+                    <label><span class="label-prefix">//</span> Túnel de acesso</label>
+                    <select name="tunel" id="dup1_tunel">
+                        <option value="">Automático (pela rede do IP)</option>
+                        {% for valor, rotulo in tuneis_host %}
+                        <option value="{{ valor }}">{{ rotulo }}</option>
+                        {% endfor %}
+                    </select>
+                    <small style="color: var(--text-muted); font-size: 11px;">Este cliente tem mais de um túnel: escolha por qual rede chegar neste host.</small>
+                </div>
+                {% endif %}
+
                 <div class="backup-section mt-3">
                     <h6 style="color: var(--accent-cyan); font-family: 'Courier New', monospace; text-transform: uppercase; font-size: 12px; margin-bottom: 15px; letter-spacing: 1px;">
                         <i class="fas fa-database me-2"></i> Configuração de Backup
@@ -575,6 +601,19 @@
                     </div>
                 </div>
                 
+                {% if is_admin and tuneis_host|length > 1 %}
+                <div class="form-group-modal">
+                    <label><span class="label-prefix">//</span> Túnel de acesso</label>
+                    <select name="tunel" id="dup_tunel">
+                        <option value="">Automático (pela rede do IP)</option>
+                        {% for valor, rotulo in tuneis_host %}
+                        <option value="{{ valor }}">{{ rotulo }}</option>
+                        {% endfor %}
+                    </select>
+                    <small style="color: var(--text-muted); font-size: 11px;">Este cliente tem mais de um túnel: escolha por qual rede chegar neste host.</small>
+                </div>
+                {% endif %}
+
                 <div class="backup-section mt-3">
                     <h6 style="color: var(--accent-cyan); font-family: 'Courier New', monospace; text-transform: uppercase; font-size: 12px; margin-bottom: 15px; letter-spacing: 1px;">
                         <i class="fas fa-database me-2"></i> Configuração de Backup
