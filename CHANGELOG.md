@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-12 (ativar/desativar porta no Huawei)
+
+### Adicionado
+
+- **💡 Comandos úteis do Huawei VRP: ativar e desativar porta.** Em Interfaces, "Desativa a porta"
+  (`shutdown`) e "Ativa a porta" (`undo shutdown`) entram no `system-view`, na interface do campo
+  Porta e voltam com `return`. Também há `save` para gravar. Os três são marcados com ⚠ e o ▶ pede
+  confirmação antes de executar.
+
+---
+
 ## [Não publicado] — 2026-11-11 (lista de túneis presa em "Carregando...")
 
 ### Corrigido
