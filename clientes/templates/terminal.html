@@ -1244,6 +1244,7 @@
             <div id="sp-tab-output" class="sp-tab" onclick="spTab('output')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.06);border-bottom:2px solid transparent;">Output</div>
             <div id="sp-tab-cgnat" class="sp-tab" onclick="spTab('cgnat')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.06);border-bottom:2px solid transparent;" title="Gerador de CGNAT MikroTik v6/v7">CGNAT</div>
             <div id="sp-tab-onu" class="sp-tab" onclick="spTab('onu')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.06);border-bottom:2px solid transparent;" title="Provisionar ONU/ONT em OLT Huawei — individual ou em massa">ONU</div>
+            <div id="sp-tab-dmonu" class="sp-tab" onclick="spTab('dmonu')" style="padding:9px 16px;cursor:pointer;font-size:11px;color:rgba(255,255,255,.06);border-bottom:2px solid transparent;display:none;" title="Provisionar ONU em OLT Datacom DmOS (DM4610/DM4615)">ONU Datacom</div>
         </div>
 
         <!-- Tab: Executar -->
@@ -1469,6 +1470,123 @@
                 <div id="opAvisos" style="font-size:11px;"></div>
                 <pre id="opPreviewBox" style="display:none;"></pre>
                 <pre id="opLog" style="display:none;"></pre>
+            </div>
+        </div>
+
+        <!-- Tab: ONU Datacom (provisionamento OLT Datacom DmOS — clientes/olt_datacom.py) -->
+        <style>
+            #sp-pane-dmonu .op-in { width:100%; background:#0d1117; border:1px solid rgba(255,255,255,.08); border-radius:4px; color:#e6edf3; font-family:inherit; font-size:11px; padding:5px 6px; outline:none; box-sizing:border-box; }
+            #sp-pane-dmonu .op-lbl { font-size:9px; color:#7d8590; display:block; margin-bottom:2px; letter-spacing:.5px; }
+            #sp-pane-dmonu .op-btn { padding:8px; background:rgba(255,165,0,.15); border:1px solid #ffa500; color:#ffa500; border-radius:4px; font-family:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+            #sp-pane-dmonu .op-btn:disabled { opacity:.5; cursor:default; }
+            #sp-pane-dmonu .op-btn.sec { background:transparent; border-color:#30363d; color:#c9d1d9; font-weight:400; }
+            #sp-pane-dmonu .op-btn.ok { background:rgba(63,185,80,.12); border-color:#3fb950; color:#3fb950; }
+            #sp-pane-dmonu .op-card { border:1px solid #30363d; border-radius:6px; padding:8px; display:flex; flex-direction:column; gap:6px; background:#0d1117; }
+            #sp-pane-dmonu .op-card.off { opacity:.5; }
+            #sp-pane-dmonu .op-card-top { display:flex; align-items:center; gap:8px; font-size:11px; color:#e6edf3; }
+            #sp-pane-dmonu .op-grid { display:grid; grid-template-columns: 70px 1fr 1fr 54px 1fr; gap:6px; }
+            #sp-pane-dmonu .op-orig { font-size:10px; color:#7d8590; }
+            #sp-pane-dmonu .op-st { margin-left:auto; font-size:10px; padding:1px 6px; border-radius:8px; border:1px solid #30363d; color:#7d8590; white-space:nowrap; }
+            #sp-pane-dmonu .op-st.sucesso { color:#3fb950; border-color:#3fb950; }
+            #sp-pane-dmonu .op-st.parcial, #sp-pane-dmonu .op-st.ignorada { color:#d29922; border-color:#d29922; }
+            #sp-pane-dmonu .op-st.erro { color:#ff5555; border-color:#ff5555; }
+            #sp-pane-dmonu .op-st.andamento { color:#58a6ff; border-color:#58a6ff; }
+            #sp-pane-dmonu pre { background:#0d1117; border:1px solid #30363d; border-radius:4px; padding:8px; font-size:10px; color:#c9d1d9; max-height:260px; overflow:auto; white-space:pre-wrap; margin:0; }
+            #sp-pane-dmonu .op-chip { font-size:10px; padding:2px 6px; border:1px solid #30363d; border-radius:10px; color:#c9d1d9; display:inline-flex; gap:4px; align-items:center; }
+            #sp-pane-dmonu .op-chip button { background:none; border:none; color:#ff5555; cursor:pointer; padding:0; font-size:11px; }
+            #sp-pane-dmonu .op-sel-lupa { display:flex; gap:3px; }
+            #sp-pane-dmonu .op-sel-lupa select { flex:1; min-width:0; }
+            #sp-pane-dmonu .op-lupa { background:#21262d; border:1px solid #30363d; border-radius:4px; color:#c9d1d9; cursor:pointer; padding:0 6px; font-size:11px; }
+            #sp-pane-dmonu .op-lupa:hover { border-color:#58a6ff; }
+            #sp-pane-dmonu .op-svc { display:grid; grid-template-columns: 18px 1fr 90px; gap:6px; align-items:center; font-size:10px; color:#c9d1d9; }
+            @media (max-width: 560px) { #sp-pane-dmonu .op-grid { grid-template-columns: 1fr 1fr 1fr; } }
+            #sp-pane-dmonu .dm-grid { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px; }
+            #sp-pane-dmonu[data-dm-tela="perfis"] #dmBuscarBox,
+            #sp-pane-dmonu[data-dm-tela="perfis"] #dmMsg,
+            #sp-pane-dmonu[data-dm-tela="perfis"] #dmLote,
+            #sp-pane-dmonu[data-dm-tela="provisionar"] #dmPerfisBox { display:none !important; }
+        </style>
+        <div id="sp-pane-dmonu" style="flex:1;overflow-y:auto;padding:14px;display:none;flex-direction:column;gap:10px;">
+            <div style="font-size:10px;color:#7d8590;">Provisiona ONU em <b>OLT Datacom DmOS</b> (DM4610/DM4615) — o equipamento é o selecionado na aba Executar. Modo, perfis, GEM e VLAN vêm da maioria da PON no backup. O ID da ONU e o do service-port saem do backup e são <b>conferidos ao vivo</b> antes de gravar (um ID que já existe editaria outro assinante). Cada ONU entra num <code>commit</code> só: ou entra tudo, ou nada.</div>
+            <div id="dmInfo" style="font-size:11px;color:#c9d1d9;"></div>
+            <div id="dmBuscarBox" style="display:flex;gap:8px;">
+                <button class="op-btn" id="dmBtnBuscar" onclick="dmBuscar()" style="flex:1;">🔍 Buscar ONUs pendentes (discovered-onus)</button>
+            </div>
+            <div id="dmMsg" style="font-size:11px;"></div>
+
+            <details id="dmPerfisBox" style="border:1px solid #30363d;border-radius:6px;padding:8px;">
+                <summary style="cursor:pointer;font-size:12px;color:#ffa500;font-weight:700;padding:2px 0;">➕ Criar perfis (bandwidth / line / service) e VLAN <span style="font-weight:400;color:#7d8590;font-size:10px;">(clique para abrir)</span></summary>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+                    <div style="font-size:10px;color:#7d8590;">Segue o guia rápido DM4610 e o running-config da OLT. Nome que já existe é recusado: no DmOS entrar num perfil existente <b>edita</b> o perfil de todas as ONUs dele. O CRM confere os nomes ao vivo e grava tudo num <code>commit</code> só.</div>
+                    <div class="dm-grid">
+                        <div><span class="op-lbl">TIPO DE ONU</span>
+                            <select class="op-in" id="dmPfTipo" onchange="dmPfNomes()"><option value="bridge">Bridge (ethernet)</option><option value="router">Router (veip)</option></select></div>
+                        <div><span class="op-lbl">VLAN</span><input class="op-in" id="dmPfVlan" type="number" min="1" max="4094" oninput="dmPfNomes()"></div>
+                        <div><span class="op-lbl" title="vlan do map: a VLAN ou any">VLAN DO MAP</span>
+                            <select class="op-in" id="dmPfVlanMap"><option value="">= a VLAN</option><option value="any">any</option></select></div>
+                    </div>
+                    <span class="op-lbl">BANDWIDTH-PROFILE (T-CONT)</span>
+                    <select class="op-in" id="dmPfBw" onchange="dmPfBwModo()"></select>
+                    <div id="dmPfBwNovo" style="display:none;border-left:2px solid #ffa500;padding-left:8px;" class="dm-grid">
+                        <div><span class="op-lbl">NOME</span><input class="op-in" id="dmPfBwNome" maxlength="32" value="PPPoE"></div>
+                        <div><span class="op-lbl">TIPO</span><select class="op-in" id="dmPfBwTipo"><option value="type-4">type-4 max-bw</option><option value="type-1">type-1 fixed-bw</option></select></div>
+                        <div><span class="op-lbl">BANDA (kbps)</span><input class="op-in" id="dmPfBwKbps" type="number" min="64" value="1106944"></div>
+                    </div>
+                    <span class="op-lbl">LINE-PROFILE (novo)</span>
+                    <div class="op-grid" style="grid-template-columns:1fr 60px 60px 1fr;">
+                        <div><span class="op-lbl">NOME</span><input class="op-in" id="dmPfLine" maxlength="32"></div>
+                        <div><span class="op-lbl">T-CONT</span><input class="op-in" id="dmPfTcont" type="number" min="1" max="7" value="1"></div>
+                        <div><span class="op-lbl">GEM</span><input class="op-in" id="dmPfGem" type="number" min="1" max="1023" value="1"></div>
+                        <div><span class="op-lbl">NOME DO MAP</span><input class="op-in" id="dmPfMap" maxlength="32" value="pppoe"></div>
+                    </div>
+                    <label style="font-size:11px;color:#c9d1d9;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="dmPfFec" checked> upstream-fec (como em todos os line-profiles do backup)</label>
+                    <span class="op-lbl">SERVICE-PROFILE</span>
+                    <select class="op-in" id="dmPfSrv" onchange="dmPfSrvModo()"></select>
+                    <div id="dmPfSrvNovo" style="display:none;flex-direction:column;gap:6px;border-left:2px solid #ffa500;padding-left:8px;">
+                        <div class="dm-grid" style="grid-template-columns:1fr 1fr;">
+                            <div><span class="op-lbl">NOME DO SERVICE-PROFILE</span><input class="op-in" id="dmPfSrvNome" maxlength="32"></div>
+                            <div><span class="op-lbl">ONU-PROFILE</span><select class="op-in" id="dmPfOnuProf" onchange="dmPfSrvModo()"></select></div>
+                        </div>
+                        <div id="dmPfOnuNovo" style="display:none;" class="dm-grid">
+                            <div><span class="op-lbl">NOME DO ONU-PROFILE</span><input class="op-in" id="dmPfOnuNome" maxlength="32"></div>
+                            <label id="dmPfPotsBox" style="font-size:11px;color:#c9d1d9;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="dmPfPots"> pots adaptive</label>
+                        </div>
+                    </div>
+                    <span class="op-lbl">VLAN NA OLT</span>
+                    <div id="dmPfVlanInfo" style="font-size:10px;color:#7d8590;"></div>
+                    <div class="dm-grid" style="grid-template-columns:1fr 1fr;">
+                        <div><span class="op-lbl">NOME DA VLAN (se nova)</span><input class="op-in" id="dmPfVlanNome" maxlength="32"></div>
+                        <div><span class="op-lbl">SERVICE VLAN (se não existe)</span><select class="op-in" id="dmPfSvlan"><option value="n:1">n:1 (residencial)</option><option value="tls">tls (ONUs se falam)</option><option value="1:1">1:1</option></select></div>
+                    </div>
+                    <div><span class="op-lbl">UPLINK (dot1q vlan … interface)</span><div id="dmPfUplinks" style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:#c9d1d9;"></div>
+                        <input class="op-in" id="dmPfUplinkExtra" placeholder="outra interface (ex.: ten-gigabit-ethernet-1/1/2)" style="margin-top:4px;"></div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="op-btn sec" onclick="dmPfPreview()" style="flex:1;">👁 Pré-visualizar</button>
+                        <button class="op-btn ok" id="dmPfBtn" onclick="dmPfCriar()" style="flex:1;">▶ Criar na OLT</button>
+                    </div>
+                    <div id="dmPfAvisos" style="font-size:11px;"></div>
+                    <pre id="dmPfOut" style="display:none;"></pre>
+                </div>
+            </details>
+
+            <div id="dmLote" style="display:none;flex-direction:column;gap:8px;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+                    <label style="font-size:11px;color:#c9d1d9;display:flex;gap:6px;align-items:center;"><input type="checkbox" id="dmTodas" checked onchange="dmMarcarTodas(this.checked)"> todas</label>
+                    <div style="flex:1;min-width:120px;"><span class="op-lbl">MODO PARA AS MARCADAS</span>
+                        <select class="op-in" id="dmModoTodas" onchange="dmAplicar('modo', this.value)"></select></div>
+                    <div style="flex:1;min-width:140px;"><span class="op-lbl">LINE-PROFILE PARA AS MARCADAS</span>
+                        <select class="op-in" id="dmLineTodas" onchange="dmAplicar('line', this.value)"></select></div>
+                    <div style="flex:1;min-width:140px;"><span class="op-lbl">SERVICE-PROFILE PARA AS MARCADAS</span>
+                        <select class="op-in" id="dmSrvTodas" onchange="dmAplicar('service', this.value)"></select></div>
+                </div>
+                <div id="dmLista" style="display:flex;flex-direction:column;gap:8px;"></div>
+                <div style="display:flex;gap:8px;">
+                    <button class="op-btn sec" onclick="dmPreview()" style="flex:1;">👁 Pré-visualizar comandos</button>
+                    <button class="op-btn ok" id="dmBtnExec" onclick="dmExecutar()" style="flex:1;">▶ Provisionar</button>
+                </div>
+                <div id="dmAvisos" style="font-size:11px;"></div>
+                <pre id="dmPreviewBox" style="display:none;"></pre>
+                <pre id="dmLog" style="display:none;"></pre>
             </div>
         </div>
 
@@ -3492,6 +3610,13 @@
             {id: 'onu-perfis-id', nome: 'Huawei — Criar perfis com ID = VLAN (srv/line-profile_110)'},
             {id: 'onu-perfis-roteada', nome: 'Huawei — Criar perfis ONT roteada / PPPoE'},
         ];
+        // OLT Datacom DmOS (aba ONU Datacom, clientes/olt_datacom.py).
+        const SP_ONU_DATACOM = [
+            {id: 'dm-unico', nome: 'Provisionar ONU (único)'},
+            {id: 'dm-massa', nome: 'Provisionar ONUs em massa'},
+            {id: 'dm-perfis-bridge', nome: 'Criar perfis ONU Bridge (bandwidth/line/service + VLAN)'},
+            {id: 'dm-perfis-router', nome: 'Criar perfis ONU Router / PPPoE na ONU (veip)'},
+        ];
         // Entrada do menu → modelo (e exemplo) do formulário de criação de perfis.
         const SP_ONU_PERFIS = {'onu-perfis-fixa': 'vlan_fixa', 'onu-perfis-multi': 'multi_vlan',
             'onu-perfis-arch': 'vlan_fixa:arch', 'onu-perfis-id': 'vlan_fixa:id', 'onu-perfis-roteada': 'roteada'};
@@ -3555,6 +3680,11 @@
             }
             if (spAcesoId) spCarregarHistorico(spAcesoId);
             if (document.getElementById('sp-pane-onu')?.style.display === 'flex') opCarregarInventario();
+            const tabDm = document.getElementById('sp-tab-dmonu');
+            if (tabDm) tabDm.style.display = spFamiliaAtual === 'datacom_olt' ? '' : 'none';
+            if (document.getElementById('sp-pane-dmonu')?.style.display === 'flex') {
+                if (spFamiliaAtual === 'datacom_olt') dmCarregarInventario(); else spTab('exec');
+            }
         };
 
         // ── Abrir/Fechar ──
@@ -3571,17 +3701,18 @@
 
         // ── Tab ──
         window.spTab = function(tab) {
-            ['exec','hist','output','cgnat','onu'].forEach(t => {
+            ['exec','hist','output','cgnat','onu','dmonu'].forEach(t => {
                 const pane = document.getElementById(`sp-pane-${t}`);
                 const tabEl = document.getElementById(`sp-tab-${t}`);
                 if (!pane || !tabEl) return;
                 const ativo = t === tab;
                 pane.style.display = ativo ? 'flex' : 'none';
-                if (t === 'exec' || t === 'cgnat' || t === 'onu') pane.style.flexDirection = ativo ? 'column' : '';
+                if (t === 'exec' || t === 'cgnat' || t === 'onu' || t === 'dmonu') pane.style.flexDirection = ativo ? 'column' : '';
                 tabEl.style.color = ativo ? '#ffa500' : '#555';
                 tabEl.style.borderBottom = ativo ? '2px solid #ffa500' : '2px solid transparent';
             });
             if (tab === 'onu') opCarregarInventario();
+            if (tab === 'dmonu') dmCarregarInventario();
         };
 
         // ── Carregar scripts ──
@@ -3621,6 +3752,14 @@
                     sel.appendChild(opt);
                 });
             }
+            if (spFamiliaAtual === 'datacom_olt') {
+                SP_ONU_DATACOM.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.textContent = `[Datacom OLT] ${s.nome}`;
+                    sel.appendChild(opt);
+                });
+            }
             scripts.forEach(s => {
                 const opt = document.createElement('option');
                 opt.value = s.id;
@@ -3639,6 +3778,20 @@
             const id = sel?.value;
             if (!id || !id.startsWith('onu-')) opDefinirTela('');
             if (!id) { spScriptAtual = null; renderParamsForm([]); return; }
+            if (id.startsWith('dm-')) {
+                spScriptAtual = null;
+                renderParamsForm([]);
+                const descBox = document.getElementById('spDescBox');
+                if (descBox) {
+                    descBox.textContent = id.startsWith('dm-perfis')
+                        ? 'Abre a aba ONU Datacom na criação de perfis: bandwidth-profile, line-profile, service/onu-profile e a VLAN (dot1q + uplink + service vlan), num commit só.'
+                        : 'Abre a aba ONU Datacom: busca as ONUs pendentes (show interface gpon discovered-onus) com modo, perfis e VLAN sugeridos pelo backup.';
+                    descBox.style.display = '';
+                }
+                if (id.startsWith('dm-perfis')) dmAbrirPerfis(id === 'dm-perfis-router' ? 'router' : 'bridge');
+                else dmAbrir(id === 'dm-unico' ? 'unico' : 'massa');
+                return;
+            }
             if (id.startsWith('onu-')) {
                 spScriptAtual = null;
                 renderParamsForm([]);
@@ -5090,6 +5243,416 @@
             } finally {
                 opRodando = false;
                 btn.disabled = false; btn.textContent = '▶ Provisionar';
+            }
+        };
+
+        // ── ONU Datacom: provisionamento em OLT Datacom DmOS (clientes/onu_prov_datacom_views.py) ──
+        // Tudo pela conexão do servidor: o DmOS aceita várias sessões do mesmo
+        // usuário, e a sessão própria nunca herda um config pela metade do operador.
+        let dmInv = null, dmInvAcesso = null, dmOnus = [], dmRodando = false, dmSelecao = 'massa';
+
+        function dmDefinirTela(tela) {
+            const pane = document.getElementById('sp-pane-dmonu');
+            if (tela) pane.dataset.dmTela = tela; else delete pane.dataset.dmTela;
+            pane.scrollTop = 0;
+        }
+
+        async function dmAbrir(selecao) {
+            dmSelecao = selecao;
+            dmDefinirTela('provisionar');
+            spTab('dmonu');
+            await dmCarregarInventario();
+            if (dmInv) dmBuscar();
+        }
+
+        async function dmAbrirPerfis(tipo) {
+            dmDefinirTela('perfis');
+            spTab('dmonu');
+            await dmCarregarInventario();
+            const box = document.getElementById('dmPerfisBox');
+            box.open = true;
+            document.getElementById('dmPfTipo').value = tipo;
+            dmPfNomes();
+            document.getElementById('dmPfVlan').focus();
+        }
+
+        function dmOpcoes(lista, valor, rotulo) {
+            let html = '';
+            if (valor && !lista.some(p => p.nome === valor)) html += `<option value="${_escHtml(valor)}">${_escHtml(valor)} (fora do backup)</option>`;
+            lista.forEach(p => { html += `<option value="${_escHtml(p.nome)}" ${p.nome === valor ? 'selected' : ''}>${_escHtml(rotulo(p))}</option>`; });
+            return html;
+        }
+        const dmRotLine = p => `${p.nome} · ${p.modo}${p.vlans.length ? ' · VLAN ' + p.vlans.join(',') : ' · vlan any'} · GEM ${p.gems.join(',')} (${p.onus} ONUs)`;
+        const dmRotSrv = p => `${p.nome} → ${p.onu_profile || '?'} (${p.onus} ONUs)`;
+
+        async function dmCarregarInventario() {
+            const id = opAcessoId();
+            const info = document.getElementById('dmInfo');
+            const btn = document.getElementById('dmBtnBuscar');
+            if (!id) { info.innerHTML = '<span style="color:#d29922">Selecione a OLT na aba Executar.</span>'; btn.disabled = true; return; }
+            if (dmInv && dmInvAcesso === id) return;
+            info.textContent = 'Lendo perfis do backup...';
+            btn.disabled = true;
+            dmInv = null; dmOnus = [];
+            document.getElementById('dmLote').style.display = 'none';
+            document.getElementById('dmMsg').innerHTML = '';
+            try {
+                dmInv = await opFetchJson(`/clientes/acessos/${id}/onu-dm/`);
+                dmInvAcesso = id;
+                const nOnus = dmInv.pons.reduce((a, p) => a + p.onus, 0);
+                info.innerHTML = `<b>${_escHtml(dmInv.host.nome)}</b> ${_escHtml(dmInv.host.ip)} · ${_escHtml(dmInv.hostname || dmInv.host.modelo || '')} · `
+                    + `${dmInv.pons.length} PONs / ${nOnus} ONUs · ${dmInv.lines.length} line / ${dmInv.services.length} service profiles · backup ${_escHtml(dmInv.data_backup)}`;
+                document.getElementById('dmModoTodas').innerHTML = '<option value="">— manter o de cada uma —</option>'
+                    + dmInv.modos.map(m => `<option value="${m.chave}">${_escHtml(m.label)}</option>`).join('');
+                document.getElementById('dmLineTodas').innerHTML = '<option value="">— manter o sugerido —</option>' + dmOpcoes(dmInv.lines, '', dmRotLine);
+                document.getElementById('dmSrvTodas').innerHTML = '<option value="">— manter o sugerido —</option>' + dmOpcoes(dmInv.services, '', dmRotSrv);
+                dmPfPreencher();
+                btn.disabled = false;
+            } catch (e) {
+                info.innerHTML = `<span style="color:#ff5555">✗ ${_escHtml(e.message)}</span>`;
+            }
+        }
+
+        window.dmBuscar = async function() {
+            const id = opAcessoId();
+            if (!id || !dmInv) return;
+            const btn = document.getElementById('dmBtnBuscar');
+            const msg = document.getElementById('dmMsg');
+            btn.disabled = true; btn.textContent = '⏳ Consultando a OLT...';
+            msg.innerHTML = '<span style="color:#7d8590">show interface gpon discovered-onus — conexão própria do servidor</span>';
+            ['dmPreviewBox', 'dmLog'].forEach(x => { document.getElementById(x).style.display = 'none'; });
+            document.getElementById('dmAvisos').innerHTML = '';
+            try {
+                const j = await opFetchJson(`/clientes/acessos/${id}/onu-dm/discovered/`, {method: 'POST',
+                    headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')}, body: '{}'});
+                dmOnus = j.onus || [];
+                if (!dmOnus.length) {
+                    msg.innerHTML = '<span style="color:#3fb950">✓ Nenhuma ONU pendente de provisionamento nesta OLT.</span>';
+                    document.getElementById('dmLote').style.display = 'none';
+                    return;
+                }
+                msg.innerHTML = `<span style="color:#c9d1d9">${dmOnus.length} ONU(s) pendente(s). Confira os valores e marque as que vai provisionar.</span>`;
+                document.getElementById('dmTodas').checked = dmSelecao !== 'unico';
+                ['dmModoTodas', 'dmLineTodas', 'dmSrvTodas'].forEach(x => { document.getElementById(x).value = ''; });
+                dmRenderLista();
+                if (dmSelecao === 'unico') dmOnus.forEach((o, i) => { if (i > 0) dmMarcar(i, false); });
+                dmSelecao = 'massa';
+                document.getElementById('dmLote').style.display = 'flex';
+            } catch (e) {
+                msg.innerHTML = `<span style="color:#ff5555">✗ ${_escHtml(e.message)}</span>`;
+            } finally {
+                btn.disabled = false; btn.textContent = '🔍 Buscar ONUs pendentes (discovered-onus)';
+            }
+        };
+
+        function dmRenderLista() {
+            const lista = document.getElementById('dmLista');
+            lista.innerHTML = dmOnus.map((o, i) => {
+                const s = o.sugestao || {};
+                const cheia = o.onus_na_pon >= (dmInv.max_onu_id + 1);
+                const avisoSn = o.no_backup ? `<div style="font-size:10px;color:#d29922">⚠ serial já está no backup em ${_escHtml(o.no_backup)}</div>` : '';
+                const avisoPon = o.erro ? `<div style="font-size:10px;color:#ff5555">✗ ${_escHtml(o.erro)}</div>`
+                    : (cheia ? `<div style="font-size:10px;color:#ff5555">✗ PON cheia no backup (${o.onus_na_pon} ONUs)</div>` : '');
+                return `<div class="op-card" id="dm-card-${i}">
+                    <div class="op-card-top"><input type="checkbox" id="dm-chk-${i}" checked onchange="dmMarcar(${i}, this.checked)">
+                        <b>${_escHtml(o.sn)}</b> <span class="op-orig">PON ${_escHtml(o.pon)} · ${o.onus_na_pon} ONUs na PON</span>
+                        <span class="op-st" id="dm-st-${i}">pendente</span></div>
+                    <div class="op-grid" style="grid-template-columns:1fr 1fr 1fr;">
+                        <div><span class="op-lbl">MODO</span><select class="op-in" id="dm-modo-${i}">${dmInv.modos.map(m => `<option value="${m.chave}" ${m.chave === s.modo ? 'selected' : ''}>${_escHtml(m.label)}</option>`).join('')}</select></div>
+                        <div><span class="op-lbl">LINE-PROFILE</span><select class="op-in" id="dm-line-${i}" onchange="dmLineTrocado(${i})">${dmOpcoes(dmInv.lines, s.line, p => p.nome + (p.vlans.length ? ' · ' + p.vlans.join(',') : ''))}</select></div>
+                        <div><span class="op-lbl">SERVICE-PROFILE</span><select class="op-in" id="dm-srv-${i}">${dmOpcoes(dmInv.services, s.service, p => p.nome)}</select></div>
+                    </div>
+                    <div class="op-grid" style="grid-template-columns:60px 70px 70px 70px 1fr;">
+                        <div><span class="op-lbl" title="vazio = primeiro livre na PON">ID ONU</span><input class="op-in" id="dm-id-${i}" type="number" min="0" max="${dmInv.max_onu_id}" placeholder="auto" value="${s.onu_id ?? ''}"></div>
+                        <div><span class="op-lbl">GEM</span><input class="op-in" id="dm-gem-${i}" type="number" min="1" max="1023" value="${s.gem ?? ''}"></div>
+                        <div><span class="op-lbl" title="match vlan (e native vlan no bridge)">VLAN</span><input class="op-in" id="dm-vlan-${i}" type="number" min="1" max="4094" value="${s.vlan ?? ''}"></div>
+                        <div><span class="op-lbl" title="action vlan replace vlan-id">VLAN OLT</span><input class="op-in" id="dm-vlanolt-${i}" type="number" min="1" max="4094" value="${s.vlan_olt ?? ''}"></div>
+                        <div><span class="op-lbl">NOME (opcional)</span><input class="op-in" id="dm-nome-${i}" maxlength="48" placeholder="ex.: 12345 ou NOME_DO_CLIENTE"></div>
+                    </div>
+                    <div class="op-orig">sugestão: ${_escHtml(s.origem || '')}</div>${avisoSn}${avisoPon}
+                    <div id="dm-pos-${i}" style="display:none;gap:6px;"></div>
+                </div>`;
+            }).join('');
+        }
+
+        window.dmMarcar = function(i, v) {
+            const c = document.getElementById(`dm-chk-${i}`);
+            if (c) c.checked = v;
+            document.getElementById(`dm-card-${i}`)?.classList.toggle('off', !v);
+        };
+        window.dmMarcarTodas = function(v) { dmOnus.forEach((o, i) => dmMarcar(i, v)); };
+
+        // Trocar o line-profile traz o GEM dele e, se ele mapeia uma VLAN só, a VLAN.
+        window.dmLineTrocado = function(i) {
+            const lp = dmInv.lines.find(p => p.nome === document.getElementById(`dm-line-${i}`).value);
+            if (!lp) return;
+            if (lp.gems.length) document.getElementById(`dm-gem-${i}`).value = lp.gems[0];
+            document.getElementById(`dm-modo-${i}`).value = lp.modo;
+            if (lp.vlans.length === 1) {
+                document.getElementById(`dm-vlan-${i}`).value = lp.vlans[0];
+                document.getElementById(`dm-vlanolt-${i}`).value = lp.vlans[0];
+            }
+        };
+
+        window.dmAplicar = function(campo, v) {
+            if (!v) return;
+            const sel = {modo: 'modo', line: 'line', service: 'srv'}[campo];
+            dmOnus.forEach((o, i) => {
+                if (!document.getElementById(`dm-chk-${i}`)?.checked) return;
+                document.getElementById(`dm-${sel}-${i}`).value = v;
+                if (campo === 'line') dmLineTrocado(i);
+            });
+        };
+
+        function dmItens() {
+            const itens = [];
+            dmOnus.forEach((o, i) => {
+                if (!document.getElementById(`dm-chk-${i}`)?.checked) return;
+                const v = x => document.getElementById(`dm-${x}-${i}`).value.trim();
+                itens.push({_i: i, sn: o.sn, pon: o.pon, modo: v('modo'), line: v('line'), service: v('srv'),
+                            onu_id: v('id'), gem: v('gem'), vlan: v('vlan'), vlan_olt: v('vlanolt') || v('vlan'), nome: v('nome')});
+            });
+            return itens;
+        }
+
+        async function dmPedirPreview(itens) {
+            return opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-dm/executar/`, {method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
+                body: JSON.stringify({preview: true, itens})});
+        }
+
+        function dmMostrarAvisos(avisos) {
+            document.getElementById('dmAvisos').innerHTML = (avisos || []).map(a => `<div style="color:#d29922">⚠ ${_escHtml(a)}</div>`).join('');
+        }
+
+        window.dmPreview = async function() {
+            const itens = dmItens();
+            const box = document.getElementById('dmPreviewBox');
+            if (!itens.length) { uiAlert('Marque pelo menos uma ONU.'); return; }
+            try {
+                const j = await dmPedirPreview(itens);
+                dmMostrarAvisos(j.avisos);
+                box.textContent = j.onus.map(o => `# ${o.sn} — ONU ${o.onu_id}, service-port ${o.sp_id} (conferidos ao vivo antes de gravar; se já existirem, o CRM pega o próximo livre)\n`
+                    + o.checagens.map(c => `#   ${c}  → precisa dizer "element does not exist"`).join('\n') + '\n'
+                    + o.comandos.join('\n')).join('\n\n');
+                box.style.display = '';
+            } catch (e) {
+                document.getElementById('dmAvisos').innerHTML = `<div style="color:#ff5555">✗ ${_escHtml(e.message)}</div>`;
+            }
+        };
+
+        async function* dmSse(url, corpo) {
+            const resp = await fetch(url, {method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')}, body: JSON.stringify(corpo)});
+            if (!resp.ok || !(resp.headers.get('content-type') || '').includes('event-stream')) {
+                const j = await resp.json().catch(() => ({error: 'Sessão expirada? Recarregue a página.'}));
+                yield {tipo: 'erro', erro: j.error || resp.statusText}; return;
+            }
+            const reader = resp.body.getReader(), dec = new TextDecoder();
+            let buf = '';
+            while (true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                buf += dec.decode(value, {stream: true});
+                const partes = buf.split('\n\n'); buf = partes.pop();
+                for (const p of partes) {
+                    if (!p.startsWith('data:')) continue;
+                    try { yield JSON.parse(p.slice(5).trim()); } catch (e) {}
+                }
+            }
+        }
+
+        window.dmExecutar = async function() {
+            if (dmRodando) return;
+            const itens = dmItens();
+            if (!itens.length) { uiAlert('Marque pelo menos uma ONU.'); return; }
+            let prev;
+            try { prev = await dmPedirPreview(itens); }
+            catch (e) { document.getElementById('dmAvisos').innerHTML = `<div style="color:#ff5555">✗ ${_escHtml(e.message)}</div>`; return; }
+            dmMostrarAvisos(prev.avisos);
+            const avisosHtml = (prev.avisos || []).length
+                ? `<br><br><span style="color:#d29922">${prev.avisos.length} aviso(s) do backup — confira abaixo do botão.</span>` : '';
+            const ok = await uiConfirm({tipo: 'aviso', titulo: 'Provisionar ONU(s)?', btnLabel: `Provisionar ${itens.length}`,
+                msgHtml: `Gravar <b>onu</b> + <b>service-port</b> (um <code>commit</code> por ONU) de <b>${itens.length}</b> ONU(s) em `
+                    + `<b>${_escHtml(dmInv.host.nome)}</b> (${_escHtml(dmInv.host.ip)})?${avisosHtml}`});
+            if (!ok) return;
+            dmRodando = true;
+            const btn = document.getElementById('dmBtnExec');
+            btn.disabled = true; btn.textContent = '⏳ Provisionando...';
+            const log = document.getElementById('dmLog');
+            log.textContent = ''; log.style.display = '';
+            const porSn = {};
+            itens.forEach(it => { porSn[it.sn] = it._i; const st = document.getElementById(`dm-st-${it._i}`); st.className = 'op-st andamento'; st.textContent = 'na fila'; });
+            const linha = t => { log.textContent += t + '\n'; log.scrollTop = log.scrollHeight; };
+            const contagem = {sucesso: 0, erro: 0, ignorada: 0};
+            try {
+                for await (const ev of dmSse(`/clientes/acessos/${opAcessoId()}/onu-dm/executar/`, {preview: false, itens})) {
+                    if (ev.tipo === 'info') linha(`ℹ ${ev.msg}`);
+                    else if (ev.tipo === 'onu') {
+                        contagem[ev.status] = (contagem[ev.status] || 0) + 1;
+                        if (ev.comandos) linha(`\n${ev.comandos}`);
+                        linha(`${{sucesso: '✓', ignorada: '↷', erro: '✗'}[ev.status] || '•'} ${ev.sn}: ${ev.msg}`);
+                        const i = porSn[ev.sn];
+                        const st = document.getElementById(`dm-st-${i}`);
+                        if (st) { st.className = 'op-st ' + ev.status; st.textContent = ev.status === 'sucesso' ? `ONU ${ev.onu_id}` : ev.status; }
+                        if (ev.status === 'sucesso') dmMostrarRemover(i, {sn: ev.sn, pon: ev.pon, onu_id: ev.onu_id, sp_ids: [ev.sp_id]});
+                    }
+                    else if (ev.tipo === 'erro') linha(`\n✗ ERRO: ${ev.erro}`);
+                }
+                linha(`\n━━ ${contagem.sucesso} provisionada(s), ${contagem.erro} erro(s), ${contagem.ignorada} ignorada(s) ━━`);
+            } catch (e) {
+                linha(`✗ ${e.message || e}`);
+            } finally {
+                dmRodando = false;
+                btn.disabled = false; btn.textContent = '▶ Provisionar';
+            }
+        };
+
+        function dmMostrarRemover(i, prov) {
+            const box = document.getElementById(`dm-pos-${i}`);
+            if (!box) return;
+            box.style.display = 'flex';
+            box.dataset.prov = JSON.stringify(prov);
+            box.innerHTML = `<span class="op-orig" style="flex:1">ONU ${prov.onu_id} em ${_escHtml(prov.pon)} · service-port ${prov.sp_ids.join(', ')}</span>`
+                + `<button class="op-btn sec" style="padding:4px 8px;font-size:11px;border-color:#ff5555;color:#ff5555" onclick="dmRemover(${i})">🗑 Remover ONU</button>`;
+        }
+
+        window.dmRemover = async function(i) {
+            const box = document.getElementById(`dm-pos-${i}`);
+            const prov = JSON.parse(box.dataset.prov || '{}');
+            const url = `/clientes/acessos/${opAcessoId()}/onu-dm/remover/`;
+            const hdr = {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')};
+            try {
+                const prev = await opFetchJson(url, {method: 'POST', headers: hdr, body: JSON.stringify({...prov, acao: 'preview'})});
+                const ok = await uiConfirm({tipo: 'perigo', titulo: `Remover a ONU ${prov.onu_id}?`, btnLabel: 'Remover',
+                    msgHtml: `O CRM confere que a ONU ${prov.onu_id} de ${_escHtml(prov.pon)} ainda é a <b>${_escHtml(prov.sn)}</b> e grava:`
+                        + `<pre style="text-align:left;font-size:11px">${_escHtml(prev.comandos.join('\n'))}</pre>`});
+                if (!ok) return;
+                const st = document.getElementById(`dm-st-${i}`);
+                st.className = 'op-st andamento'; st.textContent = 'removendo...';
+                const j = await opFetchJson(url, {method: 'POST', headers: hdr, body: JSON.stringify({...prov, acao: 'executar'})});
+                const log = document.getElementById('dmLog');
+                log.style.display = ''; log.textContent += `\n${j.saida}\n${j.status === 'sucesso' ? '✓' : '✗'} ${prov.sn}: ${j.msg}\n`;
+                st.className = 'op-st ' + (j.status === 'sucesso' ? 'ignorada' : 'erro');
+                st.textContent = j.status === 'sucesso' ? 'removida' : 'erro ao remover';
+                if (j.status === 'sucesso') box.style.display = 'none';
+            } catch (e) {
+                uiAlert(e.message);
+            }
+        };
+
+        // ── Criar perfis ──
+        function dmPfPreencher() {
+            const bw = document.getElementById('dmPfBw');
+            bw.innerHTML = dmInv.bandwidths.map(b => `<option value="${_escHtml(b.nome)}">${_escHtml(b.nome)} · ${_escHtml(b.traffic)}</option>`).join('')
+                + '<option value="__novo">➕ Criar novo bandwidth-profile...</option>';
+            if (!dmInv.bandwidths.length) bw.value = '__novo';
+            dmPfBwModo();
+            const srv = document.getElementById('dmPfSrv');
+            srv.innerHTML = dmInv.services.map(s => `<option value="${_escHtml(s.nome)}">${_escHtml(dmRotSrv(s))}</option>`).join('')
+                + '<option value="__novo">➕ Criar novo service-profile...</option>';
+            if (!dmInv.services.length) srv.value = '__novo';
+            // O mais usado vem primeiro selecionado.
+            const top = [...dmInv.services].sort((a, b) => b.onus - a.onus)[0];
+            if (top) srv.value = top.nome;
+            document.getElementById('dmPfOnuProf').innerHTML = dmInv.onu_profiles.map(n => `<option value="${_escHtml(n)}">${_escHtml(n)}</option>`).join('')
+                + '<option value="__novo">➕ Criar novo onu-profile...</option>';
+            dmPfSrvModo();
+            const ups = dmInv.uplinks;
+            document.getElementById('dmPfUplinks').innerHTML = ups.length ? ups.map((u, k) =>
+                `<label style="display:flex;gap:6px;align-items:center;"><input type="checkbox" class="dm-pf-up" value="${_escHtml(u.interface)}" ${u.vlans * 2 >= ups[0].vlans ? 'checked' : ''}> ${_escHtml(u.interface)} <span class="op-orig">(${u.vlans} VLANs no backup)</span></label>`).join('')
+                : '<span class="op-orig">nenhuma interface no dot1q do backup — digite abaixo</span>';
+            dmPfNomes();
+        }
+
+        window.dmPfBwModo = function() {
+            document.getElementById('dmPfBwNovo').style.display = document.getElementById('dmPfBw').value === '__novo' ? 'grid' : 'none';
+        };
+        window.dmPfSrvModo = function() {
+            const novo = document.getElementById('dmPfSrv').value === '__novo';
+            document.getElementById('dmPfSrvNovo').style.display = novo ? 'flex' : 'none';
+            document.getElementById('dmPfOnuNovo').style.display = novo && document.getElementById('dmPfOnuProf').value === '__novo' ? 'grid' : 'none';
+            document.getElementById('dmPfPotsBox').style.display = document.getElementById('dmPfTipo').value === 'router' ? 'flex' : 'none';
+        };
+
+        // Nomes no padrão dos backups (pppoe-router-2525, PPPoE-Dados...).
+        window.dmPfNomes = function() {
+            if (!dmInv) return;
+            const tipo = document.getElementById('dmPfTipo').value;
+            const v = document.getElementById('dmPfVlan').value.trim();
+            document.getElementById('dmPfLine').value = v ? (tipo === 'router' ? `pppoe-router-${v}` : `pppoe-bridge-${v}`) : '';
+            document.getElementById('dmPfSrvNome').value = tipo === 'router' ? 'ONU-ROUTER' : 'ONU-BRIDGE-NOVO';
+            document.getElementById('dmPfOnuNome').value = tipo === 'router' ? 'ONU-ROUTER' : 'ONU-BRIDGE-NOVO';
+            const vl = dmInv.vlans.find(x => String(x.id) === v);
+            document.getElementById('dmPfVlanNome').value = v && !vl ? `VLAN-${v}` : '';
+            document.getElementById('dmPfVlanNome').disabled = !!vl;
+            document.getElementById('dmPfVlanInfo').innerHTML = !v ? '' : vl
+                ? `VLAN ${v} já existe (${_escHtml(vl.nome || 'sem nome')}) em ${_escHtml(vl.interfaces.join(', ') || 'nenhuma interface')}`
+                    + (vl.service ? ` · service vlan ${_escHtml(vl.service)}` : ' · <span style="color:#d29922">sem service vlan</span>') + '. Só entra o que falta.'
+                : `<span style="color:#d29922">VLAN ${v} não existe no backup: vai ser criada no dot1q, na uplink marcada, e como service vlan.</span>`;
+            dmPfSrvModo();
+        };
+
+        function dmPfSpec() {
+            const g = x => document.getElementById(x).value.trim();
+            const ups = [...document.querySelectorAll('.dm-pf-up:checked')].map(c => c.value);
+            if (g('dmPfUplinkExtra')) ups.push(g('dmPfUplinkExtra'));
+            const bwNovo = g('dmPfBw') === '__novo', srvNovo = g('dmPfSrv') === '__novo', onuNovo = g('dmPfOnuProf') === '__novo';
+            return {tipo: g('dmPfTipo'), vlan: g('dmPfVlan'), vlan_map: g('dmPfVlanMap') || g('dmPfVlan'),
+                bandwidth: bwNovo ? {novo: true, nome: g('dmPfBwNome'), tipo: g('dmPfBwTipo'), kbps: g('dmPfBwKbps')} : {nome: g('dmPfBw')},
+                line: g('dmPfLine'), tcont: g('dmPfTcont'), gem: g('dmPfGem'), map: g('dmPfMap'),
+                fec: document.getElementById('dmPfFec').checked,
+                service: srvNovo ? {novo: true, nome: g('dmPfSrvNome'),
+                    onu_profile: onuNovo ? {novo: true, nome: g('dmPfOnuNome'), pots: document.getElementById('dmPfPots').checked} : {nome: g('dmPfOnuProf')}}
+                    : {nome: g('dmPfSrv')},
+                vlan_nome: g('dmPfVlanNome'), service_vlan: g('dmPfSvlan'), uplinks: ups};
+        }
+
+        async function dmPfPost(acao) {
+            return opFetchJson(`/clientes/acessos/${opAcessoId()}/onu-dm/perfis/`, {method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': _getCookie('csrftoken')},
+                body: JSON.stringify({acao, spec: dmPfSpec()})});
+        }
+
+        window.dmPfPreview = async function() {
+            const out = document.getElementById('dmPfOut'), av = document.getElementById('dmPfAvisos');
+            try {
+                const j = await dmPfPost('preview');
+                av.innerHTML = (j.avisos || []).map(a => `<div style="color:#d29922">⚠ ${_escHtml(a)}</div>`).join('');
+                out.textContent = j.checagens.map(c => `# ${c}  → precisa dizer "element does not exist"`).join('\n') + '\n' + j.comandos.join('\n');
+                out.style.display = '';
+                return j;
+            } catch (e) {
+                av.innerHTML = `<div style="color:#ff5555">✗ ${_escHtml(e.message)}</div>`; out.style.display = 'none';
+                return null;
+            }
+        };
+
+        window.dmPfCriar = async function() {
+            const prev = await dmPfPreview();
+            if (!prev) return;
+            const ok = await uiConfirm({tipo: 'aviso', titulo: 'Criar perfis na OLT?', btnLabel: 'Criar',
+                msgHtml: `Gravar os comandos abaixo do botão em <b>${_escHtml(dmInv.host.nome)}</b> (${_escHtml(dmInv.host.ip)}) num <code>commit</code> só?`});
+            if (!ok) return;
+            const btn = document.getElementById('dmPfBtn'), out = document.getElementById('dmPfOut'), av = document.getElementById('dmPfAvisos');
+            btn.disabled = true; btn.textContent = '⏳ Criando...';
+            try {
+                const j = await dmPfPost('executar');
+                out.textContent = j.saida || ''; out.style.display = '';
+                av.innerHTML = j.status === 'sucesso'
+                    ? `<div style="color:#3fb950">✓ ${_escHtml(j.msg)} ${j.backup ? 'Backup da OLT disparado: os perfis novos entram nos selects quando ele terminar (recarregue a aba em ~1 min).' : 'Rode um backup antes de provisionar com os perfis novos.'}</div>`
+                    : `<div style="color:#ff5555">✗ ${_escHtml(j.msg)}</div>`;
+                if (j.status === 'sucesso') {
+                    // Já entram na hora nos cartões, sem esperar o backup.
+                    const s = dmPfSpec();
+                    dmInv.lines.push({nome: s.line, modo: s.tipo, vlans: s.vlan_map === 'any' ? [] : [parseInt(s.vlan_map)], gems: [parseInt(s.gem)], texto: [], onus: 0});
+                    if (s.service.novo) dmInv.services.push({nome: s.service.nome, onu_profile: s.service.onu_profile.nome, texto: [], onus: 0});
+                    setTimeout(() => { dmInvAcesso = null; }, 60000);
+                }
+            } catch (e) {
+                av.innerHTML = `<div style="color:#ff5555">✗ ${_escHtml(e.message)}</div>`;
+            } finally {
+                btn.disabled = false; btn.textContent = '▶ Criar na OLT';
             }
         };
 

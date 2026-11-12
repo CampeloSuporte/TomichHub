@@ -12,7 +12,8 @@ Código: `clientes/olt_provisionamento.py` (lógica), `clientes/onu_prov_views.p
 
 1. Selecionar a OLT em **Executar** e abrir a aba **ONU**. O CRM lê do backup mais
    recente (sem conectar) as placas, os line/srv profiles e as VLANs. Se o host não
-   for OLT Huawei, a aba recusa (ZTE/Datacom/Parks usam outra CLI).
+   for OLT Huawei, a aba recusa (ZTE/Datacom/Parks usam outra CLI). OLT Datacom tem
+   aba própria, **ONU Datacom**: veja `docs/olt_provisionamento_datacom.md`.
 2. **🔍 Buscar ONUs pendentes**: roda `display ont autofind all` ao vivo (só leitura).
    Cada ONU vem num cartão com SN, F/S/P, modelo e os valores sugeridos.
 3. Ajustar VLAN, line profile, srv profile, gemport, modo e descrição (opcional) de

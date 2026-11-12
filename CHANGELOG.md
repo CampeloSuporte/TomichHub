@@ -5,6 +5,31 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-12 (scripts da OLT Datacom)
+
+### Adicionado
+
+- **⚡ Scripts: provisionamento de ONU em OLT Datacom DmOS (DM4610/DM4615).** Com uma OLT Datacom
+  selecionada, o menu SCRIPT ganha "Provisionar ONU (único)", "Provisionar ONUs em massa",
+  "Criar perfis ONU Bridge" e "Criar perfis ONU Router", e aparece a aba **ONU Datacom**. As ONUs
+  pendentes vêm do `show interface gpon discovered-onus`. Modo (bridge ou router/veip),
+  service-profile, line-profile, GEM e VLAN são sugeridos pela maioria da PON no backup (primeiro
+  as do mesmo fabricante). Cada ONU entra num `commit` só (`onu` + `service-port`). Na primeira
+  recusa, o CRM faz `abort` e nada fica pela metade.
+- **IDs conferidos ao vivo.** No DmOS, entrar numa `onu N` ou num `service-port S` que já existem
+  edita o assinante que está lá. O CRM tira os IDs do backup e confirma na OLT
+  (`element does not exist`) antes de gravar. Se o ID estiver ocupado, ele tenta o próximo. No
+  teste de leitura na OLT03 do G5, isso pegou um caso real: a ONU 127 estava livre no backup e
+  já estava em uso na OLT.
+- **Criar perfis e VLAN:** bandwidth-profile (existente ou novo), line-profile (ethernet ou veip,
+  VLAN ou `any`), service/onu-profile, `dot1q` com a uplink e `service vlan`, só o que falta e
+  num commit só. Nome que já existe é recusado. Depois de criar, roda um backup.
+- **🗑 Remover ONU** recém-provisionada, conferindo antes que o ID ainda é daquela SN.
+- Doc: `docs/olt_provisionamento_datacom.md`. A escrita ainda não foi validada ao vivo, só a
+  leitura.
+
+---
+
 ## [Não publicado] — 2026-11-12 (ativar/desativar porta no Huawei)
 
 ### Adicionado

@@ -8,6 +8,7 @@ from . import cgnat_views as cgv
 from . import hotspot_views as hv
 from . import bgp_views as bgpv
 from . import onu_prov_views as onuv
+from . import onu_prov_datacom_views as onudm
 
 urlpatterns = [
     path('dashboard/', views.cliente_dashboard, name='cliente_dashboard'),
@@ -162,6 +163,12 @@ urlpatterns = [
     path('acessos/<int:acesso_id>/onu-prov/backup/', onuv.onu_prov_backup, name='onu_prov_backup'),
     path('acessos/<int:acesso_id>/onu-prov/mac/', onuv.onu_prov_mac, name='onu_prov_mac'),
     path('acessos/<int:acesso_id>/onu-prov/remover/', onuv.onu_prov_remover, name='onu_prov_remover'),
+    # Provisionamento de ONU em OLT Datacom DmOS (aba ONU Datacom do ⚡ Scripts)
+    path('acessos/<int:acesso_id>/onu-dm/', onudm.onu_dm_inventario, name='onu_dm_inventario'),
+    path('acessos/<int:acesso_id>/onu-dm/discovered/', onudm.onu_dm_discovered, name='onu_dm_discovered'),
+    path('acessos/<int:acesso_id>/onu-dm/executar/', onudm.onu_dm_executar, name='onu_dm_executar'),
+    path('acessos/<int:acesso_id>/onu-dm/perfis/', onudm.onu_dm_perfis, name='onu_dm_perfis'),
+    path('acessos/<int:acesso_id>/onu-dm/remover/', onudm.onu_dm_remover, name='onu_dm_remover'),
 
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/(?P<porta>[0-9]+)/(?P<scheme>https?)(?P<path>/.*)?$', views.proxy_web_acesso, name='proxy_web_acesso'),
     re_path(r'^acessos/(?P<acesso_id>[0-9]+)/web/?$', views.proxy_web_acesso, name='proxy_web_acesso_legacy'),
