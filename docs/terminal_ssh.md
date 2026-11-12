@@ -582,7 +582,11 @@ laranja, e o **▶** pede confirmação ("Alterar a configuração do equipament
 continua só digitando. Têm comandos ⚠ a FiberHome e, desde 2026-11-12, o Huawei VRP: em
 Interfaces, **desativar porta** (`system-view` / `interface {porta}` / `shutdown` / `return`),
 **ativar porta** (mesmo caminho com `undo shutdown`) e `save` (pergunta Y/N). Ativar/desativar
-não grava sozinho: sem `save`, volta ao estado anterior se o equipamento reiniciar. Senha/usuário entram pelos campos
+não grava sozinho: sem `save`, volta ao estado anterior se o equipamento reiniciar.
+No Datacom DmOS (2026-11-12) o mesmo par fica em Interfaces: `config` / `interface {porta}` /
+`shutdown` ou `no shutdown` / `commit` / `end`. O `commit` aplica e grava, sem `save` à parte. A
+porta vai no formato do config (`gigabit-ethernet 1/1/1`, com espaço), o mesmo das sugestões
+que vêm do backup. Senha/usuário entram pelos campos
 `{usuario}`/`{senha}`, nunca fixos no catálogo.
 
 **Grupos são assuntos.** Cada grupo é um assunto (Sistema, Placas, ONU — consulta, ONU — sinal
