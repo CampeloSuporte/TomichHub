@@ -174,7 +174,17 @@ o segundo). Auditoria em `AcaoOltPon` (`acao` provisionar, perfil ou remover; `s
   line-profile inexistentes, e o `ShellDatacom` lendo até o prompt (discovered em 1,5 s). Nesse
   teste a conferência ao vivo pegou o caso real: o backup das 04:12 dava a ONU 127 da PON 1/1/12
   como livre, e ela já estava em uso.
-- **A escrita ainda não foi feita ao vivo.** O que não foi visto num equipamento real: o texto
-  exato de sucesso do `commit` (o CRM exige `Commit complete`, o padrão do DmOS/ConfD) e se o
-  `abort` sai do config como esperado. Se o primeiro provisionamento der erro com "commit sem
-  Commit complete", olhe a saída no log da aba e ajuste `_COMMIT_OK_RE` em `olt_datacom.py`.
+- **Escrita validada ao vivo em 12/11/2026** na OLT-DATACOM-02 (G5DM02, acesso 113): a
+  ZTEGCD0FD4F5, pendente em 1/1/11, foi provisionada em modo bridge (`ONU_BRIDGE` +
+  `pppoe-dados`, VLAN 2620). As duas conferências responderam `element does not exist` (ONU 32,
+  service-port 2), o `commit` respondeu `Commit complete.` e o running-config ficou igual ao das
+  outras ONUs. Em seguida ela foi removida pelo mesmo fluxo do 🗑: conferência pela SN,
+  `no service-port 2` + `no onu 32`, `Commit complete.`, e os dois IDs voltaram a "não existe".
+  Prompts vistos: `G5DM02(config)#`, `(config-gpon-1/1/11)#`, `(config-gpon-onu-32)#`,
+  `(config-ethernet-1)#`, `(config-service-port-2)#`.
+- Depois da remoção, a ONU leva de 1 a 2 minutos para voltar ao `discovered-onus` (voltou em
+  ~2 min). Essa ZTE ficou `Down / Inactive` enquanto esteve provisionada. Não foi o script: o
+  `show log` mostra a ONU sendo redescoberta o dia todo (11:32, 11:44, 12:02 … 19:45), ou seja,
+  é instável no campo.
+- O caminho de recusa (`abort` depois de um erro da CLI) ainda não aconteceu ao vivo. Ele só
+  está coberto pelos testes.
