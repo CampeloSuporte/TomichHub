@@ -5535,7 +5535,7 @@
                 log.style.display = ''; log.textContent += `\n${j.saida}\n${j.status === 'sucesso' ? '✓' : '✗'} ${prov.sn}: ${j.msg}\n`;
                 st.className = 'op-st ' + (j.status === 'sucesso' ? 'ignorada' : 'erro');
                 st.textContent = j.status === 'sucesso' ? 'removida' : 'erro ao remover';
-                if (j.status === 'sucesso') box.style.display = 'none';
+                if (j.status === 'sucesso') { box.style.display = 'none'; log.textContent += 'ℹ A ONU volta ao discovered-onus em 1–2 min (Buscar ONUs pendentes de novo).\n'; }
             } catch (e) {
                 uiAlert(e.message);
             }

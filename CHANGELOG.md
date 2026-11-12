@@ -25,8 +25,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   VLAN ou `any`), service/onu-profile, `dot1q` com a uplink e `service vlan`, só o que falta e
   num commit só. Nome que já existe é recusado. Depois de criar, roda um backup.
 - **🗑 Remover ONU** recém-provisionada, conferindo antes que o ID ainda é daquela SN.
-- Doc: `docs/olt_provisionamento_datacom.md`. A escrita ainda não foi validada ao vivo, só a
-  leitura.
+- Doc: `docs/olt_provisionamento_datacom.md`. Validado ao vivo na OLT-DATACOM-02: a ONU foi
+  provisionada (`Commit complete.`) e depois removida, voltando a ficar pendente.
 
 ---
 
