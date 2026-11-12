@@ -57,6 +57,8 @@ def _cfg(cmd, desc, conferido=False):
 FAMILIAS = {
     'huawei_vrp': {
         'nome': 'Huawei VRP (switch / roteador)',
+        'aviso': 'Comandos com ⚠ alteram o equipamento: o ▶ pede confirmação. '
+                 'Ativar/desativar porta vale até reiniciar; para manter, rode `save`.',
         'exemplos': {'porta': 'XGigabitEthernet0/0/1', 'mac': 'aabb-ccdd-eeff', 'vlan': '100'},
         'grupos': [
             ('Sistema', [
@@ -72,6 +74,9 @@ FAMILIAS = {
                 _c('display interface description', 'Portas com descrição', True),
                 _c('display interface {porta}', 'Detalhe da porta: estado, velocidade, erros, tipo do SFP'),
                 _c('display ip interface brief', 'Interfaces com IP'),
+                _cfg('system-view\ninterface {porta}\nshutdown\nreturn', 'Desativa a porta (shutdown)'),
+                _cfg('system-view\ninterface {porta}\nundo shutdown\nreturn', 'Ativa a porta (undo shutdown)'),
+                _cfg('save', 'Grava a configuração (responda Y na pergunta)'),
             ]),
             ('Sinal óptico', [
                 _c('display transceiver diagnosis interface {porta}', 'TX/RX (dBm), temperatura e tensão', True),

@@ -579,7 +579,10 @@ Linux), mais os comandos que só mudam de modo/diretório ou desligam a paginaç
 `CatalogoTest.test_todo_comando_e_de_leitura` barra qualquer outra coisa — **exceto** comando
 criado com `_cfg()` (`altera: true` no JSON, 2026-10-28): ⚠ laranja ao lado da descrição, borda
 laranja, e o **▶** pede confirmação ("Alterar a configuração do equipamento?"); **⌨ Inserir**
-continua só digitando. Hoje só a FiberHome tem comandos ⚠. Senha/usuário entram pelos campos
+continua só digitando. Têm comandos ⚠ a FiberHome e, desde 2026-11-12, o Huawei VRP: em
+Interfaces, **desativar porta** (`system-view` / `interface {porta}` / `shutdown` / `return`),
+**ativar porta** (mesmo caminho com `undo shutdown`) e `save` (pergunta Y/N). Ativar/desativar
+não grava sozinho: sem `save`, volta ao estado anterior se o equipamento reiniciar. Senha/usuário entram pelos campos
 `{usuario}`/`{senha}`, nunca fixos no catálogo.
 
 **Grupos são assuntos.** Cada grupo é um assunto (Sistema, Placas, ONU — consulta, ONU — sinal
