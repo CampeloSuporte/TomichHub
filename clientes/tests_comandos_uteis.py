@@ -89,10 +89,17 @@ class CatalogoTest(SimpleTestCase):
 
 
 class ConfiguracaoTest(SimpleTestCase):
-    def test_so_fiberhome_e_huawei_vrp_tem_comando_que_altera(self):
+    def test_so_fiberhome_huawei_vrp_e_datacom_tem_comando_que_altera(self):
         for familia in cu.FAMILIAS:
             tem = any(c['altera'] for g in cu.catalogo(familia)['grupos'] for c in g['comandos'])
-            self.assertEqual(tem, familia.startswith('fiberhome') or familia == 'huawei_vrp', familia)
+            self.assertEqual(tem, familia.startswith('fiberhome') or familia in ('huawei_vrp', 'datacom'), familia)
+
+    def test_datacom_ativa_e_desativa_porta_com_commit(self):
+        cmds = {c['cmd']: c for g in cu.catalogo('datacom')['grupos'] for c in g['comandos']}
+        for cmd in ('config\ninterface {porta}\nshutdown\ncommit\nend',
+                    'config\ninterface {porta}\nno shutdown\ncommit\nend'):
+            self.assertTrue(cmds[cmd]['altera'], cmd)
+            self.assertEqual(cmds[cmd]['campos'], ['porta'])
 
     def test_huawei_vrp_ativa_e_desativa_porta(self):
         cmds = {c['cmd']: c for g in cu.catalogo('huawei_vrp')['grupos'] for c in g['comandos']}

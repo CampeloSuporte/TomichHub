@@ -128,7 +128,9 @@ FAMILIAS = {
     },
     'datacom': {
         'nome': 'Datacom DmOS (switch)',
-        'exemplos': {'porta': 'ten-gigabit-ethernet-1/1/1', 'ip': '8.8.8.8'},
+        'aviso': 'Comandos com ⚠ alteram o equipamento: o ▶ pede confirmação. '
+                 'No DmOS a mudança só vale depois do `commit` (já incluso) e fica gravada.',
+        'exemplos': {'porta': 'gigabit-ethernet 1/1/1', 'ip': '8.8.8.8'},
         'grupos': [
             ('Sistema', [
                 _c('show platform', 'Placas, fontes e estado'),
@@ -140,6 +142,8 @@ FAMILIAS = {
                 _c('show interface link', 'Estado, velocidade e duplex de cada porta', True),
                 _c('show interface description', 'Portas com estado e descrição', True),
                 _c('show interface {porta}', 'Detalhe da porta e contadores'),
+                _cfg('config\ninterface {porta}\nshutdown\ncommit\nend', 'Desativa a porta (shutdown + commit)'),
+                _cfg('config\ninterface {porta}\nno shutdown\ncommit\nend', 'Ativa a porta (no shutdown + commit)'),
             ]),
             ('Sinal óptico', [
                 _c('show interface transceivers', 'TX/RX de TODOS os SFPs — procure a porta na tabela', True),

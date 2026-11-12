@@ -13,6 +13,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   (`shutdown`) e "Ativa a porta" (`undo shutdown`) entram no `system-view`, na interface do campo
   Porta e voltam com `return`. Também há `save` para gravar. Os três são marcados com ⚠ e o ▶ pede
   confirmação antes de executar.
+- **Datacom DmOS: ativar e desativar porta.** Também em Interfaces: `config`, `interface {porta}`,
+  `shutdown` ou `no shutdown`, `commit` e `end`. O `commit` já grava. O exemplo do campo Porta
+  passou para o formato do config (`gigabit-ethernet 1/1/1`), igual ao das sugestões do backup.
 
 ---
 
