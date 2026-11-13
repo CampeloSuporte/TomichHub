@@ -1377,6 +1377,26 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
 
         return cls._RX_SCRIPT_INLINE.sub(_script, html)
 
+    _RX_META_REFRESH_URL = re.compile(
+        r'''(url\s*=\s*['"]?)(/[^'";>\s]*)''', re.IGNORECASE)
+
+    @classmethod
+    def _rewrite_meta_refresh(cls, tag: str, proxy_base: str) -> str:
+        """Meta refresh com URL (ex.: ESXi devolve "0;URL='/ui'" na raiz) é o
+        único jeito de a página chegar à aplicação — removê-lo deixava a tela
+        em branco. Reescreve o destino absoluto para dentro do proxy; o
+        refresh sem URL (recarregar a própria página) continua removido."""
+        if not re.search(r'url\s*=', tag, re.IGNORECASE):
+            return '<!-- meta-refresh removido pelo proxy -->'
+
+        def _url(m):
+            destino = m.group(2)
+            if destino.startswith(proxy_base + '/') or destino == proxy_base:
+                return m.group(0)
+            return m.group(1) + proxy_base + destino
+
+        return cls._RX_META_REFRESH_URL.sub(_url, tag, count=1)
+
     def _rewrite_html(self, content: bytes, proxy_base: str, target_host: str,
                       cookie_prefix: str = '', target_port: int = None) -> bytes:
         try:
@@ -1403,7 +1423,7 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
 
         html = re.sub(
             r'<meta[^>]+http-equiv=["\']refresh["\'][^>]*>',
-            '<!-- meta-refresh removido pelo proxy -->',
+            lambda m: self._rewrite_meta_refresh(m.group(0), proxy_base),
             html, flags=re.IGNORECASE
         )
 

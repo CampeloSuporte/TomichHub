@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-13 (proxy web: meta refresh)
+
+### Corrigido
+
+- **Acesso web ao ESXi abria em branco** (ex.: acesso 9514, VM02-VMWARE da SICONECT). A raiz do
+  ESXi responde só com `<meta http-equiv="refresh" content="0;URL='/ui'">`, e o proxy web
+  removia todo meta refresh, então a página nunca chegava ao `/ui`. Agora o destino do refresh
+  é reescrito para dentro do proxy (`ProxyEngine._rewrite_meta_refresh`); só o refresh sem URL
+  (recarregar a própria página) continua removido.
+
+---
+
 ## [Não publicado] — 2026-11-13 (limite de memória)
 
 ### Corrigido
