@@ -26,6 +26,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   processos em `/var/log/crm-memoria.log`. Com menos de 6 % em 2 leituras seguidas, mata o maior
   processo não protegido. Doc: `docs/limite_memoria.md`.
 
+### Segurança
+
+- **Porta 5432 do Postgres fechada para a internet** (`deploy/firewall/crm-postgres.nft`, tabela
+  nft `inet crm_postgres`). Passam só o loopback e `179.48.70.165`, os mesmos acessos que o
+  `pg_hba.conf` libera. Havia milhares de tentativas de login de IPs aleatórios.
+
 ## [Não publicado] — 2026-11-12 (scripts da OLT Datacom)
 
 ### Adicionado
