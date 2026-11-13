@@ -5,6 +5,27 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-13 (limite de memória)
+
+### Corrigido
+
+- **A VM travou por falta de memória (13/11, 12:25–13:11).** A memória foi de 3,8 GB para 96 %
+  em menos de 14 minutos e o container ficou em thrashing até o reinício manual. Os indícios
+  apontam para o Daphne: o proxy web lia a resposta do equipamento inteira para a RAM, sem
+  teto. Agora ele recusa respostas acima de 256 MB (`MAX_RESPOSTA_PROXY`), inclusive gzip/deflate
+  já descomprimido (cobre gzip-bomba), sem derrubar o pool SSH.
+- **Upload pelo proxy web limitado a 100 MB no nginx.** Antes o nginx aceitava até 2 GB e o
+  Daphne guardava o corpo inteiro na RAM, só para o Django recusar acima de 100 MB depois.
+
+### Adicionado
+
+- **Limite de memória por serviço** (`tools/memoria/dropins/`): daphne 6G/8G, gunicorn 3G/4G,
+  celery 3G/4G e celery-atendimento-ia 1,5G/2G (`MemoryHigh`/`MemoryMax`). Um vazamento derruba
+  e religa só aquele serviço, não o container.
+- **`crm-memoria-guard.service`**: com menos de 25 % de memória livre, grava os maiores
+  processos em `/var/log/crm-memoria.log`. Com menos de 6 % em 2 leituras seguidas, mata o maior
+  processo não protegido. Doc: `docs/limite_memoria.md`.
+
 ## [Não publicado] — 2026-11-12 (scripts da OLT Datacom)
 
 ### Adicionado
