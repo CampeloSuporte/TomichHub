@@ -2,6 +2,16 @@
 
 ## 🔥 Implementações Recentes
 
+### Limite de memória — 13/11/2026
+
+- ✅ Relatório do travamento da VM por falta de memória (12:25–13:11)
+- ✅ Teto de 256 MB na resposta do proxy web e upload do proxy web limitado a 100 MB no nginx
+- ✅ MemoryHigh/MemoryMax por serviço + vigia `crm-memoria-guard` (registro e corte antes do travamento)
+
+| Documento | O que cobre |
+|---|---|
+| **[limite_memoria.md](limite_memoria.md)** | Linha do tempo do incidente, causa provável, limites por serviço, vigia e como conferir |
+
 ### Conferência do Git — 04/11/2026
 
 - ✅ `main` local = GitHub (`b30c900db`); nada pendente de push

@@ -17,7 +17,6 @@ Por que http.client em vez de requests para o túnel:
 
 import re
 import ssl
-import gzip
 import zlib
 import socket
 import select
@@ -38,6 +37,66 @@ from requests.auth import HTTPDigestAuth
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 logger = logging.getLogger(__name__)
+
+
+# ── Teto do corpo de resposta guardado em memória ─────────────────────────────
+# O proxy web lê a resposta inteira do equipamento antes de devolver ao browser
+# (precisa reescrever HTML/JS). Sem teto, um endpoint que não termina (stream,
+# log ao vivo, download enorme) ou um gzip-bomba crescia sem limite dentro do
+# Daphne, que é processo único: em 13/11/2026 a VM travou por falta de memória.
+# 256 MB cobre com folga backup/firmware baixados pela interface do equipamento.
+MAX_RESPOSTA_PROXY = 256 * 1024 * 1024
+
+
+class RespostaGrandeDemais(Exception):
+    """Corpo da resposta (já descomprimido) passou de MAX_RESPOSTA_PROXY."""
+
+
+def _descomprimir_limitado(content: bytes, enc: str) -> bytes:
+    """gzip/deflate com teto de saída. Se não for um stream válido e completo,
+    devolve o conteúdo como veio (mesmo comportamento de antes)."""
+    enc = (enc or '').lower()
+    if enc == 'gzip':
+        tentativas = (31,)
+    elif enc == 'deflate':
+        tentativas = (15, -15)
+    else:
+        return content
+    for wbits in tentativas:
+        try:
+            d = zlib.decompressobj(wbits)
+            out = d.decompress(content, MAX_RESPOSTA_PROXY + 1)
+        except zlib.error:
+            continue
+        if len(out) > MAX_RESPOSTA_PROXY:
+            raise RespostaGrandeDemais(f'descomprimido > {MAX_RESPOSTA_PROXY} bytes')
+        if d.eof:
+            return out
+    return content
+
+
+def _ler_http_client_limitado(r) -> bytes:
+    """r.read() de http.client.HTTPResponse sem passar de MAX_RESPOSTA_PROXY."""
+    if r.length is not None and r.length > MAX_RESPOSTA_PROXY:
+        raise RespostaGrandeDemais(f'Content-Length {r.length}')
+    c = r.read(MAX_RESPOSTA_PROXY + 1)
+    if len(c) > MAX_RESPOSTA_PROXY:
+        raise RespostaGrandeDemais(f'corpo > {MAX_RESPOSTA_PROXY} bytes')
+    return c
+
+
+def _ler_requests_limitado(r) -> bytes:
+    """Corpo de requests.Response (stream=True, já descomprimido) com teto."""
+    cl = r.headers.get('Content-Length', '')
+    if cl.isdigit() and int(cl) > MAX_RESPOSTA_PROXY:
+        raise RespostaGrandeDemais(f'Content-Length {cl}')
+    partes, total = [], 0
+    for bloco in r.iter_content(65536):
+        total += len(bloco)
+        if total > MAX_RESPOSTA_PROXY:
+            raise RespostaGrandeDemais(f'corpo > {MAX_RESPOSTA_PROXY} bytes')
+        partes.append(bloco)
+    return b''.join(partes)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -686,8 +745,13 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
                 method=method, url=url, headers=merged,
                 data=body or None, verify=False,
                 allow_redirects=False, timeout=timeout,
-                auth=digest_auth,
+                auth=digest_auth, stream=True,
             )
+            try:
+                r._content = _ler_requests_limitado(r)
+            except RespostaGrandeDemais:
+                r.close()
+                raise
             return self._wrap(r)
         except Exception as e:
             logger.error("[PROXY_DIRECT] %s %s → %s", method, url, e)
@@ -877,7 +941,12 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
                              body=body if method in ('POST', 'PUT', 'PATCH') else None,
                              headers=hdrs)
                 r = conn.getresponse()
-                c = r.read()
+                try:
+                    c = _ler_http_client_limitado(r)
+                except RespostaGrandeDemais:
+                    r.close()
+                    sock.close()
+                    raise
                 ck = [v for n, v in r.headers.items() if n.lower() == 'set-cookie']
                 return r, c, ck
 
@@ -929,6 +998,8 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
                 resp, content, cookies_raw = _do_request(conn_sock, req_headers)
                 logger.debug("[TUNNEL] status=%d size=%d reused=%s",
                              resp.status, len(content), reused)
+            except RespostaGrandeDemais:
+                raise
             except Exception as e:
                 if reused:
                     # Socket pooled pode ter morrido (idle timeout no equipamento) —
@@ -946,6 +1017,8 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
                         resp, content, cookies_raw = _do_request(conn_sock, req_headers)
                         logger.debug("[TUNNEL] status=%d size=%d (retry)",
                                      resp.status, len(content))
+                    except RespostaGrandeDemais:
+                        raise
                     except Exception as e2:
                         logger.error("[TUNNEL] Erro na requisição HTTP: %s", e2)
                         refeito = _refazer_apos_pmtu(e2, conn_sock)
@@ -997,6 +1070,11 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
 
             return self._build_resp(resp, content, cookies_raw)
 
+        except RespostaGrandeDemais as e:
+            # Não é falha do túnel: não derruba o pool SSH.
+            logger.warning("[TUNNEL] Resposta recusada por tamanho (%s): %s %s",
+                           e, method, url)
+            return None
         except Exception as e:
             logger.exception("[TUNNEL] Erro inesperado: %s", e)
             if self.proxy_server:
@@ -1014,19 +1092,7 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
         """
         # Descomprimir se o servidor ignorou nosso pedido e comprimiu mesmo assim
         enc = http_resp.headers.get('Content-Encoding', '').lower()
-        if enc == 'gzip':
-            try:
-                content = gzip.decompress(content)
-            except Exception:
-                pass
-        elif enc == 'deflate':
-            try:
-                content = zlib.decompress(content)
-            except Exception:
-                try:
-                    content = zlib.decompress(content, -15)
-                except Exception:
-                    pass
+        content = _descomprimir_limitado(content, enc)
 
         class _Resp:
             pass
@@ -1085,19 +1151,7 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
         """Converte requests.Response em _Resp (usado pelo método _direct)."""
         content = r.content
         enc     = r.headers.get('Content-Encoding', '').lower()
-        if enc == 'gzip':
-            try:
-                content = gzip.decompress(content)
-            except Exception:
-                pass
-        elif enc == 'deflate':
-            try:
-                content = zlib.decompress(content)
-            except Exception:
-                try:
-                    content = zlib.decompress(content, -15)
-                except Exception:
-                    pass
+        content = _descomprimir_limitado(content, enc)
 
         cookies_raw = list(extra_cookies or [])
         if hasattr(r.raw, 'headers'):

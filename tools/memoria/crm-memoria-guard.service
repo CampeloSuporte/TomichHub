@@ -1,0 +1,18 @@
+# Vigia de memória do container (ver crm_memoria_guard.py e docs/limite_memoria.md).
+[Unit]
+Description=CRM - vigia de memoria do container (registro + corte antes do travamento)
+After=local-fs.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 -I /opt/crm/tools/memoria/crm_memoria_guard.py
+Restart=always
+RestartSec=2
+# Precisa continuar rodando justo quando a memória acaba.
+OOMScoreAdjust=-1000
+Nice=-10
+LimitMEMLOCK=infinity
+MemoryMax=128M
+
+[Install]
+WantedBy=multi-user.target
