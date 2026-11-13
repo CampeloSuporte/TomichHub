@@ -1,0 +1,26 @@
+#!/usr/sbin/nft -f
+# Postgres (5432) fechado para a internet. Em 13/11/2026 o log mostrava milhares
+# de tentativas de login de IPs aleatórios (85.11.167.7, 137.74.164.63, ...): o
+# pg_hba recusava, mas a porta estava aberta para o mundo (listen_addresses='*').
+# Passa só o que o pg_hba.conf já libera: loopback e 179.48.70.165 (crm_db e
+# n8n_memory). Ao liberar um IP novo no pg_hba, acrescente-o em `permitidos`.
+#
+# Tabela própria: `nft -f` deste arquivo troca só ela, sem o `flush ruleset`
+# que apagaria a tabela do fail2ban. Instalar em /etc/nftables.d/ (root 0644),
+# incluir em /etc/nftables.conf e aplicar com: nft -f /etc/nftables.d/crm-postgres.nft
+table inet crm_postgres
+delete table inet crm_postgres
+
+table inet crm_postgres {
+	set permitidos_v4 {
+		type ipv4_addr
+		elements = { 179.48.70.165 }
+	}
+
+	chain input {
+		type filter hook input priority filter; policy accept;
+		tcp dport 5432 iif "lo" accept
+		tcp dport 5432 ip saddr @permitidos_v4 accept
+		tcp dport 5432 counter drop
+	}
+}

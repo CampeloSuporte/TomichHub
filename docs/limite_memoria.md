@@ -30,8 +30,9 @@ então não dá para provar qual processo cresceu. Os indícios apontam para o *
 Achados paralelos, que não causaram o travamento:
 
 - O `ovpn-routes-crm` falha a cada 5 s com `You must define TUN/TAP device (--dev)`.
-- O Postgres recebe tentativas de login de fora (`69.5.169.8`, `no pg_hba.conf entry`), ou
-  seja, a porta 5432 está exposta para a internet.
+- O Postgres recebia milhares de tentativas de login de fora (`85.11.167.7`, `137.74.164.63`,
+  `69.5.169.8`…, `no pg_hba.conf entry`). A porta 5432 estava aberta para o mundo
+  (`listen_addresses='*'`). **Fechada em 13/11/2026:** veja a seção 5.
 
 ## O que foi feito
 
@@ -87,6 +88,20 @@ Ele cobre o que fica fora dos limites por serviço: shell, sessões, scripts avu
 Code.
 
 Ajuste por ambiente: `CRM_MEM_ALERTA_PCT`, `CRM_MEM_CRITICO_PCT` e `CRM_MEM_LOG`.
+
+### 5. Postgres fechado para a internet (`deploy/firewall/crm-postgres.nft`)
+
+A tabela nft própria `inet crm_postgres` deixa chegar ao 5432 só o loopback e
+`179.48.70.165`, que são exatamente os acessos que o `pg_hba.conf` libera (`crm_db` e
+`n8n_memory`). O resto é descartado (`counter drop`). Como tudo o que foi bloqueado já era
+recusado pelo `pg_hba`, nada legítimo deixou de funcionar.
+
+- Instalar ou alterar: copiar para `/etc/nftables.d/` e rodar
+  `nft -f /etc/nftables.d/crm-postgres.nft`, nunca `systemctl reload nftables`, porque o
+  `flush ruleset` apaga as outras tabelas. O include já está em `/etc/nftables.conf`, então a
+  regra vale após o boot.
+- Ao liberar um IP novo no `pg_hba.conf`, acrescente-o no set `permitidos_v4`.
+- Para conferir quantos pacotes foram bloqueados: `nft list chain inet crm_postgres input`.
 
 ## Instalar ou reinstalar
 
