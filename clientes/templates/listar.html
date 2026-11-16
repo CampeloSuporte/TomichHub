@@ -2768,7 +2768,14 @@
         <!-- ─── PREFIXOS & SUB-REDES (árvore única) ─── -->
         <div id="ipam-sub-prefixos" class="ipam-sub">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span style="color:var(--text-muted);font-size:.85rem;">Prefixos (pastas) — clique no <i class="fas fa-sitemap"></i> pra ver as sub-redes de cada um</span>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <select id="ipam-pfx-filtro" class="form-select form-select-sm" title="Mostrar só os prefixos e sub-redes dentro desta faixa"
+                            style="max-width:240px;background:var(--card-bg);color:var(--text-light);border-color:var(--border);font-family:'Courier New',monospace;"
+                            onchange="ipamFiltrarPorPrefixo(this.value)">
+                        <option value="">Todos os prefixos</option>
+                    </select>
+                    <span style="color:var(--text-muted);font-size:.85rem;">Prefixos (pastas) — clique no <i class="fas fa-sitemap"></i> pra ver as sub-redes de cada um</span>
+                </div>
                 {% if not is_cliente %}
                 <div class="d-flex gap-2">
                     <button class="btn btn-sm btn-outline-primary" onclick="ipamAbrirModal('subrede')"><i class="fas fa-plus me-1"></i>Nova Sub-rede</button>
@@ -3542,6 +3549,42 @@ function _renderSrLeafRow(s, baseNivel, oculta){
     <tr id="sr-grade-${s.id}" data-sr-parent="${s._parentId||''}" style="display:none;"><td colspan="7" style="padding:0;border:none;"></td></tr>`;
 }
 
+/* ─── Filtro por faixa (select acima da árvore) ───
+   Guardado por cliente no navegador, pra quem trabalha sempre dentro do
+   mesmo bloco não ter que escolher de novo a cada visita. */
+function _ipamFiltroPrefixoChave(){ return `ipam_pfx_filtro_${CID}`; }
+function _ipamFiltroPrefixoAtual(){
+    let id = IPAM._pfxFiltroId;
+    if(id === undefined){
+        try { id = localStorage.getItem(_ipamFiltroPrefixoChave()) || ''; } catch(e){ id = ''; }
+        IPAM._pfxFiltroId = id;
+    }
+    if(!id) return null;
+    return (IPAM.prefixos || []).find(p => String(p.id) === String(id)) || null;
+}
+function _ipamPreencherFiltroPrefixo(){
+    const sel = document.getElementById('ipam-pfx-filtro');
+    if(!sel) return;
+    const atual = _ipamFiltroPrefixoAtual();
+    const lista = [...(IPAM.prefixos || [])].sort((a,b) => _cmpCidrStr(a.prefixo, b.prefixo));
+    // Recuo pela profundidade de CIDR, pra árvore ficar legível no select
+    const nivel = p => lista.filter(o => o.id !== p.id && _srContains(o.prefixo, p.prefixo)).length;
+    sel.innerHTML = '<option value="">Todos os prefixos</option>' + lista.map(p =>
+        `<option value="${p.id}">${'\u00a0\u00a0'.repeat(nivel(p))}${p.prefixo}${p.descricao ? ' — ' + String(p.descricao).replace(/</g,'&lt;').slice(0,40) : ''}</option>`
+    ).join('');
+    sel.value = atual ? String(atual.id) : '';
+}
+window.ipamFiltrarPorPrefixo = function(id){
+    IPAM._pfxFiltroId = id || '';
+    try {
+        if(id) localStorage.setItem(_ipamFiltroPrefixoChave(), id);
+        else localStorage.removeItem(_ipamFiltroPrefixoChave());
+    } catch(e){}
+    // Escolheu uma faixa: já abre a pasta dela pra mostrar o que tem dentro
+    if(id){ IPAM._bdOpen[id] = true; IPAM._pfxCollapsed[id] = false; }
+    ipamCarregarPrefixos();
+};
+
 window.ipamCarregarPrefixos = async function(){
     const tb = document.getElementById('ipam-prefixos-tbody');
     // Redesenhar com a página rolada não pode jogar o usuário pro topo:
@@ -3759,12 +3802,26 @@ window.ipamCarregarPrefixos = async function(){
         return linhaPrefixo + itens.map(x => x.html).join('');
     }
 
-    const raizes = IPAM.prefixos.filter(p => !p.pai_id || !porId.has(p.pai_id))
-                                .sort((a,b) => _cmpCidrStr(a.prefixo, b.prefixo));
+    /* Filtro por faixa: só entram o prefixo escolhido e o que mora dentro
+       dele pelo CIDR (não só pelo pai_id — prefixo cadastrado solto, sem pai,
+       mas dentro da faixa, também aparece). Cada um sobe como raiz quando o
+       pai dele está fora da faixa. */
+    _ipamPreencherFiltroPrefixo();
+    const filtro = _ipamFiltroPrefixoAtual();
+    const naFaixa = p => !filtro || p.prefixo === filtro.prefixo || _srContains(filtro.prefixo, p.prefixo);
+    IPAM._pfxRaizesFiltro = new Set();
+    let raizes;
+    if(filtro){
+        raizes = IPAM.prefixos.filter(p => naFaixa(p) && !(p.pai_id && porId.has(p.pai_id) && naFaixa(porId.get(p.pai_id))));
+        raizes.forEach(p => IPAM._pfxRaizesFiltro.add(p.id));
+    } else {
+        raizes = IPAM.prefixos.filter(p => !p.pai_id || !porId.has(p.pai_id));
+    }
+    raizes.sort((a,b) => _cmpCidrStr(a.prefixo, b.prefixo));
     let htmlArvore = raizes.map(p => _pfxBloco(p, 0, false)).join('');
     // Sobra de segurança: prefixo cujo pai_id aponta pra algo fora da lista
-    IPAM.prefixos.forEach(p => { if(!pfxFeitos.has(p.id)) htmlArvore += _pfxBloco(p, 0, false); });
-    tb.innerHTML = htmlArvore;
+    IPAM.prefixos.forEach(p => { if(!pfxFeitos.has(p.id) && naFaixa(p)) htmlArvore += _pfxBloco(p, 0, false); });
+    tb.innerHTML = htmlArvore || tbEmpty(7, 'Nenhum prefixo nesta faixa.');
 
     if(scrollY) window.scrollTo({top: scrollY});
 };
@@ -3788,8 +3845,11 @@ window.ipamAplicarVisibilidade = function(){
     /* Um prefixo some se algum prefixo ancestral está colapsado ou — quando
        ele mora dentro de uma sub-rede do pai (âncora definida no render) — se
        a pasta do pai está fechada ou a sub-rede âncora não está expandida. */
+    const raizesFiltro = IPAM._pfxRaizesFiltro || new Set();
     function _pfxOculto(p){
         if(oculto[p.id] !== undefined) return oculto[p.id];
+        // Raiz do filtro por faixa: o pai nem está na tela, então não manda nela
+        if(raizesFiltro.has(p.id)) return (oculto[p.id] = false);
         oculto[p.id] = true;                       // corta ciclo em pai_id
         const pai = p.pai_id ? porId.get(p.pai_id) : null;
         let esconde = pai ? (_pfxOculto(pai) || !!IPAM._pfxCollapsed[pai.id]) : false;

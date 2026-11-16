@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-16 (IPAM: filtro por faixa)
+
+### Adicionado
+
+- **Filtro por prefixo na Documentação de Rede → Prefixos & Sub-redes.** Um select acima da
+  árvore mostra só o prefixo escolhido e tudo o que está dentro da faixa dele (ex.: só o que
+  mora em `10.0.0.0/8`), inclusive prefixos sem pai gravado mas contidos pelo CIDR. A pasta do
+  escolhido já abre, e a escolha fica lembrada por cliente no navegador.
+
+---
+
 ## [Não publicado] — 2026-11-13 (proxy web: meta refresh)
 
 ### Corrigido
