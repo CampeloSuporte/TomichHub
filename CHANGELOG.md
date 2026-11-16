@@ -13,6 +13,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   árvore mostra só o prefixo escolhido e tudo o que está dentro da faixa dele (ex.: só o que
   mora em `10.0.0.0/8`), inclusive prefixos sem pai gravado mas contidos pelo CIDR. A pasta do
   escolhido já abre, e a escolha fica lembrada por cliente no navegador.
+- **O filtro abre o que foi mexido por último na faixa.** Ao escolher um prefixo no filtro,
+  a árvore abre o caminho até o prefixo ou a sub-rede criado ou alterado mais recentemente
+  dentro da faixa, rola a tela até ele e destaca a linha por alguns segundos.
 
 ---
 

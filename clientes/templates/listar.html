@@ -3097,6 +3097,9 @@ const VLANSW = { carregado: false, switches: [], aberto: null, cacheDetalhe: {},
 
     /* ── Hover nos prefixos — sem sombra branca do Bootstrap ── */
     .ipam-row-prefixo { transition: background .12s; }
+    /* item alterado por último na faixa filtrada (some sozinho em 6 s) */
+    .ipam-sub tr.ipam-row-recente > td { background: rgba(0,217,255,.12) !important; }
+    .ipam-sub tr.ipam-row-recente > td:first-child { box-shadow: inset 3px 0 0 var(--accent-cyan) !important; }
     .ipam-row-prefixo:hover > * {
         --bs-table-hover-bg: transparent;
         background: rgba(0,217,255,.06) !important;
@@ -3582,8 +3585,77 @@ window.ipamFiltrarPorPrefixo = function(id){
     } catch(e){}
     // Escolheu uma faixa: já abre a pasta dela pra mostrar o que tem dentro
     if(id){ IPAM._bdOpen[id] = true; IPAM._pfxCollapsed[id] = false; }
-    ipamCarregarPrefixos();
+    ipamCarregarPrefixos().then(() => { if(id) _ipamRevelarMaisRecente(); });
 };
+
+/* Depois de escolher a faixa, abre o caminho até o item dela alterado ou
+   criado por último (prefixo filho ou sub-rede, pelo atualizado_em) e destaca
+   a linha — quem filtra quase sempre quer voltar no que acabou de mexer.
+   Roda depois do render porque a âncora dos prefixos filhos (_pfxAncora) só
+   existe depois dele. */
+function _ipamRevelarMaisRecente(){
+    const filtro = _ipamFiltroPrefixoAtual();
+    if(!filtro) return;
+    const naFaixa = cidr => cidr === filtro.prefixo || _srContains(filtro.prefixo, cidr);
+    const porId   = new Map((IPAM.prefixos || []).map(p => [p.id, p]));
+    const grupos  = _srAgruparPorPrefixo();
+    const donoSr  = {};
+    Object.entries(grupos).forEach(([pid, l]) => l.forEach(s => { donoSr[s.id] = parseInt(pid, 10); }));
+
+    let alvo = null;   // {tipo, id, quando}
+    const considerar = (tipo, id, quando) => {
+        if(quando && (!alvo || quando > alvo.quando)) alvo = {tipo, id, quando};
+    };
+    (IPAM.prefixos || []).forEach(p => {
+        if(p.id !== filtro.id && naFaixa(p.prefixo)
+           && document.getElementById(`pfx-row-${p.id}`)) considerar('pfx', p.id, p.atualizado_em);
+    });
+    (IPAM.subredes || []).forEach(s => {
+        const dono = donoSr[s.id];
+        if(dono === undefined || !naFaixa(s.rede)) return;
+        const no = IPAM._srNodeById[s.id] || {};
+        // a espelho não tem linha: quem a representa é a linha do prefixo dono
+        if(no._espelho) considerar('pfx', dono, s.atualizado_em);
+        else if(document.getElementById(`sr-row-${s.id}`)) considerar('sr', s.id, s.atualizado_em);
+    });
+    if(!alvo) return;
+
+    const visto = new Set();
+    function abrirPfx(pid){
+        if(visto.has('p' + pid)) return;
+        visto.add('p' + pid);
+        const p = porId.get(pid);
+        if(!p || pid === filtro.id) return;
+        const anc = (IPAM._pfxAncora || {})[pid];
+        if(anc){ IPAM._bdOpen[anc.pasta] = true; abrirSr(anc.sr, true); }
+        if(p.pai_id && porId.has(p.pai_id)){ IPAM._pfxCollapsed[p.pai_id] = false; abrirPfx(p.pai_id); }
+    }
+    // incluiProprio: a sub-rede é âncora de um prefixo e precisa estar expandida
+    function abrirSr(sid, incluiProprio){
+        if(visto.has('s' + sid)) return;
+        visto.add('s' + sid);
+        if(incluiProprio) IPAM._srOpen[sid] = true;
+        let anc = (IPAM._srNodeById[sid] || {})._parentId;
+        while(anc && !visto.has('s' + anc)){
+            visto.add('s' + anc);
+            IPAM._srOpen[anc] = true;
+            anc = (IPAM._srNodeById[anc] || {})._parentId || null;
+        }
+        const dono = donoSr[sid];
+        if(dono !== undefined){ IPAM._bdOpen[dono] = true; abrirPfx(dono); }
+    }
+    if(alvo.tipo === 'pfx'){ IPAM._bdOpen[alvo.id] = true; abrirPfx(alvo.id); }
+    else abrirSr(alvo.id, false);
+    ipamAplicarVisibilidade();
+
+    const tr = document.getElementById(alvo.tipo === 'pfx' ? `pfx-row-${alvo.id}` : `sr-row-${alvo.id}`);
+    if(!tr) return;
+    tr.classList.add('ipam-row-recente');
+    tr.title = 'Alterado por último nesta faixa';
+    tr.scrollIntoView({block: 'center'});
+    // destaque some sozinho: nada de estilo/animação parado na linha
+    setTimeout(() => { tr.classList.remove('ipam-row-recente'); tr.removeAttribute('title'); }, 6000);
+}
 
 window.ipamCarregarPrefixos = async function(){
     const tb = document.getElementById('ipam-prefixos-tbody');

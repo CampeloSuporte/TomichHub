@@ -424,6 +424,8 @@ def ipam_prefixos_listar(request, cliente_id):
             'status': p.status, 'descricao': p.descricao,
             'local': p.local, 'subredes': sub_count, 'pool_cheia': p.pool_cheia,
             'pai_id': p.pai_id, 'nivel': _nivel(p),
+            # o filtro por faixa abre o item alterado por último
+            'atualizado_em': p.atualizado_em.isoformat() if p.atualizado_em else '',
         })
     data.sort(key=lambda x: (ipaddress.ip_network(x['prefixo'], strict=False).version,
                               ipaddress.ip_network(x['prefixo'], strict=False)))
@@ -1456,6 +1458,7 @@ def ipam_subredes_listar(request, cliente_id):
             'total_hosts': total, 'usados': used, 'utilizacao_pct': pct,
             'pool_cheia': s.pool_cheia,
             'hostnames':  hostnames,
+            'atualizado_em': s.atualizado_em.isoformat() if s.atualizado_em else '',
         })
     data.sort(key=lambda x: (ipaddress.ip_network(x['rede'], strict=False).version,
                               ipaddress.ip_network(x['rede'], strict=False)))
