@@ -5,6 +5,32 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-16 (Monitoramento: gráfico rápido e busca de interface)
+
+### Adicionado
+
+- **Campo "Interface" no modal do gráfico.** Depois do host, lista as interfaces de tráfego com o
+  valor atual de ↓ e ↑; busca sem acento, várias palavras em qualquer ordem, realce e teclado
+  (↑/↓/Enter/Esc). Escolher a interface preenche Download e Upload juntos.
+- **Escolher "Bits received" preenche o "Bits sent" da mesma interface** (e vice-versa), pelo
+  par que o servidor calcula (chave `net.if.in[X]` ↔ `net.if.out[X]`, nome, interface).
+
+### Alterado
+
+- **Gráfico da aba Monitoramento carrega bem mais rápido.** Download e Upload numa requisição e
+  num `history.get` só; a sonda direto × túnel do Zabbix de IP público fica guardada por 10 min
+  (rodava a cada poll, até 6 s); nas janelas de 12h/24h o poll pede ao Zabbix só o trecho novo
+  (cliente 90: 2–12 s → ~0,2 s); reabrir a aba desenha na hora o último resultado e depois
+  atualiza. Aba do navegador em segundo plano não faz poll.
+- O modal só escolhe a interface sozinho quando o host tem uma única; antes pegava a primeira
+  porta da lista.
+
+### Corrigido
+
+- Painel com Zabbix sem responder ficava eterno em "Aguardando dados..."; agora mostra o erro.
+
+---
+
 ## [Não publicado] — 2026-11-16 (IPAM: filtro por faixa)
 
 ### Adicionado

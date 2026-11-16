@@ -840,3 +840,162 @@ class CompararSinalTest(TestCase):
         txt = self._rodar([s1, s2])
         self.assertNotIn('Nenhum rompimento', txt)
         self.assertIn('horário do outro lado do enlace', txt)
+
+
+class ParearTrafegoTest(TestCase):
+    """Aba Monitoramento: escolher o Download preenche o Upload da mesma porta."""
+
+    @staticmethod
+    def _i(itemid, key, name, units='bps'):
+        return {'itemid': itemid, 'key': key, 'name': name, 'units': units, 'lastvalue': '1', 'value_type': 3}
+
+    def _par(self, itens):
+        from monitoramento.services import parear_trafego
+        return {i['itemid']: i for i in parear_trafego(itens)}
+
+    def test_pareia_pela_chave_snmp_entre_varias_portas(self):
+        r = self._par([
+            self._i('1', 'net.if.in[ifHCInOctets.5]', 'Interface 100GE0/0/1(LINK): Bits received'),
+            self._i('2', 'net.if.in[ifHCInOctets.6]', 'Interface 100GE0/0/2: Bits received'),
+            self._i('3', 'net.if.out[ifHCOutOctets.6]', 'Interface 100GE0/0/2: Bits sent'),
+            self._i('4', 'net.if.out[ifHCOutOctets.5]', 'Interface 100GE0/0/1(LINK): Bits sent'),
+            self._i('5', 'net.if.in.errors[ifInErrors.5]', 'Interface 100GE0/0/1(LINK): Inbound packets with errors', ''),
+        ])
+        self.assertEqual((r['1']['par'], r['4']['par'], r['2']['par'], r['3']['par']), ('4', '1', '3', '2'))
+        self.assertEqual((r['1']['sentido'], r['4']['sentido'], r['1']['iface']), ('in', 'out', '100GE0/0/1(LINK)'))
+        self.assertIsNone(r['5']['sentido'])
+        self.assertIsNone(r['5']['par'])
+
+    def test_pareia_pelo_nome_quando_a_chave_e_livre(self):
+        r = self._par([
+            self._i('10', 'ifInOctets_sfp1', 'sfp-plus1 - Bits received'),
+            self._i('11', 'ifOutOctets_sfp1', 'sfp-plus1 - Bits sent'),
+            self._i('12', 'custom.in.wan', 'Traffic in WAN'),
+            self._i('13', 'custom.out.wan', 'Traffic out WAN'),
+        ])
+        self.assertEqual((r['10']['par'], r['11']['par']), ('11', '10'))
+        self.assertEqual((r['12']['par'], r['13']['par']), ('13', '12'))
+
+    def test_sem_gemeo_fica_sem_par(self):
+        r = self._par([self._i('1', 'net.if.in[x.1]', 'Interface ge1: Bits received'),
+                       self._i('2', 'system.cpu.util', 'CPU utilization', '%')])
+        self.assertIsNone(r['1']['par'])
+        self.assertIsNone(r['2']['sentido'])
+
+
+class HistoricoLoteTest(TestCase):
+    """Download e Upload numa ida só ao Zabbix e numa requisição só do navegador."""
+
+    def setUp(self):
+        cache.clear()
+        self.cfg = SimpleNamespace(id='lote', url='http://z', api_token='t')
+
+    def test_um_history_get_para_os_dois_itens(self):
+        from monitoramento import services
+        chamadas = []
+
+        def rpc(url, method, params, auth=None, config=None):
+            chamadas.append((method, params.get('itemids')))
+            if method == 'item.get':
+                return [{'itemid': '1', 'value_type': '3', 'units': 'bps'},
+                        {'itemid': '2', 'value_type': '3', 'units': 'bps'}]
+            if method == 'history.get':
+                return [{'itemid': '2', 'clock': '200', 'value': '20'},
+                        {'itemid': '1', 'clock': '100', 'value': '10'},
+                        {'itemid': '1', 'clock': '160', 'value': '11'}]
+            return []
+
+        with mock.patch('monitoramento.services._rpc', side_effect=rpc), \
+             mock.patch('monitoramento.services.time.time', return_value=1000):
+            s = services.historico_itens(self.cfg, ['1', '2'], hours=1)
+            # metadados vêm do cache na segunda vez
+            services.historico_itens(self.cfg, ['1', '2'], hours=1)
+            um = services.historico_item(self.cfg, '2')
+        self.assertEqual([c[0] for c in chamadas], ['item.get', 'history.get', 'history.get', 'history.get'])
+        self.assertEqual(chamadas[1][1], ['1', '2'])
+        self.assertEqual([p['t'] for p in s['1']], [100, 160])
+        self.assertEqual(s['2'], [{'t': 200, 'v': 20.0}])
+        self.assertEqual(um, [{'t': 200, 'v': 20.0}])
+
+    def test_poll_seguinte_busca_so_o_trecho_novo(self):
+        from monitoramento import services
+        pedidos = []
+        base = 1_000_000
+
+        def rpc(url, method, params, auth=None, config=None):
+            if method == 'item.get':
+                return [{'itemid': '1', 'value_type': '3', 'units': 'bps'}]
+            pedidos.append(params['time_from'])
+            return [{'itemid': '1', 'clock': str(t), 'value': str(t)}
+                    for t in range(base - 86400, base + 601, 60) if params['time_from'] <= t <= params['time_till']]
+
+        with mock.patch('monitoramento.services._rpc', side_effect=rpc), \
+             mock.patch('monitoramento.services.time.time', return_value=base):
+            cheio = services.historico_itens(self.cfg, ['1'], hours=24, limit=100000)['1']
+        with mock.patch('monitoramento.services._rpc', side_effect=rpc), \
+             mock.patch('monitoramento.services.time.time', return_value=base + 600):
+            depois = services.historico_itens(self.cfg, ['1'], hours=24, limit=100000)['1']
+            curto = services.historico_itens(self.cfg, ['1'], hours=1, limit=100000)['1']
+            # o de 1h não pode estragar o cache do de 24h
+            de_novo = services.historico_itens(self.cfg, ['1'], hours=24, limit=100000)['1']
+        self.assertEqual(pedidos[0], base - 86400)
+        self.assertEqual(pedidos[1], base - services._RAW_MARGEM)
+        self.assertEqual(len(pedidos), 4)              # nenhum refaz as 24h
+        self.assertEqual(depois[-1]['t'], base + 600)
+        self.assertEqual(depois[0]['t'], base + 600 - 86400)
+        ts = [p['t'] for p in depois]
+        self.assertEqual(len(ts), len(set(ts)))        # sem ponto duplicado na emenda
+        self.assertEqual(len(depois), len(cheio))      # janela andou 10 min: entra 10, sai 10
+        self.assertEqual(curto[0]['t'], base + 600 - 3600)
+        self.assertEqual(de_novo, depois)
+
+    def test_item_sem_history_cai_no_trends_sozinho(self):
+        from monitoramento import services
+        chamadas = []
+
+        def rpc(url, method, params, auth=None, config=None):
+            chamadas.append((method, params.get('itemids')))
+            if method == 'item.get':
+                return [{'itemid': '1', 'value_type': '0', 'units': '%'},
+                        {'itemid': '2', 'value_type': '0', 'units': '%'}]
+            if method == 'history.get':
+                return [{'itemid': '1', 'clock': '100', 'value': '5'}]
+            if method == 'trend.get':
+                return [{'itemid': '2', 'clock': '3600', 'value_avg': '7'}]
+            return []
+
+        with mock.patch('monitoramento.services._rpc', side_effect=rpc), \
+             mock.patch('monitoramento.services.time.time', return_value=1000):
+            s = services.historico_itens(self.cfg, ['1', '2'], hours=1)
+        self.assertEqual(chamadas[-1], ('trend.get', ['2']))
+        self.assertEqual((s['1'][0]['v'], s['2'][0]['v']), (5.0, 7.0))
+
+    def test_zabbix_fora_vira_erro_e_nao_lista_vazia(self):
+        from monitoramento import services
+
+        def rpc(url, method, params, auth=None, config=None):
+            if method == 'item.get':
+                return [{'itemid': '1', 'value_type': '3', 'units': 'bps'}]
+            raise services.ZabbixForaDoAr('fora')
+
+        with mock.patch('monitoramento.services._rpc', side_effect=rpc):
+            with self.assertRaises(services.ZabbixForaDoAr):
+                services.historico_itens(self.cfg, ['1'], hours=1)
+
+
+class RotaZabbixCacheTest(TestCase):
+    """IP público: a sonda direto-vs-túnel não roda mais a cada requisição."""
+
+    def setUp(self):
+        cache.clear()
+
+    def test_sonda_uma_vez_e_esquece_ao_falhar(self):
+        from monitoramento import views
+        cfg = SimpleNamespace(id=7, url='http://200.200.200.200/zabbix')
+        with mock.patch('monitoramento.views._responde_como_zabbix', return_value=True) as sonda:
+            self.assertEqual(views._get_config_com_tunel(cfg, 1), (cfg, None))
+            self.assertEqual(views._get_config_com_tunel(cfg, 1), (cfg, None))
+            self.assertEqual(sonda.call_count, 1)
+            views.esquecer_rota(cfg)
+            views._get_config_com_tunel(cfg, 1)
+            self.assertEqual(sonda.call_count, 2)

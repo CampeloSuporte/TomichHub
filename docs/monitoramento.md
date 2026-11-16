@@ -207,10 +207,58 @@ são destruídos para liberar memória e CPU. A nova aba inicializa seus própri
 Cada painel tem seu próprio seletor de período — **1h, 3h, 6h, 12h, 24h, 7d e 30d** — salvo
 junto do gráfico (campo `hours` do chart, em horas: `168` = 7 dias, `720` = 30 dias).
 
-O frontend chama `GET /monitoramento/zabbix/history/?cliente_id=&item_id=&hours=`; a view só
-aceita os valores da lista acima (qualquer outro vira `1`).
+O frontend chama `GET /monitoramento/zabbix/history/?cliente_id=&item_ids=<in>,<out>&hours=` —
+Download e Upload **numa requisição só**, resposta `{"series": {"<itemid>": [{t, v}, …]}}`. O
+formato antigo (`item_id=<id>` → `{"history": [...]}`) continua aceito. A view só aceita os
+valores de `hours` da lista acima (qualquer outro vira `1`).
 
-### Como o backend monta a janela (`services.historico_item`)
+### Velocidade da carga (2026-11-16)
+
+O gráfico demorava a aparecer por quatro custos que se somavam em cada poll de cada painel:
+
+| Custo | Antes | Agora |
+|-------|-------|-------|
+| Sonda direto × túnel (Zabbix de IP público) | `apiinfo.version` a **cada** requisição (0,5–6 s) | decisão guardada no Redis por 10 min (`zbx_rota:*`); esquecida quando a chamada falha |
+| Download e Upload | 2 requisições HTTP, 2 túneis/auth/item.get, 2 `history.get` | 1 requisição e 1 `history.get` por `value_type` (`services.historico_itens`) |
+| Janela de 12h/24h | o poll baixava a janela inteira de novo (cliente 90: 2–12 s por poll, piorando) | pontos brutos ficam no Redis por item (`zbx_raw:*`, 15 min); o poll pede só de `fim − 3 min` em diante (~0,2 s) |
+| Reabrir a aba / outro usuário no mesmo cliente | tudo do zero | resposta pronta por 10 s (`zbx_hist:*`) e, no navegador, o último resultado de cada painel em `sessionStorage` é desenhado na hora ("Atualizando…") |
+
+Além disso, a aba do navegador em segundo plano não faz poll (volta a atualizar no
+`visibilitychange`) e o rodapé do painel mostra o erro real ("⚠ …") em vez de ficar eterno em
+"Aguardando dados...". Zabbix fora do ar (disjuntor `zbx_fora`) agora vira erro em vez de lista
+vazia. Medido ao vivo: cliente 37 conexão 1,85 s → 0,01 s; cliente 90 poll de 24h 2–12 s → 0,16–0,2 s,
+com os mesmos pontos da busca completa.
+
+O cache bruto guarda tudo o que já cobriu (até 3 dias), não só a janela pedida: dois painéis
+do mesmo item, um em 1h e outro em 24h, não se atrapalham.
+
+### Busca de interface no modal
+
+Depois de escolher o host aparece o campo **Interface**: lista as interfaces de tráfego do host
+(par Download/Upload com o valor atual de cada sentido), em ordem natural (`0/0/2` antes de
+`0/0/10`). A busca ignora acento e caixa e aceita várias palavras em qualquer ordem
+(`operadora 0/0/1`), procurando no nome da interface, nos nomes dos itens e nas chaves; o
+trecho encontrado fica realçado. Setas ↑/↓ andam na lista, Enter escolhe, Esc fecha. Escolher a
+interface preenche os dois sentidos.
+
+Os campos **Item Download** e **Item Upload** continuam para escolha avulsa, e escolher um
+"Bits received" preenche sozinho o "Bits sent" da mesma interface (e vice-versa). O par vem do
+servidor: `services.parear_trafego()` marca cada item com `sentido` (`in`/`out`), `iface` e
+`par` (itemid do gêmeo), casando nesta ordem:
+
+1. chave trocada — `net.if.in[ifHCInOctets.5]` ↔ `net.if.out[ifHCOutOctets.5]`;
+2. nome trocado — `… Bits received` ↔ `… Bits sent`, `Traffic in` ↔ `Traffic out`, `Entrada` ↔ `Saída`, `Download` ↔ `Upload`, `RX` ↔ `TX`;
+3. mesmo nome de interface, quando só existe um candidato do outro sentido.
+
+Erros e descartes (`net.if.in.errors[…]`) ficam de fora. Conferido nos Zabbix reais dos
+clientes 35, 37 e 90: 278, 106 e 152 itens de tráfego, nenhum sem par, e o par sugerido bateu
+com o que o usuário tinha montado à mão nos painéis salvos.
+
+O host só tem a interface escolhida sozinha quando possui **uma única** interface; antes o modal
+pegava o primeiro "Bits received" da lista (uma porta qualquer em switch/OLT, e às vezes o Upload
+de outra porta).
+
+### Como o backend monta a janela (`services.historico_itens`)
 
 | Janela | Fonte no Zabbix | Observação |
 |--------|-----------------|------------|
@@ -286,6 +334,15 @@ Clientes só acessam o dashboard do próprio cliente. Admins/operadores acessam 
 ---
 
 ## Histórico de Alterações
+
+### 2026-11-16 — Gráfico mais rápido e busca de interface
+
+**Problema:** o gráfico demorava a trazer os dados, e escolher a interface era garimpar item por
+item nas duas listas. **Correção:** ver "Velocidade da carga" e "Busca de interface no modal"
+acima. Arquivos: `monitoramento/services.py` (`historico_itens`, `_history_incremental`,
+`parear_trafego`), `monitoramento/views.py` (`historico_item_zabbix` com `item_ids`, cache da rota
+em `_get_config_com_tunel`), `tab_monitoramento.html`; testes em `monitoramento/tests.py` e
+`monitoramento/tests_navegador.py` (Chrome headless).
 
 ### 2026-10-06 — Quedas falsas no gráfico de tráfego
 

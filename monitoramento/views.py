@@ -11,6 +11,7 @@ import paramiko
 from urllib.parse import urlparse
 
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_http_methods
@@ -240,6 +241,18 @@ def _config_url_local(config, parsed, local_port):
     return cfg
 
 
+_ROTA_TTL = 600
+
+
+def _chave_rota(config):
+    return f"zbx_rota:{getattr(config, 'id', '')}:{config.url.rstrip('/')}"
+
+
+def esquecer_rota(config):
+    """Chamada falhou: a próxima requisição volta a sondar direto vs túnel."""
+    cache.delete(_chave_rota(config))
+
+
 def _get_config_com_tunel(config, cliente_id):
     """
     Decide entre falar direto com a URL do Zabbix ou por túnel SSH via o
@@ -265,8 +278,17 @@ def _get_config_com_tunel(config, cliente_id):
     zbx_port = parsed.port or (443 if parsed.scheme == 'https' else 80)
 
     ip_privado = _is_private_ip(zbx_host)
-    if not ip_privado and _responde_como_zabbix(config.url):
-        return config, None
+    if not ip_privado:
+        # A sonda apiinfo.version custava 0,5–6 s em TODA requisição (cada
+        # poll de cada gráfico). A decisão direto/túnel quase nunca muda:
+        # fica guardada por _ROTA_TTL e é esquecida se a chamada falhar.
+        chave = _chave_rota(config)
+        rota = cache.get(chave)
+        if rota is None:
+            rota = 'direto' if _responde_como_zabbix(config.url) else 'tunel'
+            cache.set(chave, rota, _ROTA_TTL)
+        if rota == 'direto':
+            return config, None
 
     from clientes import tunel_host
     proxy = tunel_host.proxy_para(cliente_id, zbx_host)
@@ -524,16 +546,41 @@ def historico_item_zabbix(request):
     if not _pode_acessar_cliente(request, cliente_id):
         return JsonResponse({'error': 'Sem permissão'}, status=403)
 
-    tunel = None
-    try:
-        config  = ZabbixConfig.objects.get(cliente_id=cliente_id, ativo=True)
-        config, tunel = _get_config_com_tunel(config, cliente_id)
-        history = services.historico_item(config, item_id, hours=hours, limit=limit)
-        return JsonResponse({'history': history})
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-    finally:
-        _fechar_tunel(tunel)
+    # item_ids=IN,OUT → os dois sentidos numa requisição só (gráfico da aba
+    # Monitoramento). item_id=X continua valendo (um item, formato antigo).
+    lote = [i.strip() for i in (request.GET.get('item_ids') or '').split(',') if i.strip()][:10]
+    ids  = lote or ([item_id] if item_id else [])
+    if not ids:
+        return JsonResponse({'error': 'item_id obrigatório'}, status=400)
+
+    # Cache curto da resposta: vários usuários/abas olhando o mesmo cliente,
+    # ou reabrir a aba, não refazem a ida ao Zabbix (o poll mínimo é 15 s).
+    chave_resp = f"zbx_hist:{cliente_id}:{','.join(ids)}:{hours}:{limit}"
+    resp = cache.get(chave_resp)
+    if resp is None:
+        tunel = None
+        config_orig = None
+        try:
+            config_orig = ZabbixConfig.objects.get(cliente_id=cliente_id, ativo=True)
+            config, tunel = _get_config_com_tunel(config_orig, cliente_id)
+            series = services.historico_itens(config, ids, hours=hours, limit=limit)
+        except ZabbixConfig.DoesNotExist:
+            return JsonResponse({'error': 'Zabbix não configurado'}, status=400)
+        except Exception as e:
+            if config_orig is not None:
+                esquecer_rota(config_orig)
+            return JsonResponse({'error': str(e)}, status=500)
+        finally:
+            _fechar_tunel(tunel)
+        resp = {'series': series}
+        cache.set(chave_resp, resp, _HIST_RESP_TTL)
+
+    if lote:
+        return JsonResponse(resp)
+    return JsonResponse({'history': resp['series'].get(str(ids[0]), [])})
+
+
+_HIST_RESP_TTL = 10
 
 
 # ──────────────────────────────────────────────────────────────
