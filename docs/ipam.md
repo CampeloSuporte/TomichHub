@@ -571,6 +571,26 @@ CIDR inválido dá "CIDR inválido" em vez do texto cru do `ipaddress`.
 Teste: `IPAMListagemTest` em `clientes/tests_ipam_exclusao.py` (`assertNumQueries(2)`, que não
 cresce com o número de sub-redes).
 
+## Filtro por faixa na aba Prefixos & Sub-redes (2026-11-16)
+
+Acima da árvore há um select (`#ipam-pfx-filtro`) com todos os prefixos do cliente, em ordem
+de CIDR e recuados pela profundidade. Escolher um (ex.: `10.0.0.0/8`) mostra só ele e o que
+mora dentro da faixa; "Todos os prefixos" volta à árvore inteira.
+
+- **Quem entra:** o prefixo escolhido e todo prefixo contido nele **pelo CIDR**
+  (`_srContains`), não só pelo `pai_id` — prefixo cadastrado sem pai mas dentro da faixa
+  também aparece. Cada um sobe como raiz quando o pai está fora da faixa.
+- **Visibilidade:** as raízes do filtro ficam em `IPAM._pfxRaizesFiltro`, e
+  `ipamAplicarVisibilidade` não as esconde por causa do pai (que nem está na tela). Sem isso,
+  escolher um filho cujo pai está com a pasta fechada deixava a tabela vazia.
+- **Pasta aberta:** ao escolher, a pasta do prefixo já abre (`_bdOpen`).
+- **Lembrado por cliente** no navegador (`localStorage` `ipam_pfx_filtro_<cliente>`); prefixo
+  excluído depois cai em "todos".
+- Só front (`clientes/templates/listar.html`); o endpoint `ipam/prefixos/` não mudou. Teste no
+  Chrome headless: `clientes/tests_ipam_filtro_navegador.py`.
+
+---
+
 ## Models Relacionados
 
 | Model          | Campos principais                                              |
