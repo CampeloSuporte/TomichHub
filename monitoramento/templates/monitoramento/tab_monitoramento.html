@@ -143,6 +143,25 @@
     if (window.GRAPH && typeof window.GRAPH.filtrarItens === 'function') window.GRAPH.filtrarItens(direcao, v);
   };
 
+  window.grphFiltrarIfaces = function(v) {
+    if (window.GRAPH && typeof window.GRAPH.filtrarIfaces === 'function') window.GRAPH.filtrarIfaces(v);
+  };
+
+  window.grphSelecionarIface = function(idx) {
+    if (window.GRAPH && typeof window.GRAPH.selecionarIface === 'function') window.GRAPH.selecionarIface(idx);
+  };
+
+  window.grphFecharLista = function(lista) {
+    setTimeout(function() {
+      var el = document.getElementById(lista === 'iface' ? 'grph-m-iface-list' : 'grph-m-item-' + lista + '-list');
+      if (el) el.style.display = 'none';
+    }, 120);
+  };
+
+  window.grphTeclaLista = function(ev, lista) {
+    if (window.GRAPH && typeof window.GRAPH.teclaLista === 'function') window.GRAPH.teclaLista(ev, lista);
+  };
+
   window.grphSelecionarItem = function(direcao, itemJson) {
     if (window.GRAPH && typeof window.GRAPH.selecionarItem === 'function') {
       window.GRAPH.selecionarItem(direcao, itemJson);
@@ -309,6 +328,23 @@
       <!-- ITENS IN/OUT — aparece após selecionar host -->
       <div id="grph-itens-wrap" style="display:none;">
 
+        <!-- INTERFACE (preenche Download + Upload juntos) -->
+        <label class="grph-label" style="margin-top:18px;">Interface</label>
+        <div class="grph-search-wrap">
+          <svg viewBox="0 0 24 24" width="14" height="14" class="grph-search-icon">
+            <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2" fill="none"/>
+            <path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <input id="grph-m-iface-search" type="text" class="grph-input grph-input-search" autocomplete="off"
+                 placeholder="Buscar interface… ex: uplink, 0/0/1, sfp-plus1"
+                 oninput="grphFiltrarIfaces(this.value)"
+                 onfocus="this.select(); grphFiltrarIfaces('')"
+                 onblur="grphFecharLista('iface')"
+                 onkeydown="grphTeclaLista(event, 'iface')"/>
+        </div>
+        <div id="grph-m-iface-list" class="grph-search-results" style="display:none; max-height:240px;"></div>
+        <p class="grph-hint">Escolha a interface e o Download e o Upload são preenchidos juntos. Os campos abaixo continuam para escolher um item avulso.</p>
+
         <!-- ITEM IN (DOWNLOAD) -->
         <label class="grph-label" style="margin-top:18px;">
           <span style="color:#3fb950;">↓</span> Item Download (Bits received) *
@@ -320,7 +356,11 @@
           </svg>
           <input id="grph-m-item-in-search" type="text" class="grph-input grph-input-search"
                  placeholder="Buscar item… ex: Bits received"
-                 oninput="grphFiltrarItens('in', this.value)"/>
+                 autocomplete="off"
+                 oninput="grphFiltrarItens('in', this.value)"
+                 onfocus="this.select(); grphFiltrarItens('in', '')"
+                 onblur="grphFecharLista('in')"
+                 onkeydown="grphTeclaLista(event, 'in')"/>
         </div>
         <div id="grph-m-item-in-badge" class="grph-host-badge"
              style="display:none; background:rgba(63,185,80,.06); border-color:rgba(63,185,80,.2); color:#3fb950; margin-bottom:4px;"></div>
@@ -338,7 +378,11 @@
           </svg>
           <input id="grph-m-item-out-search" type="text" class="grph-input grph-input-search"
                  placeholder="Buscar item… ex: Bits sent"
-                 oninput="grphFiltrarItens('out', this.value)"/>
+                 autocomplete="off"
+                 oninput="grphFiltrarItens('out', this.value)"
+                 onfocus="this.select(); grphFiltrarItens('out', '')"
+                 onblur="grphFecharLista('out')"
+                 onkeydown="grphTeclaLista(event, 'out')"/>
         </div>
         <div id="grph-m-item-out-badge" class="grph-host-badge"
              style="display:none; background:rgba(88,166,255,.06); border-color:rgba(88,166,255,.2); color:#58a6ff; margin-bottom:4px;"></div>
@@ -786,6 +830,13 @@
 .grph-ri-main { display: flex; align-items: center; gap: 8px; font-size: .82rem; color: #e2e8f0; }
 .grph-ri-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .grph-ri small { font-size: .7rem; color: #475569; }
+.grph-ri.grph-ri-sel { background: rgba(59,130,246,.12); }
+.grph-ri mark { background: rgba(250,204,21,.18); color: inherit; border-radius: 2px; padding: 0 1px; }
+.grph-ri-vals { display: flex; gap: 12px; font-size: .7rem; }
+.grph-ri-vals .in  { color: #3fb950; }
+.grph-ri-vals .out { color: #58a6ff; }
+.grph-ri-vals .falta { color: #f59e0b; }
+.grph-ri-more { padding: 8px 14px; font-size: .7rem; color: #64748b; text-align: center; }
 .grph-host-badge {
   background: rgba(63,185,80,.06); border: 1px solid rgba(63,185,80,.2);
   border-radius: 6px; padding: 7px 12px; font-size: .78rem; color: #3fb950;
@@ -985,6 +1036,12 @@ const GRAPH = (() => {
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && _fullscreenId !== null) fecharFullscreen();
     });
+    if (!window._grphVisListener) {
+      window._grphVisListener = true;
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) charts.forEach(c => { if (c.chartInstance) _fetchHistory(c); });
+      });
+    }
   }
 
   // ─────────────────────────────────────────────────────────
@@ -1454,71 +1511,112 @@ const GRAPH = (() => {
   function _startPolling(c) {
     if (c._interval) clearInterval(c._interval);
     if (!c.inId && !c.outId) return;
-    _fetchHistory(c);
+    c._temDados = false;
+    const salvo = _histLer(c);
+    if (salvo && salvo.series && _aplicarSeries(c, salvo.series)) {
+      c._temDados = true;
+      _setText(`grph-ts-${c.id}`, 'Atualizando…');
+    } else {
+      _setText(`grph-ts-${c.id}`, 'Carregando…');
+    }
+    _fetchHistory(c, true);
     c._interval = setInterval(() => _fetchHistory(c), _pollMs(c.hours || 1));
   }
 
-  function atualizarTodos() { charts.forEach(c => _fetchHistory(c)); }
+  function atualizarTodos() { charts.forEach(c => _fetchHistory(c, true)); }
 
-  async function _fetchHistory(c) {
+  // Último resultado de cada gráfico guardado na sessão do navegador: ao
+  // reabrir a aba o gráfico aparece na hora e só depois é atualizado.
+  function _histKey(c) { return `grph_h_${clienteId}_${c.inId || ''}_${c.outId || ''}_${c.hours || 1}`; }
+  function _histLer(c) {
+    try { const r = sessionStorage.getItem(_histKey(c)); return r ? JSON.parse(r) : null; } catch(e) { return null; }
+  }
+  function _histGravar(c, series) {
+    try { sessionStorage.setItem(_histKey(c), JSON.stringify({ ts: Date.now(), series })); } catch(e) {}
+  }
+
+  function _norm(arr) {
+    return (arr || []).map(p => ({
+      t: parseInt(p.t || p.clock || 0),
+      v: parseFloat(p.v !== undefined ? p.v : (p.value !== undefined ? p.value : 0)),
+    })).filter(p => p.t > 0);
+  }
+
+  function _aplicarSeries(c, series) {
+    const hours   = c.hours || 1;
+    const histIn  = c.inId  ? _norm(series[c.inId])  : [];
+    const histOut = c.outId ? _norm(series[c.outId]) : [];
+    if (!histIn.length && !histOut.length) return false;
+
+    const allTs  = [...new Set([...histIn.map(p => p.t), ...histOut.map(p => p.t)])].sort((a, b) => a - b);
+    const mapIn  = Object.fromEntries(histIn.map(p  => [p.t, p.v]));
+    const mapOut = Object.fromEntries(histOut.map(p => [p.t, p.v]));
+    const labels  = allTs.map(t => _fmtEixo(t, hours));
+    const dataIn  = allTs.map(t => mapIn[t]  !== undefined ? mapIn[t]  : null);
+    const dataOut = allTs.map(t => mapOut[t] !== undefined ? mapOut[t] : null);
+
+    [c.chartInstance, c._fsSync ? c.fsChartInstance : null].forEach(ch => {
+      if (!ch) return;
+      ch.data.labels           = labels;
+      ch.data.datasets[0].data = dataIn;
+      ch.data.datasets[1].data = dataOut;
+      ch.update('none');
+    });
+
+    const lastIn  = dataIn.filter(v => v !== null).at(-1);
+    const lastOut = dataOut.filter(v => v !== null).at(-1);
+    const peakIn  = Math.max(...dataIn.filter(v  => v !== null), 0);
+    const peakOut = Math.max(...dataOut.filter(v => v !== null), 0);
+
+    _setText(`grph-in-${c.id}`,   _fmtBps(lastIn));
+    _setText(`grph-out-${c.id}`,  _fmtBps(lastOut));
+    _setText(`grph-peak-${c.id}`, _fmtBps(Math.max(peakIn, peakOut)));
+    _setText(`grph-ts-${c.id}`,   `Atualizado às ${_fmtTime(allTs[allTs.length - 1])}`);
+    const dot = document.getElementById(`grph-dot-${c.id}`);
+    if (dot) dot.classList.toggle('grph-dot-active', (lastIn || 0) > 0 || (lastOut || 0) > 0);
+    if (c._fsSync && c.fsChartInstance) _updateFsStats(c);
+    return true;
+  }
+
+  async function _fetchHistory(c, forcar) {
+    // Aba do navegador em segundo plano: não gasta Zabbix nem threads do
+    // servidor; ao voltar, atualiza na hora (visibilitychange em init()).
+    if (!forcar && document.hidden) return;
+    if (c._carregando && !forcar) return;
+    c._carregando = true;
+    const seq = c._seq = (c._seq || 0) + 1;
     const dot = document.getElementById(`grph-dot-${c.id}`);
     if (dot) dot.classList.add('pulsing');
 
     try {
-      const hours   = c.hours || 1;
-      const ids     = [c.inId, c.outId].filter(Boolean);
-      const results = await Promise.all(
-        ids.map(id => _get(`${URLS.history}?cliente_id=${clienteId}&item_id=${id}&hours=${hours}`))
-      );
-
-      function _norm(raw) {
-        if (!raw) return [];
-        const arr = raw.history || raw.data || raw.result || (Array.isArray(raw) ? raw : []);
-        return arr.map(p => ({
-          t: parseInt(p.t || p.clock || 0),
-          v: parseFloat(p.v !== undefined ? p.v : (p.value !== undefined ? p.value : 0)),
-        })).filter(p => p.t > 0);
+      const hours = c.hours || 1;
+      const ids   = [c.inId, c.outId].filter(Boolean);
+      // Uma requisição só para Download + Upload (antes eram duas)
+      const r = await fetch(`${URLS.history}?cliente_id=${clienteId}&item_ids=${ids.join(',')}&hours=${hours}`);
+      let data = null;
+      try { data = await r.json(); } catch(e) { throw new Error(r.redirected ? 'sessão expirada — recarregue a página' : `HTTP ${r.status}`); }
+      if (!r.ok || data.error) throw new Error(data.error || `HTTP ${r.status}`);
+      const series = data.series || {};
+      // Período trocado (ou outra busca começou) enquanto a resposta vinha
+      if (seq !== c._seq) return;
+      if (_aplicarSeries(c, series)) {
+        _histGravar(c, series);
+        c._erro = false;
+      } else if (!c._temDados) {
+        _setText(`grph-ts-${c.id}`, 'Sem dados no período');
       }
-
-      const histIn  = c.inId  ? _norm(results[0]) : [];
-      const histOut = c.outId ? _norm(results[c.inId ? 1 : 0]) : [];
-      if (!histIn.length && !histOut.length) return;
-
-      const allTs  = [...new Set([...histIn.map(p => p.t), ...histOut.map(p => p.t)])].sort((a, b) => a - b);
-      const mapIn  = Object.fromEntries(histIn.map(p  => [p.t, p.v]));
-      const mapOut = Object.fromEntries(histOut.map(p => [p.t, p.v]));
-      const labels  = allTs.map(t => _fmtEixo(t, hours));
-      const dataIn  = allTs.map(t => mapIn[t]  !== undefined ? parseFloat(mapIn[t])  : null);
-      const dataOut = allTs.map(t => mapOut[t] !== undefined ? parseFloat(mapOut[t]) : null);
-
-      if (c.chartInstance) {
-        c.chartInstance.data.labels           = labels;
-        c.chartInstance.data.datasets[0].data = dataIn;
-        c.chartInstance.data.datasets[1].data = dataOut;
-        c.chartInstance.update('none');
-      }
-      if (c._fsSync && c.fsChartInstance) {
-        c.fsChartInstance.data.labels           = labels;
-        c.fsChartInstance.data.datasets[0].data = dataIn;
-        c.fsChartInstance.data.datasets[1].data = dataOut;
-        c.fsChartInstance.update('none');
-        _updateFsStats(c);
-      }
-
-      const lastIn  = dataIn.filter(v => v !== null).at(-1);
-      const lastOut = dataOut.filter(v => v !== null).at(-1);
-      const peakIn  = Math.max(...dataIn.filter(v  => v !== null), 0);
-      const peakOut = Math.max(...dataOut.filter(v => v !== null), 0);
-
-      _setText(`grph-in-${c.id}`,   _fmtBps(lastIn));
-      _setText(`grph-out-${c.id}`,  _fmtBps(lastOut));
-      _setText(`grph-peak-${c.id}`, _fmtBps(Math.max(peakIn, peakOut)));
-      _setText(`grph-ts-${c.id}`,   `Atualizado às ${_fmtTime(allTs[allTs.length - 1])}`);
-      if (dot) dot.classList.toggle('grph-dot-active', (lastIn || 0) > 0 || (lastOut || 0) > 0);
-
+      c._temDados = c._temDados || ids.some(id => (series[id] || []).length);
     } catch(e) {
       console.error('[GRAPH] poll error:', e);
+      if (seq !== c._seq) return;
+      const ts = document.getElementById(`grph-ts-${c.id}`);
+      if (ts) {
+        ts.textContent = c._temDados ? `⚠ Falha ao atualizar — ${e.message}` : `⚠ ${e.message}`;
+        ts.title = e.message;
+      }
+      c._erro = true;
     } finally {
+      if (seq === c._seq) c._carregando = false;
       setTimeout(() => {
         const d = document.getElementById(`grph-dot-${c.id}`);
         if (d) d.classList.remove('pulsing');
@@ -1572,6 +1670,11 @@ const GRAPH = (() => {
           const item = itens.find(i => i.itemid === c.outId);
           _selecionarItemInterno('out', item || { itemid: c.outId, name: c.ifaceName + ' (Out)' });
         }
+        const qualquer = itens.find(i => i.itemid === c.inId) || itens.find(i => i.itemid === c.outId);
+        const ifs = document.getElementById('grph-m-iface-search');
+        if (ifs) ifs.value = qualquer?.iface || '';
+        const ifl = document.getElementById('grph-m-iface-list');
+        if (ifl) ifl.style.display = 'none';
         _atualizarPreview();
       });
     }
@@ -1584,7 +1687,7 @@ const GRAPH = (() => {
   function _resetModal() {
     ['grph-m-search','grph-m-hostid','grph-m-hostname','grph-m-titulo',
      'grph-m-item-in-id','grph-m-item-in-search',
-     'grph-m-item-out-id','grph-m-item-out-search'].forEach(id => {
+     'grph-m-item-out-id','grph-m-item-out-search','grph-m-iface-search'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -1596,7 +1699,7 @@ const GRAPH = (() => {
     if (results) results.style.display = 'none';
     const wrap = document.getElementById('grph-itens-wrap');
     if (wrap) wrap.style.display = 'none';
-    ['grph-m-item-in-list','grph-m-item-out-list'].forEach(id => {
+    ['grph-m-item-in-list','grph-m-item-out-list','grph-m-iface-list'].forEach(id => {
       const el = document.getElementById(id);
       if (el) { el.innerHTML = ''; el.style.display = 'none'; }
     });
@@ -1637,6 +1740,8 @@ const GRAPH = (() => {
     const badge = document.getElementById('grph-m-badge');
     badge.textContent = `✓ ${name}`; badge.style.display = 'block';
 
+    const ifs = document.getElementById('grph-m-iface-search');
+    if (ifs) ifs.value = '';
     ['in','out'].forEach(d => {
       const id = document.getElementById(`grph-m-item-${d}-id`);
       const s  = document.getElementById(`grph-m-item-${d}-search`);
@@ -1651,82 +1756,210 @@ const GRAPH = (() => {
 
   async function _carregarItens(hostid) {
     const wrap   = document.getElementById('grph-itens-wrap');
-    const inList = document.getElementById('grph-m-item-in-list');
-    const outList= document.getElementById('grph-m-item-out-list');
+    const ifList = document.getElementById('grph-m-iface-list');
+    ['in','out'].forEach(d => {
+      const l = document.getElementById(`grph-m-item-${d}-list`);
+      if (l) { l.innerHTML = ''; l.style.display = 'none'; }
+    });
 
     if (wrap) wrap.style.display = 'block';
-    const loading = '<div class="grph-ri"><span style="color:#475569">Buscando itens…</span></div>';
-    if (inList)  { inList.innerHTML  = loading; inList.style.display  = 'block'; }
-    if (outList) { outList.innerHTML = loading; outList.style.display = 'block'; }
+    if (ifList) {
+      ifList.innerHTML = '<div class="grph-ri"><span style="color:#475569">Buscando interfaces…</span></div>';
+      ifList.style.display = 'block';
+    }
 
     if (itensCache[hostid]) {
-      _renderItens(itensCache[hostid]);
-      _autoDetectar(itensCache[hostid]);
+      _depoisDeCarregar(itensCache[hostid]);
       return;
     }
 
     try {
       const data = await _get(`${URLS.zbxItens}?cliente_id=${clienteId}&host_id=${hostid}`);
       if (data.error || !data.itens?.length) {
-        const msg = '<div class="grph-ri"><span style="color:#ef4444">Nenhum item numérico encontrado</span></div>';
-        if (inList)  inList.innerHTML  = msg;
-        if (outList) outList.innerHTML = msg;
+        const msg = `<div class="grph-ri"><span style="color:#ef4444">${_escH(data.error || 'Nenhum item numérico encontrado')}</span></div>`;
+        if (ifList) ifList.innerHTML = msg;
         return;
       }
+      // Ainda é o host escolhido? (o usuário pode ter trocado no meio)
       itensCache[hostid] = data.itens;
-      _renderItens(data.itens);
-      _autoDetectar(data.itens);
+      if (document.getElementById('grph-m-hostid').value !== String(hostid)) return;
+      _depoisDeCarregar(data.itens);
     } catch(e) {
-      const msg = `<div class="grph-ri"><span style="color:#ef4444">Erro: ${e.message}</span></div>`;
-      if (inList)  inList.innerHTML  = msg;
-      if (outList) outList.innerHTML = msg;
+      if (ifList) ifList.innerHTML = `<div class="grph-ri"><span style="color:#ef4444">Erro: ${_escH(e.message)}</span></div>`;
     }
+  }
+
+  function _depoisDeCarregar(itens) {
+    _autoDetectar(itens);
+    const temEscolha = document.getElementById('grph-m-item-in-id').value ||
+                       document.getElementById('grph-m-item-out-id').value;
+    if (temEscolha) {
+      const l = document.getElementById('grph-m-iface-list');
+      if (l) l.style.display = 'none';
+    } else {
+      filtrarIfaces('');
+      const inp = document.getElementById('grph-m-iface-search');
+      if (inp) inp.focus();
+    }
+  }
+
+  // ── Busca ─────────────────────────────────────────────────
+  // Sem acento e sem caixa; todas as palavras digitadas precisam aparecer
+  // (em qualquer ordem) no nome da interface, no nome do item ou na chave.
+  function _semAcento(t) {
+    return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  }
+  function _termos(filtro) { return _semAcento(filtro).split(/\s+/).filter(Boolean); }
+  function _casa(texto, termos) {
+    const h = _semAcento(texto);
+    return termos.every(t => h.includes(t));
+  }
+  function _realcar(texto, termos) {
+    let html = _escH(texto);
+    if (!termos.length) return html;
+    const norm = _semAcento(texto);
+    // marca os trechos no texto original pelas posições no normalizado
+    const marcas = [];
+    termos.forEach(t => {
+      let i = norm.indexOf(t);
+      while (i >= 0) { marcas.push([i, i + t.length]); i = norm.indexOf(t, i + t.length); }
+    });
+    if (!marcas.length) return html;
+    marcas.sort((a, b) => a[0] - b[0]);
+    let out = '', pos = 0;
+    marcas.forEach(([a, b]) => {
+      if (a < pos) a = pos;
+      if (b <= a) return;
+      out += _escH(texto.slice(pos, a)) + '<mark>' + _escH(texto.slice(a, b)) + '</mark>';
+      pos = b;
+    });
+    return out + _escH(texto.slice(pos));
+  }
+
+  const _MAX_LISTA = 120;
+  let _listas = { iface: [], in: [], out: [] };   // o que está renderizado em cada lista
+  let _selIdx = { iface: -1, in: -1, out: -1 };   // item realçado pelo teclado
+
+  // Interfaces = pares Download/Upload vindos do servidor (campo `par`)
+  function _interfaces(itens) {
+    const porId = Object.fromEntries(itens.map(i => [i.itemid, i]));
+    const lista = [];
+    itens.forEach(i => {
+      if (i.sentido === 'in') {
+        lista.push({ iface: i.iface || i.name, in: i, out: i.par ? porId[i.par] || null : null });
+      } else if (i.sentido === 'out' && !(i.par && porId[i.par])) {
+        lista.push({ iface: i.iface || i.name, in: null, out: i });
+      }
+    });
+    // Pares completos primeiro, depois por nome (ordem natural: ge0/0/2 antes de ge0/0/10)
+    return lista.sort((a, b) =>
+      ((b.in && b.out) - (a.in && a.out)) ||
+      a.iface.localeCompare(b.iface, 'pt-BR', { numeric: true, sensitivity: 'base' }));
+  }
+
+  function _valorItem(i) {
+    if (!i) return '';
+    const v = parseFloat(i.lastvalue);
+    if (isNaN(v)) return '';
+    return /bps|bit/i.test(i.units || '') ? _fmtBps(v) : `${i.lastvalue} ${i.units || ''}`.trim();
+  }
+
+  function filtrarIfaces(valor) {
+    const hostid = document.getElementById('grph-m-hostid').value;
+    const itens  = itensCache[hostid];
+    const box    = document.getElementById('grph-m-iface-list');
+    if (!itens || !box) return;
+    const termos = _termos(valor);
+    const todas  = _interfaces(itens);
+    const achadas = todas.filter(g => _casa(
+      [g.iface, g.in?.name, g.out?.name, g.in?.key, g.out?.key].filter(Boolean).join(' '), termos));
+    _listas.iface = achadas.slice(0, _MAX_LISTA);
+    _selIdx.iface = achadas.length ? 0 : -1;
+
+    if (!todas.length) {
+      box.innerHTML = '<div class="grph-ri"><span style="color:#64748b">Nenhuma interface de tráfego reconhecida neste host — use os campos abaixo.</span></div>';
+    } else if (!achadas.length) {
+      box.innerHTML = '<div class="grph-ri"><span style="color:#64748b">Nenhuma interface com esse nome</span></div>';
+    } else {
+      box.innerHTML = _listas.iface.map((g, idx) => {
+        const vin  = g.in  ? `<span class="in">↓ ${_valorItem(g.in) || '—'}</span>`  : '<span class="falta">↓ sem item</span>';
+        const vout = g.out ? `<span class="out">↑ ${_valorItem(g.out) || '—'}</span>` : '<span class="falta">↑ sem item</span>';
+        return `<div class="grph-ri${idx === 0 ? ' grph-ri-sel' : ''}" data-idx="${idx}"
+                     onmousedown="event.preventDefault()" onclick="grphSelecionarIface(${idx})">
+          <div class="grph-ri-main"><span>${_realcar(g.iface, termos)}</span></div>
+          <div class="grph-ri-vals">${vin}${vout}</div>
+        </div>`;
+      }).join('') + (achadas.length > _MAX_LISTA
+        ? `<div class="grph-ri-more">+${achadas.length - _MAX_LISTA} interfaces — refine a busca</div>` : '');
+    }
+    box.style.display = 'block';
+  }
+
+  function selecionarIface(idx) {
+    const g = _listas.iface[idx];
+    if (!g) return;
+    ['in', 'out'].forEach(d => {
+      if (g[d]) _selecionarItemInterno(d, g[d]);
+      else {
+        // interface só com um sentido: limpa o outro para não misturar portas
+        const id = document.getElementById(`grph-m-item-${d}-id`);
+        const sr = document.getElementById(`grph-m-item-${d}-search`);
+        const bd = document.getElementById(`grph-m-item-${d}-badge`);
+        if (id) id.value = ''; if (sr) sr.value = ''; if (bd) bd.style.display = 'none';
+      }
+    });
+    const inp = document.getElementById('grph-m-iface-search');
+    if (inp) inp.value = g.iface;
+    const box = document.getElementById('grph-m-iface-list');
+    if (box) box.style.display = 'none';
+    _atualizarPreview();
   }
 
   function _autoDetectar(itens) {
     const inId  = document.getElementById('grph-m-item-in-id').value;
     const outId = document.getElementById('grph-m-item-out-id').value;
-    if (inId && outId) return;
-
-    if (!inId) {
-      const inItem = itens.find(i => {
-        const n = i.name.toLowerCase();
-        return n.includes('bits received') || n.includes('bit receiv') ||
-               n.includes('traffic in')   || n.includes('entrada');
-      });
-      if (inItem) _selecionarItemInterno('in', inItem);
+    if (inId || outId) return;
+    // Só escolhe sozinho quando não há dúvida: uma única interface no host.
+    // Antes pegava o primeiro "Bits received" da lista, que em switch/OLT
+    // era uma porta qualquer (e o Upload às vezes de outra porta).
+    const ifs = _interfaces(itens).filter(g => g.in && g.out);
+    if (ifs.length === 1) {
+      _listas.iface = ifs;
+      selecionarIface(0);
     }
-    if (!outId) {
-      const outItem = itens.find(i => {
-        const n = i.name.toLowerCase();
-        return n.includes('bits sent') || n.includes('bit sent') ||
-               n.includes('traffic out') || n.includes('saída');
-      });
-      if (outItem) _selecionarItemInterno('out', outItem);
-    }
-    _atualizarPreview();
   }
 
   function _renderItens(itens, filtro, direcao) {
     const dirs = direcao ? [direcao] : ['in', 'out'];
-    const f = (filtro || '').toLowerCase();
+    const termos = _termos(filtro);
     dirs.forEach(dir => {
       const list = document.getElementById(`grph-m-item-${dir}-list`);
       if (!list) return;
-      const filtered = f ? itens.filter(i => i.name.toLowerCase().includes(f) || i.key.toLowerCase().includes(f)) : itens;
+      const outro = dir === 'in' ? 'out' : 'in';
+      // Mesmo sentido primeiro, depois itens sem sentido, por último o oposto
+      const rank = i => i.sentido === dir ? 0 : (i.sentido === outro ? 2 : 1);
+      const filtered = itens
+        .filter(i => _casa(`${i.name} ${i.key} ${i.iface || ''}`, termos))
+        .map((i, n) => [i, n])
+        .sort((a, b) => (rank(a[0]) - rank(b[0])) || (a[1] - b[1]))
+        .map(x => x[0]);
+      _listas[dir] = filtered.slice(0, _MAX_LISTA);
+      _selIdx[dir] = filtered.length ? 0 : -1;
       if (!filtered.length) {
         list.innerHTML = '<div class="grph-ri"><span style="color:#475569">Nenhum item</span></div>';
         list.style.display = 'block';
         return;
       }
-      list.innerHTML = filtered.map(i => {
-        const lastVal = i.lastvalue ? ` <span style="color:#475569;font-size:.68rem">${i.lastvalue} ${i.units}</span>` : '';
-        const itemJson = JSON.stringify(i).replace(/"/g, '&quot;');
-        return `<div class="grph-ri" onclick="grphSelecionarItem('${dir}', '${itemJson}')">
-          <div class="grph-ri-main">${i.name}${lastVal}</div>
-          <small>${i.key}</small>
+      list.innerHTML = _listas[dir].map((i, idx) => {
+        const val = _valorItem(i);
+        const lastVal = val ? ` <span style="color:#475569;font-size:.68rem">${_escH(val)}</span>` : '';
+        return `<div class="grph-ri${idx === 0 ? ' grph-ri-sel' : ''}" data-idx="${idx}"
+                     onmousedown="event.preventDefault()" onclick="grphSelecionarItem('${dir}', ${idx})">
+          <div class="grph-ri-main"><span>${_realcar(i.name, termos)}</span>${lastVal}</div>
+          <small><span>${_realcar(i.key, termos)}</span></small>
         </div>`;
-      }).join('');
+      }).join('') + (filtered.length > _MAX_LISTA
+        ? `<div class="grph-ri-more">+${filtered.length - _MAX_LISTA} itens — refine a busca</div>` : '');
       list.style.display = 'block';
     });
   }
@@ -1738,12 +1971,50 @@ const GRAPH = (() => {
     _renderItens(itens, valor, direcao);
   }
 
-  function selecionarItem(direcao, itemJson) {
-    let item = itemJson;
-    if (typeof item === 'string') {
+  // Setas ↑/↓ andam na lista, Enter escolhe, Esc fecha
+  function teclaLista(ev, lista) {
+    const boxId = lista === 'iface' ? 'grph-m-iface-list' : `grph-m-item-${lista}-list`;
+    const box = document.getElementById(boxId);
+    if (!box || box.style.display === 'none') return;
+    const n = (_listas[lista] || []).length;
+    if (ev.key === 'Escape') { box.style.display = 'none'; ev.preventDefault(); ev.stopPropagation(); return; }
+    if (!n) return;
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+      ev.preventDefault();
+      _selIdx[lista] = (_selIdx[lista] + (ev.key === 'ArrowDown' ? 1 : -1) + n) % n;
+      box.querySelectorAll('.grph-ri[data-idx]').forEach(el => {
+        const on = Number(el.dataset.idx) === _selIdx[lista];
+        el.classList.toggle('grph-ri-sel', on);
+        if (on) el.scrollIntoView({ block: 'nearest' });
+      });
+    } else if (ev.key === 'Enter') {
+      ev.preventDefault();
+      const idx = _selIdx[lista] < 0 ? 0 : _selIdx[lista];
+      if (lista === 'iface') selecionarIface(idx);
+      else selecionarItem(lista, idx);
+    }
+  }
+
+  function selecionarItem(direcao, itemRef) {
+    let item = itemRef;
+    if (typeof item === 'number') {
+      item = _listas[direcao][item];
+    } else if (typeof item === 'string') {
       try { item = JSON.parse(item.replace(/&quot;/g, '"')); } catch { return; }
     }
+    if (!item) return;
     _selecionarItemInterno(direcao, item);
+
+    // Escolheu "Bits received" → preenche o "Bits sent" da mesma interface
+    // (e vice-versa). O servidor já manda o gêmeo em `par`.
+    const outro = direcao === 'in' ? 'out' : 'in';
+    const hostid = document.getElementById('grph-m-hostid').value;
+    const gemeo = item.par && (itensCache[hostid] || []).find(i => i.itemid === item.par);
+    if (gemeo) {
+      _selecionarItemInterno(outro, gemeo);
+      const ifs = document.getElementById('grph-m-iface-search');
+      if (ifs && item.iface) ifs.value = item.iface;
+    }
     _atualizarPreview();
   }
 
@@ -1864,7 +2135,7 @@ const GRAPH = (() => {
   return {
     init, abrirModalAdd, abrirModalEdit, clonarChart, fecharModal,
     hostSearchDebounce, selecionarHost,
-    filtrarItens, selecionarItem,
+    filtrarItens, selecionarItem, filtrarIfaces, selecionarIface, teclaLista,
     salvarChart, removerChart, atualizarTodos,
     toggleFullscreen, fecharFullscreen,
     setPeriod, setFsPeriod,

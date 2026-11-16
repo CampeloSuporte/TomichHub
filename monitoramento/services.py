@@ -7,6 +7,7 @@ Compatibilidade:
   - Zabbix 7.0+  : Bearer header (auth no payload foi removido)
 """
 import logging
+import re
 import time
 import requests
 from django.core.cache import cache
@@ -342,77 +343,134 @@ _MAX_BRUTO     = 20000
 
 def historico_item(config, item_id, hours=1, limit=300):
     """Histórico das últimas `hours` horas de um item, já reamostrado para no
-    máximo `limit` pontos.
+    máximo `limit` pontos. Atalho de historico_itens() para um item só."""
+    return historico_itens(config, [item_id], hours=hours, limit=limit).get(str(item_id), [])
 
-    O período inteiro é sempre coberto: antes essa função pedia ao Zabbix os
-    `limit` pontos mais recentes (sortorder DESC), então 12h e 24h devolviam a
-    mesma fatia curta do fim da janela. Agora busca a janela toda em ordem
-    cronológica e reduz aqui, com fallback para `trends` nas janelas longas.
-    """
-    auth      = _get_auth_token(config)
-    agora     = int(time.time())
-    time_from = agora - int(hours * 3600)
 
-    # Metadados do item (value_type/units) raramente mudam — cacheados
-    # separado do histórico em si, que precisa ser sempre fresco.
-    meta_key = f"zbx_item_meta:{getattr(config, 'id', config.url)}:{item_id}"
-    meta = cache.get(meta_key)
-    if meta is None:
-        item_info = _rpc(config.url, 'item.get', {
-            'itemids': [item_id],
-            'output': ['value_type', 'units', 'name', 'lastvalue', 'lastclock'],
-        }, auth, config=config)
-        meta = {'value_type': 3, 'units': ''}
-        if item_info:
-            meta = {
-                'value_type': int(item_info[0].get('value_type', 3)),
-                'units': item_info[0].get('units', ''),
-            }
-        cache.set(meta_key, meta, _ITEM_META_TTL)
+def _meta_itens(config, item_ids, auth) -> dict:
+    """{itemid: {'value_type', 'units'}} — cacheado por item (raramente muda);
+    os que faltam no cache saem numa única chamada item.get."""
+    base = getattr(config, 'id', config.url)
+    metas, faltam = {}, []
+    for iid in item_ids:
+        m = cache.get(f"zbx_item_meta:{base}:{iid}")
+        if m is None:
+            faltam.append(iid)
+        else:
+            metas[iid] = m
+    if faltam:
+        info = _rpc(config.url, 'item.get', {
+            'itemids': faltam,
+            'output': ['itemid', 'value_type', 'units'],
+        }, auth, config=config) or []
+        achados = {str(i['itemid']): i for i in info}
+        for iid in faltam:
+            i = achados.get(iid)
+            m = {'value_type': int(i.get('value_type', 3)), 'units': i.get('units', '')} if i \
+                else {'value_type': 3, 'units': ''}
+            cache.set(f"zbx_item_meta:{base}:{iid}", m, _ITEM_META_TTL)
+            metas[iid] = m
+    return metas
 
-    value_type = meta['value_type']
-    units = meta['units']
 
-    janela = agora - time_from
-    fontes = ['trends', 'history'] if janela > _JANELA_TRENDS else ['history', 'trends']
+def _buscar_bruto(config, auth, fonte, item_ids, value_type, time_from, agora) -> dict:
+    """{itemid: [{'t','v'}]} em ordem cronológica, numa chamada só para todos
+    os itens (history.get/trend.get aceitam vários itemids)."""
+    if fonte == 'history':
+        bruto = _rpc(config.url, 'history.get', {
+            'itemids':   item_ids,
+            'history':   value_type,
+            'time_from': time_from,
+            'time_till': agora,
+            'sortfield': 'clock',
+            'sortorder': 'ASC',
+            'limit':     _MAX_BRUTO * len(item_ids),
+        }, auth, config=config) or []
+        campo = 'value'
+    else:
+        bruto = _rpc(config.url, 'trend.get', {
+            'itemids':   item_ids,
+            'time_from': time_from,
+            'time_till': agora,
+            'limit':     _MAX_BRUTO * len(item_ids),
+        }, auth, config=config) or []
+        campo = 'value_avg'
+    por_item = {iid: [] for iid in item_ids}
+    for p in bruto:
+        lista = por_item.get(str(p.get('itemid')))
+        if lista is not None:
+            lista.append({'t': int(p['clock']), 'v': float(p[campo])})
+    for lista in por_item.values():
+        lista.sort(key=lambda p: p['t'])
+    return por_item
 
-    pontos = []
-    for fonte in fontes:
-        try:
-            if fonte == 'history':
-                bruto = _rpc(config.url, 'history.get', {
-                    'itemids':   [item_id],
-                    'history':   value_type,
-                    'time_from': time_from,
-                    'time_till': agora,
-                    'sortfield': 'clock',
-                    'sortorder': 'ASC',
-                    'limit':     _MAX_BRUTO,
-                }, auth, config=config)
-                pontos = [{'t': int(p['clock']), 'v': float(p['value'])} for p in bruto]
-            else:
-                bruto = _rpc(config.url, 'trend.get', {
-                    'itemids':   [item_id],
-                    'time_from': time_from,
-                    'time_till': agora,
-                    'limit':     _MAX_BRUTO,
-                }, auth, config=config)
-                pontos = [{'t': int(p['clock']), 'v': float(p['value_avg'])} for p in bruto]
-                pontos.sort(key=lambda p: p['t'])
-        except Exception as exc:
-            logger.warning('%s.get do item %s falhou: %s', fonte, item_id, exc)
-            pontos = []
-        if pontos:
-            break
 
+# Pontos brutos do `history` guardados por item: o poll seguinte pede ao
+# Zabbix só o trecho novo, não a janela inteira de novo. No Zabbix do cliente
+# 90 o history.get de 24h levava 2–12 s (e piorava a cada poll seguido);
+# o incremental custa o mesmo de uma janela de 1–2 min.
+_RAW_TTL      = 900      # sem poll por 15 min → próxima vez busca tudo
+_RAW_MARGEM   = 180      # re-pede os últimos 3 min (valor que chega atrasado)
+_RAW_MAX_PTS  = 60000    # item muito denso não vai pro cache
+
+
+def _chave_raw(config, iid, value_type):
+    return f"zbx_raw:{getattr(config, 'id', config.url)}:{iid}:{value_type}"
+
+
+def _history_incremental(config, auth, item_ids, value_type, time_from, agora) -> dict:
+    """Como _buscar_bruto('history'), mas reaproveita o que já foi baixado.
+    Um item cujo cache cobre o início da janela só busca de `fim - margem`
+    em diante; os demais buscam a janela toda (numa chamada só)."""
+    saida, completos, delta, desde = {}, [], [], agora
+    caches = {}
+    for iid in item_ids:
+        c = cache.get(_chave_raw(config, iid, value_type))
+        if c and c['ini'] <= time_from and c['fim'] > time_from:
+            caches[iid] = c
+            delta.append(iid)
+            desde = min(desde, c['fim'] - _RAW_MARGEM)
+        else:
+            completos.append(iid)
+
+    # Guardado: tudo desde o início coberto (até _JANELA_TRENDS atrás),
+    # mesmo que este pedido seja de uma janela menor — outro gráfico do
+    # mesmo item pode estar em 24h enquanto este está em 1h.
+    novos = {}
+    if completos:
+        novos.update(_buscar_bruto(config, auth, 'history', completos, value_type, time_from, agora))
+    if delta:
+        novos_delta = _buscar_bruto(config, auth, 'history', delta, value_type, max(desde, time_from), agora)
+        for iid in delta:
+            c = caches[iid]
+            corte = novos_delta[iid][0]['t'] if novos_delta[iid] else agora + 1
+            novos[iid] = [{'t': t, 'v': v} for t, v in c['p'] if t < corte] + novos_delta[iid]
+
+    limite_antigo = agora - _JANELA_TRENDS
+    for iid in item_ids:
+        pts = novos.get(iid) or []
+        if pts and len(pts) <= _RAW_MAX_PTS:
+            ini_cob = time_from if iid in completos else caches[iid]['ini']
+            if ini_cob < limite_antigo:
+                ini_cob = limite_antigo
+                pts = [p for p in pts if p['t'] >= limite_antigo]
+            cache.set(_chave_raw(config, iid, value_type),
+                      {'ini': ini_cob, 'fim': agora, 'p': [[p['t'], p['v']] for p in pts]},
+                      _RAW_TTL)
+        saida[iid] = [p for p in pts if p['t'] >= time_from]
+    return saida
+
+
+def _pos_processar(pontos, fonte, meta, limit):
+    """Contador de bytes → bps, correção do serrilhado e downsample."""
     if not pontos:
         return []
+    value_type  = meta['value_type']
+    units_lower = (meta['units'] or '').lower()
 
-    units_lower = units.lower()
-
-    # ✅ Já é taxa (bps, pps, etc.) — não calcula delta
+    # Já é taxa (bps, pps, etc.) — não calcula delta
     if not any(u in units_lower for u in ('bps', 'pps', 'b/s', 'bit')):
-        # ✅ Contador acumulativo de bytes — calcula delta e converte para bps
+        # Contador acumulativo de bytes — calcula delta e converte para bps
         if value_type == 3 and len(pontos) >= 2:
             taxa = []
             for i in range(1, len(pontos)):
@@ -423,9 +481,7 @@ def historico_item(config, item_id, hours=1, limit=300):
                 if delta < 0:
                     # Contador reiniciou (reboot do equipamento)
                     continue
-                # Bytes → bits
-                bps = (delta * 8) / dt
-                taxa.append({'t': pontos[i]['t'], 'v': bps})
+                taxa.append({'t': pontos[i]['t'], 'v': (delta * 8) / dt})
             pontos = taxa
             units_lower = 'bps'
 
@@ -433,6 +489,57 @@ def historico_item(config, item_id, hours=1, limit=300):
         pontos = _corrigir_serrilhado(pontos)
 
     return _downsample(pontos, limit)
+
+
+def historico_itens(config, item_ids, hours=1, limit=300) -> dict:
+    """{itemid: pontos} das últimas `hours` horas de vários itens de uma vez.
+
+    O gráfico da aba Monitoramento pede Download e Upload juntos: antes eram
+    duas requisições HTTP (cada uma com túnel, auth e item.get próprios) e duas
+    idas ao Zabbix; agora é uma requisição e um history.get por value_type.
+
+    O período inteiro é sempre coberto (busca a janela toda em ordem
+    cronológica e reduz aqui), com fallback para `trends` nas janelas longas
+    ou quando o `history` não tem o item.
+    """
+    item_ids = [str(i) for i in dict.fromkeys(item_ids) if i]
+    if not item_ids:
+        return {}
+    auth      = _get_auth_token(config)
+    agora     = int(time.time())
+    time_from = agora - int(hours * 3600)
+    metas     = _meta_itens(config, item_ids, auth)
+
+    janela = agora - time_from
+    fontes = ['trends', 'history'] if janela > _JANELA_TRENDS else ['history', 'trends']
+
+    grupos = {}
+    for iid in item_ids:
+        grupos.setdefault(metas[iid]['value_type'], []).append(iid)
+
+    saida = {}
+    for value_type, ids in grupos.items():
+        pendentes = list(ids)
+        for fonte in fontes:
+            if not pendentes:
+                break
+            try:
+                if fonte == 'history':
+                    bruto = _history_incremental(config, auth, list(pendentes), value_type, time_from, agora)
+                else:
+                    bruto = _buscar_bruto(config, auth, fonte, list(pendentes), value_type, time_from, agora)
+            except Exception as exc:
+                if isinstance(exc, ZabbixForaDoAr) or isinstance(exc, requests.ConnectionError):
+                    raise
+                logger.warning('%s.get dos itens %s falhou: %s', fonte, pendentes, exc)
+                continue
+            for iid in list(pendentes):
+                if bruto.get(iid):
+                    saida[iid] = _pos_processar(bruto[iid], fonte, metas[iid], limit)
+                    pendentes.remove(iid)
+        for iid in pendentes:
+            saida[iid] = []
+    return saida
 
 
 # ──────────────────────────────────────────────────────────────
@@ -563,7 +670,118 @@ def listar_itens(config, host_id: str, busca: str = '') -> list:
         return 2
 
     result.sort(key=_sort)
+    parear_trafego(result)
     return result
+
+
+# Sentido do tráfego pela chave (net.if.in[...] / ifHCInOctets) ou pelo nome
+# ("Bits received" / "Traffic in" / "Entrada"). Erros/descartes ficam de fora:
+# net.if.in.errors[ não casa com net.if.in[.
+_SENTIDO_KEY = re.compile(r'^net\.if\.(in|out)\[', re.I)
+_SENTIDO_OID = re.compile(r'if(?:hc)?(in|out)octets', re.I)
+_SENTIDO_NOME = [
+    ('in',  re.compile(r'bits? receiv|traffic in\b|\bentrada\b|\bdownload\b|\brx bits\b', re.I)),
+    ('out', re.compile(r'bits? sent|traffic out\b|\bsa[ií]da\b|\bupload\b|\btx bits\b', re.I)),
+]
+# Pares de troca in↔out para achar o item gêmeo pela chave/nome
+_TROCAS = [
+    (re.compile(r'(?<=net\.if\.)in(?=\[)', re.I), 'out'),
+    (re.compile(r'(?<=if)(hc)?in(?=octets)', re.I), r'\1out'),
+    (re.compile(r'received', re.I), 'sent'),
+    (re.compile(r'receive\b', re.I), 'sent'),
+    (re.compile(r'traffic in\b', re.I), 'traffic out'),
+    (re.compile(r'\bentrada\b', re.I), 'saída'),
+    (re.compile(r'\bdownload\b', re.I), 'upload'),
+    (re.compile(r'\brx\b', re.I), 'tx'),
+]
+
+
+def _sentido_trafego(it):
+    key = it.get('key') or ''
+    m = _SENTIDO_KEY.match(key)
+    if m:
+        return m.group(1).lower()
+    nome = it.get('name') or ''
+    for sentido, rx in _SENTIDO_NOME:
+        if rx.search(nome):
+            return sentido
+    m = _SENTIDO_OID.search(key)
+    if m and '.errors' not in key and '.discards' not in key:
+        return m.group(1).lower()
+    return None
+
+
+def _nome_iface(nome):
+    """'Interface ge-0/0/1(UPLINK): Bits received' → 'ge-0/0/1(UPLINK)'."""
+    n = (nome or '').split(':', 1)[0].strip() if ':' in (nome or '') else (nome or '')
+    n = re.sub(r'^interface\s+', '', n, flags=re.I)
+    for _s, rx in _SENTIDO_NOME:
+        n = rx.sub('', n)
+    return re.sub(r'\s{2,}', ' ', n).strip(' -–:') or (nome or '')
+
+
+def _trocar(texto, para_out):
+    """Versão do sentido oposto de uma chave/nome (in→out ou out→in)."""
+    if para_out:
+        out = texto
+        for rx, rep in _TROCAS:
+            out = rx.sub(rep, out)
+        return out
+    inv = [
+        (re.compile(r'(?<=net\.if\.)out(?=\[)', re.I), 'in'),
+        (re.compile(r'(?<=if)(hc)?out(?=octets)', re.I), r'\1in'),
+        (re.compile(r'\bsent\b', re.I), 'received'),
+        (re.compile(r'traffic out\b', re.I), 'traffic in'),
+        (re.compile(r'\bsa[ií]da\b', re.I), 'entrada'),
+        (re.compile(r'\bupload\b', re.I), 'download'),
+        (re.compile(r'\btx\b', re.I), 'rx'),
+    ]
+    out = texto
+    for rx, rep in inv:
+        out = rx.sub(rep, out)
+    return out
+
+
+def parear_trafego(itens: list) -> list:
+    """Marca em cada item de tráfego `sentido` ('in'/'out'), `iface` (nome da
+    interface) e `par` (itemid do gêmeo do outro sentido), para a aba
+    Monitoramento preencher o Upload sozinho ao escolher o Download (e
+    vice-versa). Casa primeiro pela chave trocada (net.if.in[X] ↔
+    net.if.out[X], ifHCInOctets.N ↔ ifHCOutOctets.N), depois pelo nome trocado
+    ("Bits received" ↔ "Bits sent") e por último pelo nome da interface.
+    Altera e devolve a própria lista."""
+    trafego = []
+    for it in itens:
+        sentido = _sentido_trafego(it)
+        it['sentido'] = sentido
+        it['iface'] = _nome_iface(it.get('name')) if sentido else ''
+        it.setdefault('key', it.get('key_', ''))
+        it['par'] = None
+        if sentido:
+            trafego.append(it)
+
+    por_key  = {(it['sentido'], it['key'].lower()): it for it in trafego}
+    por_nome = {(it['sentido'], it['name'].lower()): it for it in trafego}
+    por_if   = {}
+    for it in trafego:
+        por_if.setdefault((it['sentido'], it['iface'].lower()), []).append(it)
+
+    for it in trafego:
+        if it['par']:
+            continue
+        outro = 'out' if it['sentido'] == 'in' else 'in'
+        para_out = it['sentido'] == 'in'
+        gemeo = por_key.get((outro, _trocar(it['key'], para_out).lower()))
+        if gemeo is None:
+            gemeo = por_nome.get((outro, _trocar(it['name'], para_out).lower()))
+        if gemeo is None:
+            cands = por_if.get((outro, it['iface'].lower()), [])
+            if len(cands) == 1:
+                gemeo = cands[0]
+        if gemeo is not None and gemeo['itemid'] != it['itemid'] and not gemeo.get('par'):
+            it['par'] = gemeo['itemid']
+            gemeo['par'] = it['itemid']
+    return itens
 
 # ──────────────────────────────────────────────────────────────
 # BUSCA DE ITENS (usada pelo Agent NOC)
