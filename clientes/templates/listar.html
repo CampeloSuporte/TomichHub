@@ -2769,11 +2769,24 @@
         <div id="ipam-sub-prefixos" class="ipam-sub">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <select id="ipam-pfx-filtro" class="form-select form-select-sm" title="Mostrar só os prefixos e sub-redes dentro desta faixa"
-                            style="max-width:240px;background:var(--card-bg);color:var(--text-light);border-color:var(--border);font-family:'Courier New',monospace;"
-                            onchange="ipamFiltrarPorPrefixo(this.value)">
-                        <option value="">Todos os prefixos</option>
-                    </select>
+                    <div class="ipam-pf" id="ipam-pfx-filtro">
+                        <button type="button" class="ipam-pf-trigger" id="ipam-pf-trigger" onclick="ipamPfAlternar()"
+                                aria-haspopup="listbox" aria-expanded="false" title="Mostrar só o que está dentro de uma faixa">
+                            <i class="fas fa-filter ipam-pf-ico"></i>
+                            <span class="ipam-pf-label" id="ipam-pf-label">Todas as faixas</span>
+                            <i class="fas fa-chevron-down ipam-pf-caret"></i>
+                        </button>
+                        <button type="button" class="ipam-pf-limpar" id="ipam-pf-limpar" title="Mostrar todas as faixas"
+                                aria-label="Limpar filtro" onclick="ipamFiltrarPorPrefixo('')" hidden><i class="fas fa-xmark"></i></button>
+                        <div class="ipam-pf-pop" id="ipam-pf-pop" hidden>
+                            <div class="ipam-pf-busca">
+                                <i class="fas fa-magnifying-glass"></i>
+                                <input id="ipam-pf-busca" type="text" placeholder="Buscar CIDR ou descrição…" autocomplete="off" spellcheck="false"
+                                       oninput="ipamPfBuscar()" onkeydown="ipamPfTecla(event)">
+                            </div>
+                            <div class="ipam-pf-lista" id="ipam-pf-lista" role="listbox"></div>
+                        </div>
+                    </div>
                     <span style="color:var(--text-muted);font-size:.85rem;">Prefixos (pastas) — clique no <i class="fas fa-sitemap"></i> pra ver as sub-redes de cada um</span>
                 </div>
                 {% if not is_cliente %}
@@ -3097,6 +3110,61 @@ const VLANSW = { carregado: false, switches: [], aberto: null, cacheDetalhe: {},
 
     /* ── Hover nos prefixos — sem sombra branca do Bootstrap ── */
     .ipam-row-prefixo { transition: background .12s; }
+    /* ── Filtro por faixa (seletor com busca) ── */
+    .ipam-pf { position:relative; display:inline-flex; align-items:stretch;
+        background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:8px; }
+    .ipam-pf:focus-within, .ipam-pf.aberto { border-color:rgba(0,217,255,.45); }
+    .ipam-pf.ativo { background:rgba(0,217,255,.07); border-color:rgba(0,217,255,.35); }
+    .ipam-pf-trigger { display:inline-flex; align-items:center; gap:8px; min-width:190px; max-width:340px;
+        padding:5px 10px; background:none; border:0; color:var(--text-light); font-size:.8rem; text-align:left; cursor:pointer; }
+    .ipam-pf-trigger:focus-visible { outline:none; }
+    .ipam-pf-ico { color:var(--text-muted); font-size:.72rem; }
+    .ipam-pf.ativo .ipam-pf-ico { color:var(--accent-cyan); }
+    .ipam-pf-label { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-muted); }
+    .ipam-pf.ativo .ipam-pf-label { color:var(--text-light); }
+    .ipam-pf-label b { font-family:'JetBrains Mono','Courier New',monospace; font-weight:600; color:var(--accent-cyan); }
+    .ipam-pf-label small { color:var(--text-muted); margin-left:6px; }
+    .ipam-pf-caret { font-size:.62rem; color:var(--text-muted); transition:transform .18s cubic-bezier(.2,.8,.2,1); }
+    .ipam-pf.aberto .ipam-pf-caret { transform:rotate(180deg); }
+    .ipam-pf-limpar { display:inline-flex; align-items:center; padding:0 9px; background:none; border:0;
+        border-left:1px solid rgba(0,217,255,.2); color:var(--text-muted); font-size:.78rem; cursor:pointer; border-radius:0 8px 8px 0; }
+    .ipam-pf-limpar:hover { color:#ff8080; background:rgba(255,80,80,.08); }
+    .ipam-pf-limpar[hidden] { display:none; }
+    .ipam-pf-pop { position:fixed; top:0; left:0; z-index:1060; width:min(400px, calc(100vw - 32px));
+        background:#11161d; border:1px solid rgba(0,217,255,.22); border-radius:10px;
+        box-shadow:0 12px 32px rgba(0,0,0,.55); overflow:hidden; transform-origin:top left; display:flex; flex-direction:column;
+        animation:ipamPfIn .16s cubic-bezier(.2,.8,.2,1); }
+    .ipam-pf-pop[hidden] { display:none; }
+    @keyframes ipamPfIn { from { opacity:0; transform:translateY(-4px) scale(.98); } to { opacity:1; transform:none; } }
+    .ipam-pf-busca { display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid rgba(255,255,255,.06); }
+    .ipam-pf-busca i { color:var(--text-muted); font-size:.75rem; }
+    .ipam-pf-busca input { flex:1; min-width:0; background:none; border:0; outline:none; color:var(--text-light); font-size:.82rem; }
+    .ipam-pf-busca input::placeholder { color:var(--text-muted); opacity:.7; }
+    .ipam-pf-lista { max-height:340px; min-height:0; flex:1 1 auto; overflow-y:auto; padding:4px; overscroll-behavior:contain; }
+    .ipam-pf-lista { scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.14) transparent; }
+    .ipam-pf-lista::-webkit-scrollbar { width:8px; }
+    .ipam-pf-lista::-webkit-scrollbar-thumb { background:rgba(255,255,255,.14); border-radius:4px; border:2px solid #11161d; }
+    .ipam-pf-lista::-webkit-scrollbar-track { background:transparent; }
+    .ipam-pf-grupo { padding:8px 10px 4px; font-size:.64rem; letter-spacing:.09em; text-transform:uppercase; color:rgba(180,210,240,.5); }
+    .ipam-pf-item { position:relative; display:flex; align-items:center; gap:10px; padding:6px 10px; border-radius:6px;
+        cursor:pointer; font-size:.8rem; color:var(--text-light); }
+    .ipam-pf-item.foco { background:rgba(0,217,255,.09); }
+    .ipam-pf-item.sel  { background:rgba(0,217,255,.14); }
+    .ipam-pf-item .ipam-pf-cidr { font-family:'JetBrains Mono','Courier New',monospace; font-size:.79rem; white-space:nowrap; }
+    .ipam-pf-item.sel .ipam-pf-cidr { color:var(--accent-cyan); font-weight:600; }
+    .ipam-pf-item .ipam-pf-desc { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-muted); font-size:.74rem; }
+    .ipam-pf-item .ipam-pf-qtd { font-size:.68rem; color:var(--text-muted); background:rgba(255,255,255,.05);
+        border-radius:10px; padding:1px 7px; font-variant-numeric:tabular-nums; }
+    .ipam-pf-item .ipam-pf-check { width:12px; font-size:.7rem; color:var(--accent-cyan); visibility:hidden; }
+    .ipam-pf-item.sel .ipam-pf-check { visibility:visible; }
+    .ipam-pf-item .ipam-pf-guia { flex:none; align-self:stretch; border-left:1px solid rgba(255,255,255,.1); margin:-6px 0; }
+    .ipam-pf-item mark { background:rgba(255,170,0,.16); color:#ffd27a; padding:0 1px; border-radius:2px; }
+    .ipam-pf-vazio { padding:18px 12px; text-align:center; color:var(--text-muted); font-size:.78rem; }
+    .ipam-pf-rodape { display:flex; gap:12px; padding:6px 12px; border-top:1px solid rgba(255,255,255,.06);
+        font-size:.66rem; color:var(--text-muted); }
+    .ipam-pf-rodape kbd { background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.1); border-radius:3px;
+        padding:0 4px; font-size:.62rem; color:var(--text-light); box-shadow:none; }
+    @media (prefers-reduced-motion: reduce) { .ipam-pf-pop { animation:none; } .ipam-pf-caret { transition:none; } }
     /* item alterado por último na faixa filtrada (some sozinho em 6 s) */
     .ipam-sub tr.ipam-row-recente > td { background: rgba(0,217,255,.12) !important; }
     .ipam-sub tr.ipam-row-recente > td:first-child { box-shadow: inset 3px 0 0 var(--accent-cyan) !important; }
@@ -3565,18 +3633,169 @@ function _ipamFiltroPrefixoAtual(){
     if(!id) return null;
     return (IPAM.prefixos || []).find(p => String(p.id) === String(id)) || null;
 }
-function _ipamPreencherFiltroPrefixo(){
-    const sel = document.getElementById('ipam-pfx-filtro');
-    if(!sel) return;
-    const atual = _ipamFiltroPrefixoAtual();
-    const lista = [...(IPAM.prefixos || [])].sort((a,b) => _cmpCidrStr(a.prefixo, b.prefixo));
-    // Recuo pela profundidade de CIDR, pra árvore ficar legível no select
-    const nivel = p => lista.filter(o => o.id !== p.id && _srContains(o.prefixo, p.prefixo)).length;
-    sel.innerHTML = '<option value="">Todos os prefixos</option>' + lista.map(p =>
-        `<option value="${p.id}">${'\u00a0\u00a0'.repeat(nivel(p))}${p.prefixo}${p.descricao ? ' — ' + String(p.descricao).replace(/</g,'&lt;').slice(0,40) : ''}</option>`
-    ).join('');
-    sel.value = atual ? String(atual.id) : '';
+function _ipamPfEsc(t){
+    return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+function _ipamPfNorm(t){ return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+
+/* Botão do filtro: mostra a faixa escolhida (CIDR + descrição) ou "Todas". */
+function _ipamPreencherFiltroPrefixo(){
+    const caixa = document.getElementById('ipam-pfx-filtro');
+    if(!caixa) return;
+    const atual = _ipamFiltroPrefixoAtual();
+    caixa.classList.toggle('ativo', !!atual);
+    document.getElementById('ipam-pf-limpar').hidden = !atual;
+    document.getElementById('ipam-pf-label').innerHTML = atual
+        ? `<b>${_ipamPfEsc(atual.prefixo)}</b>${atual.descricao ? `<small>${_ipamPfEsc(atual.descricao)}</small>` : ''}`
+        : 'Todas as faixas';
+    if(!document.getElementById('ipam-pf-pop').hidden) _ipamPfRenderLista();
+}
+
+/* Itens do painel: árvore por CIDR (recuo + guia), IPv4 e IPv6 separados,
+   contagem de sub-redes que caem na faixa. */
+function _ipamPfItens(){
+    const lista = [...(IPAM.prefixos || [])].sort((a,b) => {
+        const va = a.prefixo.includes(':') ? 6 : 4, vb = b.prefixo.includes(':') ? 6 : 4;
+        return va - vb || _cmpCidrStr(a.prefixo, b.prefixo);
+    });
+    const subs = IPAM.subredes || [];
+    return lista.map(p => ({
+        p,
+        ver: p.prefixo.includes(':') ? 6 : 4,
+        nivel: lista.filter(o => o.id !== p.id && _srContains(o.prefixo, p.prefixo)).length,
+        qtd: subs.filter(s => s.rede !== p.prefixo && _srContains(p.prefixo, s.rede)).length,
+    }));
+}
+
+function _ipamPfMarcar(texto, termo){
+    const t = _ipamPfEsc(texto);
+    if(!termo) return t;
+    const i = _ipamPfNorm(texto).indexOf(termo);
+    if(i < 0) return t;
+    const bruto = String(texto);
+    return _ipamPfEsc(bruto.slice(0, i)) + '<mark>' + _ipamPfEsc(bruto.slice(i, i + termo.length)) + '</mark>'
+         + _ipamPfEsc(bruto.slice(i + termo.length));
+}
+
+function _ipamPfRenderLista(){
+    const caixa = document.getElementById('ipam-pf-lista');
+    const termo = _ipamPfNorm(document.getElementById('ipam-pf-busca').value.trim());
+    const atual = _ipamFiltroPrefixoAtual();
+    const itens = _ipamPfItens().filter(it => !termo
+        || _ipamPfNorm(it.p.prefixo).includes(termo) || _ipamPfNorm(it.p.descricao).includes(termo));
+    IPAM._pfOpcoes = (termo ? [] : ['']).concat(itens.map(it => String(it.p.id)));
+    if(IPAM._pfFoco == null || IPAM._pfFoco >= IPAM._pfOpcoes.length) IPAM._pfFoco = 0;
+
+    let html = '', idx = 0, verAnt = null;
+    const item = (id, conteudo, sel) => {
+        const i = idx++;
+        return `<div class="ipam-pf-item${sel ? ' sel' : ''}${i === IPAM._pfFoco ? ' foco' : ''}" role="option"
+                     aria-selected="${sel}" data-id="${id}" data-i="${i}"
+                     onmouseenter="ipamPfFocar(${i})" onmousedown="event.preventDefault()" onclick="ipamPfEscolher('${id}')">
+                    <i class="fas fa-check ipam-pf-check"></i>${conteudo}</div>`;
+    };
+    if(!termo){
+        html += item('', `<span class="ipam-pf-desc" style="color:var(--text-light)">Todas as faixas</span>
+                          <span class="ipam-pf-qtd">${(IPAM.prefixos || []).length}</span>`, !atual);
+    }
+    itens.forEach(it => {
+        if(it.ver !== verAnt){ html += `<div class="ipam-pf-grupo">IPv${it.ver}</div>`; verAnt = it.ver; }
+        const guias = termo ? '' : '<span class="ipam-pf-guia" style="margin-left:6px;"></span>'.repeat(it.nivel);
+        html += item(String(it.p.id),
+            `${guias}<span class="ipam-pf-cidr">${_ipamPfMarcar(it.p.prefixo, termo)}</span>
+             <span class="ipam-pf-desc">${_ipamPfMarcar(it.p.descricao || '', termo)}</span>
+             ${it.qtd ? `<span class="ipam-pf-qtd" title="sub-redes nesta faixa">${it.qtd}</span>` : ''}`,
+            !!atual && atual.id === it.p.id);
+    });
+    if(!itens.length && termo) html += `<div class="ipam-pf-vazio">Nenhuma faixa com “${_ipamPfEsc(termo)}”</div>`;
+    caixa.innerHTML = html;
+    if(!document.getElementById('ipam-pf-rodape')){
+        caixa.insertAdjacentHTML('afterend', `<div class="ipam-pf-rodape" id="ipam-pf-rodape">
+            <span><kbd>↑</kbd> <kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> filtrar</span><span><kbd>Esc</kbd> fechar</span></div>`);
+    }
+}
+
+/* Painel é position:fixed — um contêiner pai da aba tem overflow escondido e
+   cortava a lista. A posição sai do botão e acompanha rolagem/redimensionar. */
+function _ipamPfPosicionar(){
+    const pop = document.getElementById('ipam-pf-pop');
+    if(!pop || pop.hidden) return;
+    const r = document.getElementById('ipam-pfx-filtro').getBoundingClientRect();
+    const larg = Math.min(400, window.innerWidth - 32);
+    pop.style.left = Math.max(16, Math.min(r.left, window.innerWidth - larg - 16)) + 'px';
+    const abaixo = window.innerHeight - r.bottom - 16;
+    // pouco espaço embaixo: abre pra cima
+    if(abaixo < 260 && r.top > abaixo){
+        pop.style.top = ''; pop.style.bottom = (window.innerHeight - r.top + 6) + 'px';
+        pop.style.maxHeight = (r.top - 22) + 'px';
+    } else {
+        pop.style.bottom = ''; pop.style.top = (r.bottom + 6) + 'px';
+        pop.style.maxHeight = abaixo + 'px';
+    }
+}
+function _ipamPfFechar(){
+    const pop = document.getElementById('ipam-pf-pop');
+    if(!pop || pop.hidden) return;
+    pop.hidden = true;
+    window.removeEventListener('scroll', _ipamPfPosicionar, true);
+    window.removeEventListener('resize', _ipamPfPosicionar);
+    document.getElementById('ipam-pfx-filtro').classList.remove('aberto');
+    document.getElementById('ipam-pf-trigger').setAttribute('aria-expanded', 'false');
+    document.removeEventListener('mousedown', _ipamPfForaClique, true);
+}
+function _ipamPfForaClique(e){
+    if(!document.getElementById('ipam-pfx-filtro').contains(e.target)) _ipamPfFechar();
+}
+window.ipamPfAlternar = function(){
+    const pop = document.getElementById('ipam-pf-pop');
+    if(!pop.hidden){ _ipamPfFechar(); return; }
+    const busca = document.getElementById('ipam-pf-busca');
+    busca.value = '';
+    const atual = _ipamFiltroPrefixoAtual();
+    IPAM._pfFoco = null;
+    _ipamPfRenderLista();
+    // foco começa na faixa que já está escolhida
+    IPAM._pfFoco = Math.max(0, IPAM._pfOpcoes.indexOf(atual ? String(atual.id) : ''));
+    _ipamPfRenderLista();
+    pop.hidden = false;
+    _ipamPfPosicionar();
+    window.addEventListener('scroll', _ipamPfPosicionar, true);
+    window.addEventListener('resize', _ipamPfPosicionar);
+    document.getElementById('ipam-pfx-filtro').classList.add('aberto');
+    document.getElementById('ipam-pf-trigger').setAttribute('aria-expanded', 'true');
+    document.addEventListener('mousedown', _ipamPfForaClique, true);
+    busca.focus();
+    const f = pop.querySelector('.ipam-pf-item.foco');
+    if(f) f.scrollIntoView({block: 'nearest'});
+};
+window.ipamPfBuscar = function(){ IPAM._pfFoco = 0; _ipamPfRenderLista(); };
+window.ipamPfFocar = function(i){
+    if(IPAM._pfFoco === i) return;
+    IPAM._pfFoco = i;
+    document.querySelectorAll('#ipam-pf-lista .ipam-pf-item').forEach(el =>
+        el.classList.toggle('foco', parseInt(el.dataset.i, 10) === i));
+};
+window.ipamPfTecla = function(e){
+    const n = (IPAM._pfOpcoes || []).length;
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+        e.preventDefault();
+        if(!n) return;
+        ipamPfFocar(((IPAM._pfFoco || 0) + (e.key === 'ArrowDown' ? 1 : -1) + n) % n);
+        const f = document.querySelector('#ipam-pf-lista .ipam-pf-item.foco');
+        if(f) f.scrollIntoView({block: 'nearest'});
+    } else if(e.key === 'Enter'){
+        e.preventDefault();
+        if(n) ipamPfEscolher(IPAM._pfOpcoes[IPAM._pfFoco || 0]);
+    } else if(e.key === 'Escape'){
+        e.preventDefault();
+        _ipamPfFechar();
+        document.getElementById('ipam-pf-trigger').focus();
+    }
+};
+window.ipamPfEscolher = function(id){
+    _ipamPfFechar();
+    ipamFiltrarPorPrefixo(id);
+};
 window.ipamFiltrarPorPrefixo = function(id){
     IPAM._pfxFiltroId = id || '';
     try {

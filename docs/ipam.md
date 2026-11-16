@@ -573,9 +573,15 @@ cresce com o número de sub-redes).
 
 ## Filtro por faixa na aba Prefixos & Sub-redes (2026-11-16)
 
-Acima da árvore há um select (`#ipam-pfx-filtro`) com todos os prefixos do cliente, em ordem
-de CIDR e recuados pela profundidade. Escolher um (ex.: `10.0.0.0/8`) mostra só ele e o que
-mora dentro da faixa; "Todos os prefixos" volta à árvore inteira.
+Acima da árvore há um seletor próprio (`#ipam-pfx-filtro`, não é `<select>` nativo): o botão
+mostra a faixa escolhida (CIDR + descrição) e um × para limpar; o painel tem busca por CIDR ou
+descrição (sem acento/caixa, com realce), lista em árvore com guias de recuo, grupos IPv4/IPv6,
+contagem de sub-redes por faixa e teclado (↑ ↓ Enter Esc). Escolher um (ex.: `10.0.0.0/8`)
+mostra só ele e o que mora dentro da faixa; "Todas as faixas" volta à árvore inteira.
+
+- O painel é `position:fixed`, posicionado pelo botão (`_ipamPfPosicionar`, acompanha
+  rolagem e redimensionar e abre para cima quando falta espaço): um contêiner pai da aba tem
+  overflow escondido e cortava a lista quando ela era `absolute`.
 
 - **Quem entra:** o prefixo escolhido e todo prefixo contido nele **pelo CIDR**
   (`_srContains`), não só pelo `pai_id` — prefixo cadastrado sem pai mas dentro da faixa
