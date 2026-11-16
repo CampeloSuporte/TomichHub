@@ -17,6 +17,12 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   a árvore abre o caminho até o prefixo ou a sub-rede criado ou alterado mais recentemente
   dentro da faixa, rola a tela até ele e destaca a linha por alguns segundos.
 
+### Alterado
+
+- **Seletor de faixa redesenhado.** O `<select>` nativo virou um seletor no visual da tela: botão
+  com a faixa escolhida e × para limpar, painel com busca por CIDR ou descrição, árvore com
+  guias de recuo, grupos IPv4/IPv6, contagem de sub-redes e navegação por teclado.
+
 ---
 
 ## [Não publicado] — 2026-11-13 (proxy web: meta refresh)

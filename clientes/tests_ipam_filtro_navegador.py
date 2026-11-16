@@ -38,13 +38,22 @@ class FiltroPrefixoNavegadorTest(StaticLiveServerTestCase):
         IPAMPrefixo.objects.create(cliente=cl, prefixo='10.2.0.0/16')
         IPAMSubRede.objects.create(cliente=cl, prefixo=self.p10, rede='10.0.0.0/24')
         total = IPAMPrefixo.objects.filter(cliente=cl).count()
+        b.js("[...document.querySelectorAll('a.nav-link')].find(a => a.textContent.includes('Documentação de Rede')).click()")
         b.js("IPAM.subredes = []; ipamCarregarPrefixos()")
         b.esperar(f"document.querySelectorAll('#ipam-prefixos-tbody .ipam-row-prefixo').length === {total}")
-        self.assertEqual(b.js("document.getElementById('ipam-pfx-filtro').options.length"), total + 1)
-
-        b.js(f"(s => {{ s.value = '{self.p10.id}'; s.dispatchEvent(new Event('change')); }})(document.getElementById('ipam-pfx-filtro'))")
+        # painel: "Todas" + um item por prefixo; busca pelo teclado e Enter filtra
+        b.js("ipamPfAlternar()")
+        self.assertEqual(b.js("document.querySelectorAll('#ipam-pf-lista .ipam-pf-item').length"), total + 1)
+        self.assertEqual(b.js("document.activeElement.id"), 'ipam-pf-busca')
+        b.js("(i => { i.value = '10.0.0.0'; i.dispatchEvent(new Event('input')); })(document.getElementById('ipam-pf-busca'))")
+        self.assertEqual(b.js("[...document.querySelectorAll('#ipam-pf-lista .ipam-pf-item')].map(e => e.dataset.id)"),
+                         [str(self.p10.id)])
+        b.js("ipamPfTecla(new KeyboardEvent('keydown', {key: 'Enter'}))")
+        self.assertTrue(b.js("document.getElementById('ipam-pf-pop').hidden"))
         b.esperar("document.querySelectorAll('#ipam-prefixos-tbody .ipam-row-prefixo').length === 3")
         self.assertEqual(sorted(self.linhas()), ['10.0.0.0/8', '10.1.0.0/16', '10.2.0.0/16'])
+        self.assertIn('10.0.0.0/8', b.js("document.getElementById('ipam-pf-label').textContent"))
+        self.assertFalse(b.js("document.getElementById('ipam-pf-limpar').hidden"))
         # pasta da faixa escolhida já abre
         self.assertEqual(b.js("document.querySelector('.ipam-row-subrede').style.display"), '')
 
@@ -57,10 +66,12 @@ class FiltroPrefixoNavegadorTest(StaticLiveServerTestCase):
         b.ir(f'{self.live_server_url}/clientes/listar/?id={self.cliente.id}')
         b.js("ipamCarregarPrefixos()")
         b.esperar("document.querySelectorAll('#ipam-prefixos-tbody .ipam-row-prefixo').length === 1")
-        self.assertEqual(b.js("document.getElementById('ipam-pfx-filtro').value"), str(self.p10b.id))
+        self.assertIn('10.1.0.0/16', b.js("document.getElementById('ipam-pf-label').textContent"))
 
-        b.js("ipamFiltrarPorPrefixo('')")
+        # × limpa o filtro
+        b.js("document.getElementById('ipam-pf-limpar').click()")
         b.esperar(f"document.querySelectorAll('#ipam-prefixos-tbody .ipam-row-prefixo').length === {total}")
+        self.assertEqual(b.js("document.getElementById('ipam-pf-label').textContent"), 'Todas as faixas')
         self.assertEqual(b.erros, [])
 
     def visivel(self, row_id):
@@ -84,7 +95,7 @@ class FiltroPrefixoNavegadorTest(StaticLiveServerTestCase):
         IPAMSubRede.objects.filter(id=sr24.id).update(atualizado_em=agora - timedelta(days=1))
         IPAMSubRede.objects.filter(id=sr26.id).update(atualizado_em=agora)
         b.js("IPAM.subredes = []; IPAM._srOpen = {}; IPAM._bdOpen = {}; ipamCarregarPrefixos()")
-        b.esperar("document.getElementById('ipam-pfx-filtro').options.length > 1")
+        b.esperar("document.querySelectorAll('#ipam-prefixos-tbody .ipam-row-prefixo').length > 1")
 
         # 1) sub-rede /26 dentro da /24 fechada: o caminho abre e ela fica destacada
         b.js(f"ipamFiltrarPorPrefixo('{p10.id}')")
@@ -94,7 +105,7 @@ class FiltroPrefixoNavegadorTest(StaticLiveServerTestCase):
         # 2) agora o prefixo filho é o mais novo
         IPAMPrefixo.objects.filter(id=p10b.id).update(atualizado_em=agora + timedelta(minutes=5))
         b.js("IPAM._srOpen = {}; IPAM._bdOpen = {}; ipamFiltrarPorPrefixo('')")
-        b.esperar("document.getElementById('ipam-pfx-filtro').value === ''")
+        b.esperar("document.getElementById('ipam-pf-limpar').hidden")
         b.js(f"ipamFiltrarPorPrefixo('{p10.id}')")
         b.esperar(f"!!document.querySelector('#pfx-row-{p10b.id}.ipam-row-recente')")
         self.assertTrue(self.visivel(f'pfx-row-{p10b.id}'))
