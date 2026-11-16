@@ -62,3 +62,41 @@ class FiltroPrefixoNavegadorTest(StaticLiveServerTestCase):
         b.js("ipamFiltrarPorPrefixo('')")
         b.esperar(f"document.querySelectorAll('#ipam-prefixos-tbody .ipam-row-prefixo').length === {total}")
         self.assertEqual(b.erros, [])
+
+    def visivel(self, row_id):
+        return self.b.js(f"(r => !!r && r.style.display !== 'none' && r.classList.contains('ipam-row-recente'))"
+                         f"(document.getElementById('{row_id}'))")
+
+    def test_abre_o_mais_recente(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        b = self.b
+        b.ir(f'{self.live_server_url}/clientes/listar/?id={self.cliente.id}')
+        cl = self.cliente
+        p10 = IPAMPrefixo.objects.get(cliente=cl, prefixo='10.0.0.0/8')
+        p10b = IPAMPrefixo.objects.create(cliente=cl, prefixo='10.1.0.0/16', pai=p10)
+        sr24 = IPAMSubRede.objects.create(cliente=cl, prefixo=p10, rede='10.0.0.0/24')
+        sr26 = IPAMSubRede.objects.create(cliente=cl, prefixo=p10, rede='10.0.0.64/26')
+        agora = timezone.now()
+        # fora da faixa e mais novo que tudo: não pode ser o escolhido
+        IPAMPrefixo.objects.filter(cliente=cl, prefixo='172.16.0.0/12').update(atualizado_em=agora + timedelta(hours=1))
+        IPAMPrefixo.objects.filter(cliente=cl).exclude(prefixo='172.16.0.0/12').update(atualizado_em=agora - timedelta(days=2))
+        IPAMSubRede.objects.filter(id=sr24.id).update(atualizado_em=agora - timedelta(days=1))
+        IPAMSubRede.objects.filter(id=sr26.id).update(atualizado_em=agora)
+        b.js("IPAM.subredes = []; IPAM._srOpen = {}; IPAM._bdOpen = {}; ipamCarregarPrefixos()")
+        b.esperar("document.getElementById('ipam-pfx-filtro').options.length > 1")
+
+        # 1) sub-rede /26 dentro da /24 fechada: o caminho abre e ela fica destacada
+        b.js(f"ipamFiltrarPorPrefixo('{p10.id}')")
+        b.esperar(f"!!document.querySelector('#sr-row-{sr26.id}.ipam-row-recente')")
+        self.assertTrue(self.visivel(f'sr-row-{sr26.id}'))
+
+        # 2) agora o prefixo filho é o mais novo
+        IPAMPrefixo.objects.filter(id=p10b.id).update(atualizado_em=agora + timedelta(minutes=5))
+        b.js("IPAM._srOpen = {}; IPAM._bdOpen = {}; ipamFiltrarPorPrefixo('')")
+        b.esperar("document.getElementById('ipam-pfx-filtro').value === ''")
+        b.js(f"ipamFiltrarPorPrefixo('{p10.id}')")
+        b.esperar(f"!!document.querySelector('#pfx-row-{p10b.id}.ipam-row-recente')")
+        self.assertTrue(self.visivel(f'pfx-row-{p10b.id}'))
+        self.assertFalse(b.js(f"!!document.querySelector('#sr-row-{sr26.id}.ipam-row-recente')"))
+        self.assertEqual(b.erros, [])

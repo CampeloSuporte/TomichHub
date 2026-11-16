@@ -586,7 +586,14 @@ mora dentro da faixa; "Todos os prefixos" volta à árvore inteira.
 - **Pasta aberta:** ao escolher, a pasta do prefixo já abre (`_bdOpen`).
 - **Lembrado por cliente** no navegador (`localStorage` `ipam_pfx_filtro_<cliente>`); prefixo
   excluído depois cai em "todos".
-- Só front (`clientes/templates/listar.html`); o endpoint `ipam/prefixos/` não mudou. Teste no
+- **Abre o item mexido por último:** ao escolher a faixa, `_ipamRevelarMaisRecente` procura,
+  dentro dela, o prefixo filho ou a sub-rede com o `atualizado_em` mais novo (criar também
+  conta, já que `auto_now` grava na criação) e abre o caminho até ele: pastas (`_bdOpen`),
+  sub-redes ancestrais (`_srOpen`), prefixos pai e a sub-rede âncora de um prefixo filho
+  (`_pfxAncora`). A linha recebe `.ipam-row-recente` (fundo ciano), a tela rola até ela e o
+  destaque some em 6 s. A sub-rede espelho não tem linha, então quem aparece é o prefixo dono.
+  Só roda quando alguém escolhe no select, não a cada recarga da árvore.
+- `ipam/prefixos/` e `ipam/subredes/` passaram a devolver `atualizado_em` (ISO). Teste no
   Chrome headless: `clientes/tests_ipam_filtro_navegador.py`.
 
 ---
