@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-17 (ONU Datacom: lote em massa recusava IDs repetidos)
+
+### Corrigido
+
+- **Provisionamento em massa Datacom não trava mais em "ONU N de PON pedida duas vezes no
+  lote".** A busca de ONUs pendentes preenchia o "ID ONU" de cada cartão com o primeiro livre
+  da PON calculado isoladamente, então todas as ONUs da mesma PON vinham com o mesmo ID. Agora
+  a sugestão reserva o ID para a lista inteira (`olt_datacom.sugerir(..., reservados)`) e cada
+  cartão sai com um ID diferente.
+
+---
+
 ## [Não publicado] — 2026-11-16 (Monitoramento: gráfico rápido e busca de interface)
 
 ### Adicionado

@@ -135,11 +135,11 @@ def onu_dm_discovered(request, acesso_id):
         if shell:
             shell.fechar()
         desconectar(client, tunel)
-    onus = []
+    onus, reservados = [], {}
     for o in od.parse_discovered(saida):
         if o['pon'] not in backup['pons']:
             o['erro'] = f'a PON {o["pon"]} não aparece no backup'
-        o['sugestao'] = od.sugerir(backup, o['pon'], o['sn'])
+        o['sugestao'] = od.sugerir(backup, o['pon'], o['sn'], reservados)
         o['no_backup'] = backup['sns'].get(o['sn'], '')
         o['onus_na_pon'] = len(backup['pons'].get(o['pon'], {}).get('onus', {}))
         onus.append(o)
