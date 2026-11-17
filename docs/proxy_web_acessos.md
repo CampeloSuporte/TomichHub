@@ -538,6 +538,16 @@ só o corpo da resposta.
 reescreve. Um corpo que só começa com `{` mas não é JSON continua sendo tratado como HTML.
 Testes em `clientes/tests_proxy_web.py` (`ProxyWebJsonRotuladoHtmlTest`).
 
+**Segunda causa (mesmo dia):** depois do login a SPA manda o token num header `token` (sem
+`X-`), e o proxy só repassava `X-*`, `Authorization`, `Accept` e `CSRFPreventionToken`. A OLT
+respondia `{"code":2,"description":"Token is not valid"}` e a SPA voltava para `#/login`. Agora
+o header `token` também é repassado. Validado ao vivo: login com o cadastro → token →
+`sys_dev_info` devolveu o modelo FD1608S-B1-PSA0.
+
+**Atenção no deploy:** a rota `/clientes/acessos/<id>/web/` é atendida pelo **Daphne**, não
+pelo Gunicorn (nginx, `location ~ ^/clientes/acessos/[0-9]+/web`). Mudança no proxy web exige
+`systemctl restart daphne`. A primeira correção ficou fora do ar até esse restart.
+
 ---
 
 ### Senha digitada certa e não loga (MikroTik SwOS / HTTP Digest) — Corrigido em 30/09/2026

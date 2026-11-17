@@ -14,6 +14,8 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   dele antes do JSON. A SPA não conseguia ler a resposta e mostrava erro de login mesmo com a
   senha certa. Agora um corpo JSON válido rotulado como HTML passa sem reescrita
   (`_corpo_e_json` em `clientes/views.py`).
+- **O token da OLT C-DATA agora chega ao equipamento.** Depois do login a SPA manda o header
+  `token`, que o proxy não repassava. A OLT respondia "Token is not valid" e voltava para o login.
 
 ---
 
