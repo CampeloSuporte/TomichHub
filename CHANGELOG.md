@@ -5,6 +5,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-17 (Proxy web: login da OLT C-DATA)
+
+### Corrigido
+
+- **Login da OLT C-DATA pelo proxy web dos Acessos voltou a funcionar.** A API da OLT
+  (`cgi-bin/h.cgi`) responde JSON com `Content-Type: text/html`, e o proxy injetava o `<script>`
+  dele antes do JSON. A SPA não conseguia ler a resposta e mostrava erro de login mesmo com a
+  senha certa. Agora um corpo JSON válido rotulado como HTML passa sem reescrita
+  (`_corpo_e_json` em `clientes/views.py`).
+
+---
+
 ## [Não publicado] — 2026-11-17 (ONU Datacom: lote em massa recusava IDs repetidos)
 
 ### Corrigido

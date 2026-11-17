@@ -256,3 +256,29 @@ class ProxyWebCacheJsTest(TestCase):
         r = self.client.get(self.url + 'assets/outro.js')
         self.assertEqual(r['Cache-Control'], 'public, max-age=2592000')
         self.assertEqual(r['ETag'], '"abc"')
+
+
+class ProxyWebJsonRotuladoHtmlTest(ProxyWebCacheJsTest):
+    """OLT C-DATA (lighttpd, cgi-bin/h.cgi) responde JSON com
+    Content-Type text/html: o proxy injetava o <script> dele antes do JSON e
+    o login da SPA falhava sempre com erro genérico (acesso 9563)."""
+
+    @mock.patch('clientes.views.ProxyEngine.do_request')
+    def test_json_com_content_type_html_sai_intacto(self, do_request):
+        corpo = b'{"code":0,"description":"success.","data":{"token":"abc"}}\n'
+        do_request.return_value = self._resp('text/html;charset=UTF-8', corpo)
+        r = self.client.post(self.url + 'cgi-bin/h.cgi?module=sys_login',
+                             data=b'{"Usrname":"admin"}', content_type='application/json')
+        self.assertEqual(r.content, corpo)
+
+    @mock.patch('clientes.views.ProxyEngine.do_request')
+    def test_html_de_verdade_continua_recebendo_o_script(self, do_request):
+        do_request.return_value = self._resp('text/html', b'<html><head></head><body>{x}</body></html>')
+        r = self.client.get(self.url)
+        self.assertIn(b'__crmRouterBase', r.content)
+
+    @mock.patch('clientes.views.ProxyEngine.do_request')
+    def test_texto_que_comeca_com_chave_mas_nao_e_json_continua_html(self, do_request):
+        do_request.return_value = self._resp('text/html', b'{nao e json} <p>oi</p>')
+        r = self.client.get(self.url)
+        self.assertIn(b'__crmRouterBase', r.content)

@@ -521,6 +521,25 @@ for p in ['/', '/extjs/ext-all.js', '/js/proxmox-backup-gui.js']:
 
 ---
 
+### Login da OLT C-DATA falha sempre com senha certa (JSON rotulado como HTML) — Corrigido em 17/11/2026
+
+**Sintoma:** acesso 9563 (OLT C-DATA, `10.69.64.10:443`, túnel WTD): a tela `#/login` abre
+normalmente, mas qualquer usuário/senha (inclusive os certos) dá o erro genérico de login.
+
+**Causa:** a API da OLT (`lighttpd/1.4.31`, `cgi-bin/h.cgi?module=...`) responde **JSON com
+`Content-Type: text/html`**. O proxy tratava a resposta como página e injetava o `<script>` do
+CRM antes do JSON (`{"code":0,...}` de 59 bytes virava 13 KB). O axios da SPA não conseguia
+parsear, `e.data.code` ficava indefinido e o `.catch` caía no `Login12` (erro genérico), em vez
+de guardar o `token` que a OLT devolveu. O POST de login chegava e voltava 200; o problema era
+só o corpo da resposta.
+
+**Solução** (`clientes/views.py`): `_corpo_e_json()`. Quando o equipamento rotula como
+`text/html` um corpo que é objeto/array JSON válido, o proxy trata como `application/json` e não
+reescreve. Um corpo que só começa com `{` mas não é JSON continua sendo tratado como HTML.
+Testes em `clientes/tests_proxy_web.py` (`ProxyWebJsonRotuladoHtmlTest`).
+
+---
+
 ### Senha digitada certa e não loga (MikroTik SwOS / HTTP Digest) — Corrigido em 30/09/2026
 
 **Sintoma:** acesso 475 (switch SwOS): a janela de senha do navegador aparecia, a senha correta
