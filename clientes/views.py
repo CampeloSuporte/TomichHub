@@ -7719,6 +7719,10 @@ def _proxy_web_executar(request, *, proxy_srv, origem_vpn, target_host, porta_we
     # Esse header NÃO começa com X-, então não é capturado pelo loop acima
     if 'HTTP_CSRFPREVENTIONTOKEN' in request.META:
         req_headers['CSRFPreventionToken'] = request.META['HTTP_CSRFPREVENTIONTOKEN']
+    # OLT C-DATA: depois do login a SPA manda o token num header "token" (sem
+    # X-); sem ele a OLT responde code 2 "Token is not valid" e volta ao login.
+    if 'HTTP_TOKEN' in request.META:
+        req_headers['token'] = request.META['HTTP_TOKEN']
 
     body = request.body if request.method in ('POST', 'PUT', 'PATCH') else None
 

@@ -282,3 +282,11 @@ class ProxyWebJsonRotuladoHtmlTest(ProxyWebCacheJsTest):
         do_request.return_value = self._resp('text/html', b'{nao e json} <p>oi</p>')
         r = self.client.get(self.url)
         self.assertIn(b'__crmRouterBase', r.content)
+
+    @mock.patch('clientes.views.ProxyEngine.do_request')
+    def test_header_token_da_spa_chega_ao_equipamento(self, do_request):
+        do_request.return_value = self._resp('text/html', b'{"code":0}')
+        self.client.get(self.url + 'cgi-bin/h.cgi?module=public_info', HTTP_TOKEN='abc123')
+        enviados = [c for c in do_request.call_args.args + tuple(do_request.call_args.kwargs.values())
+                    if isinstance(c, dict) and 'token' in c]
+        self.assertTrue(enviados and enviados[0]['token'] == 'abc123', do_request.call_args)
