@@ -7648,6 +7648,18 @@ def proxy_web_acesso(request, acesso_id, porta=None, scheme=None, path=''):
     )
 
 
+def _corpo_e_json(content):
+    """True quando o corpo é um objeto/array JSON válido (e não HTML)."""
+    corpo = content.lstrip(b'\xef\xbb\xbf \t\r\n')
+    if not corpo[:1] in (b'{', b'['):
+        return False
+    try:
+        json.loads(corpo)
+        return True
+    except ValueError:
+        return False
+
+
 def _proxy_web_executar(request, *, proxy_srv, origem_vpn, target_host, porta_web,
                         scheme, path, url_base, cookie_prefix, dev_user, dev_senha,
                         ref, forcar_tunel=False):
@@ -7775,6 +7787,13 @@ def _proxy_web_executar(request, *, proxy_srv, origem_vpn, target_host, porta_we
         if not content_type:
             stripped = content.lstrip()
             content_type = 'text/html' if stripped.startswith(b'<') else 'application/octet-stream'
+
+        # API que responde JSON rotulado como text/html (ex: OLT C-DATA,
+        # lighttpd em cgi-bin/h.cgi): reescrever como HTML injetava o
+        # <script> do proxy antes do JSON, o axios não conseguia parsear e
+        # o login falhava sempre com erro genérico, mesmo com senha certa.
+        if 'text/html' in content_type and _corpo_e_json(content):
+            content_type = 'application/json'
 
         js_reescrito = False
         if ('text/html' in content_type or 'text/css' in content_type
