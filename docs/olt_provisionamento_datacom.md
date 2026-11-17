@@ -87,6 +87,12 @@ na ordem:
 3. a OLT toda, mesmo fabricante;
 4. a OLT toda.
 
+O ID da ONU sugerido é o primeiro livre na PON **reservado para a lista inteira**: com
+várias ONUs pendentes na mesma PON, cada cartão sai com um ID diferente (5, 6, 7...).
+Até 17/11/2026 todas vinham com o mesmo ID e o lote em massa recusava com "ONU N de PON
+pedida duas vezes no lote". Dois IDs iguais digitados à mão continuam recusados; apagar o
+campo ("auto") deixa o CRM escolher.
+
 Trocar o line-profile no cartão traz o GEM dele, o modo (bridge/router) e, se ele mapeia uma
 VLAN só, a VLAN.
 

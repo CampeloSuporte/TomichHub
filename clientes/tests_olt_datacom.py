@@ -195,6 +195,15 @@ class SugestaoTest(SimpleTestCase):
         self.assertEqual(s['line'], 'BRIDGE_G5')
         self.assertEqual(s['onu_id'], 0)
 
+    def test_lista_da_mesma_pon_nao_repete_id(self):
+        # discovered com 3 ONUs na 1/1/1 (ocupados 0–3): antes as três
+        # vinham com ID 4 e o lote recusava "pedida duas vezes".
+        res = {}
+        ids = [od.sugerir(self.b, '1/1/1', sn, res)['onu_id']
+               for sn in ('DACM91000001', 'DACM91000002', 'DACM91000003')]
+        self.assertEqual(ids, [4, 5, 6])
+        self.assertEqual(od.sugerir(self.b, '1/1/2', 'VSOL00000001', res)['onu_id'], 0)
+
 
 class ValidacaoTest(SimpleTestCase):
     def setUp(self):

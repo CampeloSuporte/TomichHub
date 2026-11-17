@@ -300,10 +300,14 @@ def proximo_livre(usados, inicio=0, fim=None):
     return None
 
 
-def sugerir(backup, pon, sn=''):
+def sugerir(backup, pon, sn='', reservados=None):
     """Modo, perfis, GEM e VLAN mais usados pelas ONUs que já estão na PON.
     Primeiro entre as do mesmo fabricante (4 letras do SN), depois a PON
-    toda e, numa PON vazia, a OLT toda."""
+    toda e, numa PON vazia, a OLT toda.
+
+    `reservados` ({pon: set}) é compartilhado entre as chamadas de uma
+    mesma lista: cada ONU sai com um ID diferente em vez de todas da PON
+    receberem o mesmo "primeiro livre" (o lote recusava como duplicado)."""
     onus_pon = list(backup['pons'].get(pon, {}).get('onus', {}).values())
     todas = [o for d in backup['pons'].values() for o in d['onus'].values()]
     vend = vendor_do_sn(sn)
@@ -324,7 +328,13 @@ def sugerir(backup, pon, sn=''):
     if sug['gem'] is None and sug['line'] in backup['lines']:
         gems = backup['lines'][sug['line']]['gems']
         sug['gem'] = gems[0]['gem'] if gems else None
-    sug['onu_id'] = proximo_livre(ids_onu_usados(backup, pon))
+    if reservados is None:
+        usados = ids_onu_usados(backup, pon)
+    else:
+        usados = reservados.setdefault(pon, ids_onu_usados(backup, pon))
+    sug['onu_id'] = proximo_livre(usados)
+    if sug['onu_id'] is not None:
+        usados.add(sug['onu_id'])
     return sug
 
 
