@@ -117,6 +117,14 @@ class RewriteReactRouterBasenameTest(SimpleTestCase):
         ).decode()
         self.assertIn('window.__crmRouterBase=function(l)', html)
 
+    def test_html_injetado_repoe_status_text_vazio_do_http2(self):
+        # HTTP/2 não tem reason phrase; o login do EVE-NG exige statusText == 'OK'.
+        html = ProxyEngine(None).rewrite_content(
+            b'<html><head></head><body></body></html>', 'text/html', BASE, '10.0.0.1'
+        ).decode()
+        self.assertIn("_st(XMLHttpRequest.prototype)", html)
+        self.assertIn("200:'OK'", html)
+
     def test_html_injetado_corrige_href_de_link_no_clique(self):
         # nav-inject.js do Observer cria o menu WhatsApp com setAttribute('href','/whatsapp/')
         html = ProxyEngine(None).rewrite_content(

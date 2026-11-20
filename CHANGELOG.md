@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-20 (Proxy web: login do EVE-NG)
+
+### Corrigido
+
+- **Login do EVE-NG pelo proxy web dos Acessos voltou a funcionar.** O EVE-NG só aceita o login
+  quando `statusText == 'OK'`, e no HTTP/2 (nginx do CRM desde 11/11) o navegador entrega o
+  `statusText` vazio: o login dava 200 e a tela ficava parada. O script injetado pelo proxy agora
+  repõe a frase padrão do status em `XMLHttpRequest` e `fetch` quando ela vem vazia.
+
+---
+
 ## [Não publicado] — 2026-11-17 (Proxy web: login da OLT C-DATA)
 
 ### Corrigido
