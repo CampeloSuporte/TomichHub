@@ -544,6 +544,11 @@ pega no Chrome (`href` é propriedade própria do `location`), então o navegado
 `window.__crmUrl('/x')`, que põe o prefixo do proxy. Comparações (`==`), `//host`, URLs com host
 e variáveis não são tocados.
 
+A primeira versão desse fix não chegou ao navegador: o `app.js` já estava em cache com
+`?crmv=1` e nem foi pedido de novo (o log mostra só `/` e `/api/auth`). `VERSAO_ASSETS` subiu
+para `2`, e o teste `VersaoAssetsAcompanhaRewriteJsTest` agora falha se `_rewrite_js` ou os
+regex dele mudarem sem subir a versão.
+
 ### Login da OLT C-DATA falha sempre com senha certa (JSON rotulado como HTML) — Corrigido em 17/11/2026
 
 **Sintoma:** acesso 9563 (OLT C-DATA, `10.69.64.10:443`, túnel WTD): a tela `#/login` abre
