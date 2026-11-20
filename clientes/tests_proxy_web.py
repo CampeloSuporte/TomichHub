@@ -315,3 +315,21 @@ class ProxyWebJsonRotuladoHtmlTest(ProxyWebCacheJsTest):
         enviados = [c for c in do_request.call_args.args + tuple(do_request.call_args.kwargs.values())
                     if isinstance(c, dict) and 'token' in c]
         self.assertTrue(enviados and enviados[0]['token'] == 'abc123', do_request.call_args)
+
+
+class VersaoAssetsAcompanhaRewriteJsTest(SimpleTestCase):
+    """Mudou _rewrite_js? Suba ProxyEngine.VERSAO_ASSETS e atualize o par
+    abaixo. Sem a versão nova, o navegador segue com o JS antigo em cache
+    (`?crmv=` igual) e a correção não chega — EVE-NG /legacy/, 20/11/2026."""
+    VERSAO, HASH = '2', 'efb307b7f37b'
+
+    def test_versao_sobe_junto_com_a_reescrita_de_js(self):
+        import hashlib
+        import inspect
+        src = (inspect.getsource(ProxyEngine._rewrite_js)
+               + ProxyEngine._RX_ROUTER_BASENAME.pattern.decode()
+               + ProxyEngine._RX_LOCATION_HREF.pattern.decode())
+        atual = hashlib.sha256(src.encode()).hexdigest()[:12]
+        self.assertEqual(
+            (ProxyEngine.VERSAO_ASSETS, atual), (self.VERSAO, self.HASH),
+            'A reescrita de JS mudou: suba VERSAO_ASSETS e atualize VERSAO/HASH deste teste.')

@@ -1328,7 +1328,11 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
     # dois Reacts). O import map resolve: toda importação que cair na URL
     # original é mapeada para a versionada — uma instância só. Página que já
     # tem import map próprio não é tocada.
-    VERSAO_ASSETS = '1'
+    # Subir a cada mudança em _rewrite_js (ou nos regex dele): sem isso o JS
+    # reescrito novo não chega a quem já abriu o acesso — foi o que aconteceu
+    # com o location.href do EVE-NG em 20/11/2026. O teste
+    # VersaoAssetsAcompanhaRewriteJsTest trava a versão junto do código.
+    VERSAO_ASSETS = '2'
 
     _RX_TAG_SCRIPT_OU_LINK = re.compile(r'<script\b[^>]*>|<link\b[^>]*>', re.IGNORECASE)
     _RX_TEM_IMPORTMAP = re.compile(r'<script\b[^>]*\btype\s*=\s*["\']importmap["\']', re.IGNORECASE)

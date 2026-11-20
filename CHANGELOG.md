@@ -16,6 +16,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 - **Depois do login, o EVE-NG não cai mais no 404 "/legacy/ não existe no CRM".** O JS faz
   `location.href ='/legacy/'`, o que tirava o navegador do proxy. A reescrita de JS do proxy agora
   põe o prefixo do proxy nesse tipo de atribuição (`location.href = '/caminho'`).
+- **JS reescrito pelo proxy não fica mais preso no cache do navegador.** O `app.js` antigo do
+  EVE-NG seguia em cache e a correção acima não chegava. A versão dos assets (`?crmv=`) subiu, e
+  um teste agora obriga a subir essa versão sempre que a reescrita de JS mudar.
 
 ---
 
