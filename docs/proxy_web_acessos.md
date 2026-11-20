@@ -521,6 +521,22 @@ for p in ['/', '/extjs/ext-all.js', '/js/proxmox-backup-gui.js']:
 
 ---
 
+### Login do EVE-NG não sai da tela de login (statusText vazio no HTTP/2) — Corrigido em 20/11/2026
+
+**Sintoma:** EVE-NG (acesso 9608) abria a tela de login pelo proxy, o `POST /api/auth/login`
+respondia 200, mas a página continuava no login. Recarregando, `/api/auth` já vinha 200 (a sessão
+existia).
+
+**Causa:** o `loginCtrl.js` do EVE-NG só segue quando `response.status == '200' &&
+response.statusText == 'OK'`. Desde 11/11/2026 o nginx do CRM fala HTTP/2 com o navegador, e o
+HTTP/2 não tem reason phrase — o navegador entrega `statusText` vazio. O login dava certo, mas o
+JS ignorava a resposta.
+
+**Correção:** o script injetado em toda página HTML do proxy (`_rewrite_html`) redefine o getter
+`statusText` de `XMLHttpRequest` e `Response`: quando vem vazio, devolve a frase padrão do
+HTTP/1.1 para o status (`OK`, `Bad Request`…). Texto não vazio passa intacto. Vale para qualquer
+SPA antiga que compare o texto do status.
+
 ### Login da OLT C-DATA falha sempre com senha certa (JSON rotulado como HTML) — Corrigido em 17/11/2026
 
 **Sintoma:** acesso 9563 (OLT C-DATA, `10.69.64.10:443`, túnel WTD): a tela `#/login` abre

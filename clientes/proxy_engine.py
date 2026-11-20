@@ -1524,6 +1524,26 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
     args[1]=_rw(u);
     return _x.apply(this,args);
   }};
+  // O CRM fala HTTP/2 com o navegador, e HTTP/2 não tem reason phrase: o
+  // statusText chega vazio. SPAs antigas comparam com o texto (EVE-NG:
+  // `statusText == 'OK'` no login) e ignoravam o 200 — repor a frase padrão.
+  (function(){{
+    var R={{200:'OK',201:'Created',202:'Accepted',204:'No Content',
+      301:'Moved Permanently',302:'Found',304:'Not Modified',400:'Bad Request',
+      401:'Unauthorized',403:'Forbidden',404:'Not Found',405:'Method Not Allowed',
+      409:'Conflict',412:'Precondition Failed',500:'Internal Server Error',
+      502:'Bad Gateway',503:'Service Unavailable',504:'Gateway Timeout'}};
+    function _st(proto){{
+      try{{
+        var d=Object.getOwnPropertyDescriptor(proto,'statusText');
+        if(!d||!d.get)return;
+        Object.defineProperty(proto,'statusText',{{configurable:true,enumerable:d.enumerable,
+          get:function(){{var t=d.get.call(this);return t||R[this.status]||t;}}}});
+      }}catch(e){{}}
+    }}
+    _st(XMLHttpRequest.prototype);
+    if(window.Response)_st(Response.prototype);
+  }})();
   // Utilitário: despachar popstate+hashchange para acionar o router da SPA
   // sem recarregar a página (preservando o estado JS com role=2 pós-login).
   function _triggerRouter(){{
