@@ -537,6 +537,13 @@ JS ignorava a resposta.
 HTTP/1.1 para o status (`OK`, `Bad Request`…). Texto não vazio passa intacto. Vale para qualquer
 SPA antiga que compare o texto do status.
 
+**Depois do login: 404 "/legacy/ não existe no CRM".** Com lab aberto, o `testAUTH` do `app.js`
+faz `location.href ='/legacy/'`. O setter de `Location.prototype.href` do script injetado não
+pega no Chrome (`href` é propriedade própria do `location`), então o navegador saía do proxy. O
+`_rewrite_js` agora troca atribuição de literal com caminho absoluto (`location.href = '/x'`) por
+`window.__crmUrl('/x')`, que põe o prefixo do proxy. Comparações (`==`), `//host`, URLs com host
+e variáveis não são tocados.
+
 ### Login da OLT C-DATA falha sempre com senha certa (JSON rotulado como HTML) — Corrigido em 17/11/2026
 
 **Sintoma:** acesso 9563 (OLT C-DATA, `10.69.64.10:443`, túnel WTD): a tela `#/login` abre

@@ -117,6 +117,23 @@ class RewriteReactRouterBasenameTest(SimpleTestCase):
         ).decode()
         self.assertIn('window.__crmRouterBase=function(l)', html)
 
+    def test_location_href_com_caminho_absoluto_passa_pelo_helper(self):
+        # EVE-NG: `location.href ='/legacy/'` depois do login saía do proxy (404).
+        out = self._js(b"{location.href ='/legacy/'};")
+        self.assertEqual(
+            out, b"{location.href =(window.__crmUrl?window.__crmUrl('/legacy/'):'/legacy/')};")
+
+    def test_location_href_comparacao_url_externa_e_variavel_nao_mudam(self):
+        for js in (b"if(location.href=='/a')x()", b"location.href='//cdn/x'",
+                   b"location.href='http://h/x'", b"location.href=u"):
+            self.assertEqual(self._js(js), js)
+
+    def test_html_injetado_define_o_helper_de_url(self):
+        html = ProxyEngine(None).rewrite_content(
+            b'<html><head></head><body></body></html>', 'text/html', BASE, '10.0.0.1'
+        ).decode()
+        self.assertIn('window.__crmUrl=function(u)', html)
+
     def test_html_injetado_repoe_status_text_vazio_do_http2(self):
         # HTTP/2 não tem reason phrase; o login do EVE-NG exige statusText == 'OK'.
         html = ProxyEngine(None).rewrite_content(

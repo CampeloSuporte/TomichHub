@@ -1214,18 +1214,39 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
         rb'(function\s*[\w$]+\(([\w$]+)\)\s*\{\s*let\s*\{\s*basename:\s*[\w$]+\s*=\s*)"/"(\s*,\s*children:)'
     )
 
+    # ── location.href = '/caminho' ─────────────────────────────────────────────
+    #
+    # No Chrome `href` é propriedade própria (unforgeable) do objeto location,
+    # então o setter de Location.prototype.href do script injetado nunca roda:
+    # `location.href ='/legacy/'` (EVE-NG, logo depois do login quando há lab
+    # aberto) levava o navegador para a raiz do CRM, 404 "/legacy/ não existe".
+    # Atribuição de string literal com caminho absoluto passa pelo helper
+    # window.__crmUrl (definido no script injetado), que põe o prefixo do proxy;
+    # fora do proxy (helper ausente) o literal segue como estava. Comparação
+    # (`==`) e URL com host não casam.
+    _RX_LOCATION_HREF = re.compile(
+        rb'''(\blocation\.href\s*=)(?!=)(\s*)((['"])/(?!/)[^'"\\\r\n]*\4)'''
+    )
+
     @classmethod
     def _rewrite_js(cls, content: bytes) -> bytes:
         # Bundle de SPA tem MB; só entra no regex quem tem o marcador.
-        if b'basename:' not in content:
-            return content
-        return cls._RX_ROUTER_BASENAME.sub(
-            lambda m: (m.group(1)
-                       + b'(window.__crmRouterBase?window.__crmRouterBase('
-                       + m.group(2) + b'.location):"/")'
-                       + m.group(3)),
-            content,
-        )
+        if b'basename:' in content:
+            content = cls._RX_ROUTER_BASENAME.sub(
+                lambda m: (m.group(1)
+                           + b'(window.__crmRouterBase?window.__crmRouterBase('
+                           + m.group(2) + b'.location):"/")'
+                           + m.group(3)),
+                content,
+            )
+        if b'location.href' in content:
+            content = cls._RX_LOCATION_HREF.sub(
+                lambda m: (m.group(1) + m.group(2)
+                           + b'(window.__crmUrl?window.__crmUrl(' + m.group(3) + b'):'
+                           + m.group(3) + b')'),
+                content,
+            )
+        return content
 
     # ── URLs absolutas que apontam para o próprio device ──────────────────────
     #
@@ -1443,6 +1464,10 @@ code{{background:#21262d;padding:2px 6px;border-radius:4px;font-size:.85rem;colo
   // basename do React Router: o JS proxyado chama isto no lugar do default
   // "/" (ver ProxyEngine._rewrite_js). Só devolve o prefixo do proxy quando a
   // localização do router está dentro dele — a do HashRouter vem do hash.
+  // location.href = '/caminho' no JS proxyado (ver ProxyEngine._RX_LOCATION_HREF).
+  window.__crmUrl=function(u){{
+    return (typeof u==='string'&&u.charAt(0)==='/'&&u.charAt(1)!=='/'&&u!==B&&u.indexOf(B+'/')!==0)?B+u:u;
+  }};
   window.__crmRouterBase=function(l){{
     try{{
       var p=typeof l==='string'?l:(l&&l.pathname)||'';
