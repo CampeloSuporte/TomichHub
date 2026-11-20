@@ -13,6 +13,9 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   quando `statusText == 'OK'`, e no HTTP/2 (nginx do CRM desde 11/11) o navegador entrega o
   `statusText` vazio: o login dava 200 e a tela ficava parada. O script injetado pelo proxy agora
   repõe a frase padrão do status em `XMLHttpRequest` e `fetch` quando ela vem vazia.
+- **Depois do login, o EVE-NG não cai mais no 404 "/legacy/ não existe no CRM".** O JS faz
+  `location.href ='/legacy/'`, o que tirava o navegador do proxy. A reescrita de JS do proxy agora
+  põe o prefixo do proxy nesse tipo de atribuição (`location.href = '/caminho'`).
 
 ---
 
