@@ -2585,3 +2585,26 @@ o link do atendente tinha perda na subida (`ss -ti` na conexão: `rcv_rtt` ≈ 2
 `/etc/nginx/conf.d/crm_timing.conf`) registra toda `/atendimento/api/` com `req_len`, `rt`
 (tempo total no nginx) e `urt` (tempo no gunicorn). `rt` alto com `urt` baixo = upload lento
 do lado do atendente; os dois altos = servidor.
+
+## Correção — "Erro de conexão" ao iniciar conversa com grupo (2026-11-23)
+
+**Sintoma:** no modal *Iniciar Conversa*, escolher o grupo dava só "Erro de conexão"
+(usuário danilotomich, grupo ALTA TELECOM).
+
+**Causa:** o POST `/atendimento/api/conversation/start/` voltava **403 do CSRF**
+(`django.security.csrf — CSRF token from the 'X-Csrftoken' HTTP header incorrect`). O shell do
+atendimento (`atendimento/base.html`) não recarrega — a navegação é por `loadPage` — e todo
+token dele é fixado no HTML na hora do carregamento (`{{ csrf_token }}` nos scripts e o
+`csrfmiddlewaretoken` do DOM). Quando a pessoa loga de novo (em outra aba, ou depois da sessão
+expirar), o login gira o segredo CSRF, o cookie `csrftoken` muda e a aba antiga segue mandando o
+token velho. O 403 vem em HTML, o `r.json()` estourava e o `.catch` mostrava "Erro de conexão".
+
+**Correção:**
+- `<head>` do `atendimento/base.html` embrulha `window.fetch`: em requisição para a própria
+  origem que já leva `X-CSRFToken` (objeto ou `Headers`), o valor é trocado pelo cookie
+  `csrftoken` atual. Vale para todos os `fetch` do shell e das telas carregadas nele. Também
+  expõe `window.crmCsrfToken()`.
+- O iniciar conversa checa o `Content-Type`: resposta que não é JSON (403/redirect) vira
+  "Sua sessão nesta aba está desatualizada. Recarregue a página (F5)…", não "Erro de conexão".
+
+**Diagnóstico:** `journalctl -u gunicorn | grep django.security.csrf`.

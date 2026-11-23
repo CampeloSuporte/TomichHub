@@ -1407,6 +1407,44 @@ body {
 </style>
     <!-- Diálogos padrão da plataforma (uiConfirm / uiAlert / uiToast) -->
     <script src="/static/js/ui_dialogs.js?v=20261009"></script>
+    <script>
+    /* CSRF sempre do cookie atual. O shell do atendimento não recarrega (a
+       navegação é por loadPage), então todo token "assado" no HTML — o
+       csrf_token dos scripts e o csrfmiddlewaretoken do DOM — fica
+       velho quando a pessoa loga de novo em outra aba: o login gira o segredo
+       CSRF e o Django passa a recusar o POST com 403 em HTML ("Erro de
+       conexão" ao iniciar conversa com grupo, 23/11/2026). Aqui o header
+       X-CSRFToken de todo fetch para o próprio CRM é trocado pelo cookie
+       csrftoken, que o navegador mantém sempre em dia. */
+    (function () {
+        if (window.__crmCsrfFetch || !window.fetch) return;
+        window.__crmCsrfFetch = true;
+        function cookieCsrf() {
+            var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+            return m ? decodeURIComponent(m[1]) : '';
+        }
+        window.crmCsrfToken = cookieCsrf;
+        var orig = window.fetch;
+        window.fetch = function (input, init) {
+            try {
+                var url = (typeof input === 'string') ? input : (input && input.url) || '';
+                var mesmaOrigem = new URL(url, location.href).origin === location.origin;
+                var tok = cookieCsrf();
+                if (mesmaOrigem && tok && init && init.headers) {
+                    var h = init.headers;
+                    if (h instanceof Headers) {
+                        if (h.has('X-CSRFToken')) h.set('X-CSRFToken', tok);
+                    } else if (typeof h === 'object') {
+                        for (var k in h) {
+                            if (k.toLowerCase() === 'x-csrftoken') h[k] = tok;
+                        }
+                    }
+                }
+            } catch (e) { /* nunca bloqueia a requisição */ }
+            return orig.apply(this, arguments);
+        };
+    })();
+    </script>
 </head>
 <body>
 <div class="app-layout">
@@ -2656,7 +2694,17 @@ function doStartConv(groupId, el) {
         credentials: 'same-origin',
         body: JSON.stringify({ group_id: groupId })
     })
-    .then(function(r){ return r.json(); })
+    .then(function(r){
+        /* 403 do CSRF e redirect de sessão expirada voltam em HTML: sem isso
+           o r.json() estourava e tudo virava um "Erro de conexão" genérico. */
+        var ct = r.headers.get('Content-Type') || '';
+        if (ct.indexOf('application/json') === -1) {
+            return { success: false, error: (r.status === 403 || r.redirected)
+                ? 'Sua sessão nesta aba está desatualizada. Recarregue a página (F5) e tente de novo.'
+                : 'Resposta inesperada do servidor (HTTP ' + r.status + ').' };
+        }
+        return r.json();
+    })
     .then(function(d){
         if (d.success) {
             closeStartConvModal();
