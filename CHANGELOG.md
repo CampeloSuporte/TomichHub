@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-23 (Atendimento: iniciar conversa com grupo)
+
+### Corrigido
+
+- **Iniciar conversa com grupo não dá mais "Erro de conexão" depois de um novo login.** O shell do
+  atendimento guardava o token CSRF do carregamento da página; após logar de novo (outra aba ou
+  sessão expirada) o Django recusava o POST com 403. Todo `fetch` do atendimento agora usa o cookie
+  `csrftoken` atual, e resposta não-JSON mostra "recarregue a página" em vez do erro genérico.
+
+---
+
 ## [Não publicado] — 2026-11-20 (Proxy web: login do EVE-NG)
 
 ### Corrigido
