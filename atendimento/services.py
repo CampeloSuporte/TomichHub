@@ -431,6 +431,8 @@ def _alertar_atendente_offline(conversation, group) -> None:
 
 
 _TAREFA_VERBOS = ('abrir', 'abre', 'abra', 'criar', 'crie', 'cria', 'gerar', 'gere', 'gera', 'nova', 'novo')
+# "tafera" (letras trocadas) era digitado de verdade e não abria nada.
+_TAREFA_PALAVRAS = ('tarefa', 'tafera', 'terefa', 'trefa')
 
 
 def _normalizar_texto(texto: str) -> str:
@@ -452,11 +454,12 @@ def _pede_abertura_de_tarefa(texto: str) -> bool:
     if not texto:
         return False
     t = _normalizar_texto(texto.lower())
-    return 'tarefa' in t and any(v in t for v in _TAREFA_VERBOS)
+    return any(p in t for p in _TAREFA_PALAVRAS) and any(v in t for v in _TAREFA_VERBOS)
 
 
 _TITULO_EXPLICITO = _re.compile(
-    r'\b(?:%s)\s+(?:uma\s+|a\s+)?tarefa\b[\s:,\-–—]*(?:(?:para|pra|de|sobre)\s+)?(.*)' % '|'.join(_TAREFA_VERBOS),
+    r'\b(?:%s)\s+(?:uma\s+|a\s+)?(?:%s)\b[\s:,\-–—]*(?:(?:para|pra|de|sobre)\s+)?(.*)' % (
+        '|'.join(_TAREFA_VERBOS), '|'.join(_TAREFA_PALAVRAS)),
     _re.I,
 )
 

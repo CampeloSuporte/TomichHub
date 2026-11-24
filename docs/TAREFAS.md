@@ -355,7 +355,12 @@ Faltavam duas coisas, vistas nos dados reais (agosto a outubro/2026):
   12" (só a 1ª linha; tira "para/pra/de/sobre" do começo). A descrição guarda a nota inteira e
   "(Aberta pelo chamado #N)". Sem texto depois do gatilho ("Tomichinho, criar tarefa") segue o
   caminho antigo: IA lê o histórico, com fallback para a última mensagem do cliente.
-- Grupo sem cliente vinculado continua sendo ignorado (não há onde criar a tarefa).
+- Grupo sem cliente vinculado não cria tarefa (não há onde criar). **Desde 24/11/2026** deixa
+  uma nota interna "⚠️ Tarefa não aberta: este grupo não tem cliente vinculado…" no chamado —
+  antes só ia pro log do Celery e o atendente via o comando sumir sem resposta (grupo TOMICH -
+  SICONECT, chamado #2289). Nunca sai pro WhatsApp.
+- **Letras trocadas (24/11/2026):** "abrir tafera - …" foi digitado de verdade e não disparava
+  nada. `_TAREFA_PALAVRAS` aceita `tarefa`, `tafera`, `terefa`, `trefa` no gatilho e no título.
 - **Deploy:** `abrir_tarefa_ia` roda na fila `atendimento_ia`, consumida pelo worker
   **`celery-atendimento-ia`**, não pelo `celery`. Mudou `atendimento/tasks.py` → reiniciar os dois.
   No dia da entrega só o `celery` foi reiniciado; o worker de IA, com o código antigo, recusou o

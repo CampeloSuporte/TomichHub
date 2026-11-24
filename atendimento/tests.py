@@ -980,7 +980,14 @@ class TituloExplicitoTarefaTest(TestCase):
         self.assertEqual(f('nova tarefa sobre backup do BRAS'), 'Backup do BRAS')
         self.assertEqual(f('Tomichinho, criar tarefa'), '')
         self.assertEqual(f('abrir tarefa'), '')
+        self.assertEqual(f('abrir tafera - verificar email busca cgnat'), 'Verificar email busca cgnat')
         self.assertEqual(f('vou deixar anotado, uma tarefa.. estou com Matheus'), '')
+
+    def test_gatilho_aceita_letras_trocadas(self):
+        from atendimento.services import _pede_abertura_de_tarefa as f
+        self.assertTrue(f('abrir tafera - verificar email'))
+        self.assertTrue(f('abrir tarefa'))
+        self.assertFalse(f('abrir chamado'))
 
 
 class ChatRenderTest(TestCase):
@@ -1754,7 +1761,8 @@ class AbrirTarefaIATaskTest(TestCase):
         self.assertEqual(tarefa.responsaveis.count(), 0)
         mock_client_cls.return_value.send_text.assert_called_once()
 
-    def test_grupo_sem_cliente_vinculado_nao_cria_tarefa(self):
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_grupo_sem_cliente_vinculado_nao_cria_tarefa(self, mock_client_cls):
         from tarefas.models import Tarefa
         from atendimento.tasks import abrir_tarefa_ia
 
@@ -1763,6 +1771,10 @@ class AbrirTarefaIATaskTest(TestCase):
 
         self.assertTrue(resultado['skipped'])
         self.assertEqual(Tarefa.objects.count(), antes)
+        # Avisa a equipe no chamado, mas nunca no WhatsApp do cliente.
+        aviso = Message.objects.get(content__startswith='⚠️ Tarefa não aberta')
+        self.assertTrue(aviso.is_internal)
+        mock_client_cls.return_value.send_text.assert_not_called()
 
     @mock.patch('atendimento.services.EvolutionAPIClient')
     @mock.patch('atendimento.ai.call_ai', return_value=None)

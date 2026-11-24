@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-24 (Atendimento: "abrir tarefa" sem resposta)
+
+### Corrigido
+
+- **"abrir tarefa" num grupo sem cliente vinculado agora avisa no chamado.** Antes o comando era
+  descartado só no log do Celery e a nota ficava sem resposta; agora sai uma nota interna dizendo
+  para vincular o grupo a um cliente em Atendimento → Grupos.
+- **"abrir tafera" (letras trocadas) também abre a tarefa**, com o texto depois do gatilho como título.
+
+---
+
 ## [Não publicado] — 2026-11-23 (Atendimento: iniciar conversa com grupo)
 
 ### Corrigido

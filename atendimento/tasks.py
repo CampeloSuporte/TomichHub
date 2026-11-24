@@ -285,6 +285,15 @@ def abrir_tarefa_ia(conversation_id, texto_comando, is_internal=False, autor_id=
     cliente = conv.group.cliente
     if not cliente:
         logger.info(f"Agente IA: 'abrir tarefa' ignorado, grupo {conv.group_id} sem cliente vinculado")
+        # Antes só ia pro log do Celery: o atendente escrevia "abrir tarefa"
+        # e nada acontecia, sem saber por quê. Avisa no chamado (só como
+        # nota interna — nunca pro WhatsApp do cliente).
+        _ia_enviar(
+            conv, conv.group, conv.group.connection,
+            "⚠️ Tarefa não aberta: este grupo não tem cliente vinculado. "
+            "Vincule em Atendimento → Grupos e escreva \"abrir tarefa\" de novo.",
+            sender_type='internal', enviar_whatsapp=False,
+        )
         return {'skipped': True, 'reason': 'grupo sem cliente vinculado'}
 
     # O comando que dispara a tarefa é muitas vezes só o gatilho em si
