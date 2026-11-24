@@ -171,8 +171,12 @@ UNM2000 -> iptables REDIRECT -> redsocks -> socat -> socket UNIX | socat -> ssh 
 - Rota padrão no `lo` com origem `10.255.0.1`: sem a rota o `connect()` dá *unreachable* antes do
   `REDIRECT` ("Socket errors" no cliente); sem a origem, a resposta se perde.
 - O namespace de PID faz o kernel matar tudo junto, mesmo se o daphne cair sem passar por `stop()`.
-- IP público: o cliente sai direto, sem namespace. IP privado sem `ProxyServer` ativo: erro claro (via
-  VPN ainda não foi implementado).
+- IP público: o cliente sai direto, sem namespace. IP privado sem `ProxyServer` ativo nem VPN: erro claro.
+- **Via VPN (24/11/2026).** Cliente só com OpenVPN (ex.: Conecta ISP): no lugar do `ssh -D`, o daphne
+  sobe `SocksVPN` no mesmo `socks.sock` da sessão — SOCKS5 só CONNECT/IPv4, conectando com a origem do
+  túnel (`vpn_rota.origem`, tabela isolada) e recusando destino fora das `redes_privadas` do túnel.
+  O namespace e o `REDE_SH` não mudam. Caminho curto obrigatório (socket UNIX ≤ 108 bytes): fica em
+  `/tmp/unm_*`.
 
 **Telas iniciais.** A home é nova a cada sessão (`/tmp/unm_*`, apagada no `stop()`), com
 `-J-Duser.home` para isolar também as preferências Java, que iriam para `/var/www/.java`. Por isso o

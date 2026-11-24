@@ -5,6 +5,17 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-24 (UNM2000 Web pela VPN)
+
+### Corrigido
+
+- **UNM2000 Web abre em cliente que só tem túnel OpenVPN.** O acesso da Conecta ISP (172.18.234.246)
+  falhava com "UNM2000 em IP privado exige um proxy SSH ativo": o modo UNM só sabia sair por proxy
+  SSH. Sem proxy, o namespace da sessão agora sai por um SOCKS5 local (`unm_vnc.SocksVPN`, socket
+  UNIX) que conecta com a origem do túnel e só entrega nas redes declaradas nele.
+
+---
+
 ## [Não publicado] — 2026-11-24 (Atendimento: "abrir tarefa" sem resposta)
 
 ### Corrigido
