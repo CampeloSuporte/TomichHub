@@ -1,5 +1,8 @@
+import ipaddress
 import os
 import shutil
+import socket
+import struct
 import logging
 import subprocess
 import tempfile
@@ -54,12 +57,116 @@ exec "$@"
 """
 
 
+class SocksVPN:
+    """SOCKS5 mínimo (só CONNECT para IPv4, sem autenticação) num socket UNIX,
+    que conecta saindo com a origem do túnel OpenVPN do cliente: é o que o
+    `ssh -D` faz no caminho por proxy. Só entrega nas redes declaradas no
+    túnel; o resto é recusado (a tabela isolada nem teria rota)."""
+
+    def __init__(self, tunel, caminho):
+        from . import vpn_rota
+        self.origem = vpn_rota.origem(tunel)
+        if not self.origem:
+            raise Exception(f"A VPN {tunel.nome} não está conectada")
+        self.redes = []
+        for rede in tunel.redes_lista():
+            try:
+                self.redes.append(ipaddress.ip_network(rede, strict=False))
+            except ValueError:
+                pass
+        self.nome = tunel.nome
+        self.caminho = caminho
+        self._srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self._srv.bind(caminho)
+        os.chmod(caminho, 0o600)
+        self._srv.listen(64)
+        threading.Thread(target=self._aceitar, daemon=True).start()
+
+    def permitido(self, ip):
+        try:
+            ip = ipaddress.ip_address(ip)
+        except ValueError:
+            return False
+        return any(ip in rede for rede in self.redes if rede.version == ip.version)
+
+    def _aceitar(self):
+        while True:
+            try:
+                conn, _ = self._srv.accept()
+            except OSError:
+                return
+            threading.Thread(target=self._atender, args=(conn,), daemon=True).start()
+
+    @staticmethod
+    def _ler(conn, n):
+        dados = b""
+        while len(dados) < n:
+            parte = conn.recv(n - len(dados))
+            if not parte:
+                raise ConnectionError("SOCKS fechado no meio do pedido")
+            dados += parte
+        return dados
+
+    def _atender(self, conn):
+        from .vpn_rota import _bombear
+        try:
+            conn.settimeout(20)
+            _ver, n = self._ler(conn, 2)
+            self._ler(conn, n)
+            conn.sendall(b"\x05\x00")
+            _ver, cmd, _rsv, atyp = self._ler(conn, 4)
+            if atyp != 1:  # redsocks manda sempre o IPv4 de destino
+                if atyp == 3:
+                    self._ler(conn, self._ler(conn, 1)[0])
+                elif atyp == 4:
+                    self._ler(conn, 16)
+                self._ler(conn, 2)
+                conn.sendall(b"\x05\x08\x00\x01" + bytes(6))
+                conn.close()
+                return
+            host = socket.inet_ntoa(self._ler(conn, 4))
+            porta = struct.unpack("!H", self._ler(conn, 2))[0]
+            if cmd != 1 or not self.permitido(host):
+                logger.warning(f"[UNM VPN] {host}:{porta} recusado: fora das redes da VPN {self.nome}")
+                conn.sendall(b"\x05\x02\x00\x01" + bytes(6))
+                conn.close()
+                return
+            try:
+                remoto = socket.create_connection((host, porta), timeout=15,
+                                                  source_address=(self.origem, 0))
+            except OSError as e:
+                logger.info(f"[UNM VPN] {self.origem} → {host}:{porta} falhou: {e}")
+                conn.sendall(b"\x05\x05\x00\x01" + bytes(6))
+                conn.close()
+                return
+            remoto.settimeout(None)
+            conn.settimeout(None)
+            conn.sendall(b"\x05\x00\x00\x01" + bytes(6))
+        except (OSError, ValueError) as e:
+            logger.debug(f"[UNM VPN] pedido SOCKS inválido: {e}")
+            try:
+                conn.close()
+            except OSError:
+                pass
+            return
+        threading.Thread(target=_bombear, args=(remoto, conn), daemon=True).start()
+        _bombear(conn, remoto)
+
+    def fechar(self):
+        try:
+            self._srv.close()
+        except OSError:
+            pass
+
+
 class UnmVNCManager(WinboxVNCManager):
     """Sessão do UNM2000 (FiberHome) via Web: mesmo Xvfb/Openbox/x11vnc do
     WinBox Web, trocando o programa e a rede. O cliente fala com o servidor em
     dezenas de portas, informadas pelo próprio servidor, e o túnel de porta
     única do CRM não serve. Com `proxy`, ele roda num namespace de rede próprio
     cujo TCP inteiro sai pelo proxy SSH do cliente, sem saber de proxy nenhum.
+    Com `tunel_vpn` (cliente só com OpenVPN), o mesmo namespace sai por um
+    SOCKS local (SocksVPN) que conecta com a origem do túnel.
 
     O namespace é do próprio www-data (unshare -Urn, sem root nem sudo) e não
     tem interface além do loopback: não há como sair por fora do proxy nem
@@ -69,11 +176,13 @@ class UnmVNCManager(WinboxVNCManager):
     openbox_rc = OPENBOX_RC_UNM
 
     def __init__(self, host, user, password, proxy=None, width=1366, height=768,
-                 screen_width=None, screen_height=None, record_path=None):
+                 screen_width=None, screen_height=None, record_path=None, tunel_vpn=None):
         super().__init__(host, 0, user, password, width=width, height=height,
                          screen_width=screen_width, screen_height=screen_height,
                          record_path=record_path)
         self.proxy = proxy
+        self.tunel_vpn = tunel_vpn
+        self._socks_vpn = None
         self._home = None
         self._limpo = False
         self._limpo_lock = threading.Lock()
@@ -114,10 +223,16 @@ class UnmVNCManager(WinboxVNCManager):
             raise Exception("UNM2000 não está instalado no servidor (ver docs/winbox_vnc.md)")
         self._home = tempfile.mkdtemp(prefix="unm_")
         cmd = [app, f"-J-Duser.home={self._home}"]
+        sock = None
         if self.proxy:
+            sock = self._abrir_proxy()
+        elif self.tunel_vpn is not None:
+            self._socks_vpn = SocksVPN(self.tunel_vpn, os.path.join(self._home, "socks.sock"))
+            sock = self._socks_vpn.caminho
+        if sock:
             cmd = ["unshare", "-Urn", "--pid", "--fork", "--kill-child", "--mount-proc",
                    "sh", "-c", REDE_SH, "unm-rede",
-                   self._abrir_proxy(), os.path.join(self._home, "redsocks.conf")] + cmd
+                   sock, os.path.join(self._home, "redsocks.conf")] + cmd
         app_env = dict(env, HOME=self._home, _JAVA_AWT_WM_NONREPARENTING="1")
         self.processes.append(subprocess.Popen(cmd, env=app_env, cwd=app_dir,
                                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
@@ -188,5 +303,7 @@ class UnmVNCManager(WinboxVNCManager):
             if self._limpo:
                 return
             self._limpo = True
+        if self._socks_vpn:
+            self._socks_vpn.fechar()
         if self._home:
             shutil.rmtree(self._home, ignore_errors=True)

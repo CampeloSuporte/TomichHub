@@ -2574,7 +2574,13 @@ class WinboxVNCConsumer(SSHConsumer):
                 if self.is_private_ip(host):
                     proxy_unm = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
                     if not proxy_unm:
-                        raise Exception(f"UNM2000 em IP privado exige um proxy SSH ativo em {acesso.cliente.nome_empresa}")
+                        # Cliente só com OpenVPN: o namespace sai por um SOCKS
+                        # local com a origem do túnel (unm_vnc.SocksVPN).
+                        from .views import vpn_cobre_ip
+                        tunel_vpn = vpn_cobre_ip(acesso.cliente, host, acesso)
+                        if not tunel_vpn:
+                            raise Exception(f"UNM2000 em IP privado exige um proxy SSH ativo ou VPN cobrindo {host} em {acesso.cliente.nome_empresa}")
+                        self.send_json({'type': 'info', 'message': f'🔌 Conectando UNM2000 via VPN {tunel_vpn.nome}...'})
 
             elif self.is_private_ip(host):
                 proxy = tunel_host.proxy_para(acesso.cliente, acesso.host, acesso)
@@ -2612,6 +2618,7 @@ class WinboxVNCConsumer(SSHConsumer):
                     user=acesso.usuario,
                     password=acesso.senha,
                     proxy=proxy_unm,
+                    tunel_vpn=tunel_vpn,
                     width=vnc_w,
                     height=vnc_h,
                     screen_width=tela_w,

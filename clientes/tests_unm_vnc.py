@@ -132,3 +132,83 @@ class UnmCadastroTest(SimpleTestCase):
 
     def test_rota_da_pagina(self):
         self.assertEqual(reverse('unm_page', args=[7]), '/clientes/unm/7/')
+
+
+class Tunel:
+    nome = 'VPN MikroTik'
+
+    def __init__(self, redes):
+        self._redes = redes
+
+    def redes_lista(self):
+        return self._redes
+
+
+class UnmViaVpnTest(SimpleTestCase):
+    """Cliente só com OpenVPN (Conecta ISP, 24/11/2026): antes dava "UNM2000 em
+    IP privado exige um proxy SSH ativo"; agora o namespace sai por um SOCKS
+    local com a origem do túnel."""
+
+    def _socks(self, redes):
+        import tempfile
+        pasta = tempfile.mkdtemp(prefix='unm_teste_')
+        self.addCleanup(__import__('shutil').rmtree, pasta, True)
+        with mock.patch('clientes.vpn_rota.origem', return_value='127.0.0.1'):
+            s = unm_vnc.SocksVPN(Tunel(redes), os.path.join(pasta, 'socks.sock'))
+        self.addCleanup(s.fechar)
+        return s
+
+    def _pedir(self, caminho, porta):
+        import socket, struct
+        c = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        c.settimeout(5)
+        c.connect(caminho)
+        c.sendall(b'\x05\x01\x00')
+        self.assertEqual(c.recv(2), b'\x05\x00')
+        c.sendall(b'\x05\x01\x00\x01' + socket.inet_aton('127.0.0.1') + struct.pack('!H', porta))
+        return c, c.recv(10)
+
+    def test_conecta_e_repassa_dados(self):
+        import socket, threading
+        eco = socket.socket()
+        eco.bind(('127.0.0.1', 0))
+        eco.listen(1)
+        self.addCleanup(eco.close)
+
+        def atender():
+            conn, _ = eco.accept()
+            conn.sendall(conn.recv(100).upper())
+            conn.close()
+        threading.Thread(target=atender, daemon=True).start()
+
+        s = self._socks(['127.0.0.0/8'])
+        c, resp = self._pedir(s.caminho, eco.getsockname()[1])
+        self.addCleanup(c.close)
+        self.assertEqual(resp[:2], b'\x05\x00')
+        c.sendall(b'ice')
+        self.assertEqual(c.recv(10), b'ICE')
+
+    def test_recusa_fora_das_redes_da_vpn(self):
+        s = self._socks(['172.18.234.0/24'])
+        c, resp = self._pedir(s.caminho, 80)
+        self.addCleanup(c.close)
+        self.assertEqual(resp[:2], b'\x05\x02')
+
+    def test_namespace_sai_pelo_socket_da_vpn(self):
+        m = UnmVNCManager('172.18.234.246', 'admin', 'senha-unm', tunel_vpn=Tunel(['172.18.234.0/24']))
+        self.addCleanup(m.stop)
+        with mock.patch.object(unm_vnc.os.path, 'exists', return_value=True), \
+                mock.patch.object(unm_vnc, 'unm_dir', return_value=unm_vnc.UNM_DIR), \
+                mock.patch('clientes.vpn_rota.origem', return_value='127.0.0.1'), \
+                mock.patch.object(unm_vnc.subprocess, 'Popen') as popen, \
+                mock.patch.object(unm_vnc.threading, 'Thread'):
+            m._iniciar_app({'DISPLAY': ':150'})
+        cmd = popen.call_args.args[0]
+        self.assertEqual(cmd[:3], ['unshare', '-Urn', '--pid'])
+        self.assertIn(os.path.join(m._home, 'socks.sock'), cmd)
+        self.assertNotIn('sshpass', ' '.join(cmd))
+
+    def test_vpn_desconectada_da_erro_claro(self):
+        with mock.patch('clientes.vpn_rota.origem', return_value=None):
+            with self.assertRaisesMessage(Exception, 'não está conectada'):
+                unm_vnc.SocksVPN(Tunel([]), '/tmp/nao-usado.sock')
