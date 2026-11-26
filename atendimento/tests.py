@@ -4895,7 +4895,9 @@ class AtendenteOfflineTest(TestCase):
     def test_repete_depois_do_intervalo(self, mock_cls):
         mock_cls.return_value.send_text.return_value = (True, 'id')
         self._webhook('OFF5a')
+        # A 1ª mensagem liberou o chamado; simula que voltou para a Bia.
         Conversation.objects.filter(pk=self.conversation.pk).update(
+            assigned_to=self.agente,
             offline_alert_at=timezone.now() - timedelta(minutes=20))
         self._webhook('OFF5b')
         self.assertEqual(len(self._alertas(mock_cls)), 2)
@@ -4908,6 +4910,7 @@ class AtendenteOfflineTest(TestCase):
         self.status.status_changed_at = timezone.now() + timedelta(seconds=1)
         self.status.save()
         Conversation.objects.filter(pk=self.conversation.pk).update(
+            assigned_to=self.agente,
             offline_alert_at=timezone.now() - timedelta(seconds=5))
         self._webhook('OFF6b')
         self.assertEqual(len(self._alertas(mock_cls)), 2)
@@ -4928,6 +4931,42 @@ class AtendenteOfflineTest(TestCase):
         alertas = self._alertas(mock_cls)
         self.assertEqual(len(alertas), 1)
         self.assertNotIn(self.group.name, alertas[0].args[1])
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_offline_libera_o_chamado_para_todos(self, mock_cls):
+        """26/11/2026: além do alerta no NOC, o chamado volta para a fila e
+        aparece para os demais com a tag "Atendente offline"; quem
+        responder assume e a tag some."""
+        from atendimento.services import auto_assign_on_reply
+        mock_cls.return_value.send_text.return_value = (True, 'id')
+        self._webhook('OFF9')
+        self.conversation.refresh_from_db()
+        self.assertIsNone(self.conversation.assigned_to)
+        self.assertEqual(self.conversation.liberado_offline_de, self.agente)
+        self.assertIsNotNone(self.conversation.liberado_offline_em)
+        self.assertTrue(self.conversation.messages.filter(
+            sender_type='system', content__contains='offline').exists())
+
+        outro = _criar_agente_staff('caio')
+        self.client.force_login(outro)
+        html = self.client.get(reverse('atendimento:inbox'),
+                               HTTP_X_REQUESTED_WITH='XMLHttpRequest').content.decode()
+        self.assertIn('data-conv-id="%s"' % self.conversation.id, html)
+        self.assertIn('conv-offline', html)
+
+        self.assertTrue(auto_assign_on_reply(self.conversation, outro))
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.assigned_to, outro)
+        self.assertIsNone(self.conversation.liberado_offline_de)
+        self.assertIsNone(self.conversation.liberado_offline_em)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_online_nao_libera(self, mock_cls):
+        self.status.status = 'online'
+        self.status.save()
+        self._webhook('OFF10')
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.assigned_to, self.agente)
 
     def test_botao_alterna_status(self):
         from atendimento.models import AgentStatus

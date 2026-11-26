@@ -648,6 +648,8 @@ body {
 .conv-novo i { font-size: 10px; }
 .conv-novo-tempo { font-weight: 700; text-transform: none; letter-spacing: 0; }
 .conv-novo.conv-aguardando { background: #8b5cf6; color: #fff; }
+.conv-novo.conv-offline { background: #ec4899; color: #fff; }
+.conv-item:has(.conv-offline) { box-shadow: inset 3px 0 0 #ec4899; }
 .conv-item.conv-item-aguardando { box-shadow: inset 3px 0 0 #8b5cf6; }
 @keyframes convNovoPisca { from { opacity: 1; } to { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .conv-novo { animation: none; } }
@@ -2247,6 +2249,23 @@ document.addEventListener('click', function() {
                            outro atendente assume, o chamado tem que sair da
                            minha aba "Abertos" na hora — antes ele ficava lá,
                            parecendo sem dono, até eu recarregar a página. */
+                        /* Dono ficou offline e o cliente escreveu → chamado voltou
+                           para a fila. Os demais recebem o aviso na hora (quem
+                           responder assume); refresh imediato para a tag aparecer. */
+                        if (p.motivo === 'offline' && !p.assigned_to_id) {
+                            window.__scheduleConvPanelRefresh(0);
+                            if (!iWasOldAssignee) {
+                                /* A mensagem do cliente chega logo depois como
+                                   chamado sem dono — sem isto viriam 2 avisos. */
+                                window.__avisoOfflineEm = window.__avisoOfflineEm || {};
+                                window.__avisoOfflineEm[p.conversation_id] = Date.now();
+                                if (typeof playSoundTicket === 'function') playSoundTicket();
+                                var nomeOff = p.nome_anterior || 'O atendente';
+                                showBrowserNotif('📴 Atendente offline', nomeOff + ' está offline. O chamado ' + (p.group_name || '') + ' foi liberado para todos — quem responder assume.');
+                                showToast(p.group_name || 'Chamado', '📴 ' + nomeOff + ' offline — chamado liberado para todos. Responda para assumir.', p.conversation_id, (p.group_name || '??').substring(0, 2).toUpperCase(), true);
+                            }
+                            return;
+                        }
                         window.__scheduleConvPanelRefresh(iAmNewAssignee || iWasOldAssignee ? 0 : 900);
                         if (iAmNewAssignee) {
                             if (typeof playSoundTicket === 'function') playSoundTicket();
@@ -2318,6 +2337,8 @@ document.addEventListener('click', function() {
 
                     var shouldNotify = !assignedTo || assignedTo === currentUserId;
                     if (!shouldNotify) return;
+                    var _avOff = (window.__avisoOfflineEm || {})[convId];
+                    if (_avOff && Date.now() - _avOff < 15000) return;
 
                     var titlePrefix = assignedTo === currentUserId ? '💬 ' : '🔔 ';
                     var initials = groupName.substring(0, 2).toUpperCase();

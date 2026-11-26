@@ -2680,3 +2680,30 @@ resposta** do atendente/IA (sem resposta nenhuma ainda: da 1ª mensagem do clien
   `__desmarcarAguardandoCliente`.
 - O texto usa o mesmo `__atualizarTempoAberto` (60 s), com `data-rotulo="aguardando há"`.
 - Teste: `AbaUnicaAtendimentosTest.test_tag_cliente_respondeu_no_assumido`.
+
+## Atendente offline: chamado volta para a fila (2026-11-26)
+
+**Pedido:** com o atendente offline, quando o cliente de um chamado dele escreve, o chamado tem que
+aparecer para os demais; quem responder primeiro assume e continua.
+
+**Como ficou** (`services._liberar_chamado_atendente_offline`, chamado logo depois de
+`_alertar_atendente_offline` nos dois caminhos do webhook — fluxo do bot e chamado já aberto):
+
+1. O alerta do NOC continua (texto agora diz que o chamado foi liberado para a equipe).
+2. `assigned_to` vira vazio; `Conversation.liberado_offline_de` / `liberado_offline_em`
+   (migração 0022) guardam de quem era e quando. Atividade `transferred` ("Fila (atendente
+   offline)") e linha de sistema no chat ("📴 Fulano está offline — chamado liberado…").
+3. `notify_reassignment(..., motivo='offline', nome_anterior=...)`: no navegador dos demais,
+   refresh imediato da lista + som + toast/notificação "Atendente offline — chamado liberado
+   para todos. Responda para assumir." O toast genérico de "chamado novo" que viria em seguida
+   é suprimido por 15 s (`__avisoOfflineEm`) para não avisar duas vezes.
+4. Na lista o item mostra a tag **rosa** piscando "Atendente offline · Fulano · liberado há
+   N min" (no lugar da laranja "Novo atendimento").
+5. Quem responder assume pelo `auto_assign_on_reply` de sempre; `Conversation.save()` limpa
+   `liberado_offline_*` sempre que o chamado ganha dono.
+
+Mensagens seguintes do cliente já caem no caminho "chamado sem dono" (aviso de chamado aberto),
+sem repetir o alerta de offline. Atendente que volta online não recebe o chamado de volta
+automaticamente: se ninguém assumiu, ele assume respondendo, como qualquer um.
+
+Testes: `AtendenteOfflineTest.test_offline_libera_o_chamado_para_todos`, `test_online_nao_libera`.

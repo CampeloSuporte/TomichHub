@@ -13,6 +13,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   ("aberto há 3 min"), atualizado a cada minuto.
 - **Tag roxa "Cliente respondeu · aguardando há N min"** nos chamados já assumidos quando o cliente
   manda mensagem e ninguém respondeu; some quando o atendente responde.
+- **Atendente offline libera o chamado para a equipe.** Se o cliente escreve num chamado de quem
+  está offline, além do alerta no NOC o chamado volta para a fila, aparece para todos com aviso na
+  tela e a tag rosa "Atendente offline · liberado há N min"; quem responder primeiro assume.
+  Migração `atendimento.0022`.
 - **Menu Auditoria (só administrador)** em Atendimento → Análise: por atendente, o que está com
   ele agora, não lidas, SLA estourado, assumidos, resolvidos, mensagens, notas, tempo médio de 1ª
   resposta; detalhe com chamados, linha do tempo e mensagens enviadas; fila sem responsável.
