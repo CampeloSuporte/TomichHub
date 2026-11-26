@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from clientes.models import Cliente
 from django.utils import timezone
+from datetime import timedelta
 import re
 import uuid
 
@@ -660,6 +661,18 @@ class AgentStatus(models.Model):
     display_name = models.CharField(max_length=100, blank=True, default='',
                                     help_text='Nome exibido nas mensagens enviadas pelo WhatsApp')
     last_seen = models.DateTimeField(auto_now=True)
+    # Presença: o InboxConsumer (WebSocket que toda tela do atendimento abre)
+    # grava aqui a cada PRESENCA_INTERVALO enquanto houver aba conectada.
+    # Sem aba aberta há mais de PRESENCA_VALIDADE = desconectado = conta como
+    # offline para o alerta do NOC e a liberação do chamado (26/11/2026).
+    conectado_em = models.DateTimeField(null=True, blank=True)
+
+    PRESENCA_INTERVALO = 45            # segundos entre gravações
+    PRESENCA_VALIDADE = timedelta(seconds=120)
+
+    @property
+    def conectado(self):
+        return bool(self.conectado_em and timezone.now() - self.conectado_em < self.PRESENCA_VALIDADE)
 
     def __str__(self):
         return f"{self.user.get_full_name()} - {self.status}"

@@ -256,7 +256,10 @@ def auditoria(request):
         linhas.append({
             'user': a,
             'nome': (st.get_display_name() if st else '') or a.get_full_name() or a.username,
-            'status': st.status if st else 'online',
+            # Botão offline vence; sem aba do atendimento aberta = desconectado
+            # (conta como offline para liberar chamado — services.estado_offline).
+            'status': ('offline' if st and st.status == 'offline'
+                       else (st.status if st and st.conectado else 'desconectado')),
             'ativos': len(meus),
             'nao_lidas': sum(c.unread_count for c in meus),
             'sla': sum(1 for c in meus if c.sla_response_overdue or c.sla_resolution_overdue),

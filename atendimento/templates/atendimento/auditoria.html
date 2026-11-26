@@ -83,7 +83,8 @@
             {% for l in linhas %}
             <tr class="click {% if detalhe and detalhe.linha.user.id == l.user.id %}sel{% endif %}"
                 onclick="window.location.href='?periodo={{ periodo }}{% if periodo == 'custom' %}&de={{ de }}&ate={{ ate }}{% endif %}&agente={{ l.user.id }}'">
-                <td><span class="au-dot {{ l.status }}" title="{{ l.status }}"></span>{{ l.nome }}</td>
+                <td><span class="au-dot {{ l.status }}"></span>{{ l.nome }}
+                    <span class="au-muted">{% if l.status == 'online' %}online{% elif l.status == 'offline' %}offline (botão){% elif l.status == 'desconectado' %}desconectado{% else %}{{ l.status }}{% endif %}</span></td>
                 <td class="n {% if not l.ativos %}au-zero{% endif %}">{{ l.ativos }}</td>
                 <td class="n {% if l.nao_lidas %}au-red{% else %}au-zero{% endif %}">{{ l.nao_lidas }}</td>
                 <td class="n {% if l.sla %}au-red{% else %}au-zero{% endif %}">{{ l.sla }}</td>

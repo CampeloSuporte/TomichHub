@@ -17,6 +17,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
   está offline, além do alerta no NOC o chamado volta para a fila, aparece para todos com aviso na
   tela e a tag rosa "Atendente offline · liberado há N min"; quem responder primeiro assume.
   Migração `atendimento.0022`.
+- **Atendente sem o atendimento aberto também conta como offline.** O WebSocket do módulo grava a
+  presença; sem nenhuma aba conectada (2 min, ou ~20 s depois de fechar a última), os chamados dele
+  são liberados para a equipe quando o cliente escreve. Auditoria mostra "desconectado".
+  Migração `atendimento.0023`.
 - **Menu Auditoria (só administrador)** em Atendimento → Análise: por atendente, o que está com
   ele agora, não lidas, SLA estourado, assumidos, resolvidos, mensagens, notas, tempo médio de 1ª
   resposta; detalhe com chamados, linha do tempo e mensagens enviadas; fila sem responsável.

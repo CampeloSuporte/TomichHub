@@ -4694,6 +4694,49 @@ class _SalaVirtualBase(TestCase):
                 return m
 
 
+class PresencaNoAtendimentoTests(_SalaVirtualBase):
+    """InboxConsumer grava a presença do atendente; a última aba fechada
+    marca desconectado (com folga para F5)."""
+
+    def test_presenca_conecta_e_desconecta_so_na_ultima_aba(self):
+        from types import SimpleNamespace
+        from channels.testing import WebsocketCommunicator
+        from atendimento import consumers
+        gravacoes = []
+
+        async def fake(uid, conectado=True):
+            gravacoes.append((uid, conectado))
+
+        async def fluxo():
+            user = SimpleNamespace(id=77, username='lucas')
+            with mock.patch('atendimento.consumers._pode_atendimento', mock.AsyncMock(return_value=True)), \
+                 mock.patch('atendimento.consumers._gravar_presenca', fake):
+                a = WebsocketCommunicator(consumers.InboxConsumer.as_asgi(), '/ws/atendimento/inbox/')
+                b = WebsocketCommunicator(consumers.InboxConsumer.as_asgi(), '/ws/atendimento/inbox/')
+                a.scope['user'] = user
+                b.scope['user'] = user
+                self.assertTrue((await a.connect())[0])
+                self.assertTrue((await b.connect())[0])
+                import asyncio
+                await asyncio.sleep(0.05)
+                await a.disconnect()
+                self.assertNotIn((77, False), gravacoes)   # ainda tem a outra aba
+                await b.disconnect()
+                self.assertIn((77, False), gravacoes)
+
+        consumers._abas_por_atendente.clear()
+        self._rodar(fluxo())
+        self.assertIn((77, True), gravacoes)
+
+    def test_status_conectado_vence_em_2_min(self):
+        from atendimento.models import AgentStatus
+        u = _criar_agente_staff('pres')
+        st = AgentStatus.objects.create(user=u, conectado_em=timezone.now())
+        self.assertTrue(st.conectado)
+        st.conectado_em = timezone.now() - timedelta(seconds=130)
+        self.assertFalse(st.conectado)
+
+
 class SalaVirtualRemoverEPrivadoTests(_SalaVirtualBase):
     """Sala virtual: remover atendente (Admin/Consultor) e conversa privada 1:1."""
 
@@ -4870,18 +4913,42 @@ class AtendenteOfflineTest(TestCase):
         self.conversation.refresh_from_db()
         self.assertIsNotNone(self.conversation.offline_alert_at)
 
+    def _online_conectado(self):
+        self.status.status = 'online'
+        self.status.conectado_em = timezone.now()
+        self.status.save()
+
     @mock.patch('atendimento.services.EvolutionAPIClient')
     def test_online_nao_alerta(self, mock_cls):
-        self.status.status = 'online'
-        self.status.save()
+        self._online_conectado()
         self._webhook('OFF2')
         self.assertEqual(self._alertas(mock_cls), [])
 
     @mock.patch('atendimento.services.EvolutionAPIClient')
-    def test_sem_agentstatus_conta_como_online(self, mock_cls):
+    def test_sem_agentstatus_nunca_conectou_conta_como_offline(self, mock_cls):
+        """26/11/2026: quem não está com o atendimento aberto é offline —
+        sem registro nenhum = nunca conectou."""
+        mock_cls.return_value.send_text.return_value = (True, 'id')
         self.status.delete()
         self._webhook('OFF3')
-        self.assertEqual(self._alertas(mock_cls), [])
+        alertas = self._alertas(mock_cls)
+        self.assertEqual(len(alertas), 1)
+        self.assertIn('não está conectado', alertas[0].args[1])
+        self.conversation.refresh_from_db()
+        self.assertIsNone(self.conversation.assigned_to)
+
+    @mock.patch('atendimento.services.EvolutionAPIClient')
+    def test_online_mas_desconectado_libera(self, mock_cls):
+        mock_cls.return_value.send_text.return_value = (True, 'id')
+        self.status.status = 'online'
+        self.status.conectado_em = timezone.now() - timedelta(minutes=5)
+        self.status.save()
+        self._webhook('OFF11')
+        self.conversation.refresh_from_db()
+        self.assertIsNone(self.conversation.assigned_to)
+        self.assertEqual(self.conversation.liberado_offline_de, self.agente)
+        self.assertTrue(self.conversation.messages.filter(
+            sender_type='system', content__contains='não está conectado').exists())
 
     @mock.patch('atendimento.services.EvolutionAPIClient')
     def test_rajada_do_cliente_gera_um_alerta_so(self, mock_cls):
@@ -4962,8 +5029,7 @@ class AtendenteOfflineTest(TestCase):
 
     @mock.patch('atendimento.services.EvolutionAPIClient')
     def test_online_nao_libera(self, mock_cls):
-        self.status.status = 'online'
-        self.status.save()
+        self._online_conectado()
         self._webhook('OFF10')
         self.conversation.refresh_from_db()
         self.assertEqual(self.conversation.assigned_to, self.agente)
