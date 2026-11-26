@@ -5,6 +5,16 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-26 (Atendimento: aba única)
+
+### Alterado
+
+- **Inbox do atendimento com uma aba só, "Atendimentos"**, no lugar de Assumidos / Abertos /
+  Em Andamento. Mostra os chamados sem responsável (chegam para toda a equipe) e os do próprio
+  atendente; quando alguém assume ou responde, o chamado some da lista dos demais na hora.
+
+---
+
 ## [Não publicado] — 2026-11-24 (UNM2000 Web pela VPN)
 
 ### Corrigido

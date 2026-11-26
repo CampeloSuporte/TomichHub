@@ -1359,6 +1359,46 @@ class AtualizacaoAutomaticaDaListaTest(TestCase):
         self.assertIn('data-conv-id="%s"' % nova.id, html)
 
 
+class AbaUnicaAtendimentosTest(TestCase):
+    """Aba única "Atendimentos" (26/11/2026, substitui Assumidos / Abertos /
+    Em Andamento): chamado sem responsável aparece para toda a equipe; assim
+    que alguém assume, fica só na lista de quem assumiu."""
+
+    def setUp(self):
+        self.lucas = _criar_agente_staff('lucas')
+        self.ana = _criar_agente_staff('ana')
+        self.conv = _criar_conversa()
+        self.conv.status = 'open'
+        self.conv.save(update_fields=['status'])
+
+    def _lista(self, user, tab='open'):
+        self.client.force_login(user)
+        return self.client.get(
+            reverse('atendimento:inbox') + '?tab=' + tab,
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        ).content.decode()
+
+    def test_sem_responsavel_chega_para_todos(self):
+        marca = 'data-conv-id="%s"' % self.conv.id
+        self.assertIn(marca, self._lista(self.lucas))
+        self.assertIn(marca, self._lista(self.ana))
+        self.assertIn('data-sem-dono="1"', self._lista(self.ana))
+
+    def test_assumido_some_para_os_demais(self):
+        self.conv.assigned_to = self.lucas
+        self.conv.save(update_fields=['assigned_to'])
+        marca = 'data-conv-id="%s"' % self.conv.id
+        self.assertIn(marca, self._lista(self.lucas))
+        self.assertNotIn(marca, self._lista(self.ana))
+
+    def test_abas_antigas_caem_na_lista_unica(self):
+        marca = 'data-conv-id="%s"' % self.conv.id
+        for tab in ('mine', 'ongoing'):
+            html = self._lista(self.ana, tab)
+            self.assertIn(marca, html)
+            self.assertNotIn('Em Andamento', html)
+
+
 class ApiAgentsListTest(TestCase):
     """Modal "Transferir chamado" — quem entra e quem não entra na lista."""
 

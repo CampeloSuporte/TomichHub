@@ -1,7 +1,7 @@
 <a href="{% url 'atendimento:conversation_detail' conv.id %}"
    class="conv-item {% if active_conversation and active_conversation.id == conv.id %}active{% endif %} {% if conv.unread_count %}unread{% endif %}"
    data-conv-name="{{ conv.group.name|lower }}" data-conv-client="{{ conv.cliente.nome_empresa|lower|default:'' }}"
-   data-conv-id="{{ conv.id }}" data-conv-label="{{ conv.group.name|default:conv.conversation_id }}"
+   data-conv-id="{{ conv.id }}"{% if not conv.assigned_to_id %} data-sem-dono="1"{% endif %} data-conv-label="{{ conv.group.name|default:conv.conversation_id }}"
    oncontextmenu="convCtxMenu.show(event, this)">
     <div class="conv-avatar"
          style="background: {% if conv.status == 'new' %}linear-gradient(135deg,#f59e0b,#d97706){% elif conv.status == 'pending' %}linear-gradient(135deg,#e91e8c,#9333ea){% elif conv.status == 'resolved' %}linear-gradient(135deg,#22c55e,#16a34a){% else %}linear-gradient(135deg,#0ea5e9,#6366f1){% endif %};">

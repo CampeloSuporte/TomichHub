@@ -1635,16 +1635,9 @@ body {
                 <input type="text" id="convSearch" placeholder="Buscar atendimento..." autocomplete="off">
             </div>
             <div class="conv-tabs">
-                <a href="{% url 'atendimento:inbox' %}?tab=mine" class="conv-tab {% if sidebar_active_tab == 'mine' %}active{% endif %}">
-                    Assumidos
-                    {% if mine_count %}<span class="conv-tab-badge">{{ mine_count }}</span>{% endif %}
-                </a>
-                <a href="{% url 'atendimento:inbox' %}?tab=open" class="conv-tab {% if sidebar_active_tab == 'open' or not sidebar_active_tab %}active{% endif %}">
-                    Abertos
-                    {% if open_count %}<span class="conv-tab-badge">{{ open_count }}</span>{% endif %}
-                </a>
-                <a href="{% url 'atendimento:inbox' %}?tab=ongoing" class="conv-tab {% if sidebar_active_tab == 'ongoing' %}active{% endif %}">
-                    Em Andamento
+                <a href="{% url 'atendimento:inbox' %}?tab=open" class="conv-tab active">
+                    Atendimentos
+                    {% if sidebar_conversations %}<span class="conv-tab-badge" id="badge-open">{{ sidebar_conversations|length }}</span>{% endif %}
                 </a>
             </div>
         </div>
@@ -1907,7 +1900,7 @@ document.addEventListener('click', function() {
        (ex.: alguém me transferiu um chamado) sem exigir F5 manual. */
     var INBOX_URL = "{% url 'atendimento:inbox' %}";
 
-    /* Aba ativa da lista (Assumidos / Abertos / Em Andamento / Tarefa) —
+    /* Aba ativa da lista (Atendimentos / Tarefa) —
        precisa ir na URL do refresh, senão a lista volta sempre pra "Abertos". */
     function _activePanelTab() {
         if (window._activeInboxTab) return window._activeInboxTab;
@@ -2024,27 +2017,14 @@ document.addEventListener('click', function() {
         var panel = document.querySelector('.conv-panel');
         if (!panel) return;
 
-        /* "Assumidos" ficava fora desta função: ao resolver/transferir o
-           último chamado assumido, o item era removido da lista mas ninguém
-           recalculava o #badge-mine — sobrava um "1" fantasma sobre uma aba
-           vazia até dar F5. Mesma fonte de verdade das outras abas: conta os
-           itens que restaram na própria lista. */
-        var listaMine = panel.querySelector('#tab-mine');
-        var badgeMine = panel.querySelector('#badge-mine');
-        if (listaMine && badgeMine) {
-            var m = listaMine.querySelectorAll('.conv-item').length;
-            badgeMine.textContent = m;
-            badgeMine.style.display = m > 0 ? '' : 'none';
-        }
-
-        /* SÓ a lista de "Abertos" do Inbox serve de fonte. O #convList do
-           template base muda de conteúdo conforme a aba do chamado que está
-           na tela (pode ser "Assumidos" ou "Em Andamento"), então contá-lo
-           colocaria no badge de chamados-sem-atendente um número que não
-           tem nada a ver. Na dúvida, não mexe no badge do servidor. */
-        var lista = panel.querySelector('#tab-open');
+        /* Lista única "Atendimentos" (#tab-open no Inbox, #convList dentro
+           de um chamado — os dois montados por _fila_do_atendente). O badge
+           da aba conta tudo que está nela; o do menu "Caixa de Entrada"
+           continua sendo só os chamados SEM responsável (data-sem-dono). */
+        var lista = panel.querySelector('#tab-open') || panel.querySelector('#convList');
         if (!lista) return;
-        var n = lista.querySelectorAll('.conv-item').length;
+        var total = lista.querySelectorAll('.conv-item').length;
+        var n = lista.querySelectorAll('.conv-item[data-sem-dono]').length;
 
         /* href$="/inbox/" casa só a "Caixa de Entrada": "Conversas em Tarefa"
            aponta pro mesmo path com ?tab=task e o Dashboard é /atendimento/. */
@@ -2064,8 +2044,8 @@ document.addEventListener('click', function() {
         }
         var tabBadge = panel.querySelector('#badge-open');
         if (tabBadge) {
-            tabBadge.textContent = n;
-            tabBadge.style.display = n > 0 ? '' : 'none';
+            tabBadge.textContent = total;
+            tabBadge.style.display = total > 0 ? '' : 'none';
         }
     };
 
@@ -2679,11 +2659,11 @@ function doStartConv(groupId, el) {
     el.querySelector('i.fa-chevron-right').className = 'fas fa-spinner fa-spin';
 
     /* O chamado nasce assumido por quem clicou, então a lista tem que voltar
-       do servidor já na aba "Assumidos" — é lá que ele vai estar. Definido
+       do servidor na aba "Atendimentos" — é lá que ele vai estar. Definido
        ANTES do POST porque o refresh é disparado pelo WebSocket, que pode
        chegar antes da resposta desta requisição. */
     var _tabAnterior = window._activeInboxTab;
-    window._activeInboxTab = 'mine';
+    window._activeInboxTab = 'open';
 
     fetch('/atendimento/api/conversation/start/', {
         method: 'POST',

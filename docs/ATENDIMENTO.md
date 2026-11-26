@@ -15,7 +15,7 @@ Plataforma de atendimento ao cliente integrada ao CRM, similar ao Chatwoot. Cent
 | Recurso | Descrição |
 |---------|-----------|
 | Dashboard | Estatísticas em tempo real de chamados abertos, resolvidos, agentes online |
-| Inbox | 3 abas: Assumidos / Abertos / Em Andamento — **indicador de mensagem não lida** em tempo real |
+| Inbox | aba única **Atendimentos** (sem responsável + os meus; ver 2026-11-26) — **indicador de mensagem não lida** em tempo real |
 | Chat | Visual estilo **WhatsApp Dark** — bolhas com rabicho, ✓✓ de enviado, campo em pílula; envio de mídia (pelo "+", colando imagem ou **arrastando o arquivo para o chat**), tags, transferência, terminal de hosts |
 | **Tarefas** | Board em 4 colunas com vinculação de conversas e lembretes automáticos |
 | **Contatos 1:1** | Além dos grupos, contato de telefone criado à mão — e a escolha de **quem atende** cada contato/grupo (ninguém marcado = atendimento geral) |
@@ -2608,3 +2608,22 @@ token velho. O 403 vem em HTML, o `r.json()` estourava e o `.catch` mostrava "Er
   "Sua sessão nesta aba está desatualizada. Recarregue a página (F5)…", não "Erro de conexão".
 
 **Diagnóstico:** `journalctl -u gunicorn | grep django.security.csrf`.
+
+## Aba única "Atendimentos" (2026-11-26)
+
+**Pedido:** juntar Assumidos / Abertos / Em Andamento numa aba só. Chamado novo chega para
+todos; quem assume ou responde primeiro fica com ele e o chamado some da lista dos demais.
+
+**Regra** (`atendimento/views.py::_fila_do_atendente`, usada no Inbox, no `_base_ctx` e no
+sidebar do `conversation_detail`): status `new/open/pending` **e** (`assigned_to` vazio **ou**
+`assigned_to` = eu). Chamado de outro atendente não aparece mais na lista (a antiga
+"Em Andamento" mostrava todos); o Dashboard e a busca de grupos continuam mostrando.
+
+- Assumir/responder já atribuía (`services.auto_assign_on_reply`) e disparava
+  `conversation_reassigned` no WebSocket, que refaz a lista de todo mundo — é isso que faz o
+  chamado sumir dos demais sem F5. Nada mudou nesse fluxo.
+- `?tab=mine` e `?tab=ongoing` (links salvos, JS em cache) caem na lista única; `?tab=task`
+  (menu "Conversas em Tarefa") continua igual.
+- Item sem dono leva `data-sem-dono="1"`: o badge da aba conta a lista inteira, o badge do menu
+  "Caixa de Entrada" segue contando só os sem responsável (`__syncOpenBadges`).
+- Teste: `AbaUnicaAtendimentosTest`.
