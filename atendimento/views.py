@@ -124,8 +124,21 @@ def _fila_do_atendente(qs, user):
     some da lista dos demais no refresh disparado por
     `conversation_reassigned`. Substitui as abas Assumidos / Abertos /
     Em Andamento (26/11/2026)."""
+    from django.db.models import OuterRef, Subquery
+    respostas = Message.objects.filter(
+        conversation=OuterRef('pk'), sender_type__in=['agent', 'ai'], is_internal=False,
+    ).order_by('-created_at').values('created_at')[:1]
+    do_cliente = Message.objects.filter(conversation=OuterRef('pk'), sender_type='customer')
     return qs.filter(status__in=ATIVOS).filter(
         Q(assigned_to__isnull=True) | Q(assigned_to=user)
+    ).annotate(
+        # Tag "Cliente respondeu · aguardando há N min" (chamado com dono):
+        # 1ª mensagem do cliente depois da última resposta do atendente/IA;
+        # sem resposta nenhuma ainda, a 1ª mensagem do cliente.
+        ultima_resposta=Subquery(respostas),
+        aguardando_desde=Subquery(do_cliente.filter(
+            created_at__gt=OuterRef('ultima_resposta')).order_by('created_at').values('created_at')[:1]),
+        primeira_do_cliente=Subquery(do_cliente.order_by('created_at').values('created_at')[:1]),
     )
 
 

@@ -1398,6 +1398,31 @@ class AbaUnicaAtendimentosTest(TestCase):
         self.conv.save(update_fields=['assigned_to'])
         self.assertNotIn('class="conv-novo"', self._lista(self.lucas))
 
+    def test_tag_cliente_respondeu_no_assumido(self):
+        from datetime import timedelta as td
+        self.conv.assigned_to = self.lucas
+        self.conv.save(update_fields=['assigned_to'])
+        agora = timezone.now()
+
+        def msg(tipo, minutos, **kw):
+            m = Message.objects.create(conversation=self.conv, sender_type=tipo, content='x',
+                                       external_id='tg-%s-%s' % (tipo, minutos), **kw)
+            Message.objects.filter(pk=m.pk).update(created_at=agora - td(minutes=minutos))
+
+        msg('customer', 30)                      # cliente abriu, ninguém respondeu
+        html = self._lista(self.lucas)
+        self.assertIn('conv-aguardando" data-aberto-em="%d"' % int((agora - td(minutes=30)).timestamp()), html)
+
+        msg('agent', 20)                         # atendente respondeu
+        self.assertNotIn('conv-aguardando"', self._lista(self.lucas))
+
+        msg('internal', 15, is_internal=True)    # nota interna não conta
+        msg('customer', 10)                      # cliente voltou a falar
+        msg('customer', 5)
+        html = self._lista(self.lucas)
+        self.assertIn('conv-aguardando" data-aberto-em="%d"' % int((agora - td(minutes=10)).timestamp()), html)
+        self.assertNotIn('class="conv-novo" data-aberto-em', html)  # não é "novo atendimento"
+
     def test_abas_antigas_caem_na_lista_unica(self):
         marca = 'data-conv-id="%s"' % self.conv.id
         for tab in ('mine', 'ongoing'):

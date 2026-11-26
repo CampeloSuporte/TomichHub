@@ -314,6 +314,17 @@ class Conversation(models.Model):
         )
 
     @property
+    def aguardando_cliente_desde(self):
+        """Desde quando o cliente espera resposta num chamado que já tem dono
+        (tag "Cliente respondeu" da lista). Só existe nas querysets anotadas
+        por views._fila_do_atendente; fora delas devolve None."""
+        if not self.assigned_to_id or not hasattr(self, 'ultima_resposta'):
+            return None
+        if self.ultima_resposta:
+            return self.aguardando_desde
+        return self.primeira_do_cliente
+
+    @property
     def sla_resolution_overdue(self):
         """SLA de resolução estourado — chamado ainda aberto e já passou do prazo de resolução."""
         return bool(
