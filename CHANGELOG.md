@@ -7,6 +7,18 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Não publicado] — 2026-11-26 (Atendimento: aba única)
 
+### Adicionado
+
+- **Menu Auditoria (só administrador)** em Atendimento → Análise: por atendente, o que está com
+  ele agora, não lidas, SLA estourado, assumidos, resolvidos, mensagens, notas, tempo médio de 1ª
+  resposta; detalhe com chamados, linha do tempo e mensagens enviadas; fila sem responsável.
+
+### Corrigido
+
+- **Lista lateral "Atendimentos" vazia** (badge com número, nenhum chamado): um `</div>` a mais
+  no Inbox tirava a lista de dentro do painel.
+- Abrir o chamado de outro atendente não marca mais as mensagens dele como lidas.
+
 ### Alterado
 
 - **Inbox do atendimento com uma aba só, "Atendimentos"**, no lugar de Assumidos / Abertos /

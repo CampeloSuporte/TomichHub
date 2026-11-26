@@ -1538,6 +1538,14 @@ body {
                 <i class="fas fa-chevron-right nav-item-arrow"></i>
             </a>
 
+            {% if is_admin_bo %}
+            <a href="{% url 'atendimento:auditoria' %}" class="nav-item {% if request.resolver_match.url_name == 'auditoria' %}active{% endif %}">
+                <i class="fas fa-user-shield nav-item-icon"></i>
+                <span>Auditoria</span>
+                <i class="fas fa-chevron-right nav-item-arrow"></i>
+            </a>
+            {% endif %}
+
             <button class="nav-item" id="sala-nav-btn" onclick="salaTogglePanel()" title="Sala virtual de atendentes">
                 <i class="fas fa-users nav-item-icon" id="sala-nav-icon" style="color:#7d8590"></i>
                 <span>Sala Virtual</span>
@@ -1637,7 +1645,7 @@ body {
             <div class="conv-tabs">
                 <a href="{% url 'atendimento:inbox' %}?tab=open" class="conv-tab active">
                     Atendimentos
-                    {% if sidebar_conversations %}<span class="conv-tab-badge" id="badge-open">{{ sidebar_conversations|length }}</span>{% endif %}
+                    <span class="conv-tab-badge" id="badge-open" {% if not sidebar_conversations %}style="display:none"{% endif %}>{{ sidebar_conversations|length }}</span>
                 </a>
             </div>
         </div>

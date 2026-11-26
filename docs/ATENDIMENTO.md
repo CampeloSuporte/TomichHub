@@ -2627,3 +2627,25 @@ sidebar do `conversation_detail`): status `new/open/pending` **e** (`assigned_to
 - Item sem dono leva `data-sem-dono="1"`: o badge da aba conta a lista inteira, o badge do menu
   "Caixa de Entrada" segue contando só os sem responsável (`__syncOpenBadges`).
 - Teste: `AbaUnicaAtendimentosTest`.
+
+## Correção — lista lateral vazia + menu Auditoria (2026-11-26)
+
+**Sintoma:** depois da aba única, a aba "Atendimentos" mostrava o badge (5) mas a lista ficava
+vazia, principalmente dentro de um chamado.
+
+**Causa:** sobrou um `</div>` no `inbox.html` (troca das abas): o `conv-panel` fechava antes da
+`#tab-open`. O refresh do painel (`__refreshConvPanel`) copia só o bloco
+`data-target="conv-panel"`, então vinha sem nenhum item. Teste: `ListaDentroDoPainelTest`.
+
+**Auditoria** (`/atendimento/auditoria/`, `views.auditoria`, menu Análise → Auditoria, só
+`is_admin`): por atendente, no período (hoje / 7 / 30 dias / datas) — status, chamados com ele
+agora, não lidas, SLA estourado, assumidos (`ConversationActivity` `assigned` com `actor`),
+resolvidos (`resolved_at`), mensagens e notas enviadas, média de 1ª resposta
+(`first_response_at - created_at`) e última mensagem. `?agente=<id>` abre os chamados dele, a
+linha do tempo, os resolvidos e as últimas 60 mensagens; embaixo, a fila sem responsável com o
+tempo de espera.
+
+- O administrador abre o chamado do atendente pela Auditoria **sem marcar como lido**:
+  `_marcar_mensagens_lidas(conversation, user)` só marca quando o chamado é de quem está vendo
+  (ou não tem dono). Antes, qualquer colega/admin que abrisse apagava a não lida do dono.
+- Teste: `AuditoriaTest`.

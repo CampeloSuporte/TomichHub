@@ -1399,6 +1399,88 @@ class AbaUnicaAtendimentosTest(TestCase):
             self.assertNotIn('Em Andamento', html)
 
 
+class ListaDentroDoPainelTest(TestCase):
+    """Regressão 26/11/2026: um </div> a mais no inbox.html fechava o
+    conv-panel antes da lista. O refresh (que copia só o bloco
+    data-target="conv-panel") trazia o painel sem nenhum chamado — aba com
+    badge 5 e lista vazia."""
+
+    def test_itens_ficam_dentro_do_conv_panel(self):
+        from html.parser import HTMLParser
+        agente = _criar_agente_staff('lucas')
+        conv = _criar_conversa()
+        conv.status = 'open'
+        conv.save(update_fields=['status'])
+        self.client.force_login(agente)
+        html = self.client.get(reverse('atendimento:inbox'),
+                               HTTP_X_REQUESTED_WITH='XMLHttpRequest').content.decode()
+
+        achou = []
+
+        class P(HTMLParser):
+            pilha = []
+            def handle_starttag(self, tag, attrs):
+                if tag in ('br', 'img', 'input', 'meta', 'link', 'hr', 'source'):
+                    return
+                a = dict(attrs)
+                self.pilha.append(a.get('data-target'))
+                if a.get('data-conv-id') == str(conv.id):
+                    achou.append('conv-panel' in self.pilha)
+            def handle_endtag(self, tag):
+                if tag in ('br', 'img', 'input', 'meta', 'link', 'hr', 'source'):
+                    return
+                if self.pilha:
+                    self.pilha.pop()
+
+        P().feed(html)
+        self.assertEqual(achou, [True])
+
+
+class AuditoriaTest(TestCase):
+    """Menu Auditoria: só o Administrador; mostra o que cada atendente tem."""
+
+    def setUp(self):
+        from usuario.models import Instancia, PerfilUsuario
+        self.admin = _dar_2fa(User.objects.create_user(
+            username='adm_aud', password='x', is_staff=True, is_superuser=True, is_active=True))
+        inst = Instancia.objects.create(nome='Principal', principal=True)
+        self.lucas = User.objects.create_user(
+            username='lucas', first_name='Lucas', password='x', is_staff=True, is_active=True)
+        PerfilUsuario.objects.create(usuario=self.lucas, role=PerfilUsuario.ROLE_OPERADOR, instancia=inst)
+        _dar_2fa(self.lucas)
+        self.conv = _criar_conversa()
+        self.conv.status = 'open'
+        self.conv.assigned_to = self.lucas
+        self.conv.save(update_fields=['status', 'assigned_to'])
+        Message.objects.create(conversation=self.conv, sender_type='customer',
+                               content='oi', external_id='aud-1', is_read=False)
+
+    def test_so_admin_entra(self):
+        self.client.force_login(self.lucas)
+        self.assertEqual(self.client.get(reverse('atendimento:auditoria')).status_code, 403)
+
+    def test_admin_ve_o_atendente_e_o_chamado(self):
+        self.client.force_login(self.admin)
+        r = self.client.get(reverse('atendimento:auditoria') + '?periodo=7d&agente=%d' % self.lucas.id)
+        self.assertEqual(r.status_code, 200)
+        html = r.content.decode()
+        self.assertIn('Lucas', html)
+        self.assertIn(str(self.conv.id), html)
+
+    def test_admin_olhando_nao_marca_como_lida(self):
+        # Dono sem PerfilUsuario (vê tudo) para o detalhe abrir sem cliente.
+        dono = _criar_agente_staff('dono')
+        self.conv.assigned_to = dono
+        self.conv.save(update_fields=['assigned_to'])
+        self.client.force_login(self.admin)
+        self.client.get(reverse('atendimento:conversation_detail', args=[self.conv.id]))
+        self.assertFalse(Message.objects.get(external_id='aud-1').is_read)
+        self.client.force_login(dono)
+        self.assertEqual(self.client.get(
+            reverse('atendimento:conversation_detail', args=[self.conv.id])).status_code, 200)
+        self.assertTrue(Message.objects.get(external_id='aud-1').is_read)
+
+
 class ApiAgentsListTest(TestCase):
     """Modal "Transferir chamado" — quem entra e quem não entra na lista."""
 
