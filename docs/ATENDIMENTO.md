@@ -2707,3 +2707,25 @@ sem repetir o alerta de offline. Atendente que volta online não recebe o chamad
 automaticamente: se ninguém assumiu, ele assume respondendo, como qualquer um.
 
 Testes: `AtendenteOfflineTest.test_offline_libera_o_chamado_para_todos`, `test_online_nao_libera`.
+
+## Desconectado do atendimento conta como offline (2026-11-26)
+
+**Pedido:** além do botão offline, o atendente que **não está com o módulo de atendimento aberto**
+é offline: se o cliente escreve num chamado dele, o chamado é liberado para a equipe (mesmo fluxo
+da seção anterior).
+
+- **Presença** (`AgentStatus.conectado_em`, migração 0023): o `InboxConsumer`
+  (`/ws/atendimento/inbox/`, que toda tela do atendimento abre) grava a presença ao conectar e a
+  cada `PRESENCA_INTERVALO` (45 s) por uma tarefa asyncio no servidor — não depende de timer do
+  navegador, que o Chrome estrangula em aba de fundo. `AgentStatus.conectado` = presença com
+  menos de `PRESENCA_VALIDADE` (120 s).
+- **Fechou a última aba:** `_abas_por_atendente` (contador em memória — o daphne tem 1 worker
+  só) zera e a presença é regravada para vencer em ~20 s: F5 reconecta antes disso e não solta os
+  chamados. Daphne caiu/reiniciou: as gravações param e a presença vence sozinha em 2 min.
+- **Regra** (`services.estado_offline`): botão offline → `'manual'`; senão, sem presença válida →
+  `'desconectado'` (inclusive quem nunca abriu o atendimento: sem `AgentStatus` não é mais
+  "online"). Usada em `_alertar_atendente_offline` (texto "não está conectado no atendimento") e
+  `_liberar_chamado_atendente_offline`.
+- **Auditoria** mostra online / offline (botão) / desconectado.
+- Testes: `AtendenteOfflineTest` (`..._nunca_conectou_conta_como_offline`,
+  `test_online_mas_desconectado_libera`), `PresencaNoAtendimentoTests`.

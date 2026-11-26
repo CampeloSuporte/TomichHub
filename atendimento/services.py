@@ -370,10 +370,28 @@ def _alertar_atendente_pessoal(conversation, group, attendant_contact, connectio
 OFFLINE_ALERT_INTERVALO = timedelta(minutes=15)
 
 
-def atendente_offline(user) -> bool:
-    """O atendente marcou-se offline? Sem AgentStatus conta como online."""
+def estado_offline(user):
+    """(offline, motivo, desde, status) do atendente, para o alerta do NOC e a
+    liberação do chamado.
+
+    Offline é: marcou-se offline no botão (motivo 'manual', desde a troca) OU
+    não está com o módulo de atendimento aberto (motivo 'desconectado', desde
+    a última presença gravada pelo InboxConsumer — None se nunca conectou)."""
     from .models import AgentStatus
-    return AgentStatus.objects.filter(user=user, status='offline').exists()
+    st = AgentStatus.objects.filter(user=user).first()
+    if st and st.status == 'offline':
+        return True, 'manual', st.status_changed_at, st
+    if st and st.conectado:
+        return False, '', None, st
+    return True, 'desconectado', (st.conectado_em if st else None), st
+
+
+def atendente_offline(user) -> bool:
+    return estado_offline(user)[0]
+
+
+def _nome_atendente(agent, st):
+    return (st.get_display_name() if st else '') or agent.get_full_name() or agent.username
 
 
 def _alertar_atendente_offline(conversation, group) -> None:
@@ -384,16 +402,16 @@ def _alertar_atendente_offline(conversation, group) -> None:
     escrevendo, repete só depois de OFFLINE_ALERT_INTERVALO. Contato restrito
     é avisado sem o nome — o grupo do NOC é lido pela equipe inteira."""
     try:
-        from .models import SystemSetting, AgentStatus
+        from .models import SystemSetting
         agent = conversation.assigned_to
         if not agent:
             return
-        st = AgentStatus.objects.filter(user=agent, status='offline').first()
-        if not st:
+        offline, motivo, desde, st = estado_offline(agent)
+        if not offline:
             return
         now = timezone.now()
         ultimo = conversation.offline_alert_at
-        if ultimo and (not st.status_changed_at or ultimo >= st.status_changed_at) \
+        if ultimo and (not desde or ultimo >= desde) \
                 and now - ultimo < OFFLINE_ALERT_INTERVALO:
             return
         group_id = SystemSetting.get('notif_abertos_group_id', '').strip()
@@ -403,7 +421,8 @@ def _alertar_atendente_offline(conversation, group) -> None:
         _alert_group = _CG.objects.filter(id=group_id).select_related('connection').first()
         if not _alert_group or not _alert_group.connection:
             return
-        nome_atendente = st.get_display_name()
+        nome_atendente = _nome_atendente(agent, st)
+        situacao = "está *offline*" if motivo == 'manual' else "*não está conectado* no atendimento"
         if group.restrito:
             onde = "um chamado de contato restrito"
         else:
@@ -412,7 +431,7 @@ def _alertar_atendente_offline(conversation, group) -> None:
             f"📴 *Atendente offline!*\n\n"
             f"Chegou mensagem nova em {onde} "
             f"(#{conversation.conversation_id}), que estava com "
-            f"*{nome_atendente}* — e ele(a) está *offline* na plataforma.\n\n"
+            f"*{nome_atendente}* — e ele(a) {situacao} na plataforma.\n\n"
             f"O chamado foi liberado para toda a equipe: quem responder primeiro assume."
         )
         # Marca o atendente (se tiver WhatsApp cadastrado) para ele ver o
@@ -436,14 +455,15 @@ def _liberar_chamado_atendente_offline(conversation, group) -> bool:
     tag "Atendente offline · liberado". Quem responder primeiro assume
     (auto_assign_on_reply). Roda DEPOIS do alerta do NOC, que precisa saber
     quem era o dono. Devolve True se liberou."""
-    from .models import AgentStatus, ConversationActivity
+    from .models import ConversationActivity
     agent = conversation.assigned_to
     if not agent:
         return False
-    st = AgentStatus.objects.filter(user=agent, status='offline').first()
-    if not st:
+    offline, motivo, _desde, st = estado_offline(agent)
+    if not offline:
         return False
-    nome = st.get_display_name()
+    nome = _nome_atendente(agent, st)
+    situacao = "está offline" if motivo == 'manual' else "não está conectado no atendimento"
     old_id = conversation.assigned_to_id
     now = timezone.now()
     conversation.assigned_to = None
@@ -453,13 +473,13 @@ def _liberar_chamado_atendente_offline(conversation, group) -> bool:
     ConversationActivity.objects.create(
         conversation=conversation, actor=None, action='transferred',
         old_value=nome, new_value='Fila (atendente offline)',
-        description=f'{nome} offline: chamado liberado para a equipe',
+        description=f'{nome} {situacao}: chamado liberado para a equipe',
     )
     try:
         aviso = Message.objects.create(
             conversation=conversation, sender_type='system', sender_name='Sistema',
             message_type='text', is_internal=True,
-            content=f'📴 {nome} está offline — chamado liberado para a equipe. Quem responder assume.',
+            content=f'📴 {nome} {situacao} — chamado liberado para a equipe. Quem responder assume.',
             external_id=f'offline_liberado_{uuid.uuid4().hex}',
         )
         ConversationService._broadcast_msg(conversation, group, aviso, inbox=False)

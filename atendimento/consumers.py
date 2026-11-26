@@ -1,3 +1,4 @@
+import asyncio
 import json
 import math
 import time
@@ -67,6 +68,26 @@ class ConversationConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps(event["data"]))
 
 
+# Abas conectadas por atendente neste processo (o daphne roda 1 worker só —
+# ver daphne.service). Serve para marcar desconectado logo que a ÚLTIMA aba
+# fecha, sem esperar a presença vencer sozinha.
+_abas_por_atendente = {}
+
+
+@database_sync_to_async
+def _gravar_presenca(user_id, conectado=True):
+    """Grava AgentStatus.conectado_em. `conectado=False` (última aba fechou)
+    deixa só uma folga curta: um F5 reconecta em 1-2 s e não pode soltar os
+    chamados do atendente no meio do caminho."""
+    from django.utils import timezone
+    from .models import AgentStatus
+    agora = timezone.now()
+    if not conectado:
+        agora = agora - AgentStatus.PRESENCA_VALIDADE + __import__('datetime').timedelta(seconds=20)
+    if not AgentStatus.objects.filter(user_id=user_id).update(conectado_em=agora):
+        AgentStatus.objects.get_or_create(user_id=user_id, defaults={'conectado_em': agora})
+
+
 class InboxConsumer(AsyncWebsocketConsumer):
     """
     WebSocket para a caixa de entrada.
@@ -84,10 +105,38 @@ class InboxConsumer(AsyncWebsocketConsumer):
         self.group_name = "atendimento_inbox"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
+        _abas_por_atendente[self.user_id] = _abas_por_atendente.get(self.user_id, 0) + 1
+        # Presença gravada pelo servidor, não por ping do navegador: aba em
+        # segundo plano tem timer estrangulado pelo Chrome, o socket não.
+        self._presenca = asyncio.ensure_future(self._loop_presenca())
+
+    async def _loop_presenca(self):
+        from .models import AgentStatus
+        try:
+            while True:
+                try:
+                    await _gravar_presenca(self.user_id)
+                except Exception:
+                    pass
+                await asyncio.sleep(AgentStatus.PRESENCA_INTERVALO)
+        except asyncio.CancelledError:
+            pass
 
     async def disconnect(self, close_code):
         if hasattr(self, "group_name"):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        tarefa = getattr(self, "_presenca", None)
+        if tarefa:
+            tarefa.cancel()
+            restantes = _abas_por_atendente.get(self.user_id, 1) - 1
+            if restantes > 0:
+                _abas_por_atendente[self.user_id] = restantes
+            else:
+                _abas_por_atendente.pop(self.user_id, None)
+                try:
+                    await _gravar_presenca(self.user_id, conectado=False)
+                except Exception:
+                    pass
 
     async def inbox_update(self, event):
         """Todo mundo assina o MESMO grupo de canal ("atendimento_inbox"), então
