@@ -633,6 +633,23 @@ body {
     width: fit-content;
 }
 
+/* "Novo atendimento" — chamado sem responsável. Pisca só com opacity
+   (compositor, não repinta), ver memória de custo em repouso da topologia. */
+.conv-item[data-sem-dono] { box-shadow: inset 3px 0 0 #f59e0b; }
+.conv-novo {
+    display: inline-flex; align-items: center; gap: 5px;
+    margin-top: 5px; padding: 3px 9px; border-radius: 20px;
+    font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px;
+    background: #f59e0b; color: #1a1205; width: fit-content; max-width: 100%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    animation: convNovoPisca 1s ease-in-out infinite alternate;
+    will-change: opacity;
+}
+.conv-novo i { font-size: 10px; }
+.conv-novo-tempo { font-weight: 700; text-transform: none; letter-spacing: 0; }
+@keyframes convNovoPisca { from { opacity: 1; } to { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .conv-novo { animation: none; } }
+
 .conv-meta-top {
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 3px;
@@ -1922,6 +1939,45 @@ document.addEventListener('click', function() {
         }
         return 'open';
     }
+
+    /* "Novo atendimento · aberto há N min" nos chamados sem responsável.
+       Relógio do servidor (o do PC do atendente pode estar errado): a
+       diferença é medida uma vez, quando o shell carrega. Atualiza a cada
+       minuto e sempre que a lista é remontada (MutationObserver no painel —
+       a lista é refeita por WebSocket, ressincronização e navegação). */
+    var _srvOffsetMs = {% now "U" %} * 1000 - Date.now();
+    function _textoAberto(seg) {
+        var min = Math.floor(seg / 60);
+        if (min < 1) return 'aberto há menos de 1 min';
+        if (min < 60) return 'aberto há ' + min + ' min';
+        var h = Math.floor(min / 60);
+        if (h < 24) return 'aberto há ' + h + 'h' + String(min % 60).padStart(2, '0');
+        var d = Math.floor(h / 24);
+        return 'aberto há ' + d + (d === 1 ? ' dia' : ' dias');
+    }
+    window.__atualizarTempoAberto = function() {
+        var agora = (Date.now() + _srvOffsetMs) / 1000;
+        document.querySelectorAll('.conv-novo[data-aberto-em]').forEach(function(el) {
+            var ini = parseInt(el.getAttribute('data-aberto-em'), 10);
+            var alvo = el.querySelector('.conv-novo-tempo');
+            if (!ini || !alvo) return;
+            var txt = '· ' + _textoAberto(Math.max(0, agora - ini));
+            if (alvo.textContent !== txt) alvo.textContent = txt;
+        });
+    };
+    (function() {
+        if (window.__tempoAbertoTimer) clearInterval(window.__tempoAbertoTimer);
+        window.__tempoAbertoTimer = setInterval(window.__atualizarTempoAberto, 60000);
+        window.__atualizarTempoAberto();
+        var painel = document.querySelector('.conv-panel');
+        if (painel && window.MutationObserver) {
+            var pend = null;
+            new MutationObserver(function() {
+                if (pend) return;
+                pend = setTimeout(function() { pend = null; window.__atualizarTempoAberto(); }, 50);
+            }).observe(painel, { childList: true, subtree: true });
+        }
+    })();
 
     /* Destaca na lista o chamado que está aberto na tela. Global porque a
        lista pode ser remontada depois da navegação (chamado recém-criado só

@@ -2649,3 +2649,17 @@ tempo de espera.
   `_marcar_mensagens_lidas(conversation, user)` só marca quando o chamado é de quem está vendo
   (ou não tem dono). Antes, qualquer colega/admin que abrisse apagava a não lida do dono.
 - Teste: `AuditoriaTest`.
+
+## Tag "Novo atendimento" piscando com tempo aberto (2026-11-26)
+
+Chamado sem responsável ganha na lista (`_inbox_conv_item.html` e `_conv_item.html`) uma tag
+laranja **"Novo atendimento · aberto há N min"** que pisca, e uma faixa laranja à esquerda do
+item (`.conv-item[data-sem-dono]`). Some quando alguém assume/responde (o item deixa de ser
+`data-sem-dono` no refresh).
+
+- O tempo conta a partir de `created_at` (`data-aberto-em`, epoch). `__atualizarTempoAberto`
+  (base.html) reescreve o texto a cada 60 s e sempre que a lista é remontada
+  (MutationObserver no `.conv-panel`). Usa o relógio do servidor (`{% now "U" %}` menos
+  `Date.now()` no carregamento do shell), não o do PC do atendente.
+- Texto: "menos de 1 min" → "N min" → "Hh MM" → "N dias".
+- O piscar anima só `opacity` (não repinta); com `prefers-reduced-motion` fica parado.

@@ -1391,6 +1391,13 @@ class AbaUnicaAtendimentosTest(TestCase):
         self.assertIn(marca, self._lista(self.lucas))
         self.assertNotIn(marca, self._lista(self.ana))
 
+    def test_tag_novo_atendimento_so_sem_responsavel(self):
+        html = self._lista(self.lucas)
+        self.assertIn('class="conv-novo" data-aberto-em="%d"' % int(self.conv.created_at.timestamp()), html)
+        self.conv.assigned_to = self.lucas
+        self.conv.save(update_fields=['assigned_to'])
+        self.assertNotIn('class="conv-novo"', self._lista(self.lucas))
+
     def test_abas_antigas_caem_na_lista_unica(self):
         marca = 'data-conv-id="%s"' % self.conv.id
         for tab in ('mine', 'ongoing'):
