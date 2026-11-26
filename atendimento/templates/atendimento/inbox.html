@@ -17,43 +17,23 @@
         <input type="text" id="convSearch" placeholder="Buscar atendimento..." autocomplete="off">
     </div>
     <div class="conv-tabs">
-        <button class="conv-tab {% if active_tab == 'mine' %}active{% endif %}" onclick="switchInboxTab('mine', this)">
-            Assumidos
-            <span class="conv-tab-badge" id="badge-mine" {% if not mine_conversations %}style="display:none"{% endif %}>{{ mine_conversations|length }}</span>
-        </button>
-        <button class="conv-tab {% if active_tab == 'open' or not active_tab %}active{% endif %}" onclick="switchInboxTab('open', this)">
-            Abertos
+        {% comment %}Aba única (26/11/2026): sem responsável chega para todos;
+        quem assume/responde fica com ele e o chamado some dos demais.{% endcomment %}
+        <button class="conv-tab {% if active_tab != 'task' %}active{% endif %}" onclick="switchInboxTab('open', this)">
+            Atendimentos
             <span class="conv-tab-badge" id="badge-open" {% if not open_conversations %}style="display:none"{% endif %}>{{ open_conversations|length }}</span>
         </button>
-        <button class="conv-tab {% if active_tab == 'ongoing' %}active{% endif %}" onclick="switchInboxTab('ongoing', this)">
-            Em Andamento
-        </button>
     </div>
+</div>
 </div>
 <div class="conv-select-all">
     <input type="checkbox" id="selectAll"> <label for="selectAll">Selecionar todos</label>
 </div>
 
-{% comment %}── Três listas pré-renderizadas, troca é client-side ──{% endcomment %}
+{% comment %}── Lista única + lista de tarefas (menu lateral), troca é client-side ──{% endcomment %}
 
-{% with convs=mine_conversations tab_id="tab-mine" empty_msg="Nenhuma conversa assumida" %}
-<div id="tab-mine" class="conv-list inbox-tab-list" {% if active_tab != 'mine' %}style="display:none"{% endif %}>
-    {% for conv in convs %}{% include 'atendimento/_inbox_conv_item.html' %}{% empty %}
-    <div class="conv-empty"><i class="fas fa-inbox"></i><p>{{ empty_msg }}</p></div>
-    {% endfor %}
-</div>
-{% endwith %}
-
-{% with convs=open_conversations tab_id="tab-open" empty_msg="Nenhuma conversa em aberto" %}
-<div id="tab-open" class="conv-list inbox-tab-list" {% if active_tab == 'mine' or active_tab == 'ongoing' %}style="display:none"{% endif %}>
-    {% for conv in convs %}{% include 'atendimento/_inbox_conv_item.html' %}{% empty %}
-    <div class="conv-empty"><i class="fas fa-inbox"></i><p>{{ empty_msg }}</p></div>
-    {% endfor %}
-</div>
-{% endwith %}
-
-{% with convs=ongoing_conversations tab_id="tab-ongoing" empty_msg="Nenhuma conversa em andamento" %}
-<div id="tab-ongoing" class="conv-list inbox-tab-list" {% if active_tab != 'ongoing' %}style="display:none"{% endif %}>
+{% with convs=open_conversations tab_id="tab-open" empty_msg="Nenhum atendimento no momento" %}
+<div id="tab-open" class="conv-list inbox-tab-list" {% if active_tab == 'task' %}style="display:none"{% endif %}>
     {% for conv in convs %}{% include 'atendimento/_inbox_conv_item.html' %}{% empty %}
     <div class="conv-empty"><i class="fas fa-inbox"></i><p>{{ empty_msg }}</p></div>
     {% endfor %}
@@ -173,7 +153,7 @@ document.getElementById('convSearch').addEventListener('input', function() {
                 }
 
                 /* Chamado aberto pela plataforma ("Iniciar conversa") → entra
-                   direto em "Assumidos" de quem abriu. Igual ao caso abaixo:
+                   direto na lista de quem abriu (já assumido). Igual ao caso abaixo:
                    só o servidor sabe montar o item da lista. */
                 if (payload.type === 'conversation_created') {
                     if (typeof window.__scheduleConvPanelRefresh === 'function') {
@@ -188,8 +168,8 @@ document.getElementById('convSearch').addEventListener('input', function() {
                     return;
                 }
 
-                /* Chamado mudou de dono → a lista muda de aba (sai de "Abertos",
-                   entra em "Assumidos" de alguém). Só o servidor sabe montar
+                /* Chamado mudou de dono → some da lista de quem não é o dono
+                   (e entra na de quem assumiu). Só o servidor sabe montar
                    isso corretamente — por isso refaz a lista em vez de tentar
                    mover o item no navegador. */
                 if (payload.type === 'conversation_reassigned') {

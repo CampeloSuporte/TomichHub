@@ -1,6 +1,6 @@
 <a href="{% url 'atendimento:conversation_detail' conv.id %}"
    class="conv-item {% if conv.unread_count %}unread{% endif %}"
-   data-conv-id="{{ conv.id }}"
+   data-conv-id="{{ conv.id }}"{% if not conv.assigned_to_id %} data-sem-dono="1"{% endif %}
    data-conv-name="{{ conv.group.name|lower }}"
    data-conv-client="{{ conv.cliente.nome_empresa|lower|default:'' }}">
     <div class="conv-avatar"

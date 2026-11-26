@@ -108,6 +108,21 @@ def _marcar_mensagens_lidas(conversation):
             logger.warning(f"Falha ao notificar inbox (messages_read): {_e}")
 
 
+ATIVOS = ['new', 'open', 'pending']
+
+
+def _fila_do_atendente(qs, user):
+    """A aba única "Atendimentos": tudo que está sem responsável (chega para
+    toda a equipe) + o que é do próprio atendente. Quando alguém assume ou
+    responde (services.auto_assign_on_reply), o chamado passa a ter dono e
+    some da lista dos demais no refresh disparado por
+    `conversation_reassigned`. Substitui as abas Assumidos / Abertos /
+    Em Andamento (26/11/2026)."""
+    return qs.filter(status__in=ATIVOS).filter(
+        Q(assigned_to__isnull=True) | Q(assigned_to=user)
+    )
+
+
 def _base_ctx(request):
     """Contexto comum a todas as views do atendimento (sidebar + badges)."""
     active = conversations_visiveis(request.user).filter(
@@ -122,7 +137,7 @@ def _base_ctx(request):
     from .services import build_ice_servers
     return {
         'base_tpl': 'atendimento/base_partial.html' if is_ajax else 'atendimento/base.html',
-        'sidebar_conversations': open_q.order_by('-last_message_at')[:30],
+        'sidebar_conversations': _fila_do_atendente(active, request.user).order_by('-last_message_at')[:30],
         'unattended_count': open_q.count(),
         'open_count': open_q.count(),
         'mine_count': active.filter(assigned_to=request.user).count(),
@@ -169,8 +184,13 @@ def dashboard(request):
 
 @staff_required
 def inbox(request):
-    """Caixa de entrada de conversas — carrega as 3 abas de uma vez para troca instantânea."""
+    """Caixa de entrada — uma lista só ("Atendimentos", ver _fila_do_atendente)
+    + a lista de "Conversas em Tarefa" (menu lateral)."""
     active_tab = request.GET.get('tab', 'open')
+    # ?tab=mine / ?tab=ongoing são das abas antigas (links salvos, JS em
+    # cache): caem na lista única.
+    if active_tab != 'task':
+        active_tab = 'open'
     search = request.GET.get('search', '')
 
     base_qs = conversations_visiveis(request.user).select_related('group', 'cliente', 'assigned_to').prefetch_related('tags').annotate(
@@ -184,16 +204,12 @@ def inbox(request):
             Q(conversation_id__icontains=search)
         )
 
-    mine_qs    = base_qs.filter(assigned_to=request.user, status__in=['new', 'open', 'pending']).order_by('-last_message_at')
-    open_qs    = base_qs.filter(assigned_to__isnull=True, status__in=['new', 'open']).order_by('-last_message_at')
-    ongoing_qs = base_qs.filter(status__in=['new', 'open', 'pending']).order_by('-last_message_at')
+    open_qs    = _fila_do_atendente(base_qs, request.user).order_by('-last_message_at')
     task_qs    = base_qs.filter(is_task_conv=True, status__in=['new', 'open', 'pending']).order_by('-last_message_at')
 
     context = {
         **_base_ctx(request),
-        'mine_conversations':    mine_qs,
         'open_conversations':    open_qs,
-        'ongoing_conversations': ongoing_qs,
         'task_conversations':    task_qs,
         'active_tab': active_tab,
         'search': search,
@@ -268,26 +284,12 @@ def conversation_detail(request, conversation_id):
     # Atualiza status de leitura das mensagens do cliente e avisa outras abas/dispositivos
     _marcar_mensagens_lidas(conversation)
 
-    # Determina em qual aba do sidebar esta conversa aparece
-    if conversation.assigned_to == request.user:
-        sidebar_active_tab = 'mine'
-    elif conversation.assigned_to is None and conversation.status in ['new', 'open']:
-        sidebar_active_tab = 'open'
-    else:
-        sidebar_active_tab = 'ongoing'
-
-    # Filtra as conversas do sidebar de acordo com a aba ativa
+    # Lista do sidebar — a mesma aba única do Inbox
+    sidebar_active_tab = 'open'
     _qs = conversations_visiveis(request.user).select_related('group', 'cliente', 'assigned_to').prefetch_related('tags').annotate(
         unread_count=Count('messages', filter=Q(messages__sender_type='customer', messages__is_read=False))
-    ).filter(
-        status__in=['new', 'open', 'pending']
     )
-    if sidebar_active_tab == 'mine':
-        _sidebar_convs = _qs.filter(assigned_to=request.user)
-    elif sidebar_active_tab == 'open':
-        _sidebar_convs = _qs.filter(assigned_to__isnull=True, status__in=['new', 'open'])
-    else:
-        _sidebar_convs = _qs
+    _sidebar_convs = _fila_do_atendente(_qs, request.user)
     _sidebar_convs = _sidebar_convs.order_by('-last_message_at')[:30]
 
     # Tarefas vinculadas a esta conversa
