@@ -21,6 +21,7 @@ urlpatterns = [
     path('relatorios/', views.relatorios, name='relatorios'),
     path('relatorios/pdf/', views.relatorio_pdf, name='relatorio_pdf'),
     path('historico/', views.historico, name='historico'),
+    path('auditoria/', views.auditoria, name='auditoria'),
     path('grupos/', views.grupos, name='grupos'),
 
     # APIs existentes

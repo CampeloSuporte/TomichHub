@@ -1,0 +1,202 @@
+{% extends base_tpl %}
+
+{% block extra_css %}
+.au-kpis { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; margin-bottom:20px; }
+.au-kpi { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:8px; padding:14px 16px; }
+.au-kpi b { display:block; font-size:24px; font-weight:800; color:var(--text); font-variant-numeric:tabular-nums; }
+.au-kpi span { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+.au-kpi.alerta b { color:#f59e0b; }
+.au-bar { display:flex; align-items:center; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+.au-chip { padding:6px 12px; border-radius:6px; border:1px solid var(--border); color:var(--muted); font-size:12px; text-decoration:none; }
+.au-chip.on { border-color:var(--active); color:var(--text); background:rgba(255,255,255,0.04); }
+.au-in { padding:6px 10px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; }
+.au-box { background:var(--dark-800); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:18px; }
+.au-box h4 { font-size:13px; font-weight:700; color:var(--text); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+.au-tab { width:100%; border-collapse:collapse; font-size:12px; }
+.au-tab th { text-align:left; padding:8px 10px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border); white-space:nowrap; }
+.au-tab th.n, .au-tab td.n { text-align:right; font-variant-numeric:tabular-nums; }
+.au-tab td { padding:9px 10px; border-bottom:1px solid rgba(255,255,255,0.04); color:var(--text); }
+.au-tab tr.click { cursor:pointer; }
+.au-tab tr.click:hover td { background:rgba(255,255,255,0.03); }
+.au-tab tr.sel td { background:rgba(255,255,255,0.05); }
+.au-tab a { color:var(--text); text-decoration:none; }
+.au-tab a:hover { text-decoration:underline; }
+.au-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; background:#6b7280; }
+.au-dot.online { background:#22c55e; } .au-dot.busy { background:#f59e0b; } .au-dot.away { background:#f59e0b; }
+.au-zero { color:var(--muted); }
+.au-red { color:#ef4444; font-weight:600; }
+.au-muted { color:var(--muted); font-size:11px; }
+.au-msg { max-width:520px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.au-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+@media (max-width:1200px) { .au-grid2 { grid-template-columns:1fr; } }
+{% endblock %}
+
+{% block main_content %}
+<div class="atendimento-header">
+    <div class="header-title">
+        <i class="fas fa-user-shield" style="color:var(--active);font-size:24px;"></i>
+        <div>
+            <h2>Auditoria</h2>
+            <small>Acompanhamento do atendimento por atendente</small>
+        </div>
+    </div>
+</div>
+
+<div class="atendimento-content">
+    <form method="get" class="au-bar">
+        {% if detalhe %}<input type="hidden" name="agente" value="{{ detalhe.linha.user.id }}">{% endif %}
+        <a class="au-chip {% if periodo == 'hoje' %}on{% endif %}" href="?periodo=hoje{% if detalhe %}&agente={{ detalhe.linha.user.id }}{% endif %}">Hoje</a>
+        <a class="au-chip {% if periodo == '7d' %}on{% endif %}" href="?periodo=7d{% if detalhe %}&agente={{ detalhe.linha.user.id }}{% endif %}">7 dias</a>
+        <a class="au-chip {% if periodo == '30d' %}on{% endif %}" href="?periodo=30d{% if detalhe %}&agente={{ detalhe.linha.user.id }}{% endif %}">30 dias</a>
+        <span class="au-muted" style="margin-left:8px;">De</span>
+        <input type="date" name="de" class="au-in" value="{{ de }}">
+        <span class="au-muted">até</span>
+        <input type="date" name="ate" class="au-in" value="{{ ate }}">
+        <button type="submit" class="btn-cyber" style="padding:6px 12px;"><i class="fas fa-filter"></i> Filtrar</button>
+    </form>
+
+    <div class="au-kpis">
+        <div class="au-kpi"><b>{{ totais.online }}/{{ linhas|length }}</b><span>Atendentes online</span></div>
+        <div class="au-kpi"><b>{{ totais.ativos }}</b><span>Em atendimento agora</span></div>
+        <div class="au-kpi {% if totais.sem_dono %}alerta{% endif %}"><b>{{ totais.sem_dono }}</b><span>Sem responsável</span></div>
+        <div class="au-kpi"><b>{{ totais.resolvidos }}</b><span>Resolvidos no período</span></div>
+        <div class="au-kpi"><b>{{ totais.enviadas }}</b><span>Mensagens enviadas</span></div>
+    </div>
+
+    <div class="au-box">
+        <h4><i class="fas fa-headset"></i> Atendentes <span class="au-muted" style="font-weight:400;">— clique para ver o detalhe</span></h4>
+        <div style="overflow-x:auto;">
+        <table class="au-tab">
+            <thead><tr>
+                <th>Atendente</th>
+                <th class="n">Com ele agora</th>
+                <th class="n">Não lidas</th>
+                <th class="n">SLA estourado</th>
+                <th class="n">Assumidos</th>
+                <th class="n">Resolvidos</th>
+                <th class="n">Mensagens</th>
+                <th class="n">Notas internas</th>
+                <th class="n">1ª resposta (média)</th>
+                <th>Última mensagem</th>
+            </tr></thead>
+            <tbody>
+            {% for l in linhas %}
+            <tr class="click {% if detalhe and detalhe.linha.user.id == l.user.id %}sel{% endif %}"
+                onclick="window.location.href='?periodo={{ periodo }}{% if periodo == 'custom' %}&de={{ de }}&ate={{ ate }}{% endif %}&agente={{ l.user.id }}'">
+                <td><span class="au-dot {{ l.status }}" title="{{ l.status }}"></span>{{ l.nome }}</td>
+                <td class="n {% if not l.ativos %}au-zero{% endif %}">{{ l.ativos }}</td>
+                <td class="n {% if l.nao_lidas %}au-red{% else %}au-zero{% endif %}">{{ l.nao_lidas }}</td>
+                <td class="n {% if l.sla %}au-red{% else %}au-zero{% endif %}">{{ l.sla }}</td>
+                <td class="n {% if not l.assumidos %}au-zero{% endif %}">{{ l.assumidos }}</td>
+                <td class="n {% if not l.resolvidos %}au-zero{% endif %}">{{ l.resolvidos }}</td>
+                <td class="n {% if not l.enviadas %}au-zero{% endif %}">{{ l.enviadas }}</td>
+                <td class="n {% if not l.notas %}au-zero{% endif %}">{{ l.notas }}</td>
+                <td class="n">{{ l.tpr }}</td>
+                <td>{% if l.ultima %}{{ l.ultima|date:"d/m H:i" }}{% else %}<span class="au-zero">—</span>{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="10" class="au-zero">Nenhum atendente cadastrado.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+
+    {% if detalhe %}
+    <div class="au-box">
+        <h4><i class="fas fa-user"></i> {{ detalhe.linha.nome }} — com ele agora ({{ detalhe.ativos|length }})
+            <a href="?periodo={{ periodo }}{% if periodo == 'custom' %}&de={{ de }}&ate={{ ate }}{% endif %}" class="au-muted" style="margin-left:auto;font-weight:400;"><i class="fas fa-times"></i> fechar</a>
+        </h4>
+        <table class="au-tab">
+            <thead><tr><th>Chamado</th><th>Cliente</th><th>Status</th><th class="n">Não lidas</th><th>SLA</th><th>Última mensagem</th></tr></thead>
+            <tbody>
+            {% for c in detalhe.ativos %}
+            <tr>
+                <td><a href="{% url 'atendimento:conversation_detail' c.id %}">{{ c.group.name|default:c.conversation_id }}</a></td>
+                <td>{{ c.cliente.nome_empresa|default:"Sem cliente" }}</td>
+                <td>{{ c.get_status_display }}</td>
+                <td class="n {% if c.unread_count %}au-red{% else %}au-zero{% endif %}">{{ c.unread_count }}</td>
+                <td>{% if c.sla_response_overdue or c.sla_resolution_overdue %}<span class="au-red">estourado</span>{% else %}<span class="au-zero">ok</span>{% endif %}</td>
+                <td>{{ c.last_message_at|date:"d/m H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="au-zero">Nenhum chamado com este atendente agora.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="au-grid2">
+        <div class="au-box">
+            <h4><i class="fas fa-stream"></i> Linha do tempo no período</h4>
+            <table class="au-tab">
+                <tbody>
+                {% for a in detalhe.atividades %}
+                <tr>
+                    <td class="au-muted" style="white-space:nowrap;">{{ a.created_at|date:"d/m H:i" }}</td>
+                    <td>{{ a.get_action_display }}{% if a.new_value %} <span class="au-muted">→ {{ a.new_value|truncatechars:40 }}</span>{% endif %}</td>
+                    <td><a href="{% url 'atendimento:conversation_detail' a.conversation_id %}">{{ a.conversation.group.name|truncatechars:30 }}</a></td>
+                </tr>
+                {% empty %}
+                <tr><td class="au-zero">Nada registrado no período.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="au-box">
+            <h4><i class="fas fa-check-circle"></i> Resolvidos no período ({{ detalhe.resolvidos|length }})</h4>
+            <table class="au-tab">
+                <tbody>
+                {% for c in detalhe.resolvidos %}
+                <tr>
+                    <td class="au-muted" style="white-space:nowrap;">{{ c.resolved_at|date:"d/m H:i" }}</td>
+                    <td><a href="{% url 'atendimento:conversation_detail' c.id %}">{{ c.group.name|default:c.conversation_id }}</a></td>
+                    <td class="au-muted">{{ c.cliente.nome_empresa|default:"" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td class="au-zero">Nenhum chamado resolvido no período.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="au-box">
+        <h4><i class="fas fa-comment-dots"></i> Mensagens enviadas no período <span class="au-muted" style="font-weight:400;">(últimas 60)</span></h4>
+        <table class="au-tab">
+            <tbody>
+            {% for m in detalhe.mensagens %}
+            <tr>
+                <td class="au-muted" style="white-space:nowrap;">{{ m.created_at|date:"d/m H:i" }}</td>
+                <td style="white-space:nowrap;"><a href="{% url 'atendimento:conversation_detail' m.conversation_id %}">{{ m.conversation.group.name|truncatechars:28 }}</a></td>
+                <td>{% if m.is_internal %}<span class="au-muted"><i class="fas fa-lock"></i> nota</span>{% endif %}</td>
+                <td class="au-msg">{% if m.deleted_at %}<span class="au-zero">mensagem apagada</span>{% elif m.message_type != 'text' %}<span class="au-muted">[{{ m.get_message_type_display }}]</span> {{ m.content|truncatechars:120 }}{% else %}{{ m.content|truncatechars:160 }}{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td class="au-zero">Nenhuma mensagem no período.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="au-box">
+        <h4><i class="fas fa-inbox"></i> Sem responsável agora ({{ sem_dono|length }})</h4>
+        <table class="au-tab">
+            <thead><tr><th>Chamado</th><th>Cliente</th><th>Aberto em</th><th>Esperando há</th></tr></thead>
+            <tbody>
+            {% for c in sem_dono %}
+            <tr>
+                <td><a href="{% url 'atendimento:conversation_detail' c.id %}">{{ c.group.name|default:c.conversation_id }}</a></td>
+                <td>{{ c.cliente.nome_empresa|default:"Sem cliente" }}</td>
+                <td>{{ c.created_at|date:"d/m H:i" }}</td>
+                <td class="{% if c.sla_response_overdue %}au-red{% endif %}">{{ c.created_at|timesince:agora }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="au-zero">Nenhum chamado esperando.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

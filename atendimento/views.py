@@ -91,9 +91,15 @@ from clientes.models import Cliente
 logger = logging.getLogger(__name__)
 
 
-def _marcar_mensagens_lidas(conversation):
+def _marcar_mensagens_lidas(conversation, user=None):
     """Marca as mensagens do cliente como lidas e avisa outras abas/dispositivos
-    via WebSocket para sumir o indicador de não lida em tempo real."""
+    via WebSocket para sumir o indicador de não lida em tempo real.
+
+    Chamado que já tem dono só é marcado como lido pelo dono: o administrador
+    acompanhando pela Auditoria (ou qualquer colega espiando) apagava o
+    indicador de não lida do atendente responsável."""
+    if user is not None and conversation.assigned_to_id and conversation.assigned_to_id != user.id:
+        return
     had_unread = Message.objects.filter(
         conversation=conversation, sender_type='customer', is_read=False
     ).update(is_read=True)
@@ -148,6 +154,145 @@ def _base_ctx(request):
 
 
 # ============ PÁGINAS PRINCIPAIS ============
+
+# ============ AUDITORIA (administrador) ============
+
+def _periodo_auditoria(request):
+    """Período da Auditoria: ?periodo=hoje|7d|30d ou ?de=AAAA-MM-DD&ate=AAAA-MM-DD.
+    Devolve (inicio, fim, contexto_do_filtro) em datetimes com fuso."""
+    from datetime import datetime, time as dtime
+    tz = timezone.get_current_timezone()
+    hoje = timezone.localdate()
+    periodo = request.GET.get('periodo') or 'hoje'
+    de, ate = request.GET.get('de', ''), request.GET.get('ate', '')
+    d_ini, d_fim = hoje, hoje
+    if de or ate:
+        periodo = 'custom'
+        try:
+            d_ini = datetime.strptime(de, '%Y-%m-%d').date() if de else hoje
+            d_fim = datetime.strptime(ate, '%Y-%m-%d').date() if ate else hoje
+        except ValueError:
+            d_ini, d_fim, periodo = hoje, hoje, 'hoje'
+        if d_fim < d_ini:
+            d_ini, d_fim = d_fim, d_ini
+    elif periodo == '7d':
+        d_ini = hoje - timedelta(days=6)
+    elif periodo == '30d':
+        d_ini = hoje - timedelta(days=29)
+    else:
+        periodo = 'hoje'
+    inicio = timezone.make_aware(datetime.combine(d_ini, dtime.min), tz)
+    fim = timezone.make_aware(datetime.combine(d_fim + timedelta(days=1), dtime.min), tz)
+    return inicio, fim, {'periodo': periodo, 'de': d_ini.isoformat(), 'ate': d_fim.isoformat()}
+
+
+def _fmt_duracao(td):
+    if td is None:
+        return '—'
+    seg = int(td.total_seconds())
+    if seg < 60:
+        return f'{seg}s'
+    if seg < 3600:
+        return f'{seg // 60}min'
+    return f'{seg // 3600}h{(seg % 3600) // 60:02d}'
+
+
+@admin_required
+def auditoria(request):
+    """Auditoria do atendimento — o administrador acompanha cada atendente:
+    o que está com ele agora, o que assumiu/resolveu no período, quantas
+    mensagens mandou, tempo de 1ª resposta e o que está com SLA estourado.
+    ?agente=<id> abre o detalhe (chamados, linha do tempo, mensagens)."""
+    from django.db.models import Avg, Max, ExpressionWrapper, DurationField
+    from usuario.perms import colegas_de_instancia
+
+    inicio, fim, filtro = _periodo_auditoria(request)
+    convs = conversations_visiveis(request.user)
+    agentes = list(colegas_de_instancia(request.user).filter(is_staff=True, is_active=True)
+                   .select_related('agent_status').order_by('first_name', 'username'))
+    ids = [a.id for a in agentes]
+
+    ativos = list(convs.filter(status__in=ATIVOS, assigned_to_id__in=ids)
+                  .select_related('group', 'cliente', 'assigned_to')
+                  .annotate(unread_count=Count('messages', filter=Q(
+                      messages__sender_type='customer', messages__is_read=False)))
+                  .order_by('-last_message_at'))
+    msgs = Message.objects.filter(conversation__in=convs, sender_id__in=ids,
+                                  created_at__gte=inicio, created_at__lt=fim)
+    por_msg = {r['sender_id']: r for r in msgs.values('sender_id').annotate(
+        enviadas=Count('id', filter=Q(is_internal=False, sender_type='agent')),
+        notas=Count('id', filter=Q(is_internal=True)),
+        ultima=Max('created_at'))}
+    por_assumido = {r['actor_id']: r['n'] for r in ConversationActivity.objects.filter(
+        conversation__in=convs, actor_id__in=ids, action='assigned',
+        created_at__gte=inicio, created_at__lt=fim).values('actor_id').annotate(n=Count('id'))}
+    resolvidos_qs = convs.filter(assigned_to_id__in=ids, status__in=['resolved', 'closed'],
+                                 resolved_at__gte=inicio, resolved_at__lt=fim)
+    por_resolvido = {r['assigned_to_id']: r['n'] for r in
+                     resolvidos_qs.values('assigned_to_id').annotate(n=Count('id'))}
+    tpr = ExpressionWrapper(F('first_response_at') - F('created_at'), output_field=DurationField())
+    por_tpr = {r['assigned_to_id']: r['m'] for r in convs.filter(
+        assigned_to_id__in=ids, first_response_at__gte=inicio, first_response_at__lt=fim,
+    ).values('assigned_to_id').annotate(m=Avg(tpr))}
+
+    linhas = []
+    for a in agentes:
+        st = getattr(a, 'agent_status', None)
+        meus = [c for c in ativos if c.assigned_to_id == a.id]
+        m = por_msg.get(a.id, {})
+        linhas.append({
+            'user': a,
+            'nome': (st.get_display_name() if st else '') or a.get_full_name() or a.username,
+            'status': st.status if st else 'online',
+            'ativos': len(meus),
+            'nao_lidas': sum(c.unread_count for c in meus),
+            'sla': sum(1 for c in meus if c.sla_response_overdue or c.sla_resolution_overdue),
+            'assumidos': por_assumido.get(a.id, 0),
+            'resolvidos': por_resolvido.get(a.id, 0),
+            'enviadas': m.get('enviadas', 0),
+            'notas': m.get('notas', 0),
+            'ultima': m.get('ultima'),
+            'tpr': _fmt_duracao(por_tpr.get(a.id)),
+        })
+    # Quem tem mais coisa na mão primeiro; sem nada no período vai pro fim.
+    linhas.sort(key=lambda l: (-l['ativos'], -l['enviadas'], l['nome'].lower()))
+
+    sem_dono = list(convs.filter(status__in=ATIVOS, assigned_to__isnull=True)
+                    .select_related('group', 'cliente').order_by('created_at')[:50])
+
+    detalhe = None
+    agente_id = request.GET.get('agente')
+    if agente_id and agente_id.isdigit() and int(agente_id) in ids:
+        ag = next(a for a in agentes if a.id == int(agente_id))
+        detalhe = {
+            'linha': next(l for l in linhas if l['user'].id == ag.id),
+            'ativos': [c for c in ativos if c.assigned_to_id == ag.id],
+            'resolvidos': list(resolvidos_qs.filter(assigned_to=ag)
+                               .select_related('group', 'cliente').order_by('-resolved_at')[:50]),
+            'atividades': list(ConversationActivity.objects.filter(
+                conversation__in=convs, actor=ag, created_at__gte=inicio, created_at__lt=fim)
+                .select_related('conversation__group').order_by('-created_at')[:100]),
+            'mensagens': list(msgs.filter(sender=ag).select_related('conversation__group')
+                              .order_by('-created_at')[:60]),
+        }
+
+    totais = {
+        'ativos': len(ativos),
+        'sem_dono': len(sem_dono),
+        'resolvidos': sum(por_resolvido.values()),
+        'enviadas': sum(r.get('enviadas', 0) for r in por_msg.values()),
+        'online': sum(1 for l in linhas if l['status'] == 'online'),
+    }
+    return render(request, 'atendimento/auditoria.html', {
+        **_base_ctx(request),
+        **filtro,
+        'linhas': linhas,
+        'sem_dono': sem_dono,
+        'detalhe': detalhe,
+        'totais': totais,
+        'agora': timezone.now(),
+    })
+
 
 @staff_required
 def dashboard(request):
@@ -282,7 +427,7 @@ def conversation_detail(request, conversation_id):
         m.respondivel, _motivo_resp = ConversationService.pode_responder(m)
 
     # Atualiza status de leitura das mensagens do cliente e avisa outras abas/dispositivos
-    _marcar_mensagens_lidas(conversation)
+    _marcar_mensagens_lidas(conversation, request.user)
 
     # Lista do sidebar — a mesma aba única do Inbox
     sidebar_active_tab = 'open'
@@ -2670,7 +2815,7 @@ def api_conversation_messages(request, conversation_id):
         })
 
     # Usuário está vendo a conversa (mini-chat flutuante) → marca como lida
-    _marcar_mensagens_lidas(conversation)
+    _marcar_mensagens_lidas(conversation, request.user)
 
     return JsonResponse({'messages': data})
 
