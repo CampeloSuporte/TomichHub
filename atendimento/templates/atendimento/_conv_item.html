@@ -36,6 +36,15 @@
             <i class="fas fa-inbox"></i> Sem responsável
             {% endif %}
         </div>
+        {% if not conv.assigned_to_id %}
+        {% comment %}Chamado sem responsável: tag piscando + há quanto tempo está
+        aberto. O texto é preenchido/atualizado a cada minuto pelo
+        __atualizarTempoAberto (base.html) a partir de data-aberto-em.{% endcomment %}
+        <div class="conv-novo" data-aberto-em="{{ conv.created_at|date:'U' }}">
+            <i class="fas fa-bell"></i> Novo atendimento
+            <span class="conv-novo-tempo">· aberto agora</span>
+        </div>
+        {% endif %}
         {% with tags=conv.tags.all %}{% if tags %}
         <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
             {% for tag in tags %}
