@@ -2663,3 +2663,20 @@ item (`.conv-item[data-sem-dono]`). Some quando alguém assume/responde (o item 
   `Date.now()` no carregamento do shell), não o do PC do atendente.
 - Texto: "menos de 1 min" → "N min" → "Hh MM" → "N dias".
 - O piscar anima só `opacity` (não repinta); com `prefers-reduced-motion` fica parado.
+
+## Tag "Cliente respondeu · aguardando há N min" no chamado assumido (2026-11-26)
+
+Mesma tag piscando da "Novo atendimento", em **roxo**, nos chamados **com dono** em que o cliente
+está esperando resposta. O tempo (ociosidade) conta da **1ª mensagem do cliente depois da última
+resposta** do atendente/IA (sem resposta nenhuma ainda: da 1ª mensagem do cliente).
+
+- Servidor: `_fila_do_atendente` anota `ultima_resposta` (última `agent`/`ai` não interna),
+  `aguardando_desde` e `primeira_do_cliente` (subqueries); `Conversation.aguardando_cliente_desde`
+  escolhe. Nota interna não conta como resposta.
+- Tempo real (base.html): `new_message` do cliente num chamado com dono →
+  `__marcarAguardandoCliente` (só cria se ainda não houver, para não zerar o tempo);
+  `new_message` de `agent`/`ai` (celular/IA) e o evento novo `conversation_answered`
+  (`services._notificar_respondido`, disparado em `send_message` não interno e `send_media`) →
+  `__desmarcarAguardandoCliente`.
+- O texto usa o mesmo `__atualizarTempoAberto` (60 s), com `data-rotulo="aguardando há"`.
+- Teste: `AbaUnicaAtendimentosTest.test_tag_cliente_respondeu_no_assumido`.

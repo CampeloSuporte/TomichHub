@@ -647,6 +647,8 @@ body {
 }
 .conv-novo i { font-size: 10px; }
 .conv-novo-tempo { font-weight: 700; text-transform: none; letter-spacing: 0; }
+.conv-novo.conv-aguardando { background: #8b5cf6; color: #fff; }
+.conv-item.conv-item-aguardando { box-shadow: inset 3px 0 0 #8b5cf6; }
 @keyframes convNovoPisca { from { opacity: 1; } to { opacity: .35; } }
 @media (prefers-reduced-motion: reduce) { .conv-novo { animation: none; } }
 
@@ -1955,13 +1957,42 @@ document.addEventListener('click', function() {
         var d = Math.floor(h / 24);
         return 'aberto há ' + d + (d === 1 ? ' dia' : ' dias');
     }
+    /* Cliente mandou mensagem num chamado que já tem dono → põe a tag roxa
+       "Cliente respondeu" (se ainda não houver; o tempo conta da 1ª
+       mensagem sem resposta). Atendente respondeu → tira. O servidor
+       remonta igual no próximo refresh da lista. */
+    window.__marcarAguardandoCliente = function(convId) {
+        document.querySelectorAll('.conv-item[data-conv-id="' + convId + '"]').forEach(function(item) {
+            if (item.hasAttribute('data-sem-dono') || item.querySelector('.conv-aguardando')) return;
+            var meta = item.querySelector('.conv-meta');
+            if (!meta) return;
+            var tag = document.createElement('div');
+            tag.className = 'conv-novo conv-aguardando';
+            tag.setAttribute('data-aberto-em', String(Math.floor((Date.now() + _srvOffsetMs) / 1000)));
+            tag.setAttribute('data-rotulo', 'aguardando há');
+            tag.innerHTML = '<i class="fas fa-comment-dots"></i> Cliente respondeu <span class="conv-novo-tempo">· aguardando agora</span>';
+            var antes = meta.querySelector('.sla-badge-overdue') || null;
+            var tags = meta.querySelector(':scope > div[style*="flex-wrap"]');
+            meta.insertBefore(tag, tags || antes);
+        });
+        window.__atualizarTempoAberto();
+    };
+    window.__desmarcarAguardandoCliente = function(convId) {
+        document.querySelectorAll('.conv-item[data-conv-id="' + convId + '"]').forEach(function(item) {
+            item.querySelectorAll('.conv-aguardando').forEach(function(t) { t.remove(); });
+            item.classList.remove('conv-item-aguardando');
+        });
+    };
     window.__atualizarTempoAberto = function() {
         var agora = (Date.now() + _srvOffsetMs) / 1000;
         document.querySelectorAll('.conv-novo[data-aberto-em]').forEach(function(el) {
             var ini = parseInt(el.getAttribute('data-aberto-em'), 10);
             var alvo = el.querySelector('.conv-novo-tempo');
             if (!ini || !alvo) return;
-            var txt = '· ' + _textoAberto(Math.max(0, agora - ini));
+            var item = el.closest('.conv-item');
+            if (item) item.classList.toggle('conv-item-aguardando', el.classList.contains('conv-aguardando'));
+            var rot = el.getAttribute('data-rotulo') || 'aberto há';
+            var txt = '· ' + _textoAberto(Math.max(0, agora - ini)).replace('aberto há', rot);
             if (alvo.textContent !== txt) alvo.textContent = txt;
         });
     };
@@ -2241,6 +2272,12 @@ document.addEventListener('click', function() {
                         return;
                     }
 
+                    /* Atendente respondeu pela plataforma → sai a tag "Cliente respondeu" */
+                    if (p.type === 'conversation_answered' && p.conversation_id) {
+                        window.__desmarcarAguardandoCliente(p.conversation_id);
+                        return;
+                    }
+
                     /* Chamado foi aberto/lido (em outra aba/dispositivo) → some o indicador de não lida */
                     if (p.type === 'messages_read' && p.conversation_id) {
                         if (typeof window.markConvRead === 'function') window.markConvRead(p.conversation_id);
@@ -2260,11 +2297,18 @@ document.addEventListener('click', function() {
                         window.__scheduleConvPanelRefresh();
                     }
 
-                    if (msg.sender_type === 'agent') return;
+                    if (msg.sender_type === 'agent' || msg.sender_type === 'ai') {
+                        /* Resposta que veio pelo celular (fromMe) ou da IA */
+                        window.__desmarcarAguardandoCliente(conv.id);
+                        if (msg.sender_type === 'agent') return;
+                    }
 
                     /* Mensagem do cliente → marca indicador persistente de não lida */
                     if (msg.sender_type === 'customer' && typeof window.markConvUnread === 'function') {
                         window.markConvUnread(conv.id);
+                    }
+                    if (msg.sender_type === 'customer' && conv.assigned_to_id) {
+                        window.__marcarAguardandoCliente(conv.id);
                     }
 
                     var groupName  = conv.group_name || 'Grupo';

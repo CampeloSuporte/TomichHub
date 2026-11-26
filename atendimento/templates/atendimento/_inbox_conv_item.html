@@ -40,6 +40,14 @@
             <span class="conv-novo-tempo">· aberto agora</span>
         </div>
         {% endif %}
+        {% with espera_cliente=conv.aguardando_cliente_desde %}{% if espera_cliente %}
+        {% comment %}Chamado com dono e o cliente esperando resposta: mesma
+        tag piscando, em roxo, com o tempo de ociosidade.{% endcomment %}
+        <div class="conv-novo conv-aguardando" data-aberto-em="{{ espera_cliente|date:'U' }}" data-rotulo="aguardando há">
+            <i class="fas fa-comment-dots"></i> Cliente respondeu
+            <span class="conv-novo-tempo">· aguardando agora</span>
+        </div>
+        {% endif %}{% endwith %}
         {% with tags=conv.tags.all %}{% if tags %}
         <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;">
             {% for tag in tags %}

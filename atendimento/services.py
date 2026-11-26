@@ -859,6 +859,23 @@ def _ws_send_conversation(conversation_id: str, data: dict):
         logger.warning(f"WebSocket send falhou (conv {conversation_id}): {e}")
 
 
+def _notificar_respondido(conversation):
+    """Atendente respondeu o cliente pela plataforma → as listas tiram a tag
+    "Cliente respondeu · aguardando há N min" do item. A resposta em si só
+    vai para o canal da conversa, por isso este aviso à parte no inbox."""
+    try:
+        _ws_send_inbox({
+            "type": "conversation_answered",
+            "conversation_id": str(conversation.id),
+            "conversation": {
+                "id": str(conversation.id),
+                "allowed_user_ids": atendentes_do_chamado(conversation),
+            },
+        })
+    except Exception as e:
+        logger.warning(f"Falha ao notificar inbox (respondido): {e}")
+
+
 def _ws_send_inbox(data: dict):
     """Envia evento para o grupo da caixa de entrada."""
     try:
@@ -2556,6 +2573,9 @@ class ConversationService:
                 description=text[:100],
             )
 
+            if not is_internal:
+                _notificar_respondido(conversation)
+
             # 3. Notifica via WebSocket antes de qualquer I/O externo
             local_time = timezone.localtime(now)
             _ws_send_conversation(str(conversation.id), {
@@ -3008,6 +3028,7 @@ class ConversationService:
             if conversation.status == 'new':
                 conversation.status = 'open'
             conversation.save(update_fields=['last_message_at', 'status'])
+            _notificar_respondido(conversation)
 
             group_connection = conversation.group.connection
             group_jid = conversation.group.jid
