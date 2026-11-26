@@ -131,7 +131,7 @@ def _fila_do_atendente(qs, user):
     do_cliente = Message.objects.filter(conversation=OuterRef('pk'), sender_type='customer')
     return qs.filter(status__in=ATIVOS).filter(
         Q(assigned_to__isnull=True) | Q(assigned_to=user)
-    ).annotate(
+    ).select_related('liberado_offline_de').annotate(
         # Tag "Cliente respondeu · aguardando há N min" (chamado com dono):
         # 1ª mensagem do cliente depois da última resposta do atendente/IA;
         # sem resposta nenhuma ainda, a 1ª mensagem do cliente.

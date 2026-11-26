@@ -35,10 +35,20 @@
         {% comment %}Chamado sem responsável: tag piscando + há quanto tempo está
         aberto. O texto é preenchido/atualizado a cada minuto pelo
         __atualizarTempoAberto (base.html) a partir de data-aberto-em.{% endcomment %}
+        {% if conv.liberado_offline_de_id and conv.liberado_offline_em %}
+        {% comment %}Devolvido à fila porque o dono ficou offline e o cliente
+        escreveu (services._liberar_chamado_atendente_offline).{% endcomment %}
+        <div class="conv-novo conv-offline" data-aberto-em="{{ conv.liberado_offline_em|date:'U' }}" data-rotulo="liberado há"
+             title="{{ conv.liberado_offline_de.first_name|default:conv.liberado_offline_de.username }} está offline — quem responder assume">
+            <i class="fas fa-power-off"></i> Atendente offline · {{ conv.liberado_offline_de.first_name|default:conv.liberado_offline_de.username }}
+            <span class="conv-novo-tempo">· liberado agora</span>
+        </div>
+        {% else %}
         <div class="conv-novo" data-aberto-em="{{ conv.created_at|date:'U' }}">
             <i class="fas fa-bell"></i> Novo atendimento
             <span class="conv-novo-tempo">· aberto agora</span>
         </div>
+        {% endif %}
         {% endif %}
         {% with espera_cliente=conv.aguardando_cliente_desde %}{% if espera_cliente %}
         {% comment %}Chamado com dono e o cliente esperando resposta: mesma

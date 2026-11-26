@@ -286,6 +286,13 @@ class Conversation(models.Model):
     # atendente responsável estava offline. Segura o alerta: um por período
     # offline, repetido no máximo a cada OFFLINE_ALERT_INTERVALO.
     offline_alert_at = models.DateTimeField(null=True, blank=True)
+    # Chamado devolvido para a fila porque o cliente escreveu com o
+    # responsável offline (services._liberar_chamado_atendente_offline).
+    # Mostra a tag "Atendente offline · liberado" na lista até alguém
+    # assumir — o save() limpa os dois quando o chamado ganha dono.
+    liberado_offline_de = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    liberado_offline_em = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-last_message_at', '-created_at']
@@ -302,6 +309,12 @@ class Conversation(models.Model):
         if not self.conversation_id:
             last = Conversation.objects.order_by('-conversation_id').first()
             self.conversation_id = (last.conversation_id + 1) if last else 1000
+        if self.assigned_to_id and (self.liberado_offline_de_id or self.liberado_offline_em):
+            self.liberado_offline_de = None
+            self.liberado_offline_em = None
+            uf = kwargs.get('update_fields')
+            if uf is not None:
+                kwargs['update_fields'] = set(uf) | {'liberado_offline_de', 'liberado_offline_em'}
         super().save(*args, **kwargs)
 
     @property

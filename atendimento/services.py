@@ -411,9 +411,9 @@ def _alertar_atendente_offline(conversation, group) -> None:
         texto = (
             f"📴 *Atendente offline!*\n\n"
             f"Chegou mensagem nova em {onde} "
-            f"(#{conversation.conversation_id}), que está com "
+            f"(#{conversation.conversation_id}), que estava com "
             f"*{nome_atendente}* — e ele(a) está *offline* na plataforma.\n\n"
-            f"Alguém precisa assumir ou acompanhar este atendimento."
+            f"O chamado foi liberado para toda a equipe: quem responder primeiro assume."
         )
         # Marca o atendente (se tiver WhatsApp cadastrado) para ele ver o
         # aviso no celular mesmo fora da plataforma.
@@ -428,6 +428,45 @@ def _alertar_atendente_offline(conversation, group) -> None:
             conversation.save(update_fields=['offline_alert_at'])
     except Exception as e:
         logger.warning(f"Falha ao alertar sobre atendente offline: {e}")
+
+
+def _liberar_chamado_atendente_offline(conversation, group) -> bool:
+    """Cliente escreveu num chamado cujo responsável está offline → o chamado
+    volta para a fila (sem responsável) e aparece para toda a equipe com a
+    tag "Atendente offline · liberado". Quem responder primeiro assume
+    (auto_assign_on_reply). Roda DEPOIS do alerta do NOC, que precisa saber
+    quem era o dono. Devolve True se liberou."""
+    from .models import AgentStatus, ConversationActivity
+    agent = conversation.assigned_to
+    if not agent:
+        return False
+    st = AgentStatus.objects.filter(user=agent, status='offline').first()
+    if not st:
+        return False
+    nome = st.get_display_name()
+    old_id = conversation.assigned_to_id
+    now = timezone.now()
+    conversation.assigned_to = None
+    conversation.liberado_offline_de = agent
+    conversation.liberado_offline_em = now
+    conversation.save(update_fields=['assigned_to', 'liberado_offline_de', 'liberado_offline_em'])
+    ConversationActivity.objects.create(
+        conversation=conversation, actor=None, action='transferred',
+        old_value=nome, new_value='Fila (atendente offline)',
+        description=f'{nome} offline: chamado liberado para a equipe',
+    )
+    try:
+        aviso = Message.objects.create(
+            conversation=conversation, sender_type='system', sender_name='Sistema',
+            message_type='text', is_internal=True,
+            content=f'📴 {nome} está offline — chamado liberado para a equipe. Quem responder assume.',
+            external_id=f'offline_liberado_{uuid.uuid4().hex}',
+        )
+        ConversationService._broadcast_msg(conversation, group, aviso, inbox=False)
+    except Exception as e:
+        logger.warning(f"Falha ao registrar liberação por offline (conv {conversation.id}): {e}")
+    notify_reassignment(conversation, old_id, motivo='offline', nome_anterior=nome)
+    return True
 
 
 _TAREFA_VERBOS = ('abrir', 'abre', 'abra', 'criar', 'crie', 'cria', 'gerar', 'gere', 'gera', 'nova', 'novo')
@@ -887,7 +926,7 @@ def _ws_send_inbox(data: dict):
         logger.warning(f"WebSocket send falhou (inbox): {e}")
 
 
-def notify_reassignment(conversation: Conversation, old_assigned_to_id):
+def notify_reassignment(conversation: Conversation, old_assigned_to_id, motivo='', nome_anterior=''):
     """Avisa a caixa de entrada (WS) que um chamado mudou de atendente —
     seja por "Assumir", auto-atribuição ao responder, transferência manual
     ou reatribuição automática por SLA. Sem isso, o novo/antigo responsável
@@ -900,6 +939,11 @@ def notify_reassignment(conversation: Conversation, old_assigned_to_id):
         "group_name": conversation.group.name if conversation.group else "",
         "old_assigned_to_id": old_assigned_to_id,
         "assigned_to_id": conversation.assigned_to_id,
+        # 'offline' = devolvido à fila porque o dono está offline: a tela
+        # dos demais mostra o aviso "Atendente offline".
+        "motivo": motivo,
+        "nome_anterior": nome_anterior,
+        "conversation": {"allowed_user_ids": atendentes_do_chamado(conversation)},
     })
 
 
@@ -1977,6 +2021,7 @@ class ConversationService:
                         _disparar_agente_ia(conv, content)
                         if conv.assigned_to_id and not atendente_pessoal:
                             _alertar_atendente_offline(conv, group)
+                            _liberar_chamado_atendente_offline(conv, group)
                     if atendente_pessoal:
                         _alertar_atendente_pessoal(conv, group, atendente_pessoal, connection)
                 # Mensagem do atendente pessoal não deve avançar o fluxo do bot
@@ -2004,6 +2049,7 @@ class ConversationService:
                         _notify_new_open_conversation(conv, connection)
                     elif not atendente_pessoal:
                         _alertar_atendente_offline(conv, group)
+                        _liberar_chamado_atendente_offline(conv, group)
                     ConversationService._broadcast_msg(conv, group, msg)
                     _disparar_agente_ia(conv, content)
                 if atendente_pessoal:
