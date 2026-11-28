@@ -527,6 +527,64 @@ ele abre um **shell interativo com PTY** e lê até o prompt — menos no Router
   chegou + `[saída interrompida: …]`.
 - Rota igual à dos demais: túnel OpenVPN do cliente → proxy SSH do cliente → direto.
 
+#### Grafo de conhecimento da rede — economia de tokens (abordagem Graphify, 28/11/2026)
+
+Antes, o system prompt levava o `contexto_backup` (até 1.200 chars + índice de interfaces) de
+**todos** os hosts do cliente em **toda** chamada à IA — inclusive a cada rodada de ferramenta.
+Na Sartor (265 hosts) eram ~222 mil chars (~63 mil tokens) por chamada; no Hermes não há cache.
+
+Inspirado no [Graphify](https://github.com/Graphify-Labs/graphify), o CRM monta um **grafo de
+conhecimento** do cliente (`home/agent_grafo.py`) e o agente consulta só o trecho relevante:
+
+| Nó | Origem |
+|---|---|
+| `host` | `Acesso` (tipo, IP, função, modelo, fabricante, notas) + hostname/ASN/protocolos do backup |
+| `interface` | linhas `IP=` e "Demais interfaces" do `contexto_backup` (IP, VLAN, descrição) |
+| `bgp_peer` | linhas `Peer <ip> AS<n> — <desc>` do backup |
+| `grupo` | função do equipamento (OLT, BORDA, BRAS…) |
+
+| Aresta | Como | Confiança |
+|---|---|---|
+| `tem_interface`, `bgp_peer`, `funcao` | direto do cadastro/backup | EXTRACTED |
+| `e_o_host` | IP do peer BGP é IP de outro host | EXTRACTED |
+| `enlace_topologia` | link desenhado no mapa (`TopologiaDiagrama.dados_json`) | EXTRACTED |
+| `enlace_p2p` | duas interfaces de hosts diferentes na mesma sub-rede /29–/31 | INFERRED |
+
+**Quando entra:** `AgentConfig.grafo_contexto_ativo` ligado (padrão) **e** a seção de hosts no formato
+antigo passa de 12.000 chars (`LIMIAR_PROMPT_COMPACTO`). Cliente pequeno e sessão **global**
+continuam exatamente como antes. Aí o prompt leva a lista compacta (1 linha por host, notas do
+operador inteiras, marca `backup✓`/`sem backup`) + o resumo do grafo + a seção explicando as tools.
+
+**Tools novas** (nos três provedores — Claude, OpenAI e protocolo ```tool``` do Hermes):
+- `consultar_grafo(pergunta, profundidade=2)` — pontua nós por palavra-chave (sem acento/caixa,
+  hífen = espaço, peso maior para termo raro — IDF), escolhe as sementes, expande em largura e
+  corta a saída em ~1.500 tokens. Portas sem IP nem descrição e listas de função ficam fora, salvo
+  se forem o alvo da pergunta.
+- `detalhe_host(acesso_id)` — backup completo de um host (até 6.000 chars) + vizinhos no grafo.
+  Escopo do cliente da sessão (mesma checagem do `execute_command`).
+
+**Segurança contra regressão:** qualquer exceção ao montar o grafo cai no prompt completo antigo
+(log `Agent NOC: grafo falhou — usando prompt completo`). Desligar a chave em Sistema →
+Configurações → Agent NOC volta tudo ao comportamento anterior na próxima mensagem, sem restart.
+O grafo fica em cache na memória do processo, por cliente, e é remontado quando muda o nº de
+hosts, nome/IP/função, tamanho do backup/notas ou a topologia (~0,2 s na Sartor).
+
+**Medido em 28/11/2026 (chars do system prompt):** Sartor 222k → 63k; Startnet 128k → 44k;
+INFOLINE 101k → 44k; DS TECH 90k → 44k. O restante (~30k) são as instruções fixas, que não mudaram.
+Validado ao vivo no Hermes: pergunta sobre o enlace BRAS SINOP ↔ CGNAT respondida pelo
+`consultar_grafo` (interface, IP, VLAN e peer certos) sem acessar equipamento.
+
+**Por que não o pacote `graphifyy`:** ele extrai grafo de código (tree-sitter, ~30 dependências) e
+de documentos via LLM; a rede do cliente está no banco, não em arquivos. Usamos as ideias (grafo
+persistente, sementes + BFS, orçamento de tokens, EXTRACTED/INFERRED) em Python puro, e o export
+sai no formato `graph.json` dele:
+
+```bash
+python manage.py agent_grafo "Sartor"                      # resumo e economia
+python manage.py agent_grafo "Sartor" -q "cgnat vrouter"   # mesma consulta do agent
+python manage.py agent_grafo "Sartor" --saida /tmp/graph.json
+```
+
 ---
 
 ### 3.4 Base de Conhecimento
@@ -664,6 +722,7 @@ class AgentConfig(models.Model):
     timeout_sessao_wa   = IntegerField(default=120)    # minutos de inatividade para expirar sessão WA
     prefixo_wa          = CharField(max_length=20, default='@noc')  # prefixo de invocação no WA
     max_comandos_sessao = IntegerField(default=50)     # limite de comandos por sessão
+    grafo_contexto_ativo = BooleanField(default=True)  # prompt compacto + grafo (ver 3.3) — migração 0131
 
     # ── Notificação de escalonamento ─────────────────────────────────────────
     wa_grupo_noc        = CharField(max_length=100, blank=True)  # JID do grupo interno do NOC

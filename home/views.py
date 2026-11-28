@@ -2413,6 +2413,8 @@ def agent_config(request):
             agent_cfg.timeout_sessao_wa   = int(data.get('timeout_sessao_wa') or agent_cfg.timeout_sessao_wa)
             agent_cfg.prefixo_wa          = data.get('prefixo_wa', agent_cfg.prefixo_wa).strip() or '@noc'
             agent_cfg.max_comandos_sessao = int(data.get('max_comandos_sessao') or agent_cfg.max_comandos_sessao)
+            if 'grafo_contexto_ativo' in data:
+                agent_cfg.grafo_contexto_ativo = bool(data.get('grafo_contexto_ativo'))
             agent_cfg.wa_grupo_noc        = data.get('wa_grupo_noc', agent_cfg.wa_grupo_noc)
             agent_cfg.wa_noc_numero       = data.get('wa_noc_numero', agent_cfg.wa_noc_numero)
             agent_cfg.save()

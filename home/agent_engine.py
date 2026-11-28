@@ -111,6 +111,10 @@ BLOCKED_COMMANDS: list[str] = [
 # ─────────────────────────────────────────────────────────────────
 
 _MAX_TOOL_OUTPUT = 2000   # chars máx por tool result (era 3000)
+
+# Seção de hosts acima disso (chars) vira lista compacta + grafo, se ligado
+# em AgentConfig.grafo_contexto_ativo. Mantido igual a agent_grafo.LIMIAR_PROMPT_COMPACTO.
+_LIMIAR_PROMPT_COMPACTO = 12000
 _MAX_OLD_RESULT  = 500    # chars máx em tool results antigos no mesmo turno
 
 
@@ -828,6 +832,38 @@ TOOLS_DEFINITION: list[dict] = [
             "required": ["acesso_id"],
         },
     },
+    {
+        "name": "consultar_grafo",
+        "description": (
+            "Consulta o grafo de conhecimento da rede do cliente (hosts, interfaces com IP/VLAN/descrição, "
+            "sessões BGP, enlaces entre equipamentos). Devolve só o trecho relevante, sem acessar equipamento. "
+            "Use para achar host, interface, peer BGP ou enlace por nome de site, descrição, IP ou hostname, "
+            "e para saber quem está ligado a quem."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "pergunta":     {"type": "string", "description": "Termos de busca: nome do site/host, descrição de interface, IP, nome do peer. Ex: 'cgnat vrouter', 'juruena reg juina', '198.18.103.82'"},
+                "profundidade": {"type": "integer", "description": "Saltos a partir do que casou (1 a 3, padrão 2)"},
+            },
+            "required": ["pergunta"],
+        },
+    },
+    {
+        "name": "detalhe_host",
+        "description": (
+            "Mostra a configuração conhecida do backup de UM host (interfaces, IPs, VLANs, BGP, OSPF, rotas) "
+            "e os vizinhos dele no grafo, sem acessar o equipamento. Use antes de montar comandos para saber "
+            "o formato exato das interfaces."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "acesso_id": {"type": "integer", "description": "ID do Acesso (host)"},
+            },
+            "required": ["acesso_id"],
+        },
+    },
 ]
 
 
@@ -1052,6 +1088,38 @@ TOOLS_OPENAI: list[dict] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "consultar_grafo",
+            "description": (
+                "Consulta o grafo da rede do cliente (hosts, interfaces, BGP, enlaces) e devolve só o trecho "
+                "relevante. Use para achar host/interface/peer/enlace por nome, descrição ou IP."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pergunta":     {"type": "string", "description": "Termos de busca (site, descrição, IP, peer)"},
+                    "profundidade": {"type": "integer", "description": "Saltos (1 a 3, padrão 2)"},
+                },
+                "required": ["pergunta"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "detalhe_host",
+            "description": "Configuração conhecida do backup de UM host e seus vizinhos no grafo, sem acessar o equipamento.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "acesso_id": {"type": "integer", "description": "ID do Acesso (host)"},
+                },
+                "required": ["acesso_id"],
+            },
+        },
+    },
 ]
 
 
@@ -1119,6 +1187,26 @@ class AgentNOCEngine:
         self._sessao = None   # carregado no primeiro uso
         self._config = None
         self._historico: list[dict] = []
+        # Prompt compacto + grafo de conhecimento (ver home/agent_grafo.py)
+        self.modo_grafo = False
+        self.prompt_hosts_chars = None   # (antes, depois) quando compacta
+
+    @staticmethod
+    def _secao_grafo(resumo: str) -> str:
+        return f"""
+## Grafo de conhecimento da rede (economia de tokens)
+{resumo}
+
+⚠️ Neste cliente a lista acima é **compacta**: o bloco `[Configuração conhecida do backup]` e o
+índice Interface→Descrição de cada host **NÃO estão no prompt**. Onde as instruções abaixo mandam
+olhar o backup "no system prompt", use as ferramentas (não acessam equipamento, são instantâneas):
+- `consultar_grafo(pergunta)` → acha host, interface (descrição/IP/VLAN), peer BGP ou enlace por nome
+  de site, descrição, IP ou hostname, e mostra quem está ligado a quem. Ex: "cgnat vrouter",
+  "juruena reg juina", "198.18.103.82".
+- `detalhe_host(acesso_id)` → backup completo de UM host (interfaces, BGP, OSPF, rotas) + vizinhos.
+  Use antes de montar comandos para saber o formato exato das interfaces daquele equipamento.
+Só use `execute_command` depois disso, quando precisar do estado **atual** do equipamento.
+"""
 
     # ── Helpers internos ──────────────────────────────────────────
 
@@ -1300,6 +1388,9 @@ class AgentNOCEngine:
         from clientes.models import Acesso, AgentKnowledge, AgentKnowledgeDoc
         from django.db.models import Q as _Q
 
+        grafo_section = ''
+        self.modo_grafo = False
+
         # ── Modo global: todos os clientes/hosts ──────────────────
         if is_global:
             from clientes.models import Cliente as _Cliente
@@ -1354,6 +1445,24 @@ class AgentNOCEngine:
                 )
             )
             hosts_lines = '\n'.join(_host_line(a) for a in acessos) or '  (nenhum host cadastrado)'
+
+            # Grafo de conhecimento (Graphify): cliente grande não recebe o
+            # backup de todos os hosts a cada chamada — só a lista compacta e o
+            # resumo do grafo; o detalhe vem sob demanda (consultar_grafo /
+            # detalhe_host). Qualquer falha → mantém o prompt completo de antes.
+            if (cliente and getattr(config, 'grafo_contexto_ativo', False)
+                    and len(hosts_lines) > _LIMIAR_PROMPT_COMPACTO):
+                try:
+                    from home.agent_grafo import grafo_do_cliente, linha_host_compacta
+                    grafo = await sync_to_async(grafo_do_cliente)(cliente, acessos)
+                    compacto = '\n'.join(linha_host_compacta(a) for a in acessos)
+                    grafo_section = self._secao_grafo(grafo.resumo())
+                    self.modo_grafo = True
+                    self.prompt_hosts_chars = (len(hosts_lines), len(compacto))
+                    hosts_lines = compacto
+                except Exception:
+                    logger.exception('Agent NOC: grafo falhou — usando prompt completo (sessão %s)',
+                                     self.sessao_id)
 
             zabbix_acessos = [
                 a for a in acessos
@@ -1537,7 +1646,7 @@ Pedido do tipo "sinal antes e depois do rompimento", "conferir o sinal depois da
 {hosts_header}
 {hosts_descricao}
 {hosts_lines}
-
+{grafo_section}
 ## Como usar as informações do host
 Antes de executar qualquer comando em um host, identifique:
 1. **Fabricante** — define a sintaxe dos comandos:
@@ -2759,6 +2868,58 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
         )
         return _noc_truncar(texto, 6000)
 
+    # ── Grafo de conhecimento (abordagem Graphify — home/agent_grafo.py) ──
+
+    async def _grafo_da_sessao(self):
+        """Grafo do cliente da sessão, ou None (sessão global/sem cliente)."""
+        from home.agent_grafo import grafo_do_cliente
+        sessao = await self._get_sessao()
+        is_global = bool(sessao.wa_grupo_id and sessao.wa_grupo and sessao.wa_grupo.acesso_global)
+        if is_global or not sessao.cliente:
+            return None
+        return await sync_to_async(grafo_do_cliente)(sessao.cliente)
+
+    async def _tool_consultar_grafo(self, pergunta: str, profundidade=2) -> str:
+        if not pergunta.strip():
+            return "Informe `pergunta` com o termo de busca (site, descrição, IP ou peer)."
+        try:
+            grafo = await self._grafo_da_sessao()
+        except Exception:
+            logger.exception('consultar_grafo: falha ao montar o grafo (sessão %s)', self.sessao_id)
+            return "❌ Grafo indisponível agora — use list_hosts / search_knowledge."
+        if grafo is None:
+            return "Grafo disponível só em sessão vinculada a um cliente — use list_hosts."
+        try:
+            prof = int(profundidade or 2)
+        except (TypeError, ValueError):
+            prof = 2
+        try:
+            return grafo.consultar(pergunta, profundidade=prof)
+        except Exception:
+            logger.exception('consultar_grafo: falha na consulta (sessão %s)', self.sessao_id)
+            return "❌ Falha ao consultar o grafo — use list_hosts / detalhe_host."
+
+    async def _tool_detalhe_host(self, acesso_id: int) -> str:
+        acesso = await self._get_acesso(acesso_id)
+        if not acesso:
+            return f"❌ Erro: host ID {acesso_id} não encontrado ou não pertence ao cliente desta sessão."
+        ctx = acesso.contexto_backup or ''
+        try:
+            grafo = await self._grafo_da_sessao()
+        except Exception:
+            logger.exception('detalhe_host: falha ao montar o grafo (sessão %s)', self.sessao_id)
+            grafo = None
+        if grafo is not None and f'host:{acesso.id}' in grafo.nos:
+            try:
+                return grafo.detalhe_host(acesso.id, ctx)
+            except Exception:
+                logger.exception('detalhe_host: falha no grafo (sessão %s)', self.sessao_id)
+        # Sem grafo: devolve ao menos o backup (comportamento seguro)
+        cabeca = f"HOST ID {acesso.id}: {acesso.tipo} | {acesso.host}:{acesso.porta} {acesso.protocolo}"
+        if not ctx:
+            return cabeca + "\n(sem contexto de backup — use fetch_host_config para coletar)"
+        return cabeca + "\n[Configuração conhecida do backup]\n" + ctx[:6000]
+
     async def _dispatch_tool(self, tool_name: str, tool_input: dict) -> str:
         if tool_name == 'execute_command':
             return await self._tool_execute_command(
@@ -2836,6 +2997,13 @@ Se o usuário já informou qual host, qual interface ou qual problema nesta sess
             return await self._tool_fetch_host_config(
                 int(tool_input['acesso_id'])
             )
+        elif tool_name == 'consultar_grafo':
+            return await self._tool_consultar_grafo(
+                str(tool_input.get('pergunta') or tool_input.get('query') or ''),
+                tool_input.get('profundidade', 2),
+            )
+        elif tool_name == 'detalhe_host':
+            return await self._tool_detalhe_host(int(tool_input['acesso_id']))
         else:
             return f"❌ Ferramenta desconhecida: {tool_name}"
 

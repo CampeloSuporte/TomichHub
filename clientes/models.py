@@ -1903,6 +1903,10 @@ class AgentConfig(models.Model):
     timeout_sessao_wa   = models.IntegerField(default=120, verbose_name='Timeout sessão WhatsApp (min)')
     prefixo_wa          = models.CharField(max_length=20, default='@noc', verbose_name='Prefixo de invocação WA')
     max_comandos_sessao = models.IntegerField(default=50, verbose_name='Máx. comandos por sessão')
+    grafo_contexto_ativo = models.BooleanField(
+        default=True, verbose_name='Grafo de conhecimento (economia de tokens)',
+        help_text='Cliente grande recebe lista compacta de hosts + grafo consultável '
+                  '(consultar_grafo/detalhe_host) em vez do backup de todos os hosts no prompt.')
 
     # Escalonamento
     wa_grupo_noc        = models.CharField(max_length=150, blank=True, verbose_name='JID grupo NOC interno (escalonamento)')

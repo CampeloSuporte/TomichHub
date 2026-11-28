@@ -271,6 +271,13 @@
                     <div class="toggle-desc">No terminal, o agent propõe e aguarda o operador aprovar antes de executar</div>
                 </div>
             </div>
+            <div class="toggle-row mb-3">
+                <input type="checkbox" id="grafo_contexto_ativo" {% if agent_cfg.grafo_contexto_ativo %}checked{% endif %}>
+                <div>
+                    <label class="toggle-label" for="grafo_contexto_ativo">Grafo de conhecimento da rede (economia de tokens)</label>
+                    <div class="toggle-desc">Em clientes grandes, o agent recebe só a lista compacta de hosts e consulta o grafo (interfaces, BGP, enlaces) quando precisa, em vez de levar o backup de todos os hosts em cada chamada. Clientes pequenos não mudam. Desligue para voltar ao prompt completo.</div>
+                </div>
+            </div>
             <hr class="section-divider">
             <div class="form-grid mb-3">
                 <div>
@@ -443,6 +450,7 @@ async function salvarClaude() {
         timeout_sessao_wa:   document.getElementById('timeout_sessao_wa').value,
         prefixo_wa:          document.getElementById('prefixo_wa').value.trim(),
         max_comandos_sessao: document.getElementById('max_comandos_sessao').value,
+        grafo_contexto_ativo: document.getElementById('grafo_contexto_ativo').checked,
         wa_grupo_noc:        document.getElementById('wa_grupo_noc').value.trim(),
         wa_noc_numero:       document.getElementById('wa_noc_numero').value.trim(),
     };
