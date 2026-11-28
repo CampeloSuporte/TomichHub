@@ -5,6 +5,22 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ---
 
+## [Não publicado] — 2026-11-28 (Agent NOC: grafo de conhecimento)
+
+### Adicionado
+
+- **Grafo de conhecimento da rede no Agent NOC (abordagem Graphify).** Em cliente grande, o system
+  prompt deixa de levar o backup de todos os hosts em cada chamada: vai a lista compacta de hosts e
+  o resumo do grafo (hosts, interfaces, sessões BGP, enlaces por /30 e pela topologia). O agente
+  busca o detalhe com as tools novas `consultar_grafo` e `detalhe_host`, que não acessam
+  equipamento. Sartor: 222 mil → 63 mil chars por chamada (~63 mil → ~18 mil tokens); Startnet
+  128 mil → 44 mil. Cliente pequeno (seção de hosts < 12 mil chars) e sessão global não mudam.
+  Chave "Grafo de conhecimento" em Sistema → Configurações → Agent NOC (ligada); qualquer falha volta
+  ao prompt completo. Migração `clientes.0131`. Comando `manage.py agent_grafo` mostra, consulta e
+  exporta o grafo no formato `graph.json` do Graphify.
+
+---
+
 ## [Não publicado] — 2026-11-26 (Atendimento: aba única)
 
 ### Adicionado
